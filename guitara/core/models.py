@@ -14,7 +14,7 @@ class CustomUser(AbstractUser):
     massage_pressure = models.CharField(max_length=20, blank=True, null=True)
     license_number = models.CharField(max_length=50, blank=True, null=True)
     motorcycle_plate = models.CharField(max_length=20, blank=True, null=True)
-    phone_number = models.CharField(max_length=20)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)  # Allow null values default="")  # Add a default value
     failed_login_attempts = models.IntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
     

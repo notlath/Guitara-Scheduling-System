@@ -151,5 +151,5 @@ REST_FRAMEWORK = {
 AUTH_USER_MODEL = 'core.CustomUser'
 
 STATICFILES_DIRS = [
-    BASE_DIR / 'frontend/dist',
+    BASE_DIR / 'frontend/dist',  # Ensure this directory exists or remove this line
 ]
