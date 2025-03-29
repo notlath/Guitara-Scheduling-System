@@ -10,7 +10,8 @@ __pycache__/
 *.sqlite3
 
 # Environment variables
-.env
+royal-care-frontend\.env
+guitara\.env
 
 # Node modules
 node_modules/
