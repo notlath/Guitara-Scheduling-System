@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-import bcrypt
+from django.core.exceptions import ValidationError
 
 class CustomUser(AbstractUser):
     ROLES = (
@@ -11,16 +11,32 @@ class CustomUser(AbstractUser):
     
     role = models.CharField(max_length=20, choices=ROLES)
     specialization = models.CharField(max_length=100, blank=True, null=True)
-    massage_pressure = models.CharField(max_length=20, blank=True, null=True)
+    massage_pressure = models.CharField(
+        max_length=20, 
+        choices=[('soft', 'Soft'), ('moderate', 'Moderate'), ('hard', 'Hard')],
+        blank=True, 
+        null=True
+    )
     license_number = models.CharField(max_length=50, blank=True, null=True)
     motorcycle_plate = models.CharField(max_length=20, blank=True, null=True)
-    phone_number = models.CharField(max_length=20, blank=True, null=True)  # Allow null values default="")  # Add a default value
+    phone_number = models.CharField(max_length=20, default="N/A")  # Add a default value
     failed_login_attempts = models.IntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
-    
-    def set_password(self, raw_password):
-        salt = bcrypt.gensalt()
-        self.password = bcrypt.hashpw(raw_password.encode(), salt).decode()
+    email_verified = models.BooleanField(default=False)  # For 2FA
+    verification_code = models.CharField(max_length=6, blank=True, null=True)
+
+    def clean(self):
+        # Validate driver requirements
+        if self.role == 'driver' and not self.motorcycle_plate:
+            raise ValidationError({
+                'motorcycle_plate': "Drivers must have a valid motorcycle plate number"
+            })
         
-    def check_password(self, raw_password):
-        return bcrypt.checkpw(raw_password.encode(), self.password.encode())
+        # Validate therapist requirements
+        if self.role == 'therapist' and not self.license_number:
+            raise ValidationError({
+                'license_number': "Therapists must have a valid license number"
+            })
+
+    def __str__(self):
+        return f"{self.get_role_display()} - {self.username}"

@@ -1,31 +1,36 @@
-from django.shortcuts import render
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions
 from rest_framework.response import Response
-from .serializers import UserSerializer, RegisterSerializer
-from django.contrib.auth import login
-from rest_framework.authtoken.serializers import AuthTokenSerializer
-from knox.views import LoginView as KnoxLoginView
+from .models import CustomUser
+from .serializers import UserSerializer
+from django.utils import timezone
 
-# Create your views here.
 class RegisterAPI(generics.GenericAPIView):
-    serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        if request.user.role != 'operator':
+            return Response({"error": "Unauthorized"}, status=403)
+            
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        
+        # Set role-based validation
+        role = request.data.get('role')
+        if role == 'driver' and not request.data.get('motorcycle_plate'):
+            return Response(
+                {"error": "Drivers require motorcycle plate"}, 
+                status=400
+            )
+            
+        if role == 'therapist' and not request.data.get('license_number'):
+            return Response(
+                {"error": "Therapists require license number"}, 
+                status=400
+            )
+            
         user = serializer.save()
         return Response({
-            "user": UserSerializer(user, context=self.get_serializer_context()).data,
-            "message": "Account created. Operator must approve before activation."
+            "user": UserSerializer(user).data,
+            "message": "User created successfully"
         })
-
-class LoginAPI(KnoxLoginView):
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request):
-        serializer = AuthTokenSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        login(request, user)
-        return super().post(request)

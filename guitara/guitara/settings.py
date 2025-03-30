@@ -151,5 +151,9 @@ REST_FRAMEWORK = {
 AUTH_USER_MODEL = 'core.CustomUser'
 
 STATICFILES_DIRS = [
-    BASE_DIR / 'frontend/dist',  # Ensure this directory exists or remove this line
+    # BASE_DIR / 'frontend/dist',  # Remove this line if the directory does not exist
+]
+
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
 ]
