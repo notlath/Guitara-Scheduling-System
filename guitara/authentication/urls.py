@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterAPI, LoginAPI, LogoutAPI, PasswordResetRequestAPI, PasswordResetConfirmAPI, TwoFactorAuthAPI
+from .views import RegisterAPI, LoginAPI  # Removed undefined imports
 
 urlpatterns = [
     path('register/', RegisterAPI.as_view(), name='register'),

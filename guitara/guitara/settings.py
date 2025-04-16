@@ -157,3 +157,8 @@ STATICFILES_DIRS = [
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
 ]
+
+# CORS configuration
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Add your frontend's origin
+]

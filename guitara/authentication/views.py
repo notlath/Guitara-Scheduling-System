@@ -7,6 +7,20 @@ from django.conf import settings
 import random
 from .serializers import LoginSerializer
 from core.models import CustomUser
+from core.serializers import UserSerializer  # Ensure this is imported
+
+class RegisterAPI(generics.GenericAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response({
+            "user": UserSerializer(user).data,
+            "message": "User registered successfully."
+        })
 
 class LoginAPI(generics.GenericAPIView):
     serializer_class = LoginSerializer
@@ -51,7 +65,7 @@ class LoginAPI(generics.GenericAPIView):
             
         # Return token if 2FA disabled
         return Response({
-            "user": UserSerializer(user).data,
+            "user": UserSerializer(user).data,  # Includes role and other user details
             "token": AuthToken.objects.create(user)[1]
         })
 
