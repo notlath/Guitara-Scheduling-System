@@ -162,3 +162,24 @@ PASSWORD_HASHERS = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Add your frontend's origin
 ]
+
+# Enhanced logging for debugging authentication issues
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+        'django.contrib.auth': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}

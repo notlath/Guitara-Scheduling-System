@@ -17,12 +17,14 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 
+@require_GET
 def default_route(request):
     return JsonResponse({"message": "Welcome to the API"}, status=200)
 
 urlpatterns = [
-    path('api/auth/', include('authentication.urls')),  # Uncomment this line
+    path('api/auth/', include('authentication.urls')),
     path('api/', include('core.urls')),
     path('', default_route),
 ]

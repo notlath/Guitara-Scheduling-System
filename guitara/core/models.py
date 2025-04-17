@@ -24,6 +24,7 @@ class CustomUser(AbstractUser):
     locked_until = models.DateTimeField(null=True, blank=True)
     email_verified = models.BooleanField(default=False)  # For 2FA
     verification_code = models.CharField(max_length=6, blank=True, null=True)
+    two_factor_enabled = models.BooleanField(default=False)  # Add this missing field
 
     def clean(self):
         # Validate driver requirements
