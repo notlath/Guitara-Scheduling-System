@@ -2,9 +2,9 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import DriverDashboard from "./components/DriverDashboard";
-import Login from "./components/Login";
 import OperatorDashboard from "./components/OperatorDashboard";
 import TherapistDashboard from "./components/TherapistDashboard";
 import { login } from "./features/auth/authSlice"; // Import Redux action
