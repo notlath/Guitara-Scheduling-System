@@ -1,8 +1,22 @@
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { logout } from "../features/auth/authSlice";
+
 const OperatorDashboard = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    localStorage.removeItem("knoxToken");
+    localStorage.removeItem("user");
+    dispatch(logout());
+    navigate("/");
+  };
+
   return (
     <div>
       <h1>Operator Dashboard</h1>
       <p>Welcome to the Operator Dashboard!</p>
+      <button onClick={handleLogout}>Logout</button>
     </div>
   );
 };
