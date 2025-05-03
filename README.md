@@ -74,7 +74,7 @@ A web-based scheduling system designed to streamline operations for Royal Care H
 ### **Backend Setup**
 
 ```bash
-git clone https://github.com/yourusername/guitara.git
+git clone https://github.com/notlath/Guitara-Scheduling-System.git
 cd guitara/backend
 
 # Create virtual environment
