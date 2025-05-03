@@ -1,0 +1,119 @@
+.loginContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.imageSide {
+  flex: 0.6; /* Adjust the ratio as needed */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden; /* To handle image overflow if necessary */
+}
+
+.imageSide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Ensure the image covers the area without distortion */
+}
+
+.formSide {
+  flex: 0.9; /* Adjust the ratio as needed */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: left;
+  background-color: var(--background);
+}
+
+.logo img {
+  max-width: 90px; /* Adjust logo size as needed */
+  height: auto;
+  border-radius: 12px; /* Add the rounded corners */
+}
+
+.welcomeHeading {
+  color: #333; /* Adjust text color */
+  margin-bottom: 32px;
+}
+
+.loginForm {
+  max-width: 330px;
+}
+
+.formLabel {
+  display: block;
+  color: #555;
+}
+
+.formInput {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cac8c4;
+  background-color: #f8f7f7;
+}
+
+.forgotPassword {
+  text-align: right;
+  font-size: small;
+  margin-top: 0.6rem;
+  margin-bottom: 1.1rem;
+}
+
+.forgotPasswordLink {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.forgotPasswordLink:hover {
+  text-decoration: underline;
+}
+
+.loginButton {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: 0.5s opacity;
+}
+
+.loginButtonDisabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.loginButton:hover {
+  background-color: var(--primary-hovered);
+}
+
+.registerLink {
+  text-align: center;
+  font-size: small;
+  margin-top: 1rem;
+  color: var(--muted);
+}
+
+.registerLinkAnchor {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.registerLinkAnchor:hover {
+  text-decoration: underline;
+}
+
+@media screen and (min-width: 1024px) {
+  .loginContainer {
+    flex-direction: row;
+  }
+
+  .formSide {
+    flex: 0.4;
+  }
+}

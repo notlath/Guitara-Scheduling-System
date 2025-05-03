@@ -14,6 +14,7 @@ const Login = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     if (needs2FA) {
       setVerificationCode(value); // Capture 2FA code
     } else {

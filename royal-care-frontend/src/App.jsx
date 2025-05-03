@@ -1,8 +1,14 @@
 // src/App.js
+import "./App.css";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import Login from "./components/auth/Login";
+import LoginPage from "./pages/LoginPage/LoginPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
+import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
+import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
+import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordPage";
+import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
 import Register from "./components/auth/Register";
 import DriverDashboard from "./components/DriverDashboard";
 import OperatorDashboard from "./components/OperatorDashboard";
@@ -28,9 +34,20 @@ const App = () => {
         <Route path="/test" element={<TestConnection />} />
         <Route
           path="/"
-          element={!user ? <Login /> : <Navigate to="/dashboard" />}
+          element={!user ? <LoginPage /> : <Navigate to="/dashboard" />}
         />
         <Route path="/register" element={<Register />} />
+        <Route path="/2fa" element={<TwoFactorAuthPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route
+          path="/2fa-forgot-password"
+          element={<TwoFAForgotPasswordPage />}
+        />
+        <Route path="/enter-new-password" element={<EnterNewPasswordPage />} />
+        <Route
+          path="/forgot-password-confirmation"
+          element={<ForgotPasswordConfirmationPage />}
+        />
         <Route
           path="/dashboard"
           element={
