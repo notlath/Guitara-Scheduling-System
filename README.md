@@ -1,6 +1,6 @@
 # GUITARA: Scheduling Management System for Royal Care Home Service Massage
 
-![Project Banner](https://via.placeholder.com/1500x500.png?text=GUITARA+-+Efficient+Scheduling+for+Home+Service+Massage)
+![Project Banner](royal-care-frontend\src\assets\images\banner.png)
 
 A web-based scheduling system designed to streamline operations for Royal Care Home Service Massage, replacing manual processes with automated solutions for appointments, staff coordination, and inventory management. Built with Django (Python) and React.
 
