@@ -27,4 +27,6 @@ urlpatterns = [
     path('api/auth/', include('authentication.urls')),
     path('api/', include('core.urls')),
     path('', default_route),
+    path('admin/', admin.site.urls),
+    path('api/registration/', include('registration.urls')),
 ]
