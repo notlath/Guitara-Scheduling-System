@@ -67,24 +67,15 @@ A web-based scheduling system designed to streamline operations for Royal Care H
 
 ## 📥 Installation
 
-### **Prerequisites**
+**Prerequisites:** Python 3.12+, Node.js 18+, PostgreSQL 17.2
 
-- Python 3.12+, Node.js 18+, PostgreSQL 17.2
-
-### **Backend Setup**
+**Backend:**
 
 ```bash
 git clone https://github.com/notlath/Guitara-Scheduling-System.git
 cd guitara/backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-venv\Scripts\activate  # Windows
-
-# Install dependencies
+python -m venv venv && venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/macOS
 pip install -r requirements.txt
-
-# Migrate database
 python manage.py migrate
 ```
