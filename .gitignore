@@ -54,3 +54,6 @@ Thumbs.db
 
 # Ignore Python pycache files
 **/__pycache__/
+*.pyc
+*.pyo
+*$py.class

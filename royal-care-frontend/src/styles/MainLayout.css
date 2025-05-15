@@ -33,6 +33,10 @@ body {
   margin-bottom: 20px;
 }
 
+.logo {
+  margin-bottom: 45px; /* Gap between logo and nav links */
+}
+
 .nav-links,
 .bottom-links {
   display: flex;
@@ -47,6 +51,15 @@ body {
   padding: 10px;
   border-radius: 4px;
   transition: background-color 0.3s;
+}
+
+.nav-links a {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 500; /* Medium weight */
+}
+
+.nav-links {
+  gap: 16px; /* Padding between nav links */
 }
 
 .nav-links a.active-link,
