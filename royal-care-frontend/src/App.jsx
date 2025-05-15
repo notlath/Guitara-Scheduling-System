@@ -1,19 +1,20 @@
 // src/App.js
-import "./App.css";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import LoginPage from "./pages/LoginPage/LoginPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
-import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
-import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
-import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordPage";
-import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
+import "./App.css";
 import Register from "./components/auth/Register";
 import DriverDashboard from "./components/DriverDashboard";
+import MainLayout from "./components/MainLayout";
 import OperatorDashboard from "./components/OperatorDashboard";
 import TherapistDashboard from "./components/TherapistDashboard";
 import { login } from "./features/auth/authSlice"; // Import Redux action
+import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
+import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordPage";
+import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
+import LoginPage from "./pages/LoginPage/LoginPage";
+import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import TestConnection from "./TestConnection";
 
 const App = () => {
@@ -48,20 +49,22 @@ const App = () => {
           path="/forgot-password-confirmation"
           element={<ForgotPasswordConfirmationPage />}
         />
-        <Route
-          path="/dashboard"
-          element={
-            user?.role === "operator" ? (
-              <OperatorDashboard />
-            ) : user?.role === "therapist" ? (
-              <TherapistDashboard />
-            ) : user?.role === "driver" ? (
-              <DriverDashboard />
-            ) : (
-              <Navigate to="/" />
-            )
-          }
-        />
+        <Route path="/dashboard" element={<MainLayout />}>
+          <Route
+            index
+            element={
+              user?.role === "operator" ? (
+                <OperatorDashboard />
+              ) : user?.role === "therapist" ? (
+                <TherapistDashboard />
+              ) : user?.role === "driver" ? (
+                <DriverDashboard />
+              ) : (
+                <Navigate to="/" />
+              )
+            }
+          />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
