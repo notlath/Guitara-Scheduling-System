@@ -57,3 +57,10 @@ Thumbs.db
 *.pyc
 *.pyo
 *$py.class
+
+# Virtual Environment
+venv/
+env/
+.env/
+.venv/
+ENV/
