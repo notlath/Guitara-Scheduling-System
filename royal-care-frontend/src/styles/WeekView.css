@@ -1,0 +1,191 @@
+.week-view {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+}
+
+.week-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.week-navigation button {
+  padding: 8px 16px;
+  background-color: #4a69bd;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.week-navigation button:hover {
+  background-color: #3c58a8;
+}
+
+.week-navigation h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.week-calendar {
+  display: flex;
+  overflow-x: auto;
+  border: 1px solid #eee;
+}
+
+.time-column {
+  min-width: 80px;
+  border-right: 1px solid #eee;
+  background-color: #f9f9f9;
+}
+
+.day-column {
+  min-width: 150px;
+  flex: 1;
+  border-right: 1px solid #eee;
+}
+
+.day-column:last-child {
+  border-right: none;
+}
+
+.day-header {
+  height: 60px;
+  padding: 10px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  background-color: #f9f9f9;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.day-header.today {
+  background-color: rgba(74, 105, 189, 0.1);
+  font-weight: bold;
+}
+
+.day-name {
+  font-weight: 600;
+  color: #555;
+}
+
+.day-date {
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.time-slot {
+  height: 60px;
+  border-bottom: 1px solid #eee;
+  padding: 5px;
+  cursor: pointer;
+  position: relative;
+}
+
+.time-slot:hover {
+  background-color: #f5f5f5;
+}
+
+.time-slot.has-appointment {
+  background-color: #f9f9f9;
+  cursor: default;
+}
+
+.time-slot.time-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  font-size: 0.9rem;
+  cursor: default;
+}
+
+.appointment-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 5px;
+  overflow: hidden;
+  border-left: 4px solid #4a69bd;
+  background-color: rgba(74, 105, 189, 0.1);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+
+.appointment-item:hover {
+  background-color: rgba(74, 105, 189, 0.2);
+}
+
+.appointment-pending {
+  border-left-color: #f39c12;
+  background-color: rgba(243, 156, 18, 0.1);
+}
+
+.appointment-pending:hover {
+  background-color: rgba(243, 156, 18, 0.2);
+}
+
+.appointment-confirmed {
+  border-left-color: #2ecc71;
+  background-color: rgba(46, 204, 113, 0.1);
+}
+
+.appointment-confirmed:hover {
+  background-color: rgba(46, 204, 113, 0.2);
+}
+
+.appointment-in-progress {
+  border-left-color: #3498db;
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.appointment-in-progress:hover {
+  background-color: rgba(52, 152, 219, 0.2);
+}
+
+.appointment-completed {
+  border-left-color: #8e44ad;
+  background-color: rgba(142, 68, 173, 0.1);
+}
+
+.appointment-completed:hover {
+  background-color: rgba(142, 68, 173, 0.2);
+}
+
+.appointment-cancelled {
+  border-left-color: #e74c3c;
+  background-color: rgba(231, 76, 60, 0.1);
+}
+
+.appointment-cancelled:hover {
+  background-color: rgba(231, 76, 60, 0.2);
+}
+
+.appointment-time {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.appointment-client {
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.appointment-service {
+  font-size: 0.8rem;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -1,9 +1,11 @@
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "./features/auth/authSlice"; // Replace with your actual reducer
+import authReducer from "./features/auth/authSlice";
+import schedulingReducer from "./features/scheduling/schedulingSlice";
 
 const store = configureStore({
   reducer: {
-    auth: authReducer, // Add your reducers here
+    auth: authReducer,
+    scheduling: schedulingReducer,
   },
 });
 

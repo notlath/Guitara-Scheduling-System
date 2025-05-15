@@ -1,0 +1,120 @@
+/**
+ * WebSocket service for real-time appointment updates
+ */
+let ws = null;
+
+export const setupWebSocket = ({ onAppointmentUpdate }) => {
+  // Close any existing connection
+  if (ws) {
+    ws.close();
+  }
+
+  // Create a new WebSocket connection
+  const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+  const wsHost =
+    process.env.NODE_ENV === "production"
+      ? window.location.host // Use the deployed host in production
+      : "localhost:8000"; // Use localhost in development
+
+  ws = new WebSocket(`${wsScheme}://${wsHost}/ws/scheduling/appointments/`);
+
+  // Set up WebSocket event handlers
+  ws.onopen = () => {
+    console.log("WebSocket connection established");
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+
+      // Handle different message types
+      switch (data.type) {
+        case "appointment_update":
+          console.log("Appointment updated:", data);
+          onAppointmentUpdate && onAppointmentUpdate(data);
+          break;
+
+        case "appointment_create":
+          console.log("New appointment created:", data);
+          onAppointmentUpdate && onAppointmentUpdate(data);
+          break;
+
+        case "appointment_delete":
+          console.log("Appointment deleted:", data);
+          onAppointmentUpdate && onAppointmentUpdate(data);
+          break;
+
+        default:
+          console.log("Unknown message type:", data);
+      }
+    } catch (error) {
+      console.error("Error parsing WebSocket message:", error);
+    }
+  };
+
+  ws.onclose = (event) => {
+    console.log("WebSocket connection closed:", event.code, event.reason);
+
+    // Attempt to reconnect after a delay if the connection was closed unexpectedly
+    if (event.code !== 1000) {
+      console.log("Attempting to reconnect in 5 seconds...");
+      setTimeout(() => {
+        setupWebSocket({ onAppointmentUpdate });
+      }, 5000);
+    }
+  };
+
+  ws.onerror = (error) => {
+    console.error("WebSocket error:", error);
+  };
+
+  // Return a cleanup function
+  return () => {
+    if (ws) {
+      // Use close code 1000 (Normal Closure) to indicate intentional closing
+      ws.close(1000, "Component unmounted");
+    }
+  };
+};
+
+// Function to send appointment update via WebSocket
+export const sendAppointmentUpdate = (appointmentId) => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "appointment_update",
+        appointment_id: appointmentId,
+      })
+    );
+  } else {
+    console.error("WebSocket is not connected");
+  }
+};
+
+// Function to send new appointment notification via WebSocket
+export const sendAppointmentCreate = (appointmentId) => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "appointment_create",
+        appointment_id: appointmentId,
+      })
+    );
+  } else {
+    console.error("WebSocket is not connected");
+  }
+};
+
+// Function to send appointment deletion notification via WebSocket
+export const sendAppointmentDelete = (appointmentId) => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "appointment_delete",
+        appointment_id: appointmentId,
+      })
+    );
+  } else {
+    console.error("WebSocket is not connected");
+  }
+};

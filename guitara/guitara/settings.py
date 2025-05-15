@@ -41,9 +41,12 @@ INSTALLED_APPS = [
     'rest_framework',
     'knox',
     'corsheaders',
+    'django_filters',
+    'channels',
     'core',
     'authentication',
     'registration',
+    'scheduling',
 ]
 
 MIDDLEWARE = [
@@ -76,6 +79,17 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'guitara.wsgi.application'
+ASGI_APPLICATION = 'guitara.asgi.application'
+
+# Channels layer configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
 
 
 # Database

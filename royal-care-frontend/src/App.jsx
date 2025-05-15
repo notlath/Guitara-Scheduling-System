@@ -14,6 +14,7 @@ import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordP
 import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
 import LoginPage from "./pages/LoginPage/LoginPage";
+import SchedulingPage from "./pages/SchedulingPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import TestConnection from "./TestConnection";
 
@@ -28,6 +29,14 @@ const App = () => {
       dispatch(login(JSON.parse(storedUser)));
     }
   }, [dispatch]);
+
+  // Add debugging to check route matching
+  useEffect(() => {
+    if (window.location.pathname.includes("/dashboard/scheduling")) {
+      console.log("Detected scheduling route:", window.location.pathname);
+      console.log("SchedulingPage component is:", SchedulingPage);
+    }
+  }, []);
 
   return (
     <BrowserRouter>
@@ -48,7 +57,7 @@ const App = () => {
         <Route
           path="/forgot-password-confirmation"
           element={<ForgotPasswordConfirmationPage />}
-        />
+        />{" "}
         <Route path="/dashboard" element={<MainLayout />}>
           <Route
             index
@@ -64,6 +73,7 @@ const App = () => {
               )
             }
           />
+          <Route path="scheduling" element={<SchedulingPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
