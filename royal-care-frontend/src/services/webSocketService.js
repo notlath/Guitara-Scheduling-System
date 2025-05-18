@@ -11,10 +11,12 @@ export const setupWebSocket = ({ onAppointmentUpdate }) => {
 
   // Create a new WebSocket connection
   const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
-  const wsHost =
-    process.env.NODE_ENV === "production"
+  // Safely access environment variables; if `process` is not defined, assume defaults for development
+  const NODE_ENV = typeof process !== "undefined" && process.env && process.env.NODE_ENV ? process.env.NODE_ENV : "development";
+  const REACT_APP_BACKEND_WS_URL = typeof process !== "undefined" && process.env && process.env.REACT_APP_BACKEND_WS_URL ? process.env.REACT_APP_BACKEND_WS_URL : "";
+  const wsHost = REACT_APP_BACKEND_WS_URL || (NODE_ENV === "production"
       ? window.location.host // Use the deployed host in production
-      : "localhost:8000"; // Use localhost in development
+      : "localhost:8000"); // Use localhost in development
 
   ws = new WebSocket(`${wsScheme}://${wsHost}/ws/scheduling/appointments/`);
 
@@ -68,13 +70,14 @@ export const setupWebSocket = ({ onAppointmentUpdate }) => {
     console.error("WebSocket error:", error);
   };
 
-  // Return a cleanup function
-  return () => {
+  const closeWs = () => {
     if (ws) {
-      // Use close code 1000 (Normal Closure) to indicate intentional closing
       ws.close(1000, "Component unmounted");
     }
   };
+
+  // Return a cleanup function
+  return closeWs;
 };
 
 // Function to send appointment update via WebSocket
@@ -84,7 +87,7 @@ export const sendAppointmentUpdate = (appointmentId) => {
       JSON.stringify({
         type: "appointment_update",
         appointment_id: appointmentId,
-      })
+      }),
     );
   } else {
     console.error("WebSocket is not connected");
@@ -98,7 +101,7 @@ export const sendAppointmentCreate = (appointmentId) => {
       JSON.stringify({
         type: "appointment_create",
         appointment_id: appointmentId,
-      })
+      }),
     );
   } else {
     console.error("WebSocket is not connected");
@@ -112,7 +115,7 @@ export const sendAppointmentDelete = (appointmentId) => {
       JSON.stringify({
         type: "appointment_delete",
         appointment_id: appointmentId,
-      })
+      }),
     );
   } else {
     console.error("WebSocket is not connected");

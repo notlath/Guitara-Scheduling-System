@@ -14,7 +14,7 @@ const MainLayout = () => {
     console.log("Route params:", location);
     console.log(
       "Router matching current location:",
-      location.pathname === "/dashboard/scheduling"
+      location.pathname === "/dashboard/scheduling",
     );
   }, [location]);
 
@@ -40,7 +40,7 @@ const MainLayout = () => {
             }}
             onClick={() => {
               console.log(
-                "Scheduling link clicked, navigating to /dashboard/scheduling"
+                "Scheduling link clicked, navigating to /dashboard/scheduling",
               );
             }}
           >
@@ -66,12 +66,8 @@ const MainLayout = () => {
           </NavLink>
         </nav>
         <div className="bottom-links">
-          <NavLink to="/settings" activeClassName="active-link">
-            Settings
-          </NavLink>
-          <NavLink to="/profile" activeClassName="active-link">
-            Profile
-          </NavLink>
+          <NavLink to="/settings">Settings</NavLink>
+          <NavLink to="/profile">Profile</NavLink>
         </div>
       </aside>
 

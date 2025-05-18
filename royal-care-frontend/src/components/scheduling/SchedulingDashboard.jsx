@@ -13,6 +13,7 @@ import AvailabilityManager from "./AvailabilityManager";
 import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
 import WeekView from "./WeekView";
+import { useMemo } from "react";
 
 const SchedulingDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -21,11 +22,6 @@ const SchedulingDashboard = () => {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [view, setView] = useState("calendar"); // 'calendar', 'week', 'list', 'today', 'availability'
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
-
-  // Debug init
-  useEffect(() => {
-    console.log("SchedulingDashboard component mounted");
-  }, []);
 
   const dispatch = useDispatch();
   const {
@@ -38,6 +34,7 @@ const SchedulingDashboard = () => {
     error,
   } = useSelector((state) => state.scheduling);
   const { user } = useSelector((state) => state.auth);
+  const defaultDate = useMemo(() => new Date(), []);
 
   // Setup websocket connection for real-time updates
   useEffect(() => {
@@ -47,9 +44,12 @@ const SchedulingDashboard = () => {
         refreshAppointments();
       },
     });
-
     // Cleanup websocket connection when component unmounts
-    return cleanupWebSocket;
+    return () => {
+      if (cleanupWebSocket) {
+        cleanupWebSocket();
+      }
+    };
   }, []);
 
   const refreshAppointments = () => {
@@ -158,7 +158,7 @@ const SchedulingDashboard = () => {
               </h3>
               <span
                 className={`status-badge ${getStatusBadgeClass(
-                  appointment.status
+                  appointment.status,
                 )}`}
               >
                 {appointment.status.charAt(0).toUpperCase() +
@@ -175,7 +175,7 @@ const SchedulingDashboard = () => {
                 <strong>Time:</strong>{" "}
                 {formatAppointmentTime(
                   appointment.start_time,
-                  appointment.end_time
+                  appointment.end_time,
                 )}
               </p>
               <p>
@@ -316,7 +316,7 @@ const SchedulingDashboard = () => {
         {view === "week" && !isFormVisible && (
           <WeekView
             onAppointmentSelect={handleEditAppointment}
-            selectedDate={selectedDate || new Date()}
+            selectedDate={selectedDate || defaultDate}
           />
         )}
 

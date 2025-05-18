@@ -13,13 +13,13 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
 
   const dispatch = useDispatch();
-  const { availableTherapists, availableDrivers } = useSelector(
-    (state) => state.scheduling
+  const { availableTherapists, availableDrivers, appointments } = useSelector(
+    (state) => state.scheduling,
   );
 
   // Helper to format date as YYYY-MM-DD
   const formatDate = (date) => {
-    return date.toISOString().split("T")[0];
+    return date.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
   };
 
   // Generate time slots from 7 AM to 10 PM in 30-minute intervals
@@ -51,13 +51,13 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   // Handle month navigation
   const prevMonth = () => {
     setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1),
     );
   };
 
   const nextMonth = () => {
     setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1),
     );
   };
 
@@ -67,7 +67,7 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
       const selectedDate = new Date(
         currentMonth.getFullYear(),
         currentMonth.getMonth(),
-        day
+        day,
       );
       onDateSelected(selectedDate);
       setView("day");
@@ -79,14 +79,14 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
           date: formattedDate,
           start_time: "08:00",
           end_time: "20:00",
-        })
+        }),
       );
       dispatch(
         fetchAvailableDrivers({
           date: formattedDate,
           start_time: "08:00",
           end_time: "20:00",
-        })
+        }),
       );
     }
   };
@@ -152,22 +152,35 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
           <div className="day-header">Sat</div>
 
           {weeks.flatMap((week, weekIndex) =>
-            week.map((day, dayIndex) => (
-              <div
-                key={`${weekIndex}-${dayIndex}`}
-                className={`calendar-day ${day ? "day" : "empty-day"} ${
-                  selectedDate &&
-                  day === selectedDate.getDate() &&
-                  currentMonth.getMonth() === selectedDate.getMonth() &&
-                  currentMonth.getFullYear() === selectedDate.getFullYear()
-                    ? "selected-day"
-                    : ""
-                }`}
-                onClick={() => day && handleDateClick(day)}
-              >
-                {day}
-              </div>
-            ))
+            week.map((day, dayIndex) => {
+              const formattedDate = formatDate(
+                new Date(
+                  currentMonth.getFullYear(),
+                  currentMonth.getMonth(),
+                  day,
+                ),
+              );
+              const appointment = appointments.find((appointment) => {
+                return appointment.date === formattedDate;
+              });
+
+              return (
+                <div
+                  key={`${weekIndex}-${dayIndex}`}
+                  className={`calendar-day ${day ? "day" : "empty-day"} ${
+                    selectedDate &&
+                    day === selectedDate.getDate() &&
+                    currentMonth.getMonth() === selectedDate.getMonth() &&
+                    currentMonth.getFullYear() === selectedDate.getFullYear()
+                      ? "selected-day"
+                      : ""
+                  } ${appointment && "appointment-day"}`}
+                  onClick={() => day && handleDateClick(day)}
+                >
+                  {day}
+                </div>
+              );
+            }),
           )}
         </div>
       </div>

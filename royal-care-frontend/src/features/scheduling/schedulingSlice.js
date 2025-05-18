@@ -18,84 +18,110 @@ const API_URL =
 export const fetchAppointments = createAsyncThunk(
   "scheduling/fetchAppointments",
   async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
-      const response = await axios.get(`${API_URL}appointments/`);
+      const response = await axios.get(`${API_URL}appointments/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch appointments"
+        error.response?.data || "Could not fetch appointments",
       );
     }
-  }
+  },
 );
 
 // Fetch today's appointments
 export const fetchTodayAppointments = createAsyncThunk(
   "scheduling/fetchTodayAppointments",
   async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
-      const response = await axios.get(`${API_URL}appointments/today/`);
+      const response = await axios.get(`${API_URL}appointments/today/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch today's appointments"
+        error.response?.data || "Could not fetch today's appointments",
       );
     }
-  }
+  },
 );
 
 // Fetch upcoming appointments
 export const fetchUpcomingAppointments = createAsyncThunk(
   "scheduling/fetchUpcomingAppointments",
   async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
-      const response = await axios.get(`${API_URL}appointments/upcoming/`);
+      const response = await axios.get(`${API_URL}appointments/upcoming/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch upcoming appointments"
+        error.response?.data || "Could not fetch upcoming appointments",
       );
     }
-  }
+  },
 );
 
 // Fetch appointments for a specific date
 export const fetchAppointmentsByDate = createAsyncThunk(
   "scheduling/fetchAppointmentsByDate",
   async (date, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
-      const response = await axios.get(`${API_URL}appointments/?date=${date}`);
+      const response = await axios.get(`${API_URL}appointments/?date=${date}`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch appointments for this date"
+        error.response?.data || "Could not fetch appointments for this date",
       );
     }
-  }
+  },
 );
 
 // Create a new appointment
 export const createAppointment = createAsyncThunk(
   "scheduling/createAppointment",
   async (appointmentData, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
       const response = await axios.post(
         `${API_URL}appointments/`,
-        appointmentData
+        appointmentData,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        },
       );
-
       // Notify via WebSocket
       if (response.data.id) {
         sendAppointmentCreate(response.data.id);
       }
-
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not create appointment"
+        error.response?.data || "Could not create appointment",
       );
     }
-  }
+  },
 );
 
 // Update an existing appointment
@@ -104,17 +130,15 @@ export const updateAppointment = createAsyncThunk(
   async ({ id, data }, { rejectWithValue }) => {
     try {
       const response = await axios.put(`${API_URL}appointments/${id}/`, data);
-
       // Notify via WebSocket
       sendAppointmentUpdate(id);
-
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not update appointment"
+        error.response?.data || "Could not update appointment",
       );
     }
-  }
+  },
 );
 
 // Delete an appointment
@@ -123,128 +147,165 @@ export const deleteAppointment = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       await axios.delete(`${API_URL}appointments/${id}/`);
-
       // Notify via WebSocket
       sendAppointmentDelete(id);
-
-      return id; // Return the ID for removing from state
+      return id;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not delete appointment"
+        error.response?.data || "Could not delete appointment",
       );
     }
-  }
+  },
 );
 
 // Fetch available therapists for a specific date and time
 export const fetchAvailableTherapists = createAsyncThunk(
   "scheduling/fetchAvailableTherapists",
   async ({ date, start_time, end_time }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
       const response = await axios.get(
-        `${API_URL}availabilities/available_therapists/?date=${date}&start_time=${start_time}&end_time=${end_time}`
+        `${API_URL}availabilities/available_therapists/?date=${date}&start_time=${start_time}&end_time=${end_time}`,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        },
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch available therapists"
+        error.response?.data || "Could not fetch available therapists",
       );
     }
-  }
+  },
 );
 
 // Fetch available drivers for a specific date and time
 export const fetchAvailableDrivers = createAsyncThunk(
   "scheduling/fetchAvailableDrivers",
   async ({ date, start_time, end_time }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
       const response = await axios.get(
-        `${API_URL}availabilities/available_drivers/?date=${date}&start_time=${start_time}&end_time=${end_time}`
+        `${API_URL}availabilities/available_drivers/?date=${date}&start_time=${start_time}&end_time=${end_time}`,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        },
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch available drivers"
+        error.response?.data || "Could not fetch available drivers",
       );
     }
-  }
+  },
 );
 
 // Fetch all clients
 export const fetchClients = createAsyncThunk(
   "scheduling/fetchClients",
   async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
-      const response = await axios.get(`${API_URL}clients/`);
+      const response = await axios.get(`${API_URL}clients/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || "Could not fetch clients");
     }
-  }
+  },
 );
 
 // Fetch all services
 export const fetchServices = createAsyncThunk(
   "scheduling/fetchServices",
   async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
-      const response = await axios.get(`${API_URL}services/`);
+      const response = await axios.get(`${API_URL}services/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch services"
+        error.response?.data || "Could not fetch services",
       );
     }
-  }
+  },
 );
 
 // Fetch appointments for a specific week
 export const fetchAppointmentsByWeek = createAsyncThunk(
   "scheduling/fetchAppointmentsByWeek",
   async ({ startDate, endDate }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
       const response = await axios.get(
-        `${API_URL}appointments/?date_after=${startDate}&date_before=${endDate}`
+        `${API_URL}appointments/?date_after=${startDate}&date_before=${endDate}`,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        },
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch appointments for this week"
+        error.response?.data || "Could not fetch appointments for this week",
       );
     }
-  }
+  },
 );
 
 // Fetch staff members (therapists and drivers)
 export const fetchStaffMembers = createAsyncThunk(
   "scheduling/fetchStaffMembers",
   async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
-      const response = await axios.get(`${API_URL}staff/`);
+      const response = await axios.get(`${API_URL}staff/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch staff members"
+        error.response?.data || "Could not fetch staff members",
       );
     }
-  }
+  },
 );
 
 // Fetch availability for a staff member
 export const fetchAvailability = createAsyncThunk(
   "scheduling/fetchAvailability",
   async ({ staffId, date }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
       const response = await axios.get(
-        `${API_URL}availabilities/?user=${staffId}&date=${date}`
+        `${API_URL}availabilities/?user=${staffId}&date=${date}`,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        },
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch availability"
+        error.response?.data || "Could not fetch availability",
       );
     }
-  }
+  },
 );
 
 // Create new availability
@@ -254,15 +315,15 @@ export const createAvailability = createAsyncThunk(
     try {
       const response = await axios.post(
         `${API_URL}availabilities/`,
-        availabilityData
+        availabilityData,
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not create availability"
+        error.response?.data || "Could not create availability",
       );
     }
-  }
+  },
 );
 
 // Update existing availability
@@ -274,10 +335,10 @@ export const updateAvailability = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not update availability"
+        error.response?.data || "Could not update availability",
       );
     }
-  }
+  },
 );
 
 // Delete availability
@@ -289,21 +350,31 @@ export const deleteAvailability = createAsyncThunk(
       return id;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not delete availability"
+        error.response?.data || "Could not delete availability",
       );
     }
-  }
+  },
 );
 
 // Fetch notifications
 export const fetchNotifications = createAsyncThunk(
   "scheduling/fetchNotifications",
   async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
-      const response = await axios.get(`${API_URL}notifications/`);
+      const response = await axios.get(`${API_URL}notifications/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
       // Also get unread count
       const countResponse = await axios.get(
-        `${API_URL}notifications/unread_count/`
+        `${API_URL}notifications/unread_count/`,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        },
       );
       return {
         notifications: response.data,
@@ -311,10 +382,10 @@ export const fetchNotifications = createAsyncThunk(
       };
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch notifications"
+        error.response?.data || "Could not fetch notifications",
       );
     }
-  }
+  },
 );
 
 // Mark notification as read
@@ -323,15 +394,15 @@ export const markNotificationAsRead = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const response = await axios.post(
-        `${API_URL}notifications/${id}/mark_as_read/`
+        `${API_URL}notifications/${id}/mark_as_read/`,
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not mark notification as read"
+        error.response?.data || "Could not mark notification as read",
       );
     }
-  }
+  },
 );
 
 // Mark all notifications as read
@@ -343,10 +414,10 @@ export const markAllNotificationsAsRead = createAsyncThunk(
       return true;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not mark all notifications as read"
+        error.response?.data || "Could not mark all notifications as read",
       );
     }
-  }
+  },
 );
 
 // Initial state
@@ -389,328 +460,241 @@ const schedulingSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchAppointments.fulfilled, (state, action) => {
-        state.appointments = action.payload;
         state.loading = false;
+        state.appointments = action.payload;
       })
       .addCase(fetchAppointments.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not fetch appointments";
+        state.error = action.payload;
       })
-
       // fetchTodayAppointments
       .addCase(fetchTodayAppointments.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchTodayAppointments.fulfilled, (state, action) => {
-        state.todayAppointments = action.payload;
         state.loading = false;
+        state.todayAppointments = action.payload;
       })
       .addCase(fetchTodayAppointments.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not fetch today's appointments";
+        state.error = action.payload;
       })
-
       // fetchUpcomingAppointments
       .addCase(fetchUpcomingAppointments.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchUpcomingAppointments.fulfilled, (state, action) => {
-        state.upcomingAppointments = action.payload;
         state.loading = false;
+        state.upcomingAppointments = action.payload;
       })
       .addCase(fetchUpcomingAppointments.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not fetch upcoming appointments";
+        state.error = action.payload;
       })
-
       // fetchAppointmentsByDate
       .addCase(fetchAppointmentsByDate.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchAppointmentsByDate.fulfilled, (state, action) => {
-        const date = action.meta.arg;
-        state.appointmentsByDate[date] = action.payload;
         state.loading = false;
+        state.appointmentsByDate = action.payload;
       })
       .addCase(fetchAppointmentsByDate.rejected, (state, action) => {
         state.loading = false;
-        state.error =
-          action.payload || "Could not fetch appointments for this date";
+        state.error = action.payload;
       })
-
       // createAppointment
       .addCase(createAppointment.pending, (state) => {
         state.loading = true;
         state.error = null;
-        state.successMessage = null;
       })
       .addCase(createAppointment.fulfilled, (state, action) => {
-        state.appointments.push(action.payload);
         state.loading = false;
-        state.successMessage = "Appointment created successfully";
+        state.appointments.push(action.payload);
+        state.successMessage = "Appointment created successfully.";
       })
       .addCase(createAppointment.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not create appointment";
+        state.error = action.payload;
       })
-
       // updateAppointment
       .addCase(updateAppointment.pending, (state) => {
         state.loading = true;
         state.error = null;
-        state.successMessage = null;
       })
       .addCase(updateAppointment.fulfilled, (state, action) => {
+        state.loading = false;
         const index = state.appointments.findIndex(
-          (appointment) => appointment.id === action.payload.id
+          (appt) => appt.id === action.payload.id,
         );
         if (index !== -1) {
           state.appointments[index] = action.payload;
+          state.successMessage = "Appointment updated successfully.";
         }
-        state.loading = false;
-        state.successMessage = "Appointment updated successfully";
       })
       .addCase(updateAppointment.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not update appointment";
+        state.error = action.payload;
       })
-
       // deleteAppointment
       .addCase(deleteAppointment.pending, (state) => {
         state.loading = true;
         state.error = null;
-        state.successMessage = null;
       })
       .addCase(deleteAppointment.fulfilled, (state, action) => {
-        state.appointments = state.appointments.filter(
-          (appointment) => appointment.id !== action.payload
-        );
-        state.todayAppointments = state.todayAppointments.filter(
-          (appointment) => appointment.id !== action.payload
-        );
-        state.upcomingAppointments = state.upcomingAppointments.filter(
-          (appointment) => appointment.id !== action.payload
-        );
         state.loading = false;
-        state.successMessage = "Appointment deleted successfully";
+        state.appointments = state.appointments.filter(
+          (appt) => appt.id !== action.payload,
+        );
+        state.successMessage = "Appointment deleted successfully.";
       })
       .addCase(deleteAppointment.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not delete appointment";
+        state.error = action.payload;
       })
-
       // fetchAvailableTherapists
       .addCase(fetchAvailableTherapists.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchAvailableTherapists.fulfilled, (state, action) => {
-        state.availableTherapists = action.payload;
         state.loading = false;
+        state.availableTherapists = action.payload;
       })
       .addCase(fetchAvailableTherapists.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not fetch available therapists";
+        state.error = action.payload;
       })
-
       // fetchAvailableDrivers
       .addCase(fetchAvailableDrivers.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchAvailableDrivers.fulfilled, (state, action) => {
-        state.availableDrivers = action.payload;
         state.loading = false;
+        state.availableDrivers = action.payload;
       })
       .addCase(fetchAvailableDrivers.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not fetch available drivers";
+        state.error = action.payload;
       })
-
       // fetchClients
       .addCase(fetchClients.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchClients.fulfilled, (state, action) => {
-        state.clients = action.payload;
         state.loading = false;
+        state.clients = action.payload;
       })
       .addCase(fetchClients.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not fetch clients";
+        state.error = action.payload;
       })
-
       // fetchServices
       .addCase(fetchServices.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchServices.fulfilled, (state, action) => {
-        state.services = action.payload;
         state.loading = false;
+        state.services = action.payload;
       })
       .addCase(fetchServices.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not fetch services";
+        state.error = action.payload;
       })
-
       // fetchAppointmentsByWeek
       .addCase(fetchAppointmentsByWeek.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchAppointmentsByWeek.fulfilled, (state, action) => {
-        state.weekAppointments = action.payload;
         state.loading = false;
+        state.weekAppointments = action.payload;
       })
       .addCase(fetchAppointmentsByWeek.rejected, (state, action) => {
         state.loading = false;
-        state.error =
-          action.payload || "Could not fetch appointments for this week";
+        state.error = action.payload;
       })
-
       // fetchStaffMembers
       .addCase(fetchStaffMembers.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchStaffMembers.fulfilled, (state, action) => {
-        state.staffMembers = action.payload;
         state.loading = false;
+        state.staffMembers = action.payload;
       })
       .addCase(fetchStaffMembers.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not fetch staff members";
+        state.error = action.payload;
       })
-
       // fetchAvailability
       .addCase(fetchAvailability.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchAvailability.fulfilled, (state, action) => {
-        state.availabilities = action.payload;
         state.loading = false;
+        state.availabilities = action.payload;
       })
       .addCase(fetchAvailability.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not fetch availability";
+        state.error = action.payload;
       })
-
-      // createAvailability
-      .addCase(createAvailability.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(createAvailability.fulfilled, (state, action) => {
-        state.availabilities.push(action.payload);
-        state.loading = false;
-        state.successMessage = "Availability created successfully";
-      })
-      .addCase(createAvailability.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || "Could not create availability";
-      })
-
-      // updateAvailability
-      .addCase(updateAvailability.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(updateAvailability.fulfilled, (state, action) => {
-        const index = state.availabilities.findIndex(
-          (availability) => availability.id === action.payload.id
-        );
-        if (index !== -1) {
-          state.availabilities[index] = action.payload;
-        }
-        state.loading = false;
-        state.successMessage = "Availability updated successfully";
-      })
-      .addCase(updateAvailability.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || "Could not update availability";
-      })
-
-      // deleteAvailability
-      .addCase(deleteAvailability.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(deleteAvailability.fulfilled, (state, action) => {
-        state.availabilities = state.availabilities.filter(
-          (availability) => availability.id !== action.payload
-        );
-        state.loading = false;
-        state.successMessage = "Availability deleted successfully";
-      })
-      .addCase(deleteAvailability.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || "Could not delete availability";
-      })
-
       // fetchNotifications
       .addCase(fetchNotifications.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchNotifications.fulfilled, (state, action) => {
+        state.loading = false;
         state.notifications = action.payload.notifications;
         state.unreadNotificationCount = action.payload.unreadCount;
-        state.loading = false;
       })
       .addCase(fetchNotifications.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not fetch notifications";
+        state.error = action.payload;
       })
-
       // markNotificationAsRead
       .addCase(markNotificationAsRead.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(markNotificationAsRead.fulfilled, (state, action) => {
-        const index = state.notifications.findIndex(
-          (notification) => notification.id === action.payload.id
-        );
-        if (index !== -1) {
-          state.notifications[index] = action.payload;
-          if (state.unreadNotificationCount > 0) {
-            state.unreadNotificationCount -= 1;
-          }
-        }
         state.loading = false;
+        const notif = state.notifications.find(
+          (n) => n.id === action.payload.id,
+        );
+        if (notif) {
+          notif.is_read = true;
+          notif.notification_type = action.payload.notification_type;
+        }
       })
       .addCase(markNotificationAsRead.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Could not mark notification as read";
+        state.error = action.payload;
       })
-
       // markAllNotificationsAsRead
       .addCase(markAllNotificationsAsRead.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(markAllNotificationsAsRead.fulfilled, (state) => {
-        state.notifications = state.notifications.map((notification) => ({
-          ...notification,
-          is_read: true,
-        }));
-        state.unreadNotificationCount = 0;
         state.loading = false;
+        state.notifications.forEach((notif) => (notif.is_read = true));
+        state.unreadNotificationCount = 0;
       })
       .addCase(markAllNotificationsAsRead.rejected, (state, action) => {
         state.loading = false;
-        state.error =
-          action.payload || "Could not mark all notifications as read";
+        state.error = action.payload;
       });
   },
 });
 
-// Export actions and reducer
 export const { clearError, clearSuccessMessage } = schedulingSlice.actions;
 export default schedulingSlice.reducer;

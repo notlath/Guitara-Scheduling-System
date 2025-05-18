@@ -11,7 +11,7 @@ const NotificationCenter = () => {
   const [showAll, setShowAll] = useState(false);
   const dispatch = useDispatch();
   const { notifications, unreadCount, loading } = useSelector(
-    (state) => state.scheduling
+    (state) => state.scheduling,
   );
 
   useEffect(() => {
