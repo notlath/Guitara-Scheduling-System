@@ -12,13 +12,45 @@ export const setupWebSocket = ({ onAppointmentUpdate }) => {
   // Create a new WebSocket connection
   const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
   // Safely access environment variables; if `process` is not defined, assume defaults for development
-  const NODE_ENV = typeof process !== "undefined" && process.env && process.env.NODE_ENV ? process.env.NODE_ENV : "development";
-  const REACT_APP_BACKEND_WS_URL = typeof process !== "undefined" && process.env && process.env.REACT_APP_BACKEND_WS_URL ? process.env.REACT_APP_BACKEND_WS_URL : "";
-  const wsHost = REACT_APP_BACKEND_WS_URL || (NODE_ENV === "production"
+  const NODE_ENV =
+    typeof process !== "undefined" && process.env && process.env.NODE_ENV
+      ? process.env.NODE_ENV
+      : "development";
+  const REACT_APP_BACKEND_WS_URL =
+    typeof process !== "undefined" &&
+    process.env &&
+    process.env.REACT_APP_BACKEND_WS_URL
+      ? process.env.REACT_APP_BACKEND_WS_URL
+      : "";
+  const wsHost =
+    REACT_APP_BACKEND_WS_URL ||
+    (NODE_ENV === "production"
       ? window.location.host // Use the deployed host in production
       : "localhost:8000"); // Use localhost in development
 
-  ws = new WebSocket(`${wsScheme}://${wsHost}/ws/scheduling/appointments/`);
+  // Get authentication token from localStorage and strip any prefix
+  let token = localStorage.getItem("knoxToken");
+  if (!token) {
+    console.error(
+      "No authentication token found. Cannot establish WebSocket connection."
+    );
+    return () => {}; // Return empty cleanup function
+  }
+  // Strip prefix if stored as 'Token <token>'
+  if (token.startsWith("Token ")) {
+    token = token.split(" ")[1];
+  }
+  if (!token) {
+    console.error(
+      "No authentication token found. Cannot establish WebSocket connection."
+    );
+    return () => {}; // Return empty cleanup function
+  }
+
+  // Include token in WebSocket URL for authentication
+  ws = new WebSocket(
+    `${wsScheme}://${wsHost}/ws/scheduling/appointments/?token=${token}`
+  );
 
   // Set up WebSocket event handlers
   ws.onopen = () => {
@@ -59,6 +91,15 @@ export const setupWebSocket = ({ onAppointmentUpdate }) => {
 
     // Attempt to reconnect after a delay if the connection was closed unexpectedly
     if (event.code !== 1000) {
+      // Check if we have an authentication token
+      const token = localStorage.getItem("knoxToken");
+      if (!token) {
+        console.error(
+          "Authentication failed: No token available. Please log in."
+        );
+        return; // Don't attempt to reconnect if no token is available
+      }
+
       console.log("Attempting to reconnect in 5 seconds...");
       setTimeout(() => {
         setupWebSocket({ onAppointmentUpdate });
@@ -87,7 +128,7 @@ export const sendAppointmentUpdate = (appointmentId) => {
       JSON.stringify({
         type: "appointment_update",
         appointment_id: appointmentId,
-      }),
+      })
     );
   } else {
     console.error("WebSocket is not connected");
@@ -101,7 +142,7 @@ export const sendAppointmentCreate = (appointmentId) => {
       JSON.stringify({
         type: "appointment_create",
         appointment_id: appointmentId,
-      }),
+      })
     );
   } else {
     console.error("WebSocket is not connected");
@@ -115,7 +156,7 @@ export const sendAppointmentDelete = (appointmentId) => {
       JSON.stringify({
         type: "appointment_delete",
         appointment_id: appointmentId,
-      }),
+      })
     );
   } else {
     console.error("WebSocket is not connected");

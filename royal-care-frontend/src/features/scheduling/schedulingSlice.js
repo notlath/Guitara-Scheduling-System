@@ -1,10 +1,16 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import axios from "axios";
 import {
   sendAppointmentCreate,
   sendAppointmentDelete,
   sendAppointmentUpdate,
 } from "../../services/webSocketService";
+// Helper to retrieve raw token without prefix
+const getToken = () => {
+  let token = localStorage.getItem("knoxToken");
+  if (!token) return null;
+  if (token.startsWith("Token ")) token = token.split(" ")[1];
+  return token;
+};
 
 // API URL based on environment
 const API_URL =
@@ -18,7 +24,8 @@ const API_URL =
 export const fetchAppointments = createAsyncThunk(
   "scheduling/fetchAppointments",
   async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
+    const token = getToken();
+    if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.get(`${API_URL}appointments/`, {
         headers: {
@@ -28,17 +35,18 @@ export const fetchAppointments = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch appointments",
+        error.response?.data || "Could not fetch appointments"
       );
     }
-  },
+  }
 );
 
 // Fetch today's appointments
 export const fetchTodayAppointments = createAsyncThunk(
   "scheduling/fetchTodayAppointments",
   async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
+    const token = getToken();
+    if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.get(`${API_URL}appointments/today/`, {
         headers: {
@@ -49,17 +57,18 @@ export const fetchTodayAppointments = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch today's appointments",
+        error.response?.data || "Could not fetch today's appointments"
       );
     }
-  },
+  }
 );
 
 // Fetch upcoming appointments
 export const fetchUpcomingAppointments = createAsyncThunk(
   "scheduling/fetchUpcomingAppointments",
   async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
+    const token = getToken();
+    if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.get(`${API_URL}appointments/upcoming/`, {
         headers: {
@@ -70,17 +79,18 @@ export const fetchUpcomingAppointments = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch upcoming appointments",
+        error.response?.data || "Could not fetch upcoming appointments"
       );
     }
-  },
+  }
 );
 
 // Fetch appointments for a specific date
 export const fetchAppointmentsByDate = createAsyncThunk(
   "scheduling/fetchAppointmentsByDate",
   async (date, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
+    const token = getToken();
+    if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.get(`${API_URL}appointments/?date=${date}`, {
         headers: {
@@ -90,17 +100,18 @@ export const fetchAppointmentsByDate = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch appointments for this date",
+        error.response?.data || "Could not fetch appointments for this date"
       );
     }
-  },
+  }
 );
 
 // Create a new appointment
 export const createAppointment = createAsyncThunk(
   "scheduling/createAppointment",
   async (appointmentData, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
+    const token = getToken();
+    if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.post(
         `${API_URL}appointments/`,
@@ -109,7 +120,7 @@ export const createAppointment = createAsyncThunk(
           headers: {
             Authorization: `Token ${token}`,
           },
-        },
+        }
       );
       // Notify via WebSocket
       if (response.data.id) {
@@ -118,27 +129,31 @@ export const createAppointment = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not create appointment",
+        error.response?.data || "Could not create appointment"
       );
     }
-  },
+  }
 );
 
 // Update an existing appointment
 export const updateAppointment = createAsyncThunk(
   "scheduling/updateAppointment",
   async ({ id, data }, { rejectWithValue }) => {
+    const token = getToken();
+    if (!token) return rejectWithValue("Authentication required");
     try {
-      const response = await axios.put(`${API_URL}appointments/${id}/`, data);
+      const response = await axios.put(`${API_URL}appointments/${id}/`, data, {
+        headers: { Authorization: `Token ${token}` },
+      });
       // Notify via WebSocket
       sendAppointmentUpdate(id);
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not update appointment",
+        error.response?.data || "Could not update appointment"
       );
     }
-  },
+  }
 );
 
 // Delete an appointment
@@ -152,10 +167,10 @@ export const deleteAppointment = createAsyncThunk(
       return id;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not delete appointment",
+        error.response?.data || "Could not delete appointment"
       );
     }
-  },
+  }
 );
 
 // Fetch available therapists for a specific date and time
@@ -170,15 +185,15 @@ export const fetchAvailableTherapists = createAsyncThunk(
           headers: {
             Authorization: `Token ${token}`,
           },
-        },
+        }
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch available therapists",
+        error.response?.data || "Could not fetch available therapists"
       );
     }
-  },
+  }
 );
 
 // Fetch available drivers for a specific date and time
@@ -193,15 +208,15 @@ export const fetchAvailableDrivers = createAsyncThunk(
           headers: {
             Authorization: `Token ${token}`,
           },
-        },
+        }
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch available drivers",
+        error.response?.data || "Could not fetch available drivers"
       );
     }
-  },
+  }
 );
 
 // Fetch all clients
@@ -219,7 +234,7 @@ export const fetchClients = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data || "Could not fetch clients");
     }
-  },
+  }
 );
 
 // Fetch all services
@@ -236,10 +251,10 @@ export const fetchServices = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch services",
+        error.response?.data || "Could not fetch services"
       );
     }
-  },
+  }
 );
 
 // Fetch appointments for a specific week
@@ -254,15 +269,15 @@ export const fetchAppointmentsByWeek = createAsyncThunk(
           headers: {
             Authorization: `Token ${token}`,
           },
-        },
+        }
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch appointments for this week",
+        error.response?.data || "Could not fetch appointments for this week"
       );
     }
-  },
+  }
 );
 
 // Fetch staff members (therapists and drivers)
@@ -279,10 +294,10 @@ export const fetchStaffMembers = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch staff members",
+        error.response?.data || "Could not fetch staff members"
       );
     }
-  },
+  }
 );
 
 // Fetch availability for a staff member
@@ -297,15 +312,15 @@ export const fetchAvailability = createAsyncThunk(
           headers: {
             Authorization: `Token ${token}`,
           },
-        },
+        }
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch availability",
+        error.response?.data || "Could not fetch availability"
       );
     }
-  },
+  }
 );
 
 // Create new availability
@@ -315,15 +330,15 @@ export const createAvailability = createAsyncThunk(
     try {
       const response = await axios.post(
         `${API_URL}availabilities/`,
-        availabilityData,
+        availabilityData
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not create availability",
+        error.response?.data || "Could not create availability"
       );
     }
-  },
+  }
 );
 
 // Update existing availability
@@ -335,10 +350,10 @@ export const updateAvailability = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not update availability",
+        error.response?.data || "Could not update availability"
       );
     }
-  },
+  }
 );
 
 // Delete availability
@@ -350,10 +365,10 @@ export const deleteAvailability = createAsyncThunk(
       return id;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not delete availability",
+        error.response?.data || "Could not delete availability"
       );
     }
-  },
+  }
 );
 
 // Fetch notifications
@@ -374,7 +389,7 @@ export const fetchNotifications = createAsyncThunk(
           headers: {
             Authorization: `Token ${token}`,
           },
-        },
+        }
       );
       return {
         notifications: response.data,
@@ -382,10 +397,10 @@ export const fetchNotifications = createAsyncThunk(
       };
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch notifications",
+        error.response?.data || "Could not fetch notifications"
       );
     }
-  },
+  }
 );
 
 // Mark notification as read
@@ -394,15 +409,15 @@ export const markNotificationAsRead = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const response = await axios.post(
-        `${API_URL}notifications/${id}/mark_as_read/`,
+        `${API_URL}notifications/${id}/mark_as_read/`
       );
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not mark notification as read",
+        error.response?.data || "Could not mark notification as read"
       );
     }
-  },
+  }
 );
 
 // Mark all notifications as read
@@ -414,10 +429,10 @@ export const markAllNotificationsAsRead = createAsyncThunk(
       return true;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not mark all notifications as read",
+        error.response?.data || "Could not mark all notifications as read"
       );
     }
-  },
+  }
 );
 
 // Initial state
@@ -528,7 +543,7 @@ const schedulingSlice = createSlice({
       .addCase(updateAppointment.fulfilled, (state, action) => {
         state.loading = false;
         const index = state.appointments.findIndex(
-          (appt) => appt.id === action.payload.id,
+          (appt) => appt.id === action.payload.id
         );
         if (index !== -1) {
           state.appointments[index] = action.payload;
@@ -547,7 +562,7 @@ const schedulingSlice = createSlice({
       .addCase(deleteAppointment.fulfilled, (state, action) => {
         state.loading = false;
         state.appointments = state.appointments.filter(
-          (appt) => appt.id !== action.payload,
+          (appt) => appt.id !== action.payload
         );
         state.successMessage = "Appointment deleted successfully.";
       })
@@ -668,7 +683,7 @@ const schedulingSlice = createSlice({
       .addCase(markNotificationAsRead.fulfilled, (state, action) => {
         state.loading = false;
         const notif = state.notifications.find(
-          (n) => n.id === action.payload.id,
+          (n) => n.id === action.payload.id
         );
         if (notif) {
           notif.is_read = true;

@@ -9,7 +9,8 @@ def get_user(token_key):
     # Custom token authentication using Knox
     try:
         token_auth = TokenAuthentication()
-        user, auth_token = token_auth.authenticate_credentials(token_key.encode('utf-8'))
+        # Authenticate using raw token string (without encoding to bytes)
+        user, auth_token = token_auth.authenticate_credentials(token_key)
         return user
     except AuthenticationFailed:
         return AnonymousUser()
