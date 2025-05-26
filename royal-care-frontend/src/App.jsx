@@ -10,10 +10,14 @@ import OperatorDashboard from "./components/OperatorDashboard";
 import TherapistDashboard from "./components/TherapistDashboard";
 import { login } from "./features/auth/authSlice"; // Import Redux action
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
+import AttendancePage from "./pages/AttendancePage/AttendancePage";
+import BookingsPage from "./pages/BookingsPage/BookingsPage";
 import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordPage";
 import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
+import InventoryPage from "./pages/InventoryPage/InventoryPage";
 import LoginPage from "./pages/LoginPage/LoginPage";
+import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
 import SchedulingPage from "./pages/SchedulingPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import TestConnection from "./TestConnection";
@@ -72,8 +76,12 @@ const App = () => {
                 <Navigate to="/" />
               )
             }
-          />
+          />{" "}
           <Route path="scheduling" element={<SchedulingPage />} />
+          <Route path="bookings" element={<BookingsPage />} />
+          <Route path="attendance" element={<AttendancePage />} />
+          <Route path="sales-reports" element={<SalesReportsPage />} />
+          <Route path="inventory" element={<InventoryPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

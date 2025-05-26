@@ -14,7 +14,7 @@ const MainLayout = () => {
     console.log("Route params:", location);
     console.log(
       "Router matching current location:",
-      location.pathname === "/dashboard/scheduling",
+      location.pathname === "/dashboard/scheduling"
     );
   }, [location]);
 
@@ -27,7 +27,7 @@ const MainLayout = () => {
         </div>
         <nav className="nav-links">
           <NavLink
-            to="/bookings"
+            to="/dashboard/bookings"
             className={({ isActive }) => (isActive ? "active-link" : "")}
           >
             Bookings
@@ -40,26 +40,26 @@ const MainLayout = () => {
             }}
             onClick={() => {
               console.log(
-                "Scheduling link clicked, navigating to /dashboard/scheduling",
+                "Scheduling link clicked, navigating to /dashboard/scheduling"
               );
             }}
           >
             Scheduling
           </NavLink>
           <NavLink
-            to="/attendance"
+            to="/dashboard/attendance"
             className={({ isActive }) => (isActive ? "active-link" : "")}
           >
             Attendance
           </NavLink>
           <NavLink
-            to="/sales-reports"
+            to="/dashboard/sales-reports"
             className={({ isActive }) => (isActive ? "active-link" : "")}
           >
             Sales & Reports
           </NavLink>
           <NavLink
-            to="/inventory"
+            to="/dashboard/inventory"
             className={({ isActive }) => (isActive ? "active-link" : "")}
           >
             Inventory
