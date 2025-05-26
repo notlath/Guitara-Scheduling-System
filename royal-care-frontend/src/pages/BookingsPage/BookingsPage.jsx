@@ -1,6 +1,12 @@
+import { useEffect } from "react";
+
 import "../../../src/styles/Placeholders.css";
 
 const BookingsPage = () => {
+  useEffect(() => {
+    document.title = "Bookings | Royal Care";
+  }, []);
+
   return (
     <div className="placeholder-container">
       <div className="placeholder-content">

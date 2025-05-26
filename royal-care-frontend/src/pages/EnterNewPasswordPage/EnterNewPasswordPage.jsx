@@ -1,9 +1,14 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./EnterNewPasswordPage.module.css";
 
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 
 function EnterNewPasswordPage() {
+  useEffect(() => {
+    document.title = "Enter New Password | Royal Care";
+  }, []);
+
   const navigate = useNavigate();
   const handleButtonClick = () => {
     navigate("/forgot-password-confirmation");

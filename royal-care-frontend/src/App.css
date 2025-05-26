@@ -39,7 +39,7 @@
   }
 }
 
-/*Dev Custom CSS*/
+/* Dev Custom CSS */
 
 *,
 *::before,
@@ -47,70 +47,9 @@
   box-sizing: border-box;
 }
 
-* {
-  font-family: "Plus Jakarta Sans", sans-serif !important;
-}
-
-body {
-  font-family: "Plus Jakarta Sans", sans-serif; /* Use your chosen font */
-  color: #333;
-  font-size: 1rem; /* Base font size (e.g., 16px) */
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #fafaf8;
-}
-
-h1 {
-  font-size: calc(1rem * 2.488); /* 16px * 1.2^4 ≈ 39.8px */
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-}
-
-h2 {
-  font-size: calc(1rem * 2.074); /* 16px * 1.2^3 ≈ 33.2px */
-  margin-top: 1.5rem;
-  margin-bottom: 0.8rem;
-}
-
-h3 {
-  font-size: calc(1rem * 1.728); /* 16px * 1.2^2 ≈ 27.6px */
-  margin-top: 1.2rem;
-  margin-bottom: 0.6rem;
-}
-
-h4 {
-  font-size: calc(1rem * 1.44); /* 16px * 1.2^1 ≈ 23px */
-  margin-top: 1rem;
-  margin-bottom: 0.4rem;
-}
-
-h5 {
-  font-size: 1rem; /* Base size */
-  margin-top: 0.8rem;
-  margin-bottom: 0.2rem;
-}
-
-small,
-.small {
-  font-size: calc(1rem / 1.2); /* ≈ 0.833rem */
-}
-
-/* You can define styles for other text elements as needed */
-p {
-  font-size: 1rem;
-  margin-bottom: 1rem;
-}
-
 button {
   font-family: inherit;
   border-radius: 6px;
-}
-
-label {
-  font-size: small;
-  margin-bottom: 0.5rem;
-  margin-top: 0.8rem;
 }
 
 input {
@@ -118,3 +57,5 @@ input {
   border-radius: 6px;
   background-color: #f7f7f7;
 }
+
+/* Only utility and component-specific styles here. Use theme.css for all typography and color variables. */

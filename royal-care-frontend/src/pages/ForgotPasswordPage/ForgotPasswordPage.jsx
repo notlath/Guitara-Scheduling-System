@@ -1,9 +1,14 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./ForgotPasswordPage.module.css";
 
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 
 function ForgotPasswordPage() {
+  useEffect(() => {
+    document.title = "Forgot Password | Royal Care";
+  }, []);
+
   const navigate = useNavigate();
   const handleButtonClick = () => {
     navigate("/2fa-forgot-password");

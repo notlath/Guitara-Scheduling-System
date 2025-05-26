@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/theme.css";
 import styles from "./LoginPage.module.css";
@@ -17,6 +17,10 @@ function LoginPage() {
   const [isLoading, setIsLoading] = useState(false); // Track loading state
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = "Login | Royal Care";
+  }, []);
 
   // Event handlers to update state on input changes
   const handleChange = (e) => {
@@ -62,7 +66,7 @@ function LoginPage() {
         navigate("/dashboard");
       }
     } catch (err) {
-      setError(err.response?.data?.error || "Invalid credentials");
+      setError(err.response?.data?.error || "Incorrect username or password");
     }
 
     setIsLoading(false);
@@ -74,79 +78,79 @@ function LoginPage() {
         <img src={loginSidepic} alt="Background" />
       </div>
       <div className={styles.formSide}>
-        <form onSubmit={handleSubmit} className={styles.loginForm}>
+        <div className={styles.formContainer}>
           <div className={styles.logo}>
             <img src={rcLogo} alt="Royal Care Logo" />
           </div>
-          <h2 className={styles.welcomeHeading}>Welcome</h2>
-          {!needs2FA ? (
-            <>
+          <h2 className={styles.welcomeHeading}>Good to See You!</h2>
+          {error && <p className={styles.errorMessage}>{error}</p>}
+          <form onSubmit={handleSubmit} className={styles.loginForm}>
+            {!needs2FA ? (
+              <div className={styles.inputContainer}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="username" className={styles.formLabel}>
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    name="username"
+                    placeholder="Username"
+                    value={formData.username}
+                    className={styles.formInput}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="password" className={styles.formLabel}>
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    name="password"
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={styles.formInput}
+                  />
+                </div>
+              </div>
+            ) : (
               <div className={styles.formGroup}>
-                <label htmlFor="username" className={styles.formLabel}>
-                  Username
+                <label htmlFor="verificationCode" className={styles.formLabel}>
+                  2FA Code
                 </label>
                 <input
                   type="text"
-                  name="username"
-                  placeholder="Username"
-                  value={formData.username}
-                  className={styles.formInput}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label htmlFor="password" className={styles.formLabel}>
-                  Password
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  placeholder="Password"
-                  value={formData.password}
+                  name="verificationCode"
+                  placeholder="Enter 6-digit code"
+                  value={verificationCode}
                   onChange={handleChange}
                   className={styles.formInput}
                 />
               </div>
-            </>
-          ) : (
-            <div className={styles.formGroup}>
-              <label htmlFor="verificationCode" className={styles.formLabel}>
-                2FA Code
-              </label>
-              <input
-                type="text"
-                name="verificationCode"
-                placeholder="Enter 6-digit code"
-                value={verificationCode}
-                onChange={handleChange}
-                className={styles.formInput}
-              />
+            )}
+            <div className={styles.forgotPassword}>
+              <a href="/forgot-password" className={styles.forgotPasswordLink}>
+                Forgot password?
+              </a>
             </div>
-          )}
-          <div className={styles.forgotPassword}>
-            <a href="/forgot-password" className={styles.forgotPasswordLink}>
-              Forgot password?
-            </a>
-          </div>
 
-          <button
-            type="submit"
-            className={`${styles.loginButton} ${
-              isLoading ? styles.loginButtonDisabled : ""
-            }`}
-          >
-            {needs2FA ? "Verify Code" : "Login"}
-          </button>
-
+            <button
+              type="submit"
+              className={`${styles.loginButton} ${
+                isLoading ? styles.loginButtonDisabled : ""
+              }`}
+            >
+              {needs2FA ? "Verify Code" : "Login"}
+            </button>
+          </form>
           <div className={styles.registerLink}>
             Is this your first login?{" "}
             <a href="/register" className={styles.registerLinkAnchor}>
               Complete your registration
             </a>
           </div>
-
-          {error && <p className={styles.errorMessage}>{error}</p>}
-        </form>
+        </div>
       </div>
     </div>
   );

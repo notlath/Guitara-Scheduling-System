@@ -1,9 +1,14 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./TwoFactorAuthPage.module.css";
 
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 
 function TwoFactorAuthPage() {
+  useEffect(() => {
+    document.title = "Two-Factor Authentication | Royal Care";
+  }, []);
+
   const navigate = useNavigate();
   const handleButtonClick = () => {
     navigate("/dashboard");

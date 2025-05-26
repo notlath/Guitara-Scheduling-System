@@ -22,11 +22,25 @@
   flex: 0.9; /* Adjust the ratio as needed */
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: center; /* Center the container horizontally */
   justify-content: center;
-  padding: 20px;
   text-align: left;
   background-color: var(--background);
+}
+
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Keep contents left-aligned */
+  width: 100%;
+  max-width: 350px;
+}
+
+.logo {
+  max-width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: var(--spacing-ml);
 }
 
 .logo img {
@@ -36,31 +50,52 @@
 }
 
 .welcomeHeading {
-  color: #333; /* Adjust text color */
-  margin-bottom: 32px;
+  color: var(--text);
+  font-size: var(--font-size-xxl);
+  margin: 0;
+  margin-bottom: var(--spacing-lg);
 }
 
 .loginForm {
-  max-width: 330px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+}
+
+.inputContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: var(--spacing-xm); /* 4px between label and input */
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs); /* 4px between label and input */
 }
 
 .formLabel {
-  display: block;
-  color: #555;
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
 }
 
 .formInput {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #cac8c4;
-  background-color: #f8f7f7;
+  border: 1px solid var(--background-100);
+  background-color: var(--background-50);
+  padding: var(--spacing-xm) var(--spacing-sm); /* 8px vertical, 16px horizontal padding */
+  border-radius: 6px;
 }
 
 .forgotPassword {
   text-align: right;
-  font-size: small;
-  margin-top: 0.6rem;
-  margin-bottom: 1.1rem;
+  font-size: var(--font-size-sm);
+  margin: 0;
+  margin-bottom: var(--spacing-md);
+  margin-top: var(--spacing-xs);
 }
 
 .forgotPasswordLink {
@@ -74,29 +109,33 @@
 
 .loginButton {
   width: 100%;
-  padding: 12px;
   background-color: var(--primary);
-  color: white;
+  color: var(--background);
   border: none;
   cursor: pointer;
-  transition: 0.5s opacity;
+  font-size: var(--font-size-base);
+  padding: var(--spacing-xm); /* 16px horizontal padding */
 }
 
 .loginButtonDisabled {
-  opacity: 0.5;
   pointer-events: none;
   cursor: not-allowed;
+  background-color: var(--background-400);
 }
 
 .loginButton:hover {
-  background-color: var(--primary-hovered);
+  background-color: var(--primary-hover);
 }
 
 .registerLink {
   text-align: center;
-  font-size: small;
-  margin-top: 1rem;
+  font-size: var(--font-size-sm);
   color: var(--muted);
+  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  display: block;
+  margin-top: var(--spacing-lg);
 }
 
 .registerLinkAnchor {
@@ -111,6 +150,7 @@
 @media screen and (min-width: 1024px) {
   .loginContainer {
     flex-direction: row;
+    gap: 0;
   }
 
   .formSide {
@@ -119,7 +159,14 @@
 }
 
 .errorMessage {
-  color: #d32f2f; /* Replace with your desired error color */
-  font-size: 1rem;
-  margin-bottom: 1rem;
+  color: var(--error);
+  font-size: var(--font-size-base);
+  margin: 0 auto;
+  margin-bottom: var(--spacing-xm);
+  background: var(--background);
+  border: 1px solid var(--background-100);
+  border-radius: 6px;
+  padding: var(--spacing-xm) var(--spacing-md);
+  text-align: center;
+  font-weight: 400;
 }

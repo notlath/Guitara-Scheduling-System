@@ -1,6 +1,12 @@
+import { useEffect } from "react";
+
 import "../../../src/styles/Placeholders.css";
 
 const SalesReportsPage = () => {
+  useEffect(() => {
+    document.title = "Sales Reports | Royal Care";
+  }, []);
+
   return (
     <div className="placeholder-container">
       <div className="placeholder-content">

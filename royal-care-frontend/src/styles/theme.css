@@ -1,11 +1,50 @@
+@import url("https://fonts.googleapis.com/css?family=Plus%20Jakarta%20Sans:700|Plus%20Jakarta%20Sans:400");
+
+html {
+  font-size: 100%; /* 16px */
+}
+
+body {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 400;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 700;
+}
+h1 {
+  font-size: var(--font-size-xxxl);
+}
+h2 {
+  font-size: var(--font-size-xxl);
+}
+h3 {
+  font-size: var(--font-size-xl);
+}
+h4 {
+  font-size: var(--font-size-lg);
+}
+h5 {
+  font-size: var(--font-size-md);
+}
+small {
+  font-size: var(--font-size-sm);
+}
+
 :root {
   --text: #0f0c05;
-  --muted: #26250199;
+  --muted: var(--background-500);
   --background: #ffffff;
   --primary: #4b3b06;
-  --primary-hovered: #5e4a08;
+  --primary-hover: var(--primary-900);
   --secondary: #adbdae;
   --accent: #9ab096;
+  --error: #ff312e;
 
   --text-50: #f9f5ec;
   --text-100: #f2ebd9;
@@ -66,4 +105,21 @@
   --accent-800: #2e3a2c;
   --accent-900: #171d16;
   --accent-950: #0c0f0b;
+
+  --font-size-base: 1rem;
+  --font-size-sm: 0.8rem;
+  --font-size-md: 1.25rem;
+  --font-size-lg: 1.563rem;
+  --font-size-xl: 1.954rem;
+  --font-size-xxl: 2.442rem;
+  --font-size-xxxl: 3.053rem;
+
+  --spacing-xxs: 0.25rem; /* 4px */
+  --spacing-xs: 0.5rem; /* 8px */
+  --spacing-xm: 0.75rem; /* 12px */
+  --spacing-sm: 1rem; /* 16px */
+  --spacing-md: 2rem; /* 32px */
+  --spacing-ml: 2.5rem; /* 40px */
+  --spacing-lg: 3rem; /* 48px */
+  --spacing-xl: 4rem; /* 64px */
 }
