@@ -117,3 +117,9 @@
     flex: 0.4;
   }
 }
+
+.errorMessage {
+  color: #d32f2f; /* Replace with your desired error color */
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}

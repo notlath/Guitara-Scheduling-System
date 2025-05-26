@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/theme.css";
 import styles from "./LoginPage.module.css";
 
+import { useDispatch } from "react-redux";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import rcLogo from "../../assets/images/rc_logo.jpg";
-import { useDispatch } from "react-redux";
 import { login } from "../../features/auth/authSlice";
 import { api } from "../../services/api";
 
@@ -145,7 +145,7 @@ function LoginPage() {
             </a>
           </div>
 
-          {error && <p>{error}</p>}
+          {error && <p className={styles.errorMessage}>{error}</p>}
         </form>
       </div>
     </div>
