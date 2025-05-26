@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+**/__pycache__/
 
 # Django migrations
 */migrations/*
@@ -25,7 +26,7 @@ logs
 *.log
 npm-debug.log*
 yarn-debug.log*
-pnpm-debug.log*
+pnpm-error.log*
 lerna-debug.log*
 
 # Environment variables
@@ -51,12 +52,6 @@ Thumbs.db
 *.tmp
 *.bak
 *.orig
-
-# Ignore Python pycache files
-**/__pycache__/
-*.pyc
-*.pyo
-*$py.class
 
 # Virtual Environment
 venv/
