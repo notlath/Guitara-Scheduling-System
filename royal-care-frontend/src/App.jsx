@@ -21,6 +21,7 @@ import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
 import SchedulingPage from "./pages/SchedulingPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import TestConnection from "./TestConnection";
+import ProfilePage from "./pages/ProfilePage/ProfilePage";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);
@@ -82,6 +83,7 @@ const App = () => {
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="sales-reports" element={<SalesReportsPage />} />
           <Route path="inventory" element={<InventoryPage />} />
+          <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Routes>
     </BrowserRouter>
