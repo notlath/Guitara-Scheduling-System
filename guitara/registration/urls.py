@@ -1,10 +1,11 @@
+# urls.py
 from django.urls import path
-from .views import RegisterTherapistAPI, RegisterDriverAPI, RegisterOperatorAPI, RegisterServiceAPI, RegisterMaterialAPI
+from .views import RegisterTherapist, RegisterDriver, RegisterOperator, RegisterMaterial, RegisterService
 
 urlpatterns = [
-    path('register/therapist/', RegisterTherapistAPI.as_view(), name='register-therapist'),
-    path('register/driver/', RegisterDriverAPI.as_view(), name='register-driver'),
-    path('register/operator/', RegisterOperatorAPI.as_view(), name='register-operator'),
-    path('register/service/', RegisterServiceAPI.as_view(), name='register-service'),
-    path('register/material/', RegisterMaterialAPI.as_view(), name='register-material'),
+    path('register/therapist/', RegisterTherapist.as_view(), name='register_therapist'),
+    path('register/driver/', RegisterDriver.as_view(), name='register_driver'),
+    path('register/operator/', RegisterOperator.as_view(), name='register_operator'),
+    path('register/material/', RegisterMaterial.as_view(), name='register_material'),
+    path('register/service/', RegisterService.as_view(), name='register_service'),
 ]
