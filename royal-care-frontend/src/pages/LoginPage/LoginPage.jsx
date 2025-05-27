@@ -19,7 +19,7 @@ function LoginPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = "Login | Royal Care";
+    document.title = "Royal Care";
   }, []);
 
   // Event handlers to update state on input changes
@@ -50,7 +50,7 @@ function LoginPage() {
           localStorage.setItem("knoxToken", response.data.token);
           localStorage.setItem("user", JSON.stringify(response.data.user));
           dispatch(login(response.data.user));
-          navigate("/dashboard");
+          navigate("/dashboard/scheduling");
         }
       } else {
         // Verify 2FA code
@@ -63,7 +63,7 @@ function LoginPage() {
         localStorage.setItem("knoxToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         dispatch(login(response.data.user));
-        navigate("/dashboard");
+        navigate("/dashboard/scheduling");
       }
     } catch (err) {
       setError(err.response?.data?.error || "Incorrect username or password");

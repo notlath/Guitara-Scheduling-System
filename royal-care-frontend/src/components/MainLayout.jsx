@@ -65,9 +65,20 @@ const MainLayout = () => {
             Inventory
           </NavLink>
         </nav>
+        <div className="divider"></div>
         <div className="bottom-links">
-          <NavLink to="/settings">Settings</NavLink>
-          <NavLink to="/profile">Profile</NavLink>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) => (isActive ? "active-link" : "")}
+          >
+            Settings
+          </NavLink>
+          <NavLink
+            to="/dashboard/profile"
+            className={({ isActive }) => (isActive ? "active-link" : "")}
+          >
+            Profile
+          </NavLink>
         </div>
       </aside>
 
