@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   deleteAppointment,
@@ -13,7 +13,6 @@ import AvailabilityManager from "./AvailabilityManager";
 import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
 import WeekView from "./WeekView";
-import { useMemo } from "react";
 
 const SchedulingDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -87,12 +86,12 @@ const SchedulingDashboard = () => {
   };
 
   const handleDeleteAppointment = async (appointmentId) => {
-    if (window.confirm("Are you sure you want to delete this appointment?")) {
+    if (window.confirm("Are you sure you want to delete this booking?")) {
       try {
         await dispatch(deleteAppointment(appointmentId));
         refreshAppointments();
       } catch (error) {
-        console.error("Error deleting appointment:", error);
+        console.error("Error deleting booking:", error);
       }
     }
   };
@@ -144,7 +143,7 @@ const SchedulingDashboard = () => {
 
   const renderAppointmentsList = (appointmentsList) => {
     if (appointmentsList.length === 0) {
-      return <p className="no-appointments">No appointments found.</p>;
+      return <p className="no-appointments">No bookings found.</p>;
     }
 
     return (
@@ -158,7 +157,7 @@ const SchedulingDashboard = () => {
               </h3>
               <span
                 className={`status-badge ${getStatusBadgeClass(
-                  appointment.status,
+                  appointment.status
                 )}`}
               >
                 {appointment.status.charAt(0).toUpperCase() +
@@ -175,7 +174,7 @@ const SchedulingDashboard = () => {
                 <strong>Time:</strong>{" "}
                 {formatAppointmentTime(
                   appointment.start_time,
-                  appointment.end_time,
+                  appointment.end_time
                 )}
               </p>
               <p>
@@ -233,7 +232,7 @@ const SchedulingDashboard = () => {
   return (
     <div className="scheduling-dashboard">
       <div className="dashboard-header">
-        <h1>Appointment Scheduling</h1>
+        <h1>Booking Scheduling</h1>
 
         <div className="view-selector">
           <button
@@ -252,13 +251,13 @@ const SchedulingDashboard = () => {
             className={view === "today" ? "active" : ""}
             onClick={() => setView("today")}
           >
-            Today's Appointments
+            Today's Bookings
           </button>
           <button
             className={view === "list" ? "active" : ""}
             onClick={() => setView("list")}
           >
-            Upcoming Appointments
+            Upcoming Bookings
           </button>
           <button
             className={view === "availability" ? "active" : ""}
@@ -322,14 +321,14 @@ const SchedulingDashboard = () => {
 
         {view === "today" && !isFormVisible && (
           <div className="todays-appointments">
-            <h2>Today's Appointments</h2>
+            <h2>Today's Bookings</h2>
             {renderAppointmentsList(todayAppointments)}
           </div>
         )}
 
         {view === "list" && !isFormVisible && (
           <div className="upcoming-appointments">
-            <h2>Upcoming Appointments</h2>
+            <h2>Upcoming Bookings</h2>
             {renderAppointmentsList(upcomingAppointments)}
           </div>
         )}

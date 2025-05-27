@@ -27,12 +27,6 @@ const MainLayout = () => {
         </div>
         <nav className="nav-links">
           <NavLink
-            to="/dashboard/bookings"
-            className={({ isActive }) => (isActive ? "active-link" : "")}
-          >
-            Bookings
-          </NavLink>
-          <NavLink
             to="/dashboard/scheduling"
             className={({ isActive }) => {
               console.log("Scheduling link active state:", isActive);
@@ -44,7 +38,7 @@ const MainLayout = () => {
               );
             }}
           >
-            Scheduling
+            Bookings
           </NavLink>
           <NavLink
             to="/dashboard/attendance"
