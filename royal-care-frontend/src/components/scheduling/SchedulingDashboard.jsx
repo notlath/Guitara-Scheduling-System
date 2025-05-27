@@ -285,7 +285,7 @@ const SchedulingDashboard = () => {
               className="create-appointment-button"
               onClick={handleCreateAppointment}
             >
-              Create Appointment
+              Create Booking
             </button>
           )}
         </div>
