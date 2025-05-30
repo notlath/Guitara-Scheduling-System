@@ -13,12 +13,19 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Skip sanitization for password
-    const sanitizedValue = name === "password" ? value : sanitizeString(value);
+    let sanitizedValue;
+    // Apply appropriate sanitization based on field type
+    if (name === "password") {
+      sanitizedValue = value; // Skip sanitization for passwords
+    } else if (name === "username" && value.includes("@")) {
+      // Special handling for username that might be an email
+      sanitizedValue = value.replace(/<[^>]*>/g, ""); // Only remove HTML tags
+    } else {
+      sanitizedValue = sanitizeString(value);
+    }
 
     if (needs2FA) {
       // Ensure code is numbers only and limit to 6 digits
@@ -112,16 +119,18 @@ const Login = () => {
       {errors.form && <div className="error-message">{errors.form}</div>}
 
       {!needs2FA ? (
-        // Username and password fields
-        <>
+        // Username and password fields        <>
           <div className="form-group">
             <input
               type="text"
               name="username"
-              placeholder="Username"
+              placeholder="Username or Email"
               value={formData.username}
               onChange={handleChange}
               className={errors.username ? "error" : ""}
+              pattern="^([a-zA-Z0-9_]{3,30}|[^\s@]+@[^\s@]+\.[^\s@]+)$"
+              title="Enter a valid username or email address"
+              required
             />
             {errors.username && (
               <div className="error-text">{errors.username}</div>
@@ -136,6 +145,9 @@ const Login = () => {
               value={formData.password}
               onChange={handleChange}
               className={errors.password ? "error" : ""}
+              pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+              title="Password must be at least 8 characters and include uppercase, lowercase, number and special character"
+              required
             />
             {errors.password && (
               <div className="error-text">{errors.password}</div>

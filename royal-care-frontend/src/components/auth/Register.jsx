@@ -47,7 +47,6 @@ const Register = () => {
       setIsCheckingUsername(false);
     }
   };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -55,6 +54,9 @@ const Register = () => {
     // Apply appropriate sanitization based on field type
     if (name === "password" || name === "passwordConfirm") {
       sanitizedValue = value; // Skip sanitization for passwords
+    } else if (name === "email") {
+      // Special handling for email to preserve @ and . characters
+      sanitizedValue = value.replace(/<[^>]*>/g, ""); // Only remove HTML tags
     } else if (name === "phone_number") {
       sanitizedValue = sanitizePhone(value);
 
