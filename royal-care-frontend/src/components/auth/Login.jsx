@@ -3,27 +3,74 @@ import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { login } from "../../features/auth/authSlice";
 import { api } from "../../services/api";
+import { sanitizeString } from "../../utils/sanitization";
 
 const Login = () => {
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [verificationCode, setVerificationCode] = useState("");
   const [needs2FA, setNeeds2FA] = useState(false); // Track 2FA state
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
+    // Skip sanitization for password
+    const sanitizedValue = name === "password" ? value : sanitizeString(value);
+
     if (needs2FA) {
-      setVerificationCode(value); // Capture 2FA code
+      // Ensure code is numbers only and limit to 6 digits
+      if (name === "verificationCode") {
+        const cleanCode = value.replace(/[^\d]/g, "").slice(0, 6);
+        setVerificationCode(cleanCode);
+      }
     } else {
-      setFormData({ ...formData, [name]: value }); // Capture username/password
+      setFormData({ ...formData, [name]: sanitizedValue });
     }
+
+    // Clear error when field is edited
+    if (errors[name] || errors.form) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+        form: "",
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!needs2FA) {
+      // Only validate username/password during initial login
+      if (!formData.username.trim()) {
+        newErrors.username = "Username is required";
+      }
+
+      if (!formData.password) {
+        newErrors.password = "Password is required";
+      }
+    } else {
+      // Validate 2FA code
+      if (!verificationCode || verificationCode.length !== 6) {
+        newErrors.verificationCode = "Please enter a valid 6-digit code";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validateForm() || isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       if (!needs2FA) {
@@ -53,40 +100,69 @@ const Login = () => {
         navigate("/dashboard");
       }
     } catch (err) {
-      setError(err.response?.data?.error || "Invalid credentials");
+      const errorMessage = err.response?.data?.error || "Invalid credentials";
+      setErrors({ form: errorMessage });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="login-form">
+      {errors.form && <div className="error-message">{errors.form}</div>}
+
       {!needs2FA ? (
+        // Username and password fields
         <>
-          <input
-            type="text"
-            name="username"
-            placeholder="Username"
-            value={formData.username}
-            onChange={handleChange}
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-          />
+          <div className="form-group">
+            <input
+              type="text"
+              name="username"
+              placeholder="Username"
+              value={formData.username}
+              onChange={handleChange}
+              className={errors.username ? "error" : ""}
+            />
+            {errors.username && (
+              <div className="error-text">{errors.username}</div>
+            )}
+          </div>
+
+          <div className="form-group">
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              className={errors.password ? "error" : ""}
+            />
+            {errors.password && (
+              <div className="error-text">{errors.password}</div>
+            )}
+          </div>
         </>
       ) : (
-        <input
-          type="text"
-          name="verificationCode"
-          placeholder="Enter 6-digit code"
-          value={verificationCode}
-          onChange={handleChange}
-        />
+        // 2FA verification code field
+        <div className="form-group">
+          <input
+            type="text"
+            name="verificationCode"
+            placeholder="Enter 6-digit code"
+            value={verificationCode}
+            onChange={handleChange}
+            maxLength={6}
+            className={errors.verificationCode ? "error" : ""}
+          />
+          {errors.verificationCode && (
+            <div className="error-text">{errors.verificationCode}</div>
+          )}
+        </div>
       )}
-      <button type="submit">{needs2FA ? "Verify Code" : "Login"}</button>
-      {error && <p>{error}</p>}
+
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "Processing..." : needs2FA ? "Verify Code" : "Login"}
+      </button>
     </form>
   );
 };

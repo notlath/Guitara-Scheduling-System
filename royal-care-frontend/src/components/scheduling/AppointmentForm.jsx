@@ -4,11 +4,10 @@ import {
   createAppointment,
   fetchClients,
   fetchServices,
-  fetchAvailableTherapists,
-  fetchAvailableDrivers,
   updateAppointment,
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/AppointmentForm.css";
+import { sanitizeString } from "../../utils/sanitization";
 
 const AppointmentForm = ({
   appointment = null,
@@ -82,13 +81,13 @@ const AppointmentForm = ({
 
     // Find selected services
     const selectedServices = services.filter((service) =>
-      formData.services.includes(service.id),
+      formData.services.includes(service.id)
     );
 
     // Calculate total duration in minutes
     const totalDurationMinutes = selectedServices.reduce(
       (total, service) => total + service.duration,
-      0,
+      0
     );
 
     // Parse start time
@@ -98,7 +97,7 @@ const AppointmentForm = ({
     const startDate = new Date();
     startDate.setHours(hours, minutes, 0, 0);
     const endDate = new Date(
-      startDate.getTime() + totalDurationMinutes * 60000,
+      startDate.getTime() + totalDurationMinutes * 60000
     );
 
     return `${endDate.getHours().toString().padStart(2, "0")}:${endDate
@@ -121,9 +120,12 @@ const AppointmentForm = ({
         [name]: selectedOptions,
       }));
     } else {
+      // Sanitize input before setting it in state
+      const sanitizedValue = type === "number" ? value : sanitizeString(value);
+
       setFormData((prev) => ({
         ...prev,
-        [name]: value,
+        [name]: sanitizedValue,
       }));
     }
 
@@ -169,7 +171,7 @@ const AppointmentForm = ({
       if (appointment) {
         // Update existing appointment
         await dispatch(
-          updateAppointment({ id: appointment.id, data: appointmentData }),
+          updateAppointment({ id: appointment.id, data: appointmentData })
         );
       } else {
         // Create new appointment
@@ -372,8 +374,8 @@ const AppointmentForm = ({
             {isSubmitting
               ? "Saving..."
               : appointment
-                ? "Update Appointment"
-                : "Create Appointment"}
+              ? "Update Appointment"
+              : "Create Appointment"}
           </button>
         </div>
       </form>

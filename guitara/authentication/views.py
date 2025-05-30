@@ -1,5 +1,6 @@
 from rest_framework import generics, permissions
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from knox.models import AuthToken
 from django.utils import timezone
 from django.core.mail import send_mail
@@ -9,6 +10,18 @@ from .serializers import LoginSerializer
 from core.models import CustomUser
 from core.serializers import UserSerializer  # Ensure this is imported
 from knox.views import LoginView as KnoxLoginView
+
+class CheckUsernameAPI(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request):
+        username = request.query_params.get('username', '')
+        if not username:
+            return Response({"error": "Username parameter is required"}, status=400)
+            
+        # Check if username exists
+        exists = CustomUser.objects.filter(username=username).exists()
+        return Response({"available": not exists})
 
 class RegisterAPI(generics.GenericAPIView):
     serializer_class = UserSerializer

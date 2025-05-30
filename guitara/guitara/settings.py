@@ -58,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.sanitization_middleware.SanitizationMiddleware',
 ]
 
 ROOT_URLCONF = 'guitara.urls'
@@ -177,6 +178,23 @@ PASSWORD_HASHERS = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Add your frontend's origin
 ]
+
+# Security settings
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
+SESSION_COOKIE_SECURE = True  # Use only in HTTPS environments
+CSRF_COOKIE_SECURE = True     # Use only in HTTPS environments
+CSRF_COOKIE_HTTPONLY = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Content Security Policy
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'",)
+CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
+CSP_IMG_SRC = ("'self'", "data:")
+CSP_CONNECT_SRC = ("'self'",)
+CSP_FONT_SRC = ("'self'", "data:")
 
 # Enhanced logging for debugging authentication issues
 LOGGING = {

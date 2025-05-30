@@ -1,5 +1,6 @@
 import axios from "axios";
 
+// Create the base Axios instance
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: {
@@ -7,7 +8,10 @@ export const api = axios.create({
   },
 });
 
-// Add JWT token to requests
+// Import sanitization utilities
+import { sanitizeObject } from "../utils/sanitization";
+
+// Add JWT token and sanitize data in requests
 api.interceptors.request.use(
   (config) => {
     // Special handling for auth endpoints
@@ -27,6 +31,33 @@ api.interceptors.request.use(
       }
 
       return config;
+    }
+
+    // Sanitize request data for all non-auth endpoints
+    if (config.data && typeof config.data === "object") {
+      // Skip sanitization for these fields
+      const skipFields = ["password", "token", "code"];
+
+      // Create a shallow copy of the data
+      let sanitizedData = { ...config.data };
+
+      // Store the values of fields to skip
+      const skippedValues = {};
+      skipFields.forEach((field) => {
+        if (sanitizedData[field] !== undefined) {
+          skippedValues[field] = sanitizedData[field];
+        }
+      });
+
+      // Sanitize all data
+      sanitizedData = sanitizeObject(sanitizedData);
+
+      // Restore skipped fields
+      Object.keys(skippedValues).forEach((field) => {
+        sanitizedData[field] = skippedValues[field];
+      });
+
+      config.data = sanitizedData;
     }
 
     const token = localStorage.getItem("knoxToken");
