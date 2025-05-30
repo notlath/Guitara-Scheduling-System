@@ -115,9 +115,6 @@ const Register = () => {
       newErrors.passwordConfirm = "Passwords don't match";
     }
 
-    const roleError = validateInput("role", formData.role, { required: true });
-    if (roleError) newErrors.role = roleError;
-
     const phoneError = validateInput("phone", formData.phone_number);
     if (phoneError) newErrors.phone_number = phoneError;
 
@@ -229,28 +226,11 @@ const Register = () => {
         {errors.passwordConfirm && (
           <div className="error-text">{errors.passwordConfirm}</div>
         )}
-      </div>{" "}
-      <div className="form-group">
-        {" "}
-        <select
-          name="role"
-          value={formData.role}
-          onChange={handleChange}
-          className={`form-select ${errors.role ? "error" : ""}`}
-          required
-        >
-          <option value="" disabled>
-            Select a role
-          </option>
-          <option value="Driver">Driver</option>
-          <option value="Therapist">Therapist</option>
-        </select>
-        {errors.role && <div className="error-text">{errors.role}</div>}
       </div>
       <div className="form-group">
         <input
           type="tel"
-          name="phone_number"
+          name="phone_number" const roleError
           placeholder="Phone Number (International format: +123456789)"
           value={formData.phone_number}
           onChange={handleChange}
