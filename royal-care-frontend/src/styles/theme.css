@@ -115,7 +115,13 @@ small {
   --accent-900: #171d16;
   --accent-950: #0c0f0b;
 
+  --success-bg: #e6f4ea;
+  --success-text: #137333;
+  --error-bg: #fce8e6;
+  --error-text: #d93025;
+
   --font-size-base: 1rem;
+  --font-size-xs: 0.7rem;
   --font-size-sm: 0.8rem;
   --font-size-md: 1.25rem;
   --font-size-lg: 1.563rem;

@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
-import Register from "./components/auth/Register";
 import DriverDashboard from "./components/DriverDashboard";
 import MainLayout from "./components/MainLayout";
 import OperatorDashboard from "./components/OperatorDashboard";
@@ -17,11 +16,12 @@ import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPa
 import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
 import InventoryPage from "./pages/InventoryPage/InventoryPage";
 import LoginPage from "./pages/LoginPage/LoginPage";
+import ProfilePage from "./pages/ProfilePage/ProfilePage";
+import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
 import SchedulingPage from "./pages/SchedulingPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import TestConnection from "./TestConnection";
-import ProfilePage from "./pages/ProfilePage/ProfilePage";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);
@@ -51,7 +51,7 @@ const App = () => {
           path="/"
           element={!user ? <LoginPage /> : <Navigate to="/dashboard" />}
         />
-        <Route path="/register" element={<Register />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route path="/2fa" element={<TwoFactorAuthPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route

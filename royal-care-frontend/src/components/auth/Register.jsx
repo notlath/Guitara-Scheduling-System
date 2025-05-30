@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import loginSidepic from "../../assets/images/login-sidepic.jpg";
+import rcLogo from "../../assets/images/rc_logo.jpg";
+import styles from "../../pages/LoginPage/LoginPage.module.css";
 import { api } from "../../services/api";
 import { sanitizePhone, sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
@@ -9,12 +13,14 @@ const Register = () => {
     email: "",
     password: "",
     passwordConfirm: "",
-    role: "",
+    role: "Driver", // Default to Driver role
     phone_number: "",
   });
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   // Debounce function for username availability check
   useEffect(() => {
@@ -32,6 +38,10 @@ const Register = () => {
     };
   }, [formData.username]);
 
+  useEffect(() => {
+    document.title = "Royal Care - Register";
+  }, []);
+
   // Check if username is already taken
   const checkUsernameAvailability = async (username) => {
     try {
@@ -47,6 +57,7 @@ const Register = () => {
       setIsCheckingUsername(false);
     }
   };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -64,6 +75,10 @@ const Register = () => {
       if (sanitizedValue && !sanitizedValue.startsWith("+")) {
         sanitizedValue = "+" + sanitizedValue.replace(/^\+/, "");
       }
+    } else if (name === "role") {
+      // Ensure role is only Driver or Therapist
+      sanitizedValue =
+        value === "Driver" || value === "Therapist" ? value : "Driver";
     } else {
       sanitizedValue = sanitizeString(value);
     }
@@ -118,6 +133,14 @@ const Register = () => {
     const phoneError = validateInput("phone", formData.phone_number);
     if (phoneError) newErrors.phone_number = phoneError;
 
+    // Validate role selection
+    if (
+      !formData.role ||
+      (formData.role !== "Driver" && formData.role !== "Therapist")
+    ) {
+      newErrors.role = "Please select either Driver or Therapist role";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -129,6 +152,8 @@ const Register = () => {
     if (!validateForm()) {
       return;
     }
+
+    setIsSubmitting(true);
 
     // Create a clean submission object without the confirm password field
     const submissionData = {
@@ -142,6 +167,11 @@ const Register = () => {
     try {
       await api.post("/auth/register/", submissionData);
       setSuccess(true);
+
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        navigate("/login");
+      }, 3000);
     } catch (err) {
       console.error(err);
       // Handle API errors
@@ -160,90 +190,203 @@ const Register = () => {
       } else {
         setErrors({ form: "Registration failed. Please try again." });
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  return success ? (
-    <p>Registration successful! Please log in.</p>
-  ) : (
-    <form onSubmit={handleSubmit} noValidate>
-      {errors.form && <div className="error-message">{errors.form}</div>}
-      <div className="form-group">
-        <input
-          type="text"
-          name="username"
-          placeholder="Username"
-          value={formData.username}
-          onChange={handleChange}
-          className={errors.username ? "error" : ""}
-          pattern="^[a-zA-Z0-9_]{3,30}$"
-          title="Username must be 3-30 characters and contain only letters, numbers, and underscores"
-          required
-        />
-        {isCheckingUsername && (
-          <div className="status-text">Checking availability...</div>
-        )}
-        {errors.username && <div className="error-text">{errors.username}</div>}
+  return (
+    <div className={styles.loginContainer}>
+      <div className={styles.imageSide}>
+        <img src={loginSidepic} alt="Background" />
       </div>
-      <div className="form-group">
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          className={errors.email ? "error" : ""}
-          pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
-          title="Enter a valid email address"
-          required
-        />
-        {errors.email && <div className="error-text">{errors.email}</div>}
+      <div className={styles.formSide}>
+        <div className={styles.formContainer}>
+          <div className={styles.logo}>
+            <img src={rcLogo} alt="Royal Care Logo" />
+          </div>
+          <h2 className={styles.welcomeHeading}>Create Your Account</h2>
+
+          {success ? (
+            <div className={styles.successMessage}>
+              <p>Registration successful! Redirecting to login page...</p>
+            </div>
+          ) : (
+            <>
+              {errors.form && (
+                <div className={styles.errorMessage}>{errors.form}</div>
+              )}
+              <form
+                onSubmit={handleSubmit}
+                className={styles.loginForm}
+                noValidate
+              >
+                <div className={styles.inputContainer}>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="username" className={styles.formLabel}>
+                      Username
+                    </label>
+                    <input
+                      type="text"
+                      id="username"
+                      placeholder="Username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleChange}
+                      className={`${styles.formInput} ${
+                        errors.username ? styles.inputError : ""
+                      }`}
+                      pattern="^[a-zA-Z0-9_]{3,30}$"
+                      title="Username must be 3-30 characters and contain only letters, numbers, and underscores"
+                      required
+                    />
+                    {isCheckingUsername && (
+                      <div className={styles.statusText}>
+                        Checking availability...
+                      </div>
+                    )}
+                    {errors.username && (
+                      <div className={styles.errorText}>{errors.username}</div>
+                    )}
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="email" className={styles.formLabel}>
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      placeholder="Email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className={`${styles.formInput} ${
+                        errors.email ? styles.inputError : ""
+                      }`}
+                      pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
+                      title="Enter a valid email address"
+                      required
+                    />
+                    {errors.email && (
+                      <div className={styles.errorText}>{errors.email}</div>
+                    )}
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="password" className={styles.formLabel}>
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      id="password"
+                      placeholder="Password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className={`${styles.formInput} ${
+                        errors.password ? styles.inputError : ""
+                      }`}
+                      pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+                      title="Password must be at least 8 characters and include uppercase, lowercase, number and special character"
+                      required
+                    />
+                    {errors.password && (
+                      <div className={styles.errorText}>{errors.password}</div>
+                    )}
+                  </div>{" "}
+                  <div className={styles.formGroup}>
+                    <label
+                      htmlFor="passwordConfirm"
+                      className={styles.formLabel}
+                    >
+                      Confirm Password
+                    </label>
+                    <input
+                      type="password"
+                      id="passwordConfirm"
+                      placeholder="Confirm Password"
+                      name="passwordConfirm"
+                      value={formData.passwordConfirm}
+                      onChange={handleChange}
+                      className={`${styles.formInput} ${
+                        errors.passwordConfirm ? styles.inputError : ""
+                      }`}
+                      required
+                    />
+                    {errors.passwordConfirm && (
+                      <div className={styles.errorText}>
+                        {errors.passwordConfirm}
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="role" className={styles.formLabel}>
+                      Role
+                    </label>
+                    <select
+                      id="role"
+                      name="role"
+                      value={formData.role}
+                      onChange={handleChange}
+                      className={`${styles.formInput} ${
+                        errors.role ? styles.inputError : ""
+                      }`}
+                      required
+                    >
+                      <option value="Driver">Driver</option>
+                      <option value="Therapist">Therapist</option>
+                    </select>
+                    {errors.role && (
+                      <div className={styles.errorText}>{errors.role}</div>
+                    )}
+                  </div>
+                  <div
+                    className={`${styles.formGroup} ${styles.phoneFormGroup}`}
+                  >
+                    <label htmlFor="phone_number" className={styles.formLabel}>
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      id="phone_number"
+                      name="phone_number"
+                      value={formData.phone_number}
+                      onChange={handleChange}
+                      className={`${styles.formInput} ${
+                        errors.phone_number ? styles.inputError : ""
+                      }`}
+                      pattern="^\+[0-9]{7,15}$"
+                      title="Enter phone number in international format (e.g., +123456789)"
+                      placeholder="+123456789"
+                    />
+                    {errors.phone_number && (
+                      <div className={styles.errorText}>
+                        {errors.phone_number}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className={`${styles.loginButton} ${
+                    isSubmitting ? styles.loginButtonDisabled : ""
+                  }`}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Processing..." : "Register"}
+                </button>
+              </form>{" "}
+              <div className={styles.registerLink}>
+                Already have an account?{" "}
+                <a href="/login" className={styles.registerLinkAnchor}>
+                  Login here
+                </a>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-      <div className="form-group">
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          className={errors.password ? "error" : ""}
-          pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
-          title="Password must be at least 8 characters and include uppercase, lowercase, number and special character"
-          required
-        />
-        {errors.password && <div className="error-text">{errors.password}</div>}
-      </div>
-      <div className="form-group">
-        <input
-          type="password"
-          name="passwordConfirm"
-          placeholder="Confirm Password"
-          value={formData.passwordConfirm}
-          onChange={handleChange}
-          className={errors.passwordConfirm ? "error" : ""}
-          required
-        />
-        {errors.passwordConfirm && (
-          <div className="error-text">{errors.passwordConfirm}</div>
-        )}
-      </div>
-      <div className="form-group">
-        <input
-          type="tel"
-          name="phone_number" const roleError
-          placeholder="Phone Number (International format: +123456789)"
-          value={formData.phone_number}
-          onChange={handleChange}
-          className={errors.phone_number ? "error" : ""}
-          pattern="^\+[0-9]{7,15}$"
-          title="Enter phone number in international format (e.g., +123456789)"
-        />
-        {errors.phone_number && (
-          <div className="error-text">{errors.phone_number}</div>
-        )}
-      </div>
-      <button type="submit">Register</button>
-    </form>
+    </div>
   );
 };
 

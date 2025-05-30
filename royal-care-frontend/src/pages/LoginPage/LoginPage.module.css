@@ -115,6 +115,7 @@
   cursor: pointer;
   font-size: var(--font-size-base);
   padding: var(--spacing-xm); /* 16px horizontal padding */
+  border-radius: 6px; /* Match the border radius of the inputs */
 }
 
 .loginButtonDisabled {
@@ -169,4 +170,19 @@
   padding: var(--spacing-xm) var(--spacing-md);
   text-align: center;
   font-weight: 400;
+}
+
+.phoneFormGroup {
+  margin-bottom: var(
+    --spacing-md
+  ); /* Add gap between phone number field and register button */
+}
+
+/* Style the role selection dropdown to match other inputs */
+.formInput[type="select"] {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
 }

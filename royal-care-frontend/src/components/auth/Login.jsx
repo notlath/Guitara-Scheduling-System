@@ -119,7 +119,8 @@ const Login = () => {
       {errors.form && <div className="error-message">{errors.form}</div>}
 
       {!needs2FA ? (
-        // Username and password fields        <>
+        // Username and password fields
+        <>
           <div className="form-group">
             <input
               type="text"
