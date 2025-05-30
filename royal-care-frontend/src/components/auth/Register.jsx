@@ -378,7 +378,7 @@ const Register = () => {
               </form>{" "}
               <div className={styles.registerLink}>
                 Already have an account?{" "}
-                <a href="/login" className={styles.registerLinkAnchor}>
+                <a href="/dashboard" className={styles.registerLinkAnchor}>
                   Login here
                 </a>
               </div>
