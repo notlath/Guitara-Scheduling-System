@@ -99,6 +99,24 @@ export const validatePhone = (phone) => {
 };
 
 /**
+ * Validates the user role
+ * @param {string} role - The role to validate
+ * @returns {string|null} - Error message or null if valid
+ */
+export const validateRole = (role) => {
+  if (!role || role.trim() === "") {
+    return "Role is required";
+  }
+
+  const validRoles = ["Driver", "Therapist"];
+  if (!validRoles.includes(role)) {
+    return "Role must be either Driver or Therapist";
+  }
+
+  return null;
+};
+
+/**
  * Validates form inputs by type
  * @param {string} type - Input type (e.g., 'email', 'password')
  * @param {string} value - Input value
@@ -131,6 +149,8 @@ export const validateInput = (type, value, options = {}) => {
       return validatePhone(sanitizedValue);
     case "username":
       return validateUsername(sanitizedValue);
+    case "role":
+      return validateRole(sanitizedValue);
     default:
       return null;
   }

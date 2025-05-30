@@ -115,7 +115,8 @@ const Register = () => {
       newErrors.passwordConfirm = "Passwords don't match";
     }
 
-    if (!formData.role) newErrors.role = "Role is required";
+    const roleError = validateInput("role", formData.role, { required: true });
+    if (roleError) newErrors.role = roleError;
 
     const phoneError = validateInput("phone", formData.phone_number);
     if (phoneError) newErrors.phone_number = phoneError;
@@ -170,7 +171,6 @@ const Register = () => {
   ) : (
     <form onSubmit={handleSubmit} noValidate>
       {errors.form && <div className="error-message">{errors.form}</div>}
-
       <div className="form-group">
         <input
           type="text"
@@ -188,7 +188,6 @@ const Register = () => {
         )}
         {errors.username && <div className="error-text">{errors.username}</div>}
       </div>
-
       <div className="form-group">
         <input
           type="email"
@@ -203,7 +202,6 @@ const Register = () => {
         />
         {errors.email && <div className="error-text">{errors.email}</div>}
       </div>
-
       <div className="form-group">
         <input
           type="password"
@@ -218,7 +216,6 @@ const Register = () => {
         />
         {errors.password && <div className="error-text">{errors.password}</div>}
       </div>
-
       <div className="form-group">
         <input
           type="password"
@@ -232,21 +229,24 @@ const Register = () => {
         {errors.passwordConfirm && (
           <div className="error-text">{errors.passwordConfirm}</div>
         )}
-      </div>
-
+      </div>{" "}
       <div className="form-group">
-        <input
-          type="text"
+        {" "}
+        <select
           name="role"
-          placeholder="Role"
           value={formData.role}
           onChange={handleChange}
-          className={errors.role ? "error" : ""}
+          className={`form-select ${errors.role ? "error" : ""}`}
           required
-        />
+        >
+          <option value="" disabled>
+            Select a role
+          </option>
+          <option value="Driver">Driver</option>
+          <option value="Therapist">Therapist</option>
+        </select>
         {errors.role && <div className="error-text">{errors.role}</div>}
       </div>
-
       <div className="form-group">
         <input
           type="tel"
@@ -262,7 +262,6 @@ const Register = () => {
           <div className="error-text">{errors.phone_number}</div>
         )}
       </div>
-
       <button type="submit">Register</button>
     </form>
   );
