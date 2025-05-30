@@ -174,8 +174,8 @@
 
 .phoneFormGroup {
   margin-bottom: var(
-    --spacing-md
-  ); /* Add gap between phone number field and register button */
+    --spacing-lg
+  ); /* Increased gap between phone number field and register button */
 }
 
 /* Style the role selection dropdown to match other inputs */

@@ -13,7 +13,7 @@ const Register = () => {
     email: "",
     password: "",
     passwordConfirm: "",
-    role: "Driver", // Default to Driver role
+    role: "Driver", // Default to Driver role - role field is not shown to users
     phone_number: "",
   });
   const [errors, setErrors] = useState({});
@@ -74,12 +74,7 @@ const Register = () => {
       // Format phone number as international format
       if (sanitizedValue && !sanitizedValue.startsWith("+")) {
         sanitizedValue = "+" + sanitizedValue.replace(/^\+/, "");
-      }
-    } else if (name === "role") {
-      // Ensure role is only Driver or Therapist
-      sanitizedValue =
-        value === "Driver" || value === "Therapist" ? value : "Driver";
-    } else {
+      } // Role handling removed as it's no longer a user input fieldelse {
       sanitizedValue = sanitizeString(value);
     }
 
@@ -131,15 +126,8 @@ const Register = () => {
     }
 
     const phoneError = validateInput("phone", formData.phone_number);
-    if (phoneError) newErrors.phone_number = phoneError;
-
-    // Validate role selection
-    if (
-      !formData.role ||
-      (formData.role !== "Driver" && formData.role !== "Therapist")
-    ) {
-      newErrors.role = "Please select either Driver or Therapist role";
-    }
+    if (phoneError) newErrors.phone_number = phoneError; // Role is not validated as it's no longer a user input field
+    // Default "Driver" role is automatically assigned
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -317,28 +305,8 @@ const Register = () => {
                         {errors.passwordConfirm}
                       </div>
                     )}
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label htmlFor="role" className={styles.formLabel}>
-                      Role
-                    </label>
-                    <select
-                      id="role"
-                      name="role"
-                      value={formData.role}
-                      onChange={handleChange}
-                      className={`${styles.formInput} ${
-                        errors.role ? styles.inputError : ""
-                      }`}
-                      required
-                    >
-                      <option value="Driver">Driver</option>
-                      <option value="Therapist">Therapist</option>
-                    </select>
-                    {errors.role && (
-                      <div className={styles.errorText}>{errors.role}</div>
-                    )}
-                  </div>
+                  </div>{" "}
+                  {/* Role selection field removed */}{" "}
                   <div
                     className={`${styles.formGroup} ${styles.phoneFormGroup}`}
                   >
