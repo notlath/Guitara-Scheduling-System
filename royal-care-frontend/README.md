@@ -21,39 +21,39 @@ This is the frontend for the Royal Care Scheduling System, built with **React** 
 
 ```
 royal-care-frontend/
-├── public/           # Static assets
+├── public/                             # Static assets
 ├── src/
-│   ├── assets/       # Images and icons
-│   │   └── images/   # Application images including logos
-│   ├── components/   # Reusable UI components
-│   │   ├── MainLayout.jsx     # Main application layout with navigation
-│   │   ├── DriverDashboard.jsx # Dashboard for driver role
-│   │   ├── OperatorDashboard.jsx # Dashboard for operator role
-│   │   └── TherapistDashboard.jsx # Dashboard for therapist role
-│   ├── features/     # Redux slices and feature logic
-│   │   ├── auth/     # Authentication state management
-│   │   └── websocket/ # WebSocket connection handling
-│   ├── pages/        # Route-based pages
-│   │   ├── AboutPages/   # Company and system information
-│   │   ├── AttendancePage/ # Attendance tracking interface
-│   │   ├── BookingsPage/  # Booking management interface
-│   │   ├── HelpPages/    # Help documentation and support
-│   │   ├── InventoryPage/ # Inventory management interface
-│   │   ├── LoginPage/    # Authentication screens
-│   │   ├── ProfilePage/  # User profile management
-│   │   └── SalesReportsPage/ # Sales reporting and analytics
-│   ├── services/     # API and utility services
-│   ├── styles/       # CSS and theming
-│   │   ├── MainLayout.css  # Layout styling
-│   │   ├── CompanyInfo.css # Company information styling
-│   │   ├── Placeholders.css # Placeholder content styling
-│   │   └── theme.css    # Global theme variables
-│   ├── App.jsx       # Main app component and routing
-│   ├── main.jsx      # Entry point
-│   └── store.js      # Redux store configuration
-├── package.json      # Project metadata and scripts
-├── vite.config.js    # Vite configuration
-└── README.md         # Project documentation
+│   ├── assets/                         # Images and icons
+│   │   └── images/                     # Application images including logos
+│   ├── components/                     # Reusable UI components
+│   │   ├── MainLayout.jsx              # Main application layout with navigation
+│   │   ├── DriverDashboard.jsx         # Dashboard for driver role
+│   │   ├── OperatorDashboard.jsx       # Dashboard for operator role
+│   │   └── TherapistDashboard.jsx      # Dashboard for therapist role
+│   ├── features/                       # Redux slices and feature logic
+│   │   ├── auth/                       # Authentication state management
+│   │   └── websocket/                  # WebSocket connection handling
+│   ├── pages/                          # Route-based pages
+│   │   ├── AboutPages/                 # Company and system information
+│   │   ├── AttendancePage/             # Attendance tracking interface
+│   │   ├── BookingsPage/               # Booking management interface
+│   │   ├── HelpPages/                  # Help documentation and support
+│   │   ├── InventoryPage/              # Inventory management interface
+│   │   ├── LoginPage/                  # Authentication screens
+│   │   ├── ProfilePage/                # User profile management
+│   │   └── SalesReportsPage/           # Sales reporting and analytics
+│   ├── services/                       # API and utility services
+│   ├── styles/                         # CSS and theming
+│   │   ├── MainLayout.css              # Layout styling
+│   │   ├── CompanyInfo.css             # Company information styling
+│   │   ├── Placeholders.css            # Placeholder content styling
+│   │   └── theme.css                   # Global theme variables
+│   ├── App.jsx                         # Main app component and routing
+│   ├── main.jsx                        # Entry point
+│   └── store.js                        # Redux store configuration
+├── package.json                        # Project metadata and scripts
+├── vite.config.js                      # Vite configuration
+└── README.md                           # Project documentation
 ```
 
 ## Getting Started
