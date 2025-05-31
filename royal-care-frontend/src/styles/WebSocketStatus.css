@@ -1,0 +1,93 @@
+.websocket-status {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 15px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  animation: slide-in 0.3s ease;
+}
+
+.websocket-status.connected {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.websocket-status.disconnected {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.websocket-status.connecting {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.websocket-status.error {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.status-icon {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.websocket-status.connected .status-icon {
+  background-color: #2e7d32;
+}
+
+.websocket-status.disconnected .status-icon {
+  background-color: #c62828;
+}
+
+.websocket-status.connecting .status-icon {
+  background-color: #1565c0;
+  animation: blink 1s infinite;
+}
+
+.websocket-status.error .status-icon {
+  background-color: #c62828;
+}
+
+.close-button {
+  margin-left: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+  margin-left: 10px;
+  color: inherit;
+}
+
+@keyframes blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

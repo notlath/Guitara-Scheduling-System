@@ -2,6 +2,17 @@
  * WebSocket service for real-time appointment updates
  */
 let ws = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+
+// Helper function to notify status changes
+const notifyStatusChange = (status) => {
+  window.dispatchEvent(
+    new CustomEvent("websocket-status", {
+      detail: { status },
+    })
+  );
+};
 
 export const setupWebSocket = ({ onAppointmentUpdate }) => {
   // Close any existing connection
@@ -9,111 +20,152 @@ export const setupWebSocket = ({ onAppointmentUpdate }) => {
     ws.close();
   }
 
-  // Create a new WebSocket connection
-  const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
-  // Safely access environment variables; if `process` is not defined, assume defaults for development
-  const NODE_ENV =
-    typeof process !== "undefined" && process.env && process.env.NODE_ENV
-      ? process.env.NODE_ENV
-      : "development";
-  const REACT_APP_BACKEND_WS_URL =
-    typeof process !== "undefined" &&
-    process.env &&
-    process.env.REACT_APP_BACKEND_WS_URL
-      ? process.env.REACT_APP_BACKEND_WS_URL
-      : "";
-  const wsHost =
-    REACT_APP_BACKEND_WS_URL ||
-    (NODE_ENV === "production"
-      ? window.location.host // Use the deployed host in production
-      : "localhost:8000"); // Use localhost in development
+  // Reset reconnect attempts when explicitly setting up a new connection
+  reconnectAttempts = 0;
 
-  // Get authentication token from localStorage and strip any prefix
-  let token = localStorage.getItem("knoxToken");
-  if (!token) {
-    console.error(
-      "No authentication token found. Cannot establish WebSocket connection."
-    );
-    return () => {}; // Return empty cleanup function
-  }
-  // Strip prefix if stored as 'Token <token>'
-  if (token.startsWith("Token ")) {
-    token = token.split(" ")[1];
-  }
-  if (!token) {
-    console.error(
-      "No authentication token found. Cannot establish WebSocket connection."
-    );
-    return () => {}; // Return empty cleanup function
-  }
+  const connectWebSocket = () => {
+    // Notify that we're trying to connect
+    notifyStatusChange("connecting");
 
-  // Include token in WebSocket URL for authentication
-  ws = new WebSocket(
-    `${wsScheme}://${wsHost}/ws/scheduling/appointments/?token=${token}`
-  );
+    // Create a new WebSocket connection
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+    // Safely access environment variables; in Vite, import.meta.env is used instead of process.env
+    // Default to development environment if not defined
+    const NODE_ENV = import.meta?.env?.NODE_ENV || "development";
+    const REACT_APP_BACKEND_WS_URL =
+      import.meta?.env?.REACT_APP_BACKEND_WS_URL || "";
 
-  // Set up WebSocket event handlers
-  ws.onopen = () => {
-    console.log("WebSocket connection established");
-  };
+    const wsHost =
+      REACT_APP_BACKEND_WS_URL ||
+      (NODE_ENV === "production"
+        ? window.location.host // Use the deployed host in production
+        : "localhost:8000"); // Use localhost in development
 
-  ws.onmessage = (event) => {
+    // Get authentication token from localStorage and strip any prefix
+    let token = localStorage.getItem("knoxToken");
+    if (!token) {
+      console.error(
+        "No authentication token found. Cannot establish WebSocket connection."
+      );
+      notifyStatusChange("error");
+      return null; // Return early if no token
+    }
+    // Strip prefix if stored as 'Token <token>'
+    if (token.startsWith("Token ")) {
+      token = token.split(" ")[1];
+    }
+    if (!token) {
+      console.error(
+        "No authentication token found. Cannot establish WebSocket connection."
+      );
+      notifyStatusChange("error");
+      return null; // Return early if no token
+    }
+
+    // Include token in WebSocket URL for authentication
+    const wsUrl = `${wsScheme}://${wsHost}/ws/scheduling/appointments/?token=${token}`;
+    console.log("Attempting WebSocket connection to:", wsUrl);
+
     try {
-      const data = JSON.parse(event.data);
+      ws = new WebSocket(wsUrl);
 
-      // Handle different message types
-      switch (data.type) {
-        case "appointment_update":
-          console.log("Appointment updated:", data);
-          onAppointmentUpdate && onAppointmentUpdate(data);
-          break;
+      // Set up WebSocket event handlers
+      ws.onopen = () => {
+        console.log("WebSocket connection established");
+        notifyStatusChange("connected");
+        // Reset reconnect attempts on successful connection
+        reconnectAttempts = 0;
+      };
 
-        case "appointment_create":
-          console.log("New appointment created:", data);
-          onAppointmentUpdate && onAppointmentUpdate(data);
-          break;
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
 
-        case "appointment_delete":
-          console.log("Appointment deleted:", data);
-          onAppointmentUpdate && onAppointmentUpdate(data);
-          break;
+          // Handle different message types
+          switch (data.type) {
+            case "appointment_update":
+              console.log("Appointment updated:", data);
+              onAppointmentUpdate && onAppointmentUpdate(data);
+              break;
 
-        default:
-          console.log("Unknown message type:", data);
-      }
-    } catch (error) {
-      console.error("Error parsing WebSocket message:", error);
-    }
-  };
+            case "appointment_create":
+              console.log("New appointment created:", data);
+              onAppointmentUpdate && onAppointmentUpdate(data);
+              break;
 
-  ws.onclose = (event) => {
-    console.log("WebSocket connection closed:", event.code, event.reason);
+            case "appointment_delete":
+              console.log("Appointment deleted:", data);
+              onAppointmentUpdate && onAppointmentUpdate(data);
+              break;
 
-    // Attempt to reconnect after a delay if the connection was closed unexpectedly
-    if (event.code !== 1000) {
-      // Check if we have an authentication token
-      const token = localStorage.getItem("knoxToken");
-      if (!token) {
-        console.error(
-          "Authentication failed: No token available. Please log in."
+            default:
+              console.log("Unknown message type:", data);
+          }
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
+        }
+      };
+
+      ws.onclose = (event) => {
+        console.log("WebSocket connection closed:", event.code, event.reason);
+        notifyStatusChange("disconnected");
+
+        // Do not attempt to reconnect if closed normally or if explicitly told not to
+        if (
+          event.code === 1000 ||
+          reconnectAttempts >= MAX_RECONNECT_ATTEMPTS
+        ) {
+          if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            console.log(
+              "Maximum reconnection attempts reached. WebSocket connection abandoned."
+            );
+          }
+          return;
+        }
+
+        // Check if we have an authentication token
+        const token = localStorage.getItem("knoxToken");
+        if (!token) {
+          console.error(
+            "Authentication failed: No token available. Please log in."
+          );
+          return; // Don't attempt to reconnect if no token is available
+        }
+
+        // Use exponential backoff for reconnect attempts
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+        reconnectAttempts++;
+
+        console.log(
+          `Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${
+            delay / 1000
+          } seconds...`
         );
-        return; // Don't attempt to reconnect if no token is available
-      }
 
-      console.log("Attempting to reconnect in 5 seconds...");
-      setTimeout(() => {
-        setupWebSocket({ onAppointmentUpdate });
-      }, 5000);
+        setTimeout(() => {
+          connectWebSocket();
+        }, delay);
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        notifyStatusChange("error");
+      };
+    } catch (error) {
+      console.error("Error creating WebSocket:", error);
+      notifyStatusChange("error");
     }
   };
 
-  ws.onerror = (error) => {
-    console.error("WebSocket error:", error);
-  };
+  // Initial connection attempt
+  connectWebSocket();
 
   const closeWs = () => {
     if (ws) {
+      // Prevent reconnection attempts when deliberately closing
+      ws.onclose = null;
       ws.close(1000, "Component unmounted");
+      ws = null;
     }
   };
 
@@ -161,4 +213,9 @@ export const sendAppointmentDelete = (appointmentId) => {
   } else {
     console.error("WebSocket is not connected");
   }
+};
+
+// Function to check WebSocket connection status
+export const isWebSocketConnected = () => {
+  return ws && ws.readyState === WebSocket.OPEN;
 };

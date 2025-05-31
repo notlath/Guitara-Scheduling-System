@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   deleteAppointment,
@@ -12,6 +12,7 @@ import AppointmentForm from "./AppointmentForm";
 import AvailabilityManager from "./AvailabilityManager";
 import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
+import WebSocketStatus from "./WebSocketStatus";
 import WeekView from "./WeekView";
 
 const SchedulingDashboard = () => {
@@ -21,13 +22,13 @@ const SchedulingDashboard = () => {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [view, setView] = useState("calendar"); // 'calendar', 'week', 'list', 'today', 'availability'
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
+  // Track connection status for internal use in the component
+  const [pollingInterval, setPollingInterval] = useState(null);
 
   const dispatch = useDispatch();
   const {
-    appointments,
     todayAppointments,
     upcomingAppointments,
-    weekAppointments,
     unreadNotificationCount,
     loading,
     error,
@@ -35,32 +36,59 @@ const SchedulingDashboard = () => {
   const { user } = useSelector((state) => state.auth);
   const defaultDate = useMemo(() => new Date(), []);
 
+  // Memoize the refreshAppointments function to avoid dependency changes
+  const refreshAppointments = useCallback(() => {
+    dispatch(fetchAppointments());
+    dispatch(fetchTodayAppointments());
+    dispatch(fetchUpcomingAppointments());
+  }, [dispatch]);
+
   // Setup websocket connection for real-time updates
   useEffect(() => {
     const cleanupWebSocket = setupWebSocket({
-      onAppointmentUpdate: (updatedAppointment) => {
+      onAppointmentUpdate: () => {
         // Refresh appointments when we receive real-time updates
         refreshAppointments();
       },
     });
-    // Cleanup websocket connection when component unmounts
+
+    // Listen for WebSocket status changes
+    const handleStatusChange = (event) => {
+      if (event.detail.status === "connected") {
+        // Clear polling interval when WebSocket connects
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          setPollingInterval(null);
+        }
+      } else {
+        // Start polling if WebSocket disconnects and we're not already polling
+        if (!pollingInterval) {
+          const interval = setInterval(() => refreshAppointments(), 30000); // Poll every 30 seconds
+          setPollingInterval(interval);
+        }
+      }
+    };
+
+    window.addEventListener("websocket-status", handleStatusChange);
+
+    // Cleanup websocket connection and event listeners when component unmounts
     return () => {
       if (cleanupWebSocket) {
         cleanupWebSocket();
       }
-    };
-  }, []);
 
-  const refreshAppointments = () => {
-    dispatch(fetchAppointments());
-    dispatch(fetchTodayAppointments());
-    dispatch(fetchUpcomingAppointments());
-  };
+      window.removeEventListener("websocket-status", handleStatusChange);
+
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval, refreshAppointments]);
 
   // Load appointments on component mount
   useEffect(() => {
     refreshAppointments();
-  }, [dispatch]);
+  }, [refreshAppointments]);
 
   const handleDateSelected = (date) => {
     setSelectedDate(date);
@@ -345,6 +373,9 @@ const SchedulingDashboard = () => {
           />
         )}
       </div>
+
+      {/* Display WebSocket status notification */}
+      <WebSocketStatus />
     </div>
   );
 };
