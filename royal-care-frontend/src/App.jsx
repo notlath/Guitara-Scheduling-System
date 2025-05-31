@@ -26,6 +26,7 @@ import ProfilePage from "./pages/ProfilePage/ProfilePage";
 import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
 import SchedulingPage from "./pages/SchedulingPage";
+import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 
 const App = () => {
@@ -80,21 +81,20 @@ const App = () => {
                 <Navigate to="/" />
               )
             }
-          />
+          />{" "}
           <Route path="scheduling" element={<SchedulingPage />} />
           <Route path="bookings" element={<BookingsPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="sales-reports" element={<SalesReportsPage />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="profile" element={<ProfilePage />} />
-
+          <Route path="settings" element={<SettingsPage />} />
           {/* Help Pages */}
           <Route path="help">
             <Route path="user-guide" element={<UserGuidePage />} />
             <Route path="faqs" element={<FAQsPage />} />
             <Route path="contact" element={<ContactPage />} />
           </Route>
-
           {/* About Pages */}
           <Route path="about">
             <Route path="company" element={<CompanyInfoPage />} />

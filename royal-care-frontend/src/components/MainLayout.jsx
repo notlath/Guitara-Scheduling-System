@@ -79,7 +79,7 @@ const MainLayout = () => {
         <div className="divider"></div>
         <div className="bottom-links">
           <NavLink
-            to="/settings"
+            to="/dashboard/settings"
             className={({ isActive }) => (isActive ? "active-link" : "")}
           >
             Settings
