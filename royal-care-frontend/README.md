@@ -66,10 +66,11 @@ royal-care-frontend/
 ### Installation
 
 1. Open a terminal in the `royal-care-frontend` directory.
-2. Install dependencies:
-   ```powershell
-   npm install
-   ```
+
+```powershell
+npm install --legacy-peer-deps
+```
+
 3. Start the development server:
    ```powershell
    npm run dev
