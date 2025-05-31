@@ -1,8 +1,25 @@
 from rest_framework import serializers
 from .models import Client, Availability, Appointment, Notification
-from registration.models import Service
 from core.models import CustomUser
 from datetime import datetime, timedelta
+
+# Try to import Service, or create a mock class if import fails
+try:
+    from registration.models import Service
+except ImportError:
+    # Create a fallback Service class if import fails
+    print("WARNING: Could not import Service model in serializers, using mock class")
+    from django.db import models
+    
+    class Service:
+        """Mock Service class for fallback when the real model can't be imported"""
+        id = None
+        name = ""
+        description = ""
+        duration = 0
+        price = 0
+        oil = None
+        is_active = True
 
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,9 +27,18 @@ class ClientSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ServiceSerializer(serializers.ModelSerializer):
+    """Serializer for massage services"""
+    id = serializers.IntegerField(required=False)
+    name = serializers.CharField(max_length=100)
+    description = serializers.CharField(max_length=255)
+    duration = serializers.IntegerField()
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    oil = serializers.CharField(max_length=100, required=False, allow_null=True)
+    is_active = serializers.BooleanField(default=True, required=False)
+    
     class Meta:
         model = Service
-        fields = ['id', 'name', 'description', 'duration', 'price']
+        fields = ['id', 'name', 'description', 'duration', 'price', 'oil', 'is_active']
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

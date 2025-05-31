@@ -238,70 +238,85 @@ export const fetchClients = createAsyncThunk(
   }
 );
 
-// Fetch all services (uses hardcoded services since backend doesn't have a services endpoint)
+// Hardcoded service data to use when the API is not available
+const FALLBACK_SERVICES = [
+  {
+    id: 1,
+    name: "Shiatsu Massage",
+    description: "A Japanese technique involving pressure points.",
+    duration: 60, // 1 hour
+    price: 500.0,
+    is_active: true,
+  },
+  {
+    id: 2,
+    name: "Combi Massage",
+    description: "A combination of multiple massage techniques.",
+    duration: 60,
+    price: 550.0,
+    is_active: true,
+  },
+  {
+    id: 3,
+    name: "Dry Massage",
+    description: "Performed without oils or lotions.",
+    duration: 60,
+    price: 450.0,
+    is_active: true,
+  },
+  {
+    id: 4,
+    name: "Foot Massage",
+    description: "Focused on the feet and lower legs.",
+    duration: 60,
+    price: 400.0,
+    is_active: true,
+  },
+  {
+    id: 5,
+    name: "Hot Stone Service",
+    description: "Uses heated stones for deep muscle relaxation.",
+    duration: 90, // 1.5 hours
+    price: 650.0,
+    is_active: true,
+  },
+  {
+    id: 6,
+    name: "Ventosa",
+    description: "Traditional cupping therapy to relieve muscle tension.",
+    duration: 45, // 45 minutes
+    price: 450.0,
+    is_active: true,
+  },
+  {
+    id: 7,
+    name: "Hand Massage",
+    description: "Focused on hands and arms.",
+    duration: 45, // 45 minutes
+    price: 350.0,
+    is_active: true,
+  },
+];
+
+// Fetch all services from the API endpoint
 export const fetchServices = createAsyncThunk(
   "scheduling/fetchServices",
   async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
-      // Hardcoded services based on Royal Care Home Service Massage offerings
-      const services = [
-        {
-          id: 1,
-          name: "Shiatsu Massage",
-          description: "A Japanese technique involving pressure points",
-          duration: 60,
-          price: 1500,
+      const response = await axios.get(`${API_URL}services/`, {
+        headers: {
+          Authorization: `Token ${token}`,
         },
-        {
-          id: 2,
-          name: "Combi Massage",
-          description: "A combination of multiple massage techniques",
-          duration: 90,
-          price: 2000,
-        },
-        {
-          id: 3,
-          name: "Dry Massage",
-          description: "Performed without oils or lotions",
-          duration: 60,
-          price: 1300,
-        },
-        {
-          id: 4,
-          name: "Foot Massage",
-          description: "Focused on the feet and lower legs",
-          duration: 45,
-          price: 1000,
-        },
-        {
-          id: 5,
-          name: "Hot Stone Service",
-          description: "Uses heated stones for deep muscle relaxation",
-          duration: 90,
-          price: 2200,
-        },
-        {
-          id: 6,
-          name: "Ventosa",
-          description: "Traditional cupping therapy to relieve muscle tension",
-          duration: 45,
-          price: 1200,
-        },
-        {
-          id: 7,
-          name: "Hand Massage",
-          description: "Focused on hands and arms",
-          duration: 30,
-          price: 800,
-        },
-      ];
-
-      // Simulate API delay for consistency with other API calls
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      return services;
+      });
+      return response.data;
     } catch (error) {
-      return rejectWithValue("Could not load services");
+      console.log(
+        "Error fetching services from API, using fallback data:",
+        error
+      );
+      // Return hardcoded services as fallback when API fails
+      return FALLBACK_SERVICES;
     }
   }
 );

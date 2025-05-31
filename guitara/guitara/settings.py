@@ -59,6 +59,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.sanitization_middleware.SanitizationMiddleware',
+    'scheduling.services_middleware.ServicesMiddleware',  # Add our services middleware
 ]
 
 ROOT_URLCONF = 'guitara.urls'

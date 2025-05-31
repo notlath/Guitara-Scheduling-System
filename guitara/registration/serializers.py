@@ -1,4 +1,9 @@
 from rest_framework import serializers
+from .models import Service, Material
+
+# These references are causing circular import issues - removing them
+# Service = Service
+# Material = Material
 
 class TherapistSerializer(serializers.Serializer):
     PRESSURE_CHOICES = (
@@ -30,18 +35,18 @@ class MaterialInfoSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100)
     description = serializers.CharField(max_length=255)
 
-class ServiceSerializer(serializers.Serializer):
-    name = serializers.CharField(max_length=100)
-    description = serializers.CharField(max_length=255)
-    duration = serializers.IntegerField()  # in minutes
-    price = serializers.FloatField()
-    oil = serializers.CharField(max_length=100)
-    materials = serializers.ListField(
-        child=MaterialInfoSerializer(),
-        required=False,
-        allow_empty=True
-    )
+class ServiceSerializer(serializers.ModelSerializer):
+    materials = MaterialInfoSerializer(many=True, required=False, read_only=True, source='materials.all')
+    
+    class Meta:
+        # Import inside the class to avoid circular import issues
+        from .models import Service as ServiceModel
+        model = ServiceModel
+        fields = ['id', 'name', 'description', 'duration', 'price', 'oil', 'materials']
 
-class MaterialSerializer(serializers.Serializer):
-    name = serializers.CharField(max_length=100)
-    description = serializers.CharField(max_length=255)
+class MaterialSerializer(serializers.ModelSerializer):
+    class Meta:
+        # Import inside the class to avoid circular import issues
+        from .models import Material as MaterialModel
+        model = MaterialModel
+        fields = ['id', 'name', 'description', 'service']
