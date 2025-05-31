@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import rcLogo from "../assets/images/rc_logo.jpg";
 import "../styles/MainLayout.css";
@@ -6,6 +6,8 @@ import "../styles/MainLayout.css";
 const MainLayout = () => {
   // Add location tracker for debugging
   const location = useLocation();
+  const [showHelpSublinks, setShowHelpSublinks] = useState(false);
+  const [showAboutSublinks, setShowAboutSublinks] = useState(false);
 
   useEffect(() => {
     console.log("Current location:", location.pathname);
@@ -17,6 +19,19 @@ const MainLayout = () => {
       location.pathname === "/dashboard/scheduling"
     );
   }, [location]);
+
+  // Toggle sublink visibility
+  const toggleHelpSublinks = (e) => {
+    e.preventDefault();
+    setShowHelpSublinks(!showHelpSublinks);
+    setShowAboutSublinks(false); // Close other sublinks when opening this one
+  };
+
+  const toggleAboutSublinks = (e) => {
+    e.preventDefault();
+    setShowAboutSublinks(!showAboutSublinks);
+    setShowHelpSublinks(false); // Close other sublinks when opening this one
+  };
 
   return (
     <div className="main-layout">
@@ -73,6 +88,68 @@ const MainLayout = () => {
           >
             Profile
           </NavLink>
+
+          {/* Help Section with Sublinks */}
+          <a href="#" className="sublink-parent" onClick={toggleHelpSublinks}>
+            Help
+            <span className={`dropdown-icon ${showHelpSublinks ? "open" : ""}`}>
+              ▼
+            </span>
+          </a>
+          {showHelpSublinks && (
+            <div className="sublinks">
+              <NavLink
+                to="/help/user-guide"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                User Guide
+              </NavLink>
+              <NavLink
+                to="/help/faqs"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                FAQs
+              </NavLink>
+              <NavLink
+                to="/help/contact"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                Contact Email Support
+              </NavLink>
+            </div>
+          )}
+
+          {/* About Section with Sublinks */}
+          <a href="#" className="sublink-parent" onClick={toggleAboutSublinks}>
+            About
+            <span
+              className={`dropdown-icon ${showAboutSublinks ? "open" : ""}`}
+            >
+              ▼
+            </span>
+          </a>
+          {showAboutSublinks && (
+            <div className="sublinks">
+              <NavLink
+                to="/about/company"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                Company Information
+              </NavLink>
+              <NavLink
+                to="/about/system"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                System Information
+              </NavLink>
+              <NavLink
+                to="/about/developers"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                Developer Information
+              </NavLink>
+            </div>
+          )}
         </div>
       </aside>
 
