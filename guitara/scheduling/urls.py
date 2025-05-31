@@ -7,6 +7,8 @@ router.register(r'clients', views.ClientViewSet, basename='client')
 router.register(r'availabilities', views.AvailabilityViewSet, basename='availability')
 router.register(r'appointments', views.AppointmentViewSet, basename='appointment')
 router.register(r'notifications', views.NotificationViewSet, basename='notification')
+router.register(r'staff', views.StaffViewSet, basename='staff')  # Add this line
+
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -502,3 +502,16 @@ class NotificationViewSet(viewsets.ModelViewSet):
         """Get the number of unread notifications"""
         count = Notification.objects.filter(user=request.user, is_read=False).count()
         return Response({'count': count})
+
+class StaffViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for retrieving staff members (therapists and drivers)
+    """
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Return only therapists and drivers
+        return CustomUser.objects.filter(
+            role__in=['therapist', 'driver']
+        ).order_by('first_name')
