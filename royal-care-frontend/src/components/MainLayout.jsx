@@ -38,7 +38,9 @@ const MainLayout = () => {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="logo">
-          <img src={rcLogo} alt="Royal Care Logo" />
+          <NavLink to="/dashboard">
+            <img src={rcLogo} alt="Royal Care Logo" />
+          </NavLink>
         </div>
         <nav className="nav-links">
           <NavLink
