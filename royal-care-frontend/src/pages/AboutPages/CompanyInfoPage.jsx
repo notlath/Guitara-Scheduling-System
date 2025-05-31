@@ -19,7 +19,7 @@ const CompanyInfoPage = () => {
             <h2>History and Background</h2>
             <p>
               Royal Care was established in 2010 as a family-run business, born
-              from the founder's ("Papa") personal experience with home-service
+              from the founder's (Jose Mc Rosval Basalatan) personal experience with home-service
               massage therapy. Recognizing both the convenience for customers
               and the market potential, he started the business by employing
               acquaintances as the first massage therapists.
