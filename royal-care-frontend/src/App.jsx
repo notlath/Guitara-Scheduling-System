@@ -68,22 +68,7 @@ const App = () => {
         <Route
           path="/forgot-password-confirmation"
           element={<ForgotPasswordConfirmationPage />}
-        />
-
-        {/* Help Pages */}
-        <Route path="/help">
-          <Route path="user-guide" element={<UserGuidePage />} />
-          <Route path="faqs" element={<FAQsPage />} />
-          <Route path="contact" element={<ContactPage />} />
-        </Route>
-
-        {/* About Pages */}
-        <Route path="/about">
-          <Route path="company" element={<CompanyInfoPage />} />
-          <Route path="system" element={<SystemInfoPage />} />
-          <Route path="developers" element={<DeveloperInfoPage />} />
-        </Route>
-
+        />{" "}
         <Route path="/dashboard" element={<MainLayout />}>
           <Route
             index
@@ -105,6 +90,20 @@ const App = () => {
           <Route path="sales-reports" element={<SalesReportsPage />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="profile" element={<ProfilePage />} />
+
+          {/* Help Pages */}
+          <Route path="help">
+            <Route path="user-guide" element={<UserGuidePage />} />
+            <Route path="faqs" element={<FAQsPage />} />
+            <Route path="contact" element={<ContactPage />} />
+          </Route>
+
+          {/* About Pages */}
+          <Route path="about">
+            <Route path="company" element={<CompanyInfoPage />} />
+            <Route path="system" element={<SystemInfoPage />} />
+            <Route path="developers" element={<DeveloperInfoPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

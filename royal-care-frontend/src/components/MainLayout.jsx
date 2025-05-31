@@ -99,19 +99,19 @@ const MainLayout = () => {
           {showHelpSublinks && (
             <div className="sublinks">
               <NavLink
-                to="/help/user-guide"
+                to="/dashboard/help/user-guide"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
                 User Guide
               </NavLink>
               <NavLink
-                to="/help/faqs"
+                to="/dashboard/help/faqs"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
                 FAQs
               </NavLink>
               <NavLink
-                to="/help/contact"
+                to="/dashboard/help/contact"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
                 Contact Email Support
@@ -131,19 +131,19 @@ const MainLayout = () => {
           {showAboutSublinks && (
             <div className="sublinks">
               <NavLink
-                to="/about/company"
+                to="/dashboard/about/company"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
                 Company Information
               </NavLink>
               <NavLink
-                to="/about/system"
+                to="/dashboard/about/system"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
                 System Information
               </NavLink>
               <NavLink
-                to="/about/developers"
+                to="/dashboard/about/developers"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
                 Developer Information
