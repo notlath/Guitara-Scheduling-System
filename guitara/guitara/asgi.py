@@ -8,6 +8,8 @@ https://docs.djangoproject.com/en/5.1/howto/deployment/asgi/
 """
 
 import os
+import traceback
+import sys
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
@@ -16,14 +18,27 @@ import scheduling.routing
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'guitara.settings')
 
-# Initialize Django ASGI application
-django_asgi_app = get_asgi_application()
+# Initialize Django ASGI application early to catch any startup errors
+try:
+    django_asgi_app = get_asgi_application()
+    print("Django ASGI application initialized successfully")
+except Exception as e:
+    print(f"Error initializing Django ASGI application: {e}")
+    traceback.print_exc(file=sys.stdout)
+    raise
 
-application = ProtocolTypeRouter({
-    "http": django_asgi_app,
-    "websocket": TokenAuthMiddleware(
-        URLRouter(
-            scheduling.routing.websocket_urlpatterns
-        )
-    ),
-})
+# Define the ASGI application
+try:
+    application = ProtocolTypeRouter({
+        "http": django_asgi_app,
+        "websocket": TokenAuthMiddleware(
+            URLRouter(
+                scheduling.routing.websocket_urlpatterns
+            )
+        ),
+    })
+    print("ASGI application configured successfully")
+except Exception as e:
+    print(f"Error configuring ASGI application: {e}")
+    traceback.print_exc(file=sys.stdout)
+    raise

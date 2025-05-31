@@ -2,7 +2,9 @@
 This script marks problematic migrations as applied in the database without running them.
 """
 import os
+import sys
 import django
+import datetime
 
 # Set up Django environment
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "guitara.settings")
