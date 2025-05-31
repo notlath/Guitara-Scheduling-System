@@ -1,27 +1,37 @@
-# Django and REST framework
-django==5.1.4
-djangorestframework==3.14.0
-django-cors-headers==4.3.1
-django-environ==0.11.2
-django-rest-knox==4.2.0
-django-filter==25.1
+# Core Django framework and extensions for building REST APIs
+django==5.1.4                    # Main Django web framework
+djangorestframework==3.14.0      # Toolkit for building Web APIs with Django
+django-cors-headers==4.3.1       # Handles Cross-Origin Resource Sharing (CORS)
+django-environ==0.11.2           # Environment variable management for Django
+django-rest-knox==4.2.0          # Token authentication for Django REST Framework
+django-filter==25.1              # Advanced filtering for Django REST Framework
 
-# Database
-psycopg2-binary==2.9.9
+# Real-time features and asynchronous support
+channels==4.0.0                  # Adds WebSocket and async support to Django
+channels-redis==4.1.0            # Redis backend for Django Channels
+daphne==4.0.0                    # ASGI server for Django Channels
+redis==5.0.1                     # Python client for Redis
 
-# Password hashing
-bcrypt==4.1.2
+# Security and cryptography dependencies
+cryptography==40.0.2             # Required for secure cryptographic operations
 
-# Utility
-python-dotenv==1.0.0
-bleach==6.1.0  # HTML sanitization
+# Database drivers
+psycopg2-binary==2.9.9           # PostgreSQL database adapter for Python
 
-# Testing
-pytest==8.0.0
-pytest-django==4.8.0
-coverage==7.4.1
+# Password hashing utilities
+bcrypt==4.1.2                    # Secure password hashing
 
-# Let pip resolve NumPy version
-numpy>=1.24.0,<2.1.0
+# Utility libraries
+python-dotenv==1.0.0             # Loads environment variables from .env files
+bleach==6.1.0                    # Sanitizes HTML input to prevent XSS
 
-supabase==2.15.2
+# Testing and code coverage tools
+pytest==8.0.0                    # Testing framework
+pytest-django==4.8.0             # Django integration for pytest
+coverage==7.4.1                  # Measures code coverage of tests
+
+# Scientific computing
+numpy>=1.24.0,<2.1.0             # Fundamental package for numerical computations
+
+# Supabase client
+supabase==2.15.2                 # Python client for Supabase backend services
