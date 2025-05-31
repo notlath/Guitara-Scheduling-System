@@ -238,22 +238,70 @@ export const fetchClients = createAsyncThunk(
   }
 );
 
-// Fetch all services
+// Fetch all services (uses hardcoded services since backend doesn't have a services endpoint)
 export const fetchServices = createAsyncThunk(
   "scheduling/fetchServices",
   async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
     try {
-      const response = await axios.get(`${API_URL}services/`, {
-        headers: {
-          Authorization: `Token ${token}`,
+      // Hardcoded services based on Royal Care Home Service Massage offerings
+      const services = [
+        {
+          id: 1,
+          name: "Shiatsu Massage",
+          description: "A Japanese technique involving pressure points",
+          duration: 60,
+          price: 1500,
         },
-      });
-      return response.data;
+        {
+          id: 2,
+          name: "Combi Massage",
+          description: "A combination of multiple massage techniques",
+          duration: 90,
+          price: 2000,
+        },
+        {
+          id: 3,
+          name: "Dry Massage",
+          description: "Performed without oils or lotions",
+          duration: 60,
+          price: 1300,
+        },
+        {
+          id: 4,
+          name: "Foot Massage",
+          description: "Focused on the feet and lower legs",
+          duration: 45,
+          price: 1000,
+        },
+        {
+          id: 5,
+          name: "Hot Stone Service",
+          description: "Uses heated stones for deep muscle relaxation",
+          duration: 90,
+          price: 2200,
+        },
+        {
+          id: 6,
+          name: "Ventosa",
+          description: "Traditional cupping therapy to relieve muscle tension",
+          duration: 45,
+          price: 1200,
+        },
+        {
+          id: 7,
+          name: "Hand Massage",
+          description: "Focused on hands and arms",
+          duration: 30,
+          price: 800,
+        },
+      ];
+
+      // Simulate API delay for consistency with other API calls
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      return services;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data || "Could not fetch services"
-      );
+      return rejectWithValue("Could not load services");
     }
   }
 );
