@@ -27,7 +27,6 @@ import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
 import SchedulingPage from "./pages/SchedulingPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
-import TestConnection from "./TestConnection";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);
@@ -48,11 +47,9 @@ const App = () => {
       console.log("SchedulingPage component is:", SchedulingPage);
     }
   }, []);
-
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/test" element={<TestConnection />} />
         <Route
           path="/"
           element={!user ? <LoginPage /> : <Navigate to="/dashboard" />}
