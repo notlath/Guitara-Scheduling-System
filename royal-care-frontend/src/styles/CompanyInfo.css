@@ -1,0 +1,204 @@
+/* Company Information Page Styles */
+.company-info-container {
+  padding: 2rem;
+}
+
+.company-info-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: var(--background);
+  border-radius: 12px;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.company-info-header {
+  position: relative;
+  color: var(--background);
+  padding: 2.5rem;
+  background-color: var(--primary);
+  overflow: hidden;
+}
+
+.company-info-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+  opacity: 0.5;
+}
+
+.company-info-header h1 {
+  position: relative;
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.company-info-header p {
+  position: relative;
+  opacity: 0.9;
+  font-size: 1.1rem;
+}
+
+.company-info-body {
+  padding: 2.5rem;
+}
+
+.info-section {
+  margin-bottom: 3rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+.info-section:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.info-section:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.info-section:nth-child(4) {
+  animation-delay: 0.3s;
+}
+.info-section:nth-child(5) {
+  animation-delay: 0.4s;
+}
+
+.info-section h2 {
+  color: var(--primary);
+  font-size: 1.6rem;
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--background-100);
+}
+
+.info-section p {
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.info-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+.info-list li {
+  position: relative;
+  padding-left: 1.8rem;
+  margin-bottom: 1rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.info-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.6rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--primary);
+}
+
+.highlight-box {
+  background-color: var(--background-50);
+  border-left: 4px solid var(--primary);
+  padding: 1.5rem;
+  border-radius: 4px;
+  margin: 1.5rem 0;
+  font-style: italic;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.team-member {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.team-member:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.team-member h3 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 1.2rem;
+}
+
+.team-member p {
+  margin-bottom: 0;
+  color: var(--text);
+}
+
+.missing-info {
+  color: var(--background-400);
+  font-style: italic;
+}
+
+.location-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.location-card {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.3s;
+}
+
+.location-card:hover {
+  transform: translateY(-3px);
+}
+
+.location-card h3 {
+  margin-top: 0;
+  color: var(--primary);
+}
+
+.location-card p {
+  margin-bottom: 0.5rem;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .company-info-header,
+  .company-info-body {
+    padding: 1.5rem;
+  }
+
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+}
