@@ -25,6 +25,7 @@ The following files have been moved to the archive directory because they appear
 
 - Updated `royal-care-frontend/src/App.jsx` to remove imports and references to the TestConnection component
 - Removed the `/test` route from the frontend application
+- Updated `royal-care-frontend/README.md` to change the installation command from `npm install` to `npm install --legacy-peer-deps`
 
 ## Notes
 
