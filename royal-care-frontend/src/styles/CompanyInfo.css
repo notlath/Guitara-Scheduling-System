@@ -192,6 +192,29 @@
   }
 }
 
+.address-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.address-link:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
+.map-icon {
+  margin-left: 0.5rem;
+  font-size: 1rem;
+  transition: transform 0.3s ease;
+}
+
+.address-link:hover .map-icon {
+  transform: translateY(-2px);
+}
+
 @media (max-width: 768px) {
   .company-info-header,
   .company-info-body {

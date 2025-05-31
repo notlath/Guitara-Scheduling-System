@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { FaMapMarkerAlt } from "react-icons/fa";
 import "../../styles/CompanyInfo.css";
 
 const CompanyInfoPage = () => {
@@ -60,7 +61,7 @@ const CompanyInfoPage = () => {
               <div className="team-member">
                 <h3>Operations Head</h3>
                 <p>
-                  <strong>Mary Grace Basalatan</strong>
+                  <strong>Mary Grace R. Basalatan</strong>
                 </p>
                 <p>
                   Founder's wife who oversees daily operations, financial
@@ -82,6 +83,9 @@ const CompanyInfoPage = () => {
               <div className="team-member">
                 <h3>Finance Manager</h3>
                 <p>
+                  <strong>"" R. Basalatan</strong>
+                </p>
+                <p>
                   Manages payment remittances, commission tracking, and
                   financial operations.
                 </p>
@@ -101,7 +105,16 @@ const CompanyInfoPage = () => {
               <div className="location-card">
                 <h3>Main Office</h3>
                 <p>
-                  <strong>Address:</strong> 38 Kalinangan St., Caniogan, Pasig
+                  <strong>Address:</strong>{" "}
+                  <a
+                    href="https://maps.app.goo.gl/fGx7X7CgDGsN76Ms9"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="address-link"
+                  >
+                    38 Kalinangan St., Caniogan, Pasig{" "}
+                    <FaMapMarkerAlt className="map-icon" />
+                  </a>
                 </p>
                 <p>
                   Our office includes a 3rd-floor operator center (not
