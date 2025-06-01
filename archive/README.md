@@ -21,6 +21,10 @@ This directory contains files that were moved from the main project as they appe
 
 - **TestConnection.jsx** - React component used for testing API connections
 
+### Documentation (`/documentation`)
+
+- **archive_log_2025-06-01.md** - Log file documenting which files were archived on June 1, 2025, and why
+
 ## Important Note
 
 These files were archived on June 1, 2025, as they appeared to be no longer needed for regular development. However, they are preserved here in case they are needed in the future.
