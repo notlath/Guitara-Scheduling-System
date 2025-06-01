@@ -132,7 +132,13 @@ const AvailabilityManager = () => {
     <div className="availability-manager">
       <h2>Staff Availability Management</h2>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="error-message">
+          {typeof error === "object"
+            ? error.message || error.error || JSON.stringify(error)
+            : error}
+        </div>
+      )}
 
       <div className="filters">
         {user.role === "operator" && (

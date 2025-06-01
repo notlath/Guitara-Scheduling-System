@@ -8,6 +8,7 @@ import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import rcLogo from "../../assets/images/rc_logo.jpg";
 import { login } from "../../features/auth/authSlice";
 import { api } from "../../services/api";
+import { cleanupFido2Script } from "../../utils/webAuthnHelper";
 
 function LoginPage() {
   const [formData, setFormData] = useState({ username: "", password: "" });
@@ -20,6 +21,11 @@ function LoginPage() {
 
   useEffect(() => {
     document.title = "Royal Care";
+
+    // Clean up FIDO2 scripts when component unmounts
+    return () => {
+      cleanupFido2Script();
+    };
   }, []);
 
   // Event handlers to update state on input changes

@@ -10,8 +10,8 @@ import "../../styles/NotificationCenter.css";
 const NotificationCenter = () => {
   const [showAll, setShowAll] = useState(false);
   const dispatch = useDispatch();
-  const { notifications, unreadCount, loading } = useSelector(
-    (state) => state.scheduling,
+  const { notifications, unreadCount, loading, error } = useSelector(
+    (state) => state.scheduling
   );
 
   useEffect(() => {
@@ -35,29 +35,43 @@ const NotificationCenter = () => {
     dispatch(markAllNotificationsAsRead());
   };
 
-  // Filter notifications based on showAll state
-  const displayedNotifications = showAll
-    ? notifications
-    : notifications.filter((notification) => !notification.is_read);
+  // Filter notifications based on showAll state and safely handle undefined notifications
+  const displayedNotifications =
+    notifications && Array.isArray(notifications)
+      ? showAll
+        ? notifications
+        : notifications.filter(
+            (notification) => notification && !notification.is_read
+          )
+      : [];
 
   // Format the time to display relative time (e.g., "2 hours ago")
   const formatRelativeTime = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now - date;
-    const diffInSec = Math.floor(diffInMs / 1000);
-    const diffInMin = Math.floor(diffInSec / 60);
-    const diffInHour = Math.floor(diffInMin / 60);
-    const diffInDay = Math.floor(diffInHour / 24);
+    try {
+      if (!dateString) return "Unknown time";
 
-    if (diffInDay > 0) {
-      return `${diffInDay} day${diffInDay > 1 ? "s" : ""} ago`;
-    } else if (diffInHour > 0) {
-      return `${diffInHour} hour${diffInHour > 1 ? "s" : ""} ago`;
-    } else if (diffInMin > 0) {
-      return `${diffInMin} minute${diffInMin > 1 ? "s" : ""} ago`;
-    } else {
-      return "Just now";
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Invalid date";
+
+      const now = new Date();
+      const diffInMs = now - date;
+      const diffInSec = Math.floor(diffInMs / 1000);
+      const diffInMin = Math.floor(diffInSec / 60);
+      const diffInHour = Math.floor(diffInMin / 60);
+      const diffInDay = Math.floor(diffInHour / 24);
+
+      if (diffInDay > 0) {
+        return `${diffInDay} day${diffInDay > 1 ? "s" : ""} ago`;
+      } else if (diffInHour > 0) {
+        return `${diffInHour} hour${diffInHour > 1 ? "s" : ""} ago`;
+      } else if (diffInMin > 0) {
+        return `${diffInMin} minute${diffInMin > 1 ? "s" : ""} ago`;
+      } else {
+        return "Just now";
+      }
+    } catch (err) {
+      console.error("Error formatting relative time:", err);
+      return "Unknown time";
     }
   };
 
@@ -99,6 +113,8 @@ const NotificationCenter = () => {
       <div className="notifications-list">
         {loading ? (
           <div className="loading">Loading notifications...</div>
+        ) : error ? (
+          <div className="error-state">Error loading notifications.</div>
         ) : displayedNotifications.length === 0 ? (
           <div className="empty-state">
             {showAll

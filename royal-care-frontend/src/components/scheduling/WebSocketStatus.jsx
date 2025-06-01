@@ -9,16 +9,39 @@ const WebSocketStatus = () => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    // Check if WebSockets were previously disabled in this session
+    const checkInitialStatus = () => {
+      try {
+        const wsDisabled = sessionStorage.getItem("wsConnectionDisabled");
+        if (wsDisabled === "true") {
+          setStatus("disabled");
+          // Show the disabled notification briefly
+          setVisible(true);
+          setTimeout(() => setVisible(false), 7000);
+        }
+      } catch {
+        // Ignore storage access errors
+      }
+    };
+
+    // Check initial status on mount
+    checkInitialStatus();
+
     // Create a custom event listener for WebSocket status updates
     const handleStatusUpdate = (event) => {
       setStatus(event.detail.status);
       setVisible(true);
 
-      // Automatically hide the connected notification after 5 seconds
+      // Automatically hide notifications after a delay
       if (event.detail.status === "connected") {
         setTimeout(() => {
           setVisible(false);
         }, 5000);
+      } else if (event.detail.status === "disabled") {
+        // Show disabled notification a bit longer
+        setTimeout(() => {
+          setVisible(false);
+        }, 7000);
       }
     };
 

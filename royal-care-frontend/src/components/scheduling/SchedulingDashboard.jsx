@@ -48,19 +48,37 @@ const SchedulingDashboard = () => {
   useEffect(() => {
     let cleanupWebSocket = null;
 
+    // Check if WebSockets are already disabled in this session
+    let wsDisabled = false;
     try {
-      cleanupWebSocket = setupWebSocket({
-        onAppointmentUpdate: () => {
-          // Refresh appointments when we receive real-time updates
-          refreshAppointments();
-        },
-      });
-    } catch (err) {
-      console.error("Error setting up WebSocket:", err);
-      // Start polling immediately if WebSocket setup fails
+      wsDisabled = sessionStorage.getItem("wsConnectionDisabled") === "true";
+    } catch {
+      // Ignore storage access errors
+    }
+
+    // If WebSockets are already disabled, start polling immediately
+    if (wsDisabled) {
+      console.log("WebSockets are disabled, starting with polling mode");
       if (!pollingInterval) {
-        const interval = setInterval(() => refreshAppointments(), 30000); // Poll every 30 seconds
+        const interval = setInterval(() => refreshAppointments(), 20000); // Poll every 20 seconds
         setPollingInterval(interval);
+      }
+    } else {
+      // Try to set up WebSocket connection
+      try {
+        cleanupWebSocket = setupWebSocket({
+          onAppointmentUpdate: () => {
+            // Refresh appointments when we receive real-time updates
+            refreshAppointments();
+          },
+        });
+      } catch (err) {
+        console.error("Error setting up WebSocket:", err);
+        // Start polling immediately if WebSocket setup fails
+        if (!pollingInterval) {
+          const interval = setInterval(() => refreshAppointments(), 20000); // Poll every 20 seconds
+          setPollingInterval(interval);
+        }
       }
     }
 
@@ -75,9 +93,9 @@ const SchedulingDashboard = () => {
       } else if (
         ["disconnected", "error", "disabled"].includes(event.detail.status)
       ) {
-        // Start polling if WebSocket disconnects and we're not already polling
+        // Start polling if WebSocket disconnects or is disabled and we're not already polling
         if (!pollingInterval) {
-          const interval = setInterval(() => refreshAppointments(), 30000); // Poll every 30 seconds
+          const interval = setInterval(() => refreshAppointments(), 20000); // Poll every 20 seconds
           setPollingInterval(interval);
         }
       }
@@ -339,7 +357,13 @@ const SchedulingDashboard = () => {
 
       {loading && <div className="loading-spinner">Loading...</div>}
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="error-message">
+          {typeof error === "object"
+            ? error.message || error.error || JSON.stringify(error)
+            : error}
+        </div>
+      )}
 
       {/* Display notifications panel when visible */}
       {isNotificationVisible && (

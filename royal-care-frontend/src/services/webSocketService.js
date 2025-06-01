@@ -4,8 +4,18 @@
  */
 let ws = null;
 let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 3; // Reduced from 5 to avoid excessive retries
+const MAX_RECONNECT_ATTEMPTS = 2; // Further reduced to minimize failed attempts
 let wsConnectionEnabled = true; // Flag to control whether we should try connecting
+
+// Check for WebSocket support in the browser
+const isWebSocketSupported = typeof WebSocket !== "undefined";
+
+// Check if we previously disabled WebSocket connections in this session
+const storedWsDisabled = sessionStorage.getItem("wsConnectionDisabled");
+if (storedWsDisabled === "true") {
+  console.log("WebSocket connections were previously disabled in this session");
+  wsConnectionEnabled = false;
+}
 
 // Helper function to notify status changes
 const notifyStatusChange = (status) => {
@@ -16,10 +26,40 @@ const notifyStatusChange = (status) => {
   );
 };
 
+// Helper function to disable WebSocket connections and remember it for this session
+const disableWebSocketConnections = () => {
+  wsConnectionEnabled = false;
+  try {
+    sessionStorage.setItem("wsConnectionDisabled", "true");
+  } catch (err) {
+    console.log("Could not store WebSocket disabled state in sessionStorage");
+  }
+  notifyStatusChange("disabled");
+};
+
+// Helper function to validate URL for WebSocket connection
+const isValidWebSocketUrl = (url) => {
+  try {
+    // Check if URL is properly formatted
+    const parsedUrl = new URL(url);
+    return parsedUrl.protocol === "ws:" || parsedUrl.protocol === "wss:";
+  } catch (error) {
+    console.error("Invalid WebSocket URL:", error);
+    return false;
+  }
+};
+
 export const setupWebSocket = ({ onAppointmentUpdate }) => {
-  // Don't attempt to connect if we've already determined WebSockets are unavailable
+  // Don't attempt to connect if WebSockets aren't supported or have been disabled
   if (!wsConnectionEnabled) {
     console.log("WebSocket connections are disabled due to previous failures");
+    notifyStatusChange("disabled");
+    return () => {}; // Return empty cleanup function
+  }
+
+  // Check browser WebSocket support
+  if (typeof WebSocket === "undefined") {
+    console.log("WebSockets are not supported in this browser");
     notifyStatusChange("disabled");
     return () => {}; // Return empty cleanup function
   }
@@ -46,17 +86,31 @@ export const setupWebSocket = ({ onAppointmentUpdate }) => {
 
       // Create a new WebSocket connection
       const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+
       // Safely access environment variables; in Vite, import.meta.env is used instead of process.env
-      // Default to development environment if not defined
       const NODE_ENV = import.meta?.env?.NODE_ENV || "development";
       const REACT_APP_BACKEND_WS_URL =
         import.meta?.env?.REACT_APP_BACKEND_WS_URL || "";
 
-      const wsHost =
-        REACT_APP_BACKEND_WS_URL ||
-        (NODE_ENV === "production"
-          ? window.location.host // Use the deployed host in production
-          : "localhost:8000"); // Use localhost in development
+      // For development mode, add special handling for common local dev servers
+      let wsHost;
+      if (NODE_ENV === "development") {
+        // Default localhost port for development
+        wsHost = "localhost:8000";
+
+        // Check if we're running on alternate local dev ports (Vite uses 5173 by default)
+        if (
+          window.location.port === "5173" ||
+          window.location.port === "5174"
+        ) {
+          console.log(
+            `Dev server detected on port ${window.location.port}, using default WebSocket backend`
+          );
+        }
+      } else {
+        // Production mode - use the actual host or configured backend URL
+        wsHost = REACT_APP_BACKEND_WS_URL || window.location.host;
+      }
 
       // Get authentication token from localStorage and strip any prefix
       let token = localStorage.getItem("knoxToken");
@@ -83,7 +137,25 @@ export const setupWebSocket = ({ onAppointmentUpdate }) => {
 
       // Include token in WebSocket URL for authentication
       const wsUrl = `${wsScheme}://${wsHost}/ws/scheduling/appointments/?token=${token}`;
+
+      // Validate the WebSocket URL before attempting connection
+      if (!isValidWebSocketUrl(wsUrl)) {
+        console.error("Invalid WebSocket URL format:", wsUrl);
+        notifyStatusChange("error");
+        disableWebSocketConnections();
+        return null;
+      }
+
       console.log("Attempting WebSocket connection to:", wsUrl);
+
+      // Set connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (ws && ws.readyState !== WebSocket.OPEN) {
+          console.error("WebSocket connection timed out");
+          ws.close();
+          notifyStatusChange("error");
+        }
+      }, 5000);
 
       // Create socket with error handling
       ws = new WebSocket(wsUrl);
@@ -91,6 +163,7 @@ export const setupWebSocket = ({ onAppointmentUpdate }) => {
       // Set up WebSocket event handlers
       ws.onopen = () => {
         console.log("WebSocket connection established");
+        clearTimeout(connectionTimeout);
         notifyStatusChange("connected");
         // Reset reconnect attempts on successful connection
         reconnectAttempts = 0;
@@ -129,8 +202,7 @@ export const setupWebSocket = ({ onAppointmentUpdate }) => {
         console.log("WebSocket connection closed:", event.code, event.reason);
         notifyStatusChange("disconnected");
 
-        // Do not attempt to reconnect if closed normally or if explicitly told not to
-        // or if maximum attempts reached
+        // Do not attempt to reconnect if closed normally or if maximum attempts reached
         if (
           event.code === 1000 || // Normal closure
           reconnectAttempts >= MAX_RECONNECT_ATTEMPTS
@@ -139,7 +211,13 @@ export const setupWebSocket = ({ onAppointmentUpdate }) => {
             console.log(
               "Maximum reconnection attempts reached. WebSocket connections disabled."
             );
-            wsConnectionEnabled = false; // Disable further connection attempts
+            // Disable further connection attempts and store this in sessionStorage
+            wsConnectionEnabled = false;
+            try {
+              sessionStorage.setItem("wsConnectionDisabled", "true");
+            } catch {
+              console.log("Could not store WebSocket state in sessionStorage");
+            }
             notifyStatusChange("disabled");
           }
           return;
@@ -169,22 +247,60 @@ export const setupWebSocket = ({ onAppointmentUpdate }) => {
             connectWebSocket();
           } catch (error) {
             console.error("Error during reconnection attempt:", error);
+            if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+              wsConnectionEnabled = false;
+              try {
+                sessionStorage.setItem("wsConnectionDisabled", "true");
+              } catch {
+                console.log(
+                  "Could not store WebSocket state in sessionStorage"
+                );
+              }
+              notifyStatusChange("disabled");
+            }
           }
         }, delay);
       };
 
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
+      ws.onerror = () => {
+        console.error("WebSocket error occurred");
+        // The WebSocket API doesn't expose error details due to security concerns
+        // We'll just log that an error occurred and let onclose handle reconnection logic
         notifyStatusChange("error");
+
+        // Don't close here - the onclose handler will be called automatically
       };
     } catch (error) {
       console.error("Error creating WebSocket:", error);
       notifyStatusChange("error");
+
+      // If we can't even create a WebSocket, disable for this session
+      wsConnectionEnabled = false;
+      try {
+        sessionStorage.setItem("wsConnectionDisabled", "true");
+      } catch {
+        console.log("Could not store WebSocket state in sessionStorage");
+      }
+      notifyStatusChange("disabled");
+      return null;
     }
+
+    return ws; // Return the WebSocket instance
   };
 
-  // Initial connection attempt
-  connectWebSocket();
+  // Initial connection attempt with failure handling
+  try {
+    connectWebSocket();
+  } catch (error) {
+    console.error("Failed to initialize WebSocket:", error);
+    notifyStatusChange("disabled");
+    wsConnectionEnabled = false;
+    try {
+      sessionStorage.setItem("wsConnectionDisabled", "true");
+    } catch {
+      // Ignore storage errors
+    }
+  }
 
   // Return a cleanup function
   return () => {

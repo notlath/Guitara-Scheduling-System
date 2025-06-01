@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { login } from "../../features/auth/authSlice";
 import { api } from "../../services/api";
 import { sanitizeString } from "../../utils/sanitization";
+import { cleanupFido2Script } from "../../utils/webAuthnHelper";
 
 const Login = () => {
   const [formData, setFormData] = useState({ username: "", password: "" });
@@ -13,6 +14,14 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  // Clean up any FIDO2 scripts when component unmounts
+  useEffect(() => {
+    return () => {
+      cleanupFido2Script();
+    };
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 

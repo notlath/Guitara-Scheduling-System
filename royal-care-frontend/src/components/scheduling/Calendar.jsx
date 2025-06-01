@@ -13,12 +13,21 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
 
   const dispatch = useDispatch();
   const { availableTherapists, availableDrivers, appointments } = useSelector(
-    (state) => state.scheduling,
+    (state) => state.scheduling
   );
 
   // Helper to format date as YYYY-MM-DD
   const formatDate = (date) => {
-    return date.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+    try {
+      if (!date || isNaN(date.getTime())) {
+        console.warn("Invalid date provided to formatDate");
+        return "";
+      }
+      return date.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+    } catch (err) {
+      console.error("Error formatting date:", err);
+      return "";
+    }
   };
 
   // Generate time slots from 7 AM to 10 PM in 30-minute intervals
@@ -50,13 +59,13 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   // Handle month navigation
   const prevMonth = () => {
     setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1),
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
     );
   };
 
   const nextMonth = () => {
     setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1),
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
     );
   };
 
@@ -66,27 +75,28 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
       const selectedDate = new Date(
         currentMonth.getFullYear(),
         currentMonth.getMonth(),
-        day,
+        day
       );
       onDateSelected(selectedDate);
       setView("day");
 
       // When date is selected, fetch available therapists and drivers
       const formattedDate = formatDate(selectedDate);
-      dispatch(
-        fetchAvailableTherapists({
-          date: formattedDate,
-          start_time: "08:00",
-          end_time: "20:00",
-        }),
-      );
-      dispatch(
-        fetchAvailableDrivers({
-          date: formattedDate,
-          start_time: "08:00",
-          end_time: "20:00",
-        }),
-      );
+
+      if (!formattedDate) {
+        console.error("Invalid date selected, cannot fetch availabilities");
+        return;
+      }
+
+      // Add consistent time slots for initial load with proper validation
+      const params = {
+        date: formattedDate,
+        start_time: "08:00",
+        end_time: "20:00",
+      };
+
+      dispatch(fetchAvailableTherapists(params));
+      dispatch(fetchAvailableDrivers(params));
     }
   };
 
@@ -156,8 +166,8 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
                 new Date(
                   currentMonth.getFullYear(),
                   currentMonth.getMonth(),
-                  day,
-                ),
+                  day
+                )
               );
               const appointment = appointments.find((appointment) => {
                 return appointment.date === formattedDate;
@@ -179,7 +189,7 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
                   {day}
                 </div>
               );
-            }),
+            })
           )}
         </div>
       </div>
@@ -222,36 +232,46 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
         <div className="availability-info">
           <div className="therapists-section">
             <h3>Available Therapists</h3>
-            {availableTherapists.length > 0 ? (
+            {availableTherapists && availableTherapists.length > 0 ? (
               <ul>
                 {availableTherapists.map((therapist) => (
-                  <li key={therapist.id}>
-                    {therapist.first_name}{" "}
-                    {therapist.last_name} - Specialization:{" "}
-                    {therapist.specialization || "N/A"} - Massage
-                    Pressure: {therapist.massage_pressure || "N/A"}
+                  <li key={therapist.id || Math.random()}>
+                    {therapist.first_name || ""} {therapist.last_name || ""}{" "}
+                    {therapist.specialization
+                      ? `- Specialization: ${therapist.specialization}`
+                      : ""}{" "}
+                    {therapist.massage_pressure
+                      ? `- Pressure: ${therapist.massage_pressure}`
+                      : ""}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p>No therapists available for selected time.</p>
+              <p>
+                No therapists available for selected time. Try selecting a
+                different time slot.
+              </p>
             )}
           </div>
 
           <div className="drivers-section">
             <h3>Available Drivers</h3>
-            {availableDrivers.length > 0 ? (
+            {availableDrivers && availableDrivers.length > 0 ? (
               <ul>
                 {availableDrivers.map((driver) => (
-                  <li key={driver.id}>
-                    {driver.first_name}{" "}
-                    {driver.last_name} - Plate:{" "}
-                    {driver.motorcycle_plate || "N/A"}
+                  <li key={driver.id || Math.random()}>
+                    {driver.first_name || ""} {driver.last_name || ""}{" "}
+                    {driver.motorcycle_plate
+                      ? `- Plate: ${driver.motorcycle_plate}`
+                      : ""}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p>No drivers available for selected time.</p>
+              <p>
+                No drivers available for selected time. Try selecting a
+                different time slot or proceed without a driver.
+              </p>
             )}
           </div>
         </div>

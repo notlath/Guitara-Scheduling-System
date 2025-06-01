@@ -6,6 +6,7 @@ import styles from "../../pages/LoginPage/LoginPage.module.css";
 import { api } from "../../services/api";
 import { sanitizePhone, sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
+import { cleanupFido2Script } from "../../utils/webAuthnHelper";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -40,6 +41,10 @@ const Register = () => {
 
   useEffect(() => {
     document.title = "Royal Care - Register";
+    // Clean up FIDO2 scripts when component unmounts
+    return () => {
+      cleanupFido2Script();
+    };
   }, []);
 
   // Check if username is already taken

@@ -177,22 +177,72 @@ export const deleteAppointment = createAsyncThunk(
 // Fetch available therapists for a specific date and time
 export const fetchAvailableTherapists = createAsyncThunk(
   "scheduling/fetchAvailableTherapists",
-  async ({ date, start_time, end_time }, { rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
+    if (!params) {
+      console.error("fetchAvailableTherapists: No parameters provided");
+      return rejectWithValue({ error: "No parameters provided" });
+    }
+
+    // Handle both naming conventions for parameters
+    const date = params.date;
+    const start_time = params.start_time || params.startTime;
+    const end_time = params.end_time || params.endTime;
+
+    // Validate required parameters - fail early with clear error messages
+    if (!date) {
+      console.error("fetchAvailableTherapists: Missing date parameter", params);
+      return rejectWithValue({ error: "Missing date parameter" });
+    }
+
+    if (!start_time || start_time === "undefined") {
+      console.error(
+        "fetchAvailableTherapists: Missing or invalid start_time parameter",
+        params
+      );
+      return rejectWithValue({
+        error: "Missing or invalid start time parameter",
+      });
+    }
+
+    if (!end_time || end_time === "undefined") {
+      console.error(
+        "fetchAvailableTherapists: Missing or invalid end_time parameter",
+        params
+      );
+      return rejectWithValue({
+        error: "Missing or invalid end time parameter",
+      });
+    }
+
     const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
     const url = `${API_URL}availabilities/available_therapists/?date=${date}&start_time=${start_time}&end_time=${end_time}`;
-    console.log('fetchAvailableTherapists: Starting API call to', url);
+    console.log("fetchAvailableTherapists: Starting API call to", url);
+
     try {
       const response = await axios.get(url, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      console.log('fetchAvailableTherapists: Success, received', response.data.length, 'therapists');
+      console.log(
+        "fetchAvailableTherapists: Success, received",
+        response.data.length,
+        "therapists"
+      );
       return response.data;
     } catch (error) {
-      console.error('fetchAvailableTherapists: Error', error.response?.data || error.message);
+      console.error(
+        "fetchAvailableTherapists: Error",
+        error.response?.data || error.message
+      );
       return rejectWithValue(
-        error.response?.data || "Could not fetch available therapists"
+        error.response?.data || {
+          error: "Could not fetch available therapists",
+        }
       );
     }
   }
@@ -201,22 +251,71 @@ export const fetchAvailableTherapists = createAsyncThunk(
 // Fetch available drivers for a specific date and time
 export const fetchAvailableDrivers = createAsyncThunk(
   "scheduling/fetchAvailableDrivers",
-  async ({ date, start_time, end_time }, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
+    // If no params provided, just return empty array (used in some contexts)
+    if (!params) {
+      console.error("fetchAvailableDrivers: No parameters provided");
+      return rejectWithValue({ error: "No parameters provided" });
+    }
+
+    // Handle both naming conventions for parameters
+    const date = params.date;
+    const start_time = params.start_time || params.startTime;
+    const end_time = params.end_time || params.endTime;
+
+    // Validate required parameters
+    if (!date) {
+      console.error("fetchAvailableDrivers: Missing date parameter", params);
+      return rejectWithValue({ error: "Missing date parameter" });
+    }
+
+    if (!start_time || start_time === "undefined") {
+      console.error(
+        "fetchAvailableDrivers: Missing or invalid start_time parameter",
+        params
+      );
+      return rejectWithValue({
+        error: "Missing or invalid start time parameter",
+      });
+    }
+
+    if (!end_time || end_time === "undefined") {
+      console.error(
+        "fetchAvailableDrivers: Missing or invalid end_time parameter",
+        params
+      );
+      return rejectWithValue({
+        error: "Missing or invalid end time parameter",
+      });
+    }
+
     const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
     const url = `${API_URL}availabilities/available_drivers/?date=${date}&start_time=${start_time}&end_time=${end_time}`;
-    console.log('fetchAvailableDrivers: Starting API call to', url);
+    console.log("fetchAvailableDrivers: Starting API call to", url);
+
     try {
       const response = await axios.get(url, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      console.log('fetchAvailableDrivers: Success, received', response.data.length, 'drivers');
+      console.log(
+        "fetchAvailableDrivers: Success, received",
+        response.data.length,
+        "drivers"
+      );
       return response.data;
     } catch (error) {
-      console.error('fetchAvailableDrivers: Error', error.response?.data || error.message);
+      console.error(
+        "fetchAvailableDrivers: Error",
+        error.response?.data || error.message
+      );
       return rejectWithValue(
-        error.response?.data || "Could not fetch available drivers"
+        error.response?.data || { error: "Could not fetch available drivers" }
       );
     }
   }
@@ -227,17 +326,24 @@ export const fetchClients = createAsyncThunk(
   "scheduling/fetchClients",
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
-    console.log('fetchClients: Starting API call to', `${API_URL}clients/`);
+    console.log("fetchClients: Starting API call to", `${API_URL}clients/`);
     try {
       const response = await axios.get(`${API_URL}clients/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      console.log('fetchClients: Success, received', response.data.length, 'clients');
+      console.log(
+        "fetchClients: Success, received",
+        response.data.length,
+        "clients"
+      );
       return response.data;
     } catch (error) {
-      console.error('fetchClients: Error', error.response?.data || error.message);
+      console.error(
+        "fetchClients: Error",
+        error.response?.data || error.message
+      );
       return rejectWithValue(error.response?.data || "Could not fetch clients");
     }
   }
@@ -308,14 +414,18 @@ export const fetchServices = createAsyncThunk(
   "scheduling/fetchServices",
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
-    console.log('fetchServices: Starting API call to', `${API_URL}services/`);
+    console.log("fetchServices: Starting API call to", `${API_URL}services/`);
     try {
       const response = await axios.get(`${API_URL}services/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      console.log('fetchServices: Success, received', response.data.length, 'services');
+      console.log(
+        "fetchServices: Success, received",
+        response.data.length,
+        "services"
+      );
       return response.data;
     } catch (error) {
       console.log(
@@ -652,7 +762,21 @@ const schedulingSlice = createSlice({
       })
       .addCase(fetchAvailableTherapists.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        // Handle error objects and strings properly
+        if (typeof action.payload === "string") {
+          state.error = action.payload;
+        } else if (action.payload && action.payload.error) {
+          state.error = action.payload.error;
+        } else {
+          state.error = "Could not fetch available therapists";
+        }
+        // Don't clear existing data if we have it
+        if (
+          !state.availableTherapists ||
+          state.availableTherapists.length === 0
+        ) {
+          state.availableTherapists = [];
+        }
       })
       // fetchAvailableDrivers
       .addCase(fetchAvailableDrivers.pending, (state) => {
@@ -665,7 +789,18 @@ const schedulingSlice = createSlice({
       })
       .addCase(fetchAvailableDrivers.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        // Handle error objects and strings properly
+        if (typeof action.payload === "string") {
+          state.error = action.payload;
+        } else if (action.payload && action.payload.error) {
+          state.error = action.payload.error;
+        } else {
+          state.error = "Could not fetch available drivers";
+        }
+        // Don't clear existing data if we have it
+        if (!state.availableDrivers || state.availableDrivers.length === 0) {
+          state.availableDrivers = [];
+        }
       })
       // fetchClients
       .addCase(fetchClients.pending, (state) => {

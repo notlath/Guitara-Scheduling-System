@@ -36,7 +36,7 @@ const AppointmentForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [endTime, setEndTime] = useState(""); // Store calculated end time separately
 
-  // Fallback data for development/testing when API fails
+  // Add fallback data for therapists and drivers in case API calls fail
   const FALLBACK_THERAPISTS = [
     {
       id: 101,
@@ -47,32 +47,30 @@ const AppointmentForm = ({
     },
     {
       id: 102,
-      first_name: "Juan",
-      last_name: "Cruz",
+      first_name: "James",
+      last_name: "Wilson",
       specialization: "Swedish",
       massage_pressure: "Firm",
     },
     {
       id: 103,
-      first_name: "Ana",
-      last_name: "Reyes",
-      specialization: "Thai",
-      massage_pressure: "Light",
+      first_name: "Sarah",
+      last_name: "Lee",
+      specialization: "Deep Tissue",
+      massage_pressure: "Hard",
     },
   ];
 
   const FALLBACK_DRIVERS = [
     {
       id: 201,
-      first_name: "Pedro",
-      last_name: "Gomez",
-      motorcycle_plate: "ABC123",
+      first_name: "Michael",
+      last_name: "Johnson",
     },
     {
       id: 202,
-      first_name: "Carlo",
-      last_name: "Mendoza",
-      motorcycle_plate: "XYZ789",
+      first_name: "Lisa",
+      last_name: "Chen",
     },
   ];
 
@@ -115,7 +113,10 @@ const AppointmentForm = ({
         formData.services.includes(service.id)
       );
 
-      if (!selectedServices.length) return "";
+      if (!selectedServices.length) {
+        console.log("No matching services found for the selected service IDs");
+        return "";
+      }
 
       // Calculate total duration in minutes
       const totalDurationMinutes = selectedServices.reduce(
@@ -123,11 +124,17 @@ const AppointmentForm = ({
         0
       );
 
-      if (!totalDurationMinutes) return "";
+      if (!totalDurationMinutes) {
+        console.log("Total duration is zero - check service duration values");
+        return "";
+      }
 
       // Parse start time
       const [hours, minutes] = formData.start_time.split(":").map(Number);
-      if (isNaN(hours) || isNaN(minutes)) return "";
+      if (isNaN(hours) || isNaN(minutes)) {
+        console.log("Invalid start time format:", formData.start_time);
+        return "";
+      }
 
       // Calculate end time
       const startDate = new Date();
@@ -171,56 +178,95 @@ const AppointmentForm = ({
     setEndTime(calculatedEndTime);
   }, [formData.services, formData.start_time, calculateEndTime]);
 
-  // Fetch available therapists and drivers when form data changes
+  // Effect for fetching available therapists based on service and time
   useEffect(() => {
-    if (formData.date && formData.start_time && formData.services.length > 0) {
-      // Calculate end time
-      const calculatedEndTime = calculateEndTime();
+    if (!formData.start_time || !formData.date || !formData.services.length) {
+      // Don't attempt to fetch without required data
+      return;
+    }
 
-      console.log("AppointmentForm - Fetching available staff with params:", {
-        date: formData.date,
+    // Calculate end time with better error handling
+    let calculatedEndTime;
+    try {
+      calculatedEndTime = calculateEndTime();
+      if (!calculatedEndTime) {
+        console.warn(
+          "Cannot fetch available therapists: unable to calculate end time"
+        );
+        return;
+      }
+    } catch (error) {
+      console.error("Error calculating end time:", error);
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] Fetching available therapists with:`, {
+      date: formData.date,
+      start_time: formData.start_time,
+      end_time: calculatedEndTime,
+      services: formData.services,
+    });
+
+    // Make sure we have valid parameters before making API calls
+    if (!formData.date || !formData.start_time || !calculatedEndTime) {
+      console.warn("Cannot fetch available staff: missing required parameters");
+      return;
+    }
+
+    // Make sure times are in correct format (HH:MM)
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (
+      !timeRegex.test(formData.start_time) ||
+      !timeRegex.test(calculatedEndTime)
+    ) {
+      console.warn("Cannot fetch available staff: invalid time format", {
         start_time: formData.start_time,
         end_time: calculatedEndTime,
-        services: formData.services,
       });
+      return;
+    }
 
-      // Only fetch if we have a valid end time
-      if (calculatedEndTime) {
-        // Add timestamps to help debug API timing issues
-        console.log(`Fetching staff at ${new Date().toISOString()}`);
+    // Ensure date is in correct format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(formData.date)) {
+      console.warn(
+        "Cannot fetch available staff: invalid date format",
+        formData.date
+      );
+      return;
+    }
 
-        // Make the API calls with the calculated end time
-        try {
-          dispatch(
-            fetchAvailableTherapists({
-              date: formData.date,
-              start_time: formData.start_time,
-              end_time: calculatedEndTime,
-            })
-          );
+    // Dispatch actions to fetch available therapists and drivers
+    try {
+      // Fix parameter names to match what the API expects (start_time and end_time)
+      dispatch(
+        fetchAvailableTherapists({
+          date: formData.date,
+          start_time: formData.start_time,
+          end_time: calculatedEndTime,
+          services: formData.services,
+        })
+      );
 
-          dispatch(
-            fetchAvailableDrivers({
-              date: formData.date,
-              start_time: formData.start_time,
-              end_time: calculatedEndTime,
-            })
-          );
-        } catch (error) {
-          console.error("Error fetching available staff:", error);
-        }
-      } else {
-        console.warn(
-          "Cannot fetch available staff - end time calculation failed"
-        );
-      }
+      // Include parameters for fetchAvailableDrivers too
+      dispatch(
+        fetchAvailableDrivers({
+          date: formData.date,
+          start_time: formData.start_time,
+          end_time: calculatedEndTime,
+        })
+      );
+    } catch (error) {
+      console.error("Error dispatching staff availability actions:", error);
+      // We have fallback data that will be used if the API call fails
     }
   }, [
     formData.date,
     formData.start_time,
     formData.services,
-    dispatch,
     calculateEndTime,
+    dispatch,
   ]);
 
   // If editing an existing appointment, populate the form
@@ -482,7 +528,11 @@ const AppointmentForm = ({
                 {formData.date &&
                 formData.start_time &&
                 formData.services.length > 0
-                  ? "No available therapists for selected time"
+                  ? `No available therapists for selected time${
+                      import.meta.env.DEV
+                        ? " (using fallback data in development)"
+                        : ""
+                    }`
                   : "Select date, time and services first"}
               </option>
             )}
@@ -511,7 +561,11 @@ const AppointmentForm = ({
             ) : (
               <option value="" disabled>
                 {formData.date && formData.start_time
-                  ? "No available drivers for selected time"
+                  ? `No available drivers for selected time${
+                      import.meta.env.DEV
+                        ? " (using fallback data in development)"
+                        : ""
+                    }`
                   : "Select date and time first"}
               </option>
             )}
