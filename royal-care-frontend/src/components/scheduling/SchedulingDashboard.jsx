@@ -8,8 +8,8 @@ import {
 } from "../../features/scheduling/schedulingSlice";
 import { setupWebSocket } from "../../services/webSocketService";
 import "../../styles/SchedulingDashboard.css";
-import AppointmentForm from "./AppointmentForm";
 import ErrorBoundary from "../common/ErrorBoundary";
+import AppointmentForm from "./AppointmentForm";
 import AvailabilityManager from "./AvailabilityManager";
 import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
