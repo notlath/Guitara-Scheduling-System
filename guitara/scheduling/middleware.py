@@ -25,7 +25,9 @@ class TokenAuthMiddleware:
     Custom middleware for Channels that authenticates using Knox tokens
     """
     def __init__(self, inner):
-        self.inner = inner    async def __call__(self, scope, receive, send):
+        self.inner = inner
+        
+    async def __call__(self, scope, receive, send):
         try:
             # Get query parameters
             query_string = scope.get('query_string', b'').decode()

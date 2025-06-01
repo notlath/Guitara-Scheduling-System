@@ -12,7 +12,7 @@ class Operator(models.Model):
 class Service(models.Model):
     name = models.CharField(max_length=100, default="New Service")
     description = models.CharField(max_length=255, default="Service description")
-    duration = models.IntegerField(help_text="Duration in minutes", default=60)  # Default to 1 hour
+    duration = models.DurationField(help_text="Duration in minutes", default=60)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     oil = models.CharField(max_length=100, blank=True, null=True)
     is_active = models.BooleanField(default=True)
