@@ -9,10 +9,16 @@ import django
 from datetime import timedelta
 
 # Set up Django environment
-# Use the correct path to the settings module
-sys.path.append('.')
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'guitara.guitara.settings')
-django.setup()
+sys.path.append('.')  # Add current directory to path
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'guitara.settings')
+try:
+    django.setup()
+except Exception as e:
+    print(f"Error setting up Django: {e}")
+    print("Trying alternative approach...")
+    sys.path.append('guitara')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'guitara.settings')
+    django.setup()
 
 try:
     # Import the Service model from registration app
