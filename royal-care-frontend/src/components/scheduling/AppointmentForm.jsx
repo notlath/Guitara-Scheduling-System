@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   createAppointment,
@@ -6,10 +6,49 @@ import {
   fetchAvailableTherapists,
   fetchClients,
   fetchServices,
+  fetchStaffMembers,
   updateAppointment,
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/AppointmentForm.css";
-import { sanitizeString } from "../../utils/sanitization";
+import { sanitizeFormInput } from "../../utils/formSanitization";
+
+// Fallback data for therapists and drivers in case API calls fail
+const FALLBACK_THERAPISTS = [
+  {
+    id: 101,
+    first_name: "Maria",
+    last_name: "Santos",
+    specialization: "Shiatsu",
+    massage_pressure: "Medium",
+  },
+  {
+    id: 102,
+    first_name: "James",
+    last_name: "Wilson",
+    specialization: "Swedish",
+    massage_pressure: "Firm",
+  },
+  {
+    id: 103,
+    first_name: "Sarah",
+    last_name: "Lee",
+    specialization: "Deep Tissue",
+    massage_pressure: "Hard",
+  },
+];
+
+const FALLBACK_DRIVERS = [
+  {
+    id: 201,
+    first_name: "Michael",
+    last_name: "Johnson",
+  },
+  {
+    id: 202,
+    first_name: "Lisa",
+    last_name: "Chen",
+  },
+];
 
 const AppointmentForm = ({
   appointment = null,
@@ -36,65 +75,32 @@ const AppointmentForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [endTime, setEndTime] = useState(""); // Store calculated end time separately
 
-  // Add fallback data for therapists and drivers in case API calls fail
-  const FALLBACK_THERAPISTS = [
-    {
-      id: 101,
-      first_name: "Maria",
-      last_name: "Santos",
-      specialization: "Shiatsu",
-      massage_pressure: "Medium",
-    },
-    {
-      id: 102,
-      first_name: "James",
-      last_name: "Wilson",
-      specialization: "Swedish",
-      massage_pressure: "Firm",
-    },
-    {
-      id: 103,
-      first_name: "Sarah",
-      last_name: "Lee",
-      specialization: "Deep Tissue",
-      massage_pressure: "Hard",
-    },
-  ];
-
-  const FALLBACK_DRIVERS = [
-    {
-      id: 201,
-      first_name: "Michael",
-      last_name: "Johnson",
-    },
-    {
-      id: 202,
-      first_name: "Lisa",
-      last_name: "Chen",
-    },
-  ];
-
   const dispatch = useDispatch();
-  const { clients, services, loading } = useSelector(
+  const { clients, services, loading, staffMembers } = useSelector(
     (state) => state.scheduling
   );
 
-  // Use fallbacks when API data is empty
-  const availableTherapists = useSelector((state) =>
-    state.scheduling.availableTherapists?.length > 0
-      ? state.scheduling.availableTherapists
+  // Filter staffMembers to get therapists and drivers
+  // Use fallbacks when API data is empty or when staffMembers is not loaded
+  const availableTherapists = useMemo(() => {
+    return staffMembers?.length > 0
+      ? staffMembers.filter(
+          (member) => member.role === "therapist" || member.role === "Therapist"
+        )
       : import.meta.env.DEV
       ? FALLBACK_THERAPISTS
-      : []
-  );
+      : [];
+  }, [staffMembers]);
 
-  const availableDrivers = useSelector((state) =>
-    state.scheduling.availableDrivers?.length > 0
-      ? state.scheduling.availableDrivers
+  const availableDrivers = useMemo(() => {
+    return staffMembers?.length > 0
+      ? staffMembers.filter(
+          (member) => member.role === "driver" || member.role === "Driver"
+        )
       : import.meta.env.DEV
       ? FALLBACK_DRIVERS
-      : []
-  );
+      : [];
+  }, [staffMembers]);
 
   // Define calculateEndTime function first, before it's used in useEffect
   const calculateEndTime = useCallback(() => {
@@ -170,7 +176,16 @@ const AppointmentForm = ({
     console.log("AppointmentForm - Dispatching fetchClients and fetchServices");
     dispatch(fetchClients());
     dispatch(fetchServices());
-  }, [dispatch]);
+
+    // Fetch staff members to populate therapist and driver dropdowns
+    // This ensures data is available when the form is opened from any context
+    if (!staffMembers || staffMembers.length === 0) {
+      console.log(
+        "AppointmentForm - Dispatching fetchStaffMembers because staff data is missing."
+      );
+      dispatch(fetchStaffMembers());
+    }
+  }, [dispatch, staffMembers]);
 
   // Update end time when relevant form data changes
   useEffect(() => {
@@ -330,8 +345,9 @@ const AppointmentForm = ({
         [name]: selectedOptions,
       }));
     } else {
-      // Sanitize input before setting it in state
-      const sanitizedValue = type === "number" ? value : sanitizeString(value);
+      // Sanitize input before setting it in state (use lighter sanitization for better UX)
+      const sanitizedValue =
+        type === "number" ? value : sanitizeFormInput(value);
 
       setFormData((prev) => ({
         ...prev,

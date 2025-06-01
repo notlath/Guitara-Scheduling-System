@@ -5,13 +5,6 @@ import {
   sendAppointmentDelete,
   sendAppointmentUpdate,
 } from "../../services/webSocketService";
-// Helper to retrieve raw token without prefix
-const getToken = () => {
-  let token = localStorage.getItem("knoxToken");
-  if (!token) return null;
-  if (token.startsWith("Token ")) token = token.split(" ")[1];
-  return token;
-};
 
 // API URL based on environment
 const API_URL =
@@ -25,7 +18,7 @@ const API_URL =
 export const fetchAppointments = createAsyncThunk(
   "scheduling/fetchAppointments",
   async (_, { rejectWithValue }) => {
-    const token = getToken();
+    const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.get(`${API_URL}appointments/`, {
@@ -46,7 +39,7 @@ export const fetchAppointments = createAsyncThunk(
 export const fetchTodayAppointments = createAsyncThunk(
   "scheduling/fetchTodayAppointments",
   async (_, { rejectWithValue }) => {
-    const token = getToken();
+    const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.get(`${API_URL}appointments/today/`, {
@@ -68,7 +61,7 @@ export const fetchTodayAppointments = createAsyncThunk(
 export const fetchUpcomingAppointments = createAsyncThunk(
   "scheduling/fetchUpcomingAppointments",
   async (_, { rejectWithValue }) => {
-    const token = getToken();
+    const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.get(`${API_URL}appointments/upcoming/`, {
@@ -90,7 +83,7 @@ export const fetchUpcomingAppointments = createAsyncThunk(
 export const fetchAppointmentsByDate = createAsyncThunk(
   "scheduling/fetchAppointmentsByDate",
   async (date, { rejectWithValue }) => {
-    const token = getToken();
+    const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.get(`${API_URL}appointments/?date=${date}`, {
@@ -111,7 +104,7 @@ export const fetchAppointmentsByDate = createAsyncThunk(
 export const createAppointment = createAsyncThunk(
   "scheduling/createAppointment",
   async (appointmentData, { rejectWithValue }) => {
-    const token = getToken();
+    const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.post(
@@ -140,7 +133,7 @@ export const createAppointment = createAsyncThunk(
 export const updateAppointment = createAsyncThunk(
   "scheduling/updateAppointment",
   async ({ id, data }, { rejectWithValue }) => {
-    const token = getToken();
+    const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.put(`${API_URL}appointments/${id}/`, data, {
@@ -412,7 +405,7 @@ const FALLBACK_SERVICES = [
 // Fetch all services from the API endpoint
 export const fetchServices = createAsyncThunk(
   "scheduling/fetchServices",
-  async (_, { rejectWithValue }) => {
+  async () => {
     const token = localStorage.getItem("knoxToken");
     console.log("fetchServices: Starting API call to", `${API_URL}services/`);
     try {
@@ -508,10 +501,18 @@ export const fetchAvailability = createAsyncThunk(
 export const createAvailability = createAsyncThunk(
   "scheduling/createAvailability",
   async (availabilityData, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    console.log("Token in createAvailability:", token); // Added for debugging
+    if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.post(
         `${API_URL}availabilities/`,
-        availabilityData
+        availabilityData,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
       );
       return response.data;
     } catch (error) {
@@ -526,8 +527,18 @@ export const createAvailability = createAsyncThunk(
 export const updateAvailability = createAsyncThunk(
   "scheduling/updateAvailability",
   async ({ id, data }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
     try {
-      const response = await axios.put(`${API_URL}availabilities/${id}/`, data);
+      const response = await axios.put(
+        `${API_URL}availabilities/${id}/`,
+        data,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -541,8 +552,14 @@ export const updateAvailability = createAsyncThunk(
 export const deleteAvailability = createAsyncThunk(
   "scheduling/deleteAvailability",
   async (id, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
     try {
-      await axios.delete(`${API_URL}availabilities/${id}/`);
+      await axios.delete(`${API_URL}availabilities/${id}/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
       return id;
     } catch (error) {
       return rejectWithValue(
