@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import "../../styles/SystemInfo.css";
+import "../../styles/theme.css";
 
 const SystemInfoPage = () => {
   useEffect(() => {
