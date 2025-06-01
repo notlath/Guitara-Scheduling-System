@@ -10,7 +10,12 @@ const SystemInfoPage = () => {
   return (
     <div className="system-info-container">
       <div className="system-info-content">
-        <h1 className="system-info-title">System Information</h1>
+        <div className="system-info-title-section">
+          <h1 className="system-info-title">System Information</h1>
+          <p className="system-info-subtitle">
+            Technical details and specifications of the Royal Care platform
+          </p>
+        </div>
 
         <section className="info-section">
           <h2>Current Version</h2>
