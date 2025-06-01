@@ -9,6 +9,7 @@ import {
 import { setupWebSocket } from "../../services/webSocketService";
 import "../../styles/SchedulingDashboard.css";
 import AppointmentForm from "./AppointmentForm";
+import ErrorBoundary from "../common/ErrorBoundary";
 import AvailabilityManager from "./AvailabilityManager";
 import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
@@ -364,13 +365,15 @@ const SchedulingDashboard = () => {
         {view === "availability" && !isFormVisible && <AvailabilityManager />}
 
         {isFormVisible && (
-          <AppointmentForm
-            appointment={selectedAppointment}
-            onSubmitSuccess={handleFormSubmitSuccess}
-            onCancel={handleFormCancel}
-            selectedDate={selectedDate}
-            selectedTime={selectedTime}
-          />
+          <ErrorBoundary onReset={() => setIsFormVisible(false)}>
+            <AppointmentForm
+              appointment={selectedAppointment}
+              onSubmitSuccess={handleFormSubmitSuccess}
+              onCancel={handleFormCancel}
+              selectedDate={selectedDate}
+              selectedTime={selectedTime}
+            />
+          </ErrorBoundary>
         )}
       </div>
 

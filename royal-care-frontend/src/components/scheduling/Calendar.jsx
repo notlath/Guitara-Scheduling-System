@@ -10,7 +10,6 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(null);
   const [view, setView] = useState("month"); // 'month' or 'day'
-  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
 
   const dispatch = useDispatch();
   const { availableTherapists, availableDrivers, appointments } = useSelector(
@@ -227,10 +226,10 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
               <ul>
                 {availableTherapists.map((therapist) => (
                   <li key={therapist.id}>
-                    {therapist.user_details.first_name}{" "}
-                    {therapist.user_details.last_name} - Specialization:{" "}
-                    {therapist.user_details.specialization || "N/A"} - Massage
-                    Pressure: {therapist.user_details.massage_pressure || "N/A"}
+                    {therapist.first_name}{" "}
+                    {therapist.last_name} - Specialization:{" "}
+                    {therapist.specialization || "N/A"} - Massage
+                    Pressure: {therapist.massage_pressure || "N/A"}
                   </li>
                 ))}
               </ul>
@@ -245,9 +244,9 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
               <ul>
                 {availableDrivers.map((driver) => (
                   <li key={driver.id}>
-                    {driver.user_details.first_name}{" "}
-                    {driver.user_details.last_name} - Plate:{" "}
-                    {driver.user_details.motorcycle_plate || "N/A"}
+                    {driver.first_name}{" "}
+                    {driver.last_name} - Plate:{" "}
+                    {driver.motorcycle_plate || "N/A"}
                   </li>
                 ))}
               </ul>

@@ -15,7 +15,7 @@ const getToken = () => {
 
 // API URL based on environment
 const API_URL =
-  process.env.NODE_ENV === "production"
+  import.meta.env.MODE === "production"
     ? "/api/scheduling/"
     : "http://localhost:8000/api/scheduling/";
 
@@ -179,17 +179,18 @@ export const fetchAvailableTherapists = createAsyncThunk(
   "scheduling/fetchAvailableTherapists",
   async ({ date, start_time, end_time }, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
+    const url = `${API_URL}availabilities/available_therapists/?date=${date}&start_time=${start_time}&end_time=${end_time}`;
+    console.log('fetchAvailableTherapists: Starting API call to', url);
     try {
-      const response = await axios.get(
-        `${API_URL}availabilities/available_therapists/?date=${date}&start_time=${start_time}&end_time=${end_time}`,
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        }
-      );
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      console.log('fetchAvailableTherapists: Success, received', response.data.length, 'therapists');
       return response.data;
     } catch (error) {
+      console.error('fetchAvailableTherapists: Error', error.response?.data || error.message);
       return rejectWithValue(
         error.response?.data || "Could not fetch available therapists"
       );
@@ -202,17 +203,18 @@ export const fetchAvailableDrivers = createAsyncThunk(
   "scheduling/fetchAvailableDrivers",
   async ({ date, start_time, end_time }, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
+    const url = `${API_URL}availabilities/available_drivers/?date=${date}&start_time=${start_time}&end_time=${end_time}`;
+    console.log('fetchAvailableDrivers: Starting API call to', url);
     try {
-      const response = await axios.get(
-        `${API_URL}availabilities/available_drivers/?date=${date}&start_time=${start_time}&end_time=${end_time}`,
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        }
-      );
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      console.log('fetchAvailableDrivers: Success, received', response.data.length, 'drivers');
       return response.data;
     } catch (error) {
+      console.error('fetchAvailableDrivers: Error', error.response?.data || error.message);
       return rejectWithValue(
         error.response?.data || "Could not fetch available drivers"
       );
@@ -225,14 +227,17 @@ export const fetchClients = createAsyncThunk(
   "scheduling/fetchClients",
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
+    console.log('fetchClients: Starting API call to', `${API_URL}clients/`);
     try {
       const response = await axios.get(`${API_URL}clients/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
+      console.log('fetchClients: Success, received', response.data.length, 'clients');
       return response.data;
     } catch (error) {
+      console.error('fetchClients: Error', error.response?.data || error.message);
       return rejectWithValue(error.response?.data || "Could not fetch clients");
     }
   }
@@ -303,17 +308,19 @@ export const fetchServices = createAsyncThunk(
   "scheduling/fetchServices",
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
+    console.log('fetchServices: Starting API call to', `${API_URL}services/`);
     try {
       const response = await axios.get(`${API_URL}services/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
+      console.log('fetchServices: Success, received', response.data.length, 'services');
       return response.data;
     } catch (error) {
       console.log(
-        "Error fetching services from API, using fallback data:",
-        error
+        "fetchServices: Error fetching from API, using fallback data:",
+        error.response?.data || error.message
       );
       // Return hardcoded services as fallback when API fails
       return FALLBACK_SERVICES;

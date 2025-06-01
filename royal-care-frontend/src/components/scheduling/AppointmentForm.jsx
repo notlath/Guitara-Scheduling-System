@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   createAppointment,
+  fetchAvailableDrivers,
+  fetchAvailableTherapists,
   fetchClients,
   fetchServices,
   updateAppointment,
@@ -37,11 +39,82 @@ const AppointmentForm = ({
   const { clients, services, availableTherapists, availableDrivers, loading } =
     useSelector((state) => state.scheduling);
 
-  // Load clients and services on component mount
+  // Debug: Log the data arrays to check if they contain data
   useEffect(() => {
+    console.log('AppointmentForm Debug:', {
+      clients: clients.length ? clients : 'Empty',
+      services: services.length ? services : 'Empty',
+      availableTherapists: availableTherapists.length ? availableTherapists : 'Empty',
+      availableDrivers: availableDrivers.length ? availableDrivers : 'Empty'
+    });
+  }, [clients, services, availableTherapists, availableDrivers]);
+
+  // Debug: Log when dispatching API calls
+  useEffect(() => {
+    console.log('AppointmentForm - Dispatching fetchClients and fetchServices');
     dispatch(fetchClients());
     dispatch(fetchServices());
   }, [dispatch]);
+
+  // Define calculateEndTime function first, before it's used in useEffect
+  const calculateEndTime = useCallback(() => {
+    if (!formData.start_time || formData.services.length === 0 || !services || !services.length) return "";
+
+    // Find selected services
+    const selectedServices = services.filter((service) =>
+      formData.services.includes(service.id)
+    );
+
+    // Calculate total duration in minutes
+    const totalDurationMinutes = selectedServices.reduce(
+      (total, service) => total + (service.duration || 0),
+      0
+    );
+
+    // Parse start time
+    const [hours, minutes] = formData.start_time.split(":").map(Number);
+
+    // Calculate end time
+    const startDate = new Date();
+    startDate.setHours(hours, minutes, 0, 0);
+    const endDate = new Date(
+      startDate.getTime() + totalDurationMinutes * 60000
+    );
+
+    return `${endDate.getHours().toString().padStart(2, "0")}:${endDate
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}`;
+  }, [formData.start_time, formData.services, services]);
+
+  // Debug: Log when form data changes that should trigger therapist/driver fetching
+  useEffect(() => {
+    if (formData.date && formData.start_time && formData.services.length > 0) {
+      const end_time = calculateEndTime();
+      console.log('AppointmentForm - Fetching available staff with params:', {
+        date: formData.date,
+        start_time: formData.start_time,
+        end_time: end_time,
+        services: formData.services
+      });
+      if (end_time) {
+        dispatch(
+          fetchAvailableTherapists({
+            date: formData.date,
+            start_time: formData.start_time,
+            end_time: end_time,
+          })
+        );
+        dispatch(
+          fetchAvailableDrivers({
+            date: formData.date,
+            start_time: formData.start_time,
+            end_time: end_time,
+          })
+        );
+      }
+    }
+  }, [formData.services, formData.date, formData.start_time, dispatch, calculateEndTime]);
 
   // If editing an existing appointment, populate the form
   useEffect(() => {
@@ -62,49 +135,66 @@ const AppointmentForm = ({
   // Update form when selected date/time changes
   useEffect(() => {
     if (selectedDate) {
+      const formattedDate = new Date(selectedDate).toISOString().split("T")[0];
       setFormData((prev) => ({
         ...prev,
-        date: new Date(selectedDate).toISOString().split("T")[0],
+        date: formattedDate,
       }));
+
+      // Fetch available therapists and drivers when date changes
+      if (formData.start_time) {
+        const end_time = calculateEndTime();
+        dispatch(
+          fetchAvailableTherapists({
+            date: formattedDate,
+            start_time: formData.start_time,
+            end_time: end_time,
+          })
+        );
+        dispatch(
+          fetchAvailableDrivers({
+            date: formattedDate,
+            start_time: formData.start_time,
+            end_time: end_time,
+          })
+        );
+      }
     }
     if (selectedTime) {
       setFormData((prev) => ({
         ...prev,
         start_time: selectedTime,
       }));
+
+      // Fetch available therapists and drivers when time changes
+      if (formData.date) {
+        const end_time = calculateEndTime();
+        dispatch(
+          fetchAvailableTherapists({
+            date: formData.date,
+            start_time: selectedTime,
+            end_time: end_time,
+          })
+        );
+        dispatch(
+          fetchAvailableDrivers({
+            date: formData.date,
+            start_time: selectedTime,
+            end_time: end_time,
+          })
+        );
+      }
     }
-  }, [selectedDate, selectedTime]);
-
-  // Calculate end time based on selected services and start time
-  const calculateEndTime = () => {
-    if (!formData.start_time || formData.services.length === 0) return "";
-
-    // Find selected services
-    const selectedServices = services.filter((service) =>
-      formData.services.includes(service.id)
-    );
-
-    // Calculate total duration in minutes
-    const totalDurationMinutes = selectedServices.reduce(
-      (total, service) => total + service.duration,
-      0
-    );
-
-    // Parse start time
-    const [hours, minutes] = formData.start_time.split(":").map(Number);
-
-    // Calculate end time
-    const startDate = new Date();
-    startDate.setHours(hours, minutes, 0, 0);
-    const endDate = new Date(
-      startDate.getTime() + totalDurationMinutes * 60000
-    );
-
-    return `${endDate.getHours().toString().padStart(2, "0")}:${endDate
-      .getMinutes()
-      .toString()
-      .padStart(2, "0")}`;
-  };
+  }, [
+    selectedDate,
+    selectedTime,
+    dispatch,
+    formData.date,
+    formData.start_time,
+    formData.services,
+    services,
+    calculateEndTime,
+  ]);
 
   const handleChange = (e) => {
     const { name, value, type, options } = e.target;
@@ -157,16 +247,22 @@ const AppointmentForm = ({
 
     setIsSubmitting(true);
 
-    // Calculate end time based on services duration
-    const end_time = calculateEndTime();
-
     try {
+      // Calculate end time based on services duration
+      const end_time = calculateEndTime();
+      
+      if (!end_time) {
+        throw new Error("Could not calculate end time. Please check services selected.");
+      }
+
       const appointmentData = {
         ...formData,
         end_time,
         status: "pending",
         payment_status: "unpaid",
       };
+
+      console.log("Submitting appointment data:", appointmentData);
 
       if (appointment) {
         // Update existing appointment
@@ -183,7 +279,10 @@ const AppointmentForm = ({
       onSubmitSuccess();
     } catch (error) {
       console.error("Error submitting appointment:", error);
-      setErrors((prev) => ({ ...prev, form: "Failed to save appointment" }));
+      setErrors((prev) => ({ 
+        ...prev, 
+        form: `Failed to save appointment: ${error.message || "Unknown error"}` 
+      }));
     } finally {
       setIsSubmitting(false);
     }
@@ -210,11 +309,15 @@ const AppointmentForm = ({
             className={errors.client ? "error" : ""}
           >
             <option value="">Select a client</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.first_name} {client.last_name} - {client.phone_number}
-              </option>
-            ))}
+            {clients && clients.length > 0 ? (
+              clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.first_name} {client.last_name} - {client.phone_number}
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>Loading clients...</option>
+            )}
           </select>
           {errors.client && <div className="error-text">{errors.client}</div>}
         </div>
@@ -229,11 +332,15 @@ const AppointmentForm = ({
             onChange={handleChange}
             className={errors.services ? "error" : ""}
           >
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>
-                {service.name} - {service.duration} min - ${service.price}
-              </option>
-            ))}
+            {services && services.length > 0 ? (
+              services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name} - {service.duration} min - ${service.price}
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>Loading services...</option>
+            )}
           </select>
           {errors.services && (
             <div className="error-text">{errors.services}</div>
@@ -250,17 +357,21 @@ const AppointmentForm = ({
             className={errors.therapist ? "error" : ""}
           >
             <option value="">Select a therapist</option>
-            {availableTherapists.map((therapist) => (
-              <option
-                key={therapist.user_details.id}
-                value={therapist.user_details.id}
-              >
-                {therapist.user_details.first_name}{" "}
-                {therapist.user_details.last_name} -
-                {therapist.user_details.specialization || "General"} -
-                {therapist.user_details.massage_pressure || "Standard"}
+            {availableTherapists && availableTherapists.length > 0 ? (
+              availableTherapists.map((therapist) => (
+                <option key={therapist.id} value={therapist.id}>
+                  {therapist.first_name} {therapist.last_name} -{" "}
+                  {therapist.specialization || "General"} -{" "}
+                  {therapist.massage_pressure || "Standard"}{" "}
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>
+                {formData.date && formData.start_time && formData.services.length > 0
+                  ? "No available therapists for selected time"
+                  : "Select date, time and services first"}
               </option>
-            ))}
+            )}
           </select>
           {errors.therapist && (
             <div className="error-text">{errors.therapist}</div>
@@ -276,15 +387,20 @@ const AppointmentForm = ({
             onChange={handleChange}
           >
             <option value="">No driver needed</option>
-            {availableDrivers.map((driver) => (
-              <option
-                key={driver.user_details.id}
-                value={driver.user_details.id}
-              >
-                {driver.user_details.first_name} {driver.user_details.last_name}{" "}
-                -{driver.user_details.motorcycle_plate || "No plate"}
+            {availableDrivers && availableDrivers.length > 0 ? (
+              availableDrivers.map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  {driver.first_name} {driver.last_name} -{" "}
+                  {driver.motorcycle_plate || "No plate"}{" "}
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>
+                {formData.date && formData.start_time
+                  ? "No available drivers for selected time"
+                  : "Select date and time first"}
               </option>
-            ))}
+            )}
           </select>
         </div>
 
@@ -295,7 +411,7 @@ const AppointmentForm = ({
               type="date"
               id="date"
               name="date"
-              value={formData.date}
+              value={formData.date || ""}
               onChange={handleChange}
               className={errors.date ? "error" : ""}
             />
@@ -308,7 +424,7 @@ const AppointmentForm = ({
               type="time"
               id="start_time"
               name="start_time"
-              value={formData.start_time}
+              value={formData.start_time || ""}
               onChange={handleChange}
               className={errors.start_time ? "error" : ""}
             />
@@ -323,7 +439,7 @@ const AppointmentForm = ({
               type="time"
               id="end_time"
               name="end_time"
-              value={calculateEndTime()}
+              value={calculateEndTime() || ""}
               disabled
             />
           </div>
