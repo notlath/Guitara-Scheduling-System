@@ -1,0 +1,173 @@
+.system-info-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+}
+
+.system-info-content {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+.system-info-title {
+  color: #333;
+  font-size: 2.5rem;
+  border-bottom: 2px solid #4a69bd;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+
+.info-section {
+  margin-bottom: 3rem;
+}
+
+.info-section h2 {
+  color: #4a69bd;
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+}
+
+.info-section h3 {
+  color: #555;
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.info-section h4 {
+  color: #444;
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.info-section p {
+  line-height: 1.6;
+  color: #555;
+}
+
+.info-section ul {
+  padding-left: 1.5rem;
+}
+
+.info-section li {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.version-info {
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+}
+
+.version-badge {
+  display: inline-block;
+  background-color: #f39c12;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.tech-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.stack-group {
+  flex: 1;
+  min-width: 300px;
+}
+
+.tech-label {
+  font-weight: 600;
+  color: #444;
+  margin-right: 0.5rem;
+}
+
+.architecture {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.architecture-item {
+  background-color: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 6px;
+  border-left: 4px solid #4a69bd;
+}
+
+.security-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.security-item {
+  background-color: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 6px;
+  border-left: 4px solid #27ae60;
+}
+
+.security-item ul {
+  padding-left: 1.25rem;
+}
+
+.requirements {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.requirements-group {
+  background-color: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 6px;
+}
+
+.roadmap-list {
+  background-color: #f9f9f9;
+  padding: 1.5rem 1.5rem 1.5rem 3rem;
+  border-radius: 6px;
+  list-style-type: circle;
+}
+
+.roadmap-list li {
+  margin-bottom: 0.75rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .system-info-container {
+    padding: 1rem;
+  }
+
+  .system-info-content {
+    padding: 1.5rem;
+  }
+
+  .system-info-title {
+    font-size: 2rem;
+  }
+
+  .tech-stack,
+  .security-info,
+  .requirements {
+    display: block;
+  }
+
+  .stack-group,
+  .security-item,
+  .requirements-group {
+    margin-bottom: 1.5rem;
+  }
+}
