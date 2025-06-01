@@ -44,14 +44,25 @@ const SchedulingDashboard = () => {
     dispatch(fetchUpcomingAppointments());
   }, [dispatch]);
 
-  // Setup websocket connection for real-time updates
+  // Setup websocket connection for real-time updates with improved error handling
   useEffect(() => {
-    const cleanupWebSocket = setupWebSocket({
-      onAppointmentUpdate: () => {
-        // Refresh appointments when we receive real-time updates
-        refreshAppointments();
-      },
-    });
+    let cleanupWebSocket = null;
+
+    try {
+      cleanupWebSocket = setupWebSocket({
+        onAppointmentUpdate: () => {
+          // Refresh appointments when we receive real-time updates
+          refreshAppointments();
+        },
+      });
+    } catch (err) {
+      console.error("Error setting up WebSocket:", err);
+      // Start polling immediately if WebSocket setup fails
+      if (!pollingInterval) {
+        const interval = setInterval(() => refreshAppointments(), 30000); // Poll every 30 seconds
+        setPollingInterval(interval);
+      }
+    }
 
     // Listen for WebSocket status changes
     const handleStatusChange = (event) => {
@@ -61,7 +72,9 @@ const SchedulingDashboard = () => {
           clearInterval(pollingInterval);
           setPollingInterval(null);
         }
-      } else {
+      } else if (
+        ["disconnected", "error", "disabled"].includes(event.detail.status)
+      ) {
         // Start polling if WebSocket disconnects and we're not already polling
         if (!pollingInterval) {
           const interval = setInterval(() => refreshAppointments(), 30000); // Poll every 30 seconds
@@ -75,7 +88,11 @@ const SchedulingDashboard = () => {
     // Cleanup websocket connection and event listeners when component unmounts
     return () => {
       if (cleanupWebSocket) {
-        cleanupWebSocket();
+        try {
+          cleanupWebSocket();
+        } catch (err) {
+          console.error("Error cleaning up WebSocket:", err);
+        }
       }
 
       window.removeEventListener("websocket-status", handleStatusChange);
@@ -367,6 +384,11 @@ const SchedulingDashboard = () => {
         {isFormVisible && (
           <ErrorBoundary onReset={() => setIsFormVisible(false)}>
             <AppointmentForm
+              key={
+                selectedAppointment
+                  ? `edit-${selectedAppointment.id}`
+                  : "create-new"
+              }
               appointment={selectedAppointment}
               onSubmitSuccess={handleFormSubmitSuccess}
               onCancel={handleFormCancel}

@@ -36,9 +36,67 @@ const AppointmentForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [endTime, setEndTime] = useState(""); // Store calculated end time separately
 
+  // Fallback data for development/testing when API fails
+  const FALLBACK_THERAPISTS = [
+    {
+      id: 101,
+      first_name: "Maria",
+      last_name: "Santos",
+      specialization: "Shiatsu",
+      massage_pressure: "Medium",
+    },
+    {
+      id: 102,
+      first_name: "Juan",
+      last_name: "Cruz",
+      specialization: "Swedish",
+      massage_pressure: "Firm",
+    },
+    {
+      id: 103,
+      first_name: "Ana",
+      last_name: "Reyes",
+      specialization: "Thai",
+      massage_pressure: "Light",
+    },
+  ];
+
+  const FALLBACK_DRIVERS = [
+    {
+      id: 201,
+      first_name: "Pedro",
+      last_name: "Gomez",
+      motorcycle_plate: "ABC123",
+    },
+    {
+      id: 202,
+      first_name: "Carlo",
+      last_name: "Mendoza",
+      motorcycle_plate: "XYZ789",
+    },
+  ];
+
   const dispatch = useDispatch();
-  const { clients, services, availableTherapists, availableDrivers, loading } =
-    useSelector((state) => state.scheduling);
+  const { clients, services, loading } = useSelector(
+    (state) => state.scheduling
+  );
+
+  // Use fallbacks when API data is empty
+  const availableTherapists = useSelector((state) =>
+    state.scheduling.availableTherapists?.length > 0
+      ? state.scheduling.availableTherapists
+      : import.meta.env.DEV
+      ? FALLBACK_THERAPISTS
+      : []
+  );
+
+  const availableDrivers = useSelector((state) =>
+    state.scheduling.availableDrivers?.length > 0
+      ? state.scheduling.availableDrivers
+      : import.meta.env.DEV
+      ? FALLBACK_DRIVERS
+      : []
+  );
 
   // Define calculateEndTime function first, before it's used in useEffect
   const calculateEndTime = useCallback(() => {
@@ -113,30 +171,47 @@ const AppointmentForm = ({
     setEndTime(calculatedEndTime);
   }, [formData.services, formData.start_time, calculateEndTime]);
 
-  // Debug: Log when form data changes that should trigger therapist/driver fetching
+  // Fetch available therapists and drivers when form data changes
   useEffect(() => {
     if (formData.date && formData.start_time && formData.services.length > 0) {
+      // Calculate end time
+      const calculatedEndTime = calculateEndTime();
+
       console.log("AppointmentForm - Fetching available staff with params:", {
         date: formData.date,
         start_time: formData.start_time,
-        end_time: endTime,
+        end_time: calculatedEndTime,
         services: formData.services,
       });
 
-      if (endTime) {
-        dispatch(
-          fetchAvailableTherapists({
-            date: formData.date,
-            start_time: formData.start_time,
-            end_time: endTime,
-          })
-        );
-        dispatch(
-          fetchAvailableDrivers({
-            date: formData.date,
-            start_time: formData.start_time,
-            end_time: endTime,
-          })
+      // Only fetch if we have a valid end time
+      if (calculatedEndTime) {
+        // Add timestamps to help debug API timing issues
+        console.log(`Fetching staff at ${new Date().toISOString()}`);
+
+        // Make the API calls with the calculated end time
+        try {
+          dispatch(
+            fetchAvailableTherapists({
+              date: formData.date,
+              start_time: formData.start_time,
+              end_time: calculatedEndTime,
+            })
+          );
+
+          dispatch(
+            fetchAvailableDrivers({
+              date: formData.date,
+              start_time: formData.start_time,
+              end_time: calculatedEndTime,
+            })
+          );
+        } catch (error) {
+          console.error("Error fetching available staff:", error);
+        }
+      } else {
+        console.warn(
+          "Cannot fetch available staff - end time calculation failed"
         );
       }
     }
@@ -144,8 +219,8 @@ const AppointmentForm = ({
     formData.date,
     formData.start_time,
     formData.services,
-    endTime,
     dispatch,
+    calculateEndTime,
   ]);
 
   // If editing an existing appointment, populate the form
@@ -256,14 +331,39 @@ const AppointmentForm = ({
         );
       }
 
+      // Create a sanitized copy of form data to ensure no undefined values
+      const sanitizedFormData = {
+        client: formData.client || "",
+        services: Array.isArray(formData.services) ? formData.services : [],
+        therapist: formData.therapist || "",
+        driver: formData.driver || "",
+        date: formData.date || "",
+        start_time: formData.start_time || "",
+        location: formData.location || "",
+        notes: formData.notes || "",
+      };
+
+      // Prepare appointment data with required fields
       const appointmentData = {
-        ...formData,
+        ...sanitizedFormData,
         end_time: endTime,
         status: "pending",
         payment_status: "unpaid",
       };
 
       console.log("Submitting appointment data:", appointmentData);
+
+      // Validate critical fields again before API call
+      if (
+        !appointmentData.client ||
+        !appointmentData.therapist ||
+        !appointmentData.date ||
+        !appointmentData.start_time ||
+        !appointmentData.end_time ||
+        !appointmentData.services.length
+      ) {
+        throw new Error("Missing required fields. Please check your form.");
+      }
 
       if (appointment) {
         // Update existing appointment
@@ -277,12 +377,17 @@ const AppointmentForm = ({
 
       // Reset form and call success callback
       setFormData(initialFormState);
+      setEndTime("");
       onSubmitSuccess();
     } catch (error) {
       console.error("Error submitting appointment:", error);
+      // Display friendly error message to user
+      const errorMessage =
+        error.message ||
+        (typeof error === "string" ? error : "Unknown error occurred");
       setErrors((prev) => ({
         ...prev,
-        form: `Failed to save appointment: ${error.message || "Unknown error"}`,
+        form: `Failed to save appointment: ${errorMessage}`,
       }));
     } finally {
       setIsSubmitting(false);
@@ -313,7 +418,7 @@ const AppointmentForm = ({
             {clients && clients.length > 0 ? (
               clients.map((client) => (
                 <option key={client.id} value={client.id}>
-                  {client.first_name} {client.last_name} -{" "}
+                  {client.first_name || ""} {client.last_name || ""} -{" "}
                   {client.phone_number || "No phone"}
                 </option>
               ))
@@ -339,7 +444,8 @@ const AppointmentForm = ({
             {services && services.length > 0 ? (
               services.map((service) => (
                 <option key={service.id} value={service.id}>
-                  {service.name} - {service.duration} min - ${service.price}
+                  {service.name || "Unnamed Service"} - {service.duration || 0}{" "}
+                  min - ${service.price || 0}
                 </option>
               ))
             ) : (
@@ -366,9 +472,9 @@ const AppointmentForm = ({
             {availableTherapists && availableTherapists.length > 0 ? (
               availableTherapists.map((therapist) => (
                 <option key={therapist.id} value={therapist.id}>
-                  {therapist.first_name} {therapist.last_name} -{" "}
+                  {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
                   {therapist.specialization || "General"} -{" "}
-                  {therapist.massage_pressure || "Standard"}{" "}
+                  {therapist.massage_pressure || "Standard"}
                 </option>
               ))
             ) : (
@@ -398,8 +504,8 @@ const AppointmentForm = ({
             {availableDrivers && availableDrivers.length > 0 ? (
               availableDrivers.map((driver) => (
                 <option key={driver.id} value={driver.id}>
-                  {driver.first_name} {driver.last_name} -{" "}
-                  {driver.motorcycle_plate || "No plate"}{" "}
+                  {driver.first_name || ""} {driver.last_name || ""} -{" "}
+                  {driver.motorcycle_plate || "No plate"}
                 </option>
               ))
             ) : (
@@ -449,7 +555,15 @@ const AppointmentForm = ({
               name="end_time"
               value={endTime}
               disabled
+              className={
+                !endTime && formData.services.length > 0 ? "error" : ""
+              }
             />
+            {!endTime &&
+              formData.services.length > 0 &&
+              formData.start_time && (
+                <div className="error-text">Could not calculate end time</div>
+              )}
           </div>
         </div>
 

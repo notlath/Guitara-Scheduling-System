@@ -39,6 +39,8 @@ const WebSocketStatus = () => {
       {status === "disconnected" && "Real-time updates disconnected"}
       {status === "connecting" && "Connecting to real-time updates..."}
       {status === "error" && "Error connecting to real-time updates"}
+      {status === "disabled" &&
+        "Real-time updates unavailable - using polling mode"}
 
       {status !== "connected" && (
         <button className="close-button" onClick={() => setVisible(false)}>
