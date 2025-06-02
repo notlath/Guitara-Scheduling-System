@@ -168,14 +168,14 @@ def create_initial_services(apps, schema_editor):
     for service_data in services_data:
         Service.objects.create(**service_data)
         print(f"Created service: {service_data['name']} (ID: {service_data['id']})")
-
 """
+
     )
 
     # Update the migration file
     with open(migration_file, 'w', encoding='utf-8') as f:
         f.write(new_content)
-        
+        f.write("\n")
     print(f"Updated {migration_file} with initial data migration")
     return True
 

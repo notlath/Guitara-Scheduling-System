@@ -4,7 +4,7 @@ import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import rcLogo from "../../assets/images/rc_logo.jpg";
 import styles from "../../pages/LoginPage/LoginPage.module.css";
 import { api } from "../../services/api";
-import { sanitizePhone, sanitizeString } from "../../utils/sanitization";
+import { sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
 
@@ -62,24 +62,32 @@ const Register = () => {
       setIsCheckingUsername(false);
     }
   };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     let sanitizedValue;
+
     // Apply appropriate sanitization based on field type
     if (name === "password" || name === "passwordConfirm") {
       sanitizedValue = value; // Skip sanitization for passwords
     } else if (name === "email") {
       // Special handling for email to preserve @ and . characters
-      sanitizedValue = value.replace(/<[^>]*>/g, ""); // Only remove HTML tags
+      // Only remove HTML tags, but keep email specific characters
+      sanitizedValue = value.replace(/<[^>]*>/g, "");
     } else if (name === "phone_number") {
-      sanitizedValue = sanitizePhone(value);
+      // Format: starts with + followed by digits only
+      const digitsOnly = value.replace(/[^\d+]/g, "");
 
-      // Format phone number as international format
+      // Ensure only one + at the beginning
+      sanitizedValue = digitsOnly
+        .replace(/^\+?/, "+")
+        .replace(/\+(?=.*\+)/g, "");
+
+      // If no + is present, add one at the beginning
       if (sanitizedValue && !sanitizedValue.startsWith("+")) {
-        sanitizedValue = "+" + sanitizedValue.replace(/^\+/, "");
-      } // Role handling removed as it's no longer a user input fieldelse {
+        sanitizedValue = "+" + sanitizedValue;
+      }
+    } else {
       sanitizedValue = sanitizeString(value);
     }
 
@@ -131,18 +139,21 @@ const Register = () => {
     }
 
     const phoneError = validateInput("phone", formData.phone_number);
-    if (phoneError) newErrors.phone_number = phoneError; // Role is not validated as it's no longer a user input field
-    // Default "Driver" role is automatically assigned
+    if (phoneError) newErrors.phone_number = phoneError;
 
     setErrors(newErrors);
+    console.log("Validation errors:", newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Form data before validation:", formData);
 
     // Validate form before submission
-    if (!validateForm()) {
+    const isValid = validateForm();
+    if (!isValid) {
+      console.log("Form validation failed with errors:", errors);
       return;
     }
 
@@ -157,8 +168,11 @@ const Register = () => {
       phone_number: formData.phone_number,
     };
 
+    console.log("Submitting data to API:", submissionData);
+
     try {
-      await api.post("/auth/register/", submissionData);
+      const response = await api.post("/auth/register/", submissionData);
+      console.log("Registration successful:", response.data);
       setSuccess(true);
 
       // Redirect to login after 3 seconds
@@ -166,10 +180,11 @@ const Register = () => {
         navigate("/login");
       }, 3000);
     } catch (err) {
-      console.error(err);
+      console.error("Registration error:", err);
       // Handle API errors
       if (err.response?.data) {
         const apiErrors = err.response.data;
+        console.log("API returned errors:", apiErrors);
         const formattedErrors = {};
 
         // Format API errors to match our error state structure
@@ -256,7 +271,6 @@ const Register = () => {
                       className={`${styles.formInput} ${
                         errors.email ? styles.inputError : ""
                       }`}
-                      pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
                       title="Enter a valid email address"
                       required
                     />
@@ -281,6 +295,7 @@ const Register = () => {
                       pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
                       title="Password must be at least 8 characters and include uppercase, lowercase, number and special character"
                       required
+                      autoComplete="new-password"
                     />
                     {errors.password && (
                       <div className={styles.errorText}>{errors.password}</div>
@@ -304,6 +319,7 @@ const Register = () => {
                         errors.passwordConfirm ? styles.inputError : ""
                       }`}
                       required
+                      autoComplete="new-password"
                     />
                     {errors.passwordConfirm && (
                       <div className={styles.errorText}>
@@ -319,7 +335,7 @@ const Register = () => {
                       Phone Number
                     </label>
                     <input
-                      type="tel"
+                      type="text"
                       id="phone_number"
                       name="phone_number"
                       value={formData.phone_number}
@@ -327,15 +343,17 @@ const Register = () => {
                       className={`${styles.formInput} ${
                         errors.phone_number ? styles.inputError : ""
                       }`}
-                      pattern="^\+[0-9]{7,15}$"
-                      title="Enter phone number in international format (e.g., +123456789)"
                       placeholder="+123456789"
+                      title="Enter international format with + and 7-15 digits"
                     />
                     {errors.phone_number && (
                       <div className={styles.errorText}>
                         {errors.phone_number}
                       </div>
                     )}
+                    <div className={styles.helperText}>
+                      Format: +[country code][number] (e.g., +12345678901)
+                    </div>
                   </div>
                 </div>
 

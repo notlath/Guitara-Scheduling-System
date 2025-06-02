@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import rcLogo from "../assets/images/rc_logo.jpg";
 import "../styles/MainLayout.css";
 
@@ -8,6 +9,11 @@ const MainLayout = () => {
   const location = useLocation();
   const [showHelpSublinks, setShowHelpSublinks] = useState(false);
   const [showAboutSublinks, setShowAboutSublinks] = useState(false);
+  // Get current user from Redux store
+  const { user } = useSelector((state) => state.auth);
+  
+  // Check if user is therapist or driver
+  const isTherapistOrDriver = user && (user.role === 'therapist' || user.role === 'driver');
 
   useEffect(() => {
     console.log("Current location:", location.pathname);
@@ -43,38 +49,61 @@ const MainLayout = () => {
           </NavLink>
         </div>
         <nav className="nav-links">
-          <NavLink
-            to="/dashboard/scheduling"
-            className={({ isActive }) => {
-              console.log("Scheduling link active state:", isActive);
-              return isActive ? "active-link" : "";
-            }}
-            onClick={() => {
-              console.log(
-                "Scheduling link clicked, navigating to /dashboard/scheduling"
-              );
-            }}
-          >
-            Bookings
-          </NavLink>
-          <NavLink
-            to="/dashboard/attendance"
-            className={({ isActive }) => (isActive ? "active-link" : "")}
-          >
-            Attendance
-          </NavLink>
-          <NavLink
-            to="/dashboard/sales-reports"
-            className={({ isActive }) => (isActive ? "active-link" : "")}
-          >
-            Sales & Reports
-          </NavLink>
-          <NavLink
-            to="/dashboard/inventory"
-            className={({ isActive }) => (isActive ? "active-link" : "")}
-          >
-            Inventory
-          </NavLink>
+          {isTherapistOrDriver ? (
+            <NavLink
+              to="/dashboard/scheduling"
+              className={({ isActive }) => {
+                console.log("Schedule link active state:", isActive);
+                return isActive ? "active-link" : "";
+              }}
+              onClick={() => {
+                console.log(
+                  "Schedule link clicked, navigating to /dashboard/scheduling"
+                );
+              }}
+            >
+              Schedule
+            </NavLink>
+          ) : (
+            <>
+              <NavLink
+                to="/dashboard/scheduling"
+                className={({ isActive }) => {
+                  console.log("Bookings link active state:", isActive);
+                  return isActive ? "active-link" : "";
+                }}
+                onClick={() => {
+                  console.log(
+                    "Bookings link clicked, navigating to /dashboard/scheduling"
+                  );
+                }}
+              >
+                Bookings
+              </NavLink>
+              <NavLink
+                to="/dashboard/attendance"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                Attendance
+              </NavLink>
+            </>
+          )}
+          {!isTherapistOrDriver && (
+            <>
+              <NavLink
+                to="/dashboard/sales-reports"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                Sales & Reports
+              </NavLink>
+              <NavLink
+                to="/dashboard/inventory"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                Inventory
+              </NavLink>
+            </>
+          )}
         </nav>
         <div className="divider"></div>
         <div className="bottom-links">
