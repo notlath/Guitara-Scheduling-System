@@ -10,6 +10,24 @@ This directory contains files that were moved from the main project as they appe
 - **fix_migration_records.py** - Script to mark problematic migrations as applied without running them
 - **comprehensive_migration_fix.py** - A more complete migration fixer script
 - **apply_migration.py** - Helper script for applying specific migrations
+- **fix_migration.py** - Script to fix inconsistent migration history
+- **fix_sqlite_migrations.py** - Script to repair SQLite migration records
+- **fresh_migrations.py** - Script to create fresh migrations after database reset
+
+### Database Scripts (`/database_scripts`)
+
+- **check_services.py** - Script to verify service records in the database
+- **check_services_and_create.py** - Script to check services and create missing ones
+- **verify_database.py** - Script to verify database state and connection
+- **repair_database.py** - Script to repair corrupted or inconsistent database state
+- **sync_services.py** - Script to synchronize service data between database and code
+- **add_missing_services.py** - Script to add missing service records to the database
+- **drop_supabase_tables.py** - Script to drop tables from Supabase database
+
+### WebSocket Scripts (`/websocket_scripts`)
+
+- **check_websocket.py** - Script to test WebSocket functionality
+- **verify_websocket.py** - Script to verify WebSocket connections and handlers
 
 ### Test Scripts (`/test_scripts`)
 
@@ -24,10 +42,11 @@ This directory contains files that were moved from the main project as they appe
 ### Documentation (`/documentation`)
 
 - **archive_log_2025-06-01.md** - Log file documenting which files were archived on June 1, 2025, and why
+- **archive_log_2025-06-02.md** - Log file documenting which migration and testing scripts were archived on June 2, 2025
 
 ## Important Note
 
-These files were archived on June 1, 2025, as they appeared to be no longer needed for regular development. However, they are preserved here in case they are needed in the future.
+These files were archived as they appeared to be no longer needed for regular development. However, they are preserved here in case they are needed in the future.
 
 If you encounter any issues after these files were moved, you can either:
 

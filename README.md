@@ -14,6 +14,7 @@ A web-based scheduling system designed to streamline operations for Royal Care H
 - [Configuration](#-configuration)
 - [API Endpoints](#-api-endpoints)
 - [Contributing](#-contributing)
+- [Archive](#-archive)
 - [License](#-license)
 - [Acknowledgments](#-acknowledgments)
 - [Contact](#-contact)
@@ -148,6 +149,19 @@ npm run dev
 
 ---
 
+## 🗄️ Archive
+
+The project includes an `/archive` directory that contains utility scripts, migration helpers, and test files that were used during development but are no longer needed for day-to-day operations. These files are preserved for reference purposes.
+
+See [Archive README](archive/README.md) for a detailed listing of archived files and why they were stored there.
+
+Recent archives:
+
+- June 2, 2025 - Migration and test scripts after database schema stabilization ([details](archive/documentation/archive_log_2025-06-02.md))
+- June 1, 2025 - Initial migration scripts and temporary files ([details](archive/documentation/archive_log_2025-06-01.md))
+
+---
+
 ## 🤝 Contributing
 
 1. Fork the repository.
@@ -162,3 +176,21 @@ npm run dev
 ## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 📝 Development Notes
+
+### Repository Organization
+
+This repository is actively maintained and organized for clarity:
+
+- **Core Code** - Essential application code lives in the main directories
+- **Utility Scripts** - Located in their respective app folders or root directory
+- **Archive** - One-time scripts, migration helpers, and test files have been moved to the `/archive` directory
+
+If you're looking for specific utility scripts (database migrations, service setup, etc.), check the archive first as they may have been moved there after being used.
+
+### Database Configuration
+
+The project now uses SQLite for development, but supports PostgreSQL for production. The transition from Supabase/PostgreSQL to SQLite has been completed as of June 2025.
