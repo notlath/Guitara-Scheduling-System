@@ -507,7 +507,7 @@ const AppointmentForm = ({
               services.map((service) => (
                 <option key={service.id} value={service.id}>
                   {service.name || "Unnamed Service"} - {service.duration || 0}{" "}
-                  min - ${service.price || 0}
+                  min - ₱{service.price || 0}
                 </option>
               ))
             ) : (

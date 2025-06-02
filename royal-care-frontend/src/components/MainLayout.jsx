@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import rcLogo from "../assets/images/rc_logo.jpg";
 import "../styles/MainLayout.css";
 
@@ -11,9 +11,10 @@ const MainLayout = () => {
   const [showAboutSublinks, setShowAboutSublinks] = useState(false);
   // Get current user from Redux store
   const { user } = useSelector((state) => state.auth);
-  
+
   // Check if user is therapist or driver
-  const isTherapistOrDriver = user && (user.role === 'therapist' || user.role === 'driver');
+  const isTherapistOrDriver =
+    user && (user.role === "therapist" || user.role === "driver");
 
   useEffect(() => {
     console.log("Current location:", location.pathname);
