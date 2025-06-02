@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   createAppointment,
-  fetchAvailableDrivers,
   fetchAvailableTherapists,
   fetchClients,
   fetchServices,
@@ -59,7 +58,7 @@ const AppointmentForm = ({
 }) => {
   const initialFormState = {
     client: "",
-    services: [],
+    services: "", // Changed from array to string for single service selection
     therapist: "",
     driver: "",
     date: selectedDate
@@ -102,53 +101,37 @@ const AppointmentForm = ({
       : [];
   }, [staffMembers]);
 
-  // Define calculateEndTime function first, before it's used in useEffect
+  // Define calculateEndTime function using useCallback to prevent recreation on each render
   const calculateEndTime = useCallback(() => {
-    if (
-      !formData.start_time ||
-      !formData.services.length ||
-      !services ||
-      !services.length
-    ) {
-      return "";
-    }
-
     try {
-      // Find selected services
-      const selectedServices = services.filter((service) =>
-        formData.services.includes(service.id)
-      );
-
-      if (!selectedServices.length) {
-        console.log("No matching services found for the selected service IDs");
+      if (!formData.start_time || !formData.services) {
         return "";
       }
 
-      // Calculate total duration in minutes
-      const totalDurationMinutes = selectedServices.reduce(
-        (total, service) => total + (service.duration || 0),
-        0
+      // Parse service ID and find the selected service
+      const serviceId = parseInt(formData.services, 10);
+      const selectedService = services.find(
+        (service) => service.id === serviceId
       );
 
-      if (!totalDurationMinutes) {
-        console.log("Total duration is zero - check service duration values");
+      // Return empty string if service not found or no duration
+      if (!selectedService || !selectedService.duration) {
+        console.warn("Service not found or has no duration");
         return "";
       }
 
-      // Parse start time
+      // Parse the start time
       const [hours, minutes] = formData.start_time.split(":").map(Number);
-      if (isNaN(hours) || isNaN(minutes)) {
-        console.log("Invalid start time format:", formData.start_time);
-        return "";
-      }
 
       // Calculate end time
       const startDate = new Date();
-      startDate.setHours(hours, minutes, 0, 0);
-      const endDate = new Date(
-        startDate.getTime() + totalDurationMinutes * 60000
-      );
+      startDate.setHours(hours, minutes, 0);
 
+      // Add duration (in minutes)
+      const endDate = new Date(startDate.getTime());
+      endDate.setMinutes(endDate.getMinutes() + selectedService.duration);
+
+      // Format as "HH:MM"
       return `${endDate.getHours().toString().padStart(2, "0")}:${endDate
         .getMinutes()
         .toString()
@@ -193,10 +176,33 @@ const AppointmentForm = ({
     setEndTime(calculatedEndTime);
   }, [formData.services, formData.start_time, calculateEndTime]);
 
+  // Create a ref to store previous values for therapist fetch
+  const prevFetchTherapistsRef = useRef({
+    date: null,
+    startTime: null,
+    services: null,
+  });
+
   // Effect for fetching available therapists based on service and time
   useEffect(() => {
-    if (!formData.start_time || !formData.date || !formData.services.length) {
+    if (
+      !formData.start_time ||
+      !formData.date ||
+      !formData.services ||
+      formData.services === ""
+    ) {
       // Don't attempt to fetch without required data
+      return;
+    }
+
+    // Check if we've already fetched with these exact params
+    const prevFetch = prevFetchTherapistsRef.current;
+    if (
+      prevFetch.date === formData.date &&
+      prevFetch.startTime === formData.start_time &&
+      prevFetch.services === formData.services
+    ) {
+      // Skip this fetch as it's identical to the previous one
       return;
     }
 
@@ -215,66 +221,26 @@ const AppointmentForm = ({
       return;
     }
 
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] Fetching available therapists with:`, {
+    // Update previous fetch reference
+    prevFetchTherapistsRef.current = {
       date: formData.date,
-      start_time: formData.start_time,
-      end_time: calculatedEndTime,
+      startTime: formData.start_time,
       services: formData.services,
-    });
+    };
 
-    // Make sure we have valid parameters before making API calls
-    if (!formData.date || !formData.start_time || !calculatedEndTime) {
-      console.warn("Cannot fetch available staff: missing required parameters");
-      return;
-    }
+    // Now we can fetch available therapists
+    console.log("AppointmentForm - Fetching available therapists/drivers");
+    const serviceId = parseInt(formData.services, 10);
 
-    // Make sure times are in correct format (HH:MM)
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (
-      !timeRegex.test(formData.start_time) ||
-      !timeRegex.test(calculatedEndTime)
-    ) {
-      console.warn("Cannot fetch available staff: invalid time format", {
-        start_time: formData.start_time,
-        end_time: calculatedEndTime,
-      });
-      return;
-    }
-
-    // Ensure date is in correct format (YYYY-MM-DD)
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(formData.date)) {
-      console.warn(
-        "Cannot fetch available staff: invalid date format",
-        formData.date
-      );
-      return;
-    }
-
-    // Dispatch actions to fetch available therapists and drivers
-    try {
-      // Fix parameter names to match what the API expects (start_time and end_time)
+    if (serviceId) {
       dispatch(
         fetchAvailableTherapists({
           date: formData.date,
           start_time: formData.start_time,
           end_time: calculatedEndTime,
-          services: formData.services,
+          service_id: serviceId,
         })
       );
-
-      // Include parameters for fetchAvailableDrivers too
-      dispatch(
-        fetchAvailableDrivers({
-          date: formData.date,
-          start_time: formData.start_time,
-          end_time: calculatedEndTime,
-        })
-      );
-    } catch (error) {
-      console.error("Error dispatching staff availability actions:", error);
-      // We have fallback data that will be used if the API call fails
     }
   }, [
     formData.date,
@@ -290,7 +256,10 @@ const AppointmentForm = ({
       try {
         setFormData({
           client: appointment.client || "",
-          services: appointment.services?.map((service) => service.id) || [],
+          services:
+            appointment.services?.length > 0
+              ? appointment.services[0].id.toString()
+              : "",
           therapist: appointment.therapist || "",
           driver: appointment.driver || "",
           date: appointment.date
@@ -365,17 +334,67 @@ const AppointmentForm = ({
     const newErrors = {};
 
     if (!formData.client) newErrors.client = "Client is required";
-    if (formData.services.length === 0)
-      newErrors.services = "At least one service is required";
+    if (!formData.services) newErrors.services = "Service is required";
     if (!formData.therapist) newErrors.therapist = "Therapist is required";
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.start_time) newErrors.start_time = "Start time is required";
     if (!formData.location) newErrors.location = "Location is required";
     if (!endTime)
-      newErrors.services = "Cannot calculate end time with selected services";
+      newErrors.services = "Cannot calculate end time with selected service";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Helper function to ensure data is in the correct format for the API
+  const sanitizeDataForApi = (data) => {
+    const result = { ...data };
+
+    // Ensure therapist is an integer, not an array
+    if (Array.isArray(result.therapist)) {
+      result.therapist =
+        result.therapist.length > 0 ? parseInt(result.therapist[0], 10) : null;
+    } else if (
+      typeof result.therapist === "string" &&
+      result.therapist.trim() !== ""
+    ) {
+      result.therapist = parseInt(result.therapist, 10);
+    }
+
+    // Ensure services is an array of integers
+    if (!Array.isArray(result.services)) {
+      result.services = result.services ? [parseInt(result.services, 10)] : [];
+    } else {
+      result.services = result.services
+        .map((s) => (typeof s === "number" ? s : parseInt(s, 10)))
+        .filter((s) => !isNaN(s));
+    }
+
+    // Ensure client is an integer
+    if (Array.isArray(result.client)) {
+      result.client =
+        result.client.length > 0 ? parseInt(result.client[0], 10) : null;
+    } else if (
+      typeof result.client === "string" &&
+      result.client.trim() !== ""
+    ) {
+      result.client = parseInt(result.client, 10);
+    }
+
+    // Ensure driver is an integer if present
+    if (result.driver) {
+      if (Array.isArray(result.driver)) {
+        result.driver =
+          result.driver.length > 0 ? parseInt(result.driver[0], 10) : null;
+      } else if (
+        typeof result.driver === "string" &&
+        result.driver.trim() !== ""
+      ) {
+        result.driver = parseInt(result.driver, 10);
+      }
+    }
+
+    return result;
   };
 
   const handleSubmit = async (e) => {
@@ -395,15 +414,70 @@ const AppointmentForm = ({
 
       // Create a sanitized copy of form data to ensure no undefined values
       const sanitizedFormData = {
-        client: formData.client || "",
-        services: Array.isArray(formData.services) ? formData.services : [],
-        therapist: formData.therapist || "",
-        driver: formData.driver || "",
+        client: parseInt(formData.client, 10) || null,
+        services: formData.services ? [parseInt(formData.services, 10)] : [],
+        therapist: parseInt(formData.therapist, 10) || null,
+        driver: formData.driver ? parseInt(formData.driver, 10) : null,
         date: formData.date || "",
         start_time: formData.start_time || "",
         location: formData.location || "",
         notes: formData.notes || "",
       };
+
+      // Log the sanitized data for debugging
+      console.log("Sanitized form data:", sanitizedFormData);
+
+      // Triple check the therapist field specifically to ensure it's an integer
+      if (typeof sanitizedFormData.therapist !== "number") {
+        console.warn(
+          "Therapist field is not a number, attempting to fix:",
+          sanitizedFormData.therapist
+        );
+        try {
+          if (Array.isArray(sanitizedFormData.therapist)) {
+            sanitizedFormData.therapist =
+              sanitizedFormData.therapist.length > 0
+                ? parseInt(sanitizedFormData.therapist[0], 10)
+                : null;
+          } else if (
+            typeof sanitizedFormData.therapist === "string" &&
+            sanitizedFormData.therapist.trim() !== ""
+          ) {
+            sanitizedFormData.therapist = parseInt(
+              sanitizedFormData.therapist,
+              10
+            );
+          } else {
+            sanitizedFormData.therapist = null;
+          }
+        } catch (e) {
+          console.error("Failed to fix therapist field:", e);
+          sanitizedFormData.therapist = null;
+        }
+      }
+
+      // Pre-submission verification for therapist field
+      console.log("FINAL PRE-SUBMISSION CHECK:");
+      console.log("Therapist value:", sanitizedFormData.therapist);
+      console.log("Therapist type:", typeof sanitizedFormData.therapist);
+
+      // Force therapist to be an integer as a final safeguard
+      if (typeof sanitizedFormData.therapist !== "number") {
+        try {
+          const therapistId = parseInt(
+            String(sanitizedFormData.therapist).replace(/[^0-9]/g, ""),
+            10
+          );
+          if (!isNaN(therapistId)) {
+            console.log("Converted therapist to number:", therapistId);
+            sanitizedFormData.therapist = therapistId;
+          } else {
+            console.error("Could not convert therapist to a valid number");
+          }
+        } catch (e) {
+          console.error("Error converting therapist to number:", e);
+        }
+      }
 
       // Prepare appointment data with required fields
       const appointmentData = {
@@ -413,16 +487,92 @@ const AppointmentForm = ({
         payment_status: "unpaid",
       };
 
-      console.log("Submitting appointment data:", appointmentData);
+      console.log("Pre-sanitized appointment data:", appointmentData);
+
+      // Apply final sanitization to ensure all fields are in correct format for API
+      const finalAppointmentData = sanitizeDataForApi(appointmentData);
+
+      console.log("Final sanitized appointment data:", finalAppointmentData);
+      console.log("Data types:", {
+        client: typeof finalAppointmentData.client,
+        services: Array.isArray(finalAppointmentData.services)
+          ? `Array of ${finalAppointmentData.services.length} items`
+          : typeof finalAppointmentData.services,
+        therapist: typeof finalAppointmentData.therapist,
+        driver: typeof finalAppointmentData.driver,
+        date: typeof finalAppointmentData.date,
+        start_time: typeof finalAppointmentData.start_time,
+        end_time: typeof finalAppointmentData.end_time,
+      });
+
+      // Final verification of data formats for critical fields
+      // Ensure therapist is an integer, not an array
+      if (Array.isArray(finalAppointmentData.therapist)) {
+        console.warn(
+          "Converting therapist from array to integer:",
+          finalAppointmentData.therapist
+        );
+        finalAppointmentData.therapist =
+          finalAppointmentData.therapist.length > 0
+            ? parseInt(finalAppointmentData.therapist[0], 10)
+            : null;
+      } else if (typeof finalAppointmentData.therapist !== "number") {
+        // Try to parse it as a number if it's not already
+        try {
+          if (
+            typeof finalAppointmentData.therapist === "string" &&
+            finalAppointmentData.therapist.trim() !== ""
+          ) {
+            finalAppointmentData.therapist = parseInt(
+              finalAppointmentData.therapist,
+              10
+            );
+          } else {
+            finalAppointmentData.therapist = null;
+          }
+        } catch (e) {
+          console.error("Failed to convert therapist to integer:", e);
+          finalAppointmentData.therapist = null;
+        }
+      }
+
+      // Ensure services is an array of integers
+      if (!Array.isArray(finalAppointmentData.services)) {
+        finalAppointmentData.services = finalAppointmentData.services
+          ? [parseInt(finalAppointmentData.services, 10)]
+          : [];
+      } else {
+        // If it's already an array, make sure all items are integers
+        finalAppointmentData.services = finalAppointmentData.services
+          .map((service) =>
+            typeof service === "number" ? service : parseInt(service, 10)
+          )
+          .filter((service) => !isNaN(service));
+      }
+
+      // Also fix client field if needed
+      if (Array.isArray(finalAppointmentData.client)) {
+        finalAppointmentData.client =
+          finalAppointmentData.client.length > 0
+            ? parseInt(finalAppointmentData.client[0], 10)
+            : null;
+      } else if (
+        typeof finalAppointmentData.client !== "number" &&
+        finalAppointmentData.client !== null
+      ) {
+        finalAppointmentData.client =
+          parseInt(finalAppointmentData.client, 10) || null;
+      }
 
       // Validate critical fields again before API call
       if (
-        !appointmentData.client ||
-        !appointmentData.therapist ||
-        !appointmentData.date ||
-        !appointmentData.start_time ||
-        !appointmentData.end_time ||
-        !appointmentData.services.length
+        !finalAppointmentData.client ||
+        !finalAppointmentData.therapist ||
+        !finalAppointmentData.date ||
+        !finalAppointmentData.start_time ||
+        !finalAppointmentData.end_time ||
+        !finalAppointmentData.services ||
+        finalAppointmentData.services.length === 0
       ) {
         throw new Error("Missing required fields. Please check your form.");
       }
@@ -430,11 +580,11 @@ const AppointmentForm = ({
       if (appointment) {
         // Update existing appointment
         await dispatch(
-          updateAppointment({ id: appointment.id, data: appointmentData })
+          updateAppointment({ id: appointment.id, data: finalAppointmentData })
         ).unwrap();
       } else {
         // Create new appointment
-        await dispatch(createAppointment(appointmentData)).unwrap();
+        await dispatch(createAppointment(finalAppointmentData)).unwrap();
       }
 
       // Reset form and call success callback
@@ -443,13 +593,62 @@ const AppointmentForm = ({
       onSubmitSuccess();
     } catch (error) {
       console.error("Error submitting appointment:", error);
-      // Display friendly error message to user
-      const errorMessage =
-        error.message ||
-        (typeof error === "string" ? error : "Unknown error occurred");
+
+      // More detailed error logging with enhanced diagnostics
+      if (error.response) {
+        console.error("API Response Error:", error.response.data);
+        console.error("API Status:", error.response.status);
+        console.error("API Headers:", error.response.headers);
+
+        if (error.response.data && error.response.data.therapist) {
+          console.warn(
+            "Therapist field error detected:",
+            error.response.data.therapist
+          );
+
+          // Check what's actually in the formData for debugging purposes
+          console.warn(`Original therapist value: ${formData.therapist}`);
+          console.warn(
+            `Type of original therapist value: ${typeof formData.therapist}`
+          );
+        }
+
+        // Handle specific error cases
+        if (error.response.status === 400) {
+          const errorData = error.response.data;
+
+          // Create user-friendly error messages
+          let errorMessages = [];
+
+          Object.entries(errorData).forEach(([field, messages]) => {
+            if (Array.isArray(messages)) {
+              errorMessages.push(`${field}: ${messages.join(", ")}`);
+            } else if (typeof messages === "object") {
+              errorMessages.push(`${field}: ${JSON.stringify(messages)}`);
+            } else {
+              errorMessages.push(`${field}: ${messages}`);
+            }
+          });
+
+          // Update form errors with API validation errors
+          const apiErrors = {};
+          Object.keys(errorData).forEach((field) => {
+            apiErrors[field] = Array.isArray(errorData[field])
+              ? errorData[field][0]
+              : JSON.stringify(errorData[field]);
+          });
+
+          setErrors((prev) => ({ ...prev, ...apiErrors }));
+          alert(`Form submission failed: ${errorMessages.join("\n")}`);
+        }
+      } else {
+        console.error("Unknown error:", error.message);
+        alert("Failed to submit appointment. Please try again.");
+      }
+
       setErrors((prev) => ({
         ...prev,
-        form: `Failed to save appointment: ${errorMessage}`,
+        form: error.message || "Failed to submit appointment",
       }));
     } finally {
       setIsSubmitting(false);
@@ -494,15 +693,15 @@ const AppointmentForm = ({
         </div>
 
         <div className="form-group">
-          <label htmlFor="services">Services:</label>
+          <label htmlFor="services">Service:</label>
           <select
             id="services"
             name="services"
-            multiple
             value={formData.services}
             onChange={handleChange}
             className={errors.services ? "error" : ""}
           >
+            <option value="">Select a service</option>
             {services && services.length > 0 ? (
               services.map((service) => (
                 <option key={service.id} value={service.id}>
@@ -541,15 +740,13 @@ const AppointmentForm = ({
               ))
             ) : (
               <option value="" disabled>
-                {formData.date &&
-                formData.start_time &&
-                formData.services.length > 0
+                {formData.date && formData.start_time && formData.services
                   ? `No available therapists for selected time${
                       import.meta.env.DEV
                         ? " (using fallback data in development)"
                         : ""
                     }`
-                  : "Select date, time and services first"}
+                  : "Select date, time and service first"}
               </option>
             )}
           </select>
@@ -625,15 +822,11 @@ const AppointmentForm = ({
               name="end_time"
               value={endTime}
               disabled
-              className={
-                !endTime && formData.services.length > 0 ? "error" : ""
-              }
+              className={!endTime && formData.services ? "error" : ""}
             />
-            {!endTime &&
-              formData.services.length > 0 &&
-              formData.start_time && (
-                <div className="error-text">Could not calculate end time</div>
-              )}
+            {!endTime && formData.services && formData.start_time && (
+              <div className="error-text">Could not calculate end time</div>
+            )}
           </div>
         </div>
 

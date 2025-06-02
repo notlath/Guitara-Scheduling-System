@@ -106,13 +106,42 @@ export const createAppointment = createAsyncThunk(
   async (appointmentData, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
+
     try {
+      // Data sanitation to ensure correct format for backend API
+      const formattedData = {
+        ...appointmentData,
+        // Ensure therapist is an integer, not an array
+        therapist: Array.isArray(appointmentData.therapist)
+          ? appointmentData.therapist.length > 0
+            ? parseInt(appointmentData.therapist[0], 10)
+            : null
+          : typeof appointmentData.therapist === "string"
+          ? parseInt(appointmentData.therapist, 10)
+          : appointmentData.therapist,
+        // Ensure services is an array of integers
+        services: Array.isArray(appointmentData.services)
+          ? appointmentData.services.map((id) =>
+              typeof id === "string" ? parseInt(id, 10) : id
+            )
+          : appointmentData.services
+          ? [parseInt(appointmentData.services, 10)]
+          : [],
+      };
+
+      console.log("API submission data:", formattedData);
+      console.log(
+        "About to send appointment data to API:",
+        JSON.stringify(formattedData, null, 2)
+      );
+
       const response = await axios.post(
         `${API_URL}appointments/`,
-        appointmentData,
+        formattedData,
         {
           headers: {
             Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
           },
         }
       );
@@ -122,6 +151,11 @@ export const createAppointment = createAsyncThunk(
       }
       return response.data;
     } catch (error) {
+      console.error("API Error Details:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
       return rejectWithValue(
         error.response?.data || "Could not create appointment"
       );
@@ -135,14 +169,48 @@ export const updateAppointment = createAsyncThunk(
   async ({ id, data }, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
+
     try {
-      const response = await axios.put(`${API_URL}appointments/${id}/`, data, {
-        headers: { Authorization: `Token ${token}` },
-      });
+      // Data sanitation to ensure correct format for backend API
+      const formattedData = {
+        ...data,
+        // Ensure therapist is an integer, not an array
+        therapist: Array.isArray(data.therapist)
+          ? data.therapist.length > 0
+            ? parseInt(data.therapist[0], 10)
+            : null
+          : typeof data.therapist === "string"
+          ? parseInt(data.therapist, 10)
+          : data.therapist,
+        // Ensure services is an array of integers
+        services: Array.isArray(data.services)
+          ? data.services.map((id) =>
+              typeof id === "string" ? parseInt(id, 10) : id
+            )
+          : data.services
+          ? [parseInt(data.services, 10)]
+          : [],
+      };
+
+      console.log("API update data:", formattedData);
+
+      const response = await axios.put(
+        `${API_URL}appointments/${id}/`,
+        formattedData,
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
       // Notify via WebSocket
       sendAppointmentUpdate(id);
       return response.data;
     } catch (error) {
+      console.error("API Update Error:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
       return rejectWithValue(
         error.response?.data || "Could not update appointment"
       );
