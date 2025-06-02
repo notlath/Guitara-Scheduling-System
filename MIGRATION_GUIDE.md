@@ -66,6 +66,7 @@ python manage.py runserver
 ## Note About Scripts
 
 > **Important**: Many of the utility scripts referenced in this guide have been moved to the `/archive` directory for better organization. This includes:
+>
 > - Migration scripts are now in `/archive/migration_scripts/`
 > - Database verification tools are in `/archive/database_scripts/`
 > - WebSocket verification tools are in `/archive/websocket_scripts/`
