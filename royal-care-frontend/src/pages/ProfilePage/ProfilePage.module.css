@@ -13,7 +13,11 @@
 }
 
 .profileHeader {
-  background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--primary-50) 0%,
+    var(--primary-100) 100%
+  );
   padding: 2rem;
   text-align: center;
   border-bottom: 1px solid var(--background-100);
@@ -152,24 +156,24 @@
   .profileContainer {
     padding: 1rem;
   }
-  
+
   .profileHeader {
     padding: 1.5rem;
   }
-  
+
   .profileTitle {
     font-size: 1.7rem;
   }
-  
+
   .profileBody {
     padding: 1.5rem;
   }
-  
+
   .infoGrid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .infoCard {
     padding: 1rem;
   }
