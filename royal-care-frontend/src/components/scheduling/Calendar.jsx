@@ -5,6 +5,7 @@ import {
   fetchAvailableTherapists,
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/Calendar.css";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -145,16 +146,19 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     return (
       <div className="calendar-container">
         <div className="calendar-header">
-          <button onClick={prevMonth}>Previous</button>
           <h2>
             {currentMonth.toLocaleString("default", {
               month: "long",
               year: "numeric",
             })}
           </h2>
-          <button onClick={nextMonth}>Next</button>
+          <button onClick={prevMonth}>
+            <FaChevronLeft />
+          </button>
+          <button onClick={nextMonth}>
+            <FaChevronRight />
+          </button>
         </div>
-
         <div className="calendar-days">
           <div className="day-header">Sun</div>
           <div className="day-header">Mon</div>

@@ -296,7 +296,7 @@ const SchedulingDashboard = () => {
   return (
     <div className="scheduling-dashboard">
       <div className="dashboard-header">
-        <h1>Booking Scheduling</h1>
+        <h1>Booking</h1>
 
         <div className="view-selector">
           <button

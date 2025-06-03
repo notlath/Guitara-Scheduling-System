@@ -211,9 +211,7 @@
 }
 
 .dashboard-content {
-  background-color: var(--background-50);
   border-radius: 8px;
-  padding: var(--spacing-md);
 }
 
 .todays-appointments h2,

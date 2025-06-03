@@ -2,6 +2,13 @@
 
 html {
   font-size: 100%; /* 16px */
+  color: var(--text);
+  background: var(--background);
+}
+
+body {
+  color: var(--text);
+  background: var(--background);
 }
 
 body,
@@ -120,9 +127,9 @@ small {
   --error-bg: #fce8e6;
   --error-text: #d93025;
 
-  --font-size-base: 1rem;
   --font-size-xs: 0.7rem;
   --font-size-sm: 0.8rem;
+  --font-size-base: 1rem;
   --font-size-md: 1.25rem;
   --font-size-lg: 1.563rem;
   --font-size-xl: 1.954rem;

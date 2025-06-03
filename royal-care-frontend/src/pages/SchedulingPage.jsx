@@ -11,7 +11,6 @@ const SchedulingPage = () => {
 
   return (
     <div className="scheduling-page">
-      <h2>Booking Dashboard</h2>
       {user ? (
         <SchedulingDashboard />
       ) : (
