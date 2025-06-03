@@ -62,7 +62,7 @@ const AppointmentForm = ({
     therapist: "",
     driver: "",
     date: selectedDate
-      ? selectedDate.toISOString().split("T")[0] // Direct use of the ISO string for consistent date handling
+      ? new Date(selectedDate).toISOString().split("T")[0]
       : "",
     start_time: selectedTime || "",
     location: "",
@@ -280,14 +280,9 @@ const AppointmentForm = ({
   useEffect(() => {
     if (selectedDate) {
       try {
-        // Ensure we're using the date exactly as passed from Calendar component
-        const formattedDate = selectedDate.toISOString().split("T")[0];
-        console.log(
-          "AppointmentForm: Setting date to",
-          formattedDate,
-          "from",
-          selectedDate
-        );
+        const formattedDate = new Date(selectedDate)
+          .toISOString()
+          .split("T")[0];
         setFormData((prev) => ({
           ...prev,
           date: formattedDate,
@@ -598,6 +593,19 @@ const AppointmentForm = ({
       onSubmitSuccess();
     } catch (error) {
       console.error("Error submitting appointment:", error);
+
+      // Special handling for therapist availability error
+      if (error.therapist && typeof error.therapist === "string") {
+        // This is our custom formatted error from the Redux slice
+        setErrors((prev) => ({
+          ...prev,
+          therapist: error.therapist,
+        }));
+
+        // Show a more visible alert
+        alert(error.therapist);
+        return;
+      }
 
       // More detailed error logging with enhanced diagnostics
       if (error.response) {

@@ -23,8 +23,7 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
         console.warn("Invalid date provided to formatDate");
         return "";
       }
-      // Use ISO string and split to get consistent YYYY-MM-DD format without time zone issues
-      return date.toISOString().split("T")[0];
+      return date.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
     } catch (err) {
       console.error("Error formatting date:", err);
       return "";
@@ -73,16 +72,10 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   // Handle date selection
   const handleDateClick = (day) => {
     if (day) {
-      // Create date at noon to avoid timezone issues shifting to previous day
       const selectedDate = new Date(
-        Date.UTC(
-          currentMonth.getFullYear(),
-          currentMonth.getMonth(),
-          day,
-          12,
-          0,
-          0
-        )
+        currentMonth.getFullYear(),
+        currentMonth.getMonth(),
+        day
       );
       onDateSelected(selectedDate);
       setView("day");
