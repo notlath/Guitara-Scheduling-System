@@ -35,6 +35,27 @@
   padding: 2rem;
 }
 
+.userNameSection {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--background-100);
+}
+
+.userName {
+  color: var(--text-800);
+  margin: 0 0 0.5rem 0;
+  font-size: 2.2rem;
+  font-weight: 700;
+}
+
+.userSubtitle {
+  color: var(--text-600);
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
 .profileSection {
   margin-bottom: 2rem;
 }
