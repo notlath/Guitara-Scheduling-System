@@ -12,7 +12,7 @@ const ProfilePage = () => {
 
   useEffect(() => {
     document.title = "Profile | Royal Care";
-    
+
     // Get user data from Redux store or localStorage
     if (user) {
       setUserData(user);
@@ -38,7 +38,7 @@ const ProfilePage = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "Not available";
-    
+
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString("en-US", {
@@ -53,17 +53,20 @@ const ProfilePage = () => {
 
   const getRoleDisplayName = (role) => {
     if (!role) return "User";
-    
+
     const roleMap = {
-      'admin': 'Administrator',
-      'therapist': 'Therapist',
-      'operator': 'Operator',
-      'driver': 'Driver',
-      'manager': 'Manager',
-      'staff': 'Staff Member'
+      admin: "Administrator",
+      therapist: "Therapist",
+      operator: "Operator",
+      driver: "Driver",
+      manager: "Manager",
+      staff: "Staff Member",
     };
-    
-    return roleMap[role.toLowerCase()] || role.charAt(0).toUpperCase() + role.slice(1);
+
+    return (
+      roleMap[role.toLowerCase()] ||
+      role.charAt(0).toUpperCase() + role.slice(1)
+    );
   };
 
   if (!userData) {
@@ -73,8 +76,8 @@ const ProfilePage = () => {
           <div className={styles.noDataMessage}>
             <h2>Profile information not available</h2>
             <p>Please log in again to view your profile.</p>
-            <button 
-              className={styles.actionButton} 
+            <button
+              className={styles.actionButton}
               onClick={() => navigate("/login")}
             >
               Go to Login
@@ -98,10 +101,10 @@ const ProfilePage = () => {
         <div className={styles.profileBody}>
           <div className={styles.userNameSection}>
             <h1 className={styles.userName}>
-              {userData.full_name || 
-               (userData.first_name && userData.last_name 
-                 ? `${userData.first_name} ${userData.last_name}` 
-                 : "User")}
+              {userData.full_name ||
+                (userData.first_name && userData.last_name
+                  ? `${userData.first_name} ${userData.last_name}`
+                  : "User")}
             </h1>
             <h2 className={styles.userSubtitle}>
               @{userData.username || "Not provided"}
@@ -110,7 +113,7 @@ const ProfilePage = () => {
 
           <div className={styles.profileSection}>
             <h2 className={styles.sectionTitle}>Account Information</h2>
-            
+
             <div className={styles.infoGrid}>
               <div className={styles.infoCard}>
                 <div className={styles.infoLabel}>Email Address</div>
@@ -147,10 +150,7 @@ const ProfilePage = () => {
           <div className={styles.profileSection}>
             <div className={styles.actionsSection}>
               <h2 className={styles.sectionTitle}>Account Actions</h2>
-              <button 
-                className={styles.actionButton} 
-                onClick={handleLogout}
-              >
+              <button className={styles.actionButton} onClick={handleLogout}>
                 Logout
               </button>
             </div>
