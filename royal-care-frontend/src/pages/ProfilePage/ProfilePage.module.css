@@ -1,0 +1,155 @@
+/* Profile page styles */
+.profileContainer {
+  padding: 2rem;
+}
+
+.profileContent {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: var(--background);
+  border-radius: 12px;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.profileHeader {
+  background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+  padding: 2rem;
+  text-align: center;
+  border-bottom: 1px solid var(--background-100);
+}
+
+.profileTitle {
+  margin: 0 0 0.5rem 0;
+  color: var(--primary-800);
+  font-size: 2rem;
+}
+
+.profileSubtitle {
+  color: var(--text-600);
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.profileBody {
+  padding: 2rem;
+}
+
+.profileSection {
+  margin-bottom: 2rem;
+}
+
+.sectionTitle {
+  color: var(--text-800);
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+  border-bottom: 2px solid var(--primary-100);
+  padding-bottom: 0.5rem;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.infoCard {
+  background: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  border-left: 4px solid var(--primary);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.infoCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.infoLabel {
+  font-weight: 600;
+  color: var(--text-600);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.infoValue {
+  color: var(--text-800);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.roleValue {
+  background: var(--primary-100);
+  color: var(--primary-800);
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: inline-block;
+}
+
+.actionsSection {
+  border-top: 1px solid var(--background-100);
+  padding-top: 1.5rem;
+}
+
+.actionButton {
+  background: var(--error);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.actionButton:hover {
+  background: #d32f2f;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 49, 46, 0.3);
+}
+
+.noDataMessage {
+  text-align: center;
+  color: var(--text-500);
+  font-style: italic;
+  padding: 2rem;
+  background: var(--background-50);
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .profileContainer {
+    padding: 1rem;
+  }
+  
+  .profileHeader {
+    padding: 1.5rem;
+  }
+  
+  .profileTitle {
+    font-size: 1.7rem;
+  }
+  
+  .profileBody {
+    padding: 1.5rem;
+  }
+  
+  .infoGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .infoCard {
+    padding: 1rem;
+  }
+}
