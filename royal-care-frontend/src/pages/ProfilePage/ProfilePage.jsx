@@ -96,27 +96,22 @@ const ProfilePage = () => {
         </div>
 
         <div className={styles.profileBody}>
+          <div className={styles.userNameSection}>
+            <h1 className={styles.userName}>
+              {userData.full_name || 
+               (userData.first_name && userData.last_name 
+                 ? `${userData.first_name} ${userData.last_name}` 
+                 : "User")}
+            </h1>
+            <h2 className={styles.userSubtitle}>
+              @{userData.username || "Not provided"}
+            </h2>
+          </div>
+
           <div className={styles.profileSection}>
             <h2 className={styles.sectionTitle}>Account Information</h2>
             
             <div className={styles.infoGrid}>
-              <div className={styles.infoCard}>
-                <div className={styles.infoLabel}>Full Name</div>
-                <div className={styles.infoValue}>
-                  {userData.full_name || 
-                   (userData.first_name && userData.last_name 
-                     ? `${userData.first_name} ${userData.last_name}` 
-                     : userData.username || "Not provided")}
-                </div>
-              </div>
-
-              <div className={styles.infoCard}>
-                <div className={styles.infoLabel}>Username</div>
-                <div className={styles.infoValue}>
-                  {userData.username || "Not provided"}
-                </div>
-              </div>
-
               <div className={styles.infoCard}>
                 <div className={styles.infoLabel}>Email Address</div>
                 <div className={styles.infoValue}>
