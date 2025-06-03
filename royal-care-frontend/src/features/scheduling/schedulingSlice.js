@@ -859,6 +859,7 @@ const schedulingSlice = createSlice({
       })
       .addCase(fetchAvailableTherapists.fulfilled, (state, action) => {
         state.loading = false;
+        // The backend now returns only therapists with availability data
         state.availableTherapists = action.payload;
       })
       .addCase(fetchAvailableTherapists.rejected, (state, action) => {

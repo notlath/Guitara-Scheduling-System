@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchAvailableDrivers,
@@ -99,6 +99,10 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
       dispatch(fetchAvailableDrivers(params));
     }
   };
+
+  useEffect(() => {
+    console.log(availableTherapists);
+  }, [availableTherapists]);
 
   // Handle time selection
   const handleTimeClick = (time) => {
@@ -236,12 +240,14 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
               <ul>
                 {availableTherapists.map((therapist) => (
                   <li key={therapist.id || Math.random()}>
-                    {therapist.first_name || ""} {therapist.last_name || ""}{" "}
+                    <b>
+                      {therapist.first_name || ""} {therapist.last_name || ""}
+                    </b>{" "}
                     {therapist.specialization
                       ? `- Specialization: ${therapist.specialization}`
                       : ""}{" "}
-                    {therapist.massage_pressure
-                      ? `- Pressure: ${therapist.massage_pressure}`
+                    {therapist.start_time && therapist.end_time
+                      ? ` - Available: ${therapist.start_time} to ${therapist.end_time}`
                       : ""}
                   </li>
                 ))}
@@ -260,9 +266,14 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
               <ul>
                 {availableDrivers.map((driver) => (
                   <li key={driver.id || Math.random()}>
-                    {driver.first_name || ""} {driver.last_name || ""}{" "}
+                    <b>
+                      {driver.first_name || ""} {driver.last_name || ""}
+                    </b>{" "}
                     {driver.motorcycle_plate
                       ? `- Plate: ${driver.motorcycle_plate}`
+                      : ""}{" "}
+                    {driver.start_time && driver.end_time
+                      ? ` - Available: ${driver.start_time} to ${driver.end_time}`
                       : ""}
                   </li>
                 ))}

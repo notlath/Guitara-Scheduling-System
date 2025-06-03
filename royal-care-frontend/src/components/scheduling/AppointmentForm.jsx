@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   createAppointment,
+  fetchAvailableDrivers,
   fetchAvailableTherapists,
   fetchClients,
   fetchServices,
@@ -75,31 +76,81 @@ const AppointmentForm = ({
   const [endTime, setEndTime] = useState(""); // Store calculated end time separately
 
   const dispatch = useDispatch();
-  const { clients, services, loading, staffMembers } = useSelector(
-    (state) => state.scheduling
-  );
+  const {
+    clients,
+    services,
+    loading,
+    staffMembers,
+    availableTherapists: fetchedAvailableTherapists,
+    availableDrivers: fetchedAvailableDrivers,
+  } = useSelector((state) => state.scheduling);
 
-  // Filter staffMembers to get therapists and drivers
-  // Use fallbacks when API data is empty or when staffMembers is not loaded
+  // Update the availableTherapists memo to use fetched data when available
   const availableTherapists = useMemo(() => {
-    return staffMembers?.length > 0
-      ? staffMembers.filter(
-          (member) => member.role === "therapist" || member.role === "Therapist"
-        )
-      : import.meta.env.DEV
-      ? FALLBACK_THERAPISTS
-      : [];
-  }, [staffMembers]);
+    // If we have specifically fetched available therapists based on date/time, use those
+    if (
+      fetchedAvailableTherapists &&
+      Array.isArray(fetchedAvailableTherapists)
+    ) {
+      console.log(
+        "Using fetched available therapists:",
+        fetchedAvailableTherapists
+      );
+      return fetchedAvailableTherapists;
+    }
 
+    // Only show general staff if we haven't made a specific availability query yet
+    // (i.e., when date, time, or service is not selected)
+    if (!formData.date || !formData.start_time || !formData.services) {
+      return staffMembers?.length > 0
+        ? staffMembers.filter(
+            (member) =>
+              member.role === "therapist" || member.role === "Therapist"
+          )
+        : import.meta.env.DEV
+        ? FALLBACK_THERAPISTS
+        : [];
+    }
+
+    // If we have date/time/service but no fetched results, return empty array
+    // This means no therapists are available for the selected time
+    return [];
+  }, [
+    staffMembers,
+    fetchedAvailableTherapists,
+    formData.date,
+    formData.start_time,
+    formData.services,
+  ]);
+
+  // Update the availableDrivers memo similarly
   const availableDrivers = useMemo(() => {
-    return staffMembers?.length > 0
-      ? staffMembers.filter(
-          (member) => member.role === "driver" || member.role === "Driver"
-        )
-      : import.meta.env.DEV
-      ? FALLBACK_DRIVERS
-      : [];
-  }, [staffMembers]);
+    // If we have specifically fetched available drivers based on date/time, use those
+    if (fetchedAvailableDrivers && Array.isArray(fetchedAvailableDrivers)) {
+      console.log("Using fetched available drivers:", fetchedAvailableDrivers);
+      return fetchedAvailableDrivers;
+    }
+
+    // Only show general staff if we haven't made a specific availability query yet
+    if (!formData.date || !formData.start_time || !formData.services) {
+      return staffMembers?.length > 0
+        ? staffMembers.filter(
+            (member) => member.role === "driver" || member.role === "Driver"
+          )
+        : import.meta.env.DEV
+        ? FALLBACK_DRIVERS
+        : [];
+    }
+
+    // If we have date/time/service but no fetched results, return empty array
+    return [];
+  }, [
+    staffMembers,
+    fetchedAvailableDrivers,
+    formData.date,
+    formData.start_time,
+    formData.services,
+  ]);
 
   // Define calculateEndTime function using useCallback to prevent recreation on each render
   const calculateEndTime = useCallback(() => {
@@ -183,7 +234,7 @@ const AppointmentForm = ({
     services: null,
   });
 
-  // Effect for fetching available therapists based on service and time
+  // Update the useEffect to also fetch available drivers
   useEffect(() => {
     if (
       !formData.start_time ||
@@ -191,7 +242,6 @@ const AppointmentForm = ({
       !formData.services ||
       formData.services === ""
     ) {
-      // Don't attempt to fetch without required data
       return;
     }
 
@@ -202,11 +252,9 @@ const AppointmentForm = ({
       prevFetch.startTime === formData.start_time &&
       prevFetch.services === formData.services
     ) {
-      // Skip this fetch as it's identical to the previous one
       return;
     }
 
-    // Calculate end time with better error handling
     let calculatedEndTime;
     try {
       calculatedEndTime = calculateEndTime();
@@ -221,24 +269,32 @@ const AppointmentForm = ({
       return;
     }
 
-    // Update previous fetch reference
     prevFetchTherapistsRef.current = {
       date: formData.date,
       startTime: formData.start_time,
       services: formData.services,
     };
 
-    // Now we can fetch available therapists
     console.log("AppointmentForm - Fetching available therapists/drivers");
     const serviceId = parseInt(formData.services, 10);
 
     if (serviceId) {
+      // Fetch available therapists
       dispatch(
         fetchAvailableTherapists({
           date: formData.date,
           start_time: formData.start_time,
           end_time: calculatedEndTime,
           service_id: serviceId,
+        })
+      );
+
+      // Also fetch available drivers
+      dispatch(
+        fetchAvailableDrivers({
+          date: formData.date,
+          start_time: formData.start_time,
+          end_time: calculatedEndTime,
         })
       );
     }
@@ -748,7 +804,10 @@ const AppointmentForm = ({
                 <option key={therapist.id} value={therapist.id}>
                   {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
                   {therapist.specialization || "General"} -{" "}
-                  {therapist.massage_pressure || "Standard"}
+                  {therapist.massage_pressure || "Standard"}{" "}
+                  {therapist.start_time && therapist.end_time
+                    ? `(Available: ${therapist.start_time}-${therapist.end_time})`
+                    : ""}
                 </option>
               ))
             ) : (
@@ -781,7 +840,10 @@ const AppointmentForm = ({
               availableDrivers.map((driver) => (
                 <option key={driver.id} value={driver.id}>
                   {driver.first_name || ""} {driver.last_name || ""} -{" "}
-                  {driver.motorcycle_plate || "No plate"}
+                  {driver.motorcycle_plate || "No plate"}{" "}
+                  {driver.start_time && driver.end_time
+                    ? `(Available: ${driver.start_time}-${driver.end_time})`
+                    : ""}
                 </option>
               ))
             ) : (
