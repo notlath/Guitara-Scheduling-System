@@ -594,6 +594,19 @@ const AppointmentForm = ({
     } catch (error) {
       console.error("Error submitting appointment:", error);
 
+      // Special handling for therapist availability error
+      if (error.therapist && typeof error.therapist === "string") {
+        // This is our custom formatted error from the Redux slice
+        setErrors((prev) => ({
+          ...prev,
+          therapist: error.therapist,
+        }));
+
+        // Show a more visible alert
+        alert(error.therapist);
+        return;
+      }
+
       // More detailed error logging with enhanced diagnostics
       if (error.response) {
         console.error("API Response Error:", error.response.data);

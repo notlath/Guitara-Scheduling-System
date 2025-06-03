@@ -156,6 +156,22 @@ export const createAppointment = createAsyncThunk(
         data: error.response?.data,
         message: error.message,
       });
+
+      // Specific handling for therapist availability error
+      if (
+        error.response?.data?.therapist &&
+        Array.isArray(error.response.data.therapist) &&
+        error.response.data.therapist.includes(
+          "Therapist is not available during this time slot"
+        )
+      ) {
+        return rejectWithValue({
+          therapist:
+            "This therapist is not available during the selected time. Please select another therapist or time slot.",
+          _original: error.response.data,
+        });
+      }
+
       return rejectWithValue(
         error.response?.data || "Could not create appointment"
       );
