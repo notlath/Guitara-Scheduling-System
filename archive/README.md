@@ -13,6 +13,7 @@ This directory contains files that were moved from the main project as they appe
 - **fix_migration.py** - Script to fix inconsistent migration history
 - **fix_sqlite_migrations.py** - Script to repair SQLite migration records
 - **fresh_migrations.py** - Script to create fresh migrations after database reset
+- **run_migrations.py** - Migration execution script with error handling and verbose output
 
 ### Database Scripts (`/database_scripts`)
 
@@ -23,6 +24,12 @@ This directory contains files that were moved from the main project as they appe
 - **sync_services.py** - Script to synchronize service data between database and code
 - **add_missing_services.py** - Script to add missing service records to the database
 - **drop_supabase_tables.py** - Script to drop tables from Supabase database
+- **create_tables.py** - Manual table creation script for SQLite database
+- **fix_db.py** - Database schema repair script to add missing columns
+- **create_env_file.py** - Interactive script to create .env file with database credentials
+- **django_management.py** - Django management helper for creating superusers and testing APIs
+- **fix_database_schema.py** - Schema validation and repair script for appointment table
+- **setup_database.bat** - Complete database setup script for Windows automation
 
 ### WebSocket Scripts (`/websocket_scripts`)
 
@@ -34,6 +41,10 @@ This directory contains files that were moved from the main project as they appe
 - **simple_db_test.py** - Basic script to test database connection
 - **test_services.py** - Script to test Service model functionality
 - **fix_imports.py** - Temporary script to fix import issues
+- **test_availability_api.py** - Python script to test availability API endpoints for therapists and drivers
+- **test-api.html** - HTML-based API connectivity test page for browser testing
+- **database_connection_test.py** - Script to verify PostgreSQL/Supabase database connectivity
+- **check_tables.py** - SQLite database table verification script
 
 ### Frontend Temporary Files (`/frontend_temp`)
 
@@ -43,6 +54,7 @@ This directory contains files that were moved from the main project as they appe
 
 - **archive_log_2025-06-01.md** - Log file documenting which files were archived on June 1, 2025, and why
 - **archive_log_2025-06-02.md** - Log file documenting which migration and testing scripts were archived on June 2, 2025
+- **archive_log_2025-06-05.md** - Log file documenting which test scripts were archived on June 5, 2025
 
 ## Important Note
 
