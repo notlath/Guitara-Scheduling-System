@@ -449,7 +449,7 @@ const FALLBACK_SERVICES = [
     name: "Combi Massage",
     description: "A combination of multiple massage techniques.",
     duration: 60,
-    price: 550.0,
+    price: 400.0,
     is_active: true,
   },
   {
@@ -457,7 +457,7 @@ const FALLBACK_SERVICES = [
     name: "Dry Massage",
     description: "Performed without oils or lotions.",
     duration: 60,
-    price: 450.0,
+    price: 500.0,
     is_active: true,
   },
   {
@@ -465,7 +465,7 @@ const FALLBACK_SERVICES = [
     name: "Foot Massage",
     description: "Focused on the feet and lower legs.",
     duration: 60,
-    price: 400.0,
+    price: 500.0,
     is_active: true,
   },
   {
@@ -473,23 +473,23 @@ const FALLBACK_SERVICES = [
     name: "Hot Stone Service",
     description: "Uses heated stones for deep muscle relaxation.",
     duration: 90, // 1.5 hours
-    price: 650.0,
+    price: 675.0,
     is_active: true,
   },
   {
     id: 6,
     name: "Ventosa",
     description: "Traditional cupping therapy to relieve muscle tension.",
-    duration: 45, // 45 minutes
-    price: 450.0,
+    duration: 90, // 1.5 hours
+    price: 675.0,
     is_active: true,
   },
   {
     id: 7,
     name: "Hand Massage",
     description: "Focused on hands and arms.",
-    duration: 45, // 45 minutes
-    price: 350.0,
+    duration: 60,
+    price: 400.0,
     is_active: true,
   },
 ];
@@ -509,7 +509,9 @@ export const fetchServices = createAsyncThunk(
       console.log(
         "fetchServices: Success, received",
         response.data.length,
-        "services"
+        "services",
+        // Display all the received services for debugging
+        console.log("Received services:", response.data)
       );
       return response.data;
     } catch (error) {

@@ -70,6 +70,12 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     );
   };
 
+  // Handle returning to month view
+  const handleBackToMonth = () => {
+    setView("month");
+    onDateSelected(null); // Clear the selected date when returning to month view
+  };
+
   // Handle date selection
   const handleDateClick = (day) => {
     if (day) {
@@ -271,7 +277,7 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     return (
       <div className="day-view-container">
         <div className="day-header">
-          <button onClick={() => setView("month")}>Back to Month</button>
+          <button onClick={handleBackToMonth}>Back to Month</button>
           <h2>{selectedDate.toLocaleDateString()}</h2>
         </div>
 

@@ -67,8 +67,8 @@ const AppointmentForm = ({
           try {
             const localDate = new Date(selectedDate);
             const year = localDate.getFullYear();
-            const month = String(localDate.getMonth() + 1).padStart(2, '0');
-            const day = String(localDate.getDate()).padStart(2, '0');
+            const month = String(localDate.getMonth() + 1).padStart(2, "0");
+            const day = String(localDate.getDate()).padStart(2, "0");
             return `${year}-${month}-${day}`;
           } catch (error) {
             console.error("Error formatting initial date:", error);
@@ -345,8 +345,8 @@ const AppointmentForm = ({
         if (appointment.date) {
           const appointmentDate = new Date(appointment.date);
           const year = appointmentDate.getFullYear();
-          const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
-          const day = String(appointmentDate.getDate()).padStart(2, '0');
+          const month = String(appointmentDate.getMonth() + 1).padStart(2, "0");
+          const day = String(appointmentDate.getDate()).padStart(2, "0");
           formattedDate = `${year}-${month}-${day}`;
         }
 
@@ -377,10 +377,10 @@ const AppointmentForm = ({
         // Fix timezone issue - use local date formatting instead of toISOString()
         const localDate = new Date(selectedDate);
         const year = localDate.getFullYear();
-        const month = String(localDate.getMonth() + 1).padStart(2, '0');
-        const day = String(localDate.getDate()).padStart(2, '0');
+        const month = String(localDate.getMonth() + 1).padStart(2, "0");
+        const day = String(localDate.getDate()).padStart(2, "0");
         const properFormattedDate = `${year}-${month}-${day}`;
-        
+
         setFormData((prev) => ({
           ...prev,
           date: properFormattedDate,

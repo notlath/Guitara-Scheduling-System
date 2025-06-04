@@ -21,7 +21,7 @@ class ServiceData:
             'name': 'Combi Massage',
             'description': 'A combination of multiple massage techniques.',
             'duration': 60,
-            'price': 550.00,
+            'price': 400.00,
             'oil': None,
             'is_active': True
         },
@@ -30,7 +30,7 @@ class ServiceData:
             'name': 'Dry Massage',
             'description': 'Performed without oils or lotions.',
             'duration': 60,
-            'price': 450.00,
+            'price': 500.00,
             'oil': None,
             'is_active': True
         },
@@ -39,7 +39,7 @@ class ServiceData:
             'name': 'Foot Massage',
             'description': 'Focused on the feet and lower legs.',
             'duration': 60,
-            'price': 400.00,
+            'price': 500.00,
             'oil': None,
             'is_active': True
         },
@@ -48,7 +48,7 @@ class ServiceData:
             'name': 'Hot Stone Service',
             'description': 'Uses heated stones for deep muscle relaxation.',
             'duration': 90,  # 1.5 hours
-            'price': 650.00,
+            'price': 675.00,
             'oil': None,
             'is_active': True
         },
@@ -56,8 +56,8 @@ class ServiceData:
             'id': 6,
             'name': 'Ventosa',
             'description': 'Traditional cupping therapy to relieve muscle tension.',
-            'duration': 45,  # 45 minutes
-            'price': 450.00,
+            'duration': 90,  # 1.5 hours
+            'price': 675.00,
             'oil': None,
             'is_active': True
         },
@@ -65,8 +65,8 @@ class ServiceData:
             'id': 7,
             'name': 'Hand Massage',
             'description': 'Focused on hands and arms.',
-            'duration': 45,  # 45 minutes
-            'price': 350.00,
+            'duration': 60,
+            'price': 400.00,
             'oil': None,
             'is_active': True
         },

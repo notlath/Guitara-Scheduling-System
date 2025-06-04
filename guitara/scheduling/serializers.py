@@ -50,6 +50,7 @@ class ServiceSerializer(serializers.ModelSerializer):
             return int(obj.duration.total_seconds())
         return 0
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
