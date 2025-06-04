@@ -34,8 +34,8 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   // Generate time slots from 7 AM to 10 PM in 30-minute intervals
   const generateTimeSlots = () => {
     const slots = [];
-    const startHour = 7; // 7 AM
-    const endHour = 22; // 10 PM
+    const startHour = 13; // 1 PM (13:00 in 24-hour format)
+    const endHour = 1; //  1 AM (1:00 in 24-hour format, next day)
 
     for (let hour = startHour; hour < endHour; hour++) {
       // Add :00 slot
