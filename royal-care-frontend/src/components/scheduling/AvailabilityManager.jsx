@@ -277,13 +277,18 @@ const AvailabilityManager = () => {
                   <td>{availability.end_time}</td>
                   <td>
                     {availability.is_available ? "Available" : "Unavailable"}
-                  </td>
-                  <td>
+                  </td>                  <td>
                     <button
-                      className="toggle-button"
+                      className={`toggle-button ${availability.is_available ? 'available-status' : 'unavailable-status'}`}
                       onClick={() => handleToggleAvailability(availability)}
+                      title={availability.is_available ? 'Click to make unavailable' : 'Click to make available'}
                     >
-                      Toggle Status
+                      <span className="toggle-icon">
+                        {availability.is_available ? '🟢' : '🔴'}
+                      </span>
+                      <span className="toggle-text">
+                        {availability.is_available ? 'Disable' : 'Enable'}
+                      </span>
                     </button>
                     <button
                       className="delete-button"
