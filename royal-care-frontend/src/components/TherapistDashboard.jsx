@@ -4,9 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
   fetchAppointments,
-  updateAppointmentStatus,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
+  updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
 import { setupWebSocket } from "../services/webSocketService";
 import "../styles/TherapistDashboard.css";
@@ -18,23 +18,23 @@ const TherapistDashboard = () => {
   const [pollingInterval, setPollingInterval] = useState(null);
 
   const { user } = useSelector((state) => state.auth);
-  const { 
-    appointments, 
-    todayAppointments, 
-    upcomingAppointments, 
-    loading, 
-    error 
+  const {
+    appointments,
+    todayAppointments,
+    upcomingAppointments,
+    loading,
+    error,
   } = useSelector((state) => state.scheduling);
 
   // Filter appointments for current therapist
   const myAppointments = appointments.filter(
     (apt) => apt.therapist === user?.id
   );
-  
+
   const myTodayAppointments = todayAppointments.filter(
     (apt) => apt.therapist === user?.id
   );
-  
+
   const myUpcomingAppointments = upcomingAppointments.filter(
     (apt) => apt.therapist === user?.id
   );
@@ -90,10 +90,12 @@ const TherapistDashboard = () => {
   // Handle appointment status changes
   const handleAcceptAppointment = async (appointmentId) => {
     try {
-      await dispatch(updateAppointmentStatus({ 
-        id: appointmentId, 
-        status: "confirmed" 
-      })).unwrap();
+      await dispatch(
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "confirmed",
+        })
+      ).unwrap();
       refreshAppointments();
     } catch (error) {
       console.error("Error accepting appointment:", error);
@@ -103,10 +105,12 @@ const TherapistDashboard = () => {
 
   const handleStartAppointment = async (appointmentId) => {
     try {
-      await dispatch(updateAppointmentStatus({ 
-        id: appointmentId, 
-        status: "in_progress" 
-      })).unwrap();
+      await dispatch(
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "in_progress",
+        })
+      ).unwrap();
       refreshAppointments();
     } catch (error) {
       console.error("Error starting appointment:", error);
@@ -117,10 +121,12 @@ const TherapistDashboard = () => {
   const handleCompleteAppointment = async (appointmentId) => {
     if (window.confirm("Mark this appointment as completed?")) {
       try {
-        await dispatch(updateAppointmentStatus({ 
-          id: appointmentId, 
-          status: "completed" 
-        })).unwrap();
+        await dispatch(
+          updateAppointmentStatus({
+            id: appointmentId,
+            status: "completed",
+          })
+        ).unwrap();
         refreshAppointments();
       } catch (error) {
         console.error("Error completing appointment:", error);
@@ -132,10 +138,12 @@ const TherapistDashboard = () => {
   const handleRejectAppointment = async (appointmentId) => {
     if (window.confirm("Are you sure you want to reject this appointment?")) {
       try {
-        await dispatch(updateAppointmentStatus({ 
-          id: appointmentId, 
-          status: "cancelled" 
-        })).unwrap();
+        await dispatch(
+          updateAppointmentStatus({
+            id: appointmentId,
+            status: "cancelled",
+          })
+        ).unwrap();
         refreshAppointments();
       } catch (error) {
         console.error("Error rejecting appointment:", error);
@@ -168,13 +176,13 @@ const TherapistDashboard = () => {
       case "pending":
         return (
           <div className="appointment-actions">
-            <button 
+            <button
               className="accept-button"
               onClick={() => handleAcceptAppointment(id)}
             >
               Accept
             </button>
-            <button 
+            <button
               className="reject-button"
               onClick={() => handleRejectAppointment(id)}
             >
@@ -182,11 +190,11 @@ const TherapistDashboard = () => {
             </button>
           </div>
         );
-      
+
       case "confirmed":
         return (
           <div className="appointment-actions">
-            <button 
+            <button
               className="start-button"
               onClick={() => handleStartAppointment(id)}
             >
@@ -194,11 +202,11 @@ const TherapistDashboard = () => {
             </button>
           </div>
         );
-      
+
       case "in_progress":
         return (
           <div className="appointment-actions">
-            <button 
+            <button
               className="complete-button"
               onClick={() => handleCompleteAppointment(id)}
             >
@@ -206,7 +214,7 @@ const TherapistDashboard = () => {
             </button>
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -226,21 +234,43 @@ const TherapistDashboard = () => {
                 {appointment.client_details?.first_name}{" "}
                 {appointment.client_details?.last_name}
               </h3>
-              <span className={`status-badge ${getStatusBadgeClass(appointment.status)}`}>
-                {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+              <span
+                className={`status-badge ${getStatusBadgeClass(
+                  appointment.status
+                )}`}
+              >
+                {appointment.status.charAt(0).toUpperCase() +
+                  appointment.status.slice(1)}
               </span>
             </div>
 
             <div className="appointment-details">
-              <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
-              <p><strong>Time:</strong> {appointment.start_time} - {appointment.end_time}</p>
-              <p><strong>Location:</strong> {appointment.location}</p>
-              <p><strong>Services:</strong> {appointment.services_details?.map(s => s.name).join(", ")}</p>
+              <p>
+                <strong>Date:</strong>{" "}
+                {new Date(appointment.date).toLocaleDateString()}
+              </p>
+              <p>
+                <strong>Time:</strong> {appointment.start_time} -{" "}
+                {appointment.end_time}
+              </p>
+              <p>
+                <strong>Location:</strong> {appointment.location}
+              </p>
+              <p>
+                <strong>Services:</strong>{" "}
+                {appointment.services_details?.map((s) => s.name).join(", ")}
+              </p>
               {appointment.driver_details && (
-                <p><strong>Driver:</strong> {appointment.driver_details.first_name} {appointment.driver_details.last_name}</p>
+                <p>
+                  <strong>Driver:</strong>{" "}
+                  {appointment.driver_details.first_name}{" "}
+                  {appointment.driver_details.last_name}
+                </p>
               )}
               {appointment.notes && (
-                <p><strong>Notes:</strong> {appointment.notes}</p>
+                <p>
+                  <strong>Notes:</strong> {appointment.notes}
+                </p>
               )}
             </div>
 
@@ -256,9 +286,11 @@ const TherapistDashboard = () => {
       <div className="dashboard-header">
         <div>
           <h1>Therapist Dashboard</h1>
-          <p>Welcome, {user?.first_name} {user?.last_name}!</p>
+          <p>
+            Welcome, {user?.first_name} {user?.last_name}!
+          </p>
         </div>
-        
+
         <div className="action-buttons">
           <button onClick={handleLogout} className="logout-button">
             Logout
@@ -270,7 +302,7 @@ const TherapistDashboard = () => {
 
       {error && (
         <div className="error-message">
-          {typeof error === "object" 
+          {typeof error === "object"
             ? error.message || error.error || JSON.stringify(error)
             : error}
         </div>

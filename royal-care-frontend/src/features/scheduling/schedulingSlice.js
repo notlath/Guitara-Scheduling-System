@@ -268,7 +268,7 @@ export const updateAppointmentStatus = createAsyncThunk(
 
     try {
       let response;
-      
+
       if (status === "completed") {
         // Use the specific complete endpoint
         response = await axios.post(
@@ -915,17 +915,17 @@ const schedulingSlice = createSlice({
       })
       .addCase(updateAppointmentStatus.fulfilled, (state, action) => {
         state.loading = false;
-        
+
         // Update appointment in all relevant arrays
         const updatedAppointment = action.payload;
-        
+
         const updateArrays = [
-          'appointments',
-          'todayAppointments', 
-          'upcomingAppointments'
+          "appointments",
+          "todayAppointments",
+          "upcomingAppointments",
         ];
-        
-        updateArrays.forEach(arrayName => {
+
+        updateArrays.forEach((arrayName) => {
           const index = state[arrayName].findIndex(
             (appt) => appt.id === updatedAppointment.id
           );
@@ -933,7 +933,7 @@ const schedulingSlice = createSlice({
             state[arrayName][index] = updatedAppointment;
           }
         });
-        
+
         state.successMessage = "Appointment status updated successfully.";
       })
       .addCase(updateAppointmentStatus.rejected, (state, action) => {
