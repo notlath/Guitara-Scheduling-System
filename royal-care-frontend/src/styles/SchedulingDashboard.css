@@ -9,9 +9,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-mm);
   flex-wrap: wrap;
   gap: var(--spacing-sm);
+  /* border-bottom: none !important; */
 }
 
 .dashboard-header h1 {
@@ -24,14 +25,16 @@
 
 .view-selector {
   display: flex;
-  border: 1px solid var(--background-200);
+  /* border: 1px solid var(--background-200); */
   border-radius: 4px;
   overflow: hidden;
-  background: var(--background-50);
+  /* background: var(--background-50); */
+  margin-bottom: var(--spacing-ml);
 }
 
 .view-selector button {
-  background: none;
+  background: var(--background-40);
+  border-radius: 100px;
   border: none;
   padding: var(--spacing-xs) var(--spacing-sm);
   cursor: pointer;
@@ -40,32 +43,17 @@
   font-family: "Plus Jakarta Sans", sans-serif;
   font-weight: 400;
   transition: background-color 0.2s;
+  margin-right: var(--spacing-xs);
 }
 
 .view-selector button.active {
   background-color: var(--primary);
   color: var(--background);
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .view-selector button:not(.active):hover {
   background-color: var(--background-100);
-}
-
-.create-appointment-button {
-  background-color: var(--accent);
-  color: var(--background);
-  border: none;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 700;
-  font-family: "Plus Jakarta Sans", sans-serif;
-  transition: background-color 0.2s;
-}
-
-.create-appointment-button:hover {
-  background-color: var(--accent-700);
 }
 
 .loading-spinner {
@@ -214,7 +202,7 @@
   border-radius: 8px;
 }
 
-.todays-appointments h2,
+todays-appointments h2,
 .upcoming-appointments h2 {
   margin-top: 0;
   margin-bottom: var(--spacing-md);
@@ -231,16 +219,28 @@
   gap: var(--spacing-xs);
 }
 
-.notification-button {
-  background-color: var(--background-100);
-  color: var(--text);
+.action-buttons button {
   border: none;
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: 4px;
   cursor: pointer;
-  font-weight: 700;
   font-family: "Plus Jakarta Sans", sans-serif;
   transition: background-color 0.2s;
+}
+
+.create-appointment-button {
+  background-color: var(--primary);
+  color: var(--background);
+  /* font-weight: 400; */
+}
+
+.create-appointment-button:hover {
+  background-color: var(--accent-700);
+}
+
+.notification-button {
+  background-color: var(--background-100);
+  color: var(--text);
   position: relative;
 }
 
@@ -275,6 +275,12 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   border-radius: 8px;
   background: var(--background);
+}
+
+.icon-label-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
 @media (max-width: 768px) {

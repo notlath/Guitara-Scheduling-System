@@ -15,6 +15,8 @@ import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
 import WebSocketStatus from "./WebSocketStatus";
 import WeekView from "./WeekView";
+import { FaBell } from "react-icons/fa";
+import { FiPlus } from "react-icons/fi";
 
 const SchedulingDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -300,45 +302,13 @@ const SchedulingDashboard = () => {
       <div className="dashboard-header">
         <h1>Bookings</h1>
 
-        <div className="view-selector">
-          <button
-            className={view === "calendar" ? "active" : ""}
-            onClick={() => setView("calendar")}
-          >
-            Month View
-          </button>
-          <button
-            className={view === "week" ? "active" : ""}
-            onClick={() => setView("week")}
-          >
-            Week View
-          </button>
-          <button
-            className={view === "today" ? "active" : ""}
-            onClick={() => setView("today")}
-          >
-            Today's Bookings
-          </button>
-          <button
-            className={view === "list" ? "active" : ""}
-            onClick={() => setView("list")}
-          >
-            Upcoming Bookings
-          </button>
-          <button
-            className={view === "availability" ? "active" : ""}
-            onClick={() => setView("availability")}
-          >
-            Manage Availability
-          </button>
-        </div>
-
         <div className="action-buttons">
           <button
             className="notification-button"
             onClick={() => setIsNotificationVisible(!isNotificationVisible)}
+            title="Notifications"
           >
-            Notifications
+            <FaBell size={20} />
             {unreadNotificationCount > 0 && (
               <span className="notification-badge">
                 {unreadNotificationCount}
@@ -348,13 +318,47 @@ const SchedulingDashboard = () => {
 
           {user.role === "operator" && (
             <button
-              className="create-appointment-button"
+              className="create-appointment-button icon-label-btn"
               onClick={handleCreateAppointment}
+              title="Create Booking"
             >
+              <FiPlus size={20} />
               Create Booking
             </button>
           )}
         </div>
+      </div>
+      <div className="view-selector">
+        <button
+          className={view === "calendar" ? "active" : ""}
+          onClick={() => setView("calendar")}
+        >
+          Month View
+        </button>
+        <button
+          className={view === "week" ? "active" : ""}
+          onClick={() => setView("week")}
+        >
+          Week View
+        </button>
+        <button
+          className={view === "today" ? "active" : ""}
+          onClick={() => setView("today")}
+        >
+          Today's Bookings
+        </button>
+        <button
+          className={view === "list" ? "active" : ""}
+          onClick={() => setView("list")}
+        >
+          Upcoming Bookings
+        </button>
+        <button
+          className={view === "availability" ? "active" : ""}
+          onClick={() => setView("availability")}
+        >
+          Manage Availability
+        </button>
       </div>
 
       {loading && <div className="loading-spinner">Loading...</div>}

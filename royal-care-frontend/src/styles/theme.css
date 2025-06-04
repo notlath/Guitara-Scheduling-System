@@ -87,6 +87,8 @@ small {
 
   /* Background color shades */
   --background-25: #fafafa; /* lighter than background-50 */
+  --background-35: #f8f8f8; /* between 25 and 40, a bit lighter */
+  --background-40: #f6f6f6; /* between 25 and 50 */
   --background-50: #f2f2f2;
   --background-100: #e6e6e6;
   --background-200: #cccccc;
