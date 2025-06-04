@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Client, Availability, Appointment, Notification
+from .models import Client, Availability, Appointment, Notification, AppointmentRejection
 from core.models import CustomUser
 from datetime import datetime, timedelta
 
@@ -109,12 +109,26 @@ class AvailabilitySerializer(serializers.ModelSerializer):
         return data
 
 
+class AppointmentRejectionSerializer(serializers.ModelSerializer):
+    rejected_by_details = UserSerializer(source="rejected_by", read_only=True)
+    reviewed_by_details = UserSerializer(source="reviewed_by", read_only=True)
+
+    class Meta:
+        model = AppointmentRejection
+        fields = [
+            'id', 'appointment', 'rejection_reason', 'rejected_by', 'rejected_by_details',
+            'rejected_at', 'reviewed_by', 'reviewed_by_details', 'reviewed_at', 
+            'review_decision', 'review_notes', 'created_at'
+        ]
+
+
 class AppointmentSerializer(serializers.ModelSerializer):
     client_details = ClientSerializer(source="client", read_only=True)
     therapist_details = UserSerializer(source="therapist", read_only=True)
     driver_details = UserSerializer(source="driver", read_only=True)
     operator_details = UserSerializer(source="operator", read_only=True)
     services_details = ServiceSerializer(source="services", many=True, read_only=True)
+    rejection_details = AppointmentRejectionSerializer(source="appointmentrejection", read_only=True)
     total_duration = serializers.SerializerMethodField()
     total_price = serializers.SerializerMethodField()
 
@@ -252,6 +266,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 class NotificationSerializer(serializers.ModelSerializer):
     user_details = UserSerializer(source="user", read_only=True)
     appointment_details = AppointmentSerializer(source="appointment", read_only=True)
+    rejection_details = AppointmentRejectionSerializer(source="rejection", read_only=True)
 
     class Meta:
         model = Notification

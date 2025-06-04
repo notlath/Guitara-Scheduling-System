@@ -305,6 +305,102 @@ export const updateAppointmentStatus = createAsyncThunk(
   }
 );
 
+// Reject appointment with reason
+export const rejectAppointment = createAsyncThunk(
+  "scheduling/rejectAppointment", 
+  async ({ id, rejectionReason }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${id}/reject/`,
+        { rejection_reason: rejectionReason },
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
+      // Notify via WebSocket
+      sendAppointmentUpdate(response.data.id);
+      return response.data;
+    } catch (error) {
+      console.error("API Reject Appointment Error:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+      return rejectWithValue(
+        error.response?.data || "Could not reject appointment"
+      );
+    }
+  }
+);
+
+// Review appointment rejection (operator)
+export const reviewRejection = createAsyncThunk(
+  "scheduling/reviewRejection",
+  async ({ id, reviewDecision, reviewNotes }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${id}/review_rejection/`,
+        { 
+          review_decision: reviewDecision,
+          review_notes: reviewNotes 
+        },
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
+      // Notify via WebSocket
+      sendAppointmentUpdate(response.data.id);
+      return response.data;
+    } catch (error) {
+      console.error("API Review Rejection Error:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+      return rejectWithValue(
+        error.response?.data || "Could not review rejection"
+      );
+    }
+  }
+);
+
+// Auto-cancel overdue appointments
+export const autoCancelOverdueAppointments = createAsyncThunk(
+  "scheduling/autoCancelOverdueAppointments",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/auto_cancel_overdue/`,
+        {},
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("API Auto Cancel Error:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+      return rejectWithValue(
+        error.response?.data || "Could not auto-cancel overdue appointments"
+      );
+    }
+  }
+);
+
 // Fetch available therapists for a specific date and time
 export const fetchAvailableTherapists = createAsyncThunk(
   "scheduling/fetchAvailableTherapists",
@@ -937,6 +1033,57 @@ const schedulingSlice = createSlice({
         state.successMessage = "Appointment status updated successfully.";
       })
       .addCase(updateAppointmentStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // rejectAppointment
+      .addCase(rejectAppointment.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(rejectAppointment.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+          state.successMessage = "Appointment rejected successfully.";
+        }
+      })
+      .addCase(rejectAppointment.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // reviewRejection
+      .addCase(reviewRejection.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(reviewRejection.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+          state.successMessage = "Rejection reviewed successfully.";
+        }
+      })
+      .addCase(reviewRejection.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // autoCancelOverdueAppointments
+      .addCase(autoCancelOverdueAppointments.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(autoCancelOverdueAppointments.fulfilled, (state, action) => {
+        state.loading = false;
+        state.successMessage = "Overdue appointments auto-canceled successfully.";
+      })
+      .addCase(autoCancelOverdueAppointments.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

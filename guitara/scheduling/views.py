@@ -617,6 +617,235 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        """Therapist rejects an appointment with a reason"""
+        appointment = self.get_object()
+        
+        # Only the assigned therapist can reject
+        if request.user != appointment.therapist:
+            return Response(
+                {"error": "You can only reject your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        
+        if appointment.status != "pending":
+            return Response(
+                {"error": "Only pending appointments can be rejected"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        rejection_reason = request.data.get("rejection_reason")
+        if not rejection_reason or not rejection_reason.strip():
+            return Response(
+                {"error": "Rejection reason is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Create rejection record
+        from .models import AppointmentRejection
+        rejection = AppointmentRejection.objects.create(
+            appointment=appointment,
+            rejection_reason=rejection_reason.strip(),
+            rejected_by=request.user,
+        )
+        
+        # Update appointment status
+        appointment.status = "rejected"
+        appointment.rejection_reason = rejection_reason.strip()
+        appointment.rejected_by = request.user
+        appointment.rejected_at = timezone.now()
+        appointment.save()
+        
+        # Create notification for operator
+        if appointment.operator:
+            Notification.objects.create(
+                user=appointment.operator,
+                appointment=appointment,
+                rejection=rejection,
+                notification_type="appointment_rejected",
+                message=f"Therapist {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}",
+            )
+        
+        # Send WebSocket notification
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": "appointment_rejected",
+                    "appointment_id": appointment.id,
+                    "rejection_id": rejection.id,
+                    "therapist_id": request.user.id,
+                    "operator_id": appointment.operator.id if appointment.operator else None,
+                    "message": f"Appointment rejected by {request.user.get_full_name()}",
+                },
+            },
+        )
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def review_rejection(self, request, pk=None):
+        """Operator reviews a rejection - can accept or deny the reason"""
+        appointment = self.get_object()
+        
+        # Only operators can review rejections
+        if request.user.role != "operator":
+            return Response(
+                {"error": "Only operators can review rejections"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        
+        if appointment.status != "rejected":
+            return Response(
+                {"error": "Only rejected appointments can be reviewed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        response_action = request.data.get("action")  # 'accept' or 'deny'
+        response_reason = request.data.get("reason", "")
+        
+        if response_action not in ["accept", "deny"]:
+            return Response(
+                {"error": "Action must be 'accept' or 'deny'"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        try:
+            rejection = appointment.rejection_details
+        except AppointmentRejection.DoesNotExist:
+            return Response(
+                {"error": "No rejection details found for this appointment"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Update rejection record
+        rejection.operator_response = "accepted" if response_action == "accept" else "denied"
+        rejection.operator_response_reason = response_reason
+        rejection.reviewed_by = request.user
+        rejection.reviewed_at = timezone.now()
+        rejection.save()
+        
+        if response_action == "accept":
+            # Delete the appointment if operator accepts the rejection reason
+            appointment_client = appointment.client
+            appointment_date = appointment.date
+            appointment_time = appointment.start_time
+            therapist = appointment.therapist
+            
+            # Create notification for therapist
+            if therapist:
+                Notification.objects.create(
+                    user=therapist,
+                    appointment=appointment,
+                    rejection=rejection,
+                    notification_type="rejection_reviewed",
+                    message=f"Operator has accepted your rejection reason. The appointment for {appointment_client} on {appointment_date} has been cancelled.",
+                )
+            
+            # Delete the appointment
+            appointment.delete()
+            
+            return Response({
+                "message": "Rejection accepted. Appointment has been deleted.",
+                "action": "deleted"
+            })
+        else:
+            # If operator denies the rejection, push the appointment through
+            appointment.status = "confirmed"
+            appointment.save()
+            
+            # Create notification for therapist
+            if appointment.therapist:
+                Notification.objects.create(
+                    user=appointment.therapist,
+                    appointment=appointment,
+                    rejection=rejection,
+                    notification_type="rejection_reviewed",
+                    message=f"Operator has denied your rejection reason. The appointment for {appointment.client} on {appointment.date} is confirmed and must proceed.",
+                )
+            
+            # Send WebSocket notification
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                "appointments",
+                {
+                    "type": "appointment_message",
+                    "message": {
+                        "type": "rejection_denied",
+                        "appointment_id": appointment.id,
+                        "therapist_id": appointment.therapist.id if appointment.therapist else None,
+                        "message": f"Appointment rejection denied - appointment confirmed",
+                    },
+                },
+            )
+            
+            serializer = self.get_serializer(appointment)
+            return Response({
+                "message": "Rejection denied. Appointment has been confirmed.",
+                "action": "confirmed",
+                "appointment": serializer.data
+            })
+
+    @action(detail=False, methods=["post"])
+    def auto_cancel_overdue(self, request):
+        """Auto-cancel appointments that are overdue (30+ minutes without response)"""
+        # Only operators can trigger this action
+        if request.user.role != "operator":
+            return Response(
+                {"error": "Only operators can auto-cancel overdue appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        
+        # Find overdue pending appointments
+        overdue_appointments = Appointment.objects.filter(
+            status="pending",
+            response_deadline__lt=timezone.now()
+        )
+        
+        cancelled_count = 0
+        disabled_therapists = []
+        
+        for appointment in overdue_appointments:
+            # Auto-cancel the appointment
+            appointment.status = "auto_cancelled"
+            appointment.auto_cancelled_at = timezone.now()
+            appointment.save()
+            
+            # Disable the therapist (set is_active to False)
+            if appointment.therapist and appointment.therapist.is_active:
+                appointment.therapist.is_active = False
+                appointment.therapist.save()
+                disabled_therapists.append(appointment.therapist)
+                
+                # Create notification for therapist
+                Notification.objects.create(
+                    user=appointment.therapist,
+                    appointment=appointment,
+                    notification_type="therapist_disabled",
+                    message=f"Your account has been disabled due to not responding to appointment for {appointment.client} within 30 minutes. Please contact administration.",
+                )
+            
+            # Create notification for operator
+            if appointment.operator:
+                Notification.objects.create(
+                    user=appointment.operator,
+                    appointment=appointment,
+                    notification_type="appointment_auto_cancelled",
+                    message=f"Appointment for {appointment.client} on {appointment.date} was auto-cancelled due to no response from therapist {appointment.therapist.get_full_name() if appointment.therapist else 'Unknown'}.",
+                )
+            
+            cancelled_count += 1
+        
+        return Response({
+            "message": f"Auto-cancelled {cancelled_count} overdue appointments",
+            "cancelled_count": cancelled_count,
+            "disabled_therapists": [t.get_full_name() for t in disabled_therapists]
+        })
+
     def _create_notifications(self, appointment, notification_type, message):
         """Helper method to create notifications for all involved parties"""
         # Create notification for therapist
