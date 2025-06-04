@@ -18,53 +18,73 @@
 .calendar-header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: var(--spacing-xm);
+  justify-content: space-between;
+  gap: var(--spacing-sm);
   margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background-color: var(--background);
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
 .calendar-header button {
-  background: none;
-  border: none;
+  background: var(--background-100);
+  border: 1px solid var(--background-200);
   cursor: pointer;
   font-size: var(--font-size-base);
   padding: var(--spacing-xs) var(--spacing-sm);
   display: flex;
   align-items: center;
-  transition: background 0.2s;
-  color: var(--text);
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: var(--text-600);
+  border-radius: 6px;
+  min-width: 40px;
+  height: 40px;
 }
 
 .calendar-header button:hover {
-  background: var(--background-100);
-  border-radius: 4px;
+  background: var(--primary-100);
+  border-color: var(--primary-200);
+  color: var(--primary-700);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .calendar-header h2 {
   margin: 0;
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-lg);
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-800);
+  flex: 1;
+  text-align: center;
 }
 
 .calendar-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   border: 1px solid var(--background-200);
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .day-header {
   text-align: center;
-  font-weight: bold;
+  font-weight: 600;
   background-color: var(--background-200);
   border-bottom: 1px solid var(--background-300);
+  padding: var(--spacing-sm);
+  color: var(--text-700);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .calendar-day {
   aspect-ratio: 1;
   display: flex;
+  flex-direction: column;
   justify-content: flex-start;
   align-items: flex-start;
   padding: var(--spacing-xm);
@@ -73,6 +93,7 @@
   font-size: var(--font-size-base);
   color: var(--text);
   position: relative;
+  transition: all 0.3s ease;
 }
 
 .empty-day {
@@ -83,18 +104,95 @@
   cursor: pointer;
 }
 
+.day-number {
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Today styling */
+.today {
+  background-color: var(--primary-100);
+  border: 2px solid var(--primary-300);
+  font-weight: 700;
+}
+
+.today .day-number {
+  color: var(--primary-800);
+  font-weight: 700;
+}
+
+.today-label {
+  font-size: var(--font-size-xs);
+  color: var(--primary-700);
+  font-weight: 600;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Past days styling */
+.past-day {
+  background-color: var(--background-50);
+  color: var(--text-400);
+}
+
+.past-day .day-number {
+  color: var(--text-400);
+}
+
+/* Appointment day styling */
 .appointment-day {
   background-color: var(--primary-50);
+  border-left: 3px solid var(--primary-400);
 }
 
+.appointment-day .day-number {
+  color: var(--primary-800);
+  font-weight: 600;
+}
+
+/* Hover effects */
 .day:hover {
   background-color: var(--accent-100);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Special hover effect for appointment days */
+.appointment-day:hover {
+  background-color: #f7e3a1;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Today hover effect */
+.today:hover {
+  background-color: var(--primary-200);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(75, 59, 6, 0.2);
+}
+
+/* Past day hover effect (more subtle) */
+.past-day:hover {
+  background-color: var(--background-100);
+  transform: translateY(-0.5px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Selected day styling */
 .selected-day {
   background-color: var(--primary);
   color: var(--background);
   font-weight: bold;
+  border: 2px solid var(--primary-700);
+}
+
+.selected-day .day-number {
+  color: var(--background);
+}
+
+.selected-day .today-label {
+  color: var(--background);
 }
 
 /* Day view styles */
@@ -179,5 +277,85 @@
 
   .availability-info {
     grid-template-columns: 1fr;
+  }
+
+  .calendar-day {
+    padding: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+  }
+
+  .today-label {
+    font-size: 0.6rem;
+    margin-top: 1px;
+  }
+
+  .day-header {
+    padding: var(--spacing-xs);
+    font-size: 0.7rem;
+  }
+
+  .appointment-day::after {
+    width: 6px;
+    height: 6px;
+    top: 4px;
+    right: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-day {
+    padding: 4px;
+  }
+
+  .today-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.2px;
+  }
+
+  .day-number {
+    font-size: var(--font-size-xs);
+  }
+}
+
+/* Additional visual enhancements */
+
+/* Appointment indicator dot */
+.appointment-day::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--primary-500);
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+/* Today appointment indicator */
+.today.appointment-day::after {
+  background-color: var(--primary-700);
+  opacity: 1;
+}
+
+/* Selected day appointment indicator */
+.selected-day.appointment-day::after {
+  background-color: var(--background);
+}
+
+/* Subtle animation for appointment indicators */
+.appointment-day::after {
+  animation: pulseIndicator 2s infinite;
+}
+
+@keyframes pulseIndicator {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
   }
 }

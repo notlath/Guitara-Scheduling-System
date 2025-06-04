@@ -93,8 +93,8 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
       // Fetch availability for common appointment hours (1-hour window)
       const params = {
         date: formattedDate,
-        start_time: "09:00",  // More realistic start time
-        end_time: "10:00",    // 1-hour window instead of broader range
+        start_time: "09:00", // More realistic start time
+        end_time: "10:00", // 1-hour window instead of broader range
       };
 
       console.log("Calendar: Fetching availabilities for date click:", params);
@@ -198,13 +198,42 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
 
           {weeks.flatMap((week, weekIndex) =>
             week.map((day, dayIndex) => {
-              const formattedDate = formatDate(
-                new Date(
-                  currentMonth.getFullYear(),
-                  currentMonth.getMonth(),
-                  day
-                )
+              if (!day) {
+                return (
+                  <div
+                    key={`${weekIndex}-${dayIndex}`}
+                    className="calendar-day empty-day"
+                  ></div>
+                );
+              }
+
+              const cellDate = new Date(
+                currentMonth.getFullYear(),
+                currentMonth.getMonth(),
+                day
               );
+              const formattedDate = formatDate(cellDate);
+
+              // Get today's date at midnight for accurate comparison
+              const today = new Date();
+              const todayMidnight = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                today.getDate()
+              );
+              const cellDateMidnight = new Date(
+                cellDate.getFullYear(),
+                cellDate.getMonth(),
+                cellDate.getDate()
+              );
+              const todayFormatted = formatDate(today);
+
+              // Check if this day is today
+              const isToday = formattedDate === todayFormatted;
+
+              // Check if this day is in the past
+              const isPastDay = cellDateMidnight < todayMidnight;
+
               const appointment = appointments.find((appointment) => {
                 return appointment.date === formattedDate;
               });
@@ -212,17 +241,20 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
               return (
                 <div
                   key={`${weekIndex}-${dayIndex}`}
-                  className={`calendar-day ${day ? "day" : "empty-day"} ${
+                  className={`calendar-day day ${
                     selectedDate &&
                     day === selectedDate.getDate() &&
                     currentMonth.getMonth() === selectedDate.getMonth() &&
                     currentMonth.getFullYear() === selectedDate.getFullYear()
                       ? "selected-day"
                       : ""
-                  } ${appointment && "appointment-day"}`}
-                  onClick={() => day && handleDateClick(day)}
+                  } ${appointment ? "appointment-day" : ""} ${
+                    isToday ? "today" : ""
+                  } ${isPastDay ? "past-day" : ""}`}
+                  onClick={() => handleDateClick(day)}
                 >
-                  {day}
+                  <span className="day-number">{day}</span>
+                  {isToday && <span className="today-label">Today</span>}
                 </div>
               );
             })

@@ -1,16 +1,19 @@
-@import url("https://fonts.googleapis.com/css?family=Plus%20Jakarta%20Sans:700|Plus%20Jakarta%20Sans:400");
+@import url("https://fonts.googleapis.com/css?family=Plus%20Jakarta%20Sans:700|Plus%20Jakarta%20Sans:400"); /* Import Google Fonts */
 
+/* Base HTML styles */
 html {
   font-size: 100%; /* 16px */
   color: var(--text);
   background: var(--background);
 }
 
+/* Body styles */
 body {
   color: var(--text);
   background: var(--background);
 }
 
+/* Set font family and weight for common elements */
 body,
 input,
 button,
@@ -25,6 +28,7 @@ span {
   font-weight: 400;
 }
 
+/* Headings use bold font weight */
 h1,
 h2,
 h3,
@@ -33,6 +37,8 @@ h5 {
   font-family: "Plus Jakarta Sans", sans-serif !important;
   font-weight: 700;
 }
+
+/* Heading font sizes using CSS variables */
 h1 {
   font-size: var(--font-size-xxxl);
 }
@@ -48,11 +54,15 @@ h4 {
 h5 {
   font-size: var(--font-size-md);
 }
+
+/* Small text size */
 small {
   font-size: var(--font-size-sm);
 }
 
+/* Theme color and spacing variables */
 :root {
+  /* Main colors */
   --text: #0f0c05;
   --muted: var(--background-500);
   --background: #ffffff;
@@ -62,6 +72,7 @@ small {
   --accent: #9ab096;
   --error: #ff312e;
 
+  /* Text color shades */
   --text-50: #f9f5ec;
   --text-100: #f2ebd9;
   --text-200: #e6d6b3;
@@ -74,6 +85,7 @@ small {
   --text-900: #261f0d;
   --text-950: #130f06;
 
+  /* Background color shades */
   --background-50: #f2f2f2;
   --background-100: #e6e6e6;
   --background-200: #cccccc;
@@ -86,6 +98,7 @@ small {
   --background-900: #1a1a1a;
   --background-950: #0d0d0d;
 
+  /* Primary color shades */
   --primary-50: #fdf8e7;
   --primary-100: #fbf1d0;
   --primary-200: #f7e3a1;
@@ -98,6 +111,7 @@ small {
   --primary-900: #2f2504;
   --primary-950: #181302;
 
+  /* Secondary color shades */
   --secondary-50: #f1f4f1;
   --secondary-100: #e3e8e3;
   --secondary-200: #c6d2c7;
@@ -110,6 +124,7 @@ small {
   --secondary-900: #171c17;
   --secondary-950: #0b0e0c;
 
+  /* Accent color shades */
   --accent-50: #f1f4f0;
   --accent-100: #e3e9e2;
   --accent-200: #c7d3c5;
@@ -122,11 +137,13 @@ small {
   --accent-900: #171d16;
   --accent-950: #0c0f0b;
 
+  /* Status colors */
   --success-bg: #e6f4ea;
   --success-text: #137333;
   --error-bg: #fce8e6;
   --error-text: #d93025;
 
+  /* Font sizes */
   --font-size-xs: 0.7rem;
   --font-size-sm: 0.8rem;
   --font-size-base: 1rem;
@@ -136,6 +153,7 @@ small {
   --font-size-xxl: 2.442rem;
   --font-size-xxxl: 3.053rem;
 
+  /* Spacing variables */
   --spacing-xxs: 0.25rem; /* 4px */
   --spacing-xs: 0.5rem; /* 8px */
   --spacing-xm: 0.75rem; /* 12px */
