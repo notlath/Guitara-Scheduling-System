@@ -152,10 +152,12 @@ const SchedulingDashboard = () => {
   const handleDeleteAppointment = async (appointmentId) => {
     if (window.confirm("Are you sure you want to delete this booking?")) {
       try {
-        await dispatch(deleteAppointment(appointmentId));
+        await dispatch(deleteAppointment(appointmentId)).unwrap();
         refreshAppointments();
       } catch (error) {
         console.error("Error deleting booking:", error);
+        // Add user feedback
+        alert(`Failed to delete appointment: ${error.message || error}`);
       }
     }
   };
