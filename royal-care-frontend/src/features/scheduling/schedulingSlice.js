@@ -259,6 +259,52 @@ export const deleteAppointment = createAsyncThunk(
   }
 );
 
+// Update appointment status (for therapists to accept/reject/complete)
+export const updateAppointmentStatus = createAsyncThunk(
+  "scheduling/updateAppointmentStatus",
+  async ({ id, status }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
+    try {
+      let response;
+
+      if (status === "completed") {
+        // Use the specific complete endpoint
+        response = await axios.post(
+          `${API_URL}appointments/${id}/complete/`,
+          {},
+          {
+            headers: { Authorization: `Token ${token}` },
+          }
+        );
+      } else {
+        // Use regular update for other status changes
+        response = await axios.patch(
+          `${API_URL}appointments/${id}/`,
+          { status },
+          {
+            headers: { Authorization: `Token ${token}` },
+          }
+        );
+      }
+
+      // Notify via WebSocket
+      sendAppointmentUpdate(response.data.id);
+      return response.data;
+    } catch (error) {
+      console.error("API Status Update Error:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+      return rejectWithValue(
+        error.response?.data || "Could not update appointment status"
+      );
+    }
+  }
+);
+
 // Fetch available therapists for a specific date and time
 export const fetchAvailableTherapists = createAsyncThunk(
   "scheduling/fetchAvailableTherapists",
@@ -859,6 +905,38 @@ const schedulingSlice = createSlice({
         state.successMessage = "Appointment deleted successfully.";
       })
       .addCase(deleteAppointment.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // updateAppointmentStatus
+      .addCase(updateAppointmentStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateAppointmentStatus.fulfilled, (state, action) => {
+        state.loading = false;
+
+        // Update appointment in all relevant arrays
+        const updatedAppointment = action.payload;
+
+        const updateArrays = [
+          "appointments",
+          "todayAppointments",
+          "upcomingAppointments",
+        ];
+
+        updateArrays.forEach((arrayName) => {
+          const index = state[arrayName].findIndex(
+            (appt) => appt.id === updatedAppointment.id
+          );
+          if (index !== -1) {
+            state[arrayName][index] = updatedAppointment;
+          }
+        });
+
+        state.successMessage = "Appointment status updated successfully.";
+      })
+      .addCase(updateAppointmentStatus.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

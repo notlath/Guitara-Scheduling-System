@@ -1,23 +1,23 @@
 import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
-  MdCalendarMonth,
   MdAccessTime,
   MdBarChart,
-  MdInventory,
-  MdSettings,
-  MdPerson,
+  MdBusiness,
+  MdCalendarMonth,
+  MdDevices,
+  MdEmail,
   MdHelpOutline,
   MdInfoOutline,
-  MdMenuBook,
-  MdQuestionAnswer,
-  MdEmail,
-  MdBusiness,
-  MdDevices,
-  MdPeople,
+  MdInventory,
   MdKeyboardArrowDown,
+  MdMenuBook,
+  MdPeople,
+  MdPerson,
+  MdQuestionAnswer,
+  MdSettings,
 } from "react-icons/md";
+import { useSelector } from "react-redux";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import rcLogo from "../assets/images/rc_logo.jpg";
 import "../styles/MainLayout.css";
 
@@ -138,20 +138,19 @@ const MainLayout = () => {
         <div className="divider"></div>
         <div className="bottom-links">
           <NavLink
-            to="/dashboard/settings"
-            className={({ isActive }) => (isActive ? "active-link" : "")}
-          >
-            <MdSettings style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
-            Settings
-          </NavLink>
-          <NavLink
             to="/dashboard/profile"
             className={({ isActive }) => (isActive ? "active-link" : "")}
           >
             <MdPerson style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
             Profile
           </NavLink>
-
+          <NavLink
+            to="/dashboard/settings"
+            className={({ isActive }) => (isActive ? "active-link" : "")}
+          >
+            <MdSettings style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
+            Settings
+          </NavLink>
           {/* Help Section with Sublinks */}
           <a
             href="#"

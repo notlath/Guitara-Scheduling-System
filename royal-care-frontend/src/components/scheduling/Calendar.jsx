@@ -34,14 +34,20 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   // Generate time slots from 7 AM to 10 PM in 30-minute intervals
   const generateTimeSlots = () => {
     const slots = [];
-    const startHour = 7; // 7 AM
-    const endHour = 22; // 10 PM
 
-    for (let hour = startHour; hour < endHour; hour++) {
-      // Add :00 slot
+    // 1 PM to 11:30 PM (same day)
+    for (let hour = 13; hour < 24; hour++) {
       slots.push(`${hour.toString().padStart(2, "0")}:00`);
-      // Add :30 slot
       slots.push(`${hour.toString().padStart(2, "0")}:30`);
+    }
+
+    // 12 AM to 1 AM (next day)
+    for (let hour = 0; hour <= 1; hour++) {
+      slots.push(`${hour.toString().padStart(2, "0")}:00`);
+      if (hour < 1) {
+        // Don't add :30 for 1 AM
+        slots.push(`${hour.toString().padStart(2, "0")}:30`);
+      }
     }
 
     return slots;
