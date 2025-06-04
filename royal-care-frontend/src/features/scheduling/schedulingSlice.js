@@ -509,7 +509,9 @@ export const fetchServices = createAsyncThunk(
       console.log(
         "fetchServices: Success, received",
         response.data.length,
-        "services"
+        "services",
+        // Display all the received services for debugging
+        console.log("Received services:", response.data)
       );
       return response.data;
     } catch (error) {
