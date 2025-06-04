@@ -63,7 +63,18 @@ const AppointmentForm = ({
     therapist: "",
     driver: "",
     date: selectedDate
-      ? new Date(selectedDate).toISOString().split("T")[0]
+      ? (() => {
+          try {
+            const localDate = new Date(selectedDate);
+            const year = localDate.getFullYear();
+            const month = String(localDate.getMonth() + 1).padStart(2, '0');
+            const day = String(localDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          } catch (error) {
+            console.error("Error formatting initial date:", error);
+            return "";
+          }
+        })()
       : "",
     start_time: selectedTime || "",
     location: "",
@@ -74,6 +85,7 @@ const AppointmentForm = ({
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [endTime, setEndTime] = useState(""); // Store calculated end time separately
+  const [isFormReady, setIsFormReady] = useState(false); // Add form ready state
 
   const dispatch = useDispatch();
   const {
@@ -221,6 +233,13 @@ const AppointmentForm = ({
     }
   }, [dispatch, staffMembers]);
 
+  // Mark form as ready when we have essential data
+  useEffect(() => {
+    if (services.length > 0 && !loading) {
+      setIsFormReady(true);
+    }
+  }, [services.length, loading, setIsFormReady]);
+
   // Update end time when relevant form data changes
   useEffect(() => {
     const calculatedEndTime = calculateEndTime();
@@ -234,13 +253,16 @@ const AppointmentForm = ({
     services: null,
   });
 
-  // Update the useEffect to also fetch available drivers
+  // Update the useEffect to also fetch available drivers with debouncing
   useEffect(() => {
+    // Only proceed if form is ready and we have all required fields
     if (
+      !isFormReady ||
       !formData.start_time ||
       !formData.date ||
       !formData.services ||
-      formData.services === ""
+      formData.services === "" ||
+      loading
     ) {
       return;
     }
@@ -255,61 +277,79 @@ const AppointmentForm = ({
       return;
     }
 
-    let calculatedEndTime;
-    try {
-      calculatedEndTime = calculateEndTime();
-      if (!calculatedEndTime) {
-        console.warn(
-          "Cannot fetch available therapists: unable to calculate end time"
-        );
+    // Debounce the API calls to prevent rapid-fire requests
+    const timeoutId = setTimeout(() => {
+      let calculatedEndTime;
+      try {
+        calculatedEndTime = calculateEndTime();
+        if (!calculatedEndTime) {
+          console.warn(
+            "Cannot fetch available therapists: unable to calculate end time"
+          );
+          return;
+        }
+      } catch (error) {
+        console.error("Error calculating end time:", error);
         return;
       }
-    } catch (error) {
-      console.error("Error calculating end time:", error);
-      return;
-    }
 
-    prevFetchTherapistsRef.current = {
-      date: formData.date,
-      startTime: formData.start_time,
-      services: formData.services,
-    };
+      prevFetchTherapistsRef.current = {
+        date: formData.date,
+        startTime: formData.start_time,
+        services: formData.services,
+      };
 
-    console.log("AppointmentForm - Fetching available therapists/drivers");
-    const serviceId = parseInt(formData.services, 10);
+      console.log("AppointmentForm - Fetching available therapists/drivers");
+      const serviceId = parseInt(formData.services, 10);
 
-    if (serviceId) {
-      // Fetch available therapists
-      dispatch(
-        fetchAvailableTherapists({
-          date: formData.date,
-          start_time: formData.start_time,
-          end_time: calculatedEndTime,
-          service_id: serviceId,
-        })
-      );
+      if (serviceId) {
+        // Fetch available therapists
+        dispatch(
+          fetchAvailableTherapists({
+            date: formData.date,
+            start_time: formData.start_time,
+            end_time: calculatedEndTime,
+            service_id: serviceId,
+          })
+        );
 
-      // Also fetch available drivers
-      dispatch(
-        fetchAvailableDrivers({
-          date: formData.date,
-          start_time: formData.start_time,
-          end_time: calculatedEndTime,
-        })
-      );
-    }
+        // Also fetch available drivers
+        dispatch(
+          fetchAvailableDrivers({
+            date: formData.date,
+            start_time: formData.start_time,
+            end_time: calculatedEndTime,
+          })
+        );
+      }
+    }, 500); // 500ms debounce delay
+
+    // Cleanup timeout on unmount or when dependencies change
+    return () => clearTimeout(timeoutId);
   }, [
+    isFormReady,
     formData.date,
     formData.start_time,
     formData.services,
     calculateEndTime,
     dispatch,
+    loading,
   ]);
 
   // If editing an existing appointment, populate the form
   useEffect(() => {
     if (appointment) {
       try {
+        // Fix date formatting for existing appointments too
+        let formattedDate = "";
+        if (appointment.date) {
+          const appointmentDate = new Date(appointment.date);
+          const year = appointmentDate.getFullYear();
+          const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
+          const day = String(appointmentDate.getDate()).padStart(2, '0');
+          formattedDate = `${year}-${month}-${day}`;
+        }
+
         setFormData({
           client: appointment.client || "",
           services:
@@ -318,9 +358,7 @@ const AppointmentForm = ({
               : "",
           therapist: appointment.therapist || "",
           driver: appointment.driver || "",
-          date: appointment.date
-            ? new Date(appointment.date).toISOString().split("T")[0]
-            : "",
+          date: formattedDate,
           start_time: appointment.start_time || "",
           location: appointment.location || "",
           notes: appointment.notes || "",
@@ -332,31 +370,37 @@ const AppointmentForm = ({
     }
   }, [appointment]);
 
-  // Update form when selected date/time changes
+  // Update form when selected date/time changes (only set if not already set)
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && !formData.date) {
       try {
-        const formattedDate = new Date(selectedDate)
-          .toISOString()
-          .split("T")[0];
+        // Fix timezone issue - use local date formatting instead of toISOString()
+        const localDate = new Date(selectedDate);
+        const year = localDate.getFullYear();
+        const month = String(localDate.getMonth() + 1).padStart(2, '0');
+        const day = String(localDate.getDate()).padStart(2, '0');
+        const properFormattedDate = `${year}-${month}-${day}`;
+        
         setFormData((prev) => ({
           ...prev,
-          date: formattedDate,
+          date: properFormattedDate,
         }));
       } catch (error) {
         console.error("Error formatting selected date:", error);
       }
     }
+  }, [selectedDate, formData.date]);
 
-    if (selectedTime) {
+  useEffect(() => {
+    if (selectedTime && !formData.start_time) {
       setFormData((prev) => ({
         ...prev,
         start_time: selectedTime,
       }));
     }
-  }, [selectedDate, selectedTime]);
+  }, [selectedTime, formData.start_time]);
 
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value, type, options } = e.target;
 
     // Handle multi-select for services
@@ -381,12 +425,15 @@ const AppointmentForm = ({
     }
 
     // Clear error when field is edited
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
+    setErrors((prev) => {
+      if (prev[name]) {
+        return { ...prev, [name]: "" };
+      }
+      return prev;
+    });
+  }, []);
 
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const newErrors = {};
 
     if (!formData.client) newErrors.client = "Client is required";
@@ -400,10 +447,10 @@ const AppointmentForm = ({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData, endTime]);
 
   // Helper function to ensure data is in the correct format for the API
-  const sanitizeDataForApi = (data) => {
+  const sanitizeDataForApi = useCallback((data) => {
     const result = { ...data };
 
     // Ensure therapist is an integer, not an array
@@ -451,7 +498,7 @@ const AppointmentForm = ({
     }
 
     return result;
-  };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

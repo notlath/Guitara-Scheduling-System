@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchAvailableDrivers,
   fetchAvailableTherapists,
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/Calendar.css";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -89,13 +89,15 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
         return;
       }
 
-      // Add consistent time slots for initial load with proper validation
+      // Use more realistic time slots instead of broad range
+      // Fetch availability for common appointment hours (1-hour window)
       const params = {
         date: formattedDate,
-        start_time: "08:00",
-        end_time: "20:00",
+        start_time: "09:00",  // More realistic start time
+        end_time: "10:00",    // 1-hour window instead of broader range
       };
 
+      console.log("Calendar: Fetching availabilities for date click:", params);
       dispatch(fetchAvailableTherapists(params));
       dispatch(fetchAvailableDrivers(params));
     }
@@ -109,6 +111,32 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   const handleTimeClick = (time) => {
     setSelectedTime(time);
     onTimeSelected(time);
+
+    if (selectedDate) {
+      const formattedDate = formatDate(selectedDate);
+
+      // Calculate end time (assuming 1-hour appointments)
+      const [hours, minutes] = time.split(":").map(Number);
+      const endDate = new Date();
+      endDate.setHours(hours, minutes + 60, 0); // Add 1 hour
+      const endTime = `${endDate
+        .getHours()
+        .toString()
+        .padStart(2, "0")}:${endDate.getMinutes().toString().padStart(2, "0")}`;
+
+      const params = {
+        date: formattedDate,
+        start_time: time,
+        end_time: endTime,
+      };
+
+      console.log(
+        "Calendar: Fetching availabilities for time selection:",
+        params
+      );
+      dispatch(fetchAvailableTherapists(params));
+      dispatch(fetchAvailableDrivers(params));
+    }
   };
 
   // Generate calendar UI for month view
