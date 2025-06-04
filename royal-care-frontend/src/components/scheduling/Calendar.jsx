@@ -180,18 +180,20 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     return (
       <div className="calendar-container">
         <div className="calendar-header">
+          <div className="calendar-nav-buttons">
+            <button onClick={prevMonth}>
+              <FaChevronLeft />
+            </button>
+            <button onClick={nextMonth}>
+              <FaChevronRight />
+            </button>
+          </div>
           <h2>
             {currentMonth.toLocaleString("default", {
               month: "long",
               year: "numeric",
             })}
           </h2>
-          <button onClick={prevMonth}>
-            <FaChevronLeft />
-          </button>
-          <button onClick={nextMonth}>
-            <FaChevronRight />
-          </button>
         </div>
         <div className="calendar-days">
           <div className="day-header">Sun</div>
