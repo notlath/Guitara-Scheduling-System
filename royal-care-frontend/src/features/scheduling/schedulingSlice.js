@@ -238,12 +238,20 @@ export const updateAppointment = createAsyncThunk(
 export const deleteAppointment = createAsyncThunk(
   "scheduling/deleteAppointment",
   async (id, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
     try {
-      await axios.delete(`${API_URL}appointments/${id}/`);
+      await axios.delete(`${API_URL}appointments/${id}/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
       // Notify via WebSocket
       sendAppointmentDelete(id);
       return id;
     } catch (error) {
+      console.error("Delete appointment error:", error.response?.data);
       return rejectWithValue(
         error.response?.data || "Could not delete appointment"
       );
