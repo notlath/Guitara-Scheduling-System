@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   createAvailability,
@@ -123,10 +123,16 @@ const AvailabilityManager = () => {
   }, []);
 
   // Filter staff members based on user role
-  const filteredStaffMembers =
-    user.role === "operator"
-      ? staffMembers
-      : staffMembers.filter((staff) => staff.id === user.id);
+  const filteredStaffMembers = useMemo(() => {
+    const baseFilter =
+      user.role === "operator"
+        ? staffMembers
+        : staffMembers.filter((staff) => staff.id === user.id);
+
+    return baseFilter.filter(
+      (staff) => staff.role === "therapist" || staff.role === "driver"
+    );
+  }, [staffMembers, user.role, user.id]);
 
   return (
     <div className="availability-manager">
@@ -150,16 +156,11 @@ const AvailabilityManager = () => {
               onChange={handleStaffChange}
             >
               <option value="">-- Select a staff member --</option>
-              {staffMembers
-                .filter(
-                  (staff) =>
-                    staff.role === "therapist" || staff.role === "driver"
-                )
-                .map((staff) => (
-                  <option key={staff.id} value={staff.id}>
-                    {staff.first_name} {staff.last_name} ({staff.role})
-                  </option>
-                ))}
+              {filteredStaffMembers.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.first_name} {staff.last_name} ({staff.role})
+                </option>
+              ))}
             </select>
           </div>
         )}
@@ -276,13 +277,18 @@ const AvailabilityManager = () => {
                   <td>{availability.end_time}</td>
                   <td>
                     {availability.is_available ? "Available" : "Unavailable"}
-                  </td>
-                  <td>
+                  </td>                  <td>
                     <button
-                      className="toggle-button"
+                      className={`toggle-button ${availability.is_available ? 'available-status' : 'unavailable-status'}`}
                       onClick={() => handleToggleAvailability(availability)}
+                      title={availability.is_available ? 'Click to make unavailable' : 'Click to make available'}
                     >
-                      Toggle Status
+                      <span className="toggle-icon">
+                        {availability.is_available ? '🟢' : '🔴'}
+                      </span>
+                      <span className="toggle-text">
+                        {availability.is_available ? 'Disable' : 'Enable'}
+                      </span>
                     </button>
                     <button
                       className="delete-button"
