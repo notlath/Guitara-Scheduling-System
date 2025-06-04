@@ -555,6 +555,68 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"])
+    def accept(self, request, pk=None):
+        """Therapist accepts a pending appointment"""
+        appointment = self.get_object()
+        
+        # Only the assigned therapist can accept
+        if request.user != appointment.therapist:
+            return Response(
+                {"error": "You can only accept your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        
+        if appointment.status != "pending":
+            return Response(
+                {"error": "Only pending appointments can be accepted"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        appointment.status = "confirmed"
+        appointment.save()
+        
+        # Create notifications
+        self._create_notifications(
+            appointment,
+            "appointment_accepted",
+            f"Therapist {appointment.therapist.get_full_name()} has accepted the appointment for {appointment.client} on {appointment.date}.",
+        )
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])  
+    def start(self, request, pk=None):
+        """Therapist starts an appointment"""
+        appointment = self.get_object()
+        
+        # Only the assigned therapist can start
+        if request.user != appointment.therapist:
+            return Response(
+                {"error": "You can only start your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        
+        if appointment.status != "confirmed":
+            return Response(
+                {"error": "Only confirmed appointments can be started"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        appointment.status = "in_progress"
+        appointment.save()
+        
+        # Create notifications
+        self._create_notifications(
+            appointment,
+            "appointment_started",
+            f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",
+        )
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
     def _create_notifications(self, appointment, notification_type, message):
         """Helper method to create notifications for all involved parties"""
         # Create notification for therapist
