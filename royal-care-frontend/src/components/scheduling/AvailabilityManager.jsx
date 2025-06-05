@@ -35,7 +35,7 @@ const AvailabilityManager = () => {
     startTime: "01:00",
     endTime: "01:00",
     isAvailable: true,
-  });// Fetch staff members and availabilities on component mount
+  }); // Fetch staff members and availabilities on component mount
   useEffect(() => {
     dispatch(fetchStaffMembers());
 
@@ -90,7 +90,7 @@ const AvailabilityManager = () => {
         end_time: newAvailabilityForm.endTime,
         is_available: newAvailabilityForm.isAvailable,
       })
-    );    // Reset form
+    ); // Reset form
     setNewAvailabilityForm({
       date: getTodayString(),
       startTime: "01:00",
@@ -115,23 +115,24 @@ const AvailabilityManager = () => {
         },
       })
     );
-  };  const generateTimeSlots = () => {
+  };
+  const generateTimeSlots = () => {
     // Generate time slots from 1 AM to 11:30 PM (no duplicate 1 AM)
     const slots = [];
-    
+
     // Start with 1 AM
     slots.push("01:00", "01:30");
-    
+
     // Continue from 2 AM to 11 PM
     for (let hour = 2; hour <= 23; hour++) {
       const hourString = hour.toString().padStart(2, "0");
       slots.push(`${hourString}:00`);
       slots.push(`${hourString}:30`);
     }
-    
+
     // Add midnight times (00:00 and 00:30)
     slots.push("00:00", "00:30");
-    
+
     return slots;
   };
 
@@ -180,14 +181,19 @@ const AvailabilityManager = () => {
               ))}
             </select>
           </div>
-        )}        <div className="filter-group">
+        )}{" "}
+        <div className="filter-group">
           <label htmlFor="date">Select Date:</label>
           <input
             type="date"
             id="date"
-            value={selectedDate.getFullYear() + '-' + 
-                   String(selectedDate.getMonth() + 1).padStart(2, '0') + '-' + 
-                   String(selectedDate.getDate()).padStart(2, '0')}
+            value={
+              selectedDate.getFullYear() +
+              "-" +
+              String(selectedDate.getMonth() + 1).padStart(2, "0") +
+              "-" +
+              String(selectedDate.getDate()).padStart(2, "0")
+            }
             onChange={handleDateChange}
           />
         </div>
