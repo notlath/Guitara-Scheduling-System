@@ -274,10 +274,10 @@ const AvailabilityManager = () => {
                 >
                   <td>{new Date(availability.date).toLocaleDateString()}</td>
                   <td>{availability.start_time}</td>
-                  <td>{availability.end_time}</td>
-                  <td>
+                  <td>{availability.end_time}</td>                  <td>
                     {availability.is_available ? "Available" : "Unavailable"}
-                  </td>                  <td>
+                  </td>
+                  <td>
                     <button
                       className={`toggle-button ${availability.is_available ? 'available-status' : 'unavailable-status'}`}
                       onClick={() => handleToggleAvailability(availability)}
