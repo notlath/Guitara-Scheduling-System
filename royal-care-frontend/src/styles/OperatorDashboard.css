@@ -109,6 +109,16 @@
   background-color: #fdf2f2;
 }
 
+.appointment-card.overdue {
+  border-left: 4px solid #dc3545;
+  background-color: #f8d7da;
+}
+
+.appointment-card.approaching-deadline {
+  border-left: 4px solid #ffc107;
+  background-color: #fff3cd;
+}
+
 .appointment-header {
   display: flex;
   justify-content: space-between;
@@ -153,6 +163,23 @@
 .status-completed {
   background-color: #d1ecf1;
   color: #0c5460;
+}
+
+.status-overdue {
+  background-color: #f8d7da;
+  color: #721c24;
+  animation: pulse 2s infinite;
+}
+
+.status-warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
 }
 
 .appointment-details {
@@ -231,6 +258,74 @@
   font-size: 1.1rem;
   background-color: #f8f9fa;
   border-radius: 8px;
+}
+
+/* Timeout Monitoring Styles */
+.timeout-controls {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.timeout-controls h3 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+}
+
+.auto-cancel-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.auto-cancel-section p {
+  margin: 0;
+  color: #495057;
+  flex: 1;
+}
+
+.auto-cancel-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+  white-space: nowrap;
+}
+
+.auto-cancel-button:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.auto-cancel-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.overdue-section,
+.approaching-deadline-section {
+  margin-bottom: 30px;
+}
+
+.overdue-section h4,
+.approaching-deadline-section h4 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  font-size: 1.2rem;
+}
+
+.overdue-section h4 {
+  color: #dc3545;
+}
+
+.approaching-deadline-section h4 {
+  color: #f0ad4e;
 }
 
 /* Review Modal Styles */
