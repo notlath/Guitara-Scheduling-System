@@ -272,9 +272,9 @@ const AvailabilityManager = () => {
                     availability.is_available ? "available" : "unavailable"
                   }
                 >
-                  <td>{new Date(availability.date).toLocaleDateString()}</td>
-                  <td>{availability.start_time}</td>
-                  <td>{availability.end_time}</td>                  <td>
+                  <td>{new Date(availability.date).toLocaleDateString()}</td>                  <td>{availability.start_time}</td>
+                  <td>{availability.end_time}</td>
+                  <td>
                     {availability.is_available ? "Available" : "Unavailable"}
                   </td>
                   <td>
