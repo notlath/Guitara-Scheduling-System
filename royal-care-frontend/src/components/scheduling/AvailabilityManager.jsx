@@ -30,13 +30,12 @@ const AvailabilityManager = () => {
       String(today.getDate()).padStart(2, "0")
     );
   };
-
   const [newAvailabilityForm, setNewAvailabilityForm] = useState({
     date: getTodayString(),
-    startTime: "13:00",
-    endTime: "1:00",
+    startTime: "01:00",
+    endTime: "01:00",
     isAvailable: true,
-  }); // Fetch staff members and availabilities on component mount
+  });// Fetch staff members and availabilities on component mount
   useEffect(() => {
     dispatch(fetchStaffMembers());
 
@@ -91,11 +90,11 @@ const AvailabilityManager = () => {
         end_time: newAvailabilityForm.endTime,
         is_available: newAvailabilityForm.isAvailable,
       })
-    ); // Reset form
+    );    // Reset form
     setNewAvailabilityForm({
       date: getTodayString(),
-      startTime: "08:00",
-      endTime: "17:00",
+      startTime: "01:00",
+      endTime: "01:00",
       isAvailable: true,
     });
   };
@@ -116,20 +115,23 @@ const AvailabilityManager = () => {
         },
       })
     );
-  };
-  const generateTimeSlots = () => {
-    // Generate time slots from 1 AM to 1 AM (24-hour coverage) in 30-minute intervals
+  };  const generateTimeSlots = () => {
+    // Generate time slots from 1 AM to 11:30 PM (no duplicate 1 AM)
     const slots = [];
-
-    // Start from 1 AM (hour 1) and go through all 24 hours
-    for (let hour = 1; hour <= 24; hour++) {
-      const displayHour = hour === 24 ? 1 : hour; // 24 becomes 1 for display
-      const hourString = displayHour.toString().padStart(2, "0");
-
+    
+    // Start with 1 AM
+    slots.push("01:00", "01:30");
+    
+    // Continue from 2 AM to 11 PM
+    for (let hour = 2; hour <= 23; hour++) {
+      const hourString = hour.toString().padStart(2, "0");
       slots.push(`${hourString}:00`);
       slots.push(`${hourString}:30`);
     }
-
+    
+    // Add midnight times (00:00 and 00:30)
+    slots.push("00:00", "00:30");
+    
     return slots;
   };
 
@@ -178,14 +180,14 @@ const AvailabilityManager = () => {
               ))}
             </select>
           </div>
-        )}
-
-        <div className="filter-group">
+        )}        <div className="filter-group">
           <label htmlFor="date">Select Date:</label>
           <input
             type="date"
             id="date"
-            value={selectedDate.toISOString().split("T")[0]}
+            value={selectedDate.getFullYear() + '-' + 
+                   String(selectedDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                   String(selectedDate.getDate()).padStart(2, '0')}
             onChange={handleDateChange}
           />
         </div>
