@@ -15,46 +15,58 @@ const AvailabilityManager = () => {
   const { staffMembers, availabilities, loading, error } = useSelector(
     (state) => state.scheduling
   );
-
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedStaff, setSelectedStaff] = useState("");
   const [timeSlots, setTimeSlots] = useState([]);
-  const [newAvailabilityForm, setNewAvailabilityForm] = useState({
-    date: new Date().toISOString().split("T")[0],
-    startTime: "08:00",
-    endTime: "17:00",
-    isAvailable: true,
-  });
 
-  // Fetch staff members and availabilities on component mount
+  // Helper function to get today's date in YYYY-MM-DD format without timezone issues
+  const getTodayString = () => {
+    const today = new Date();
+    return (
+      today.getFullYear() +
+      "-" +
+      String(today.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(today.getDate()).padStart(2, "0")
+    );
+  };
+
+  const [newAvailabilityForm, setNewAvailabilityForm] = useState({
+    date: getTodayString(),
+    startTime: "13:00",
+    endTime: "1:00",
+    isAvailable: true,
+  }); // Fetch staff members and availabilities on component mount
   useEffect(() => {
     dispatch(fetchStaffMembers());
 
     // If user is a therapist or driver, set them as selected staff
     if (user.role === "therapist" || user.role === "driver") {
       setSelectedStaff(user.id);
-      loadAvailability(user.id, selectedDate);
+      const formattedDate = selectedDate.toISOString().split("T")[0];
+      dispatch(fetchAvailability({ staffId: user.id, date: formattedDate }));
     }
-  }, [dispatch, user]);
+  }, [dispatch, user, selectedDate]);
 
   // Load availability whenever selected staff or date changes
   useEffect(() => {
     if (selectedStaff) {
-      loadAvailability(selectedStaff, selectedDate);
+      const formattedDate = selectedDate.toISOString().split("T")[0];
+      dispatch(
+        fetchAvailability({ staffId: selectedStaff, date: formattedDate })
+      );
     }
-  }, [selectedStaff, selectedDate]);
-
-  const loadAvailability = (staffId, date) => {
-    const formattedDate = date.toISOString().split("T")[0];
-    dispatch(fetchAvailability({ staffId, date: formattedDate }));
-  };
+  }, [selectedStaff, selectedDate, dispatch]);
 
   const handleStaffChange = (e) => {
     setSelectedStaff(e.target.value);
   };
-
   const handleDateChange = (e) => {
-    setSelectedDate(new Date(e.target.value));
+    // Create date from the input value to avoid timezone issues
+    const dateValue = e.target.value;
+    const [year, month, day] = dateValue.split("-");
+    const localDate = new Date(year, month - 1, day);
+    setSelectedDate(localDate);
   };
 
   const handleNewAvailabilityChange = (e) => {
@@ -79,11 +91,9 @@ const AvailabilityManager = () => {
         end_time: newAvailabilityForm.endTime,
         is_available: newAvailabilityForm.isAvailable,
       })
-    );
-
-    // Reset form
+    ); // Reset form
     setNewAvailabilityForm({
-      date: new Date().toISOString().split("T")[0],
+      date: getTodayString(),
       startTime: "08:00",
       endTime: "17:00",
       isAvailable: true,
@@ -107,14 +117,19 @@ const AvailabilityManager = () => {
       })
     );
   };
-
   const generateTimeSlots = () => {
-    // Generate time slots from 7 AM to 10 PM in 30-minute intervals
+    // Generate time slots from 1 AM to 1 AM (24-hour coverage) in 30-minute intervals
     const slots = [];
-    for (let hour = 7; hour < 22; hour++) {
-      slots.push(`${hour.toString().padStart(2, "0")}:00`);
-      slots.push(`${hour.toString().padStart(2, "0")}:30`);
+
+    // Start from 1 AM (hour 1) and go through all 24 hours
+    for (let hour = 1; hour <= 24; hour++) {
+      const displayHour = hour === 24 ? 1 : hour; // 24 becomes 1 for display
+      const hourString = displayHour.toString().padStart(2, "0");
+
+      slots.push(`${hourString}:00`);
+      slots.push(`${hourString}:30`);
     }
+
     return slots;
   };
 
@@ -274,20 +289,29 @@ const AvailabilityManager = () => {
                 >
                   <td>{new Date(availability.date).toLocaleDateString()}</td>
                   <td>{availability.start_time}</td>
-                  <td>{availability.end_time}</td>                  <td>
+                  <td>{availability.end_time}</td>{" "}
+                  <td>
                     {availability.is_available ? "Available" : "Unavailable"}
                   </td>
                   <td>
                     <button
-                      className={`toggle-button ${availability.is_available ? 'available-status' : 'unavailable-status'}`}
+                      className={`toggle-button ${
+                        availability.is_available
+                          ? "available-status"
+                          : "unavailable-status"
+                      }`}
                       onClick={() => handleToggleAvailability(availability)}
-                      title={availability.is_available ? 'Click to make unavailable' : 'Click to make available'}
+                      title={
+                        availability.is_available
+                          ? "Click to make unavailable"
+                          : "Click to make available"
+                      }
                     >
                       <span className="toggle-icon">
-                        {availability.is_available ? '🟢' : '🔴'}
+                        {availability.is_available ? "🟢" : "🔴"}
                       </span>
                       <span className="toggle-text">
-                        {availability.is_available ? 'Disable' : 'Enable'}
+                        {availability.is_available ? "Disable" : "Enable"}
                       </span>
                     </button>
                     <button
