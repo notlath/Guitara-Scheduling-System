@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  deleteNotification,
+  deleteReadNotifications,
   fetchNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
   markNotificationAsUnread,
-  deleteNotification,
-  deleteReadNotifications,
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/NotificationCenter.css";
 
@@ -14,14 +14,11 @@ const NotificationCenter = ({ onClose }) => {
   const [showAll, setShowAll] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const dispatch = useDispatch();
-  const { notifications, unreadNotificationCount, loading, error } = useSelector(
-    (state) => state.scheduling
-  );
-  
+  const { notifications, unreadNotificationCount, loading, error } =
+    useSelector((state) => state.scheduling);
+
   // Create alias for consistency with component logic
   const unreadCount = unreadNotificationCount;
-
-
 
   useEffect(() => {
     // Fetch notifications when component mounts
@@ -34,17 +31,17 @@ const NotificationCenter = ({ onClose }) => {
 
     // Add escape key listener to close notifications
     const handleEscapeKey = (event) => {
-      if (event.key === 'Escape' && onClose) {
+      if (event.key === "Escape" && onClose) {
         onClose();
       }
     };
 
-    document.addEventListener('keydown', handleEscapeKey);
+    document.addEventListener("keydown", handleEscapeKey);
 
     // Cleanup interval and event listener on component unmount
     return () => {
       clearInterval(intervalId);
-      document.removeEventListener('keydown', handleEscapeKey);
+      document.removeEventListener("keydown", handleEscapeKey);
     };
   }, [dispatch, onClose]);
 
@@ -77,7 +74,11 @@ const NotificationCenter = ({ onClose }) => {
   };
 
   const handleDeleteReadNotifications = async () => {
-    if (window.confirm("Are you sure you want to delete all read notifications? This action cannot be undone.")) {
+    if (
+      window.confirm(
+        "Are you sure you want to delete all read notifications? This action cannot be undone."
+      )
+    ) {
       await dispatch(deleteReadNotifications());
       // Refresh notifications to update count
       dispatch(fetchNotifications());
@@ -165,13 +166,17 @@ const NotificationCenter = ({ onClose }) => {
           <button
             className="toggle-button"
             onClick={() => setShowAll(!showAll)}
-            title={showAll ? "Show only unread notifications" : "Show all notifications"}
+            title={
+              showAll
+                ? "Show only unread notifications"
+                : "Show all notifications"
+            }
           >
             {showAll ? "Unread" : "All"}
           </button>
           {unreadCount > 0 && (
-            <button 
-              className="mark-all-button" 
+            <button
+              className="mark-all-button"
               onClick={handleMarkAllAsRead}
               title="Mark all notifications as read"
             >
@@ -179,8 +184,8 @@ const NotificationCenter = ({ onClose }) => {
             </button>
           )}
           {notifications && notifications.length > 0 && (
-            <button 
-              className="delete-read-button" 
+            <button
+              className="delete-read-button"
               onClick={handleDeleteReadNotifications}
               title="Delete all read notifications"
             >
@@ -210,70 +215,72 @@ const NotificationCenter = ({ onClose }) => {
           </div>
         ) : (
           displayedNotifications.map((notification) => (
-              <div key={notification.id} className="notification-wrapper">
-                <div
-                  className={`notification-item ${
-                    !notification.is_read ? "unread" : ""
-                  } ${selectedNotification?.id === notification.id ? "selected" : ""}`}
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  <div className="notification-icon">
-                    {getNotificationIcon(notification.notification_type)}
-                  </div>
-                  <div className="notification-content">
-                    <div className="notification-message">
-                      {notification.message}
-                    </div>
-                    <div className="notification-time">
-                      {formatRelativeTime(notification.created_at)}
-                    </div>
-                  </div>
-                  {!notification.is_read && (
-                    <div className="unread-indicator"></div>
-                  )}
+            <div key={notification.id} className="notification-wrapper">
+              <div
+                className={`notification-item ${
+                  !notification.is_read ? "unread" : ""
+                } ${
+                  selectedNotification?.id === notification.id ? "selected" : ""
+                }`}
+                onClick={() => handleNotificationClick(notification)}
+              >
+                <div className="notification-icon">
+                  {getNotificationIcon(notification.notification_type)}
                 </div>
-                
-                {selectedNotification?.id === notification.id && (
-                  <div className="notification-actions">
-                    {notification.is_read ? (
-                      <button
-                        className="action-button mark-unread-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkAsUnread(notification.id);
-                        }}
-                        title="Mark as unread"
-                      >
-                        ↶
-                      </button>
-                    ) : (
-                      <button
-                        className="action-button mark-read-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkAsRead(notification.id);
-                        }}
-                        title="Mark as read"
-                      >
-                        ✓
-                      </button>
-                    )}
-                    <button
-                      className="action-button delete-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteNotification(notification.id);
-                      }}
-                      title="Delete notification"
-                    >
-                      🗑
-                    </button>
+                <div className="notification-content">
+                  <div className="notification-message">
+                    {notification.message}
                   </div>
+                  <div className="notification-time">
+                    {formatRelativeTime(notification.created_at)}
+                  </div>
+                </div>
+                {!notification.is_read && (
+                  <div className="unread-indicator"></div>
                 )}
               </div>
-            ))
-          )}
-        </div>
+
+              {selectedNotification?.id === notification.id && (
+                <div className="notification-actions">
+                  {notification.is_read ? (
+                    <button
+                      className="action-button mark-unread-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkAsUnread(notification.id);
+                      }}
+                      title="Mark as unread"
+                    >
+                      ↶
+                    </button>
+                  ) : (
+                    <button
+                      className="action-button mark-read-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkAsRead(notification.id);
+                      }}
+                      title="Mark as read"
+                    >
+                      ✓
+                    </button>
+                  )}
+                  <button
+                    className="action-button delete-button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteNotification(notification.id);
+                    }}
+                    title="Delete notification"
+                  >
+                    🗑
+                  </button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 };

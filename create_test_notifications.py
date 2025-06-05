@@ -18,18 +18,19 @@ django.setup()
 from scheduling.models import Notification, Appointment
 from core.models import CustomUser
 
+
 def create_test_notifications():
     print("=== Creating Test Notifications ===")
-    
+
     # Get or create a test user
     try:
         user = CustomUser.objects.first()
         if not user:
             print("No users found in database. Please create a user first.")
             return
-        
+
         print(f"Creating notifications for user: {user.username}")
-        
+
         # Create a few test notifications
         test_notifications = [
             {
@@ -43,24 +44,28 @@ def create_test_notifications():
             {
                 "notification_type": "appointment_updated",
                 "message": "Your appointment time has been changed to 3:00 PM",
-            }
+            },
         ]
-        
+
         for notif_data in test_notifications:
             notification = Notification.objects.create(
                 user=user,
                 notification_type=notif_data["notification_type"],
                 message=notif_data["message"],
-                is_read=False
+                is_read=False,
             )
             print(f"Created notification: {notification.id} - {notification.message}")
-        
-        print(f"\nTotal notifications for {user.username}: {Notification.objects.filter(user=user).count()}")
-        
+
+        print(
+            f"\nTotal notifications for {user.username}: {Notification.objects.filter(user=user).count()}"
+        )
+
     except Exception as e:
         print(f"Error creating notifications: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     create_test_notifications()
