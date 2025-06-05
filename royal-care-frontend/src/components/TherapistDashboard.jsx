@@ -140,22 +140,32 @@ const TherapistDashboard = () => {
       }
     }
   };
+  const handleRejectAppointment = (appointmentId) => {
+    setRejectionModal({
+      isOpen: true,
+      appointmentId: appointmentId,
+    });
+  };
 
-  const handleRejectAppointment = async (appointmentId) => {
-    if (window.confirm("Are you sure you want to reject this appointment?")) {
-      try {
-        await dispatch(
-          updateAppointmentStatus({
-            id: appointmentId,
-            status: "cancelled",
-          })
-        ).unwrap();
-        refreshAppointments();
-      } catch (error) {
-        console.error("Error rejecting appointment:", error);
-        alert("Failed to reject appointment. Please try again.");
-      }
+  const handleRejectionSubmit = async (rejectionReason) => {
+    try {
+      await dispatch(
+        rejectAppointment({
+          id: rejectionModal.appointmentId,
+          rejectionReason: rejectionReason,
+        })
+      ).unwrap();
+      refreshAppointments();
+      setRejectionModal({ isOpen: false, appointmentId: null });
+    } catch (error) {
+      console.error("Error rejecting appointment:", error);
+      alert("Failed to reject appointment. Please try again.");
+      setRejectionModal({ isOpen: false, appointmentId: null });
     }
+  };
+
+  const handleRejectionCancel = () => {
+    setRejectionModal({ isOpen: false, appointmentId: null });
   };
 
   const getStatusBadgeClass = (status) => {
@@ -355,8 +365,13 @@ const TherapistDashboard = () => {
             <h2>All My Appointments</h2>
             {renderAppointmentsList(myAppointments)}
           </div>
-        )}
-      </div>
+        )}      </div>
+
+      <RejectionModal
+        isOpen={rejectionModal.isOpen}
+        onSubmit={handleRejectionSubmit}
+        onCancel={handleRejectionCancel}
+      />
     </div>
   );
 };
