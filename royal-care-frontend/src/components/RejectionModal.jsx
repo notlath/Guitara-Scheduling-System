@@ -21,12 +21,40 @@ const RejectionModal = ({ isOpen, onClose, onSubmit, appointmentId, loading }) =
     
     const finalReason = rejectionReason === 'Other' ? customReason : rejectionReason;
     
-    if (!finalReason.trim()) {
+    console.log('🔍 RejectionModal handleSubmit - DETAILED DEBUG:', {
+      rejectionReason,
+      customReason,
+      finalReason,
+      appointmentId,
+      finalReasonTrimmed: String(finalReason || '').trim(),
+      finalReasonLength: String(finalReason || '').trim().length,
+      selectedReasonType: rejectionReason,
+      isOtherSelected: rejectionReason === 'Other',
+      customReasonLength: customReason?.length || 0
+    });
+    
+    // Enhanced validation
+    const cleanFinalReason = String(finalReason || '').trim();
+    if (!cleanFinalReason) {
+      console.error('❌ RejectionModal: Empty reason detected');
       alert('Please provide a reason for rejection.');
       return;
     }
+    
+    // Additional validation for "Other" option
+    if (rejectionReason === 'Other' && !customReason.trim()) {
+      console.error('❌ RejectionModal: Other selected but no custom reason provided');
+      alert('Please specify the reason for rejection.');
+      return;
+    }
 
-    onSubmit(appointmentId, finalReason);
+    console.log('✅ RejectionModal: Calling onSubmit with:', {
+      appointmentId,
+      cleanFinalReason,
+      reasonLength: cleanFinalReason.length
+    });
+
+    onSubmit(appointmentId, cleanFinalReason);
   };
 
   const handleClose = () => {
@@ -90,7 +118,11 @@ const RejectionModal = ({ isOpen, onClose, onSubmit, appointmentId, loading }) =
             <button 
               type="submit" 
               className="submit-rejection-button"
-              disabled={loading || !rejectionReason}
+              disabled={
+                loading || 
+                !rejectionReason || 
+                (rejectionReason === 'Other' && !customReason.trim())
+              }
             >
               {loading ? 'Submitting...' : 'Submit Rejection'}
             </button>

@@ -312,27 +312,67 @@ export const rejectAppointment = createAsyncThunk(
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
-    try {
-      const response = await axios.post(
-        `${API_URL}appointments/${id}/reject/`,
-        { rejection_reason: rejectionReason },
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
-      );
+    console.log("🔍 schedulingSlice rejectAppointment - DETAILED DEBUG:", { 
+      id, 
+      rejectionReason,
+      rejectionReasonType: typeof rejectionReason,
+      rejectionReasonLength: rejectionReason?.length
+    });
 
+    // Ensure rejectionReason is a string and not empty
+    const cleanReason = String(rejectionReason || '').trim();
+    if (!cleanReason) {
+      console.error("❌ schedulingSlice: Rejection reason is empty or invalid:", { 
+        rejectionReason, 
+        cleanReason,
+        rejectionReasonType: typeof rejectionReason
+      });
+      return rejectWithValue("Rejection reason cannot be empty");
+    }
+
+    try {
+      const payload = { rejection_reason: cleanReason };
+      const url = `${API_URL}appointments/${id}/reject/`;
+      
+      console.log("🔍 schedulingSlice: Making API request with:", {
+        url,
+        payload,
+        headers: {
+          Authorization: `Token ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const response = await axios.post(url, payload, {
+        headers: { 
+          Authorization: `Token ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      console.log("✅ schedulingSlice: Reject appointment successful:", response.data);
+      
       // Notify via WebSocket
       sendAppointmentUpdate(response.data.id);
       return response.data;
     } catch (error) {
-      console.error("API Reject Appointment Error:", {
+      console.error("❌ schedulingSlice: API Reject Appointment Error:", {
         status: error.response?.status,
         data: error.response?.data,
         message: error.message,
+        url: `${API_URL}appointments/${id}/reject/`,
+        payload: { rejection_reason: cleanReason }
       });
-      return rejectWithValue(
-        error.response?.data || "Could not reject appointment"
-      );
+      
+      // Return the error data in a structured way for better error handling
+      if (error.response?.data) {
+        return rejectWithValue(error.response.data);
+      }
+      
+      return rejectWithValue({
+        error: error.message || "Could not reject appointment",
+        status: error.response?.status || 'unknown'
+      });
     }
   }
 );
