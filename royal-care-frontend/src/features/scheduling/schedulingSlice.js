@@ -388,8 +388,8 @@ export const reviewRejection = createAsyncThunk(
       const response = await axios.post(
         `${API_URL}appointments/${id}/review_rejection/`,
         { 
-          review_decision: reviewDecision,
-          review_notes: reviewNotes 
+          action: reviewDecision,
+          reason: reviewNotes 
         },
         {
           headers: { Authorization: `Token ${token}` },
