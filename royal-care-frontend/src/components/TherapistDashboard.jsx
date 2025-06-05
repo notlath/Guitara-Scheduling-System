@@ -7,8 +7,10 @@ import {
   fetchTodayAppointments,
   fetchUpcomingAppointments,
   updateAppointmentStatus,
+  rejectAppointment,
 } from "../features/scheduling/schedulingSlice";
 import { setupWebSocket } from "../services/webSocketService";
+import RejectionModal from "./RejectionModal";
 import "../styles/TherapistDashboard.css";
 
 const TherapistDashboard = () => {
@@ -16,6 +18,10 @@ const TherapistDashboard = () => {
   const navigate = useNavigate();
   const [view, setView] = useState("today"); // 'today', 'upcoming', 'all'
   const [pollingInterval, setPollingInterval] = useState(null);
+  const [rejectionModal, setRejectionModal] = useState({
+    isOpen: false,
+    appointmentId: null,
+  });
 
   const { user } = useSelector((state) => state.auth);
   const {
