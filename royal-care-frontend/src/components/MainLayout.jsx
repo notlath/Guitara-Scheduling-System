@@ -14,6 +14,7 @@ import {
   MdPeople,
   MdPerson,
   MdQuestionAnswer,
+  MdSchedule,
   MdSettings,
 } from "react-icons/md";
 import { useSelector } from "react-redux";
@@ -80,6 +81,7 @@ const MainLayout = () => {
                 );
               }}
             >
+              <MdSchedule style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
               Schedule
             </NavLink>
           ) : (
