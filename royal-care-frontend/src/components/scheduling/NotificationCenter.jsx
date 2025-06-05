@@ -6,7 +6,6 @@ import {
   markNotificationAsRead,
   markNotificationAsUnread,
   deleteNotification,
-  deleteAllNotifications,
   deleteReadNotifications,
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/NotificationCenter.css";
@@ -15,9 +14,14 @@ const NotificationCenter = ({ onClose }) => {
   const [showAll, setShowAll] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const dispatch = useDispatch();
-  const { notifications, unreadCount, loading, error } = useSelector(
+  const { notifications, unreadNotificationCount, loading, error } = useSelector(
     (state) => state.scheduling
   );
+  
+  // Create alias for consistency with component logic
+  const unreadCount = unreadNotificationCount;
+
+
 
   useEffect(() => {
     // Fetch notifications when component mounts
@@ -68,14 +72,6 @@ const NotificationCenter = ({ onClose }) => {
       await dispatch(deleteNotification(notificationId));
       setSelectedNotification(null);
       // Refresh notifications to update count
-      dispatch(fetchNotifications());
-    }
-  };
-
-  const handleDeleteAllNotifications = async () => {
-    if (window.confirm("Are you sure you want to delete all notifications? This action cannot be undone.")) {
-      await dispatch(deleteAllNotifications());
-      // Refresh notifications to update count  
       dispatch(fetchNotifications());
     }
   };
@@ -167,30 +163,19 @@ const NotificationCenter = ({ onClose }) => {
         <h2>Notifications {unreadCount > 0 && `(${unreadCount})`}</h2>
         <div className="notification-controls">
           <button
-            className="close-button"
-            onClick={handleToggleVisibility}
-            title="Close notifications panel"
-          >
-            ×
-          </button>
-          <button
             className="toggle-button"
             onClick={() => setShowAll(!showAll)}
+            title={showAll ? "Show only unread notifications" : "Show all notifications"}
           >
-            {showAll ? "Show Unread" : "Show All"}
+            {showAll ? "Unread" : "All"}
           </button>
           {unreadCount > 0 && (
-            <button className="mark-all-button" onClick={handleMarkAllAsRead}>
-              Mark All as Read
-            </button>
-          )}
-          {notifications && notifications.length > 0 && (
             <button 
-              className="delete-all-button" 
-              onClick={handleDeleteAllNotifications}
-              title="Delete all notifications"
+              className="mark-all-button" 
+              onClick={handleMarkAllAsRead}
+              title="Mark all notifications as read"
             >
-              Delete All
+              ✓ All
             </button>
           )}
           {notifications && notifications.length > 0 && (
@@ -199,9 +184,16 @@ const NotificationCenter = ({ onClose }) => {
               onClick={handleDeleteReadNotifications}
               title="Delete all read notifications"
             >
-              Delete Read
+              🗑 Read
             </button>
           )}
+          <button
+            className="close-button"
+            onClick={handleToggleVisibility}
+            title="Close notifications panel"
+          >
+            ×
+          </button>
         </div>
       </div>
 
@@ -250,8 +242,9 @@ const NotificationCenter = ({ onClose }) => {
                           e.stopPropagation();
                           handleMarkAsUnread(notification.id);
                         }}
+                        title="Mark as unread"
                       >
-                        Mark as Unread
+                        ↶
                       </button>
                     ) : (
                       <button
@@ -260,8 +253,9 @@ const NotificationCenter = ({ onClose }) => {
                           e.stopPropagation();
                           handleMarkAsRead(notification.id);
                         }}
+                        title="Mark as read"
                       >
-                        Mark as Read
+                        ✓
                       </button>
                     )}
                     <button
@@ -270,8 +264,9 @@ const NotificationCenter = ({ onClose }) => {
                         e.stopPropagation();
                         handleDeleteNotification(notification.id);
                       }}
+                      title="Delete notification"
                     >
-                      Delete
+                      🗑
                     </button>
                   </div>
                 )}
