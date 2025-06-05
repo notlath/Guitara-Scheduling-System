@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   deleteAppointment,
   fetchAppointments,
+  fetchNotifications,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
 } from "../../features/scheduling/schedulingSlice";
@@ -374,7 +375,7 @@ const SchedulingDashboard = () => {
       {/* Display notifications panel when visible */}
       {isNotificationVisible && (
         <div className="notifications-panel">
-          <NotificationCenter />
+          <NotificationCenter onClose={() => setIsNotificationVisible(false)} />
         </div>
       )}
 
