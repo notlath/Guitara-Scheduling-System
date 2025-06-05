@@ -559,60 +559,61 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def accept(self, request, pk=None):
         """Therapist accepts a pending appointment"""
         appointment = self.get_object()
-        
+
         # Only the assigned therapist can accept
         if request.user != appointment.therapist:
             return Response(
                 {"error": "You can only accept your own appointments"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        
+
         if appointment.status != "pending":
             return Response(
                 {"error": "Only pending appointments can be accepted"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         appointment.status = "confirmed"
         appointment.save()
-        
+
         # Create notifications
         self._create_notifications(
             appointment,
             "appointment_accepted",
             f"Therapist {appointment.therapist.get_full_name()} has accepted the appointment for {appointment.client} on {appointment.date}.",
         )
-        
+
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"])  
+    @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
         """Therapist starts an appointment"""
         appointment = self.get_object()
-        
+
         # Only the assigned therapist can start
         if request.user != appointment.therapist:
             return Response(
                 {"error": "You can only start your own appointments"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        
+
         if appointment.status != "confirmed":
             return Response(
                 {"error": "Only confirmed appointments can be started"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         appointment.status = "in_progress"
         appointment.save()
-        
+
         # Create notifications
         self._create_notifications(
             appointment,
             "appointment_started",
-            f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",        )
-        
+            f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",
+        )
+
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
@@ -624,51 +625,60 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         print(f"  - request.user: {request.user}")
         print(f"  - request.data: {request.data}")
         print(f"  - request.content_type: {request.content_type}")
-        
+
         appointment = self.get_object()
         print(f"  - appointment: {appointment}")
         print(f"  - appointment.therapist: {appointment.therapist}")
-        
+
         # Only the assigned therapist can reject
         if request.user != appointment.therapist:
-            print(f"❌ BACKEND: User {request.user} is not the assigned therapist {appointment.therapist}")
+            print(
+                f"❌ BACKEND: User {request.user} is not the assigned therapist {appointment.therapist}"
+            )
             return Response(
                 {"error": "You can only reject your own appointments"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        
+
         if appointment.status != "pending":
-            print(f"❌ BACKEND: Appointment status is {appointment.status}, not pending")
+            print(
+                f"❌ BACKEND: Appointment status is {appointment.status}, not pending"
+            )
             return Response(
                 {"error": "Only pending appointments can be rejected"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         rejection_reason = request.data.get("rejection_reason")
-        print(f"🔍 BACKEND: rejection_reason extracted: '{rejection_reason}' (type: {type(rejection_reason)})")
-        
+        print(
+            f"🔍 BACKEND: rejection_reason extracted: '{rejection_reason}' (type: {type(rejection_reason)})"
+        )
+
         if not rejection_reason or not rejection_reason.strip():
-            print(f"❌ BACKEND: Rejection reason validation failed - reason: '{rejection_reason}', stripped: '{rejection_reason.strip() if rejection_reason else None}'")
+            print(
+                f"❌ BACKEND: Rejection reason validation failed - reason: '{rejection_reason}', stripped: '{rejection_reason.strip() if rejection_reason else None}'"
+            )
             return Response(
                 {"error": "Rejection reason is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         # Create rejection record
         from .models import AppointmentRejection
+
         rejection = AppointmentRejection.objects.create(
             appointment=appointment,
             rejection_reason=rejection_reason.strip(),
             rejected_by=request.user,
         )
-        
+
         # Update appointment status
         appointment.status = "rejected"
         appointment.rejection_reason = rejection_reason.strip()
         appointment.rejected_by = request.user
         appointment.rejected_at = timezone.now()
         appointment.save()
-        
+
         # Create notification for operator
         if appointment.operator:
             Notification.objects.create(
@@ -678,7 +688,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 notification_type="appointment_rejected",
                 message=f"Therapist {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}",
             )
-          # Send WebSocket notification
+        # Send WebSocket notification
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             "appointments",
@@ -689,14 +699,18 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     "appointment_id": appointment.id,
                     "rejection_id": rejection.id,
                     "therapist_id": request.user.id,
-                    "operator_id": appointment.operator.id if appointment.operator else None,
+                    "operator_id": (
+                        appointment.operator.id if appointment.operator else None
+                    ),
                     "message": f"Appointment rejected by {request.user.get_full_name()}",
                 },
             },
         )
-        
-        print(f"✅ BACKEND: Appointment {appointment.id} successfully rejected with reason: '{rejection_reason.strip()}'")
-        
+
+        print(
+            f"✅ BACKEND: Appointment {appointment.id} successfully rejected with reason: '{rejection_reason.strip()}'"
+        )
+
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
@@ -704,7 +718,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def review_rejection(self, request, pk=None):
         """Operator reviews a rejection - can accept or deny the reason"""
         appointment = self.get_object()
-          # Only operators can review rejections
+        # Only operators can review rejections
         if request.user.role != "operator":
             return Response(
                 {"error": "Only operators can review rejections"},
@@ -719,11 +733,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         response_action = request.data.get("action")  # 'accept' or 'deny'
         response_reason = request.data.get("reason", "")
-        
+
         print(f"🔍 Review rejection for appointment {appointment.id}")
         print(f"🔍 Request data: {request.data}")
         print(f"🔍 Action: {response_action}, Reason: {response_reason}")
-        
+
         if response_action not in ["accept", "deny"]:
             print(f"❌ Invalid action: {response_action}")
             return Response(
@@ -743,21 +757,23 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 {"error": "No rejection details found for this appointment"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         # Update rejection record
-        rejection.operator_response = "accepted" if response_action == "accept" else "denied"
+        rejection.operator_response = (
+            "accepted" if response_action == "accept" else "denied"
+        )
         rejection.operator_response_reason = response_reason
         rejection.reviewed_by = request.user
         rejection.reviewed_at = timezone.now()
         rejection.save()
-        
+
         if response_action == "accept":
             # Delete the appointment if operator accepts the rejection reason
             appointment_client = appointment.client
             appointment_date = appointment.date
             appointment_time = appointment.start_time
             therapist = appointment.therapist
-            
+
             # Create notification for therapist
             if therapist:
                 Notification.objects.create(
@@ -767,19 +783,21 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     notification_type="rejection_reviewed",
                     message=f"Operator has accepted your rejection reason. The appointment for {appointment_client} on {appointment_date} has been cancelled.",
                 )
-            
+
             # Delete the appointment
             appointment.delete()
-            
-            return Response({
-                "message": "Rejection accepted. Appointment has been deleted.",
-                "action": "deleted"
-            })
+
+            return Response(
+                {
+                    "message": "Rejection accepted. Appointment has been deleted.",
+                    "action": "deleted",
+                }
+            )
         else:
             # If operator denies the rejection, push the appointment through
             appointment.status = "confirmed"
             appointment.save()
-            
+
             # Create notification for therapist
             if appointment.therapist:
                 Notification.objects.create(
@@ -789,7 +807,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     notification_type="rejection_reviewed",
                     message=f"Operator has denied your rejection reason. The appointment for {appointment.client} on {appointment.date} is confirmed and must proceed.",
                 )
-            
+
             # Send WebSocket notification
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
@@ -799,18 +817,22 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     "message": {
                         "type": "rejection_denied",
                         "appointment_id": appointment.id,
-                        "therapist_id": appointment.therapist.id if appointment.therapist else None,
+                        "therapist_id": (
+                            appointment.therapist.id if appointment.therapist else None
+                        ),
                         "message": f"Appointment rejection denied - appointment confirmed",
                     },
                 },
             )
-            
+
             serializer = self.get_serializer(appointment)
-            return Response({
-                "message": "Rejection denied. Appointment has been confirmed.",
-                "action": "confirmed",
-                "appointment": serializer.data
-            })
+            return Response(
+                {
+                    "message": "Rejection denied. Appointment has been confirmed.",
+                    "action": "confirmed",
+                    "appointment": serializer.data,
+                }
+            )
 
     @action(detail=False, methods=["post"])
     def auto_cancel_overdue(self, request):
@@ -821,28 +843,27 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 {"error": "Only operators can auto-cancel overdue appointments"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        
+
         # Find overdue pending appointments
         overdue_appointments = Appointment.objects.filter(
-            status="pending",
-            response_deadline__lt=timezone.now()
+            status="pending", response_deadline__lt=timezone.now()
         )
-        
+
         cancelled_count = 0
         disabled_therapists = []
-        
+
         for appointment in overdue_appointments:
             # Auto-cancel the appointment
             appointment.status = "auto_cancelled"
             appointment.auto_cancelled_at = timezone.now()
             appointment.save()
-            
+
             # Disable the therapist (set is_active to False)
             if appointment.therapist and appointment.therapist.is_active:
                 appointment.therapist.is_active = False
                 appointment.therapist.save()
                 disabled_therapists.append(appointment.therapist)
-                
+
                 # Create notification for therapist
                 Notification.objects.create(
                     user=appointment.therapist,
@@ -850,7 +871,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     notification_type="therapist_disabled",
                     message=f"Your account has been disabled due to not responding to appointment for {appointment.client} within 30 minutes. Please contact administration.",
                 )
-            
+
             # Create notification for operator
             if appointment.operator:
                 Notification.objects.create(
@@ -859,14 +880,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     notification_type="appointment_auto_cancelled",
                     message=f"Appointment for {appointment.client} on {appointment.date} was auto-cancelled due to no response from therapist {appointment.therapist.get_full_name() if appointment.therapist else 'Unknown'}.",
                 )
-            
+
             cancelled_count += 1
-        
-        return Response({
-            "message": f"Auto-cancelled {cancelled_count} overdue appointments",
-            "cancelled_count": cancelled_count,
-            "disabled_therapists": [t.get_full_name() for t in disabled_therapists]
-        })
+
+        return Response(
+            {
+                "message": f"Auto-cancelled {cancelled_count} overdue appointments",
+                "cancelled_count": cancelled_count,
+                "disabled_therapists": [t.get_full_name() for t in disabled_therapists],
+            }
+        )
 
     def _create_notifications(self, appointment, notification_type, message):
         """Helper method to create notifications for all involved parties"""
@@ -925,7 +948,9 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Users can only see their own notifications"""
         try:
-            print(f"🔍 NotificationViewSet: Getting notifications for user {self.request.user}")
+            print(
+                f"🔍 NotificationViewSet: Getting notifications for user {self.request.user}"
+            )
             queryset = Notification.objects.filter(user=self.request.user)
             print(f"🔍 NotificationViewSet: Found {queryset.count()} notifications")
             return queryset
@@ -941,10 +966,11 @@ class NotificationViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print(f"❌ NotificationViewSet list error: {e}")
             import traceback
+
             traceback.print_exc()
             return Response(
                 {"error": "Failed to fetch notifications", "detail": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     @action(detail=False, methods=["post"])
