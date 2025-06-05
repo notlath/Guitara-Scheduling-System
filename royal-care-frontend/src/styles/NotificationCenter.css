@@ -24,7 +24,8 @@
 
 .notification-controls {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .notification-controls button {
@@ -34,6 +35,27 @@
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.close-button {
+  background-color: rgba(220, 53, 69, 0.8);
+  color: white;
+  font-size: 1.4rem;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
+.close-button:hover {
+  background-color: rgba(220, 53, 69, 1);
+  transform: scale(1.1);
 }
 
 .toggle-button {
@@ -54,15 +76,36 @@
   background-color: rgba(255, 255, 255, 0.2);
 }
 
+.delete-all-button {
+  background-color: rgba(220, 53, 69, 0.8);
+  color: white;
+}
+
+.delete-all-button:hover {
+  background-color: rgba(220, 53, 69, 1);
+}
+
+.delete-read-button {
+  background-color: rgba(255, 193, 7, 0.8);
+  color: #212529;
+}
+
+.delete-read-button:hover {
+  background-color: rgba(255, 193, 7, 1);
+}
+
 .notifications-list {
   max-height: 400px;
   overflow-y: auto;
 }
 
+.notification-wrapper {
+  border-bottom: 1px solid #eee;
+}
+
 .notification-item {
   display: flex;
   padding: 15px 20px;
-  border-bottom: 1px solid #eee;
   cursor: pointer;
   transition: background-color 0.2s;
   position: relative;
@@ -78,6 +121,61 @@
 
 .notification-item.unread:hover {
   background-color: #e6f0ff;
+}
+
+.notification-item.selected {
+  background-color: #e3f2fd;
+  border-left: 4px solid #4a69bd;
+}
+
+.notification-item.selected.unread {
+  background-color: #e3f2fd;
+}
+
+.notification-actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 20px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  justify-content: flex-end;
+}
+
+.action-button {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.mark-read-button {
+  background-color: #28a745;
+  color: white;
+}
+
+.mark-read-button:hover {
+  background-color: #218838;
+}
+
+.mark-unread-button {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.mark-unread-button:hover {
+  background-color: #e0a800;
+}
+
+.delete-button {
+  background-color: #dc3545;
+  color: white;
+}
+
+.delete-button:hover {
+  background-color: #c82333;
 }
 
 .notification-icon {

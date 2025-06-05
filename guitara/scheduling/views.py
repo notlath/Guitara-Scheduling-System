@@ -994,6 +994,35 @@ class NotificationViewSet(viewsets.ModelViewSet):
         count = Notification.objects.filter(user=request.user, is_read=False).count()
         return Response({"count": count})
 
+    @action(detail=True, methods=["post"])
+    def mark_as_unread(self, request, pk=None):
+        """Mark a notification as unread"""
+        notification = self.get_object()
+        notification.is_read = False
+        notification.save()
+        serializer = self.get_serializer(notification)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["delete"])
+    def delete_all(self, request):
+        """Delete all notifications for the current user"""
+        deleted_count = Notification.objects.filter(user=request.user).count()
+        Notification.objects.filter(user=request.user).delete()
+        return Response({
+            "message": f"Deleted {deleted_count} notifications",
+            "deleted_count": deleted_count
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["delete"])
+    def delete_read(self, request):
+        """Delete all read notifications for the current user"""
+        deleted_count = Notification.objects.filter(user=request.user, is_read=True).count()
+        Notification.objects.filter(user=request.user, is_read=True).delete()
+        return Response({
+            "message": f"Deleted {deleted_count} read notifications",
+            "deleted_count": deleted_count
+        }, status=status.HTTP_200_OK)
+
 
 class StaffViewSet(viewsets.ReadOnlyModelViewSet):
     """

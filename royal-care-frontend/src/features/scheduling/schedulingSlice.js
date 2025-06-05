@@ -904,12 +904,101 @@ export const markNotificationAsRead = createAsyncThunk(
 export const markAllNotificationsAsRead = createAsyncThunk(
   "scheduling/markAllNotificationsAsRead",
   async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
-      await axios.post(`${API_URL}notifications/mark_all_as_read/`);
+      await axios.post(`${API_URL}notifications/mark_all_as_read/`, {}, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
       return true;
     } catch (error) {
       return rejectWithValue(
         error.response?.data || "Could not mark all notifications as read"
+      );
+    }
+  }
+);
+
+// Mark notification as unread
+export const markNotificationAsUnread = createAsyncThunk(
+  "scheduling/markNotificationAsUnread",
+  async (id, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    try {
+      const response = await axios.post(
+        `${API_URL}notifications/${id}/mark_as_unread/`,
+        {},
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || "Could not mark notification as unread"
+      );
+    }
+  }
+);
+
+// Delete notification
+export const deleteNotification = createAsyncThunk(
+  "scheduling/deleteNotification",
+  async (id, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    try {
+      await axios.delete(`${API_URL}notifications/${id}/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      return id;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || "Could not delete notification"
+      );
+    }
+  }
+);
+
+// Delete all notifications
+export const deleteAllNotifications = createAsyncThunk(
+  "scheduling/deleteAllNotifications",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    try {
+      await axios.delete(`${API_URL}notifications/delete_all/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      return true;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || "Could not delete all notifications"
+      );
+    }
+  }
+);
+
+// Delete read notifications only
+export const deleteReadNotifications = createAsyncThunk(
+  "scheduling/deleteReadNotifications",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    try {
+      await axios.delete(`${API_URL}notifications/delete_read/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      return true;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || "Could not delete read notifications"
       );
     }
   }
@@ -1275,9 +1364,10 @@ const schedulingSlice = createSlice({
         const notif = state.notifications.find(
           (n) => n.id === action.payload.id
         );
-        if (notif) {
+        if (notif && !notif.is_read) {
           notif.is_read = true;
           notif.notification_type = action.payload.notification_type;
+          state.unreadNotificationCount = Math.max(0, state.unreadNotificationCount - 1);
         }
       })
       .addCase(markNotificationAsRead.rejected, (state, action) => {
@@ -1295,6 +1385,76 @@ const schedulingSlice = createSlice({
         state.unreadNotificationCount = 0;
       })
       .addCase(markAllNotificationsAsRead.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // markNotificationAsUnread
+      .addCase(markNotificationAsUnread.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(markNotificationAsUnread.fulfilled, (state, action) => {
+        state.loading = false;
+        const notif = state.notifications.find(
+          (n) => n.id === action.payload.id
+        );
+        if (notif && notif.is_read) {
+          notif.is_read = false;
+          notif.notification_type = action.payload.notification_type;
+          state.unreadNotificationCount += 1;
+        }
+      })
+      .addCase(markNotificationAsUnread.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // deleteNotification
+      .addCase(deleteNotification.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteNotification.fulfilled, (state, action) => {
+        state.loading = false;
+        const notificationToDelete = state.notifications.find(
+          (n) => n.id === action.payload
+        );
+        if (notificationToDelete && !notificationToDelete.is_read) {
+          state.unreadNotificationCount = Math.max(0, state.unreadNotificationCount - 1);
+        }
+        state.notifications = state.notifications.filter(
+          (n) => n.id !== action.payload
+        );
+      })
+      .addCase(deleteNotification.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // deleteAllNotifications
+      .addCase(deleteAllNotifications.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteAllNotifications.fulfilled, (state) => {
+        state.loading = false;
+        state.notifications = [];
+        state.unreadNotificationCount = 0;
+      })
+      .addCase(deleteAllNotifications.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // deleteReadNotifications
+      .addCase(deleteReadNotifications.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteReadNotifications.fulfilled, (state) => {
+        state.loading = false;
+        // Remove only read notifications
+        state.notifications = state.notifications.filter(n => !n.is_read);
+        // Unread count should remain the same
+      })
+      .addCase(deleteReadNotifications.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

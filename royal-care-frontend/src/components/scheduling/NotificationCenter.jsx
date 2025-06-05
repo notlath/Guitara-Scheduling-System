@@ -4,11 +4,16 @@ import {
   fetchNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
+  markNotificationAsUnread,
+  deleteNotification,
+  deleteAllNotifications,
+  deleteReadNotifications,
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/NotificationCenter.css";
 
-const NotificationCenter = () => {
+const NotificationCenter = ({ onClose }) => {
   const [showAll, setShowAll] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState(null);
   const dispatch = useDispatch();
   const { notifications, unreadCount, loading, error } = useSelector(
     (state) => state.scheduling
@@ -23,16 +28,81 @@ const NotificationCenter = () => {
       dispatch(fetchNotifications());
     }, 30000);
 
-    // Cleanup interval on component unmount
-    return () => clearInterval(intervalId);
-  }, [dispatch]);
+    // Add escape key listener to close notifications
+    const handleEscapeKey = (event) => {
+      if (event.key === 'Escape' && onClose) {
+        onClose();
+      }
+    };
 
-  const handleMarkAsRead = (notificationId) => {
-    dispatch(markNotificationAsRead(notificationId));
+    document.addEventListener('keydown', handleEscapeKey);
+
+    // Cleanup interval and event listener on component unmount
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [dispatch, onClose]);
+
+  const handleMarkAsRead = async (notificationId) => {
+    await dispatch(markNotificationAsRead(notificationId));
+    // Refresh notifications to update count
+    dispatch(fetchNotifications());
   };
 
-  const handleMarkAllAsRead = () => {
-    dispatch(markAllNotificationsAsRead());
+  const handleMarkAllAsRead = async () => {
+    await dispatch(markAllNotificationsAsRead());
+    // Refresh notifications to update count
+    dispatch(fetchNotifications());
+  };
+
+  const handleMarkAsUnread = async (notificationId) => {
+    await dispatch(markNotificationAsUnread(notificationId));
+    setSelectedNotification(null);
+    // Refresh notifications to update count
+    dispatch(fetchNotifications());
+  };
+
+  const handleDeleteNotification = async (notificationId) => {
+    if (window.confirm("Are you sure you want to delete this notification?")) {
+      await dispatch(deleteNotification(notificationId));
+      setSelectedNotification(null);
+      // Refresh notifications to update count
+      dispatch(fetchNotifications());
+    }
+  };
+
+  const handleDeleteAllNotifications = async () => {
+    if (window.confirm("Are you sure you want to delete all notifications? This action cannot be undone.")) {
+      await dispatch(deleteAllNotifications());
+      // Refresh notifications to update count  
+      dispatch(fetchNotifications());
+    }
+  };
+
+  const handleDeleteReadNotifications = async () => {
+    if (window.confirm("Are you sure you want to delete all read notifications? This action cannot be undone.")) {
+      await dispatch(deleteReadNotifications());
+      // Refresh notifications to update count
+      dispatch(fetchNotifications());
+    }
+  };
+
+  const handleToggleVisibility = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    if (selectedNotification?.id === notification.id) {
+      setSelectedNotification(null);
+    } else {
+      setSelectedNotification(notification);
+      if (!notification.is_read) {
+        handleMarkAsRead(notification.id);
+      }
+    }
   };
 
   // Filter notifications based on showAll state and safely handle undefined notifications
@@ -97,6 +167,13 @@ const NotificationCenter = () => {
         <h2>Notifications {unreadCount > 0 && `(${unreadCount})`}</h2>
         <div className="notification-controls">
           <button
+            className="close-button"
+            onClick={handleToggleVisibility}
+            title="Close notifications panel"
+          >
+            ×
+          </button>
+          <button
             className="toggle-button"
             onClick={() => setShowAll(!showAll)}
           >
@@ -105,6 +182,24 @@ const NotificationCenter = () => {
           {unreadCount > 0 && (
             <button className="mark-all-button" onClick={handleMarkAllAsRead}>
               Mark All as Read
+            </button>
+          )}
+          {notifications && notifications.length > 0 && (
+            <button 
+              className="delete-all-button" 
+              onClick={handleDeleteAllNotifications}
+              title="Delete all notifications"
+            >
+              Delete All
+            </button>
+          )}
+          {notifications && notifications.length > 0 && (
+            <button 
+              className="delete-read-button" 
+              onClick={handleDeleteReadNotifications}
+              title="Delete all read notifications"
+            >
+              Delete Read
             </button>
           )}
         </div>
@@ -123,33 +218,67 @@ const NotificationCenter = () => {
           </div>
         ) : (
           displayedNotifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={`notification-item ${
-                !notification.is_read ? "unread" : ""
-              }`}
-              onClick={() =>
-                !notification.is_read && handleMarkAsRead(notification.id)
-              }
-            >
-              <div className="notification-icon">
-                {getNotificationIcon(notification.notification_type)}
-              </div>
-              <div className="notification-content">
-                <div className="notification-message">
-                  {notification.message}
+              <div key={notification.id} className="notification-wrapper">
+                <div
+                  className={`notification-item ${
+                    !notification.is_read ? "unread" : ""
+                  } ${selectedNotification?.id === notification.id ? "selected" : ""}`}
+                  onClick={() => handleNotificationClick(notification)}
+                >
+                  <div className="notification-icon">
+                    {getNotificationIcon(notification.notification_type)}
+                  </div>
+                  <div className="notification-content">
+                    <div className="notification-message">
+                      {notification.message}
+                    </div>
+                    <div className="notification-time">
+                      {formatRelativeTime(notification.created_at)}
+                    </div>
+                  </div>
+                  {!notification.is_read && (
+                    <div className="unread-indicator"></div>
+                  )}
                 </div>
-                <div className="notification-time">
-                  {formatRelativeTime(notification.created_at)}
-                </div>
+                
+                {selectedNotification?.id === notification.id && (
+                  <div className="notification-actions">
+                    {notification.is_read ? (
+                      <button
+                        className="action-button mark-unread-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsUnread(notification.id);
+                        }}
+                      >
+                        Mark as Unread
+                      </button>
+                    ) : (
+                      <button
+                        className="action-button mark-read-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsRead(notification.id);
+                        }}
+                      >
+                        Mark as Read
+                      </button>
+                    )}
+                    <button
+                      className="action-button delete-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteNotification(notification.id);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
-              {!notification.is_read && (
-                <div className="unread-indicator"></div>
-              )}
-            </div>
-          ))
-        )}
-      </div>
+            ))
+          )}
+        </div>
     </div>
   );
 };
