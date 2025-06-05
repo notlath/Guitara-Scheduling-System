@@ -86,6 +86,7 @@ const AppointmentForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [endTime, setEndTime] = useState(""); // Store calculated end time separately
   const [isFormReady, setIsFormReady] = useState(false); // Add form ready state
+  const [fetchingAvailability, setFetchingAvailability] = useState(false); // Track availability fetching
 
   const dispatch = useDispatch();
   const {
@@ -96,6 +97,33 @@ const AppointmentForm = ({
     availableTherapists: fetchedAvailableTherapists,
     availableDrivers: fetchedAvailableDrivers,
   } = useSelector((state) => state.scheduling);
+
+  // Track form state for availability checks separately to avoid circular dependencies
+  const [availabilityParams, setAvailabilityParams] = useState({
+    date: '',
+    start_time: '',
+    services: ''
+  });
+
+  // Update availability params separately from form data to break the cycle
+  useEffect(() => {
+    if (formData.date && formData.start_time && formData.services) {
+      const newParams = {
+        date: formData.date,
+        start_time: formData.start_time,
+        services: formData.services
+      };
+      
+      // Only update if params actually changed
+      if (
+        availabilityParams.date !== newParams.date ||
+        availabilityParams.start_time !== newParams.start_time ||
+        availabilityParams.services !== newParams.services
+      ) {
+        setAvailabilityParams(newParams);
+      }
+    }
+  }, [formData.date, formData.start_time, formData.services, availabilityParams]);
 
   // Update the availableTherapists memo to use fetched data when available
   const availableTherapists = useMemo(() => {
@@ -113,7 +141,7 @@ const AppointmentForm = ({
 
     // Only show general staff if we haven't made a specific availability query yet
     // (i.e., when date, time, or service is not selected)
-    if (!formData.date || !formData.start_time || !formData.services) {
+    if (!availabilityParams.date || !availabilityParams.start_time || !availabilityParams.services) {
       return staffMembers?.length > 0
         ? staffMembers.filter(
             (member) =>
@@ -130,9 +158,9 @@ const AppointmentForm = ({
   }, [
     staffMembers,
     fetchedAvailableTherapists,
-    formData.date,
-    formData.start_time,
-    formData.services,
+    availabilityParams.date,
+    availabilityParams.start_time,
+    availabilityParams.services,
   ]);
 
   // Update the availableDrivers memo similarly
@@ -144,7 +172,7 @@ const AppointmentForm = ({
     }
 
     // Only show general staff if we haven't made a specific availability query yet
-    if (!formData.date || !formData.start_time || !formData.services) {
+    if (!availabilityParams.date || !availabilityParams.start_time || !availabilityParams.services) {
       return staffMembers?.length > 0
         ? staffMembers.filter(
             (member) => member.role === "driver" || member.role === "Driver"
@@ -159,9 +187,9 @@ const AppointmentForm = ({
   }, [
     staffMembers,
     fetchedAvailableDrivers,
-    formData.date,
-    formData.start_time,
-    formData.services,
+    availabilityParams.date,
+    availabilityParams.start_time,
+    availabilityParams.services,
   ]);
 
   // Define calculateEndTime function using useCallback to prevent recreation on each render
@@ -219,6 +247,11 @@ const AppointmentForm = ({
 
   // Fetch clients and services when component mounts
   useEffect(() => {
+    // Only fetch once per component lifetime
+    if (initialDataFetchedRef.current) {
+      return;
+    }
+
     console.log("AppointmentForm - Dispatching fetchClients and fetchServices");
     dispatch(fetchClients());
     dispatch(fetchServices());
@@ -231,6 +264,8 @@ const AppointmentForm = ({
       );
       dispatch(fetchStaffMembers());
     }
+
+    initialDataFetchedRef.current = true;
   }, [dispatch, staffMembers]);
 
   // Mark form as ready when we have essential data
@@ -238,13 +273,25 @@ const AppointmentForm = ({
     if (services.length > 0 && !loading) {
       setIsFormReady(true);
     }
-  }, [services.length, loading, setIsFormReady]);
+  }, [services.length, loading]);
+
+  // Add loading timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!isFormReady && !loading) {
+        console.warn("Form loading timeout reached, forcing ready state");
+        setIsFormReady(true);
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isFormReady, loading]);
 
   // Update end time when relevant form data changes
   useEffect(() => {
     const calculatedEndTime = calculateEndTime();
     setEndTime(calculatedEndTime);
-  }, [formData.services, formData.start_time, calculateEndTime]);
+  }, [calculateEndTime]);
 
   // Create a ref to store previous values for therapist fetch
   const prevFetchTherapistsRef = useRef({
@@ -253,15 +300,18 @@ const AppointmentForm = ({
     services: null,
   });
 
+  // Track if we've already fetched initial data to prevent re-fetching
+  const initialDataFetchedRef = useRef(false);
+
   // Update the useEffect to also fetch available drivers with debouncing
   useEffect(() => {
     // Only proceed if form is ready and we have all required fields
     if (
       !isFormReady ||
-      !formData.start_time ||
-      !formData.date ||
-      !formData.services ||
-      formData.services === "" ||
+      !availabilityParams.start_time ||
+      !availabilityParams.date ||
+      !availabilityParams.services ||
+      availabilityParams.services === "" ||
       loading
     ) {
       return;
@@ -270,15 +320,17 @@ const AppointmentForm = ({
     // Check if we've already fetched with these exact params
     const prevFetch = prevFetchTherapistsRef.current;
     if (
-      prevFetch.date === formData.date &&
-      prevFetch.startTime === formData.start_time &&
-      prevFetch.services === formData.services
+      prevFetch.date === availabilityParams.date &&
+      prevFetch.startTime === availabilityParams.start_time &&
+      prevFetch.services === availabilityParams.services
     ) {
       return;
     }
 
     // Debounce the API calls to prevent rapid-fire requests
     const timeoutId = setTimeout(() => {
+      setFetchingAvailability(true);
+      
       let calculatedEndTime;
       try {
         calculatedEndTime = calculateEndTime();
@@ -286,41 +338,50 @@ const AppointmentForm = ({
           console.warn(
             "Cannot fetch available therapists: unable to calculate end time"
           );
+          setFetchingAvailability(false);
           return;
         }
       } catch (error) {
         console.error("Error calculating end time:", error);
+        setFetchingAvailability(false);
         return;
       }
 
       prevFetchTherapistsRef.current = {
-        date: formData.date,
-        startTime: formData.start_time,
-        services: formData.services,
+        date: availabilityParams.date,
+        startTime: availabilityParams.start_time,
+        services: availabilityParams.services,
       };
 
       console.log("AppointmentForm - Fetching available therapists/drivers");
-      const serviceId = parseInt(formData.services, 10);
+      const serviceId = parseInt(availabilityParams.services, 10);
 
       if (serviceId) {
         // Fetch available therapists
-        dispatch(
+        const fetchPromise1 = dispatch(
           fetchAvailableTherapists({
-            date: formData.date,
-            start_time: formData.start_time,
+            date: availabilityParams.date,
+            start_time: availabilityParams.start_time,
             end_time: calculatedEndTime,
             service_id: serviceId,
           })
         );
 
         // Also fetch available drivers
-        dispatch(
+        const fetchPromise2 = dispatch(
           fetchAvailableDrivers({
-            date: formData.date,
-            start_time: formData.start_time,
+            date: availabilityParams.date,
+            start_time: availabilityParams.start_time,
             end_time: calculatedEndTime,
           })
         );
+
+        // Set loading to false when both requests complete
+        Promise.allSettled([fetchPromise1, fetchPromise2]).finally(() => {
+          setFetchingAvailability(false);
+        });
+      } else {
+        setFetchingAvailability(false);
       }
     }, 500); // 500ms debounce delay
 
@@ -328,9 +389,9 @@ const AppointmentForm = ({
     return () => clearTimeout(timeoutId);
   }, [
     isFormReady,
-    formData.date,
-    formData.start_time,
-    formData.services,
+    availabilityParams.date,
+    availabilityParams.start_time,
+    availabilityParams.services,
     calculateEndTime,
     dispatch,
     loading,
@@ -418,10 +479,17 @@ const AppointmentForm = ({
       const sanitizedValue =
         type === "number" ? value : sanitizeFormInput(value);
 
-      setFormData((prev) => ({
-        ...prev,
-        [name]: sanitizedValue,
-      }));
+      setFormData((prev) => {
+        // Only update if value actually changed to prevent unnecessary re-renders
+        if (prev[name] === sanitizedValue) {
+          return prev;
+        }
+        
+        return {
+          ...prev,
+          [name]: sanitizedValue,
+        };
+      });
     }
 
     // Clear error when field is edited
@@ -771,8 +839,14 @@ const AppointmentForm = ({
     }
   };
 
-  if (loading) {
+  // Show loading only if we don't have essential form data yet
+  if (!isFormReady && (loading || !services.length) && services.length === 0) {
     return <div className="loading">Loading appointment form...</div>;
+  }
+
+  // If we have services but form is still not ready after timeout, show form anyway
+  if (!isFormReady && services.length > 0) {
+    console.warn("Form forced to display despite not being ready");
   }
 
   return (
@@ -846,7 +920,11 @@ const AppointmentForm = ({
             className={errors.therapist ? "error" : ""}
           >
             <option value="">Select a therapist</option>
-            {availableTherapists && availableTherapists.length > 0 ? (
+            {fetchingAvailability ? (
+              <option value="" disabled>
+                Loading available therapists...
+              </option>
+            ) : availableTherapists && availableTherapists.length > 0 ? (
               availableTherapists.map((therapist) => (
                 <option key={therapist.id} value={therapist.id}>
                   {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
@@ -883,10 +961,14 @@ const AppointmentForm = ({
             onChange={handleChange}
           >
             <option value="">No driver needed</option>
-            {availableDrivers && availableDrivers.length > 0 ? (
+            {fetchingAvailability ? (
+              <option value="" disabled>
+                Loading available drivers...
+              </option>
+            ) : availableDrivers && availableDrivers.length > 0 ? (
               availableDrivers.map((driver) => (
                 <option key={driver.id} value={driver.id}>
-                  {driver.first_name || ""} {driver.last_name || ""} -{" "}
+                  {driver.first_name || ""} {driver.last_name || ""} -
                   {driver.motorcycle_plate || "No plate"}{" "}
                   {driver.start_time && driver.end_time
                     ? `(Available: ${driver.start_time}-${driver.end_time})`
