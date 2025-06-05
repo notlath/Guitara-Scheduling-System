@@ -264,10 +264,46 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
-    user_details = UserSerializer(source="user", read_only=True)
-    appointment_details = AppointmentSerializer(source="appointment", read_only=True)
-    rejection_details = AppointmentRejectionSerializer(source="rejection", read_only=True)
-
+    """Simplified notification serializer to avoid circular dependencies"""
+    
     class Meta:
         model = Notification
-        fields = "__all__"
+        fields = [
+            'id', 'user', 'appointment', 'notification_type', 
+            'message', 'is_read', 'created_at', 'rejection'
+        ]
+        
+    def to_representation(self, instance):
+        """Custom representation to handle potential relationship issues"""
+        try:
+            data = super().to_representation(instance)
+            
+            # Add basic user info if needed
+            if instance.user:
+                data['user_info'] = {
+                    'id': instance.user.id,
+                    'username': instance.user.username,
+                    'first_name': instance.user.first_name,
+                    'last_name': instance.user.last_name,
+                }
+            
+            # Add basic appointment info if needed
+            if instance.appointment:
+                data['appointment_info'] = {
+                    'id': instance.appointment.id,
+                    'date': instance.appointment.date,
+                    'status': instance.appointment.status,
+                }
+                
+            return data
+        except Exception as e:
+            print(f"❌ NotificationSerializer error: {e}")
+            # Return minimal data if there's an error
+            return {
+                'id': instance.id if hasattr(instance, 'id') else None,
+                'message': instance.message if hasattr(instance, 'message') else 'Error loading notification',
+                'notification_type': instance.notification_type if hasattr(instance, 'notification_type') else 'unknown',
+                'is_read': instance.is_read if hasattr(instance, 'is_read') else False,
+                'created_at': instance.created_at if hasattr(instance, 'created_at') else None,
+                'error': str(e)
+            }

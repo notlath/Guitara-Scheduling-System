@@ -704,31 +704,40 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def review_rejection(self, request, pk=None):
         """Operator reviews a rejection - can accept or deny the reason"""
         appointment = self.get_object()
-        
-        # Only operators can review rejections
+          # Only operators can review rejections
         if request.user.role != "operator":
             return Response(
                 {"error": "Only operators can review rejections"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        
+
         if appointment.status != "rejected":
             return Response(
                 {"error": "Only rejected appointments can be reviewed"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         response_action = request.data.get("action")  # 'accept' or 'deny'
         response_reason = request.data.get("reason", "")
         
+        print(f"🔍 Review rejection for appointment {appointment.id}")
+        print(f"🔍 Request data: {request.data}")
+        print(f"🔍 Action: {response_action}, Reason: {response_reason}")
+        
         if response_action not in ["accept", "deny"]:
+            print(f"❌ Invalid action: {response_action}")
             return Response(
                 {"error": "Action must be 'accept' or 'deny'"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         try:
             rejection = appointment.rejection_details
+            if not rejection:
+                return Response(
+                    {"error": "No rejection details found for this appointment"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         except AppointmentRejection.DoesNotExist:
             return Response(
                 {"error": "No rejection details found for this appointment"},
@@ -914,8 +923,29 @@ class NotificationViewSet(viewsets.ModelViewSet):
     filterset_fields = ["user", "is_read", "notification_type"]
 
     def get_queryset(self):
-        # Users can only see their own notifications
-        return Notification.objects.filter(user=self.request.user)
+        """Users can only see their own notifications"""
+        try:
+            print(f"🔍 NotificationViewSet: Getting notifications for user {self.request.user}")
+            queryset = Notification.objects.filter(user=self.request.user)
+            print(f"🔍 NotificationViewSet: Found {queryset.count()} notifications")
+            return queryset
+        except Exception as e:
+            print(f"❌ NotificationViewSet get_queryset error: {e}")
+            return Notification.objects.none()
+
+    def list(self, request, *args, **kwargs):
+        """Override list to add debugging"""
+        try:
+            print(f"🔍 NotificationViewSet list: Starting for user {request.user}")
+            return super().list(request, *args, **kwargs)
+        except Exception as e:
+            print(f"❌ NotificationViewSet list error: {e}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {"error": "Failed to fetch notifications", "detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=False, methods=["post"])
     def mark_all_as_read(self, request):
