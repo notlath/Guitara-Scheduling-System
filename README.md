@@ -157,7 +157,7 @@ See [Archive README](archive/README.md) for a detailed listing of archived files
 
 Recent archives:
 
-- June 5, 2025 - Test scripts and database utilities cleanup ([details](archive/documentation/archive_log_2025-06-05.md))
+- June 5, 2025 - Test scripts and database utilities cleanup - **UPDATED** with comprehensive test script cleanup ([details](archive/documentation/archive_log_2025-06-05.md))
 - June 2, 2025 - Migration and test scripts after database schema stabilization ([details](archive/documentation/archive_log_2025-06-02.md))
 - June 1, 2025 - Initial migration scripts and temporary files ([details](archive/documentation/archive_log_2025-06-01.md))
 

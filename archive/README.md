@@ -45,6 +45,17 @@ This directory contains files that were moved from the main project as they appe
 - **test-api.html** - HTML-based API connectivity test page for browser testing
 - **database_connection_test.py** - Script to verify PostgreSQL/Supabase database connectivity
 - **check_tables.py** - SQLite database table verification script
+- **check_sqlite_direct.py** - Direct SQLite database connectivity and integrity test script
+- **debug_notifications.py** - Django debug script to test notifications model and serializer functionality
+- **simple_notifications_test.py** - Simple test script to check notifications endpoint issues
+- **test_endpoint_directly.py** - Direct HTTP test of the notifications API endpoint
+- **test_notification_features.py** - Comprehensive test script for notification system features
+- **test_notification_logic.py** - Direct test of notification logic to identify 500 errors
+- **test_notifications.py** - Test script to verify notifications endpoint functionality
+- **test_notifications_endpoint.py** - Direct test script for notifications API endpoint
+- **test_rejection_flow.py** - Test script to verify appointment rejection workflow
+- **test_review_payload.py** - Test script for review rejection endpoint payload handling
+- **test_workflow.py** - Comprehensive test suite for appointment assignment and therapist notification workflow
 
 ### Frontend Temporary Files (`/frontend_temp`)
 
@@ -52,9 +63,22 @@ This directory contains files that were moved from the main project as they appe
 
 ### Documentation (`/documentation`)
 
+#### Archive Logs
+
 - **archive_log_2025-06-01.md** - Log file documenting which files were archived on June 1, 2025, and why
 - **archive_log_2025-06-02.md** - Log file documenting which migration and testing scripts were archived on June 2, 2025
 - **archive_log_2025-06-05.md** - Log file documenting which test scripts were archived on June 5, 2025
+
+#### Implementation and Fix Documentation
+
+- **APPOINTMENT_WORKFLOW_IMPLEMENTATION.md** - Documentation of appointment workflow implementation and features
+- **AVAILABILITY_FIX_SUMMARY.md** - Summary of therapist availability filtering fixes and implementation
+- **IMPLEMENTATION_STATUS.md** - Comprehensive status summary of completed features and implementations
+- **MIGRATION_GUIDE.md** - Step-by-step guide for creating fresh migrations for Supabase database
+- **NOTIFICATION_FEATURES_IMPLEMENTATION.md** - Complete documentation of enhanced notification system implementation
+- **NOTIFICATIONS_FIX_SUMMARY.md** - Fix documentation for operator dashboard notifications 500 error resolution
+- **REJECTION_FIX_SUMMARY.md** - Documentation of therapist appointment rejection issue resolution
+- **REVIEW_REJECTION_FIX.md** - Fix summary for review rejection field name mismatch between frontend and backend
 
 ## Important Note
 
