@@ -145,21 +145,60 @@ const TherapistDashboard = () => {
       isOpen: true,
       appointmentId: appointmentId,
     });
-  };
-
-  const handleRejectionSubmit = async (rejectionReason) => {
+  };  const handleRejectionSubmit = async (appointmentId, rejectionReason) => {
+    console.log('🔍 TherapistDashboard handleRejectionSubmit - DETAILED DEBUG:', {
+      appointmentId,
+      rejectionReason,
+      reasonType: typeof rejectionReason,
+      reasonLength: rejectionReason?.length,
+      reasonTrimmed: String(rejectionReason || '').trim(),
+      reasonTrimmedLength: String(rejectionReason || '').trim().length
+    });
+    
+    // Additional validation on the frontend
+    const cleanReason = String(rejectionReason || '').trim();
+    if (!cleanReason) {
+      console.error('❌ TherapistDashboard: Empty reason detected');
+      alert('Please provide a reason for rejection.');
+      return;
+    }
+    
+    console.log('✅ TherapistDashboard: Dispatching rejectAppointment with:', {
+      id: appointmentId,
+      rejectionReason: cleanReason
+    });
+    
     try {
-      await dispatch(
+      const result = await dispatch(
         rejectAppointment({
-          id: rejectionModal.appointmentId,
-          rejectionReason: rejectionReason,
+          id: appointmentId,
+          rejectionReason: cleanReason,
         })
       ).unwrap();
+      
+      console.log('✅ TherapistDashboard: Rejection successful:', result);
       refreshAppointments();
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
-      console.error("Error rejecting appointment:", error);
-      alert("Failed to reject appointment. Please try again.");
+      console.error("❌ TherapistDashboard: Error rejecting appointment:", error);
+      
+      // Better error message handling
+      let errorMessage = "Failed to reject appointment. Please try again.";
+      
+      if (error?.error) {
+        errorMessage = error.error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      // Show specific error from backend if available
+      if (error?.error === 'Rejection reason is required') {
+        errorMessage = 'Rejection reason is required. Please provide a valid reason.';
+      }
+      
+      alert(`You failed to reject an appointment. ${errorMessage}`);
       setRejectionModal({ isOpen: false, appointmentId: null });
     }
   };
@@ -365,12 +404,12 @@ const TherapistDashboard = () => {
             <h2>All My Appointments</h2>
             {renderAppointmentsList(myAppointments)}
           </div>
-        )}      </div>
-
-      <RejectionModal
+        )}      </div>      <RejectionModal
         isOpen={rejectionModal.isOpen}
+        onClose={handleRejectionCancel}
         onSubmit={handleRejectionSubmit}
-        onCancel={handleRejectionCancel}
+        appointmentId={rejectionModal.appointmentId}
+        loading={loading}
       />
     </div>
   );

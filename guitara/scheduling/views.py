@@ -611,8 +611,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         self._create_notifications(
             appointment,
             "appointment_started",
-            f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",
-        )
+            f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",        )
         
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
@@ -620,23 +619,36 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
         """Therapist rejects an appointment with a reason"""
+        print(f"🔍 BACKEND DEBUG - reject endpoint called:")
+        print(f"  - pk: {pk}")
+        print(f"  - request.user: {request.user}")
+        print(f"  - request.data: {request.data}")
+        print(f"  - request.content_type: {request.content_type}")
+        
         appointment = self.get_object()
+        print(f"  - appointment: {appointment}")
+        print(f"  - appointment.therapist: {appointment.therapist}")
         
         # Only the assigned therapist can reject
         if request.user != appointment.therapist:
+            print(f"❌ BACKEND: User {request.user} is not the assigned therapist {appointment.therapist}")
             return Response(
                 {"error": "You can only reject your own appointments"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         
         if appointment.status != "pending":
+            print(f"❌ BACKEND: Appointment status is {appointment.status}, not pending")
             return Response(
                 {"error": "Only pending appointments can be rejected"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         
         rejection_reason = request.data.get("rejection_reason")
+        print(f"🔍 BACKEND: rejection_reason extracted: '{rejection_reason}' (type: {type(rejection_reason)})")
+        
         if not rejection_reason or not rejection_reason.strip():
+            print(f"❌ BACKEND: Rejection reason validation failed - reason: '{rejection_reason}', stripped: '{rejection_reason.strip() if rejection_reason else None}'")
             return Response(
                 {"error": "Rejection reason is required"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -666,8 +678,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 notification_type="appointment_rejected",
                 message=f"Therapist {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}",
             )
-        
-        # Send WebSocket notification
+          # Send WebSocket notification
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             "appointments",
@@ -683,6 +694,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 },
             },
         )
+        
+        print(f"✅ BACKEND: Appointment {appointment.id} successfully rejected with reason: '{rejection_reason.strip()}'")
         
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
