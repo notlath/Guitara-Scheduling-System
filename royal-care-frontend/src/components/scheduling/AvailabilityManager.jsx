@@ -33,20 +33,23 @@ const AvailabilityManager = () => {
   const [newAvailabilityForm, setNewAvailabilityForm] = useState({
     date: getTodayString(),
     startTime: "13:00",
-    endTime: "1:00",
+    endTime: "14:00", // Changed from "1:00" to "14:00" for better UX
     isAvailable: true,
   }); // Fetch staff members and availabilities on component mount
   useEffect(() => {
-    dispatch(fetchStaffMembers());
-
-    // If user is a therapist or driver, set them as selected staff
+    dispatch(fetchStaffMembers()); // If user is a therapist or driver, set them as selected staff
     if (user.role === "therapist" || user.role === "driver") {
       setSelectedStaff(user.id);
       const formattedDate = selectedDate.toISOString().split("T")[0];
-      dispatch(fetchAvailability({ staffId: user.id, date: formattedDate }));
+      dispatch(
+        fetchAvailability({
+          staffId: user.id,
+          date: formattedDate,
+          forceRefresh: false,
+        })
+      );
     }
-  }, [dispatch, user, selectedDate]);
-  // Load availability whenever selected staff or date changes
+  }, [dispatch, user, selectedDate]); // Load availability whenever selected staff or date changes
   useEffect(() => {
     if (selectedStaff) {
       const formattedDate = selectedDate.toISOString().split("T")[0];
@@ -55,8 +58,13 @@ const AvailabilityManager = () => {
         formattedDate: formattedDate,
         selectedDate: selectedDate,
       });
+      // Use optimized fetch with caching
       dispatch(
-        fetchAvailability({ staffId: selectedStaff, date: formattedDate })
+        fetchAvailability({
+          staffId: selectedStaff,
+          date: formattedDate,
+          forceRefresh: false, // Use cache if available
+        })
       );
     }
   }, [selectedStaff, selectedDate, dispatch]);
@@ -99,25 +107,50 @@ const AvailabilityManager = () => {
     if (isNaN(staffId)) {
       alert("Invalid staff member selected");
       return;
-    }
-
-    // Validate time range
+    } // Validate time range
     const startTime = newAvailabilityForm.startTime;
     const endTime = newAvailabilityForm.endTime;
 
-    if (startTime >= endTime) {
-      alert("End time must be after start time");
+    // Support cross-day availability (e.g., 13:00 to 01:00 next day)
+    const validateTimeRange = (start, end) => {
+      const startMinutes = timeToMinutes(start);
+      const endMinutes = timeToMinutes(end);
+
+      // If end time is earlier than start time, it's cross-day
+      if (endMinutes < startMinutes) {
+        // Cross-day: calculate as start to midnight + midnight to end
+        return 24 * 60 - startMinutes + endMinutes;
+      } else {
+        // Same day: normal calculation
+        return endMinutes - startMinutes;
+      }
+    };
+
+    const timeToMinutes = (timeStr) => {
+      const [hours, minutes] = timeStr.split(":").map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const diffMinutes = validateTimeRange(startTime, endTime);
+
+    if (diffMinutes <= 0) {
+      alert("Invalid time range. Please check your start and end times.");
       return;
     }
-
-    // Validate reasonable time range (at least 30 minutes)
-    const start = new Date(`1970-01-01T${startTime}:00`);
-    const end = new Date(`1970-01-01T${endTime}:00`);
-    const diffMinutes = (end - start) / (1000 * 60);
 
     if (diffMinutes < 30) {
       alert("Availability period must be at least 30 minutes");
       return;
+    }
+
+    // Warn user about cross-day availability
+    if (timeToMinutes(endTime) < timeToMinutes(startTime)) {
+      const isConfirmed = window.confirm(
+        `This creates a cross-day availability from ${startTime} to ${endTime} next day. Continue?`
+      );
+      if (!isConfirmed) {
+        return;
+      }
     }
     dispatch(
       createAvailability({
@@ -135,7 +168,7 @@ const AvailabilityManager = () => {
         setNewAvailabilityForm({
           date: currentFormDate,
           startTime: "13:00",
-          endTime: "1:00",
+          endTime: "14:00", // Changed from "1:00" to "14:00" for better UX
           isAvailable: true,
         });
         // If the created availability is for the currently viewed date and staff,
@@ -161,12 +194,13 @@ const AvailabilityManager = () => {
           console.log(
             "🔄 Refreshing availability data - created availability matches current view"
           );
-          // Add a small delay to ensure backend has processed the creation
+          // Force refresh to get latest data
           setTimeout(() => {
             dispatch(
               fetchAvailability({
                 staffId: selectedStaff,
                 date: currentViewDate,
+                forceRefresh: true, // Force refresh to ensure we get the latest data
               })
             );
           }, 100);
@@ -310,7 +344,6 @@ const AvailabilityManager = () => {
                 onChange={handleNewAvailabilityChange}
               />
             </div>
-
             <div className="form-group">
               <label htmlFor="startTime">Start Time:</label>
               <select
@@ -325,8 +358,7 @@ const AvailabilityManager = () => {
                   </option>
                 ))}
               </select>
-            </div>
-
+            </div>{" "}
             <div className="form-group">
               <label htmlFor="endTime">End Time:</label>
               <select
@@ -342,7 +374,63 @@ const AvailabilityManager = () => {
                 ))}
               </select>
             </div>
-
+            <div className="form-group">
+              <label>Common Time Presets:</label>
+              <div className="time-presets">
+                <button
+                  type="button"
+                  className="preset-button"
+                  onClick={() =>
+                    setNewAvailabilityForm({
+                      ...newAvailabilityForm,
+                      startTime: "13:00",
+                      endTime: "14:00",
+                    })
+                  }
+                >
+                  1-2 PM
+                </button>
+                <button
+                  type="button"
+                  className="preset-button"
+                  onClick={() =>
+                    setNewAvailabilityForm({
+                      ...newAvailabilityForm,
+                      startTime: "13:00",
+                      endTime: "17:00",
+                    })
+                  }
+                >
+                  1-5 PM
+                </button>
+                <button
+                  type="button"
+                  className="preset-button"
+                  onClick={() =>
+                    setNewAvailabilityForm({
+                      ...newAvailabilityForm,
+                      startTime: "17:00",
+                      endTime: "21:00",
+                    })
+                  }
+                >
+                  5-9 PM
+                </button>
+                <button
+                  type="button"
+                  className="preset-button"
+                  onClick={() =>
+                    setNewAvailabilityForm({
+                      ...newAvailabilityForm,
+                      startTime: "13:00",
+                      endTime: "01:00",
+                    })
+                  }
+                >
+                  1PM-1AM (Cross-day)
+                </button>
+              </div>
+            </div>
             <div className="form-group">
               <label htmlFor="isAvailable">Available:</label>
               <input
@@ -353,7 +441,6 @@ const AvailabilityManager = () => {
                 onChange={handleNewAvailabilityChange}
               />
             </div>
-
             <button
               className="add-button"
               onClick={handleAddAvailability}

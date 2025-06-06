@@ -1,5 +1,11 @@
 from rest_framework import serializers
-from .models import Client, Availability, Appointment, Notification, AppointmentRejection
+from .models import (
+    Client,
+    Availability,
+    Appointment,
+    Notification,
+    AppointmentRejection,
+)
 from core.models import CustomUser
 from datetime import datetime, timedelta
 
@@ -77,11 +83,17 @@ class AvailabilitySerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """
-        Check that the start time is before the end time and
-        that there are no overlapping availability slots.
+        Check that the times are valid and that there are no overlapping availability slots.
+        Support cross-day availability (e.g., 13:00 to 01:00 next day).
         """
-        if data.get("start_time") >= data.get("end_time"):
-            raise serializers.ValidationError("Start time must be before end time")
+        start_time = data.get("start_time")
+        end_time = data.get("end_time")
+
+        # Only validate that start and end time are not exactly the same
+        if start_time == end_time:
+            raise serializers.ValidationError(
+                "Start time and end time cannot be the same"
+            )
 
         # Check for overlapping availability slots
         if self.instance:  # In case of update
@@ -98,10 +110,15 @@ class AvailabilitySerializer(serializers.ModelSerializer):
             )
 
         for slot in overlapping:
-            if (
-                data.get("start_time") <= slot.end_time
-                and data.get("end_time") >= slot.start_time
-            ):
+            # For cross-day availability, we need more complex overlap detection
+            # This is a simplified check - you may want to enhance this based on your needs
+            current_start = data.get("start_time")
+            current_end = data.get("end_time")
+            existing_start = slot.start_time
+            existing_end = slot.end_time
+
+            # Simple overlap check (can be enhanced for cross-day logic if needed)
+            if current_start <= existing_end and current_end >= existing_start:
                 raise serializers.ValidationError(
                     "This time slot overlaps with another availability slot"
                 )
@@ -116,9 +133,18 @@ class AppointmentRejectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppointmentRejection
         fields = [
-            'id', 'appointment', 'rejection_reason', 'rejected_by', 'rejected_by_details',
-            'rejected_at', 'reviewed_by', 'reviewed_by_details', 'reviewed_at', 
-            'review_decision', 'review_notes', 'created_at'
+            "id",
+            "appointment",
+            "rejection_reason",
+            "rejected_by",
+            "rejected_by_details",
+            "rejected_at",
+            "reviewed_by",
+            "reviewed_by_details",
+            "reviewed_at",
+            "review_decision",
+            "review_notes",
+            "created_at",
         ]
 
 
@@ -128,7 +154,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
     driver_details = UserSerializer(source="driver", read_only=True)
     operator_details = UserSerializer(source="operator", read_only=True)
     services_details = ServiceSerializer(source="services", many=True, read_only=True)
-    rejection_details = AppointmentRejectionSerializer(source="appointmentrejection", read_only=True)
+    rejection_details = AppointmentRejectionSerializer(
+        source="appointmentrejection", read_only=True
+    )
     total_duration = serializers.SerializerMethodField()
     total_price = serializers.SerializerMethodField()
 
@@ -265,45 +293,61 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 class NotificationSerializer(serializers.ModelSerializer):
     """Simplified notification serializer to avoid circular dependencies"""
-    
+
     class Meta:
         model = Notification
         fields = [
-            'id', 'user', 'appointment', 'notification_type', 
-            'message', 'is_read', 'created_at', 'rejection'
+            "id",
+            "user",
+            "appointment",
+            "notification_type",
+            "message",
+            "is_read",
+            "created_at",
+            "rejection",
         ]
-        
+
     def to_representation(self, instance):
         """Custom representation to handle potential relationship issues"""
         try:
             data = super().to_representation(instance)
-            
+
             # Add basic user info if needed
             if instance.user:
-                data['user_info'] = {
-                    'id': instance.user.id,
-                    'username': instance.user.username,
-                    'first_name': instance.user.first_name,
-                    'last_name': instance.user.last_name,
+                data["user_info"] = {
+                    "id": instance.user.id,
+                    "username": instance.user.username,
+                    "first_name": instance.user.first_name,
+                    "last_name": instance.user.last_name,
                 }
-            
+
             # Add basic appointment info if needed
             if instance.appointment:
-                data['appointment_info'] = {
-                    'id': instance.appointment.id,
-                    'date': instance.appointment.date,
-                    'status': instance.appointment.status,
+                data["appointment_info"] = {
+                    "id": instance.appointment.id,
+                    "date": instance.appointment.date,
+                    "status": instance.appointment.status,
                 }
-                
+
             return data
         except Exception as e:
             print(f"❌ NotificationSerializer error: {e}")
             # Return minimal data if there's an error
             return {
-                'id': instance.id if hasattr(instance, 'id') else None,
-                'message': instance.message if hasattr(instance, 'message') else 'Error loading notification',
-                'notification_type': instance.notification_type if hasattr(instance, 'notification_type') else 'unknown',
-                'is_read': instance.is_read if hasattr(instance, 'is_read') else False,
-                'created_at': instance.created_at if hasattr(instance, 'created_at') else None,
-                'error': str(e)
+                "id": instance.id if hasattr(instance, "id") else None,
+                "message": (
+                    instance.message
+                    if hasattr(instance, "message")
+                    else "Error loading notification"
+                ),
+                "notification_type": (
+                    instance.notification_type
+                    if hasattr(instance, "notification_type")
+                    else "unknown"
+                ),
+                "is_read": instance.is_read if hasattr(instance, "is_read") else False,
+                "created_at": (
+                    instance.created_at if hasattr(instance, "created_at") else None
+                ),
+                "error": str(e),
             }

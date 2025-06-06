@@ -232,3 +232,37 @@
   padding: 20px;
   color: #777;
 }
+
+/* Time Presets Styling */
+.time-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.preset-button {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+  color: #333;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-button:hover {
+  background-color: #4a69bd;
+  color: white;
+  border-color: #4a69bd;
+}
+
+.preset-button:active {
+  transform: translateY(1px);
+}
+
+.preset-button:focus {
+  outline: 2px solid #4a69bd;
+  outline-offset: 2px;
+}
