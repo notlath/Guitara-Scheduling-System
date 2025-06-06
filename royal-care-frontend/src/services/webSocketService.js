@@ -7,15 +7,24 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 2; // Further reduced to minimize failed attempts
 let wsConnectionEnabled = true; // Flag to control whether we should try connecting
 
-// Check for WebSocket support in the browser
-const isWebSocketSupported = typeof WebSocket !== "undefined";
-
 // Check if we previously disabled WebSocket connections in this session
 const storedWsDisabled = sessionStorage.getItem("wsConnectionDisabled");
 if (storedWsDisabled === "true") {
   console.log("WebSocket connections were previously disabled in this session");
   wsConnectionEnabled = false;
 }
+
+// Function to re-enable WebSocket connections (useful for retrying after network issues)
+export const enableWebSocketConnections = () => {
+  wsConnectionEnabled = true;
+  reconnectAttempts = 0;
+  try {
+    sessionStorage.removeItem("wsConnectionDisabled");
+    console.log("WebSocket connections re-enabled");
+  } catch {
+    console.log("Could not clear WebSocket disabled state from sessionStorage");
+  }
+};
 
 // Helper function to notify status changes
 const notifyStatusChange = (status) => {
@@ -31,7 +40,7 @@ const disableWebSocketConnections = () => {
   wsConnectionEnabled = false;
   try {
     sessionStorage.setItem("wsConnectionDisabled", "true");
-  } catch (err) {
+  } catch {
     console.log("Could not store WebSocket disabled state in sessionStorage");
   }
   notifyStatusChange("disabled");

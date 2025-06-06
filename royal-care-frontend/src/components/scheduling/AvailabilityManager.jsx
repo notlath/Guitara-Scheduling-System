@@ -29,13 +29,12 @@ const AvailabilityManager = () => {
       "-" +
       String(today.getDate()).padStart(2, "0")
     );
-  };
-  const [newAvailabilityForm, setNewAvailabilityForm] = useState({
+  };  const [newAvailabilityForm, setNewAvailabilityForm] = useState({
     date: getTodayString(),
-    startTime: "01:00",
-    endTime: "01:00",
+    startTime: "09:00",
+    endTime: "17:00",
     isAvailable: true,
-  }); // Fetch staff members and availabilities on component mount
+  });// Fetch staff members and availabilities on component mount
   useEffect(() => {
     dispatch(fetchStaffMembers());
 
@@ -74,28 +73,65 @@ const AvailabilityManager = () => {
       ...newAvailabilityForm,
       [name]: type === "checkbox" ? checked : value,
     });
-  };
-
-  const handleAddAvailability = () => {
+  };  const handleAddAvailability = () => {
     if (!selectedStaff) {
       alert("Please select a staff member");
       return;
     }
 
+    // Parse and validate staff ID
+    const staffId = parseInt(selectedStaff, 10);
+    if (isNaN(staffId)) {
+      alert("Invalid staff member selected");
+      return;
+    }
+
+    // Validate time range
+    const startTime = newAvailabilityForm.startTime;
+    const endTime = newAvailabilityForm.endTime;
+    
+    if (startTime >= endTime) {
+      alert("End time must be after start time");
+      return;
+    }
+
+    // Validate reasonable time range (at least 30 minutes)
+    const start = new Date(`1970-01-01T${startTime}:00`);
+    const end = new Date(`1970-01-01T${endTime}:00`);
+    const diffMinutes = (end - start) / (1000 * 60);
+    
+    if (diffMinutes < 30) {
+      alert("Availability period must be at least 30 minutes");
+      return;
+    }
+
     dispatch(
       createAvailability({
-        user: selectedStaff,
+        user: staffId,
         date: newAvailabilityForm.date,
         start_time: newAvailabilityForm.startTime,
         end_time: newAvailabilityForm.endTime,
         is_available: newAvailabilityForm.isAvailable,
       })
-    ); // Reset form
-    setNewAvailabilityForm({
-      date: getTodayString(),
-      startTime: "01:00",
-      endTime: "01:00",
-      isAvailable: true,
+    ).then((result) => {
+      if (createAvailability.fulfilled.match(result)) {
+        // Success - reset form
+        setNewAvailabilityForm({
+          date: getTodayString(),
+          startTime: "09:00",
+          endTime: "17:00",
+          isAvailable: true,
+        });
+        // Refresh availability data
+        if (selectedStaff) {
+          const formattedDate = selectedDate.toISOString().split("T")[0];
+          dispatch(fetchAvailability({ staffId: selectedStaff, date: formattedDate }));
+        }
+      } else if (createAvailability.rejected.match(result)) {
+        // Error - show user-friendly message
+        const errorMsg = result.payload || "Failed to create availability";
+        alert(`Error: ${errorMsg}`);
+      }
     });
   };
 

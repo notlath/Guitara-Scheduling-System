@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { enableWebSocketConnections } from "../../services/webSocketService";
 import "../../styles/WebSocketStatus.css";
 
 /**
@@ -52,6 +53,13 @@ const WebSocketStatus = () => {
     };
   }, []);
 
+  const handleRetryConnection = () => {
+    enableWebSocketConnections();
+    setVisible(false);
+    // Reload the page to restart WebSocket connections
+    window.location.reload();
+  };
+
   // Don't render anything if not visible
   if (!visible) return null;
 
@@ -65,11 +73,18 @@ const WebSocketStatus = () => {
       {status === "disabled" &&
         "Real-time updates unavailable - using polling mode"}
 
-      {status !== "connected" && (
-        <button className="close-button" onClick={() => setVisible(false)}>
-          ×
-        </button>
-      )}
+      <div className="status-actions">
+        {status === "disabled" && (
+          <button className="retry-button" onClick={handleRetryConnection}>
+            Retry
+          </button>
+        )}
+        {status !== "connected" && (
+          <button className="close-button" onClick={() => setVisible(false)}>
+            ×
+          </button>
+        )}
+      </div>
     </div>
   );
 };

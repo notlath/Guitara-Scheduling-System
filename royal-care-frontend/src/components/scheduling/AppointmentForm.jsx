@@ -100,9 +100,9 @@ const AppointmentForm = ({
 
   // Track form state for availability checks separately to avoid circular dependencies
   const [availabilityParams, setAvailabilityParams] = useState({
-    date: '',
-    start_time: '',
-    services: ''
+    date: "",
+    start_time: "",
+    services: "",
   });
 
   // Update availability params separately from form data to break the cycle
@@ -111,9 +111,9 @@ const AppointmentForm = ({
       const newParams = {
         date: formData.date,
         start_time: formData.start_time,
-        services: formData.services
+        services: formData.services,
       };
-      
+
       // Only update if params actually changed
       if (
         availabilityParams.date !== newParams.date ||
@@ -123,7 +123,12 @@ const AppointmentForm = ({
         setAvailabilityParams(newParams);
       }
     }
-  }, [formData.date, formData.start_time, formData.services, availabilityParams]);
+  }, [
+    formData.date,
+    formData.start_time,
+    formData.services,
+    availabilityParams,
+  ]);
 
   // Update the availableTherapists memo to use fetched data when available
   const availableTherapists = useMemo(() => {
@@ -141,7 +146,11 @@ const AppointmentForm = ({
 
     // Only show general staff if we haven't made a specific availability query yet
     // (i.e., when date, time, or service is not selected)
-    if (!availabilityParams.date || !availabilityParams.start_time || !availabilityParams.services) {
+    if (
+      !availabilityParams.date ||
+      !availabilityParams.start_time ||
+      !availabilityParams.services
+    ) {
       return staffMembers?.length > 0
         ? staffMembers.filter(
             (member) =>
@@ -172,7 +181,11 @@ const AppointmentForm = ({
     }
 
     // Only show general staff if we haven't made a specific availability query yet
-    if (!availabilityParams.date || !availabilityParams.start_time || !availabilityParams.services) {
+    if (
+      !availabilityParams.date ||
+      !availabilityParams.start_time ||
+      !availabilityParams.services
+    ) {
       return staffMembers?.length > 0
         ? staffMembers.filter(
             (member) => member.role === "driver" || member.role === "Driver"
@@ -330,7 +343,7 @@ const AppointmentForm = ({
     // Debounce the API calls to prevent rapid-fire requests
     const timeoutId = setTimeout(() => {
       setFetchingAvailability(true);
-      
+
       let calculatedEndTime;
       try {
         calculatedEndTime = calculateEndTime();
@@ -484,7 +497,7 @@ const AppointmentForm = ({
         if (prev[name] === sanitizedValue) {
           return prev;
         }
-        
+
         return {
           ...prev,
           [name]: sanitizedValue,
@@ -927,8 +940,8 @@ const AppointmentForm = ({
             ) : availableTherapists && availableTherapists.length > 0 ? (
               availableTherapists.map((therapist) => (
                 <option key={therapist.id} value={therapist.id}>
-                  {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
-                  {therapist.specialization || "General"} -{" "}
+                  {therapist.first_name || ""} {therapist.last_name || ""} - {" "}
+                  {therapist.specialization || "General"} - {" "}
                   {therapist.massage_pressure || "Standard"}{" "}
                   {therapist.start_time && therapist.end_time
                     ? `(Available: ${therapist.start_time}-${therapist.end_time})`
