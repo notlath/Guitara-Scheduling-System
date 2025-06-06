@@ -28,6 +28,8 @@ import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
 import SchedulingPage from "./pages/SchedulingPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
+// Import auth fixer for automatic testing
+import "./utils/authFixer";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);

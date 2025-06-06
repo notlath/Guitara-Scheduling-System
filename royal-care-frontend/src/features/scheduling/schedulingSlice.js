@@ -5,12 +5,24 @@ import {
   sendAppointmentDelete,
   sendAppointmentUpdate,
 } from "../../services/webSocketService";
+import { handleAuthenticationError } from "../../utils/authUtils";
 
 // API URL based on environment
 const API_URL =
   import.meta.env.MODE === "production"
     ? "/api/scheduling/"
     : "http://localhost:8000/api/scheduling/";
+
+// Helper function to handle API errors consistently
+const handleApiError = (error, fallbackMessage) => {
+  // Check if it's an authentication error first
+  if (handleAuthenticationError(error)) {
+    return "Authentication failed";
+  }
+
+  // Return the API error or fallback message
+  return error.response?.data || fallbackMessage;
+};
 
 // Async thunks for API calls
 
@@ -19,17 +31,35 @@ export const fetchAppointments = createAsyncThunk(
   "scheduling/fetchAppointments",
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
-    if (!token) return rejectWithValue("Authentication required");
+    if (!token) {
+      console.error("❌ fetchAppointments: No authentication token found");
+      return rejectWithValue("Authentication required");
+    }
+
+    console.log("🔄 fetchAppointments: Starting API call...");
+
     try {
       const response = await axios.get(`${API_URL}appointments/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
+
+      console.log(
+        "✅ fetchAppointments: Success, received",
+        response.data.length,
+        "appointments"
+      );
       return response.data;
     } catch (error) {
+      console.error("❌ fetchAppointments: API Error", {
+        status: error.response?.status,
+        message: error.message,
+        data: error.response?.data,
+      });
+
       return rejectWithValue(
-        error.response?.data || "Could not fetch appointments"
+        handleApiError(error, "Could not fetch appointments")
       );
     }
   }
@@ -51,7 +81,7 @@ export const fetchTodayAppointments = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch today's appointments"
+        handleApiError(error, "Could not fetch today's appointments")
       );
     }
   }
@@ -73,7 +103,7 @@ export const fetchUpcomingAppointments = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch upcoming appointments"
+        handleApiError(error, "Could not fetch upcoming appointments")
       );
     }
   }
@@ -94,7 +124,7 @@ export const fetchAppointmentsByDate = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || "Could not fetch appointments for this date"
+        handleApiError(error, "Could not fetch appointments for this date")
       );
     }
   }
@@ -173,7 +203,7 @@ export const createAppointment = createAsyncThunk(
       }
 
       return rejectWithValue(
-        error.response?.data || "Could not create appointment"
+        handleApiError(error, "Could not create appointment")
       );
     }
   }
@@ -228,7 +258,7 @@ export const updateAppointment = createAsyncThunk(
         message: error.message,
       });
       return rejectWithValue(
-        error.response?.data || "Could not update appointment"
+        handleApiError(error, "Could not update appointment")
       );
     }
   }
@@ -253,7 +283,7 @@ export const deleteAppointment = createAsyncThunk(
     } catch (error) {
       console.error("Delete appointment error:", error.response?.data);
       return rejectWithValue(
-        error.response?.data || "Could not delete appointment"
+        handleApiError(error, "Could not delete appointment")
       );
     }
   }
@@ -299,7 +329,7 @@ export const updateAppointmentStatus = createAsyncThunk(
         message: error.message,
       });
       return rejectWithValue(
-        error.response?.data || "Could not update appointment status"
+        handleApiError(error, "Could not update appointment status")
       );
     }
   }
@@ -785,9 +815,9 @@ export const createAvailability = createAsyncThunk(
   async (availabilityData, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
-    
+
     console.log("Creating availability with data:", availabilityData);
-    
+
     try {
       const response = await axios.post(
         `${API_URL}availabilities/`,
@@ -798,15 +828,15 @@ export const createAvailability = createAsyncThunk(
           },
         }
       );
-      
+
       console.log("Availability creation successful:", response.data);
       return response.data;
     } catch (error) {
       console.error("Create availability error:", error.response?.data);
       console.error("Full error:", error);
-      
+
       let errorMessage = "Could not create availability";
-      
+
       if (error.response?.data) {
         const data = error.response.data;
         if (data.user && Array.isArray(data.user)) {
@@ -821,13 +851,17 @@ export const createAvailability = createAsyncThunk(
           // Try to extract meaningful error from any field
           const firstErrorField = Object.keys(data)[0];
           if (firstErrorField && data[firstErrorField]) {
-            errorMessage = `${firstErrorField}: ${Array.isArray(data[firstErrorField]) ? data[firstErrorField].join(", ") : data[firstErrorField]}`;
+            errorMessage = `${firstErrorField}: ${
+              Array.isArray(data[firstErrorField])
+                ? data[firstErrorField].join(", ")
+                : data[firstErrorField]
+            }`;
           } else {
             errorMessage = JSON.stringify(data);
           }
         }
       }
-      
+
       return rejectWithValue(errorMessage);
     }
   }
@@ -934,11 +968,15 @@ export const markAllNotificationsAsRead = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     try {
-      await axios.post(`${API_URL}notifications/mark_all_as_read/`, {}, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
+      await axios.post(
+        `${API_URL}notifications/mark_all_as_read/`,
+        {},
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
       return true;
     } catch (error) {
       return rejectWithValue(
@@ -1242,7 +1280,7 @@ const schedulingSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(autoCancelOverdueAppointments.fulfilled, (state, action) => {
+      .addCase(autoCancelOverdueAppointments.fulfilled, (state) => {
         state.loading = false;
         state.successMessage =
           "Overdue appointments auto-canceled successfully.";
@@ -1362,9 +1400,78 @@ const schedulingSlice = createSlice({
       })
       .addCase(fetchAvailability.fulfilled, (state, action) => {
         state.loading = false;
+        console.log(
+          "📋 fetchAvailability.fulfilled - Setting availabilities:",
+          action.payload
+        );
         state.availabilities = action.payload;
       })
       .addCase(fetchAvailability.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // createAvailability
+      .addCase(createAvailability.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createAvailability.fulfilled, (state, action) => {
+        state.loading = false;
+        console.log(
+          "✨ createAvailability.fulfilled - Adding new availability:",
+          action.payload
+        );
+        // Only add to current availabilities if it's not already there
+        // (to avoid duplicates when the user is viewing the same date/staff)
+        const existingIndex = state.availabilities.findIndex(
+          (avail) => avail.id === action.payload.id
+        );
+        if (existingIndex === -1) {
+          console.log("➕ Adding new availability to local state");
+          state.availabilities.push(action.payload);
+        } else {
+          console.log(
+            "⚠️ Availability already exists in local state, skipping"
+          );
+        }
+        state.successMessage = "Availability created successfully.";
+      })
+      .addCase(createAvailability.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // updateAvailability
+      .addCase(updateAvailability.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateAvailability.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.availabilities.findIndex(
+          (avail) => avail.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.availabilities[index] = action.payload;
+          state.successMessage = "Availability updated successfully.";
+        }
+      })
+      .addCase(updateAvailability.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // deleteAvailability
+      .addCase(deleteAvailability.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteAvailability.fulfilled, (state, action) => {
+        state.loading = false;
+        state.availabilities = state.availabilities.filter(
+          (avail) => avail.id !== action.payload
+        );
+        state.successMessage = "Availability deleted successfully.";
+      })
+      .addCase(deleteAvailability.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
@@ -1395,7 +1502,10 @@ const schedulingSlice = createSlice({
         if (notif && !notif.is_read) {
           notif.is_read = true;
           notif.notification_type = action.payload.notification_type;
-          state.unreadNotificationCount = Math.max(0, state.unreadNotificationCount - 1);
+          state.unreadNotificationCount = Math.max(
+            0,
+            state.unreadNotificationCount - 1
+          );
         }
       })
       .addCase(markNotificationAsRead.rejected, (state, action) => {
@@ -1447,7 +1557,10 @@ const schedulingSlice = createSlice({
           (n) => n.id === action.payload
         );
         if (notificationToDelete && !notificationToDelete.is_read) {
-          state.unreadNotificationCount = Math.max(0, state.unreadNotificationCount - 1);
+          state.unreadNotificationCount = Math.max(
+            0,
+            state.unreadNotificationCount - 1
+          );
         }
         state.notifications = state.notifications.filter(
           (n) => n.id !== action.payload
@@ -1479,7 +1592,7 @@ const schedulingSlice = createSlice({
       .addCase(deleteReadNotifications.fulfilled, (state) => {
         state.loading = false;
         // Remove only read notifications
-        state.notifications = state.notifications.filter(n => !n.is_read);
+        state.notifications = state.notifications.filter((n) => !n.is_read);
         // Unread count should remain the same
       })
       .addCase(deleteReadNotifications.rejected, (state, action) => {

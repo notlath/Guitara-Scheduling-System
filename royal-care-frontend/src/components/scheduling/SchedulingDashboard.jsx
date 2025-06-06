@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   deleteAppointment,
   fetchAppointments,
-  fetchNotifications,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
 } from "../../features/scheduling/schedulingSlice";
-import { setupWebSocket } from "../../services/webSocketService";
+
+import { FaBell } from "react-icons/fa";
+import { FiPlus } from "react-icons/fi";
 import "../../styles/SchedulingDashboard.css";
 import ErrorBoundary from "../common/ErrorBoundary";
 import AppointmentForm from "./AppointmentForm";
@@ -16,8 +17,6 @@ import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
 import WebSocketStatus from "./WebSocketStatus";
 import WeekView from "./WeekView";
-import { FaBell } from "react-icons/fa";
-import { FiPlus } from "react-icons/fi";
 
 const SchedulingDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -26,8 +25,6 @@ const SchedulingDashboard = () => {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [view, setView] = useState("calendar"); // 'calendar', 'week', 'list', 'today', 'availability'
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
-  // Track connection status for internal use in the component
-  const [pollingInterval, setPollingInterval] = useState(null);
 
   const dispatch = useDispatch();
   const {
@@ -40,94 +37,28 @@ const SchedulingDashboard = () => {
   const { user } = useSelector((state) => state.auth);
   const defaultDate = useMemo(() => new Date(), []);
 
-  // Memoize the refreshAppointments function to avoid dependency changes
-  const refreshAppointments = useCallback(() => {
+  // Load appointments on component mount and setup polling
+  useEffect(() => {
+    // Initial load
     dispatch(fetchAppointments());
     dispatch(fetchTodayAppointments());
     dispatch(fetchUpcomingAppointments());
-  }, [dispatch]);
 
-  // Setup websocket connection for real-time updates with improved error handling
-  useEffect(() => {
-    let cleanupWebSocket = null;
+    // Setup polling for real-time updates (WebSocket connections disabled)
+    console.log("WebSocket connections disabled - using polling mode");
 
-    // Check if WebSockets are already disabled in this session
-    let wsDisabled = false;
-    try {
-      wsDisabled = sessionStorage.getItem("wsConnectionDisabled") === "true";
-    } catch {
-      // Ignore storage access errors
-    }
+    const interval = setInterval(() => {
+      // Call dispatch actions directly to avoid dependency issues
+      dispatch(fetchAppointments());
+      dispatch(fetchTodayAppointments());
+      dispatch(fetchUpcomingAppointments());
+    }, 20000); // Poll every 20 seconds
 
-    // If WebSockets are already disabled, start polling immediately
-    if (wsDisabled) {
-      console.log("WebSockets are disabled, starting with polling mode");
-      if (!pollingInterval) {
-        const interval = setInterval(() => refreshAppointments(), 20000); // Poll every 20 seconds
-        setPollingInterval(interval);
-      }
-    } else {
-      // Try to set up WebSocket connection
-      try {
-        cleanupWebSocket = setupWebSocket({
-          onAppointmentUpdate: () => {
-            // Refresh appointments when we receive real-time updates
-            refreshAppointments();
-          },
-        });
-      } catch (err) {
-        console.error("Error setting up WebSocket:", err);
-        // Start polling immediately if WebSocket setup fails
-        if (!pollingInterval) {
-          const interval = setInterval(() => refreshAppointments(), 20000); // Poll every 20 seconds
-          setPollingInterval(interval);
-        }
-      }
-    }
-
-    // Listen for WebSocket status changes
-    const handleStatusChange = (event) => {
-      if (event.detail.status === "connected") {
-        // Clear polling interval when WebSocket connects
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
-        }
-      } else if (
-        ["disconnected", "error", "disabled"].includes(event.detail.status)
-      ) {
-        // Start polling if WebSocket disconnects or is disabled and we're not already polling
-        if (!pollingInterval) {
-          const interval = setInterval(() => refreshAppointments(), 20000); // Poll every 20 seconds
-          setPollingInterval(interval);
-        }
-      }
-    };
-
-    window.addEventListener("websocket-status", handleStatusChange);
-
-    // Cleanup websocket connection and event listeners when component unmounts
+    // Cleanup polling interval when component unmounts
     return () => {
-      if (cleanupWebSocket) {
-        try {
-          cleanupWebSocket();
-        } catch (err) {
-          console.error("Error cleaning up WebSocket:", err);
-        }
-      }
-
-      window.removeEventListener("websocket-status", handleStatusChange);
-
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
+      clearInterval(interval);
     };
-  }, [pollingInterval, refreshAppointments]);
-
-  // Load appointments on component mount
-  useEffect(() => {
-    refreshAppointments();
-  }, [refreshAppointments]);
+  }, [dispatch]); // Include dispatch in dependencies
 
   const handleDateSelected = (date) => {
     setSelectedDate(date);
@@ -156,7 +87,10 @@ const SchedulingDashboard = () => {
     if (window.confirm("Are you sure you want to delete this booking?")) {
       try {
         await dispatch(deleteAppointment(appointmentId)).unwrap();
-        refreshAppointments();
+        // Refresh data after successful deletion
+        dispatch(fetchAppointments());
+        dispatch(fetchTodayAppointments());
+        dispatch(fetchUpcomingAppointments());
       } catch (error) {
         console.error("Error deleting booking:", error);
         // Add user feedback
@@ -167,7 +101,10 @@ const SchedulingDashboard = () => {
 
   const handleFormSubmitSuccess = () => {
     setIsFormVisible(false);
-    refreshAppointments();
+    // Refresh data after successful form submission
+    dispatch(fetchAppointments());
+    dispatch(fetchTodayAppointments());
+    dispatch(fetchUpcomingAppointments());
   };
 
   const handleFormCancel = () => {
