@@ -784,8 +784,10 @@ export const createAvailability = createAsyncThunk(
   "scheduling/createAvailability",
   async (availabilityData, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
-    console.log("Token in createAvailability:", token); // Added for debugging
     if (!token) return rejectWithValue("Authentication required");
+    
+    console.log("Creating availability with data:", availabilityData);
+    
     try {
       const response = await axios.post(
         `${API_URL}availabilities/`,
@@ -796,11 +798,37 @@ export const createAvailability = createAsyncThunk(
           },
         }
       );
+      
+      console.log("Availability creation successful:", response.data);
       return response.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data || "Could not create availability"
-      );
+      console.error("Create availability error:", error.response?.data);
+      console.error("Full error:", error);
+      
+      let errorMessage = "Could not create availability";
+      
+      if (error.response?.data) {
+        const data = error.response.data;
+        if (data.user && Array.isArray(data.user)) {
+          errorMessage = `User field error: ${data.user.join(", ")}`;
+        } else if (data.detail) {
+          errorMessage = data.detail;
+        } else if (data.error) {
+          errorMessage = data.error;
+        } else if (typeof data === "string") {
+          errorMessage = data;
+        } else {
+          // Try to extract meaningful error from any field
+          const firstErrorField = Object.keys(data)[0];
+          if (firstErrorField && data[firstErrorField]) {
+            errorMessage = `${firstErrorField}: ${Array.isArray(data[firstErrorField]) ? data[firstErrorField].join(", ") : data[firstErrorField]}`;
+          } else {
+            errorMessage = JSON.stringify(data);
+          }
+        }
+      }
+      
+      return rejectWithValue(errorMessage);
     }
   }
 );
