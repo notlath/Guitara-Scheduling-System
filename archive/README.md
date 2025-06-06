@@ -1,53 +1,74 @@
 # Archive Directory
 
-This directory contains files that were moved from the main project as they appear to be temporary, one-time utility scripts, or are no longer needed for ongoing development.
+This directory contains archived files that were moved from the main project, including temporary utility scripts, documentation fixes, and completed implementations that are no longer needed for ongoing development.
 
-## Contents
+## Directory Structure
 
-### Migration Scripts (`/migration_scripts`)
+### Documentation (`/docs`)
 
-- **fix_migrations.py** - One-time utility script to manually fix tables and migrations
-- **fix_migration_records.py** - Script to mark problematic migrations as applied without running them
-- **comprehensive_migration_fix.py** - A more complete migration fixer script
-- **apply_migration.py** - Helper script for applying specific migrations
+Organized documentation and fix summaries:
+
+#### `/docs/summaries/`
+- **frontend_fixes_progress.md** - Progress tracking for frontend fixes
+- **testing_plan.md** - Comprehensive testing plan for applied fixes
+
+#### `/docs/fixes/`
+- **AVAILABILITY_CREATION_FIX.md** - Fix for availability creation issues
+- **AVAILABILITY_DISPLAY_FIX.md** - Fix for availability display problems
+- **REACT_INFINITE_LOOP_FIX.md** - Solution for React infinite loop issues
+- **WEBSOCKET_FIX_SUMMARY.md** - WebSocket connectivity fixes
+
+#### `/docs/implementation/`
+- **LOADING_UX_IMPROVEMENTS.md** - Loading UX enhancement implementation
+- **NON_INTRUSIVE_LOADING_SUMMARY.md** - Non-intrusive loading system summary
+- **NOTIFICATION_SYSTEM_IMPROVEMENTS.md** - Notification system enhancements
+
+#### `/docs/logs/`
+- Empty directory for future log files
+
+### Scripts (`/scripts`)
+
+Organized utility and test scripts:
+
+#### `/scripts/database/`
+- Database management and utility scripts
+
+#### `/scripts/migration/`
 - **fix_migration.py** - Script to fix inconsistent migration history
 - **fix_sqlite_migrations.py** - Script to repair SQLite migration records
-- **fresh_migrations.py** - Script to create fresh migrations after database reset
-- **run_migrations.py** - Migration execution script with error handling and verbose output
+- Migration management and repair tools
 
-### Database Scripts (`/database_scripts`)
+#### `/scripts/notification/`
+- Notification system testing and utility scripts
 
-- **check_services.py** - Script to verify service records in the database
-- **check_services_and_create.py** - Script to check services and create missing ones
-- **verify_database.py** - Script to verify database state and connection
-- **repair_database.py** - Script to repair corrupted or inconsistent database state
-- **sync_services.py** - Script to synchronize service data between database and code
-- **add_missing_services.py** - Script to add missing service records to the database
-- **drop_supabase_tables.py** - Script to drop tables from Supabase database
-- **create_tables.py** - Manual table creation script for SQLite database
-- **fix_db.py** - Database schema repair script to add missing columns
-- **create_env_file.py** - Interactive script to create .env file with database credentials
-- **django_management.py** - Django management helper for creating superusers and testing APIs
-- **fix_database_schema.py** - Schema validation and repair script for appointment table
-- **setup_database.bat** - Complete database setup script for Windows automation
+#### `/scripts/testing/`
+- **create_test_user.py** - Test user creation utility
+- **test_api.py** - API testing script
+- **test_availability_creation.py** - Availability creation tests
+- **test_availability_display.py** - Availability display tests
+- **TestConnection.jsx** - React component for testing Supabase connection
+- **simple_db_test.py** - Basic database connection test
+- **test_services.py** - Service model functionality tests
+- **fix_imports.py** - Import issue resolution script
+- **test_availability_api.py** - Availability API endpoint tests
+- **test-api.html** - Browser-based API connectivity test
+- **database_connection_test.py** - Database connectivity verification
+- **check_tables.py** - SQLite table verification
+- **check_sqlite_direct.py** - Direct SQLite connectivity test
+- **debug_notifications.py** - Notifications debugging script
+- **simple_notifications_test.py** - Basic notifications endpoint test
+- **test_notifications.py** - Comprehensive notification tests
+- **test_notifications_endpoint.py** - Notification endpoint testing
+- **test_notification_features.py** - Notification feature testing
+- **test_notification_logic.py** - Notification logic validation
+- **test_rejection_flow.py** - Rejection workflow testing
+- **test_review_payload.py** - Review payload testing
+- **test_workflow.py** - General workflow testing
+- **test_endpoint_directly.py** - Direct endpoint testing
 
-### WebSocket Scripts (`/websocket_scripts`)
-
-- **check_websocket.py** - Script to test WebSocket functionality
-- **verify_websocket.py** - Script to verify WebSocket connections and handlers
-
-### Test Scripts (`/test_scripts`)
-
-- **simple_db_test.py** - Basic script to test database connection
-- **test_services.py** - Script to test Service model functionality
-- **fix_imports.py** - Temporary script to fix import issues
-- **test_availability_api.py** - Python script to test availability API endpoints for therapists and drivers
-- **test-api.html** - HTML-based API connectivity test page for browser testing
-- **database_connection_test.py** - Script to verify PostgreSQL/Supabase database connectivity
-- **check_tables.py** - SQLite database table verification script
-- **check_sqlite_direct.py** - Direct SQLite database connectivity and integrity test script
-- **debug_notifications.py** - Django debug script to test notifications model and serializer functionality
-- **simple_notifications_test.py** - Simple test script to check notifications endpoint issues
+#### `/scripts/websocket/`
+- **check_websocket.py** - WebSocket functionality testing
+- **verify_websocket.py** - WebSocket connection verification
 - **test_endpoint_directly.py** - Direct HTTP test of the notifications API endpoint
 - **test_notification_features.py** - Comprehensive test script for notification system features
 - **test_notification_logic.py** - Direct test of notification logic to identify 500 errors
