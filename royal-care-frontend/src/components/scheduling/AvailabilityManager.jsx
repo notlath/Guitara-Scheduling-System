@@ -29,12 +29,13 @@ const AvailabilityManager = () => {
       "-" +
       String(today.getDate()).padStart(2, "0")
     );
-  };  const [newAvailabilityForm, setNewAvailabilityForm] = useState({
+  };
+  const [newAvailabilityForm, setNewAvailabilityForm] = useState({
     date: getTodayString(),
-    startTime: "09:00",
-    endTime: "17:00",
+    startTime: "13:00",
+    endTime: "1:00",
     isAvailable: true,
-  });// Fetch staff members and availabilities on component mount
+  }); // Fetch staff members and availabilities on component mount
   useEffect(() => {
     dispatch(fetchStaffMembers());
 
@@ -45,16 +46,29 @@ const AvailabilityManager = () => {
       dispatch(fetchAvailability({ staffId: user.id, date: formattedDate }));
     }
   }, [dispatch, user, selectedDate]);
-
   // Load availability whenever selected staff or date changes
   useEffect(() => {
     if (selectedStaff) {
       const formattedDate = selectedDate.toISOString().split("T")[0];
+      console.log("🔄 Loading availability for:", {
+        selectedStaff: selectedStaff,
+        formattedDate: formattedDate,
+        selectedDate: selectedDate,
+      });
       dispatch(
         fetchAvailability({ staffId: selectedStaff, date: formattedDate })
       );
     }
   }, [selectedStaff, selectedDate, dispatch]);
+
+  // Update form date when selected date changes
+  useEffect(() => {
+    const formattedDate = selectedDate.toISOString().split("T")[0];
+    setNewAvailabilityForm((prev) => ({
+      ...prev,
+      date: formattedDate,
+    }));
+  }, [selectedDate]);
 
   const handleStaffChange = (e) => {
     setSelectedStaff(e.target.value);
@@ -73,7 +87,8 @@ const AvailabilityManager = () => {
       ...newAvailabilityForm,
       [name]: type === "checkbox" ? checked : value,
     });
-  };  const handleAddAvailability = () => {
+  };
+  const handleAddAvailability = () => {
     if (!selectedStaff) {
       alert("Please select a staff member");
       return;
@@ -89,7 +104,7 @@ const AvailabilityManager = () => {
     // Validate time range
     const startTime = newAvailabilityForm.startTime;
     const endTime = newAvailabilityForm.endTime;
-    
+
     if (startTime >= endTime) {
       alert("End time must be after start time");
       return;
@@ -99,12 +114,11 @@ const AvailabilityManager = () => {
     const start = new Date(`1970-01-01T${startTime}:00`);
     const end = new Date(`1970-01-01T${endTime}:00`);
     const diffMinutes = (end - start) / (1000 * 60);
-    
+
     if (diffMinutes < 30) {
       alert("Availability period must be at least 30 minutes");
       return;
     }
-
     dispatch(
       createAvailability({
         user: staffId,
@@ -115,21 +129,66 @@ const AvailabilityManager = () => {
       })
     ).then((result) => {
       if (createAvailability.fulfilled.match(result)) {
-        // Success - reset form
+        console.log("✅ Availability created successfully:", result.payload);
+        // Success - reset form to selected date (not today)
+        const currentFormDate = selectedDate.toISOString().split("T")[0];
         setNewAvailabilityForm({
-          date: getTodayString(),
-          startTime: "09:00",
-          endTime: "17:00",
+          date: currentFormDate,
+          startTime: "13:00",
+          endTime: "1:00",
           isAvailable: true,
         });
-        // Refresh availability data
-        if (selectedStaff) {
-          const formattedDate = selectedDate.toISOString().split("T")[0];
-          dispatch(fetchAvailability({ staffId: selectedStaff, date: formattedDate }));
+        // If the created availability is for the currently viewed date and staff,
+        // refresh the availability data to ensure it shows up
+        const createdAvailability = result.payload;
+        const currentViewDate = selectedDate.toISOString().split("T")[0];
+
+        console.log("🔍 Checking if refresh needed:", {
+          selectedStaff: selectedStaff,
+          createdAvailabilityUser: createdAvailability.user,
+          staffMatch: createdAvailability.user === parseInt(selectedStaff, 10),
+          currentViewDate: currentViewDate,
+          createdDate: createdAvailability.date,
+          dateMatch: createdAvailability.date === currentViewDate,
+          formDate: newAvailabilityForm.date,
+        });
+
+        if (
+          selectedStaff &&
+          createdAvailability.user === parseInt(selectedStaff, 10) &&
+          createdAvailability.date === currentViewDate
+        ) {
+          console.log(
+            "🔄 Refreshing availability data - created availability matches current view"
+          );
+          // Add a small delay to ensure backend has processed the creation
+          setTimeout(() => {
+            dispatch(
+              fetchAvailability({
+                staffId: selectedStaff,
+                date: currentViewDate,
+              })
+            );
+          }, 100);
+        } else {
+          console.log(
+            "ℹ️ Created availability is not for current view, skipping refresh"
+          );
+          console.log(
+            "   - Staff match:",
+            createdAvailability.user === parseInt(selectedStaff, 10)
+          );
+          console.log(
+            "   - Date match:",
+            createdAvailability.date === currentViewDate
+          );
         }
+
+        alert("Availability created successfully!");
       } else if (createAvailability.rejected.match(result)) {
         // Error - show user-friendly message
         const errorMsg = result.payload || "Failed to create availability";
+        console.error("❌ Availability creation failed:", errorMsg);
         alert(`Error: ${errorMsg}`);
       }
     });

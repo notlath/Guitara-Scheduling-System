@@ -3,17 +3,18 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
-  fetchAppointments,
-  reviewRejection,
-  fetchNotifications,
   autoCancelOverdueAppointments,
+  fetchAppointments,
+  fetchNotifications,
+  reviewRejection,
 } from "../features/scheduling/schedulingSlice";
-import { setupWebSocket } from "../services/webSocketService";
+
 import "../styles/OperatorDashboard.css";
 
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();  const [view, setView] = useState("rejected"); // 'rejected', 'all', 'notifications', 'timeouts'
+  const navigate = useNavigate();
+  const [view, setView] = useState("rejected"); // 'rejected', 'all', 'notifications', 'timeouts'
   const [reviewModal, setReviewModal] = useState({
     isOpen: false,
     appointmentId: null,
@@ -23,12 +24,9 @@ const OperatorDashboard = () => {
   const [autoCancelLoading, setAutoCancelLoading] = useState(false);
 
   const { user } = useSelector((state) => state.auth);
-  const {
-    appointments,
-    notifications,
-    loading,
-    error,
-  } = useSelector((state) => state.scheduling);
+  const { appointments, notifications, loading, error } = useSelector(
+    (state) => state.scheduling
+  );
   // Filter rejected appointments for review
   const rejectedAppointments = appointments.filter(
     (apt) => apt.status === "rejected" && !apt.review_decision
@@ -45,45 +43,35 @@ const OperatorDashboard = () => {
   );
 
   // Calculate which appointments are approaching deadline (within 10 minutes)
-  const approachingDeadlineAppointments = pendingAppointments.filter(
-    (apt) => {
-      const deadline = new Date(apt.response_deadline);
-      const now = new Date();
-      const timeDiff = deadline.getTime() - now.getTime();
-      const minutesDiff = timeDiff / (1000 * 60);
-      return minutesDiff > 0 && minutesDiff <= 10;
-    }
-  );
-
+  const approachingDeadlineAppointments = pendingAppointments.filter((apt) => {
+    const deadline = new Date(apt.response_deadline);
+    const now = new Date();
+    const timeDiff = deadline.getTime() - now.getTime();
+    const minutesDiff = timeDiff / (1000 * 60);
+    return minutesDiff > 0 && minutesDiff <= 10;
+  });
   // Refresh data
   const refreshData = useCallback(() => {
     dispatch(fetchAppointments());
     dispatch(fetchNotifications());
   }, [dispatch]);
 
-  // Setup WebSocket connection for real-time updates
+  // Setup polling for real-time updates (WebSocket connections disabled)
   useEffect(() => {
-    let cleanupWebSocket = null;
+    console.log("WebSocket connections disabled - using polling mode");
 
-    try {
-      cleanupWebSocket = setupWebSocket({
-        onAppointmentUpdate: () => {
-          refreshData();
-        },
-        onNotificationReceived: () => {
-          refreshData();
-        },
-      });
-    } catch (err) {
-      console.error("Error setting up WebSocket:", err);
-    }
+    // Set up polling for real-time updates
+    const interval = setInterval(() => {
+      // Call dispatch actions directly to avoid dependency issues
+      dispatch(fetchAppointments());
+      dispatch(fetchNotifications());
+    }, 20000); // Poll every 20 seconds
 
     return () => {
-      if (cleanupWebSocket) {
-        cleanupWebSocket();
-      }
+      clearInterval(interval);
     };
-  }, [refreshData]);
+  }, [dispatch]); // Only depend on dispatch
+
   // Load data on component mount
   useEffect(() => {
     refreshData();
@@ -93,9 +81,9 @@ const OperatorDashboard = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       // Force re-render every second to update countdown timers
-      if (view === "timeouts" && (pendingAppointments.length > 0)) {
+      if (view === "timeouts" && pendingAppointments.length > 0) {
         // This will trigger a re-render to update the countdown timers
-        setReviewNotes(prev => prev); // Dummy state update to trigger re-render
+        setReviewNotes((prev) => prev); // Dummy state update to trigger re-render
       }
     }, 1000);
 
@@ -128,7 +116,11 @@ const OperatorDashboard = () => {
         })
       ).unwrap();
       refreshData();
-      setReviewModal({ isOpen: false, appointmentId: null, rejectionReason: "" });
+      setReviewModal({
+        isOpen: false,
+        appointmentId: null,
+        rejectionReason: "",
+      });
       setReviewNotes("");
     } catch (error) {
       console.error("Error reviewing rejection:", error);
@@ -141,7 +133,11 @@ const OperatorDashboard = () => {
   };
 
   const handleAutoCancelOverdue = async () => {
-    if (!window.confirm("This will auto-cancel all overdue appointments and disable therapists who didn't respond. Continue?")) {
+    if (
+      !window.confirm(
+        "This will auto-cancel all overdue appointments and disable therapists who didn't respond. Continue?"
+      )
+    ) {
       return;
     }
 
@@ -162,18 +158,18 @@ const OperatorDashboard = () => {
     const now = new Date();
     const deadlineDate = new Date(deadline);
     const timeDiff = deadlineDate.getTime() - now.getTime();
-    
+
     if (timeDiff <= 0) {
       return "OVERDUE";
     }
-    
+
     const minutes = Math.floor(timeDiff / (1000 * 60));
     const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-    
+
     if (minutes <= 0) {
       return `${seconds}s`;
     }
-    
+
     return `${minutes}m ${seconds}s`;
   };
 
@@ -208,7 +204,11 @@ const OperatorDashboard = () => {
                 {appointment.client_details?.first_name}{" "}
                 {appointment.client_details?.last_name}
               </h3>
-              <span className={`status-badge ${getStatusBadgeClass(appointment.status)}`}>
+              <span
+                className={`status-badge ${getStatusBadgeClass(
+                  appointment.status
+                )}`}
+              >
                 Rejected - Pending Review
               </span>
             </div>
@@ -232,7 +232,8 @@ const OperatorDashboard = () => {
                 {appointment.services_details?.map((s) => s.name).join(", ")}
               </p>
               <p className="rejection-reason">
-                <strong>Rejection Reason:</strong> {appointment.rejection_reason}
+                <strong>Rejection Reason:</strong>{" "}
+                {appointment.rejection_reason}
               </p>
               <p>
                 <strong>Rejected At:</strong>{" "}
@@ -264,7 +265,11 @@ const OperatorDashboard = () => {
                 {appointment.client_details?.first_name}{" "}
                 {appointment.client_details?.last_name}
               </h3>
-              <span className={`status-badge ${getStatusBadgeClass(appointment.status)}`}>
+              <span
+                className={`status-badge ${getStatusBadgeClass(
+                  appointment.status
+                )}`}
+              >
                 {appointment.status.charAt(0).toUpperCase() +
                   appointment.status.slice(1)}
               </span>
@@ -292,12 +297,14 @@ const OperatorDashboard = () => {
               </p>
               {appointment.rejection_reason && (
                 <p className="rejection-reason">
-                  <strong>Rejection Reason:</strong> {appointment.rejection_reason}
+                  <strong>Rejection Reason:</strong>{" "}
+                  {appointment.rejection_reason}
                 </p>
               )}
               {appointment.review_decision && (
                 <p>
-                  <strong>Review Decision:</strong> {appointment.review_decision}
+                  <strong>Review Decision:</strong>{" "}
+                  {appointment.review_decision}
                 </p>
               )}
             </div>
@@ -307,8 +314,8 @@ const OperatorDashboard = () => {
     );
   };
   const renderNotifications = () => {
-    const unreadNotifications = notifications?.filter(n => !n.is_read) || [];
-    
+    const unreadNotifications = notifications?.filter((n) => !n.is_read) || [];
+
     if (unreadNotifications.length === 0) {
       return <p className="no-notifications">No unread notifications.</p>;
     }
@@ -317,7 +324,9 @@ const OperatorDashboard = () => {
       <div className="notifications-list">
         {unreadNotifications.map((notification) => (
           <div key={notification.id} className="notification-card">
-            <h4>{notification.notification_type.replace('_', ' ').toUpperCase()}</h4>
+            <h4>
+              {notification.notification_type.replace("_", " ").toUpperCase()}
+            </h4>
             <p>{notification.message}</p>
             <p className="notification-time">
               {new Date(notification.created_at).toLocaleString()}
@@ -334,13 +343,18 @@ const OperatorDashboard = () => {
         <div className="timeout-controls">
           <h3>Timeout Management</h3>
           <div className="auto-cancel-section">
-            <p>Auto-cancel overdue appointments and disable unresponsive therapists</p>
+            <p>
+              Auto-cancel overdue appointments and disable unresponsive
+              therapists
+            </p>
             <button
               className="auto-cancel-button"
               onClick={handleAutoCancelOverdue}
               disabled={autoCancelLoading}
             >
-              {autoCancelLoading ? "Processing..." : "Process Overdue Appointments"}
+              {autoCancelLoading
+                ? "Processing..."
+                : "Process Overdue Appointments"}
             </button>
           </div>
         </div>
@@ -356,9 +370,7 @@ const OperatorDashboard = () => {
                       {appointment.client_details?.first_name}{" "}
                       {appointment.client_details?.last_name}
                     </h3>
-                    <span className="status-badge status-overdue">
-                      OVERDUE
-                    </span>
+                    <span className="status-badge status-overdue">OVERDUE</span>
                   </div>
                   <div className="appointment-details">
                     <p>
@@ -387,17 +399,23 @@ const OperatorDashboard = () => {
 
         {approachingDeadlineAppointments.length > 0 && (
           <div className="approaching-deadline-section">
-            <h4>Approaching Deadline ({approachingDeadlineAppointments.length})</h4>
+            <h4>
+              Approaching Deadline ({approachingDeadlineAppointments.length})
+            </h4>
             <div className="appointments-list">
               {approachingDeadlineAppointments.map((appointment) => (
-                <div key={appointment.id} className="appointment-card approaching-deadline">
+                <div
+                  key={appointment.id}
+                  className="appointment-card approaching-deadline"
+                >
                   <div className="appointment-header">
                     <h3>
                       {appointment.client_details?.first_name}{" "}
                       {appointment.client_details?.last_name}
                     </h3>
                     <span className="status-badge status-warning">
-                      {getTimeRemaining(appointment.response_deadline)} remaining
+                      {getTimeRemaining(appointment.response_deadline)}{" "}
+                      remaining
                     </span>
                   </div>
                   <div className="appointment-details">
@@ -426,7 +444,9 @@ const OperatorDashboard = () => {
         )}
 
         {pendingAppointments.length === 0 && (
-          <p className="no-appointments">No pending appointments with timeouts.</p>
+          <p className="no-appointments">
+            No pending appointments with timeouts.
+          </p>
         )}
       </div>
     );
@@ -437,7 +457,9 @@ const OperatorDashboard = () => {
       <div className="dashboard-header">
         <div>
           <h1>Operator Dashboard</h1>
-          <p>Welcome, {user?.first_name} {user?.last_name}!</p>
+          <p>
+            Welcome, {user?.first_name} {user?.last_name}!
+          </p>
         </div>
 
         <div className="action-buttons">
@@ -446,16 +468,15 @@ const OperatorDashboard = () => {
           </button>
         </div>
       </div>
-
       {loading && <div className="loading-spinner">Loading...</div>}
-
       {error && (
         <div className="error-message">
           {typeof error === "object"
             ? error.message || error.error || JSON.stringify(error)
             : error}
         </div>
-      )}      <div className="view-selector">
+      )}{" "}
+      <div className="view-selector">
         <button
           className={view === "rejected" ? "active" : ""}
           onClick={() => setView("rejected")}
@@ -466,7 +487,8 @@ const OperatorDashboard = () => {
           className={view === "timeouts" ? "active" : ""}
           onClick={() => setView("timeouts")}
         >
-          Timeouts ({overdueAppointments.length + approachingDeadlineAppointments.length})
+          Timeouts (
+          {overdueAppointments.length + approachingDeadlineAppointments.length})
         </button>
         <button
           className={view === "all" ? "active" : ""}
@@ -480,7 +502,8 @@ const OperatorDashboard = () => {
         >
           Notifications
         </button>
-      </div>      <div className="dashboard-content">
+      </div>{" "}
+      <div className="dashboard-content">
         {view === "rejected" && (
           <div className="rejected-appointments">
             <h2>Rejection Reviews</h2>
@@ -509,17 +532,20 @@ const OperatorDashboard = () => {
           </div>
         )}
       </div>
-
       {/* Review Rejection Modal */}
       {reviewModal.isOpen && (
         <div className="modal-overlay">
           <div className="review-modal">
             <h3>Review Appointment Rejection</h3>
             <div className="rejection-details">
-              <p><strong>Rejection Reason:</strong></p>
-              <p className="rejection-reason-text">{reviewModal.rejectionReason}</p>
+              <p>
+                <strong>Rejection Reason:</strong>
+              </p>
+              <p className="rejection-reason-text">
+                {reviewModal.rejectionReason}
+              </p>
             </div>
-            
+
             <div className="review-notes">
               <label htmlFor="reviewNotes">Review Notes (optional):</label>
               <textarea
@@ -544,10 +570,7 @@ const OperatorDashboard = () => {
               >
                 Deny Rejection
               </button>
-              <button
-                className="cancel-button"
-                onClick={handleReviewCancel}
-              >
+              <button className="cancel-button" onClick={handleReviewCancel}>
                 Cancel
               </button>
             </div>

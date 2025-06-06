@@ -3,11 +3,14 @@ import { enableWebSocketConnections } from "../../services/webSocketService";
 import "../../styles/WebSocketStatus.css";
 
 /**
- * Component that displays the WebSocket connection status
+ * Component that provides non-intrusive WebSocket status indication
+ * Uses subtle status indicators without disrupting user experience
  */
 const WebSocketStatus = () => {
   const [status, setStatus] = useState("disconnected");
-  const [visible, setVisible] = useState(false);
+  const [showTemporaryNotification, setShowTemporaryNotification] =
+    useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
 
   useEffect(() => {
     // Check if WebSockets were previously disabled in this session
@@ -16,9 +19,14 @@ const WebSocketStatus = () => {
         const wsDisabled = sessionStorage.getItem("wsConnectionDisabled");
         if (wsDisabled === "true") {
           setStatus("disabled");
-          // Show the disabled notification briefly
-          setVisible(true);
-          setTimeout(() => setVisible(false), 7000);
+          // Only show notification if this is the first time in the session
+          const notificationShown = sessionStorage.getItem(
+            "wsDisabledNotificationShown"
+          );
+          if (!notificationShown) {
+            showNotification("Real-time updates unavailable", 3000);
+            sessionStorage.setItem("wsDisabledNotificationShown", "true");
+          }
         }
       } catch {
         // Ignore storage access errors
@@ -30,20 +38,16 @@ const WebSocketStatus = () => {
 
     // Create a custom event listener for WebSocket status updates
     const handleStatusUpdate = (event) => {
-      setStatus(event.detail.status);
-      setVisible(true);
+      const newStatus = event.detail.status;
+      setStatus(newStatus);
 
-      // Automatically hide notifications after a delay
-      if (event.detail.status === "connected") {
-        setTimeout(() => {
-          setVisible(false);
-        }, 5000);
-      } else if (event.detail.status === "disabled") {
-        // Show disabled notification a bit longer
-        setTimeout(() => {
-          setVisible(false);
-        }, 7000);
+      // Only show notifications for critical status changes
+      // Reduced notification frequency for minimal UI disruption
+      if (newStatus === "disabled") {
+        showNotification("Real-time updates unavailable", 3000);
       }
+      // Don't show notifications for other states to minimize disruption
+      // Users can hover over the status indicator to see current state
     };
 
     window.addEventListener("websocket-status", handleStatusUpdate);
@@ -53,40 +57,73 @@ const WebSocketStatus = () => {
     };
   }, []);
 
+  const showNotification = (message, duration) => {
+    setNotificationMessage(message);
+    setShowTemporaryNotification(true);
+    setTimeout(() => {
+      setShowTemporaryNotification(false);
+    }, duration);
+  };
+
   const handleRetryConnection = () => {
     enableWebSocketConnections();
-    setVisible(false);
+    setShowTemporaryNotification(false);
     // Reload the page to restart WebSocket connections
     window.location.reload();
   };
 
-  // Don't render anything if not visible
-  if (!visible) return null;
-
   return (
-    <div className={`websocket-status ${status}`}>
-      <span className="status-icon"></span>
-      {status === "connected" && "Real-time updates connected"}
-      {status === "disconnected" && "Real-time updates disconnected"}
-      {status === "connecting" && "Connecting to real-time updates..."}
-      {status === "error" && "Error connecting to real-time updates"}
-      {status === "disabled" &&
-        "Real-time updates unavailable - using polling mode"}
-
-      <div className="status-actions">
-        {status === "disabled" && (
-          <button className="retry-button" onClick={handleRetryConnection}>
-            Retry
-          </button>
-        )}
-        {status !== "connected" && (
-          <button className="close-button" onClick={() => setVisible(false)}>
-            ×
-          </button>
-        )}
+    <>
+      {/* Subtle status indicator - always present but minimal */}
+      <div
+        className={`websocket-status-indicator ${status}`}
+        title={getStatusTooltip(status)}
+      >
+        <span className="status-dot"></span>
       </div>
-    </div>
+
+      {/* Temporary notification for important status changes */}
+      {showTemporaryNotification && (
+        <div className={`websocket-notification ${status}`}>
+          <span className="notification-icon"></span>
+          {notificationMessage}
+
+          <div className="notification-actions">
+            {status === "disabled" && (
+              <button className="retry-button" onClick={handleRetryConnection}>
+                Retry
+              </button>
+            )}
+            <button
+              className="close-button"
+              onClick={() => setShowTemporaryNotification(false)}
+              aria-label="Close notification"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
+};
+
+// Helper function for status tooltips
+const getStatusTooltip = (status) => {
+  switch (status) {
+    case "connected":
+      return "Real-time updates active";
+    case "disconnected":
+      return "Reconnecting...";
+    case "connecting":
+      return "Connecting...";
+    case "error":
+      return "Connection error - retrying";
+    case "disabled":
+      return "Real-time updates disabled - using polling";
+    default:
+      return "Connection status unknown";
+  }
 };
 
 export default WebSocketStatus;

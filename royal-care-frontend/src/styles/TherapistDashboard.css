@@ -5,7 +5,12 @@
 }
 
 .dashboard-header {
-  /* Only keep unique or therapist-specific styles here */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .dashboard-header h1 {
