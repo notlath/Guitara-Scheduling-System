@@ -789,8 +789,30 @@ export const fetchStaffMembers = createAsyncThunk(
 // Fetch availability for a staff member
 export const fetchAvailability = createAsyncThunk(
   "scheduling/fetchAvailability",
-  async ({ staffId, date }, { rejectWithValue }) => {
+  async (
+    { staffId, date, forceRefresh = false },
+    { rejectWithValue, getState }
+  ) => {
+    const state = getState();
+    const cacheKey = `${staffId}-${date}`;
+
+    // Check cache first (unless force refresh is requested)
+    if (!forceRefresh && state.scheduling.availabilityCache[cacheKey]) {
+      console.log(`📋 fetchAvailability: Using cached data for ${cacheKey}`);
+      return {
+        data: state.scheduling.availabilityCache[cacheKey],
+        cached: true,
+        cacheKey,
+      };
+    }
+
     const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue("Authentication required");
+    }
+
+    console.log(`🔄 fetchAvailability: Loading fresh data for ${cacheKey}`);
+
     try {
       const response = await axios.get(
         `${API_URL}availabilities/?user=${staffId}&date=${date}`,
@@ -800,10 +822,16 @@ export const fetchAvailability = createAsyncThunk(
           },
         }
       );
-      return response.data;
+
+      return {
+        data: response.data,
+        cached: false,
+        cacheKey,
+      };
     } catch (error) {
+      console.error(`❌ fetchAvailability: Error for ${cacheKey}:`, error);
       return rejectWithValue(
-        error.response?.data || "Could not fetch availability"
+        handleApiError(error, "Could not fetch availability")
       );
     }
   }
@@ -1083,6 +1111,7 @@ const initialState = {
   clients: [],
   services: [],
   availabilities: [],
+  availabilityCache: {}, // Cache for availability data: { "staffId-date": [...availabilities] }
   notifications: [],
   unreadNotificationCount: 0,
   loading: false,
@@ -1100,6 +1129,25 @@ const schedulingSlice = createSlice({
     },
     clearSuccessMessage: (state) => {
       state.successMessage = null;
+    },
+    clearAvailabilityCache: (state, action) => {
+      // Clear specific cache entry or all cache
+      if (action.payload) {
+        const { staffId, date } = action.payload;
+        const cacheKey = `${staffId}-${date}`;
+        delete state.availabilityCache[cacheKey];
+        console.log(`🗑️ Cleared availability cache for ${cacheKey}`);
+      } else {
+        state.availabilityCache = {};
+        console.log("🗑️ Cleared all availability cache");
+      }
+    },
+    invalidateAvailabilityCache: (state, action) => {
+      // Mark cache as stale for a specific staff/date
+      const { staffId, date } = action.payload;
+      const cacheKey = `${staffId}-${date}`;
+      delete state.availabilityCache[cacheKey];
+      console.log(`🔄 Invalidated availability cache for ${cacheKey}`);
     },
   },
   extraReducers: (builder) => {
@@ -1400,11 +1448,22 @@ const schedulingSlice = createSlice({
       })
       .addCase(fetchAvailability.fulfilled, (state, action) => {
         state.loading = false;
+        const { data, cached, cacheKey } = action.payload;
+
         console.log(
-          "📋 fetchAvailability.fulfilled - Setting availabilities:",
-          action.payload
+          `📋 fetchAvailability.fulfilled - ${
+            cached ? "Using cached" : "Setting fresh"
+          } availabilities for ${cacheKey}:`,
+          data
         );
-        state.availabilities = action.payload;
+
+        state.availabilities = data;
+
+        // Update cache if this is fresh data
+        if (!cached) {
+          state.availabilityCache[cacheKey] = data;
+          console.log(`💾 Cached availability data for ${cacheKey}`);
+        }
       })
       .addCase(fetchAvailability.rejected, (state, action) => {
         state.loading = false;
@@ -1421,6 +1480,15 @@ const schedulingSlice = createSlice({
           "✨ createAvailability.fulfilled - Adding new availability:",
           action.payload
         );
+
+        // Invalidate cache for this staff/date combination
+        const availability = action.payload;
+        const cacheKey = `${availability.user}-${availability.date}`;
+        delete state.availabilityCache[cacheKey];
+        console.log(
+          `🔄 Invalidated cache for ${cacheKey} due to new availability`
+        );
+
         // Only add to current availabilities if it's not already there
         // (to avoid duplicates when the user is viewing the same date/staff)
         const existingIndex = state.availabilities.findIndex(
@@ -1602,5 +1670,10 @@ const schedulingSlice = createSlice({
   },
 });
 
-export const { clearError, clearSuccessMessage } = schedulingSlice.actions;
+export const {
+  clearError,
+  clearSuccessMessage,
+  clearAvailabilityCache,
+  invalidateAvailabilityCache,
+} = schedulingSlice.actions;
 export default schedulingSlice.reducer;

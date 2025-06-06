@@ -37,9 +37,10 @@ class Availability(models.Model):
         unique_together = ("user", "date", "start_time", "end_time")
 
     def clean(self):
-        # Ensure start time is before end time
-        if self.start_time >= self.end_time:
-            raise ValidationError("Start time must be before end time")
+        # Support cross-day availability (e.g., 13:00 to 01:00 next day)
+        # Only validate that they're not exactly the same time
+        if self.start_time == self.end_time:
+            raise ValidationError("Start time and end time cannot be the same")
 
         # Ensure user role is therapist or driver
         if self.user.role not in ["therapist", "driver"]:
@@ -141,10 +142,14 @@ class Appointment(models.Model):
 
     # Timeout handling
     response_deadline = models.DateTimeField(
-        null=True, blank=True, help_text="Deadline for therapist to respond (30 minutes after creation)"
+        null=True,
+        blank=True,
+        help_text="Deadline for therapist to respond (30 minutes after creation)",
     )
     auto_cancelled_at = models.DateTimeField(
-        null=True, blank=True, help_text="When the appointment was auto-cancelled due to timeout"
+        null=True,
+        blank=True,
+        help_text="When the appointment was auto-cancelled due to timeout",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -268,7 +273,7 @@ class Appointment(models.Model):
 
 class AppointmentRejection(models.Model):
     """Model to store appointment rejections and operator responses"""
-    
+
     OPERATOR_RESPONSE_CHOICES = [
         ("pending", "Pending Review"),
         ("accepted", "Reason Accepted"),
@@ -276,29 +281,27 @@ class AppointmentRejection(models.Model):
     ]
 
     appointment = models.OneToOneField(
-        Appointment, 
-        on_delete=models.CASCADE, 
-        related_name="rejection_details"
+        Appointment, on_delete=models.CASCADE, related_name="rejection_details"
     )
-    rejection_reason = models.TextField(help_text="Reason provided by therapist for rejecting")
+    rejection_reason = models.TextField(
+        help_text="Reason provided by therapist for rejecting"
+    )
     rejected_by = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
         related_name="rejections_made",
-        help_text="Therapist who rejected the appointment"
+        help_text="Therapist who rejected the appointment",
     )
     rejected_at = models.DateTimeField(auto_now_add=True)
-    
+
     # Operator response to rejection
     operator_response = models.CharField(
-        max_length=20, 
-        choices=OPERATOR_RESPONSE_CHOICES, 
-        default="pending"
+        max_length=20, choices=OPERATOR_RESPONSE_CHOICES, default="pending"
     )
     operator_response_reason = models.TextField(
-        blank=True, 
-        null=True, 
-        help_text="Operator's reason for accepting/denying the rejection"
+        blank=True,
+        null=True,
+        help_text="Operator's reason for accepting/denying the rejection",
     )
     reviewed_by = models.ForeignKey(
         CustomUser,
@@ -306,7 +309,7 @@ class AppointmentRejection(models.Model):
         null=True,
         blank=True,
         related_name="rejections_reviewed",
-        help_text="Operator who reviewed the rejection"
+        help_text="Operator who reviewed the rejection",
     )
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
@@ -335,7 +338,11 @@ class Notification(models.Model):
         CustomUser, on_delete=models.CASCADE, related_name="notifications"
     )
     appointment = models.ForeignKey(
-        Appointment, on_delete=models.CASCADE, related_name="notifications", null=True, blank=True
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+        null=True,
+        blank=True,
     )
     notification_type = models.CharField(
         max_length=30,
@@ -345,14 +352,14 @@ class Notification(models.Model):
     message = models.TextField()
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     # For rejection-related notifications
     rejection = models.ForeignKey(
         AppointmentRejection,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name="notifications"
+        related_name="notifications",
     )
 
     def __str__(self):
