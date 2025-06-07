@@ -11,10 +11,10 @@ import {
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
-import LayoutRow from "./LayoutRow";
+import LayoutRow from "../globals/LayoutRow";
 
 import "../styles/OperatorDashboard.css";
-import "../styles/TabSwitcher.css";
+import "../globals/TabSwitcher.css";
 
 const OperatorDashboard = () => {
   const dispatch = useDispatch();

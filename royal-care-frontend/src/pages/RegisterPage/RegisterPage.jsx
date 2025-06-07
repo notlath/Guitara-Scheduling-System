@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import Register from "../../components/auth/Register";
-import "../../styles/theme.css";
+import "../../globals/theme.css";
 
 function RegisterPage() {
   useEffect(() => {

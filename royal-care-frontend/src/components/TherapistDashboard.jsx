@@ -20,12 +20,12 @@ import {
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 
-import "../styles/TabSwitcher.css";
+import "../globals/TabSwitcher.css";
 import "../styles/TherapistDashboard.css";
 import { runAuthDiagnostics, testLogin } from "../utils/authFixer";
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
-import LayoutRow from "./LayoutRow";
+import LayoutRow from "../globals/LayoutRow";
 
 const TherapistDashboard = () => {
   const dispatch = useDispatch();
