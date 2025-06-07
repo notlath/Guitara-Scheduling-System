@@ -51,11 +51,14 @@ const RouteHandler = () => {
     let defaultPath = "/dashboard";
 
     if (user.role === "operator") {
-      // Operators usually go to the main dashboard
+      // Operators go to the OperatorDashboard
       defaultPath = "/dashboard";
-    } else if (user.role === "therapist" || user.role === "driver") {
-      // Therapists and drivers typically use scheduling
-      defaultPath = "/dashboard/scheduling";
+    } else if (user.role === "therapist") {
+      // Therapists go to the TherapistDashboard
+      defaultPath = "/dashboard";
+    } else if (user.role === "driver") {
+      // Drivers go to the DriverDashboard
+      defaultPath = "/dashboard";
     }
 
     console.log("RouteHandler: Redirecting to default path:", defaultPath);
