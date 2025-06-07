@@ -330,7 +330,7 @@ This repository has been thoroughly organized for clarity and maintainability:
 
 - **Core Application** - Main application code in `guitara/` (Django backend) and `royal-care-frontend/` (React frontend)
 - **Archive** - Complete archive system containing test scripts, documentation, and development artifacts in organized categories
-- **Root Directory** - Essential project files including `start_all.bat`, configuration files, and this README
+- **Root Directory** - Essential project files including automated startup scripts, configuration files, and this README
 
 ### **Database Evolution**
 
@@ -342,9 +342,9 @@ The project has evolved through different database configurations:
 
 ### **Quick Start Scripts**
 
-The project includes automated development environment setup scripts:
+The project includes a cross-platform automated development environment setup script:
 
-#### **Cross-Platform: start_development.py (Recommended)**
+#### **🚀 start_development.py (Recommended)**
 
 A Python script that works on Windows, Linux, and macOS:
 
@@ -361,19 +361,11 @@ python start_development.py
 - ✅ **Auto Browser**: Automatically opens http://localhost:5173/
 - ✅ **Error Handling**: Provides helpful troubleshooting suggestions
 
-#### **Windows: start_all.bat**
-
-For Windows users who prefer batch files:
-
-```cmd
-.\start_all.bat
-```
-
 #### **Development Workflow**
 
 1. **First Time Setup**: Run `python start_development.py` to set up everything
 2. **Daily Development**: Simply run `python start_development.py` to start both servers
-3. **Manual Control**: If you need fine control, use the manual setup commands above
+3. **Manual Control**: If you need fine control, use the manual setup commands in the Installation section
 
 **What You'll See:**
 
