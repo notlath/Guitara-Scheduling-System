@@ -14,6 +14,9 @@ const authSlice = createSlice({
     },
     logout(state) {
       state.user = null;
+      // Clear localStorage when logging out
+      localStorage.removeItem("user");
+      localStorage.removeItem("knoxToken");
     },
   },
 });

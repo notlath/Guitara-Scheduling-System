@@ -9,6 +9,8 @@ import rcLogo from "../../assets/images/rc_logo.jpg";
 import { login } from "../../features/auth/authSlice";
 import { api } from "../../services/api";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
+import { handleAuthError } from "../../utils/authErrorHandler";
+import DisabledAccountAlert from "../../components/auth/DisabledAccountAlert";
 
 function LoginPage() {
   const [formData, setFormData] = useState({ username: "", password: "" });
@@ -16,6 +18,11 @@ function LoginPage() {
   const [needs2FA, setNeeds2FA] = useState(false); // Track 2FA state
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false); // Track loading state
+  const [showDisabledAlert, setShowDisabledAlert] = useState(false);  const [disabledAccountInfo, setDisabledAccountInfo] = useState({
+    type: 'account',
+    message: '',
+    contactInfo: null
+  });
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -37,26 +44,47 @@ function LoginPage() {
     } else {
       setFormData({ ...formData, [name]: value }); // Capture username/password
     }
-  };
-
-  const handleSubmit = async (e) => {
+  };  const handleSubmit = async (e) => {
     e.preventDefault();
 
     setIsLoading(true);
+    setError(""); // Clear any previous errors
+    setShowDisabledAlert(false); // Hide disabled alert
 
     try {
       if (!needs2FA) {
-        // Initial login request
-        const response = await api.post("/auth/login/", formData);
+        // Initial login request using enhanced auth service
+        try {
+          const response = await api.post("/auth/login/", formData);
 
-        if (response.data.message === "2FA code sent") {
-          setNeeds2FA(true); // Show 2FA input
-        } else {
-          // Handle non-2FA login (if allowed)
-          localStorage.setItem("knoxToken", response.data.token);
-          localStorage.setItem("user", JSON.stringify(response.data.user));
-          dispatch(login(response.data.user));
-          navigate("/dashboard/scheduling");
+          if (response.data.message === "2FA code sent") {
+            setNeeds2FA(true); // Show 2FA input
+          } else {
+            // Handle non-2FA login (if allowed)
+            localStorage.setItem("knoxToken", response.data.token);
+            localStorage.setItem("user", JSON.stringify(response.data.user));
+            dispatch(login(response.data.user));
+            navigate("/dashboard/scheduling");
+          }        } catch (authError) {
+          // Use enhanced error handling utility
+          const errorInfo = handleAuthError(authError);
+          
+          if (errorInfo.isDisabled) {
+            // Clear any stored authentication data to prevent infinite loops
+            localStorage.removeItem("knoxToken");
+            localStorage.removeItem("user");
+            
+            // Show disabled account alert
+            setDisabledAccountInfo({
+              type: errorInfo.accountType,
+              message: errorInfo.message,
+              contactInfo: errorInfo.contactInfo
+            });
+            setShowDisabledAlert(true);
+          } else {
+            // Show regular error message
+            setError(errorInfo.message || "Login failed. Please try again.");
+          }
         }
       } else {
         // Verify 2FA code
@@ -72,14 +100,50 @@ function LoginPage() {
         navigate("/dashboard/scheduling");
       }
     } catch (err) {
-      setError(err.response?.data?.error || "Incorrect username or password");
+      // Handle 2FA verification errors
+      if (needs2FA) {
+        setError(err.response?.data?.error || "Invalid verification code");
+      } else {
+        setError(err.response?.data?.error || "An unexpected error occurred");
+      }
     }
 
     setIsLoading(false);
   };
-
+  const handleContactSupport = () => {
+    const accountInfo = disabledAccountInfo;
+    const contactInfo = accountInfo.contactInfo || { email: 'support@guitara.com' };
+    const emailSubject = `Account Access Issue - ${accountInfo.type} Account`;
+    const emailBody = `Hello,\n\nI am unable to access my ${accountInfo.type} account. The system shows that my account is disabled.\n\nUsername: ${formData.username}\nError Message: ${accountInfo.message}\n\nPlease assist me with reactivating my account.\n\nThank you.`;
+    
+    window.location.href = `mailto:${contactInfo.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+  };
+  const handleBackToHome = () => {
+    // Clear any stored authentication data to prevent loops
+    localStorage.removeItem("knoxToken");
+    localStorage.removeItem("user");
+    
+    // Clear component state
+    setShowDisabledAlert(false);
+    setError("");
+    setFormData({ username: "", password: "" });
+    setNeeds2FA(false);
+    setVerificationCode("");
+    
+    // Navigate to login page (which is home for non-authenticated users)
+    navigate('/', { replace: true });
+  };
   return (
     <div className={styles.loginContainer}>
+      {showDisabledAlert && (
+        <DisabledAccountAlert
+          accountType={disabledAccountInfo.type}
+          errorMessage={disabledAccountInfo.message}
+          onContactSupport={handleContactSupport}
+          onBackToHome={handleBackToHome}
+        />
+      )}
+      
       <div className={styles.imageSide}>
         <img src={loginSidepic} alt="Background" />
       </div>
