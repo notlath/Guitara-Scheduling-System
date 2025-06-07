@@ -272,6 +272,67 @@ const OperatorDashboard = () => {
         };
     }
   };
+  // Helper function to get acceptance status display
+  const getAcceptanceStatus = (appointment) => {
+    if (!appointment.therapist && !appointment.driver) {
+      return { text: "No staff assigned", class: "acceptance-none" };
+    }
+
+    const therapistStatus = appointment.therapist
+      ? appointment.therapist_accepted
+        ? "✓ Accepted"
+        : "⏳ Pending"
+      : "N/A";
+    const driverStatus = appointment.driver
+      ? appointment.driver_accepted
+        ? "✓ Accepted"
+        : "⏳ Pending"
+      : "N/A";
+
+    const bothAccepted = appointment.both_parties_accepted;
+    const pendingCount = appointment.pending_acceptances?.length || 0;
+
+    return {
+      text: `Therapist: ${therapistStatus} | Driver: ${driverStatus}`,
+      class: bothAccepted ? "acceptance-complete" : "acceptance-pending",
+      bothAccepted,
+      pendingCount,
+      pendingList: appointment.pending_acceptances || [],
+      canProceed: bothAccepted,
+    };
+  };
+
+  // Helper function to check if appointment can progress to next status
+  const canAdvanceAppointment = (appointment, targetStatus) => {
+    const { status, both_parties_accepted } = appointment;
+    
+    // Check dual acceptance requirement
+    if ((targetStatus === "confirmed" || targetStatus === "in_progress") && !both_parties_accepted) {
+      return {
+        allowed: false,
+        reason: "Both therapist and driver must accept before proceeding"
+      };
+    }
+
+    // Check valid status transitions
+    const validTransitions = {
+      "pending": ["confirmed"],
+      "confirmed": ["in_progress"],
+      "in_progress": ["completed"],
+      "completed": [],
+      "cancelled": [],
+      "rejected": []
+    };
+
+    if (!validTransitions[status]?.includes(targetStatus)) {
+      return {
+        allowed: false,
+        reason: `Cannot transition from ${status} to ${targetStatus}`
+      };
+    }
+
+    return { allowed: true };
+  };
 
   const renderRejectedAppointments = () => {
     if (rejectedAppointments.length === 0) {
@@ -309,11 +370,26 @@ const OperatorDashboard = () => {
                 <strong>Therapist:</strong>{" "}
                 {appointment.therapist_details?.first_name}{" "}
                 {appointment.therapist_details?.last_name}
-              </p>
-              <p>
+              </p>              <p>
                 <strong>Services:</strong>{" "}
                 {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>{" "}
+              </p>
+              
+              {/* Show acceptance status for pending appointments */}
+              {appointment.status === "pending" && (
+                <div className="acceptance-status">
+                  <strong>Acceptance Status:</strong>{" "}
+                  <span className={`acceptance-badge ${getAcceptanceStatus(appointment).class}`}>
+                    {getAcceptanceStatus(appointment).text}
+                  </span>
+                  {getAcceptanceStatus(appointment).pendingCount > 0 && (
+                    <div className="pending-acceptances">
+                      <small>Waiting for: {getAcceptanceStatus(appointment).pendingList.join(", ")}</small>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <p className="rejection-reason">
                 <strong>Rejection Reason:</strong>{" "}
                 {appointment.rejection_reason}
@@ -383,11 +459,26 @@ const OperatorDashboard = () => {
                   {appointment.therapist_details.first_name}{" "}
                   {appointment.therapist_details.last_name}
                 </p>
-              )}
-              <p>
+              )}              <p>
                 <strong>Services:</strong>{" "}
                 {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>{" "}
+              </p>
+              
+              {/* Show acceptance status for pending appointments */}
+              {appointment.status === "pending" && (
+                <div className="acceptance-status">
+                  <strong>Acceptance Status:</strong>{" "}
+                  <span className={`acceptance-badge ${getAcceptanceStatus(appointment).class}`}>
+                    {getAcceptanceStatus(appointment).text}
+                  </span>
+                  {getAcceptanceStatus(appointment).pendingCount > 0 && (
+                    <div className="pending-acceptances">
+                      <small>Waiting for: {getAcceptanceStatus(appointment).pendingList.join(", ")}</small>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {appointment.rejection_reason && (
                 <div className="rejection-reason">
                   <strong>Rejection Reason:</strong>{" "}
@@ -601,13 +692,18 @@ const OperatorDashboard = () => {
                 </div>
               </div>
             </div>
-          </div>
-          <div className="view-selector">
+          </div>          <div className="view-selector">
             <button
               className={currentView === "rejected" ? "active" : ""}
               onClick={() => setView("rejected")}
             >
               Pending Reviews ({rejectedAppointments.length})
+            </button>
+            <button
+              className={currentView === "pending" ? "active" : ""}
+              onClick={() => setView("pending")}
+            >
+              Pending Acceptance ({pendingAppointments.length})
             </button>
             <button
               className={currentView === "timeouts" ? "active" : ""}
@@ -636,12 +732,17 @@ const OperatorDashboard = () => {
             >
               Manage Availability
             </button>
-          </div>{" "}
-          <div className="dashboard-content">
+          </div>{" "}          <div className="dashboard-content">
             {currentView === "rejected" && (
               <div className="rejected-appointments">
                 <h2>Rejection Reviews</h2>
                 {renderRejectedAppointments()}
+              </div>
+            )}
+            {currentView === "pending" && (
+              <div className="pending-appointments">
+                <h2>Pending Acceptance Appointments</h2>
+                {renderPendingAcceptanceAppointments()}
               </div>
             )}
             {currentView === "timeouts" && (

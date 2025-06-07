@@ -152,6 +152,26 @@ class Appointment(models.Model):
         help_text="When the appointment was auto-cancelled due to timeout",
     )
 
+    # Dual acceptance tracking - NEW FIELDS
+    therapist_accepted = models.BooleanField(
+        default=False,
+        help_text="Whether the therapist has accepted this appointment"
+    )
+    therapist_accepted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the therapist accepted the appointment"
+    )
+    driver_accepted = models.BooleanField(
+        default=False,
+        help_text="Whether the driver has accepted this appointment"
+    )
+    driver_accepted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the driver accepted the appointment"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -194,6 +214,29 @@ class Appointment(models.Model):
     def can_auto_cancel(self):
         """Check if appointment can be auto-cancelled due to timeout"""
         return self.status == "pending" and self.is_overdue()
+
+    def both_parties_accepted(self):
+        """Check if both therapist and driver have accepted the appointment"""
+        therapist_accepted = self.therapist_accepted if self.therapist else True  # No therapist means no acceptance needed
+        driver_accepted = self.driver_accepted if self.driver else True  # No driver means no acceptance needed
+        return therapist_accepted and driver_accepted
+
+    def get_pending_acceptances(self):
+        """Get list of parties that still need to accept"""
+        pending = []
+        if self.therapist and not self.therapist_accepted:
+            pending.append(f"Therapist ({self.therapist.get_full_name()})")
+        if self.driver and not self.driver_accepted:
+            pending.append(f"Driver ({self.driver.get_full_name()})")
+        return pending
+
+    def can_progress_to_confirmed(self):
+        """Check if appointment can progress to confirmed status"""
+        return self.status == "pending" and self.both_parties_accepted()
+
+    def can_progress_to_in_progress(self):
+        """Check if appointment can progress to in_progress status"""
+        return self.status == "confirmed" and self.both_parties_accepted()
 
     def clean(self):
         """Validate appointment constraints including conflict detection"""

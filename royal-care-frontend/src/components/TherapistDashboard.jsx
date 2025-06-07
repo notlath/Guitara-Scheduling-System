@@ -368,36 +368,67 @@ const TherapistDashboard = () => {
         return "";
     }
   };
-
   const renderActionButtons = (appointment) => {
-    const { status, id } = appointment;
+    const { status, id, therapist_accepted, both_parties_accepted, pending_acceptances } = appointment;
 
     switch (status) {
       case "pending":
-        return (
-          <div className="appointment-actions">
-            <button
-              className="accept-button"
-              onClick={() => handleAcceptAppointment(id)}
-            >
-              Accept
-            </button>
-            <button
-              className="reject-button"
-              onClick={() => handleRejectAppointment(id)}
-            >
-              Reject
-            </button>
-          </div>
-        );
+        // Show accept/reject only if therapist hasn't accepted yet
+        if (!therapist_accepted) {
+          return (
+            <div className="appointment-actions">
+              <button
+                className="accept-button"
+                onClick={() => handleAcceptAppointment(id)}
+              >
+                Accept
+              </button>
+              <button
+                className="reject-button"
+                onClick={() => handleRejectAppointment(id)}
+              >
+                Reject
+              </button>
+            </div>
+          );
+        } else {
+          // Therapist has accepted, show waiting status
+          return (
+            <div className="appointment-actions">
+              <div className="waiting-status">
+                <span className="accepted-badge">✓ You have accepted</span>
+                {!both_parties_accepted && pending_acceptances?.length > 0 && (
+                  <small className="waiting-text">
+                    Waiting for: {pending_acceptances.join(", ")}
+                  </small>
+                )}
+              </div>
+            </div>
+          );
+        }
 
       case "confirmed":
-        return (
-          <div className="appointment-actions">
-            <button
-              className="start-button"
-              onClick={() => handleStartAppointment(id)}
-            >
+        // Only show start button if both parties have accepted
+        if (both_parties_accepted) {
+          return (
+            <div className="appointment-actions">
+              <button
+                className="start-button"
+                onClick={() => handleStartAppointment(id)}
+              >
+                Start Session
+              </button>
+            </div>
+          );
+        } else {
+          return (
+            <div className="appointment-actions">
+              <div className="warning-status">
+                ⚠ Waiting for all parties to accept before starting
+              </div>
+            </div>
+          );
+        }
               Start Service
             </button>
           </div>

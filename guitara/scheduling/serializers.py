@@ -161,6 +161,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
     )
     total_duration = serializers.SerializerMethodField()
     total_price = serializers.SerializerMethodField()
+    
+    # Add acceptance status fields
+    both_parties_accepted = serializers.SerializerMethodField()
+    pending_acceptances = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointment
@@ -177,6 +181,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def get_total_price(self, obj):
         """Calculate the total price of all services"""
         return sum(service.price for service in obj.services.all())
+    
+    def get_both_parties_accepted(self, obj):
+        """Check if both parties have accepted"""
+        return obj.both_parties_accepted()
+    
+    def get_pending_acceptances(self, obj):
+        """Get list of parties that still need to accept"""
+        return obj.get_pending_acceptances()
 
     def validate(self, data):
         """
