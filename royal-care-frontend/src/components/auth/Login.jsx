@@ -98,7 +98,6 @@ const Login = () => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -133,8 +132,86 @@ const Login = () => {
         navigate(getRedirectPath(response.data.user.role));
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.error || "Invalid credentials";
-      setErrors({ form: errorMessage });
+      // Handle different types of errors more specifically
+      if (err.response?.status === 400) {
+        const errorData = err.response.data;
+
+        // Handle field-specific validation errors
+        if (errorData?.errors) {
+          const newErrors = {};
+
+          // Map backend validation errors to frontend fields
+          if (errorData.errors.username) {
+            newErrors.username =
+              errorData.errors.username[0] || "Username is required";
+          }
+          if (errorData.errors.password) {
+            newErrors.password =
+              errorData.errors.password[0] || "Password is required";
+          }
+          if (errorData.errors.email) {
+            newErrors.username =
+              errorData.errors.email[0] || "Valid email is required";
+          }
+          if (errorData.errors.code && needs2FA) {
+            newErrors.verificationCode =
+              errorData.errors.code[0] || "Invalid verification code";
+          }
+
+          setErrors(newErrors);
+        } else if (errorData?.error) {
+          // Handle general error messages
+          if (
+            errorData.error.includes("username") ||
+            errorData.error.includes("Username")
+          ) {
+            setErrors({ username: "Username is required" });
+          } else if (
+            errorData.error.includes("password") ||
+            errorData.error.includes("Password")
+          ) {
+            setErrors({ password: "Password is required" });
+          } else if (
+            errorData.error.includes("email") ||
+            errorData.error.includes("Email")
+          ) {
+            setErrors({ username: "Valid email is required" });
+          } else {
+            setErrors({ form: errorData.error });
+          }
+        } else {
+          // Fallback for empty fields or general 400 errors
+          const newErrors = {};
+          if (!formData.username.trim() && !needs2FA) {
+            newErrors.username = "Username is required";
+          }
+          if (!formData.password && !needs2FA) {
+            newErrors.password = "Password is required";
+          }
+          if (!verificationCode && needs2FA) {
+            newErrors.verificationCode = "Verification code is required";
+          }
+
+          if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+          } else {
+            setErrors({ form: "Please check your input and try again" });
+          }
+        }
+      } else if (err.response?.status === 401) {
+        setErrors({ form: "Invalid username or password" });
+      } else if (err.response?.status === 403) {
+        setErrors({ form: "Account is disabled or access denied" });
+      } else if (err.response?.status === 429) {
+        setErrors({ form: "Too many login attempts. Please try again later" });
+      } else {
+        // Network or other errors
+        const errorMessage =
+          err.response?.data?.error ||
+          err.message ||
+          "Login failed. Please try again";
+        setErrors({ form: errorMessage });
+      }
     } finally {
       setIsSubmitting(false);
     }

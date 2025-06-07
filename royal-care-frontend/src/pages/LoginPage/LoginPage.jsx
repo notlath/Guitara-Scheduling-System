@@ -17,6 +17,7 @@ function LoginPage() {
   const [verificationCode, setVerificationCode] = useState("");
   const [needs2FA, setNeeds2FA] = useState(false); // Track 2FA state
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({}); // Individual field errors
   const [isLoading, setIsLoading] = useState(false); // Track loading state
   const [showDisabledAlert, setShowDisabledAlert] = useState(false);
   const [disabledAccountInfo, setDisabledAccountInfo] = useState({
@@ -54,29 +55,75 @@ function LoginPage() {
     return () => {
       cleanupFido2Script();
     };
-  }, []);
-  // Event handlers to update state on input changes
+  }, []); // Event handlers to update state on input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     if (needs2FA) {
-      setVerificationCode(value); // Capture 2FA code
+      // For 2FA code, only allow numeric input and limit to 6 digits
+      const numericValue = value.replace(/[^0-9]/g, "").slice(0, 6);
+      setVerificationCode(numericValue);
+
+      // Clear field-specific error for 2FA code when user starts typing
+      if (fieldErrors.verificationCode) {
+        setFieldErrors({ ...fieldErrors, verificationCode: "" });
+      }
     } else {
       setFormData({ ...formData, [name]: value }); // Capture username/password
+
+      // Clear field-specific error when user starts typing
+      if (fieldErrors[name]) {
+        setFieldErrors({ ...fieldErrors, [name]: "" });
+      }
     }
+
+    // Clear general error when user starts typing
+    if (error) {
+      setError("");
+    }
+  };
+
+  // Validation function for form inputs
+  const validateForm = () => {
+    const newFieldErrors = {};
+
+    if (!needs2FA) {
+      // Validate login form
+      if (!formData.username || formData.username.trim() === "") {
+        newFieldErrors.username = "Username is required";
+      }
+
+      if (!formData.password || formData.password.trim() === "") {
+        newFieldErrors.password = "Password is required";
+      }
+    } else {
+      // Validate 2FA form
+      if (!verificationCode || verificationCode.trim() === "") {
+        newFieldErrors.verificationCode = "Verification code is required";
+      } else if (verificationCode.length !== 6) {
+        newFieldErrors.verificationCode = "Verification code must be 6 digits";
+      }
+    }
+
+    setFieldErrors(newFieldErrors);
+    return Object.keys(newFieldErrors).length === 0;
   }; // Handle account re-enabled callback from DisabledAccountAlert
   const handleAccountReEnabled = () => {
     setShowDisabledAlert(false);
     setError("");
+    setFieldErrors({}); // Clear field errors
 
     // Auto-trigger login attempt
     setTimeout(() => {
       handleSubmit({ preventDefault: () => {} });
     }, 500);
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate form inputs
+    if (!validateForm()) {
+      return; // Stop submission if validation fails
+    }
 
     setIsLoading(true);
     setError(""); // Clear any previous errors
@@ -87,9 +134,9 @@ function LoginPage() {
         // Initial login request using enhanced auth service
         try {
           const response = await api.post("/auth/login/", formData);
-
           if (response.data.message === "2FA code sent") {
             setNeeds2FA(true); // Show 2FA input
+            setFieldErrors({}); // Clear previous field errors when switching to 2FA
           } else {
             // Handle non-2FA login (if allowed)
             localStorage.setItem("knoxToken", response.data.token);
@@ -162,6 +209,7 @@ function LoginPage() {
     // Clear component state
     setShowDisabledAlert(false);
     setError("");
+    setFieldErrors({}); // Clear field errors
     setFormData({ username: "", password: "" });
     setNeeds2FA(false);
     setVerificationCode("");
@@ -194,6 +242,7 @@ function LoginPage() {
           <h2 className={styles.welcomeHeading}>Good to See You!</h2>
           {error && <p className={styles.errorMessage}>{error}</p>}
           <form onSubmit={handleSubmit} className={styles.loginForm}>
+            {" "}
             {!needs2FA ? (
               <div className={styles.inputContainer}>
                 <div className={styles.formGroup}>
@@ -205,9 +254,16 @@ function LoginPage() {
                     name="username"
                     placeholder="Username"
                     value={formData.username}
-                    className={styles.formInput}
+                    className={`${styles.formInput} ${
+                      fieldErrors.username ? styles.inputError : ""
+                    }`}
                     onChange={handleChange}
                   />
+                  {fieldErrors.username && (
+                    <div className={styles.fieldError}>
+                      {fieldErrors.username}
+                    </div>
+                  )}
                 </div>
                 <div className={styles.formGroup}>
                   <label htmlFor="password" className={styles.formLabel}>
@@ -219,8 +275,15 @@ function LoginPage() {
                     placeholder="Password"
                     value={formData.password}
                     onChange={handleChange}
-                    className={styles.formInput}
+                    className={`${styles.formInput} ${
+                      fieldErrors.password ? styles.inputError : ""
+                    }`}
                   />
+                  {fieldErrors.password && (
+                    <div className={styles.fieldError}>
+                      {fieldErrors.password}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -234,8 +297,16 @@ function LoginPage() {
                   placeholder="Enter 6-digit code"
                   value={verificationCode}
                   onChange={handleChange}
-                  className={styles.formInput}
+                  className={`${styles.formInput} ${
+                    fieldErrors.verificationCode ? styles.inputError : ""
+                  }`}
+                  maxLength={6}
                 />
+                {fieldErrors.verificationCode && (
+                  <div className={styles.fieldError}>
+                    {fieldErrors.verificationCode}
+                  </div>
+                )}
               </div>
             )}
             <div className={styles.forgotPassword}>
@@ -243,7 +314,6 @@ function LoginPage() {
                 Forgot password?
               </a>
             </div>
-
             <button
               type="submit"
               className={`${styles.loginButton} ${
