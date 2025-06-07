@@ -589,7 +589,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response(serializer.data)    @action(detail=True, methods=["post"])
+        return Response(serializer.data) @ action(detail=True, methods=["post"])
+
     def accept(self, request, pk=None):
         """Therapist or Driver accepts a pending appointment"""
         appointment = self.get_object()
@@ -610,7 +611,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Determine who is accepting
         is_therapist = request.user == appointment.therapist
         is_driver = request.user == appointment.driver
-        
+
         # Update acceptance status
         if is_therapist:
             appointment.therapist_accepted = True
@@ -624,27 +625,27 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Check if both parties have now accepted
         if appointment.both_parties_accepted():
             appointment.status = "confirmed"
-            
+
             # Create notification that appointment is fully confirmed
             self._create_notifications(
                 appointment,
                 "appointment_confirmed",
                 f"Appointment for {appointment.client} on {appointment.date} is now confirmed. Both {accepter_role} and the other party have accepted.",
             )
-            
+
             message_type = "appointment_confirmed"
             message_text = f"Appointment fully confirmed - both parties accepted"
         else:
             # Only partial acceptance
             pending_parties = appointment.get_pending_acceptances()
             pending_text = ", ".join(pending_parties)
-            
+
             self._create_notifications(
                 appointment,
-                "appointment_partial_acceptance", 
+                "appointment_partial_acceptance",
                 f"{accepter_role} {request.user.get_full_name()} has accepted the appointment for {appointment.client} on {appointment.date}. Still waiting for: {pending_text}",
             )
-            
+
             message_type = "appointment_partial_acceptance"
             message_text = f"{accepter_role} accepted - waiting for {pending_text}"
 
@@ -661,9 +662,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     "appointment_id": appointment.id,
                     "accepted_by_id": request.user.id,
                     "accepted_by_role": accepter_role,
-                    "therapist_id": appointment.therapist.id if appointment.therapist else None,
+                    "therapist_id": (
+                        appointment.therapist.id if appointment.therapist else None
+                    ),
                     "driver_id": appointment.driver.id if appointment.driver else None,
-                    "operator_id": appointment.operator.id if appointment.operator else None,
+                    "operator_id": (
+                        appointment.operator.id if appointment.operator else None
+                    ),
                     "message": message_text,
                     "both_accepted": appointment.both_parties_accepted(),
                 },
@@ -671,7 +676,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response(serializer.data)    @action(detail=True, methods=["post"])
+        return Response(serializer.data) @ action(detail=True, methods=["post"])
+
     def start(self, request, pk=None):
         """Therapist starts an appointment"""
         appointment = self.get_object()
@@ -694,7 +700,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             pending_parties = appointment.get_pending_acceptances()
             pending_text = ", ".join(pending_parties)
             return Response(
-                {"error": f"Cannot start appointment. Still waiting for acceptance from: {pending_text}"},
+                {
+                    "error": f"Cannot start appointment. Still waiting for acceptance from: {pending_text}"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -709,7 +717,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response(serializer.data)@ action(detail=True, methods=["post"])
+        return Response(serializer.data) @ action(detail=True, methods=["post"])
 
     def reject(self, request, pk=None):
         """Therapist or Driver rejects an appointment with a reason"""
@@ -764,19 +772,19 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment=appointment,
             rejection_reason=rejection_reason.strip(),
             rejected_by=request.user,
-        )        # Update appointment status and reset acceptance flags
+        )  # Update appointment status and reset acceptance flags
         appointment.status = "rejected"
         appointment.rejection_reason = rejection_reason.strip()
         appointment.rejected_by = request.user
         appointment.rejected_at = timezone.now()
-        
+
         # Reset acceptance status since someone rejected
         appointment.therapist_accepted = False
         appointment.therapist_accepted_at = None
-        appointment.driver_accepted = False 
+        appointment.driver_accepted = False
         appointment.driver_accepted_at = None
-        
-        appointment.save()# Create notification for operator
+
+        appointment.save()  # Create notification for operator
         if appointment.operator:
             # Determine the role of the user who rejected
             rejecter_role = (
@@ -1284,7 +1292,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         """Update appointment status with strict dual acceptance validation"""
         appointment = self.get_object()
         new_status = request.data.get("status")
-        
+
         if not new_status:
             return Response(
                 {"error": "Status is required"},
@@ -1293,7 +1301,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
         # Strict validation for status transitions
         current_status = appointment.status
-        
+
         # Define valid transitions
         valid_transitions = {
             "pending": ["confirmed", "rejected", "cancelled", "auto_cancelled"],
@@ -1302,9 +1310,9 @@ class ServiceViewSet(viewsets.ModelViewSet):
             "completed": [],  # Final state
             "cancelled": [],  # Final state
             "rejected": ["pending"],  # Can be reset by operator
-            "auto_cancelled": []  # Final state
+            "auto_cancelled": [],  # Final state
         }
-        
+
         if new_status not in valid_transitions.get(current_status, []):
             return Response(
                 {"error": f"Cannot transition from {current_status} to {new_status}"},
@@ -1320,7 +1328,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
                     {
                         "error": f"Cannot proceed to {new_status}. Both parties must accept first. Still waiting for: {pending_text}",
                         "pending_acceptances": pending_parties,
-                        "both_accepted": False
+                        "both_accepted": False,
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
@@ -1335,9 +1343,14 @@ class ServiceViewSet(viewsets.ModelViewSet):
                 )
         elif new_status == "completed":
             # Only therapist or driver can complete appointments
-            if request.user != appointment.therapist and request.user != appointment.driver:
+            if (
+                request.user != appointment.therapist
+                and request.user != appointment.driver
+            ):
                 return Response(
-                    {"error": "Only assigned therapist or driver can complete appointments"},
+                    {
+                        "error": "Only assigned therapist or driver can complete appointments"
+                    },
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
@@ -1376,9 +1389,13 @@ class ServiceViewSet(viewsets.ModelViewSet):
                     "appointment_id": appointment.id,
                     "new_status": new_status,
                     "updated_by_id": request.user.id,
-                    "therapist_id": appointment.therapist.id if appointment.therapist else None,
+                    "therapist_id": (
+                        appointment.therapist.id if appointment.therapist else None
+                    ),
                     "driver_id": appointment.driver.id if appointment.driver else None,
-                    "operator_id": appointment.operator.id if appointment.operator else None,
+                    "operator_id": (
+                        appointment.operator.id if appointment.operator else None
+                    ),
                     "message": f"Appointment status updated to {new_status}",
                     "both_accepted": appointment.both_parties_accepted(),
                 },

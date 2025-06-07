@@ -8,7 +8,8 @@ This implementation provides a comprehensive solution to ensure that appointment
 
 **Original Issue**: The system needed robust enforcement to prevent appointments from advancing when only one party has accepted, avoiding conflicts where one party rejects while the other party hasn't responded yet.
 
-**Enhanced Solution**: 
+**Enhanced Solution**:
+
 - Strict backend validation with detailed error messages
 - Enhanced operator dashboard with dedicated acceptance tracking view
 - Improved therapist and driver dashboards with clear acceptance status
@@ -40,6 +41,7 @@ def update_status(self, request, pk=None):
 ```
 
 **Key Features**:
+
 - Validates transition rules (pending → confirmed → in_progress → completed)
 - Enforces dual acceptance for critical transitions
 - Role-based permissions (only therapist can start, etc.)
@@ -49,6 +51,7 @@ def update_status(self, request, pk=None):
 #### B. Enhanced Acceptance Endpoint
 
 The existing `accept` endpoint already handles:
+
 - Individual party acceptance tracking
 - Automatic status transition to "confirmed" only when both parties accept
 - Partial acceptance notifications
@@ -59,6 +62,7 @@ The existing `accept` endpoint already handles:
 **File**: `guitara/scheduling/views.py`
 
 The `reject` endpoint includes:
+
 - Automatic reset of acceptance flags when anyone rejects
 - Proper rejection tracking with role identification
 - Notification system for operators
@@ -70,12 +74,14 @@ The `reject` endpoint includes:
 **File**: `royal-care-frontend/src/components/OperatorDashboard.jsx`
 
 **New Features**:
+
 1. **Dedicated Pending Acceptance View**: New tab specifically for tracking acceptance status
 2. **Enhanced Acceptance Status Display**: Clear visual indicators for each party's acceptance
 3. **Blocked Actions**: Prevents manual confirmation until both parties accept
 4. **Real-time Status Updates**: Shows acceptance timestamps and pending parties
 
 **Key Components**:
+
 ```jsx
 const renderPendingAcceptanceAppointments = () => {
   // Shows detailed acceptance status for each appointment
@@ -86,6 +92,7 @@ const renderPendingAcceptanceAppointments = () => {
 ```
 
 **Visual Enhancements**:
+
 - ✓ Green checkmarks for accepted parties
 - ⏳ Warning icons for pending parties
 - Color-coded status indicators (green for ready, yellow for waiting)
@@ -96,6 +103,7 @@ const renderPendingAcceptanceAppointments = () => {
 **File**: `royal-care-frontend/src/components/TherapistDashboard.jsx`
 
 **Existing Features** (already implemented):
+
 - Shows "Start Session" button only when both parties have accepted
 - Displays warning message when waiting for driver acceptance
 - Visual indicators for pending acceptances
@@ -105,6 +113,7 @@ const renderPendingAcceptanceAppointments = () => {
 **File**: `royal-care-frontend/src/components/DriverDashboard.jsx`
 
 **New Enhancements**:
+
 - Added dual acceptance validation for "confirmed" status
 - Shows warning when waiting for all parties to accept
 - Blocks "Start Driving" until both parties have accepted
@@ -114,6 +123,7 @@ const renderPendingAcceptanceAppointments = () => {
 **File**: `royal-care-frontend/src/styles/OperatorDashboard.css`
 
 **New CSS Classes**:
+
 - `.dual-acceptance-status`: Container for acceptance status display
 - `.acceptance-grid`: Grid layout for showing both parties' status
 - `.acceptance-item.accepted/.pending`: Status-specific styling
@@ -134,7 +144,7 @@ In Progress → Completed: Normal completion process
 ### 2. Role-Based Permissions
 
 - **Therapist**: Can accept/reject assignments, start sessions when confirmed
-- **Driver**: Can accept/reject assignments, start driving when confirmed  
+- **Driver**: Can accept/reject assignments, start driving when confirmed
 - **Operator**: Can review rejections, manually confirm when both parties accepted
 
 ### 3. Conflict Prevention
@@ -170,24 +180,28 @@ In Progress → Completed: Normal completion process
 ## Testing Scenarios
 
 ### 1. Normal Flow
+
 1. Appointment created (pending)
 2. Therapist accepts → Partial acceptance notification
 3. Driver accepts → Automatically transitions to confirmed
 4. Either party can now start their work
 
 ### 2. Rejection Handling
+
 1. Appointment created (pending)
 2. Therapist accepts → Partial acceptance
 3. Driver rejects → Status becomes rejected, therapist acceptance reset
 4. Operator reviews rejection
 
 ### 3. Conflict Prevention
+
 1. Appointment created (pending)
 2. Therapist accepts → Partial acceptance
 3. Operator tries to manually confirm → Blocked with error message
 4. System waits for driver acceptance
 
 ### 4. Edge Cases
+
 1. **Mixed Rejections**: One accepts, other rejects → All flags reset
 2. **Timeout Handling**: Overdue appointments can be auto-cancelled
 3. **Manual Override**: Operators can only confirm when both accepted
@@ -205,15 +219,18 @@ In Progress → Completed: Normal completion process
 ## Files Modified
 
 ### Backend
+
 - `guitara/scheduling/views.py`: Enhanced validation and status transition logic
 - `guitara/scheduling/models.py`: Already had dual acceptance fields and methods
 
 ### Frontend
+
 - `royal-care-frontend/src/components/OperatorDashboard.jsx`: New acceptance tracking view
 - `royal-care-frontend/src/components/DriverDashboard.jsx`: Enhanced dual acceptance validation
 - `royal-care-frontend/src/styles/OperatorDashboard.css`: New styling for acceptance status
 
 ### Key Features
+
 - ✅ Dual acceptance enforcement with strict backend validation
 - ✅ Enhanced operator dashboard with dedicated acceptance tracking
 - ✅ Visual status indicators and action blocking

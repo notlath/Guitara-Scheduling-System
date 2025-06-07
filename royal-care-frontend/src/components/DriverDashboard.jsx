@@ -403,7 +403,8 @@ const DriverDashboard = () => {
               Reject
             </button>
           </div>
-        );      case "confirmed":
+        );
+      case "confirmed":
         // Only show start button if both parties have accepted
         if (appointment.both_parties_accepted) {
           return (

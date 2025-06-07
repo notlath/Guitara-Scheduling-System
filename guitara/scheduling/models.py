@@ -154,22 +154,16 @@ class Appointment(models.Model):
 
     # Dual acceptance tracking - NEW FIELDS
     therapist_accepted = models.BooleanField(
-        default=False,
-        help_text="Whether the therapist has accepted this appointment"
+        default=False, help_text="Whether the therapist has accepted this appointment"
     )
     therapist_accepted_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="When the therapist accepted the appointment"
+        null=True, blank=True, help_text="When the therapist accepted the appointment"
     )
     driver_accepted = models.BooleanField(
-        default=False,
-        help_text="Whether the driver has accepted this appointment"
+        default=False, help_text="Whether the driver has accepted this appointment"
     )
     driver_accepted_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="When the driver accepted the appointment"
+        null=True, blank=True, help_text="When the driver accepted the appointment"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -217,8 +211,12 @@ class Appointment(models.Model):
 
     def both_parties_accepted(self):
         """Check if both therapist and driver have accepted the appointment"""
-        therapist_accepted = self.therapist_accepted if self.therapist else True  # No therapist means no acceptance needed
-        driver_accepted = self.driver_accepted if self.driver else True  # No driver means no acceptance needed
+        therapist_accepted = (
+            self.therapist_accepted if self.therapist else True
+        )  # No therapist means no acceptance needed
+        driver_accepted = (
+            self.driver_accepted if self.driver else True
+        )  # No driver means no acceptance needed
         return therapist_accepted and driver_accepted
 
     def get_pending_acceptances(self):

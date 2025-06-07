@@ -306,29 +306,32 @@ const OperatorDashboard = () => {
   // Helper function to check if appointment can progress to next status
   const canAdvanceAppointment = (appointment, targetStatus) => {
     const { status, both_parties_accepted } = appointment;
-    
+
     // Check dual acceptance requirement
-    if ((targetStatus === "confirmed" || targetStatus === "in_progress") && !both_parties_accepted) {
+    if (
+      (targetStatus === "confirmed" || targetStatus === "in_progress") &&
+      !both_parties_accepted
+    ) {
       return {
         allowed: false,
-        reason: "Both therapist and driver must accept before proceeding"
+        reason: "Both therapist and driver must accept before proceeding",
       };
     }
 
     // Check valid status transitions
     const validTransitions = {
-      "pending": ["confirmed"],
-      "confirmed": ["in_progress"],
-      "in_progress": ["completed"],
-      "completed": [],
-      "cancelled": [],
-      "rejected": []
+      pending: ["confirmed"],
+      confirmed: ["in_progress"],
+      in_progress: ["completed"],
+      completed: [],
+      cancelled: [],
+      rejected: [],
     };
 
     if (!validTransitions[status]?.includes(targetStatus)) {
       return {
         allowed: false,
-        reason: `Cannot transition from ${status} to ${targetStatus}`
+        reason: `Cannot transition from ${status} to ${targetStatus}`,
       };
     }
 
@@ -371,26 +374,34 @@ const OperatorDashboard = () => {
                 <strong>Therapist:</strong>{" "}
                 {appointment.therapist_details?.first_name}{" "}
                 {appointment.therapist_details?.last_name}
-              </p>              <p>
+              </p>{" "}
+              <p>
                 <strong>Services:</strong>{" "}
                 {appointment.services_details?.map((s) => s.name).join(", ")}
               </p>
-              
               {/* Show acceptance status for pending appointments */}
               {appointment.status === "pending" && (
                 <div className="acceptance-status">
                   <strong>Acceptance Status:</strong>{" "}
-                  <span className={`acceptance-badge ${getAcceptanceStatus(appointment).class}`}>
+                  <span
+                    className={`acceptance-badge ${
+                      getAcceptanceStatus(appointment).class
+                    }`}
+                  >
                     {getAcceptanceStatus(appointment).text}
                   </span>
                   {getAcceptanceStatus(appointment).pendingCount > 0 && (
                     <div className="pending-acceptances">
-                      <small>Waiting for: {getAcceptanceStatus(appointment).pendingList.join(", ")}</small>
+                      <small>
+                        Waiting for:{" "}
+                        {getAcceptanceStatus(appointment).pendingList.join(
+                          ", "
+                        )}
+                      </small>
                     </div>
                   )}
                 </div>
               )}
-              
               <p className="rejection-reason">
                 <strong>Rejection Reason:</strong>{" "}
                 {appointment.rejection_reason}
@@ -460,26 +471,34 @@ const OperatorDashboard = () => {
                   {appointment.therapist_details.first_name}{" "}
                   {appointment.therapist_details.last_name}
                 </p>
-              )}              <p>
+              )}{" "}
+              <p>
                 <strong>Services:</strong>{" "}
                 {appointment.services_details?.map((s) => s.name).join(", ")}
               </p>
-              
               {/* Show acceptance status for pending appointments */}
               {appointment.status === "pending" && (
                 <div className="acceptance-status">
                   <strong>Acceptance Status:</strong>{" "}
-                  <span className={`acceptance-badge ${getAcceptanceStatus(appointment).class}`}>
+                  <span
+                    className={`acceptance-badge ${
+                      getAcceptanceStatus(appointment).class
+                    }`}
+                  >
                     {getAcceptanceStatus(appointment).text}
                   </span>
                   {getAcceptanceStatus(appointment).pendingCount > 0 && (
                     <div className="pending-acceptances">
-                      <small>Waiting for: {getAcceptanceStatus(appointment).pendingList.join(", ")}</small>
+                      <small>
+                        Waiting for:{" "}
+                        {getAcceptanceStatus(appointment).pendingList.join(
+                          ", "
+                        )}
+                      </small>
                     </div>
                   )}
                 </div>
               )}
-              
               {appointment.rejection_reason && (
                 <div className="rejection-reason">
                   <strong>Rejection Reason:</strong>{" "}
@@ -651,7 +670,9 @@ const OperatorDashboard = () => {
 
   const renderPendingAcceptanceAppointments = () => {
     if (pendingAppointments.length === 0) {
-      return <p className="no-appointments">No pending acceptance appointments.</p>;
+      return (
+        <p className="no-appointments">No pending acceptance appointments.</p>
+      );
     }
 
     return (
@@ -659,13 +680,20 @@ const OperatorDashboard = () => {
         {pendingAppointments.map((appointment) => {
           const acceptanceStatus = getAcceptanceStatus(appointment);
           return (
-            <div key={appointment.id} className="appointment-card pending-acceptance">
+            <div
+              key={appointment.id}
+              className="appointment-card pending-acceptance"
+            >
               <div className="appointment-header">
                 <h3>
                   {appointment.client_details?.first_name}{" "}
                   {appointment.client_details?.last_name}
                 </h3>
-                <span className={`status-badge ${getStatusBadgeClass(appointment.status)}`}>
+                <span
+                  className={`status-badge ${getStatusBadgeClass(
+                    appointment.status
+                  )}`}
+                >
                   Pending Acceptance
                 </span>
               </div>
@@ -684,8 +712,12 @@ const OperatorDashboard = () => {
                     <strong>Therapist:</strong>{" "}
                     {appointment.therapist_details.first_name}{" "}
                     {appointment.therapist_details.last_name}
-                    <span className={`acceptance-indicator ${appointment.therapist_accepted ? 'accepted' : 'pending'}`}>
-                      {appointment.therapist_accepted ? ' ✓' : ' ⏳'}
+                    <span
+                      className={`acceptance-indicator ${
+                        appointment.therapist_accepted ? "accepted" : "pending"
+                      }`}
+                    >
+                      {appointment.therapist_accepted ? " ✓" : " ⏳"}
                     </span>
                   </p>
                 )}
@@ -694,8 +726,12 @@ const OperatorDashboard = () => {
                     <strong>Driver:</strong>{" "}
                     {appointment.driver_details.first_name}{" "}
                     {appointment.driver_details.last_name}
-                    <span className={`acceptance-indicator ${appointment.driver_accepted ? 'accepted' : 'pending'}`}>
-                      {appointment.driver_accepted ? ' ✓' : ' ⏳'}
+                    <span
+                      className={`acceptance-indicator ${
+                        appointment.driver_accepted ? "accepted" : "pending"
+                      }`}
+                    >
+                      {appointment.driver_accepted ? " ✓" : " ⏳"}
                     </span>
                   </p>
                 )}
@@ -703,50 +739,75 @@ const OperatorDashboard = () => {
                   <strong>Services:</strong>{" "}
                   {appointment.services_details?.map((s) => s.name).join(", ")}
                 </p>
-                
+
                 {/* Enhanced acceptance status display */}
                 <div className="dual-acceptance-status">
                   <h4>Acceptance Status:</h4>
                   <div className="acceptance-grid">
-                    <div className={`acceptance-item ${appointment.therapist_accepted ? 'accepted' : 'pending'}`}>
+                    <div
+                      className={`acceptance-item ${
+                        appointment.therapist_accepted ? "accepted" : "pending"
+                      }`}
+                    >
                       <span className="role">Therapist</span>
                       <span className="status">
-                        {appointment.therapist_accepted ? 'Accepted ✓' : 'Pending ⏳'}
+                        {appointment.therapist_accepted
+                          ? "Accepted ✓"
+                          : "Pending ⏳"}
                       </span>
                       {appointment.therapist_accepted_at && (
                         <small>
-                          {new Date(appointment.therapist_accepted_at).toLocaleString()}
+                          {new Date(
+                            appointment.therapist_accepted_at
+                          ).toLocaleString()}
                         </small>
                       )}
                     </div>
                     {appointment.driver && (
-                      <div className={`acceptance-item ${appointment.driver_accepted ? 'accepted' : 'pending'}`}>
+                      <div
+                        className={`acceptance-item ${
+                          appointment.driver_accepted ? "accepted" : "pending"
+                        }`}
+                      >
                         <span className="role">Driver</span>
                         <span className="status">
-                          {appointment.driver_accepted ? 'Accepted ✓' : 'Pending ⏳'}
+                          {appointment.driver_accepted
+                            ? "Accepted ✓"
+                            : "Pending ⏳"}
                         </span>
                         {appointment.driver_accepted_at && (
                           <small>
-                            {new Date(appointment.driver_accepted_at).toLocaleString()}
+                            {new Date(
+                              appointment.driver_accepted_at
+                            ).toLocaleString()}
                           </small>
                         )}
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Overall status */}
-                  <div className={`overall-status ${acceptanceStatus.bothAccepted ? 'ready' : 'waiting'}`}>
+                  <div
+                    className={`overall-status ${
+                      acceptanceStatus.bothAccepted ? "ready" : "waiting"
+                    }`}
+                  >
                     {acceptanceStatus.bothAccepted ? (
-                      <strong>✅ Ready to Confirm - Both parties accepted</strong>
+                      <strong>
+                        ✅ Ready to Confirm - Both parties accepted
+                      </strong>
                     ) : (
-                      <strong>⚠️ Waiting for acceptance from: {acceptanceStatus.pendingList.join(", ")}</strong>
+                      <strong>
+                        ⚠️ Waiting for acceptance from:{" "}
+                        {acceptanceStatus.pendingList.join(", ")}
+                      </strong>
                     )}
                   </div>
-                  
+
                   {/* Operator actions */}
                   <div className="operator-actions">
                     {acceptanceStatus.bothAccepted ? (
-                      <button 
+                      <button
                         className="confirm-button"
                         onClick={() => handleConfirmAppointment(appointment.id)}
                         title="Manually confirm appointment (both parties have accepted)"
@@ -755,14 +816,16 @@ const OperatorDashboard = () => {
                       </button>
                     ) : (
                       <div className="blocked-actions">
-                        <button 
+                        <button
                           className="confirm-button disabled"
                           disabled
                           title="Cannot confirm - waiting for all parties to accept"
                         >
                           Confirm Appointment (Blocked)
                         </button>
-                        <small>Both parties must accept before confirmation</small>
+                        <small>
+                          Both parties must accept before confirmation
+                        </small>
                       </div>
                     )}
                   </div>
@@ -787,13 +850,17 @@ const OperatorDashboard = () => {
 
   // Handle manual confirmation by operator (only when both parties accepted)
   const handleConfirmAppointment = async (appointmentId) => {
-    const appointment = appointments.find(apt => apt.id === appointmentId);
+    const appointment = appointments.find((apt) => apt.id === appointmentId);
     if (!appointment?.both_parties_accepted) {
       alert("Cannot confirm appointment - both parties must accept first");
       return;
     }
 
-    if (window.confirm("Manually confirm this appointment? Both parties have already accepted.")) {
+    if (
+      window.confirm(
+        "Manually confirm this appointment? Both parties have already accepted."
+      )
+    ) {
       try {
         await dispatch(
           updateAppointmentStatus({
@@ -853,7 +920,8 @@ const OperatorDashboard = () => {
                 </div>
               </div>
             </div>
-          </div>          <div className="view-selector">
+          </div>{" "}
+          <div className="view-selector">
             <button
               className={currentView === "rejected" ? "active" : ""}
               onClick={() => setView("rejected")}
@@ -893,7 +961,8 @@ const OperatorDashboard = () => {
             >
               Manage Availability
             </button>
-          </div>{" "}          <div className="dashboard-content">
+          </div>{" "}
+          <div className="dashboard-content">
             {currentView === "rejected" && (
               <div className="rejected-appointments">
                 <h2>Rejection Reviews</h2>
