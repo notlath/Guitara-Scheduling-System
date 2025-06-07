@@ -23,8 +23,9 @@ When a user with a disabled account attempted to login and then refreshed the pa
 
 ### 3. Added Token Validation Service (`src/services/auth.js`)
 - New `validateToken()` function to check if stored authentication is still valid
-- Graceful handling of different error types (disabled accounts, network errors, etc.)
-- Uses existing user profile endpoint to avoid requiring new backend endpoints
+- **Note**: Currently skips actual backend validation since `/api/auth/user/` endpoint doesn't exist
+- Graceful handling of validation errors (assumes token is valid to prevent blocking app startup)
+- Designed to be easily updated when proper token validation endpoint is available
 
 ### 4. Created ProtectedRoute Component (`src/components/auth/ProtectedRoute.jsx`)
 - Centralized authentication checking for protected routes
@@ -43,8 +44,8 @@ When a user with a disabled account attempted to login and then refreshed the pa
 - Proper navigation with `replace: true`
 
 ### Graceful Error Handling
-- Network-aware validation (still works if backend is down)
-- Specific handling for disabled account scenarios
+- **Note**: Token validation is currently disabled due to missing backend endpoint
+- App functions normally even when token validation is unavailable
 - Clear user feedback with DisabledAccountAlert component
 
 ### Robust Authentication Flow
