@@ -68,7 +68,7 @@ const SettingsDataPage = () => {
         <div className={styles["settings-header-row"]}>
           <h1>Data</h1>
           <div className="action-buttons">
-            <button className={"primary-action-btn  " + styles["add-btn"]}>
+            <button className="primary-action-btn">
               <span className="primary-action-icon">
                 <MdAdd size={20} />
               </span>{" "}
