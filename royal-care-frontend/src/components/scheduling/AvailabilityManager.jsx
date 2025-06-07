@@ -60,10 +60,10 @@ const AvailabilityManager = () => {
   const { staffMembers, availabilities, loading, error } = useSelector(
     (state) => state.scheduling
   );
-  
+
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
-  
+
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedStaff, setSelectedStaff] = useState("");
   const [timeSlots, setTimeSlots] = useState([]);
@@ -130,7 +130,7 @@ const AvailabilityManager = () => {
       ...prev,
       date: formattedDate,
     }));
-  }, [selectedDate]);  // Real-time sync is handled entirely by Redux sync reducers and useSyncEventHandlers
+  }, [selectedDate]); // Real-time sync is handled entirely by Redux sync reducers and useSyncEventHandlers
   // No need for component-level subscriptions since Redux state updates trigger re-renders automatically
 
   const handleStaffChange = (e) => {
@@ -243,8 +243,10 @@ const AvailabilityManager = () => {
         start_time: newAvailabilityForm.startTime,
         end_time: newAvailabilityForm.endTime,
         is_available: newAvailabilityForm.isAvailable,
-      })    ).then((result) => {
-      if (createAvailability.fulfilled.match(result)) {        console.log("✅ Availability created successfully:", result.payload);
+      })
+    ).then((result) => {
+      if (createAvailability.fulfilled.match(result)) {
+        console.log("✅ Availability created successfully:", result.payload);
 
         // Success - reset form to selected date (not today)
         const currentFormDate = selectedDate.toISOString().split("T")[0];
@@ -266,7 +268,8 @@ const AvailabilityManager = () => {
         alert(`Error: ${errorMsg}`);
       }
     });
-  };  const handleDeleteAvailability = (availabilityId) => {
+  };
+  const handleDeleteAvailability = (availabilityId) => {
     if (window.confirm("Are you sure you want to delete this availability?")) {
       dispatch(deleteAvailability(availabilityId)).then((result) => {
         if (deleteAvailability.fulfilled.match(result)) {
@@ -276,7 +279,8 @@ const AvailabilityManager = () => {
         }
       });
     }
-  };  const handleToggleAvailability = (availability) => {
+  };
+  const handleToggleAvailability = (availability) => {
     dispatch(
       updateAvailability({
         id: availability.id,

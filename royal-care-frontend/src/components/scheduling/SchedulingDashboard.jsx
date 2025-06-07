@@ -27,20 +27,20 @@ const SchedulingDashboard = () => {
 
   // URL search params for view persistence
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
-  
+
   // Get view from URL params, default to 'calendar'
-  const currentView = searchParams.get('view') || 'calendar';
+  const currentView = searchParams.get("view") || "calendar";
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
 
   // Helper function to update view in URL
   const setView = (newView) => {
     const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set('view', newView);
+    newSearchParams.set("view", newView);
     setSearchParams(newSearchParams);
   };
 
@@ -378,7 +378,9 @@ const SchedulingDashboard = () => {
           </div>
         )}
 
-        {currentView === "availability" && !isFormVisible && <AvailabilityManager />}
+        {currentView === "availability" && !isFormVisible && (
+          <AvailabilityManager />
+        )}
 
         {isFormVisible && (
           <ErrorBoundary onReset={() => setIsFormVisible(false)}>

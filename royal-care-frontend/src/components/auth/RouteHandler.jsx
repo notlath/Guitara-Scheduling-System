@@ -17,13 +17,15 @@ const RouteHandler = () => {
   // Show loading while authentication state is being determined
   if (isAuthLoading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        fontSize: '18px'
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          fontSize: "18px",
+        }}
+      >
         Loading...
       </div>
     );
@@ -39,7 +41,7 @@ const RouteHandler = () => {
   if (location.pathname === "/") {
     // First check if there's a saved location to return to (from login redirect)
     const from = location.state?.from?.pathname;
-    
+
     if (from && from !== "/" && from.startsWith("/dashboard")) {
       console.log("RouteHandler: Redirecting to saved location:", from);
       return <Navigate to={from} replace />;
@@ -47,7 +49,7 @@ const RouteHandler = () => {
 
     // Default redirect based on user role for users coming to root
     let defaultPath = "/dashboard";
-    
+
     if (user.role === "operator") {
       // Operators usually go to the main dashboard
       defaultPath = "/dashboard";
@@ -62,7 +64,10 @@ const RouteHandler = () => {
 
   // For any other path, this component should not be reached
   // This should only handle the root ("/") path
-  console.log("RouteHandler: Warning - accessed for non-root path:", location.pathname);
+  console.log(
+    "RouteHandler: Warning - accessed for non-root path:",
+    location.pathname
+  );
   return null;
 };
 

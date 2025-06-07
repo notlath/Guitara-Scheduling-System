@@ -9,7 +9,7 @@ import TherapistDashboard from "./components/TherapistDashboard";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RouteHandler from "./components/auth/RouteHandler";
 import AvailabilityManager from "./components/scheduling/AvailabilityManager";
-import { login, authInitialized } from "./features/auth/authSlice"; // Import new action
+import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
 import CompanyInfoPage from "./pages/AboutPages/CompanyInfoPage";
 import DeveloperInfoPage from "./pages/AboutPages/DeveloperInfoPage";
@@ -23,7 +23,6 @@ import ContactPage from "./pages/HelpPages/ContactPage";
 import FAQsPage from "./pages/HelpPages/FAQsPage";
 import UserGuidePage from "./pages/HelpPages/UserGuidePage";
 import InventoryPage from "./pages/InventoryPage/InventoryPage";
-import LoginPage from "./pages/LoginPage/LoginPage";
 import ProfilePage from "./pages/ProfilePage/ProfilePage";
 import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
@@ -32,14 +31,14 @@ import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import { validateToken } from "./services/auth";
 // Import auth fixer for automatic testing
-import "./utils/authFixer";
 import SettingsAccountPage from "./pages/SettingsAccountPage/SettingsAccountPage";
 import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
+import "./utils/authFixer";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-  
+
   useEffect(() => {
     // Check if user data exists in localStorage and validate the token
     const checkStoredAuth = async () => {
@@ -103,7 +102,8 @@ const App = () => {
       }
     };
 
-    checkStoredAuth();  }, [dispatch]);
+    checkStoredAuth();
+  }, [dispatch]);
 
   // Add debugging to check route matching
   useEffect(() => {
@@ -113,11 +113,10 @@ const App = () => {
     }
   }, []);
   return (
-    <BrowserRouter>      <Routes>
-        <Route
-          path="/"
-          element={<RouteHandler />}
-        />
+    <BrowserRouter>
+      {" "}
+      <Routes>
+        <Route path="/" element={<RouteHandler />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/2fa" element={<TwoFactorAuthPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />

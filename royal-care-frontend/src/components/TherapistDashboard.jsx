@@ -12,8 +12,8 @@ import {
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 
-import "../styles/TherapistDashboard.css";
 import "../styles/TabSwitcher.css";
+import "../styles/TherapistDashboard.css";
 import { runAuthDiagnostics, testLogin } from "../utils/authFixer";
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
@@ -21,23 +21,23 @@ import WebSocketStatus from "./scheduling/WebSocketStatus";
 const TherapistDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
+
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
-  
+
   // URL search params for view persistence
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   // Get view from URL params, default to 'today'
-  const currentView = searchParams.get('view') || 'today';
-  
+  const currentView = searchParams.get("view") || "today";
+
   // Helper function to update view in URL
   const setView = (newView) => {
     const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set('view', newView);
+    newSearchParams.set("view", newView);
     setSearchParams(newSearchParams);
   };
-  
+
   const [pollingInterval, setPollingInterval] = useState(null);
   const [rejectionModal, setRejectionModal] = useState({
     isOpen: false,
@@ -115,11 +115,11 @@ const TherapistDashboard = () => {
     const setupPolling = () => {
       const interval = syncService.getPollingInterval(30000); // Base 30 seconds for therapist
       return setInterval(() => {
-        if (syncService.shouldRefresh('therapist_appointments')) {
+        if (syncService.shouldRefresh("therapist_appointments")) {
           dispatch(fetchAppointments());
           dispatch(fetchTodayAppointments());
           dispatch(fetchUpcomingAppointments());
-          syncService.markUpdated('therapist_appointments');
+          syncService.markUpdated("therapist_appointments");
         }
       }, interval);
     };
