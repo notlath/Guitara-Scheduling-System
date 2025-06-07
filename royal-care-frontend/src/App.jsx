@@ -7,6 +7,7 @@ import DriverDashboard from "./components/DriverDashboard";
 import MainLayout from "./components/MainLayout";
 import OperatorDashboard from "./components/OperatorDashboard";
 import TherapistDashboard from "./components/TherapistDashboard";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { login } from "./features/auth/authSlice"; // Import Redux action
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
 import CompanyInfoPage from "./pages/AboutPages/CompanyInfoPage";
@@ -28,19 +29,62 @@ import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
 import SchedulingPage from "./pages/SchedulingPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
+import { validateToken } from "./services/auth";
 // Import auth fixer for automatic testing
 import "./utils/authFixer";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    // Check if user data exists in localStorage and update Redux state
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      dispatch(login(JSON.parse(storedUser)));
-    }
+  const dispatch = useDispatch();  useEffect(() => {
+    // Check if user data exists in localStorage and validate the token
+    const checkStoredAuth = async () => {
+      const storedUser = localStorage.getItem("user");
+      const storedToken = localStorage.getItem("knoxToken");
+      
+      // Only proceed if both user data and token exist
+      if (storedUser && storedToken) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+            // Validate if user object has required fields
+          if (parsedUser && parsedUser.id && parsedUser.role) {
+            try {
+              // Try to validate the token with the backend
+              const validation = await validateToken();
+              
+              if (validation.valid) {
+                // Token and account are valid, restore session
+                dispatch(login(parsedUser));
+              } else if (validation.reason === 'ACCOUNT_DISABLED') {
+                // Account is disabled, clear stored data
+                console.log("Account is disabled, clearing stored data");
+                localStorage.removeItem("user");
+                localStorage.removeItem("knoxToken");
+              } else {
+                // Other validation errors (network, endpoint not found, etc.)
+                // Still restore session but log the issue
+                console.log("Token validation failed:", validation.reason, "- restoring session anyway");
+                dispatch(login(parsedUser));
+              }
+            } catch (validationError) {
+              // If validation fails due to network issues, still restore the session
+              console.log("Token validation error:", validationError, "- restoring session anyway");
+              dispatch(login(parsedUser));
+            }
+          } else {
+            // Clear invalid stored data
+            localStorage.removeItem("user");
+            localStorage.removeItem("knoxToken");
+          }
+        } catch (error) {
+          // Clear corrupted stored data or handle validation errors
+          console.error("Error validating stored authentication:", error);
+          localStorage.removeItem("user");
+          localStorage.removeItem("knoxToken");
+        }
+      }
+    };
+    
+    checkStoredAuth();
   }, [dispatch]);
 
   // Add debugging to check route matching
@@ -69,7 +113,7 @@ const App = () => {
           path="/forgot-password-confirmation"
           element={<ForgotPasswordConfirmationPage />}
         />{" "}
-        <Route path="/dashboard" element={<MainLayout />}>
+        <Route path="/dashboard" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route
             index
             element={
