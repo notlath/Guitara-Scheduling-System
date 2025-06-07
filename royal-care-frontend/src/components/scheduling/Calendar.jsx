@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  fetchAppointmentsByDate,
   fetchAvailableDrivers,
   fetchAvailableTherapists,
-  fetchAppointmentsByDate,
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/Calendar.css";
 
@@ -14,11 +14,11 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   const [view, setView] = useState("month"); // 'month' or 'day'
 
   const dispatch = useDispatch();
-  const { 
-    availableTherapists, 
-    availableDrivers, 
-    appointments, 
-    appointmentsByDate
+  const {
+    availableTherapists,
+    availableDrivers,
+    appointments,
+    appointmentsByDate,
   } = useSelector((state) => state.scheduling);
 
   // Helper to format date as YYYY-MM-DD
@@ -38,8 +38,16 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   // Check if a date is in the past (before today)
   const isPastDate = (date) => {
     const today = new Date();
-    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const checkDateMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const todayMidnight = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+    const checkDateMidnight = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
     return checkDateMidnight < todayMidnight;
   };
 
@@ -126,7 +134,10 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
           end_time: "10:00", // 1-hour window instead of broader range
         };
 
-        console.log("Calendar: Fetching availabilities for date click:", params);
+        console.log(
+          "Calendar: Fetching availabilities for date click:",
+          params
+        );
         dispatch(fetchAvailableTherapists(params));
         dispatch(fetchAvailableDrivers(params));
       }
@@ -302,15 +313,16 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     let bookings = [];
     if (appointmentsByDate && Array.isArray(appointmentsByDate)) {
       bookings = appointmentsByDate;
-    } else if (appointmentsByDate && typeof appointmentsByDate === 'object') {
+    } else if (appointmentsByDate && typeof appointmentsByDate === "object") {
       // Handle case where it might be an object with array inside
-      bookings = appointmentsByDate.appointments || appointmentsByDate.data || [];
+      bookings =
+        appointmentsByDate.appointments || appointmentsByDate.data || [];
     }
-    
+
     if (!Array.isArray(bookings)) {
       bookings = [];
     }
-    
+
     if (bookings.length === 0) {
       return (
         <div className="day-bookings">
@@ -328,24 +340,52 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
             <div key={appointment.id || index} className="booking-card">
               <div className="booking-header">
                 <h4>
-                  {appointment.client_details?.first_name || 'N/A'} {appointment.client_details?.last_name || ''}
+                  {appointment.client_details?.first_name || "N/A"}{" "}
+                  {appointment.client_details?.last_name || ""}
                 </h4>
-                <span className={`status-badge status-${appointment.status || 'pending'}`}>
-                  {appointment.status ? appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1) : 'Pending'}
+                <span
+                  className={`status-badge status-${
+                    appointment.status || "pending"
+                  }`}
+                >
+                  {appointment.status
+                    ? appointment.status.charAt(0).toUpperCase() +
+                      appointment.status.slice(1)
+                    : "Pending"}
                 </span>
               </div>
               <div className="booking-details">
-                <p><strong>Time:</strong> {appointment.start_time || 'N/A'} - {appointment.end_time || 'N/A'}</p>
-                <p><strong>Services:</strong> {appointment.services_details?.map(s => s.name).join(", ") || 'N/A'}</p>
+                <p>
+                  <strong>Time:</strong> {appointment.start_time || "N/A"} -{" "}
+                  {appointment.end_time || "N/A"}
+                </p>
+                <p>
+                  <strong>Services:</strong>{" "}
+                  {appointment.services_details
+                    ?.map((s) => s.name)
+                    .join(", ") || "N/A"}
+                </p>
                 {appointment.therapist_details && (
-                  <p><strong>Therapist:</strong> {appointment.therapist_details.first_name} {appointment.therapist_details.last_name}</p>
+                  <p>
+                    <strong>Therapist:</strong>{" "}
+                    {appointment.therapist_details.first_name}{" "}
+                    {appointment.therapist_details.last_name}
+                  </p>
                 )}
                 {appointment.driver_details && (
-                  <p><strong>Driver:</strong> {appointment.driver_details.first_name} {appointment.driver_details.last_name}</p>
+                  <p>
+                    <strong>Driver:</strong>{" "}
+                    {appointment.driver_details.first_name}{" "}
+                    {appointment.driver_details.last_name}
+                  </p>
                 )}
-                <p><strong>Location:</strong> {appointment.location || 'N/A'}</p>
+                <p>
+                  <strong>Location:</strong> {appointment.location || "N/A"}
+                </p>
                 {appointment.notes && (
-                  <p><strong>Notes:</strong> {appointment.notes}</p>
+                  <p>
+                    <strong>Notes:</strong> {appointment.notes}
+                  </p>
                 )}
               </div>
             </div>
@@ -367,7 +407,9 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
             ← Back to Month
           </button>
           <h2>{selectedDate.toLocaleDateString()}</h2>
-          {isDateInPast && <span className="past-date-indicator">Past Date</span>}
+          {isDateInPast && (
+            <span className="past-date-indicator">Past Date</span>
+          )}
         </div>
 
         {/* Always show bookings first */}
