@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
   fetchAppointments,
@@ -25,7 +25,20 @@ const TherapistDashboard = () => {
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
   
-  const [view, setView] = useState("today"); // 'today', 'upcoming', 'all'  const [pollingInterval, setPollingInterval] = useState(null);
+  // URL search params for view persistence
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Get view from URL params, default to 'today'
+  const currentView = searchParams.get('view') || 'today';
+  
+  // Helper function to update view in URL
+  const setView = (newView) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('view', newView);
+    setSearchParams(newSearchParams);
+  };
+  
+  const [pollingInterval, setPollingInterval] = useState(null);
   const [rejectionModal, setRejectionModal] = useState({
     isOpen: false,
     appointmentId: null,

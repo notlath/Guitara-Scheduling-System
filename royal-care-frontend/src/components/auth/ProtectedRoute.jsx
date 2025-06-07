@@ -2,8 +2,23 @@ import { useSelector } from "react-redux";
 import { Navigate, useLocation } from "react-router-dom";
 
 const ProtectedRoute = ({ children }) => {
-  const { user } = useSelector((state) => state.auth);
+  const { user, isAuthLoading } = useSelector((state) => state.auth);
   const location = useLocation();
+
+  // Show loading while authentication state is being determined
+  if (isAuthLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '18px'
+      }}>
+        Loading...
+      </div>
+    );
+  }
 
   // If no user is authenticated, redirect to login
   if (!user) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
   autoCancelOverdueAppointments,
@@ -21,7 +21,19 @@ const OperatorDashboard = () => {
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
   
-  const [view, setView] = useState("rejected"); // 'rejected', 'all', 'notifications', 'timeouts'
+  // URL search params for view persistence
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Get view from URL params, default to 'rejected'
+  const currentView = searchParams.get('view') || 'rejected';
+  
+  // Helper function to update view in URL
+  const setView = (newView) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('view', newView);
+    setSearchParams(newSearchParams);
+  };
+  
   const [reviewModal, setReviewModal] = useState({
     isOpen: false,
     appointmentId: null,
@@ -94,17 +106,16 @@ const OperatorDashboard = () => {
   }, [refreshData]);
 
   // Real-time timer for updating countdown displays
-  useEffect(() => {
-    const timer = setInterval(() => {
+  useEffect(() => {    const timer = setInterval(() => {
       // Force re-render every second to update countdown timers
-      if (view === "timeouts" && pendingAppointments.length > 0) {
+      if (currentView === "timeouts" && pendingAppointments.length > 0) {
         // This will trigger a re-render to update the countdown timers
         setReviewNotes((prev) => prev); // Dummy state update to trigger re-render
       }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [view, pendingAppointments.length]);
+  }, [currentView, pendingAppointments.length]);
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");
@@ -491,29 +502,28 @@ const OperatorDashboard = () => {
             ? error.message || error.error || JSON.stringify(error)
             : error}
         </div>
-      )}{" "}
-      <div className="view-selector">
+      )}{" "}      <div className="view-selector">
         <button
-          className={view === "rejected" ? "active" : ""}
+          className={currentView === "rejected" ? "active" : ""}
           onClick={() => setView("rejected")}
         >
           Pending Reviews ({rejectedAppointments.length})
         </button>
         <button
-          className={view === "timeouts" ? "active" : ""}
+          className={currentView === "timeouts" ? "active" : ""}
           onClick={() => setView("timeouts")}
         >
           Timeouts (
           {overdueAppointments.length + approachingDeadlineAppointments.length})
         </button>
         <button
-          className={view === "all" ? "active" : ""}
+          className={currentView === "all" ? "active" : ""}
           onClick={() => setView("all")}
         >
           All Appointments
         </button>{" "}
         <button
-          className={view === "notifications" ? "active" : ""}
+          className={currentView === "notifications" ? "active" : ""}
           onClick={() => setView("notifications")}
         >
           Notifications
@@ -524,30 +534,29 @@ const OperatorDashboard = () => {
         >
           Manage Availability
         </button>
-      </div>{" "}
-      <div className="dashboard-content">
-        {view === "rejected" && (
+      </div>{" "}      <div className="dashboard-content">
+        {currentView === "rejected" && (
           <div className="rejected-appointments">
             <h2>Rejection Reviews</h2>
             {renderRejectedAppointments()}
           </div>
         )}
 
-        {view === "timeouts" && (
+        {currentView === "timeouts" && (
           <div className="timeout-monitoring">
             <h2>Timeout Monitoring</h2>
             {renderTimeoutMonitoring()}
           </div>
         )}
 
-        {view === "all" && (
+        {currentView === "all" && (
           <div className="all-appointments">
             <h2>All Appointments</h2>
             {renderAllAppointments()}
           </div>
         )}
 
-        {view === "notifications" && (
+        {currentView === "notifications" && (
           <div className="notifications">
             <h2>Notifications</h2>
             {renderNotifications()}

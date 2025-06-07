@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import {
   deleteAppointment,
   fetchAppointments,
@@ -9,8 +10,7 @@ import {
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import syncService from "../../services/syncService";
 
-import { FaBell } from "react-icons/fa";
-import { FiPlus } from "react-icons/fi";
+import { MdAdd, MdNotifications } from "react-icons/md";
 import "../../styles/SchedulingDashboard.css";
 import "../../styles/TabSwitcher.css";
 import ErrorBoundary from "../common/ErrorBoundary";
@@ -20,18 +20,29 @@ import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
 import WebSocketStatus from "./WebSocketStatus";
 import WeekView from "./WeekView";
-import { MdNotifications, MdAdd } from "react-icons/md";
 
 const SchedulingDashboard = () => {
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
+
+  // URL search params for view persistence
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
-  const [view, setView] = useState("calendar"); // 'calendar', 'week', 'list', 'today', 'availability'
+  
+  // Get view from URL params, default to 'calendar'
+  const currentView = searchParams.get('view') || 'calendar';
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
+
+  // Helper function to update view in URL
+  const setView = (newView) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('view', newView);
+    setSearchParams(newSearchParams);
+  };
 
   const dispatch = useDispatch();
   const {
@@ -61,11 +72,11 @@ const SchedulingDashboard = () => {
     const setupPolling = () => {
       const interval = syncService.getPollingInterval(20000); // Base 20 seconds
       return setInterval(() => {
-        if (syncService.shouldRefresh('scheduling_appointments')) {
+        if (syncService.shouldRefresh("scheduling_appointments")) {
           dispatch(fetchAppointments());
           dispatch(fetchTodayAppointments());
           dispatch(fetchUpcomingAppointments());
-          syncService.markUpdated('scheduling_appointments');
+          syncService.markUpdated("scheduling_appointments");
         }
       }, interval);
     };
@@ -288,31 +299,31 @@ const SchedulingDashboard = () => {
       </div>
       <div className="view-selector">
         <button
-          className={view === "calendar" ? "active" : ""}
+          className={currentView === "calendar" ? "active" : ""}
           onClick={() => setView("calendar")}
         >
           Month View
         </button>
         <button
-          className={view === "week" ? "active" : ""}
+          className={currentView === "week" ? "active" : ""}
           onClick={() => setView("week")}
         >
           Week View
         </button>
         <button
-          className={view === "today" ? "active" : ""}
+          className={currentView === "today" ? "active" : ""}
           onClick={() => setView("today")}
         >
           Today's Bookings
         </button>
         <button
-          className={view === "list" ? "active" : ""}
+          className={currentView === "list" ? "active" : ""}
           onClick={() => setView("list")}
         >
           Upcoming Bookings
         </button>
         <button
-          className={view === "availability" ? "active" : ""}
+          className={currentView === "availability" ? "active" : ""}
           onClick={() => setView("availability")}
         >
           Manage Availability
@@ -338,7 +349,7 @@ const SchedulingDashboard = () => {
 
       {/* Display different views based on user selection */}
       <div className="dashboard-content">
-        {view === "calendar" && !isFormVisible && (
+        {currentView === "calendar" && !isFormVisible && (
           <Calendar
             onDateSelected={handleDateSelected}
             onTimeSelected={handleTimeSelected}
@@ -346,28 +357,28 @@ const SchedulingDashboard = () => {
           />
         )}
 
-        {view === "week" && !isFormVisible && (
+        {currentView === "week" && !isFormVisible && (
           <WeekView
             onAppointmentSelect={handleEditAppointment}
             selectedDate={selectedDate || defaultDate}
           />
         )}
 
-        {view === "today" && !isFormVisible && (
+        {currentView === "today" && !isFormVisible && (
           <div className="todays-appointments">
             <h2>Today's Bookings</h2>
             {renderAppointmentsList(todayAppointments)}
           </div>
         )}
 
-        {view === "list" && !isFormVisible && (
+        {currentView === "list" && !isFormVisible && (
           <div className="upcoming-appointments">
             <h2>Upcoming Bookings</h2>
             {renderAppointmentsList(upcomingAppointments)}
           </div>
         )}
 
-        {view === "availability" && !isFormVisible && <AvailabilityManager />}
+        {currentView === "availability" && !isFormVisible && <AvailabilityManager />}
 
         {isFormVisible && (
           <ErrorBoundary onReset={() => setIsFormVisible(false)}>

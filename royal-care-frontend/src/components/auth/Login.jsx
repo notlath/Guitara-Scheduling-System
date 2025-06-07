@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { login } from "../../features/auth/authSlice";
 import { api } from "../../services/api";
 import { sanitizeString } from "../../utils/sanitization";
@@ -11,9 +11,26 @@ const Login = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [needs2FA, setNeeds2FA] = useState(false); // Track 2FA state
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const dispatch = useDispatch();
+  const [isSubmitting, setIsSubmitting] = useState(false);  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Helper function to determine post-login redirect
+  const getRedirectPath = (userRole) => {
+    // Check if there's a saved location to return to
+    const from = location.state?.from?.pathname;
+    
+    if (from && from !== "/" && from.startsWith("/dashboard")) {
+      return from;
+    }
+
+    // Default redirect based on user role for new logins
+    if (userRole === "operator") {
+      return "/dashboard";
+    } else {
+      return "/dashboard/scheduling";
+    }
+  };
 
   // Clean up any FIDO2 scripts when component unmounts
   useEffect(() => {
@@ -94,26 +111,23 @@ const Login = () => {
         const response = await api.post("/auth/login/", formData);
 
         if (response.data.message === "2FA code sent") {
-          setNeeds2FA(true); // Show 2FA input
-        } else {
+          setNeeds2FA(true); // Show 2FA input        } else {
           // Handle non-2FA login (if allowed)
           localStorage.setItem("knoxToken", response.data.token);
           localStorage.setItem("user", JSON.stringify(response.data.user));
           dispatch(login(response.data.user));
-          navigate("/dashboard");
+          navigate(getRedirectPath(response.data.user.role));
         }
       } else {
         // Verify 2FA code
         const response = await api.post("/auth/two-factor-verify/", {
           email: formData.username, // Assuming username is email
           code: verificationCode,
-        });
-
-        // On success
+        });        // On success
         localStorage.setItem("knoxToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         dispatch(login(response.data.user));
-        navigate("/dashboard");
+        navigate(getRedirectPath(response.data.user.role));
       }
     } catch (err) {
       const errorMessage = err.response?.data?.error || "Invalid credentials";
