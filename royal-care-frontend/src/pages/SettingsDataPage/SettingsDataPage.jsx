@@ -68,14 +68,11 @@ const SettingsDataPage = () => {
           <h1>Data</h1>
           <button className={styles["add-btn"]}>+ Add</button>
         </div>
-        <div className={styles["tab-switcher"]}>
+        <div className="tab-switcher">
           {TABS.map((tab) => (
             <button
               key={tab}
-              className={
-                styles["tab-btn"] +
-                (activeTab === tab ? " " + styles["active"] : "")
-              }
+              className={"tab-btn" + (activeTab === tab ? " active" : "")}
               onClick={() => setActiveTab(tab)}
             >
               {tab}
