@@ -71,3 +71,31 @@ def toggle_account_status(request, user_id):
         
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
+@api_view(['POST'])
+def check_account_status(request):
+    """Check if a user account is active (no authentication required for polling)"""
+    username = request.data.get('username')
+    
+    if not username:
+        return Response({"error": "Username is required"}, status=400)
+    
+    try:
+        # Try to find user by username or email
+        user = None
+        try:
+            user = CustomUser.objects.get(username=username)
+        except CustomUser.DoesNotExist:
+            try:
+                user = CustomUser.objects.get(email=username)
+            except CustomUser.DoesNotExist:
+                return Response({"error": "Account not found"}, status=404)
+        
+        return Response({
+            "username": user.username,
+            "is_active": user.is_active,
+            "message": "Active account" if user.is_active else "Account is disabled"
+        })
+        
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)

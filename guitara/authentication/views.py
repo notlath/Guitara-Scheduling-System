@@ -54,6 +54,17 @@ class LoginAPI(generics.GenericAPIView):
         except CustomUser.DoesNotExist:
             return Response({"error": "Invalid credentials"}, status=401)
 
+        # Check if account is disabled/inactive FIRST
+        if not user.is_active:
+            account_type = getattr(user, 'role', 'account').lower()
+            error_messages = {
+                'therapist': 'Your therapist account is currently disabled. Please contact your supervisor for assistance.',
+                'driver': 'Your driver account is currently disabled. Please contact your supervisor for assistance.', 
+                'operator': 'Your operator account is currently disabled. Please contact the administrator for assistance.',
+            }
+            error_msg = error_messages.get(account_type, 'Your account has been disabled. Please contact support for assistance.')
+            return Response({"error": error_msg, "error_code": f"{account_type.upper()}_DISABLED"}, status=403)
+
         # Validate password
         if not user.check_password(request.data['password']):
             user.failed_login_attempts += 1

@@ -18,11 +18,11 @@ function LoginPage() {
   const [needs2FA, setNeeds2FA] = useState(false); // Track 2FA state
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false); // Track loading state
-  const [showDisabledAlert, setShowDisabledAlert] = useState(false);  const [disabledAccountInfo, setDisabledAccountInfo] = useState({
-    type: 'account',
-    message: '',
-    contactInfo: null
-  });
+  const [showDisabledAlert, setShowDisabledAlert] = useState(false);
+  const [disabledAccountInfo, setDisabledAccountInfo] = useState({
+    type: "account",
+    message: "",
+    contactInfo: null,  });
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -34,7 +34,6 @@ function LoginPage() {
       cleanupFido2Script();
     };
   }, []);
-
   // Event handlers to update state on input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -44,7 +43,18 @@ function LoginPage() {
     } else {
       setFormData({ ...formData, [name]: value }); // Capture username/password
     }
-  };  const handleSubmit = async (e) => {
+  };  // Handle account re-enabled callback from DisabledAccountAlert
+  const handleAccountReEnabled = () => {
+    setShowDisabledAlert(false);
+    setError("");
+    
+    // Auto-trigger login attempt
+    setTimeout(() => {
+      handleSubmit({ preventDefault: () => {} });
+    }, 500);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     setIsLoading(true);
@@ -68,17 +78,16 @@ function LoginPage() {
           }        } catch (authError) {
           // Use enhanced error handling utility
           const errorInfo = handleAuthError(authError);
-          
-          if (errorInfo.isDisabled) {
-            // Clear any stored authentication data to prevent infinite loops
+
+          if (errorInfo.isDisabled) {            // Clear any stored authentication data to prevent infinite loops
             localStorage.removeItem("knoxToken");
             localStorage.removeItem("user");
-            
-            // Show disabled account alert
+
+            // Show disabled account alert with retry option for recently re-enabled accounts
             setDisabledAccountInfo({
               type: errorInfo.accountType,
               message: errorInfo.message,
-              contactInfo: errorInfo.contactInfo
+              contactInfo: errorInfo.contactInfo,
             });
             setShowDisabledAlert(true);
           } else {
@@ -112,38 +121,44 @@ function LoginPage() {
   };
   const handleContactSupport = () => {
     const accountInfo = disabledAccountInfo;
-    const contactInfo = accountInfo.contactInfo || { email: 'support@guitara.com' };
+    const contactInfo = accountInfo.contactInfo || {
+      email: "support@guitara.com",
+    };
     const emailSubject = `Account Access Issue - ${accountInfo.type} Account`;
     const emailBody = `Hello,\n\nI am unable to access my ${accountInfo.type} account. The system shows that my account is disabled.\n\nUsername: ${formData.username}\nError Message: ${accountInfo.message}\n\nPlease assist me with reactivating my account.\n\nThank you.`;
-    
-    window.location.href = `mailto:${contactInfo.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+
+    window.location.href = `mailto:${contactInfo.email}?subject=${encodeURIComponent(
+      emailSubject
+    )}&body=${encodeURIComponent(emailBody)}`;
   };
   const handleBackToHome = () => {
     // Clear any stored authentication data to prevent loops
     localStorage.removeItem("knoxToken");
     localStorage.removeItem("user");
-    
+
     // Clear component state
     setShowDisabledAlert(false);
     setError("");
     setFormData({ username: "", password: "" });
     setNeeds2FA(false);
     setVerificationCode("");
-    
+
     // Navigate to login page (which is home for non-authenticated users)
-    navigate('/', { replace: true });
+    navigate("/", { replace: true });
   };
   return (
-    <div className={styles.loginContainer}>
-      {showDisabledAlert && (
+    <div className={styles.loginContainer}>      {showDisabledAlert && (
         <DisabledAccountAlert
           accountType={disabledAccountInfo.type}
           errorMessage={disabledAccountInfo.message}
+          username={formData.username}
+          showRetryOption={true}
           onContactSupport={handleContactSupport}
           onBackToHome={handleBackToHome}
+          onAccountReEnabled={handleAccountReEnabled}
         />
       )}
-      
+
       <div className={styles.imageSide}>
         <img src={loginSidepic} alt="Background" />
       </div>

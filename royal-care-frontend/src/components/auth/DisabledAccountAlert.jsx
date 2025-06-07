@@ -1,11 +1,20 @@
+import { useEffect, useState } from "react";
+import { pollAccountStatus } from "../../services/auth";
 import styles from "./DisabledAccountAlert.module.css";
 
 const DisabledAccountAlert = ({
   accountType = "account",
   errorMessage,
+  username,
   onContactSupport,
   onBackToHome,
+  onAccountReEnabled,
+  showRetryOption = false,
 }) => {
+  const [isPolling, setIsPolling] = useState(false);
+  const [pollingStatus, setPollingStatus] = useState(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+
   const getAccountTypeInfo = (type) => {
     const typeMap = {
       therapist: {
@@ -34,6 +43,65 @@ const DisabledAccountAlert = ({
   };
 
   const accountInfo = getAccountTypeInfo(accountType);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      setIsPolling(false);
+    };
+  }, []);
+
+  const startPolling = async () => {
+    if (!username || isPolling) return;
+    
+    setIsPolling(true);
+    setPollingStatus({ message: "Checking account status...", attempt: 0 });
+    
+    try {
+      const result = await pollAccountStatus(
+        username,
+        (status) => {
+          setPollingStatus(status);
+          setRetryAttempt(status.attempt);
+        },
+        60, // Poll for up to 5 minutes
+        5000 // Check every 5 seconds
+      );
+      
+      if (result.success) {
+        setPollingStatus({ 
+          message: "Account has been re-enabled! You can now log in.", 
+          attempt: result.attempts 
+        });
+        
+        // Notify parent component that account is re-enabled
+        if (onAccountReEnabled) {
+          setTimeout(() => {
+            onAccountReEnabled();
+          }, 2000); // Give user time to see the message
+        }
+      } else {
+        setPollingStatus({ 
+          message: "Account is still disabled. Please contact support for assistance.", 
+          attempt: result.attempts 
+        });
+      }
+    } catch (error) {
+      console.error("Error polling account status:", error);
+      setPollingStatus({ 
+        message: "Unable to check account status. Please try logging in manually.", 
+        attempt: retryAttempt 
+      });
+    } finally {
+      setIsPolling(false);
+    }
+  };
+
+  const stopPolling = () => {
+    setIsPolling(false);
+    setPollingStatus(null);
+    setRetryAttempt(0);
+  };
 
   const handleContactSupport = () => {
     if (onContactSupport) {
@@ -82,6 +150,21 @@ const DisabledAccountAlert = ({
             )}
           </div>
 
+          {/* Polling Status Display */}
+          {pollingStatus && (
+            <div className={styles.pollingStatus}>
+              <p className={isPolling ? styles.pollingActive : styles.pollingComplete}>
+                {pollingStatus.message}
+              </p>
+              {isPolling && (
+                <div className={styles.pollingProgress}>
+                  <span>Checking... (Attempt {pollingStatus.attempt}/60)</span>
+                  <div className={styles.loadingSpinner}></div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className={styles.reasonsList}>
             <p className={styles.reasonsTitle}>This may be due to:</p>
             <ul>
@@ -97,9 +180,62 @@ const DisabledAccountAlert = ({
               Please contact <strong>{accountInfo.contact}</strong> for
               assistance with reactivating your account.
             </p>
+            {showRetryOption && username && (
+              <p className={styles.retryInfo}>
+                If your account has been re-enabled by an administrator, you can check its status automatically.
+              </p>
+            )}
           </div>
 
           <div className={styles.actionButtons}>
+            {/* Auto-retry button (only show if username provided and retry is enabled) */}
+            {showRetryOption && username && (
+              <>
+                {!isPolling ? (
+                  <button
+                    className={styles.retryButton}
+                    onClick={startPolling}
+                    disabled={isPolling}
+                  >
+                    <svg
+                      className={styles.buttonIcon}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    Check Account Status
+                  </button>
+                ) : (
+                  <button
+                    className={styles.stopButton}
+                    onClick={stopPolling}
+                  >
+                    <svg
+                      className={styles.buttonIcon}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                    Stop Checking
+                  </button>
+                )}
+              </>
+            )}
+
             <button
               className={styles.primaryButton}
               onClick={handleContactSupport}
