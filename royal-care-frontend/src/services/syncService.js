@@ -5,6 +5,9 @@ class SyncService {
   constructor() {
     this.listeners = new Map();
     this.lastUpdateTimes = new Map();
+    this.optimisticUpdates = new Map(); // Track optimistic updates
+    this.updateQueue = []; // Queue for batched updates
+    this.flushTimeout = null;
     this.setupStorageListener();
   }
 
@@ -26,6 +29,24 @@ class SyncService {
         }
       }
     });
+  }
+
+  // Track optimistic update for later reconciliation
+  addOptimisticUpdate(id, data) {
+    this.optimisticUpdates.set(id, {
+      ...data,
+      timestamp: Date.now(),
+    });
+  }
+
+  // Remove optimistic update when real data arrives
+  removeOptimisticUpdate(id) {
+    this.optimisticUpdates.delete(id);
+  }
+
+  // Get all pending optimistic updates
+  getOptimisticUpdates() {
+    return Array.from(this.optimisticUpdates.values());
   }
 
   // Broadcast an event to all tabs/dashboards
