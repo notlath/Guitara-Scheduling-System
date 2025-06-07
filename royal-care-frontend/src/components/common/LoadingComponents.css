@@ -85,7 +85,7 @@
 
 /* Animated Progress Bar */
 .progress-bar.animated .progress-fill::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -581,7 +581,9 @@
 }
 
 @keyframes dot-bounce {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0.8);
     opacity: 0.5;
   }
@@ -601,25 +603,25 @@
     right: 1rem;
     width: auto;
   }
-  
+
   .optimistic-indicator.top-right,
   .optimistic-indicator.top-left {
     top: 1rem;
     left: 1rem;
     right: 1rem;
   }
-  
+
   .optimistic-indicator.bottom-right,
   .optimistic-indicator.bottom-left {
     bottom: 1rem;
     left: 1rem;
     right: 1rem;
   }
-  
+
   .form-loading-content {
     padding: 1rem;
   }
-  
+
   .page-loading-content {
     padding: 1rem;
   }
@@ -648,11 +650,11 @@
   .progress-bar {
     border: 2px solid;
   }
-  
+
   .loading-spinner-circle .spinner-inner {
     border-width: 3px;
   }
-  
+
   .skeleton-line,
   .skeleton-avatar {
     border: 1px solid;

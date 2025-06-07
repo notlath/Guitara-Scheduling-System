@@ -1,34 +1,39 @@
-import React from 'react';
-import './LoadingComponents.css';
+import "./LoadingComponents.css";
 
 // Enhanced Progress Bar with multiple variants
 export const ProgressBar = ({
   progress = 0,
-  variant = 'primary',
-  size = 'medium',
+  variant = "primary",
+  size = "medium",
   showPercentage = false,
   animated = true,
-  className = '',
-  label = '',
-  indeterminate = false
+  className = "",
+  label = "",
+  indeterminate = false,
 }) => {
   const progressValue = Math.min(Math.max(progress, 0), 100);
-  
+
   return (
     <div className={`progress-container ${size} ${className}`}>
       {label && <div className="progress-label">{label}</div>}
-      <div className={`progress-bar ${variant} ${animated ? 'animated' : ''} ${indeterminate ? 'indeterminate' : ''}`}>
-        <div 
+      <div
+        className={`progress-bar ${variant} ${animated ? "animated" : ""} ${
+          indeterminate ? "indeterminate" : ""
+        }`}
+      >
+        <div
           className="progress-fill"
-          style={{ width: indeterminate ? '100%' : `${progressValue}%` }}
+          style={{ width: indeterminate ? "100%" : `${progressValue}%` }}
           role="progressbar"
           aria-valuenow={indeterminate ? undefined : progressValue}
           aria-valuemin="0"
           aria-valuemax="100"
-          aria-label={label || 'Progress'}
+          aria-label={label || "Progress"}
         />
         {showPercentage && !indeterminate && (
-          <span className="progress-percentage">{Math.round(progressValue)}%</span>
+          <span className="progress-percentage">
+            {Math.round(progressValue)}%
+          </span>
         )}
       </div>
     </div>
@@ -37,14 +42,16 @@ export const ProgressBar = ({
 
 // Enhanced Loading Spinner with multiple variants
 export const LoadingSpinner = ({
-  size = 'medium',
-  variant = 'primary',
-  text = '',
+  size = "medium",
+  variant = "primary",
+  text = "",
   overlay = false,
-  className = ''
+  className = "",
 }) => {
   const SpinnerComponent = (
-    <div className={`loading-spinner-container ${size} ${variant} ${className}`}>
+    <div
+      className={`loading-spinner-container ${size} ${variant} ${className}`}
+    >
       <div className="loading-spinner-circle">
         <div className="spinner-inner"></div>
       </div>
@@ -53,11 +60,7 @@ export const LoadingSpinner = ({
   );
 
   if (overlay) {
-    return (
-      <div className="loading-overlay">
-        {SpinnerComponent}
-      </div>
-    );
+    return <div className="loading-overlay">{SpinnerComponent}</div>;
   }
 
   return SpinnerComponent;
@@ -66,10 +69,10 @@ export const LoadingSpinner = ({
 // Skeleton Loading Component for content placeholders
 export const SkeletonLoader = ({
   lines = 3,
-  width = '100%',
-  height = '1rem',
+  width = "100%",
+  height = "1rem",
   avatar = false,
-  className = ''
+  className = "",
 }) => {
   return (
     <div className={`skeleton-container ${className}`}>
@@ -80,8 +83,8 @@ export const SkeletonLoader = ({
             key={index}
             className="skeleton-line"
             style={{
-              width: index === lines - 1 ? '70%' : width,
-              height: height
+              width: index === lines - 1 ? "70%" : width,
+              height: height,
             }}
           />
         ))}
@@ -95,22 +98,24 @@ export const LoadingButton = ({
   children,
   loading = false,
   disabled = false,
-  variant = 'primary',
-  size = 'medium',
+  variant = "primary",
+  size = "medium",
   onClick,
-  className = '',
-  loadingText = 'Loading...',
+  className = "",
+  loadingText = "Loading...",
   ...props
 }) => {
   return (
     <button
-      className={`loading-button ${variant} ${size} ${loading ? 'loading' : ''} ${className}`}
+      className={`loading-button ${variant} ${size} ${
+        loading ? "loading" : ""
+      } ${className}`}
       disabled={disabled || loading}
       onClick={onClick}
       {...props}
     >
       {loading && <div className="button-spinner" />}
-      <span className={loading ? 'loading-text-hidden' : ''}>
+      <span className={loading ? "loading-text-hidden" : ""}>
         {loading ? loadingText : children}
       </span>
     </button>
@@ -120,9 +125,9 @@ export const LoadingButton = ({
 // Optimistic Update Indicator (for real-time actions)
 export const OptimisticIndicator = ({
   show = false,
-  message = 'Saving...',
-  position = 'top-right',
-  className = ''
+  message = "Saving...",
+  position = "top-right",
+  className = "",
 }) => {
   if (!show) return null;
 
@@ -139,9 +144,9 @@ export const OptimisticIndicator = ({
 // Form Loading Overlay (non-intrusive)
 export const FormLoadingOverlay = ({
   show = false,
-  message = 'Processing...',
+  message = "Processing...",
   progress = null,
-  className = ''
+  className = "",
 }) => {
   if (!show) return null;
 
@@ -166,9 +171,9 @@ export const FormLoadingOverlay = ({
 
 // Inline Loading Indicator (for table rows, lists, etc.)
 export const InlineLoader = ({
-  size = 'small',
-  variant = 'subtle',
-  className = ''
+  size = "small",
+  variant = "subtle",
+  className = "",
 }) => {
   return (
     <div className={`inline-loader ${size} ${variant} ${className}`}>
@@ -185,7 +190,7 @@ export const InlineLoader = ({
 export const TableLoadingState = ({
   rows = 5,
   columns = 4,
-  className = ''
+  className = "",
 }) => {
   return (
     <div className={`table-loading-state ${className}`}>
@@ -196,7 +201,12 @@ export const TableLoadingState = ({
               key={colIndex}
               className="table-loading-cell"
               style={{
-                width: colIndex === 0 ? '25%' : colIndex === columns - 1 ? '15%' : '20%'
+                width:
+                  colIndex === 0
+                    ? "25%"
+                    : colIndex === columns - 1
+                    ? "15%"
+                    : "20%",
               }}
             >
               <div className="skeleton-line" />
@@ -210,11 +220,11 @@ export const TableLoadingState = ({
 
 // Page Loading State (for initial page loads)
 export const PageLoadingState = ({
-  title = 'Loading...',
-  subtitle = 'Please wait while we load your data',
+  title = "Loading...",
+  subtitle = "Please wait while we load your data",
   showProgress = false,
   progress = 0,
-  className = ''
+  className = "",
 }) => {
   return (
     <div className={`page-loading-state ${className}`}>
