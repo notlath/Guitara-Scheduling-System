@@ -86,12 +86,12 @@ const SettingsDataPage = () => {
           <table className={styles["data-table"]}>
             <thead>
               <tr>
-                <th>Username</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Contact Number</th>
-                <th>Specialization</th>
-                <th>Pressure Level</th>
+                <th scope="col">Username</th>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Contact Number</th>
+                <th scope="col">Specialization</th>
+                <th scope="col">Pressure Level</th>
               </tr>
             </thead>
             <tbody>
