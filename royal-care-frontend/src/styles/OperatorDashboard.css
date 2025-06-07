@@ -549,7 +549,154 @@
   font-size: 0.8rem;
 }
 
-/* Enhanced status badges */
+/* Enhanced Dual Acceptance Status Styles */
+.dual-acceptance-status {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+}
+
+.dual-acceptance-status h4 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.acceptance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.acceptance-item {
+  padding: 10px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.acceptance-item.accepted {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+}
+
+.acceptance-item.pending {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+}
+
+.acceptance-item .role {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #2c3e50;
+}
+
+.acceptance-item .status {
+  font-size: 0.9rem;
+}
+
+.acceptance-item.accepted .status {
+  color: #155724;
+}
+
+.acceptance-item.pending .status {
+  color: #856404;
+}
+
+.acceptance-item small {
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+.overall-status {
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.overall-status.ready {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.overall-status.waiting {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+}
+
+.operator-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.blocked-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.confirm-button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.confirm-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.confirm-button.disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.acceptance-indicator {
+  margin-left: 8px;
+  font-weight: bold;
+}
+
+.acceptance-indicator.accepted {
+  color: #28a745;
+}
+
+.acceptance-indicator.pending {
+  color: #ffc107;
+}
+
+.pending-acceptance .appointment-card {
+  border-left: 4px solid #ffc107;
+}
+
+.warning-status {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ffeaa7;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.waiting-text {
+  color: #6c757d;
+  font-style: italic;
+  margin-top: 5px;
+  display: block;
+}
 
 /* Statistics Dashboard */
 .stats-dashboard {

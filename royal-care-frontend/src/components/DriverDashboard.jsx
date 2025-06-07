@@ -403,19 +403,33 @@ const DriverDashboard = () => {
               Reject
             </button>
           </div>
-        );
-
-      case "confirmed":
-        return (
-          <div className="appointment-actions">
-            <button
-              className="start-button"
-              onClick={() => handleStartDriving(id)}
-            >
-              Start Driving
-            </button>
-          </div>
-        );
+        );      case "confirmed":
+        // Only show start button if both parties have accepted
+        if (appointment.both_parties_accepted) {
+          return (
+            <div className="appointment-actions">
+              <button
+                className="start-button"
+                onClick={() => handleStartDriving(id)}
+              >
+                Start Driving
+              </button>
+            </div>
+          );
+        } else {
+          return (
+            <div className="appointment-actions">
+              <div className="warning-status">
+                ⚠ Waiting for all parties to accept before starting
+              </div>
+              {appointment.pending_acceptances?.length > 0 && (
+                <small className="waiting-text">
+                  Waiting for: {appointment.pending_acceptances.join(", ")}
+                </small>
+              )}
+            </div>
+          );
+        }
 
       case "driving_to_location":
         return (
