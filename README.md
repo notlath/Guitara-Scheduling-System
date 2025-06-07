@@ -195,3 +195,25 @@ If you're looking for specific utility scripts (database migrations, service set
 ### Database Configuration
 
 The project now uses SQLite for development, but supports PostgreSQL for production. The transition from Supabase/PostgreSQL to SQLite has been completed as of June 2025.
+
+## start_all.bat Usage
+
+The `start_all.bat` script in this project root automates the process of starting both the Django backend and the frontend development server. It performs the following steps:
+
+1. Activates the Python virtual environment and runs Django migrations.
+2. Starts the Django development server.
+3. Switches to the frontend directory and starts the frontend dev server.
+4. Opens http://localhost:5173/ in your default browser.
+
+### How to Use
+
+1. Open the VS Code integrated terminal.
+2. Navigate to the project root if you are not already there.
+3. Run the script:
+   ```powershell
+   .\start_all.bat
+   ```
+
+**Note:**
+- All commands will run in the same terminal session, so after the backend server starts, you may need to open a new terminal to run the frontend if you want both running simultaneously.
+- For a more advanced workflow, see the `.vscode/tasks.json` for parallel execution in VS Code terminals.
