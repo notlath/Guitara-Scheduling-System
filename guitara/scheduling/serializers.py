@@ -140,12 +140,11 @@ class AppointmentRejectionSerializer(serializers.ModelSerializer):
             "rejected_by",
             "rejected_by_details",
             "rejected_at",
+            "operator_response",
+            "operator_response_reason",
             "reviewed_by",
             "reviewed_by_details",
             "reviewed_at",
-            "review_decision",
-            "review_notes",
-            "created_at",
         ]
 
 

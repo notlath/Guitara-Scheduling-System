@@ -579,9 +579,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Update appointment status
         appointment.status = "completed"
-        appointment.save()
-
-        # Create notifications for all involved parties
+        appointment.save()        # Create notifications for all involved parties
         self._create_notifications(
             appointment,
             "appointment_updated",
@@ -589,8 +587,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response(serializer.data) @ action(detail=True, methods=["post"])
+        return Response(serializer.data)
 
+    @action(detail=True, methods=["post"])
     def accept(self, request, pk=None):
         """Therapist or Driver accepts a pending appointment"""
         appointment = self.get_object()
