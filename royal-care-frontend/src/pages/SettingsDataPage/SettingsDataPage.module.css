@@ -2,34 +2,14 @@
 
 /* Place your SettingsDataPage specific styles here */
 
-.settings-container {
-  padding: var(--spacing-md) 0;
-  /* background: var(--background-35); */
-  min-height: 100vh;
-}
-
-.settings-content {
-  max-width: var(--container-max-width);
-  margin: 0 auto;
-  background: var(--background);
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
-  padding: var(--spacing-md) var(--spacing-ml) var(--spacing-ml)
-    var(--spacing-ml);
-}
-
-.settings-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-mm);
-}
+/* Removed .settings-container and .settings-content: now global */
 
 .data-table-wrapper {
   overflow-x: auto;
   background: var(--background);
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  /* box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04); */
+  border: 1px solid var(--background-50);
 }
 
 .data-table {

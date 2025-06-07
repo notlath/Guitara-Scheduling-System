@@ -1,7 +1,7 @@
 .therapist-dashboard {
   max-width: 1200px;
   margin: 0 auto;
-  padding: var(--spacing-md);
+  /* padding: var(--spacing-md); */
 }
 
 .dashboard-header {

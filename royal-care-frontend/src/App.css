@@ -45,6 +45,9 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 button {
@@ -95,7 +98,7 @@ input {
 .action-buttons button {
   border: none;
   padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: 6px;
+  border-radius: 100px;
   cursor: pointer;
   font-family: "Plus Jakarta Sans", sans-serif;
   transition: background-color 0.2s;

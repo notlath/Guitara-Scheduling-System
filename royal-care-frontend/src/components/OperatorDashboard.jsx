@@ -11,6 +11,7 @@ import {
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
+import LayoutRow from "./LayoutRow";
 
 import "../styles/OperatorDashboard.css";
 import "../styles/TabSwitcher.css";
@@ -43,7 +44,6 @@ const OperatorDashboard = () => {
   const [reviewNotes, setReviewNotes] = useState("");
   const [autoCancelLoading, setAutoCancelLoading] = useState(false);
 
-  const { user } = useSelector((state) => state.auth);
   const { appointments, notifications, loading, error } = useSelector(
     (state) => state.scheduling
   );
@@ -482,138 +482,140 @@ const OperatorDashboard = () => {
   };
 
   return (
-    <div className="operator-dashboard">
-      <div className="dashboard-header">
-        <div>
-          <h1>Operator Dashboard</h1>
-          <p>
-            Welcome, {user?.first_name} {user?.last_name}!
-          </p>
-        </div>
+    <div className="global-container">
+      <div className="global-content">
+        <div className="operator-dashboard">
+          <LayoutRow title="Operator Dashboard">
+            <div className="action-buttons">
+              <button onClick={handleLogout} className="logout-button">
+                Logout
+              </button>
+            </div>
+          </LayoutRow>
+          {loading && <div className="loading-spinner">Loading...</div>}
+          {error && (
+            <div className="error-message">
+              {typeof error === "object"
+                ? error.message || error.error || JSON.stringify(error)
+                : error}
+            </div>
+          )}{" "}
+          <div className="view-selector">
+            <button
+              className={currentView === "rejected" ? "active" : ""}
+              onClick={() => setView("rejected")}
+            >
+              Pending Reviews ({rejectedAppointments.length})
+            </button>
+            <button
+              className={currentView === "timeouts" ? "active" : ""}
+              onClick={() => setView("timeouts")}
+            >
+              Timeouts (
+              {overdueAppointments.length +
+                approachingDeadlineAppointments.length}
+              )
+            </button>
+            <button
+              className={currentView === "all" ? "active" : ""}
+              onClick={() => setView("all")}
+            >
+              All Appointments
+            </button>{" "}
+            <button
+              className={currentView === "notifications" ? "active" : ""}
+              onClick={() => setView("notifications")}
+            >
+              Notifications
+            </button>{" "}
+            <button
+              className={currentView === "availability" ? "active" : ""}
+              onClick={() => setView("availability")}
+            >
+              Manage Availability
+            </button>
+          </div>{" "}
+          <div className="dashboard-content">
+            {currentView === "rejected" && (
+              <div className="rejected-appointments">
+                <h2>Rejection Reviews</h2>
+                {renderRejectedAppointments()}
+              </div>
+            )}
+            {currentView === "timeouts" && (
+              <div className="timeout-monitoring">
+                <h2>Timeout Monitoring</h2>
+                {renderTimeoutMonitoring()}
+              </div>
+            )}
+            {currentView === "all" && (
+              <div className="all-appointments">
+                <h2>All Appointments</h2>
+                {renderAllAppointments()}
+              </div>
+            )}{" "}
+            {currentView === "notifications" && (
+              <div className="notifications">
+                <h2>Notifications</h2>
+                {renderNotifications()}
+              </div>
+            )}
+            {currentView === "availability" && (
+              <div className="availability-management">
+                <AvailabilityManager />
+              </div>
+            )}
+          </div>
+          {/* Review Rejection Modal */}
+          {reviewModal.isOpen && (
+            <div className="modal-overlay">
+              <div className="review-modal">
+                <h3>Review Appointment Rejection</h3>
+                <div className="rejection-details">
+                  <p>
+                    <strong>Rejection Reason:</strong>
+                  </p>
+                  <p className="rejection-reason-text">
+                    {reviewModal.rejectionReason}
+                  </p>
+                </div>
 
-        <div className="action-buttons">
-          <button onClick={handleLogout} className="logout-button">
-            Logout
-          </button>
+                <div className="review-notes">
+                  <label htmlFor="reviewNotes">Review Notes (optional):</label>
+                  <textarea
+                    id="reviewNotes"
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    placeholder="Add any additional notes about your decision..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="modal-actions">
+                  <button
+                    className="accept-button"
+                    onClick={() => handleReviewSubmit("accept")}
+                  >
+                    Accept Rejection
+                  </button>
+                  <button
+                    className="deny-button"
+                    onClick={() => handleReviewSubmit("deny")}
+                  >
+                    Deny Rejection
+                  </button>
+                  <button
+                    className="cancel-button"
+                    onClick={handleReviewCancel}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      {loading && <div className="loading-spinner">Loading...</div>}
-      {error && (
-        <div className="error-message">
-          {typeof error === "object"
-            ? error.message || error.error || JSON.stringify(error)
-            : error}
-        </div>
-      )}{" "}
-      <div className="view-selector">
-        <button
-          className={currentView === "rejected" ? "active" : ""}
-          onClick={() => setView("rejected")}
-        >
-          Pending Reviews ({rejectedAppointments.length})
-        </button>
-        <button
-          className={currentView === "timeouts" ? "active" : ""}
-          onClick={() => setView("timeouts")}
-        >
-          Timeouts (
-          {overdueAppointments.length + approachingDeadlineAppointments.length})
-        </button>
-        <button
-          className={currentView === "all" ? "active" : ""}
-          onClick={() => setView("all")}
-        >
-          All Appointments
-        </button>{" "}
-        <button
-          className={currentView === "notifications" ? "active" : ""}
-          onClick={() => setView("notifications")}
-        >
-          Notifications
-        </button>{" "}
-        <button
-          className={currentView === "availability" ? "active" : ""}
-          onClick={() => setView("availability")}
-        >
-          Manage Availability
-        </button>
-      </div>{" "}
-      <div className="dashboard-content">
-        {currentView === "rejected" && (
-          <div className="rejected-appointments">
-            <h2>Rejection Reviews</h2>
-            {renderRejectedAppointments()}
-          </div>
-        )}
-        {currentView === "timeouts" && (
-          <div className="timeout-monitoring">
-            <h2>Timeout Monitoring</h2>
-            {renderTimeoutMonitoring()}
-          </div>
-        )}
-        {currentView === "all" && (
-          <div className="all-appointments">
-            <h2>All Appointments</h2>
-            {renderAllAppointments()}
-          </div>
-        )}{" "}
-        {currentView === "notifications" && (
-          <div className="notifications">
-            <h2>Notifications</h2>
-            {renderNotifications()}
-          </div>
-        )}
-        {currentView === "availability" && (
-          <div className="availability-management">
-            <AvailabilityManager />
-          </div>
-        )}
-      </div>
-      {/* Review Rejection Modal */}
-      {reviewModal.isOpen && (
-        <div className="modal-overlay">
-          <div className="review-modal">
-            <h3>Review Appointment Rejection</h3>
-            <div className="rejection-details">
-              <p>
-                <strong>Rejection Reason:</strong>
-              </p>
-              <p className="rejection-reason-text">
-                {reviewModal.rejectionReason}
-              </p>
-            </div>
-
-            <div className="review-notes">
-              <label htmlFor="reviewNotes">Review Notes (optional):</label>
-              <textarea
-                id="reviewNotes"
-                value={reviewNotes}
-                onChange={(e) => setReviewNotes(e.target.value)}
-                placeholder="Add any additional notes about your decision..."
-                rows={3}
-              />
-            </div>
-
-            <div className="modal-actions">
-              <button
-                className="accept-button"
-                onClick={() => handleReviewSubmit("accept")}
-              >
-                Accept Rejection
-              </button>
-              <button
-                className="deny-button"
-                onClick={() => handleReviewSubmit("deny")}
-              >
-                Deny Rejection
-              </button>
-              <button className="cancel-button" onClick={handleReviewCancel}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

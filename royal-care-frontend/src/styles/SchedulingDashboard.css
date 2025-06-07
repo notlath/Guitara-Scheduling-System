@@ -2,25 +2,7 @@
 .scheduling-dashboard {
   max-width: 1200px;
   margin: 0 auto;
-  padding: var(--spacing-md);
-}
-
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-mm);
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  /* border-bottom: none !important; */
-}
-
-.dashboard-header h1 {
-  margin: 0;
-  color: var(--text);
-  font-size: var(--font-size-xxl);
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-weight: 700;
+  /* padding: var(--spacing-md); */
 }
 
 .loading-spinner {

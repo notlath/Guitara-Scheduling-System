@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./SettingsDataPage.module.css";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
+import "../../styles/LayoutRow.css";
 import { MdAdd } from "react-icons/md";
+import LayoutRow from "../../components/LayoutRow";
 
 const TABS = ["Therapists", "Drivers", "Operators", "Services", "Materials"];
 
@@ -62,11 +64,14 @@ const TAB_PLACEHOLDERS = {
 const SettingsDataPage = () => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
 
+  useEffect(() => {
+    document.title = `${activeTab} | Royal Care`;
+  }, [activeTab]);
+
   return (
-    <div className={styles["settings-container"]}>
-      <div className={styles["settings-content"]}>
-        <div className={styles["settings-header-row"]}>
-          <h1>Data</h1>
+    <div className="global-container">
+      <div className="global-content">
+        <LayoutRow title="Data">
           <div className="action-buttons">
             <button className="primary-action-btn">
               <span className="primary-action-icon">
@@ -75,7 +80,7 @@ const SettingsDataPage = () => {
               Add
             </button>
           </div>
-        </div>
+        </LayoutRow>
         <div className="tab-switcher">
           {TABS.map((tab) => (
             <button
