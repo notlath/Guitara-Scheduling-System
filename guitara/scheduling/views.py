@@ -381,6 +381,40 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+    def perform_create(self, serializer):
+        """
+        Override perform_create to add validation for disabled accounts
+        """
+        user = self.request.user
+        
+        # Get the target user for availability creation
+        target_user = serializer.validated_data.get('user')
+        
+        # If no user specified in data, use the requesting user
+        if not target_user:
+            target_user = user
+            serializer.validated_data['user'] = user
+        
+        # Check if target user account is disabled
+        if not target_user.is_active:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError(
+                f"Cannot create availability for {target_user.first_name} {target_user.last_name}. "
+                "This staff account is currently disabled. Please contact an administrator to reactivate the account."
+            )
+        
+        # Check if requesting user has permission to create availability for target user
+        if user.role == "operator":
+            # Operators can create availability for anyone (if account is active)
+            pass
+        elif target_user != user:
+            # Non-operators can only create availability for themselves
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You can only manage your own availability")
+        
+        # Proceed with creation
+        serializer.save()
+
 
 class AppointmentFilter(FilterSet):
     date_after = DateFilter(field_name="date", lookup_expr="gte")

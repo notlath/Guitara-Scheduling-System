@@ -29,6 +29,7 @@ import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
 import SchedulingPage from "./pages/SchedulingPage/SchedulingPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
+import AvailabilityManager from "./components/scheduling/AvailabilityManager";
 import { validateToken } from "./services/auth";
 // Import auth fixer for automatic testing
 import "./utils/authFixer";
@@ -145,8 +146,8 @@ const App = () => {
                 <Navigate to="/" />
               )
             }
-          />{" "}
-          <Route path="scheduling" element={<SchedulingPage />} />
+          />{" "}          <Route path="scheduling" element={<SchedulingPage />} />
+          <Route path="availability" element={<AvailabilityManager />} />
           <Route path="bookings" element={<BookingsPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="sales-reports" element={<SalesReportsPage />} />
