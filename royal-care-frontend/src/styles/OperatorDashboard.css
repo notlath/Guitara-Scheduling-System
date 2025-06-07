@@ -421,6 +421,375 @@
   background-color: #5a6268;
 }
 
+/* Rejection Badge Styles */
+.rejected-by-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.rejection-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+}
+
+.rejection-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.rejection-therapist {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #bbdefb;
+}
+
+.rejection-therapist::before {
+  background-color: #1565c0;
+}
+
+.rejection-driver {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+  border: 1px solid #ce93d8;
+}
+
+.rejection-driver::before {
+  background-color: #7b1fa2;
+}
+
+.rejection-other {
+  background-color: #f5f5f5;
+  color: #616161;
+  border: 1px solid #e0e0e0;
+}
+
+.rejection-other::before {
+  background-color: #616161;
+}
+
+.rejection-unknown {
+  background-color: #ffebee;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
+}
+
+.rejection-unknown::before {
+  background-color: #c62828;
+}
+
+/* Enhanced rejection reason styling */
+.rejection-reason {
+  background-color: #fff8e1;
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 4px solid #ff9800;
+  margin: 10px 0;
+  font-style: italic;
+}
+
+.rejection-reason strong {
+  color: #e65100;
+}
+
+/* Acceptance Status Styles */
+.acceptance-status {
+  margin: 12px 0;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border-left: 3px solid #007bff;
+}
+
+.acceptance-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.acceptance-complete {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.acceptance-pending {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.acceptance-none {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.pending-acceptances {
+  margin-top: 6px;
+  font-style: italic;
+  color: #6c757d;
+}
+
+.pending-acceptances small {
+  font-size: 0.8rem;
+}
+
+/* Enhanced Dual Acceptance Status Styles */
+.dual-acceptance-status {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+}
+
+.dual-acceptance-status h4 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.acceptance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.acceptance-item {
+  padding: 10px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.acceptance-item.accepted {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+}
+
+.acceptance-item.pending {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+}
+
+.acceptance-item .role {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #2c3e50;
+}
+
+.acceptance-item .status {
+  font-size: 0.9rem;
+}
+
+.acceptance-item.accepted .status {
+  color: #155724;
+}
+
+.acceptance-item.pending .status {
+  color: #856404;
+}
+
+.acceptance-item small {
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+.overall-status {
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.overall-status.ready {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.overall-status.waiting {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+}
+
+.operator-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.blocked-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.confirm-button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.confirm-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.confirm-button.disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.acceptance-indicator {
+  margin-left: 8px;
+  font-weight: bold;
+}
+
+.acceptance-indicator.accepted {
+  color: #28a745;
+}
+
+.acceptance-indicator.pending {
+  color: #ffc107;
+}
+
+.pending-acceptance .appointment-card {
+  border-left: 4px solid #ffc107;
+}
+
+.warning-status {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ffeaa7;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.waiting-text {
+  color: #6c757d;
+  font-style: italic;
+  margin-top: 5px;
+  display: block;
+}
+
+/* Statistics Dashboard */
+.stats-dashboard {
+  margin: 20px 0;
+  padding: 0;
+}
+
+.stats-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  color: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.stats-card h4 {
+  margin: 0 0 15px 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 15px;
+}
+
+.stat-item {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.stat-number {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.therapist-stat {
+  border-left: 4px solid #2196f3;
+}
+
+.driver-stat {
+  border-left: 4px solid #9c27b0;
+}
+
+.pending-stat {
+  border-left: 4px solid #ff9800;
+}
+
+/* Responsive stats */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-item {
+    padding: 12px;
+  }
+
+  .stat-number {
+    font-size: 1.5rem;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .dashboard-header {

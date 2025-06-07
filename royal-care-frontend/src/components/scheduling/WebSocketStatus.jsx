@@ -5,6 +5,13 @@ import "../../styles/WebSocketStatus.css";
 /**
  * Component that provides non-intrusive WebSocket status indication
  * Uses subtle status indicators without disrupting user experience
+ *
+ * Key UX Improvements:
+ * - Status dot only appears when there are connection issues
+ * - Reduced size (5px) and opacity (0.3) for minimal visual impact
+ * - Notifications only for critical issues (disabled, error states)
+ * - Smart tooltip provides detailed info on hover
+ * - Completely silent when connection is working properly
  */
 const WebSocketStatus = () => {
   const [status, setStatus] = useState("disconnected");
@@ -41,12 +48,14 @@ const WebSocketStatus = () => {
       const newStatus = event.detail.status;
       setStatus(newStatus);
 
-      // Only show notifications for critical status changes
-      // Reduced notification frequency for minimal UI disruption
+      // Only show notifications for connection issues - not for successful connections
+      // This minimizes UI disruption while keeping users informed of problems
       if (newStatus === "disabled") {
         showNotification("Real-time updates unavailable", 3000);
+      } else if (newStatus === "error") {
+        showNotification("Connection error - retrying", 2500);
       }
-      // Don't show notifications for other states to minimize disruption
+      // Don't show notifications for connected, connecting, or disconnected states
       // Users can hover over the status indicator to see current state
     };
 
@@ -112,15 +121,15 @@ const WebSocketStatus = () => {
 const getStatusTooltip = (status) => {
   switch (status) {
     case "connected":
-      return "Real-time updates active";
+      return "Real-time updates active - all systems operational";
     case "disconnected":
-      return "Reconnecting...";
+      return "Reconnecting to server...";
     case "connecting":
-      return "Connecting...";
+      return "Establishing connection...";
     case "error":
-      return "Connection error - retrying";
+      return "Connection error - automatically retrying";
     case "disabled":
-      return "Real-time updates disabled - using polling";
+      return "Real-time updates disabled - using periodic refresh";
     default:
       return "Connection status unknown";
   }

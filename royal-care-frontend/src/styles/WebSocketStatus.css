@@ -3,16 +3,16 @@
   position: fixed;
   top: 20px;
   right: 20px;
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
   z-index: 1000;
   cursor: help;
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
 }
 
 .websocket-status-indicator:hover {
-  opacity: 1;
+  opacity: 0.8;
 }
 
 .status-dot {
@@ -26,6 +26,11 @@
 .websocket-status-indicator.connected .status-dot {
   background-color: #4caf50;
   /* Removed glow effect for minimal appearance */
+}
+
+/* Only show when there are connection issues */
+.websocket-status-indicator.connected {
+  display: none;
 }
 
 .websocket-status-indicator.disconnected .status-dot {

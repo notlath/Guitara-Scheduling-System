@@ -386,23 +386,24 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
         Override perform_create to add validation for disabled accounts
         """
         user = self.request.user
-        
+
         # Get the target user for availability creation
-        target_user = serializer.validated_data.get('user')
-        
+        target_user = serializer.validated_data.get("user")
+
         # If no user specified in data, use the requesting user
         if not target_user:
             target_user = user
-            serializer.validated_data['user'] = user
-        
+            serializer.validated_data["user"] = user
+
         # Check if target user account is disabled
         if not target_user.is_active:
             from rest_framework.exceptions import ValidationError
+
             raise ValidationError(
                 f"Cannot create availability for {target_user.first_name} {target_user.last_name}. "
                 "This staff account is currently disabled. Please contact an administrator to reactivate the account."
             )
-        
+
         # Check if requesting user has permission to create availability for target user
         if user.role == "operator":
             # Operators can create availability for anyone (if account is active)
@@ -410,8 +411,9 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
         elif target_user != user:
             # Non-operators can only create availability for themselves
             from rest_framework.exceptions import PermissionDenied
+
             raise PermissionDenied("You can only manage your own availability")
-        
+
         # Proceed with creation
         serializer.save()
 
@@ -577,9 +579,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Update appointment status
         appointment.status = "completed"
-        appointment.save()
-
-        # Create notifications for all involved parties
+        appointment.save()  # Create notifications for all involved parties
         self._create_notifications(
             appointment,
             "appointment_updated",
@@ -591,11 +591,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def accept(self, request, pk=None):
-        """Therapist accepts a pending appointment"""
+        """Therapist or Driver accepts a pending appointment"""
         appointment = self.get_object()
 
-        # Only the assigned therapist can accept
-        if request.user != appointment.therapist:
+        # Only the assigned therapist or driver can accept
+        if request.user != appointment.therapist and request.user != appointment.driver:
             return Response(
                 {"error": "You can only accept your own appointments"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -607,20 +607,76 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        appointment.status = "confirmed"
+        # Determine who is accepting
+        is_therapist = request.user == appointment.therapist
+        is_driver = request.user == appointment.driver
+
+        # Update acceptance status
+        if is_therapist:
+            appointment.therapist_accepted = True
+            appointment.therapist_accepted_at = timezone.now()
+            accepter_role = "Therapist"
+        elif is_driver:
+            appointment.driver_accepted = True
+            appointment.driver_accepted_at = timezone.now()
+            accepter_role = "Driver"
+
+        # Check if both parties have now accepted
+        if appointment.both_parties_accepted():
+            appointment.status = "confirmed"
+
+            # Create notification that appointment is fully confirmed
+            self._create_notifications(
+                appointment,
+                "appointment_confirmed",
+                f"Appointment for {appointment.client} on {appointment.date} is now confirmed. Both {accepter_role} and the other party have accepted.",
+            )
+
+            message_type = "appointment_confirmed"
+            message_text = f"Appointment fully confirmed - both parties accepted"
+        else:
+            # Only partial acceptance
+            pending_parties = appointment.get_pending_acceptances()
+            pending_text = ", ".join(pending_parties)
+
+            self._create_notifications(
+                appointment,
+                "appointment_partial_acceptance",
+                f"{accepter_role} {request.user.get_full_name()} has accepted the appointment for {appointment.client} on {appointment.date}. Still waiting for: {pending_text}",
+            )
+
+            message_type = "appointment_partial_acceptance"
+            message_text = f"{accepter_role} accepted - waiting for {pending_text}"
+
         appointment.save()
 
-        # Create notifications
-        self._create_notifications(
-            appointment,
-            "appointment_accepted",
-            f"Therapist {appointment.therapist.get_full_name()} has accepted the appointment for {appointment.client} on {appointment.date}.",
+        # Send WebSocket notification
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": message_type,
+                    "appointment_id": appointment.id,
+                    "accepted_by_id": request.user.id,
+                    "accepted_by_role": accepter_role,
+                    "therapist_id": (
+                        appointment.therapist.id if appointment.therapist else None
+                    ),
+                    "driver_id": appointment.driver.id if appointment.driver else None,
+                    "operator_id": (
+                        appointment.operator.id if appointment.operator else None
+                    ),
+                    "message": message_text,
+                    "both_accepted": appointment.both_parties_accepted(),
+                },
+            },
         )
 
         serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
+        return Response(serializer.data) @ action(detail=True, methods=["post"])
 
-    @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
         """Therapist starts an appointment"""
         appointment = self.get_object()
@@ -638,6 +694,17 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Additional check: ensure both parties have actually accepted
+        if not appointment.both_parties_accepted():
+            pending_parties = appointment.get_pending_acceptances()
+            pending_text = ", ".join(pending_parties)
+            return Response(
+                {
+                    "error": f"Cannot start appointment. Still waiting for acceptance from: {pending_text}"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         appointment.status = "in_progress"
         appointment.save()
 
@@ -649,11 +716,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
+        return Response(serializer.data) @ action(detail=True, methods=["post"])
 
-    @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
-        """Therapist rejects an appointment with a reason"""
+        """Therapist or Driver rejects an appointment with a reason"""
         print(f"🔍 BACKEND DEBUG - reject endpoint called:")
         print(f"  - pk: {pk}")
         print(f"  - request.user: {request.user}")
@@ -663,11 +729,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
         print(f"  - appointment: {appointment}")
         print(f"  - appointment.therapist: {appointment.therapist}")
+        print(f"  - appointment.driver: {appointment.driver}")
 
-        # Only the assigned therapist can reject
-        if request.user != appointment.therapist:
+        # Only the assigned therapist or driver can reject
+        if request.user != appointment.therapist and request.user != appointment.driver:
             print(
-                f"❌ BACKEND: User {request.user} is not the assigned therapist {appointment.therapist}"
+                f"❌ BACKEND: User {request.user} is not the assigned therapist {appointment.therapist} or driver {appointment.driver}"
             )
             return Response(
                 {"error": "You can only reject your own appointments"},
@@ -704,26 +771,37 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment=appointment,
             rejection_reason=rejection_reason.strip(),
             rejected_by=request.user,
-        )
-
-        # Update appointment status
+        )  # Update appointment status and reset acceptance flags
         appointment.status = "rejected"
         appointment.rejection_reason = rejection_reason.strip()
         appointment.rejected_by = request.user
         appointment.rejected_at = timezone.now()
-        appointment.save()
 
-        # Create notification for operator
+        # Reset acceptance status since someone rejected
+        appointment.therapist_accepted = False
+        appointment.therapist_accepted_at = None
+        appointment.driver_accepted = False
+        appointment.driver_accepted_at = None
+
+        appointment.save()  # Create notification for operator
         if appointment.operator:
+            # Determine the role of the user who rejected
+            rejecter_role = (
+                "Therapist" if request.user == appointment.therapist else "Driver"
+            )
+            notification_message = f"{rejecter_role} {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}"
+
             Notification.objects.create(
                 user=appointment.operator,
                 appointment=appointment,
                 rejection=rejection,
                 notification_type="appointment_rejected",
-                message=f"Therapist {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}",
-            )
-        # Send WebSocket notification
+                message=notification_message,
+            )  # Send WebSocket notification
         channel_layer = get_channel_layer()
+        rejecter_role = (
+            "Therapist" if request.user == appointment.therapist else "Driver"
+        )
         async_to_sync(channel_layer.group_send)(
             "appointments",
             {
@@ -732,11 +810,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     "type": "appointment_rejected",
                     "appointment_id": appointment.id,
                     "rejection_id": rejection.id,
-                    "therapist_id": request.user.id,
+                    "rejected_by_id": request.user.id,
+                    "rejected_by_role": rejecter_role,
+                    "therapist_id": (
+                        appointment.therapist.id if appointment.therapist else None
+                    ),
+                    "driver_id": appointment.driver.id if appointment.driver else None,
                     "operator_id": (
                         appointment.operator.id if appointment.operator else None
                     ),
-                    "message": f"Appointment rejected by {request.user.get_full_name()}",
+                    "message": f"Appointment rejected by {rejecter_role} {request.user.get_full_name()}",
                 },
             },
         )
@@ -1042,20 +1125,28 @@ class NotificationViewSet(viewsets.ModelViewSet):
         """Delete all notifications for the current user"""
         deleted_count = Notification.objects.filter(user=request.user).count()
         Notification.objects.filter(user=request.user).delete()
-        return Response({
-            "message": f"Deleted {deleted_count} notifications",
-            "deleted_count": deleted_count
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "message": f"Deleted {deleted_count} notifications",
+                "deleted_count": deleted_count,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["delete"])
     def delete_read(self, request):
         """Delete all read notifications for the current user"""
-        deleted_count = Notification.objects.filter(user=request.user, is_read=True).count()
+        deleted_count = Notification.objects.filter(
+            user=request.user, is_read=True
+        ).count()
         Notification.objects.filter(user=request.user, is_read=True).delete()
-        return Response({
-            "message": f"Deleted {deleted_count} read notifications",
-            "deleted_count": deleted_count
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "message": f"Deleted {deleted_count} read notifications",
+                "deleted_count": deleted_count,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class StaffViewSet(viewsets.ReadOnlyModelViewSet):
@@ -1194,3 +1285,121 @@ class ServiceViewSet(viewsets.ModelViewSet):
                 s for s in self.FALLBACK_SERVICES if s.get("is_active", True)
             ]
             return Response(active_services)
+
+    @action(detail=True, methods=["post"])
+    def update_status(self, request, pk=None):
+        """Update appointment status with strict dual acceptance validation"""
+        appointment = self.get_object()
+        new_status = request.data.get("status")
+
+        if not new_status:
+            return Response(
+                {"error": "Status is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Strict validation for status transitions
+        current_status = appointment.status
+
+        # Define valid transitions
+        valid_transitions = {
+            "pending": ["confirmed", "rejected", "cancelled", "auto_cancelled"],
+            "confirmed": ["in_progress", "cancelled"],
+            "in_progress": ["completed", "cancelled"],
+            "completed": [],  # Final state
+            "cancelled": [],  # Final state
+            "rejected": ["pending"],  # Can be reset by operator
+            "auto_cancelled": [],  # Final state
+        }
+
+        if new_status not in valid_transitions.get(current_status, []):
+            return Response(
+                {"error": f"Cannot transition from {current_status} to {new_status}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # DUAL ACCEPTANCE ENFORCEMENT
+        if new_status in ["confirmed", "in_progress"]:
+            if not appointment.both_parties_accepted():
+                pending_parties = appointment.get_pending_acceptances()
+                pending_text = ", ".join(pending_parties)
+                return Response(
+                    {
+                        "error": f"Cannot proceed to {new_status}. Both parties must accept first. Still waiting for: {pending_text}",
+                        "pending_acceptances": pending_parties,
+                        "both_accepted": False,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Role-based permissions
+        if new_status == "in_progress":
+            # Only therapist can start appointments
+            if request.user != appointment.therapist:
+                return Response(
+                    {"error": "Only the assigned therapist can start appointments"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        elif new_status == "completed":
+            # Only therapist or driver can complete appointments
+            if (
+                request.user != appointment.therapist
+                and request.user != appointment.driver
+            ):
+                return Response(
+                    {
+                        "error": "Only assigned therapist or driver can complete appointments"
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        # Update the status
+        appointment.status = new_status
+        appointment.save()
+
+        # Create appropriate notifications
+        if new_status == "confirmed":
+            self._create_notifications(
+                appointment,
+                "appointment_confirmed",
+                f"Appointment for {appointment.client} on {appointment.date} is now confirmed. Both therapist and driver have accepted.",
+            )
+        elif new_status == "in_progress":
+            self._create_notifications(
+                appointment,
+                "appointment_started",
+                f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",
+            )
+        elif new_status == "completed":
+            self._create_notifications(
+                appointment,
+                "appointment_completed",
+                f"Appointment for {appointment.client} has been completed.",
+            )
+
+        # Send WebSocket notification
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": f"appointment_{new_status}",
+                    "appointment_id": appointment.id,
+                    "new_status": new_status,
+                    "updated_by_id": request.user.id,
+                    "therapist_id": (
+                        appointment.therapist.id if appointment.therapist else None
+                    ),
+                    "driver_id": appointment.driver.id if appointment.driver else None,
+                    "operator_id": (
+                        appointment.operator.id if appointment.operator else None
+                    ),
+                    "message": f"Appointment status updated to {new_status}",
+                    "both_accepted": appointment.both_parties_accepted(),
+                },
+            },
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)

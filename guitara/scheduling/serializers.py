@@ -140,12 +140,11 @@ class AppointmentRejectionSerializer(serializers.ModelSerializer):
             "rejected_by",
             "rejected_by_details",
             "rejected_at",
+            "operator_response",
+            "operator_response_reason",
             "reviewed_by",
             "reviewed_by_details",
             "reviewed_at",
-            "review_decision",
-            "review_notes",
-            "created_at",
         ]
 
 
@@ -154,12 +153,17 @@ class AppointmentSerializer(serializers.ModelSerializer):
     therapist_details = UserSerializer(source="therapist", read_only=True)
     driver_details = UserSerializer(source="driver", read_only=True)
     operator_details = UserSerializer(source="operator", read_only=True)
+    rejected_by_details = UserSerializer(source="rejected_by", read_only=True)
     services_details = ServiceSerializer(source="services", many=True, read_only=True)
     rejection_details = AppointmentRejectionSerializer(
         source="appointmentrejection", read_only=True
     )
     total_duration = serializers.SerializerMethodField()
     total_price = serializers.SerializerMethodField()
+
+    # Add acceptance status fields
+    both_parties_accepted = serializers.SerializerMethodField()
+    pending_acceptances = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointment
@@ -176,6 +180,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def get_total_price(self, obj):
         """Calculate the total price of all services"""
         return sum(service.price for service in obj.services.all())
+
+    def get_both_parties_accepted(self, obj):
+        """Check if both parties have accepted"""
+        return obj.both_parties_accepted()
+
+    def get_pending_acceptances(self, obj):
+        """Get list of parties that still need to accept"""
+        return obj.get_pending_acceptances()
 
     def validate(self, data):
         """
