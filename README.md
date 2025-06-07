@@ -99,16 +99,43 @@ The project is fully organized and ready for continued development with:
 
 ---
 
-## 📥 Installation
+## 📥 Installation & Quick Start
 
 **Prerequisites:** Python 3.12+, Node.js 18+, SQLite (included with Python)
 
-**Backend (Windows):**
+### **🚀 Automated Setup (Recommended)**
+
+The easiest way to start development is using the automated starter script:
+
+```bash
+# Run the Python development starter
+python start_development.py
+```
+
+This script will:
+
+- ✅ Check prerequisites (Python, Node.js, npm)
+- ✅ Create virtual environment if needed
+- ✅ Install Python dependencies
+- ✅ Start Django backend in a separate terminal
+- ✅ Start React frontend in a separate terminal
+- ✅ Automatically open http://localhost:5173/ in your browser
+
+### **🔧 Manual Setup**
+
+If you prefer manual setup or need to troubleshoot:
+
+**Backend Setup:**
 
 ```bash
 # Create and activate virtual environment
 python -m venv venv
+
+# Windows
 venv\Scripts\activate
+
+# Linux/macOS
+source venv/bin/activate
 
 # Navigate to backend directory
 cd guitara
@@ -126,7 +153,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-**Frontend:**
+**Frontend Setup (in a new terminal):**
 
 ```bash
 # Navigate to frontend directory
@@ -138,6 +165,12 @@ npm install
 # Start the frontend development server
 npm run dev
 ```
+
+### **🌐 Accessing the Application**
+
+- **Frontend**: http://localhost:5173/
+- **Backend API**: http://localhost:8000/
+- **Django Admin**: http://localhost:8000/admin/
 
 ---
 
@@ -159,9 +192,56 @@ npm run dev
 ### **Frontend Configuration**
 
 - **API Configuration**: Update API base URL in `royal-care-frontend/.env` if needed:
+
+  ```VITE_API_BASE_URL=http://localhost:8000/api
+
   ```
-  VITE_API_BASE_URL=http://localhost:8000/api
-  ```
+
+---
+
+## 🔧 Troubleshooting
+
+### **Common Issues**
+
+#### **npm not found (Windows)**
+
+If you see "npm not found" error:
+
+1. Restart your terminal/command prompt
+2. Reinstall Node.js from https://nodejs.org/ (includes npm)
+3. Run as Administrator
+4. The Python starter script will try to find npm in common locations automatically
+
+#### **Virtual Environment Issues**
+
+```bash
+# If venv creation fails, try:
+python -m pip install --upgrade pip
+python -m venv venv --clear
+```
+
+#### **Port Already in Use**
+
+```bash
+# If port 8000 or 5173 is busy:
+# Backend: Change port in guitara/manage.py runserver 8001
+# Frontend: Change port in royal-care-frontend/vite.config.js
+```
+
+#### **Database Migration Issues**
+
+```bash
+# Reset migrations if needed:
+cd guitara
+python manage.py migrate --fake-initial
+```
+
+### **Development Tips**
+
+- **Hot Reload**: Both Django and Vite support hot reload - changes appear automatically
+- **API Testing**: Use Django admin at http://localhost:8000/admin/ for data management
+- **Browser DevTools**: Use F12 for React debugging and network inspection
+- **Logs**: Check terminal outputs for both backend and frontend error messages
 
 ---
 
@@ -262,34 +342,41 @@ The project has evolved through different database configurations:
 
 ### **Quick Start Scripts**
 
-Automated development environment setup scripts are available for different operating systems:
+The project includes automated development environment setup scripts:
+
+#### **Cross-Platform: start_development.py (Recommended)**
+
+A Python script that works on Windows, Linux, and macOS:
+
+```bash
+python start_development.py
+```
+
+**Features:**
+
+- ✅ **Prerequisites Check**: Automatically detects Python, Node.js, and npm
+- ✅ **Smart npm Detection**: Finds npm even if not in PATH (Windows)
+- ✅ **Cross-Platform**: Works on all operating systems
+- ✅ **Separate Terminals**: Opens backend and frontend in separate terminal windows
+- ✅ **Auto Browser**: Automatically opens http://localhost:5173/
+- ✅ **Error Handling**: Provides helpful troubleshooting suggestions
 
 #### **Windows: start_all.bat**
 
-The `start_all.bat` script automates the complete development environment setup:
-
-1. **Backend Setup**: Activates virtual environment, runs migrations, starts Django server
-2. **Frontend Setup**: Switches to frontend directory, starts Vite development server
-3. **Browser Launch**: Automatically opens http://localhost:5173/ in your default browser
+For Windows users who prefer batch files:
 
 ```cmd
-# From project root directory
 .\start_all.bat
 ```
 
-#### **Linux/macOS: start_all.sh**
+#### **Development Workflow**
 
-The `start_all.sh` script provides the same functionality for Unix-based systems:
+1. **First Time Setup**: Run `python start_development.py` to set up everything
+2. **Daily Development**: Simply run `python start_development.py` to start both servers
+3. **Manual Control**: If you need fine control, use the manual setup commands above
 
-1. **Prerequisites Check**: Verifies Python3, Node.js, and npm are installed
-2. **Backend Setup**: Creates/activates virtual environment, installs dependencies, runs migrations
-3. **Frontend Setup**: Installs dependencies and starts development server
-4. **Process Management**: Starts both servers in background with proper cleanup on exit
+**What You'll See:**
 
-```bash
-# From project root directory
-chmod +x start_all.sh  # Make executable (first time only)
-./start_all.sh
-```
-
-Both scripts are ideal for quickly getting both backend and frontend running simultaneously during development.
+- **Django Backend Terminal**: Running on http://127.0.0.1:8000/
+- **React Frontend Terminal**: Running on http://localhost:5173/
+- **Browser**: Automatically opens to the React application
