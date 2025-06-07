@@ -13,10 +13,10 @@ import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import { PageLoadingState } from "./common/LoadingComponents";
 
-import "../styles/TabSwitcher.css";
+import LayoutRow from "../globals/LayoutRow";
+import "../globals/TabSwitcher.css";
 import "../styles/TherapistDashboard.css"; // Reuse therapist styles for consistency
 import { runAuthDiagnostics, testLogin } from "../utils/authFixer";
-import LayoutRow from "./LayoutRow";
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
