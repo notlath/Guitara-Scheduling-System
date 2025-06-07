@@ -80,7 +80,7 @@ A web-based scheduling system designed to streamline operations for Royal Care H
 - ✅ **Real-time Features**: WebSocket integration for live updates
 - ✅ **Archive Organization**: Complete reorganization of test scripts and documentation
 
-### **Recent Improvements (January 2025)**
+### **Recent Improvements (June 2025)**
 
 - Complete archive system organization with categorized scripts and documentation
 - Database transition from Supabase to local SQLite for easier development
@@ -213,7 +213,7 @@ The project includes a comprehensive `/archive` directory that contains:
 
 ### Recent Organization Updates
 
-- **January 2025** - Complete archive organization and documentation cleanup:
+- **June 2025** - Complete archive organization and documentation cleanup:
   - All test scripts moved to `archive/scripts/testing/` with organized subdirectories
   - Documentation updated with proper script references and implementation details
   - Database migration history preserved in `archive/migrations_history/`
