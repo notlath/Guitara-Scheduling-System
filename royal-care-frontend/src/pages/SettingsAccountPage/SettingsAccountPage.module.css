@@ -1,1 +1,5 @@
 /* Place your SettingsAccountPage specific styles here */
+
+.settings-content {
+  max-width: var(--container-max-width);
+}

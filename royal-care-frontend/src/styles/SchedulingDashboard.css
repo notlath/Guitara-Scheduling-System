@@ -23,39 +23,6 @@
   font-weight: 700;
 }
 
-.view-selector {
-  display: flex;
-  /* border: 1px solid var(--background-200); */
-  border-radius: 4px;
-  overflow: hidden;
-  /* background: var(--background-50); */
-  margin-bottom: var(--spacing-ml);
-}
-
-.view-selector button {
-  background: var(--background-40);
-  border-radius: 100px;
-  border: none;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  color: var(--text);
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-weight: 400;
-  transition: background-color 0.2s;
-  margin-right: var(--spacing-xs);
-}
-
-.view-selector button.active {
-  background-color: var(--primary);
-  color: var(--background);
-  font-weight: 400;
-}
-
-.view-selector button:not(.active):hover {
-  background-color: var(--background-100);
-}
-
 .loading-spinner {
   text-align: center;
   padding: var(--spacing-lg);

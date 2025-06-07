@@ -1,0 +1,38 @@
+/* TabSwitcher & ViewSelector shared styles */
+.tab-switcher,
+.view-selector {
+  display: flex;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-bottom: var(--spacing-sm);
+  white-space: nowrap;
+  gap: 0;
+}
+
+.tab-btn,
+.view-selector button {
+  background: var(--background-40);
+  border-radius: 100px;
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--background-600);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 400;
+  transition: background-color 0.2s;
+  margin-right: var(--spacing-xs);
+  flex: 0 0 auto;
+}
+
+.tab-btn.active,
+.view-selector button.active {
+  background-color: var(--primary);
+  color: var(--background);
+  font-weight: 400;
+}
+
+.tab-btn:not(.active):hover,
+.view-selector button:not(.active):hover {
+  background-color: var(--background-100);
+}

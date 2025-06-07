@@ -52,12 +52,6 @@
   transition: background-color 0.2s, color 0.2s;
 }
 
-.sublinks a:hover:not(.active-link),
-.sublink-parent:hover {
-  /* background-color: var(--background-100);
-  color: var(--primary); */
-}
-
 .divider {
   height: 1px;
   background: var(--background-200);
@@ -124,11 +118,6 @@
 .sublinks.open a,
 .sublinks.open a.active-link {
   transition: background-color 0.2s, color 0.2s, opacity 0.3s, transform 0.3s;
-}
-
-.sublinks.open a:hover:not(.active-link) {
-  /* background-color: var(--background-100);
-  color: var(--primary); */
 }
 
 .sublinks.open a:nth-child(1) {
@@ -244,12 +233,11 @@
 
 /* Sidebar sublink icon size variable */
 :root {
-  --sidebar-sublink-icon-size: 1em;
+  --sidebar-sublink-icon-size: 1.1em;
 }
 
 /* Fix icon shrinking when text is long in sidebar links */
-.sublinks a svg,
-.sidebar-link-content svg {
+.sidebar a svg {
   flex: 0 0 auto;
   min-width: var(--sidebar-sublink-icon-size);
   min-height: var(--sidebar-sublink-icon-size);

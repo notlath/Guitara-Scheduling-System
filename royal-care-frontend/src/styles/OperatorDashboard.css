@@ -41,35 +41,6 @@
   background-color: #c0392b;
 }
 
-.view-selector {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.view-selector button {
-  background: none;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  font-size: 1rem;
-  color: #7f8c8d;
-  border-bottom: 3px solid transparent;
-  transition: all 0.3s;
-}
-
-.view-selector button:hover {
-  color: #2c3e50;
-  background-color: #f8f9fa;
-}
-
-.view-selector button.active {
-  color: #3498db;
-  border-bottom-color: #3498db;
-  font-weight: 600;
-}
-
 .loading-spinner {
   text-align: center;
   padding: 40px;
@@ -177,9 +148,15 @@
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .appointment-details {

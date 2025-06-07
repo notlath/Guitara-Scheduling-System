@@ -169,4 +169,7 @@ small {
   --spacing-xl: 4rem; /* 64px */
   --spacing-xxl: 5rem; /* 80px */
   --spacing-xxxl: 6rem; /* 96px */
+
+  /* Container max width */
+  --container-max-width: 1100px;
 }
