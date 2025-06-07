@@ -133,7 +133,7 @@ if (syncService.shouldRefresh("operator_appointments", 30000)) {
 
 ## 🧪 Testing & Validation
 
-### **Test Script**: `test_real_time_sync.py`
+### **Test Script**: `archive/scripts/testing/test_real_time_sync.py`
 
 Validates:
 
@@ -170,7 +170,7 @@ royal-care-frontend/src/
 │   └── scheduling/
 │       ├── SchedulingDashboard.jsx ✅ (Enhanced polling + sync listeners)
 │       └── AvailabilityManager.jsx ✅ (Broadcasting sync events)
-└── test_real_time_sync.py ✅ (Validation script)
+└── archive/scripts/testing/test_real_time_sync.py ✅ (Validation script)
 ```
 
 ### **Key Enhancements Per File**
@@ -250,4 +250,4 @@ The real-time synchronization system is now **production-ready** with:
 
 **Implementation Date**: June 7, 2025  
 **Status**: ✅ **COMPLETED & PRODUCTION READY**  
-**Next Test**: Run `python test_real_time_sync.py` to validate functionality
+**Next Test**: Run `python archive/scripts/testing/test_real_time_sync.py` to validate functionality

@@ -120,7 +120,7 @@ const getDashboardRoute = () => {
 
 1. `royal-care-frontend/src/pages/LoginPage/LoginPage.jsx` - Fixed therapist login redirect
 2. `royal-care-frontend/src/components/auth/Login.jsx` - Fixed therapist login redirect
-3. `test_logo_click_functionality.js` - Updated test to verify corrected behavior
+3. `archive/scripts/testing/test_logo_click_functionality.js` - Updated test to verify corrected behavior
 
 ## 🎉 Implementation Status: **COMPLETE**
 

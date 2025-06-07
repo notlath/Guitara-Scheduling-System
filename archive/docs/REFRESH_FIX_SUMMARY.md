@@ -71,9 +71,9 @@
 
 ## 🔍 Validation Scripts Created
 
-1. **`test_refresh_behavior.js`** - Browser console test
-2. **`test_refresh_navigation_guide.js`** - Manual testing guide
-3. **`validate_refresh_fix.js`** - Implementation validation
+1. **`archive/scripts/testing/test_refresh_behavior.js`** - Browser console test
+2. **`archive/scripts/testing/test_refresh_navigation_guide.js`** - Manual testing guide
+3. **`archive/scripts/testing/validate_refresh_fix.js`** - Implementation validation
 4. **`PAGE_REFRESH_REDIRECT_FIX.md`** - Complete documentation
 
 ## 🚀 Implementation Status

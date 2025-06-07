@@ -84,7 +84,7 @@ Created utility scripts to check and fix database issues:
 
 - `check_database_staff.py`: Directly examines the SQLite database
 - `fix_database_staff.py`: Allows enabling all disabled staff members
-- `test_isStaffActive_function.js`: Tests the frontend logic with various data types
+- `archive/scripts/testing/test_isStaffActive_function.js`: Tests the frontend logic with various data types
 
 ## Usage Instructions
 
@@ -100,18 +100,18 @@ Created utility scripts to check and fix database issues:
 1. Run the database check script to verify actual database status:
 
    ```bash
-   python check_database_staff.py
+   python archive/scripts/database/check_database_staff.py
    ```
 
 2. If staff members are incorrectly disabled in the database, run:
 
    ```bash
-   python fix_database_staff.py
+   python archive/scripts/database/fix_database_staff.py
    ```
 
 3. Test the frontend logic with:
    ```bash
-   node test_isStaffActive_function.js
+   node archive/scripts/testing/test_isStaffActive_function.js
    ```
 
 ## Key Improvements
@@ -165,7 +165,7 @@ The solution handles these test cases:
 
 - `check_database_staff.py`: Database inspection
 - `fix_database_staff.py`: Database repair tool
-- `test_isStaffActive_function.js`: Frontend logic testing
+- `archive/scripts/testing/test_isStaffActive_function.js`: Frontend logic testing
 
 ## Conclusion
 

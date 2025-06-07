@@ -87,8 +87,8 @@ const setView = (newView) => {
 
 ### Test Files Created
 
-1. **`test_scheduling_view_persistence.js`** - Manual testing instructions
-2. **`validate_scheduling_view_persistence.js`** - Automated validation script
+1. **`archive/scripts/testing/test_scheduling_view_persistence.js`** - Manual testing instructions
+2. **`archive/scripts/testing/validate_scheduling_view_persistence.js`** - Automated validation script
 
 ### Manual Testing Steps
 

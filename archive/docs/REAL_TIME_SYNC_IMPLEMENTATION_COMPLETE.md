@@ -152,8 +152,8 @@ Therapist Action → AvailabilityManager
 
 ### Testing
 
-- `test_frontend_sync.js` (comprehensive frontend sync testing)
-- `test_real_time_sync.py` (backend API sync testing)
+- `archive/scripts/testing/test_frontend_sync.js` (comprehensive frontend sync testing)
+- `archive/scripts/testing/test_real_time_sync.py` (backend API sync testing)
 
 ## Deployment Readiness
 

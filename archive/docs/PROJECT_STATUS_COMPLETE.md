@@ -22,7 +22,7 @@
 - ✅ Frontend UI handles cross-midnight time ranges
 - ✅ Validation logic for overnight appointments
 - ✅ Time display formatting for 24+ hour ranges
-- ✅ Test script: `test_cross_day_availability.py`
+- ✅ Test script: `archive/scripts/testing/test_cross_day_availability.py`
 
 ### 4. **Disabled Account Management**
 
@@ -31,7 +31,7 @@
 - ✅ Backend validation and error responses
 - ✅ Frontend warning dialogs and status indicators
 - ✅ Operator tools for account status management
-- ✅ Test script: `test_disabled_account_prevention.py`
+- ✅ Test script: `archive/scripts/testing/test_disabled_account_prevention.py`
 
 ### 5. **Auto-Retry Login for Re-enabled Accounts**
 
@@ -39,7 +39,7 @@
 - ✅ Frontend polling logic in `auth.js`
 - ✅ Enhanced `DisabledAccountAlert.jsx` with auto-retry
 - ✅ Seamless login experience after account re-enablement
-- ✅ Test script: `test_auto_retry_login.py`
+- ✅ Test script: `archive/scripts/testing/test_auto_retry_login.py`
 
 ### 6. **Availability Management Optimizations**
 
@@ -105,11 +105,11 @@ guitara/
 
 ### Created Test Scripts
 
-- `test_cross_day_availability.py` - Validates overnight scheduling
-- `test_disabled_account_prevention.py` - Tests disabled staff logic
-- `test_auto_retry_login.py` - Validates seamless re-enablement
-- `test_availability_manager_fixes.py` - General availability tests
-- `test_staff_api_debug.py` - Staff status debugging
+- `archive/scripts/testing/test_cross_day_availability.py` - Validates overnight scheduling
+- `archive/scripts/testing/test_disabled_account_prevention.py` - Tests disabled staff logic
+- `archive/scripts/testing/test_auto_retry_login.py` - Validates seamless re-enablement
+- `archive/scripts/testing/test_availability_manager_fixes.py` - General availability tests
+- `archive/scripts/testing/test_staff_api_debug.py` - Staff status debugging
 - `debug_user_is_active.py` - User status verification
 - `check_database_staff.py` - Database status checker
 - `fix_database_staff.py` - Database status corrector

@@ -103,7 +103,7 @@ const normalizedStaffData = {
 Run the debug script:
 
 ```bash
-python debug_staff_data.py
+python archive/scripts/database/debug_staff_data.py
 ```
 
 ### 3. Manual Verification

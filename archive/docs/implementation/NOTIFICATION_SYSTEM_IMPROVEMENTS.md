@@ -163,8 +163,8 @@ This document summarizes the improvements made to the notification system in the
 
 ### Test Data Creation
 
-- Run `python create_test_notifications.py` to populate test notifications
-- Run `python check_notifications.py` to verify database state
+- Run `python archive/scripts/notification/create_test_notifications.py` to populate test notifications
+- Run `python archive/scripts/notification/check_notifications.py` to verify database state
 
 ## 📈 Results
 
