@@ -260,7 +260,11 @@ The project has evolved through different database configurations:
 - **Production**: PostgreSQL support maintained in settings
 - **History**: Originally used Supabase/PostgreSQL, transitioned to local SQLite for easier development setup
 
-### **Quick Start with start_all.bat**
+### **Quick Start Scripts**
+
+Automated development environment setup scripts are available for different operating systems:
+
+#### **Windows: start_all.bat**
 
 The `start_all.bat` script automates the complete development environment setup:
 
@@ -268,11 +272,24 @@ The `start_all.bat` script automates the complete development environment setup:
 2. **Frontend Setup**: Switches to frontend directory, starts Vite development server
 3. **Browser Launch**: Automatically opens http://localhost:5173/ in your default browser
 
-#### Usage
-
 ```cmd
 # From project root directory
 .\start_all.bat
 ```
 
-This script is ideal for quickly getting both backend and frontend running simultaneously during development.
+#### **Linux/macOS: start_all.sh**
+
+The `start_all.sh` script provides the same functionality for Unix-based systems:
+
+1. **Prerequisites Check**: Verifies Python3, Node.js, and npm are installed
+2. **Backend Setup**: Creates/activates virtual environment, installs dependencies, runs migrations
+3. **Frontend Setup**: Installs dependencies and starts development server
+4. **Process Management**: Starts both servers in background with proper cleanup on exit
+
+```bash
+# From project root directory
+chmod +x start_all.sh  # Make executable (first time only)
+./start_all.sh
+```
+
+Both scripts are ideal for quickly getting both backend and frontend running simultaneously during development.
