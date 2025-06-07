@@ -162,9 +162,10 @@ This frontend connects to the Django backend located in the `/guitara` directory
    - Reuse global styles and components for a consistent look and feel.
    - Avoid duplicating logic or UI patterns that already exist in the codebase.
 
-4. **Box Shadows:**
+4. **Box Shadows & Borders:**
 
    - **Do NOT use `box-shadow`.**
+   - If you need separation or emphasis, use a border instead (with global variables from `theme.css` or `app.css`).
    - If you need to blur or dim the background (e.g., for modals or overlays), use:
      ```css
      background: rgba(0, 0, 0, 0.6);
