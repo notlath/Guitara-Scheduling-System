@@ -302,15 +302,14 @@ const AvailabilityManager = () => {
               value={selectedStaff}
               onChange={handleStaffChange}
             >
-              <option value="">-- Select a staff member --</option>
-              {filteredStaffMembers.map((staff) => (
+              <option value="">-- Select a staff member --</option>              {filteredStaffMembers.map((staff) => (
                 <option key={staff.id} value={staff.id}>
                   {staff.first_name} {staff.last_name} ({staff.role})
                 </option>
               ))}
             </select>
           </div>
-        )}{" "}
+        )}
         <div className="filter-group">
           <label htmlFor="date">Select Date:</label>
           <input
@@ -355,10 +354,9 @@ const AvailabilityManager = () => {
                 {timeSlots.map((slot) => (
                   <option key={slot} value={slot}>
                     {slot}
-                  </option>
-                ))}
+                  </option>                ))}
               </select>
-            </div>{" "}
+            </div>
             <div className="form-group">
               <label htmlFor="endTime">End Time:</label>
               <select
@@ -470,8 +468,7 @@ const AvailabilityManager = () => {
               </tr>
             </thead>
             <tbody>
-              {availabilities.map((availability) => (
-                <tr
+              {availabilities.map((availability) => (                <tr
                   key={availability.id}
                   className={
                     availability.is_available ? "available" : "unavailable"
@@ -479,7 +476,7 @@ const AvailabilityManager = () => {
                 >
                   <td>{new Date(availability.date).toLocaleDateString()}</td>
                   <td>{availability.start_time}</td>
-                  <td>{availability.end_time}</td>{" "}
+                  <td>{availability.end_time}</td>
                   <td>
                     {availability.is_available ? "Available" : "Unavailable"}
                   </td>
