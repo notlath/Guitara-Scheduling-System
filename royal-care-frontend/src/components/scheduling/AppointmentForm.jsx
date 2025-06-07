@@ -9,6 +9,14 @@ import {
   fetchStaffMembers,
   updateAppointment,
 } from "../../features/scheduling/schedulingSlice";
+import {
+  LoadingSpinner,
+  LoadingButton,
+  FormLoadingOverlay,
+  InlineLoader,
+  OptimisticIndicator,
+  SkeletonLoader
+} from "../common/LoadingComponents";
 import "../../styles/AppointmentForm.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 
@@ -851,24 +859,41 @@ const AppointmentForm = ({
       setIsSubmitting(false);
     }
   };
-
   // Show loading only if we don't have essential form data yet
   if (!isFormReady && (loading || !services.length) && services.length === 0) {
-    return <div className="loading">Loading appointment form...</div>;
+    return (
+      <LoadingSpinner 
+        size="large" 
+        variant="primary" 
+        text="Loading appointment form..." 
+        className="appointment-form-loading"
+      />
+    );
   }
 
   // If we have services but form is still not ready after timeout, show form anyway
   if (!isFormReady && services.length > 0) {
     console.warn("Form forced to display despite not being ready");
-  }
-
-  return (
+  }  return (
     <div className="appointment-form-container">
       <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
 
       {errors.form && <div className="error-message">{errors.form}</div>}
 
-      <form onSubmit={handleSubmit} className="appointment-form">
+      {/* Form Loading Overlay for submission */}
+      <FormLoadingOverlay 
+        show={isSubmitting} 
+        message={appointment ? "Updating appointment..." : "Creating appointment..."} 
+      />
+
+      {/* Optimistic indicator for availability fetching */}
+      <OptimisticIndicator 
+        show={fetchingAvailability} 
+        message="Checking availability..." 
+        position="top-right"
+      />
+
+      <form onSubmit={handleSubmit} className="appointment-form" style={{ position: 'relative' }}>
         <div className="form-group">
           <label htmlFor="client">Client:</label>
           <select
@@ -932,10 +957,9 @@ const AppointmentForm = ({
             onChange={handleChange}
             className={errors.therapist ? "error" : ""}
           >
-            <option value="">Select a therapist</option>
-            {fetchingAvailability ? (
+            <option value="">Select a therapist</option>            {fetchingAvailability ? (
               <option value="" disabled>
-                Loading available therapists...
+                <InlineLoader size="small" variant="subtle" /> Checking availability...
               </option>
             ) : availableTherapists && availableTherapists.length > 0 ? (
               availableTherapists.map((therapist) => (
@@ -973,10 +997,9 @@ const AppointmentForm = ({
             value={formData.driver}
             onChange={handleChange}
           >
-            <option value="">No driver needed</option>
-            {fetchingAvailability ? (
+            <option value="">No driver needed</option>            {fetchingAvailability ? (
               <option value="" disabled>
-                Loading available drivers...
+                <InlineLoader size="small" variant="subtle" /> Checking availability...
               </option>
             ) : availableDrivers && availableDrivers.length > 0 ? (
               availableDrivers.map((driver) => (
@@ -1073,9 +1096,7 @@ const AppointmentForm = ({
             placeholder="Any special instructions or notes"
             rows="3"
           />
-        </div>
-
-        <div className="form-actions">
+        </div>        <div className="form-actions">
           <button
             type="button"
             className="cancel-button"
@@ -1084,17 +1105,16 @@ const AppointmentForm = ({
           >
             Cancel
           </button>
-          <button
+          <LoadingButton
             type="submit"
+            loading={isSubmitting}
+            loadingText={appointment ? "Updating..." : "Creating..."}
+            variant="primary"
+            size="medium"
             className="submit-button"
-            disabled={isSubmitting}
           >
-            {isSubmitting
-              ? "Saving..."
-              : appointment
-              ? "Update Appointment"
-              : "Create Appointment"}
-          </button>
+            {appointment ? "Update Appointment" : "Create Appointment"}
+          </LoadingButton>
         </div>
       </form>
     </div>

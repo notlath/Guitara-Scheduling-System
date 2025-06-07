@@ -7,6 +7,14 @@ import {
   fetchTodayAppointments,
   fetchUpcomingAppointments,
 } from "../../features/scheduling/schedulingSlice";
+import {
+  LoadingSpinner,
+  LoadingButton,
+  PageLoadingState,
+  SkeletonLoader,
+  TableLoadingState,
+  InlineLoader
+} from "../common/LoadingComponents";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import syncService from "../../services/syncService";
 
@@ -175,8 +183,17 @@ const SchedulingDashboard = () => {
         return status;
     }
   };
-
   const renderAppointmentsList = (appointmentsList) => {
+    if (loading && appointmentsList.length === 0) {
+      return (
+        <div className="appointments-list">
+          <SkeletonLoader lines={4} avatar={true} className="appointment-skeleton" />
+          <SkeletonLoader lines={4} avatar={true} className="appointment-skeleton" />
+          <SkeletonLoader lines={4} avatar={true} className="appointment-skeleton" />
+        </div>
+      );
+    }
+
     if (appointmentsList.length === 0) {
       return <p className="no-appointments">No bookings found.</p>;
     }
@@ -330,7 +347,13 @@ const SchedulingDashboard = () => {
         </button>
       </div>
 
-      {loading && <div className="loading-spinner">Loading...</div>}
+      {loading && (
+        <PageLoadingState
+          title="Loading dashboard..."
+          subtitle="Please wait while we fetch your appointments"
+          className="dashboard-loading"
+        />
+      )}
 
       {error && (
         <div className="error-message">
