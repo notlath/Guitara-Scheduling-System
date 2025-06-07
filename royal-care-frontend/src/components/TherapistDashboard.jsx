@@ -15,7 +15,7 @@ import {
   PageLoadingState,
   SkeletonLoader,
   TableLoadingState,
-  OptimisticIndicator
+  OptimisticIndicator,
 } from "./common/LoadingComponents";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
@@ -25,6 +25,7 @@ import "../styles/TherapistDashboard.css";
 import { runAuthDiagnostics, testLogin } from "../utils/authFixer";
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
+import LayoutRow from "./LayoutRow";
 
 const TherapistDashboard = () => {
   const dispatch = useDispatch();
@@ -481,99 +482,98 @@ const TherapistDashboard = () => {
   };
 
   return (
-    <div className="therapist-dashboard">
-      {" "}
-      <div className="dashboard-header">
-        {" "}
-        <div>
-          <h1>Therapist Dashboard</h1>
-          <p>
-            Welcome, {user?.first_name} {user?.last_name}!
-          </p>
-        </div>
-        <div className="action-buttons">
-          <button onClick={handleLogout} className="logout-button">
-            Logout
-          </button>
-        </div>
-      </div>{" "}
-      {/* Only show loading spinner on initial load, not for background updates */}
-      {loading && isInitialLoad && (
-        <PageLoadingState message="Loading your appointments..." />
-      )}
-      {/* Improved error handling with retry option */}
-      {error && !isInitialLoad && (
-        <div className="error-message">
-          <div>
-            {typeof error === "object"
-              ? error.message || error.error || "An error occurred"
-              : error}
+    <div className="global-container">
+      <div className="global-content">
+        <div className="therapist-dashboard">
+          <LayoutRow title="Therapist Dashboard">
+            <div className="action-buttons">
+              <p style={{ margin: 0 }}>
+                Welcome, {user?.first_name} {user?.last_name}!
+              </p>
+              <button onClick={handleLogout} className="logout-button">
+                Logout
+              </button>
+            </div>
+          </LayoutRow>
+          {/* Only show loading spinner on initial load, not for background updates */}
+          {loading && isInitialLoad && (
+            <PageLoadingState message="Loading your appointments..." />
+          )}
+          {/* Improved error handling with retry option */}
+          {error && !isInitialLoad && (
+            <div className="error-message">
+              <div>
+                {typeof error === "object"
+                  ? error.message || error.error || "An error occurred"
+                  : error}
+              </div>
+              <button
+                onClick={() => refreshAppointments(false)}
+                className="retry-button"
+                style={{
+                  marginTop: "10px",
+                  padding: "5px 10px",
+                  backgroundColor: "var(--primary)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          )}{" "}
+          <div className="view-selector">
+            <button
+              className={currentView === "today" ? "active" : ""}
+              onClick={() => setView("today")}
+            >
+              Today's Appointments
+            </button>
+            <button
+              className={currentView === "upcoming" ? "active" : ""}
+              onClick={() => setView("upcoming")}
+            >
+              Upcoming Appointments
+            </button>
+            <button
+              className={currentView === "all" ? "active" : ""}
+              onClick={() => setView("all")}
+            >
+              All My Appointments
+            </button>
           </div>
-          <button
-            onClick={() => refreshAppointments(false)}
-            className="retry-button"
-            style={{
-              marginTop: "10px",
-              padding: "5px 10px",
-              backgroundColor: "var(--primary)",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            Retry
-          </button>
+          <div className="dashboard-content">
+            {currentView === "today" && (
+              <div className="todays-appointments">
+                <h2>Today's Appointments</h2>
+                {renderAppointmentsList(myTodayAppointments)}
+              </div>
+            )}
+            {currentView === "upcoming" && (
+              <div className="upcoming-appointments">
+                <h2>Upcoming Appointments</h2>
+                {renderAppointmentsList(myUpcomingAppointments)}
+              </div>
+            )}
+            {currentView === "all" && (
+              <div className="all-appointments">
+                <h2>All My Appointments</h2>
+                {renderAppointmentsList(myAppointments)}
+              </div>
+            )}{" "}
+          </div>
+          <WebSocketStatus />
+          <RejectionModal
+            isOpen={rejectionModal.isOpen}
+            onClose={handleRejectionCancel}
+            onSubmit={handleRejectionSubmit}
+            appointmentId={rejectionModal.appointmentId}
+            loading={loading}
+          />
         </div>
-      )}{" "}
-      <div className="view-selector">
-        <button
-          className={currentView === "today" ? "active" : ""}
-          onClick={() => setView("today")}
-        >
-          Today's Appointments
-        </button>
-        <button
-          className={currentView === "upcoming" ? "active" : ""}
-          onClick={() => setView("upcoming")}
-        >
-          Upcoming Appointments
-        </button>
-        <button
-          className={currentView === "all" ? "active" : ""}
-          onClick={() => setView("all")}
-        >
-          All My Appointments
-        </button>
       </div>
-      <div className="dashboard-content">
-        {currentView === "today" && (
-          <div className="todays-appointments">
-            <h2>Today's Appointments</h2>
-            {renderAppointmentsList(myTodayAppointments)}
-          </div>
-        )}
-        {currentView === "upcoming" && (
-          <div className="upcoming-appointments">
-            <h2>Upcoming Appointments</h2>
-            {renderAppointmentsList(myUpcomingAppointments)}
-          </div>
-        )}
-        {currentView === "all" && (
-          <div className="all-appointments">
-            <h2>All My Appointments</h2>
-            {renderAppointmentsList(myAppointments)}
-          </div>
-        )}{" "}
-      </div>
-      <WebSocketStatus />
-      <RejectionModal
-        isOpen={rejectionModal.isOpen}
-        onClose={handleRejectionCancel}
-        onSubmit={handleRejectionSubmit}
-        appointmentId={rejectionModal.appointmentId}
-        loading={loading}
-      />
     </div>
   );
 };

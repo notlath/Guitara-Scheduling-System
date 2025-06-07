@@ -1,7 +1,13 @@
+import { useEffect } from "react";
+
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
 
 const SettingsAccountPage = () => {
+  useEffect(() => {
+    document.title = "Account Settings | Royal Care";
+  }, []);
+
   return (
     <div className="settings-container">
       <div className="settings-content">

@@ -17,6 +17,7 @@ import {
   MdQuestionAnswer,
   MdSchedule,
   MdSettings,
+  MdTableChart, // Added for Data link
 } from "react-icons/md";
 import { useSelector } from "react-redux";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
@@ -81,7 +82,7 @@ const MainLayout = () => {
         // Therapists use the specific TherapistDashboard
         return "/dashboard";
       case "driver":
-        // Drivers use the DriverDashboard  
+        // Drivers use the DriverDashboard
         return "/dashboard";
       default:
         return "/dashboard";
@@ -211,8 +212,8 @@ const MainLayout = () => {
               to="/dashboard/settings/data"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              {/* Changed icon to MdAutoAwesomeMosaic for data management */}
-              <MdAutoAwesomeMosaic
+              {/* Changed icon to MdTableChart for data management */}
+              <MdTableChart
                 style={{ marginRight: "0.5em", fontSize: "1.2em" }}
               />
               Data
