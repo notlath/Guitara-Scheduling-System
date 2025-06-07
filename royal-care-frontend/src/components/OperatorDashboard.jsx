@@ -10,6 +10,7 @@ import {
 } from "../features/scheduling/schedulingSlice";
 
 import "../styles/OperatorDashboard.css";
+import "../styles/TabSwitcher.css";
 
 const OperatorDashboard = () => {
   const dispatch = useDispatch();

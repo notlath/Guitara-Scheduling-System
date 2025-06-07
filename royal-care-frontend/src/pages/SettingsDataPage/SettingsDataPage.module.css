@@ -1,1 +1,80 @@
+@import "../../styles/TabSwitcher.css";
+
 /* Place your SettingsDataPage specific styles here */
+
+.settings-container {
+  padding: var(--spacing-md) 0;
+  /* background: var(--background-35); */
+  min-height: 100vh;
+}
+
+.settings-content {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  background: var(--background);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+  padding: var(--spacing-md) var(--spacing-ml) var(--spacing-ml)
+    var(--spacing-ml);
+}
+
+.settings-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-mm);
+}
+
+.add-btn {
+  background: var(--primary);
+  color: var(--background);
+  border: none;
+  border-radius: 6px;
+  padding: var(--spacing-xs) var(--spacing-ml);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.add-btn:hover {
+  background: var(--primary-hover);
+}
+
+.data-table-wrapper {
+  overflow-x: auto;
+  background: var(--background);
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+.data-table th,
+.data-table td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+}
+.data-table th {
+  background: var(--background-50);
+  font-weight: 700;
+  color: var(--text-800);
+}
+.data-table tr {
+  border-bottom: 1px solid var(--background-100);
+}
+.data-table tr:last-child {
+  border-bottom: none;
+}
+.data-table td {
+  color: var(--text-700);
+  font-weight: 400;
+}
+
+.no-data {
+  text-align: center;
+  color: var(--background-500);
+  font-weight: 400;
+}

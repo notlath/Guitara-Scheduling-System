@@ -11,6 +11,7 @@ import {
 } from "../features/scheduling/schedulingSlice";
 
 import "../styles/TherapistDashboard.css";
+import "../styles/TabSwitcher.css";
 import { runAuthDiagnostics, testLogin } from "../utils/authFixer";
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";

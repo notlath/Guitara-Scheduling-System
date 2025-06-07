@@ -10,6 +10,7 @@ import {
 import { FaBell } from "react-icons/fa";
 import { FiPlus } from "react-icons/fi";
 import "../../styles/SchedulingDashboard.css";
+import "../../styles/TabSwitcher.css";
 import ErrorBoundary from "../common/ErrorBoundary";
 import AppointmentForm from "./AppointmentForm";
 import AvailabilityManager from "./AvailabilityManager";
