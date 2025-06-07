@@ -303,41 +303,6 @@ const OperatorDashboard = () => {
     };
   };
 
-  // Helper function to check if appointment can progress to next status
-  const canAdvanceAppointment = (appointment, targetStatus) => {
-    const { status, both_parties_accepted } = appointment;
-
-    // Check dual acceptance requirement
-    if (
-      (targetStatus === "confirmed" || targetStatus === "in_progress") &&
-      !both_parties_accepted
-    ) {
-      return {
-        allowed: false,
-        reason: "Both therapist and driver must accept before proceeding",
-      };
-    }
-
-    // Check valid status transitions
-    const validTransitions = {
-      pending: ["confirmed"],
-      confirmed: ["in_progress"],
-      in_progress: ["completed"],
-      completed: [],
-      cancelled: [],
-      rejected: [],
-    };
-
-    if (!validTransitions[status]?.includes(targetStatus)) {
-      return {
-        allowed: false,
-        reason: `Cannot transition from ${status} to ${targetStatus}`,
-      };
-    }
-
-    return { allowed: true };
-  };
-
   const renderRejectedAppointments = () => {
     if (rejectedAppointments.length === 0) {
       return <p className="no-appointments">No pending rejection reviews.</p>;
