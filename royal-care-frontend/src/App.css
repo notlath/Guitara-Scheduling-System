@@ -85,4 +85,55 @@ input {
   background-color: var(--primary-hover);
 }
 
+/* SchedulingDashboard global action buttons styles */
+
+.action-buttons {
+  display: flex;
+  gap: var(--spacing-xs) !important;
+}
+
+.action-buttons button {
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  transition: background-color 0.2s;
+}
+
+.primary-action-btn {
+  background-color: var(--primary);
+  color: var(--background);
+  border: none;
+  border-radius: 6px;
+  font-size: var(--font-size-base);
+  font-weight: 400;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.primary-action-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+.primary-action-btn .primary-action-icon {
+  margin-right: 0.5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1em;
+}
+
+.notification-button {
+  background-color: var(--background-100);
+  color: var(--text);
+  position: relative;
+}
+
+.notification-button:hover {
+  background-color: var(--background-200);
+}
+
 /* Only utility and component-specific styles here. Use theme.css for all typography and color variables. */

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import styles from "./SettingsDataPage.module.css";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
+import { MdAdd } from "react-icons/md";
 
 const TABS = ["Therapists", "Drivers", "Operators", "Services", "Materials"];
 
@@ -66,7 +67,14 @@ const SettingsDataPage = () => {
       <div className={styles["settings-content"]}>
         <div className={styles["settings-header-row"]}>
           <h1>Data</h1>
-          <button className={styles["add-btn"]}>+ Add</button>
+          <div className="action-buttons">
+            <button className="primary-action-btn">
+              <span className="primary-action-icon">
+                <MdAdd size={20} />
+              </span>{" "}
+              Add
+            </button>
+          </div>
         </div>
         <div className="tab-switcher">
           {TABS.map((tab) => (

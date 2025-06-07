@@ -274,11 +274,13 @@ const SchedulingDashboard = () => {
 
           {user.role === "operator" && (
             <button
-              className="create-appointment-button icon-label-btn"
+              className="primary-action-btn"
               onClick={handleCreateAppointment}
               title="Create Booking"
             >
-              <MdAdd size={20} />
+              <span className="primary-action-icon">
+                <MdAdd size={20} />
+              </span>
               Create Booking
             </button>
           )}
