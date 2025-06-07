@@ -9,23 +9,16 @@ import {
   rejectAppointment,
   updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
-import {
-  LoadingSpinner,
-  LoadingButton,
-  PageLoadingState,
-  SkeletonLoader,
-  TableLoadingState,
-  OptimisticIndicator,
-} from "./common/LoadingComponents";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
+import { PageLoadingState } from "./common/LoadingComponents";
 
+import LayoutRow from "../globals/LayoutRow";
 import "../globals/TabSwitcher.css";
 import "../styles/TherapistDashboard.css";
 import { runAuthDiagnostics, testLogin } from "../utils/authFixer";
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
-import LayoutRow from "../globals/LayoutRow";
 
 const TherapistDashboard = () => {
   const dispatch = useDispatch();
@@ -369,7 +362,13 @@ const TherapistDashboard = () => {
     }
   };
   const renderActionButtons = (appointment) => {
-    const { status, id, therapist_accepted, both_parties_accepted, pending_acceptances } = appointment;
+    const {
+      status,
+      id,
+      therapist_accepted,
+      both_parties_accepted,
+      pending_acceptances,
+    } = appointment;
 
     switch (status) {
       case "pending":
@@ -425,14 +424,10 @@ const TherapistDashboard = () => {
             <div className="appointment-actions">
               <div className="warning-status">
                 ⚠ Waiting for all parties to accept before starting
-              </div>
+              </div>{" "}
             </div>
           );
         }
-              Start Service
-            </button>
-          </div>
-        );
 
       case "in_progress":
         return (

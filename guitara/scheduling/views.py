@@ -579,7 +579,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Update appointment status
         appointment.status = "completed"
-        appointment.save()        # Create notifications for all involved parties
+        appointment.save()  # Create notifications for all involved parties
         self._create_notifications(
             appointment,
             "appointment_updated",
