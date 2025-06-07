@@ -1,12 +1,12 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
+import syncService from "../../services/syncService";
 import {
   sendAppointmentCreate,
   sendAppointmentDelete,
   sendAppointmentUpdate,
 } from "../../services/webSocketService";
 import { handleAuthenticationError } from "../../utils/authUtils";
-import syncService from "../../services/syncService";
 
 // API URL based on environment
 const API_URL =
@@ -859,14 +859,14 @@ export const createAvailability = createAsyncThunk(
       );
 
       console.log("Availability creation successful:", response.data);
-      
+
       // Broadcast sync event for real-time updates across dashboards
       syncService.broadcastWithImmediate("availability_created", {
         availability: response.data,
         staffId: response.data.user,
         date: response.data.date,
       });
-      
+
       return response.data;
     } catch (error) {
       console.error("Create availability error:", error.response?.data);
@@ -920,16 +920,16 @@ export const updateAvailability = createAsyncThunk(
           },
         }
       );
-      
+
       console.log("Availability update successful:", response.data);
-      
+
       // Broadcast sync event for real-time updates across dashboards
       syncService.broadcastWithImmediate("availability_updated", {
         availability: response.data,
         staffId: response.data.user,
         date: response.data.date,
       });
-      
+
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -945,20 +945,22 @@ export const deleteAvailability = createAsyncThunk(
   async (id, { rejectWithValue, getState }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
-    
+
     // Get the availability data before deletion for broadcast
     const state = getState();
-    const availabilityToDelete = state.scheduling.availabilities.find(avail => avail.id === id);
-    
+    const availabilityToDelete = state.scheduling.availabilities.find(
+      (avail) => avail.id === id
+    );
+
     try {
       await axios.delete(`${API_URL}availabilities/${id}/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      
+
       console.log("Availability deletion successful:", id);
-      
+
       // Broadcast sync event for real-time updates across dashboards
       if (availabilityToDelete) {
         syncService.broadcastWithImmediate("availability_deleted", {
@@ -968,7 +970,7 @@ export const deleteAvailability = createAsyncThunk(
           staffId: availabilityToDelete.user,
         });
       }
-      
+
       return id;
     } catch (error) {
       return rejectWithValue(
@@ -1189,12 +1191,15 @@ const schedulingSlice = createSlice({
     // Real-time sync reducers for immediate state updates
     syncAvailabilityCreated: (state, action) => {
       const newAvailability = action.payload;
-      console.log("🔄 syncAvailabilityCreated: Adding availability to state", newAvailability);
-      
+      console.log(
+        "🔄 syncAvailabilityCreated: Adding availability to state",
+        newAvailability
+      );
+
       // Invalidate cache for this staff/date
       const cacheKey = `${newAvailability.user}-${newAvailability.date}`;
       delete state.availabilityCache[cacheKey];
-      
+
       // Add to current availabilities if not already there
       const existingIndex = state.availabilities.findIndex(
         (avail) => avail.id === newAvailability.id
@@ -1205,12 +1210,15 @@ const schedulingSlice = createSlice({
     },
     syncAvailabilityUpdated: (state, action) => {
       const updatedAvailability = action.payload;
-      console.log("🔄 syncAvailabilityUpdated: Updating availability in state", updatedAvailability);
-      
+      console.log(
+        "🔄 syncAvailabilityUpdated: Updating availability in state",
+        updatedAvailability
+      );
+
       // Invalidate cache for this staff/date
       const cacheKey = `${updatedAvailability.user}-${updatedAvailability.date}`;
       delete state.availabilityCache[cacheKey];
-      
+
       // Update in current availabilities
       const index = state.availabilities.findIndex(
         (avail) => avail.id === updatedAvailability.id
@@ -1221,12 +1229,15 @@ const schedulingSlice = createSlice({
     },
     syncAvailabilityDeleted: (state, action) => {
       const { id, user, date } = action.payload;
-      console.log("🔄 syncAvailabilityDeleted: Removing availability from state", { id, user, date });
-      
+      console.log(
+        "🔄 syncAvailabilityDeleted: Removing availability from state",
+        { id, user, date }
+      );
+
       // Invalidate cache for this staff/date
       const cacheKey = `${user}-${date}`;
       delete state.availabilityCache[cacheKey];
-      
+
       // Remove from current availabilities
       state.availabilities = state.availabilities.filter(
         (avail) => avail.id !== id

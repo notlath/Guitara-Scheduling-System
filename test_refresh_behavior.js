@@ -9,32 +9,32 @@ console.log("🧪 Testing Refresh Navigation Behavior");
 function testRefreshBehavior() {
   const currentUrl = window.location.href;
   const currentPath = window.location.pathname;
-  
+
   console.log("📍 Current URL:", currentUrl);
   console.log("📍 Current Path:", currentPath);
-  
+
   // Check if we're on a dashboard route
-  if (currentPath.startsWith('/dashboard')) {
+  if (currentPath.startsWith("/dashboard")) {
     console.log("✅ Currently on a dashboard route");
-    
+
     // Get authentication state from Redux store
-    const authState = window.__REDUX_DEVTOOLS_EXTENSION__ 
+    const authState = window.__REDUX_DEVTOOLS_EXTENSION__
       ? window.store?.getState()?.auth
       : null;
-      
+
     console.log("🔐 Auth State:", authState);
-    
+
     if (authState?.user) {
       console.log("✅ User is authenticated");
       console.log("👤 User role:", authState.user.role);
-      
+
       // Test what would happen on refresh
       console.log("🔄 Simulating page refresh behavior...");
-      
+
       // Check if RouteHandler would redirect
-      if (currentPath === '/') {
+      if (currentPath === "/") {
         console.log("⚠️  At root path - would redirect based on user role");
-        if (authState.user.role === 'operator') {
+        if (authState.user.role === "operator") {
           console.log("➡️  Would redirect to: /dashboard");
         } else {
           console.log("➡️  Would redirect to: /dashboard/scheduling");
@@ -46,14 +46,16 @@ function testRefreshBehavior() {
     } else {
       console.log("❌ User not authenticated - would redirect to login");
     }
-  } else if (currentPath === '/') {
+  } else if (currentPath === "/") {
     console.log("📍 At root path");
-    const authState = window.__REDUX_DEVTOOLS_EXTENSION__ 
+    const authState = window.__REDUX_DEVTOOLS_EXTENSION__
       ? window.store?.getState()?.auth
       : null;
-      
+
     if (authState?.user) {
-      console.log("✅ User authenticated - would redirect to appropriate dashboard");
+      console.log(
+        "✅ User authenticated - would redirect to appropriate dashboard"
+      );
     } else {
       console.log("✅ User not authenticated - would show login page");
     }
@@ -65,20 +67,20 @@ function testRefreshBehavior() {
 // Test specific scenarios
 function testSpecificScenarios() {
   console.log("\n🧪 Testing Specific Refresh Scenarios:");
-  
+
   const scenarios = [
-    '/dashboard',
-    '/dashboard/scheduling',
-    '/dashboard/availability',
-    '/dashboard/profile',
-    '/dashboard/settings',
-    '/dashboard/bookings',
-    '/dashboard/attendance',
-    '/dashboard/sales-reports',
-    '/dashboard/inventory'
+    "/dashboard",
+    "/dashboard/scheduling",
+    "/dashboard/availability",
+    "/dashboard/profile",
+    "/dashboard/settings",
+    "/dashboard/bookings",
+    "/dashboard/attendance",
+    "/dashboard/sales-reports",
+    "/dashboard/inventory",
   ];
-  
-  scenarios.forEach(path => {
+
+  scenarios.forEach((path) => {
     console.log(`\n📍 Testing refresh on ${path}:`);
     console.log(`   - Should stay on ${path} after refresh`);
     console.log(`   - RouteHandler should NOT be triggered (not root path)`);

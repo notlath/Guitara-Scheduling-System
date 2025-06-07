@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "../../styles/theme.css";
 import styles from "./LoginPage.module.css";
 
 import { useDispatch } from "react-redux";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import rcLogo from "../../assets/images/rc_logo.jpg";
+import DisabledAccountAlert from "../../components/auth/DisabledAccountAlert";
 import { login } from "../../features/auth/authSlice";
 import { api } from "../../services/api";
-import { cleanupFido2Script } from "../../utils/webAuthnHelper";
 import { handleAuthError } from "../../utils/authErrorHandler";
-import DisabledAccountAlert from "../../components/auth/DisabledAccountAlert";
+import { cleanupFido2Script } from "../../utils/webAuthnHelper";
 
 function LoginPage() {
   const [formData, setFormData] = useState({ username: "", password: "" });
@@ -22,7 +22,9 @@ function LoginPage() {
   const [disabledAccountInfo, setDisabledAccountInfo] = useState({
     type: "account",
     message: "",
-    contactInfo: null,  });  const dispatch = useDispatch();
+    contactInfo: null,
+  });
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -30,7 +32,7 @@ function LoginPage() {
   const getRedirectPath = (userRole) => {
     // Check if there's a saved location to return to
     const from = location.state?.from?.pathname;
-    
+
     if (from && from !== "/" && from.startsWith("/dashboard")) {
       return from;
     }
@@ -60,11 +62,11 @@ function LoginPage() {
     } else {
       setFormData({ ...formData, [name]: value }); // Capture username/password
     }
-  };  // Handle account re-enabled callback from DisabledAccountAlert
+  }; // Handle account re-enabled callback from DisabledAccountAlert
   const handleAccountReEnabled = () => {
     setShowDisabledAlert(false);
     setError("");
-    
+
     // Auto-trigger login attempt
     setTimeout(() => {
       handleSubmit({ preventDefault: () => {} });
@@ -86,16 +88,19 @@ function LoginPage() {
 
           if (response.data.message === "2FA code sent") {
             setNeeds2FA(true); // Show 2FA input
-          } else {            // Handle non-2FA login (if allowed)
+          } else {
+            // Handle non-2FA login (if allowed)
             localStorage.setItem("knoxToken", response.data.token);
             localStorage.setItem("user", JSON.stringify(response.data.user));
             dispatch(login(response.data.user));
             navigate(getRedirectPath(response.data.user.role));
-          }        } catch (authError) {
+          }
+        } catch (authError) {
           // Use enhanced error handling utility
           const errorInfo = handleAuthError(authError);
 
-          if (errorInfo.isDisabled) {            // Clear any stored authentication data to prevent infinite loops
+          if (errorInfo.isDisabled) {
+            // Clear any stored authentication data to prevent infinite loops
             localStorage.removeItem("knoxToken");
             localStorage.removeItem("user");
 
@@ -116,7 +121,7 @@ function LoginPage() {
         const response = await api.post("/auth/two-factor-verify/", {
           email: formData.username, // Assuming username is email
           code: verificationCode,
-        });        // On success
+        }); // On success
         localStorage.setItem("knoxToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         dispatch(login(response.data.user));
@@ -141,9 +146,11 @@ function LoginPage() {
     const emailSubject = `Account Access Issue - ${accountInfo.type} Account`;
     const emailBody = `Hello,\n\nI am unable to access my ${accountInfo.type} account. The system shows that my account is disabled.\n\nUsername: ${formData.username}\nError Message: ${accountInfo.message}\n\nPlease assist me with reactivating my account.\n\nThank you.`;
 
-    window.location.href = `mailto:${contactInfo.email}?subject=${encodeURIComponent(
-      emailSubject
-    )}&body=${encodeURIComponent(emailBody)}`;
+    window.location.href = `mailto:${
+      contactInfo.email
+    }?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(
+      emailBody
+    )}`;
   };
   const handleBackToHome = () => {
     // Clear any stored authentication data to prevent loops
@@ -161,7 +168,9 @@ function LoginPage() {
     navigate("/", { replace: true });
   };
   return (
-    <div className={styles.loginContainer}>      {showDisabledAlert && (
+    <div className={styles.loginContainer}>
+      {" "}
+      {showDisabledAlert && (
         <DisabledAccountAlert
           accountType={disabledAccountInfo.type}
           errorMessage={disabledAccountInfo.message}
@@ -172,7 +181,6 @@ function LoginPage() {
           onAccountReEnabled={handleAccountReEnabled}
         />
       )}
-
       <div className={styles.imageSide}>
         <img src={loginSidepic} alt="Background" />
       </div>

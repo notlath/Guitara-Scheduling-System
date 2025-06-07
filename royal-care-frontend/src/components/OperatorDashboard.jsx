@@ -17,23 +17,23 @@ import "../styles/TabSwitcher.css";
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
+
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
-  
+
   // URL search params for view persistence
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   // Get view from URL params, default to 'rejected'
-  const currentView = searchParams.get('view') || 'rejected';
-  
+  const currentView = searchParams.get("view") || "rejected";
+
   // Helper function to update view in URL
   const setView = (newView) => {
     const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set('view', newView);
+    newSearchParams.set("view", newView);
     setSearchParams(newSearchParams);
   };
-  
+
   const [reviewModal, setReviewModal] = useState({
     isOpen: false,
     appointmentId: null,
@@ -73,7 +73,7 @@ const OperatorDashboard = () => {
   const refreshData = useCallback(() => {
     dispatch(fetchAppointments());
     dispatch(fetchNotifications());
-  }, [dispatch]);  // Setup polling for real-time updates (WebSocket connections disabled)
+  }, [dispatch]); // Setup polling for real-time updates (WebSocket connections disabled)
   useEffect(() => {
     console.log("WebSocket connections disabled - using polling mode");
 
@@ -84,10 +84,10 @@ const OperatorDashboard = () => {
     const setupPolling = () => {
       const interval = syncService.getPollingInterval(20000); // Base 20 seconds
       return setInterval(() => {
-        if (syncService.shouldRefresh('operator_appointments')) {
+        if (syncService.shouldRefresh("operator_appointments")) {
           dispatch(fetchAppointments());
           dispatch(fetchNotifications());
-          syncService.markUpdated('operator_appointments');
+          syncService.markUpdated("operator_appointments");
         }
       }, interval);
     };
@@ -106,7 +106,8 @@ const OperatorDashboard = () => {
   }, [refreshData]);
 
   // Real-time timer for updating countdown displays
-  useEffect(() => {    const timer = setInterval(() => {
+  useEffect(() => {
+    const timer = setInterval(() => {
       // Force re-render every second to update countdown timers
       if (currentView === "timeouts" && pendingAppointments.length > 0) {
         // This will trigger a re-render to update the countdown timers
@@ -502,7 +503,8 @@ const OperatorDashboard = () => {
             ? error.message || error.error || JSON.stringify(error)
             : error}
         </div>
-      )}{" "}      <div className="view-selector">
+      )}{" "}
+      <div className="view-selector">
         <button
           className={currentView === "rejected" ? "active" : ""}
           onClick={() => setView("rejected")}
@@ -534,7 +536,8 @@ const OperatorDashboard = () => {
         >
           Manage Availability
         </button>
-      </div>{" "}      <div className="dashboard-content">
+      </div>{" "}
+      <div className="dashboard-content">
         {currentView === "rejected" && (
           <div className="rejected-appointments">
             <h2>Rejection Reviews</h2>
