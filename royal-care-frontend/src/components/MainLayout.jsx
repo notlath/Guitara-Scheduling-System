@@ -16,6 +16,7 @@ import {
   MdQuestionAnswer,
   MdSchedule,
   MdSettings,
+  MdAutoAwesomeMosaic, // Added for Data icon
 } from "react-icons/md";
 import { useSelector } from "react-redux";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
@@ -184,7 +185,8 @@ const MainLayout = () => {
               to="/dashboard/settings/data"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdInventory
+              {/* Changed icon to MdAutoAwesomeMosaic for data management */}
+              <MdAutoAwesomeMosaic
                 style={{ marginRight: "0.5em", fontSize: "1.2em" }}
               />
               Data
