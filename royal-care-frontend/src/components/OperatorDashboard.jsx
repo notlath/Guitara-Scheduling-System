@@ -495,12 +495,14 @@ const OperatorDashboard = () => {
           onClick={() => setView("all")}
         >
           All Appointments
-        </button>        <button
+        </button>{" "}
+        <button
           className={view === "notifications" ? "active" : ""}
           onClick={() => setView("notifications")}
         >
           Notifications
-        </button>        <button
+        </button>{" "}
+        <button
           className="availability-button"
           onClick={() => navigate("availability")}
         >

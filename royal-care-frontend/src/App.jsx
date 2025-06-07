@@ -8,6 +8,7 @@ import MainLayout from "./components/MainLayout";
 import OperatorDashboard from "./components/OperatorDashboard";
 import TherapistDashboard from "./components/TherapistDashboard";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AvailabilityManager from "./components/scheduling/AvailabilityManager";
 import { login } from "./features/auth/authSlice"; // Import Redux action
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
 import CompanyInfoPage from "./pages/AboutPages/CompanyInfoPage";
@@ -29,7 +30,6 @@ import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
 import SchedulingPage from "./pages/SchedulingPage/SchedulingPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
-import AvailabilityManager from "./components/scheduling/AvailabilityManager";
 import { validateToken } from "./services/auth";
 // Import auth fixer for automatic testing
 import "./utils/authFixer";
@@ -146,7 +146,8 @@ const App = () => {
                 <Navigate to="/" />
               )
             }
-          />{" "}          <Route path="scheduling" element={<SchedulingPage />} />
+          />{" "}
+          <Route path="scheduling" element={<SchedulingPage />} />
           <Route path="availability" element={<AvailabilityManager />} />
           <Route path="bookings" element={<BookingsPage />} />
           <Route path="attendance" element={<AttendancePage />} />

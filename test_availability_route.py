@@ -8,13 +8,14 @@ import sys
 import os
 from datetime import datetime
 
+
 def test_availability_route():
     """Test that the /availability route is accessible and working"""
-    
+
     print("=== AVAILABILITY ROUTE TEST ===")
     print(f"Test started at: {datetime.now()}")
     print()
-    
+
     # Instructions for manual testing
     print("MANUAL TESTING STEPS:")
     print("1. Frontend should be running on http://localhost:5173")
@@ -23,9 +24,11 @@ def test_availability_route():
     print("4. Login as an operator")
     print("5. Click the 'Manage Availability' button in OperatorDashboard")
     print("6. Verify you are taken to /availability route (AvailabilityManager)")
-    print("7. Alternatively, navigate directly to http://localhost:5173/dashboard/availability")
+    print(
+        "7. Alternatively, navigate directly to http://localhost:5173/dashboard/availability"
+    )
     print()
-    
+
     print("EXPECTED BEHAVIOR:")
     print("✓ Navigation should work without 'No routes matched' error")
     print("✓ AvailabilityManager component should load")
@@ -34,14 +37,18 @@ def test_availability_route():
     print("✓ Should prevent adding availability for disabled accounts")
     print("✓ Should support cross-day availability (overnight shifts)")
     print()
-    
+
     print("IMPLEMENTATION DETAILS:")
-    print("✓ Added import: import AvailabilityManager from './components/scheduling/AvailabilityManager'")
-    print("✓ Added route: <Route path='availability' element={<AvailabilityManager />} />")
+    print(
+        "✓ Added import: import AvailabilityManager from './components/scheduling/AvailabilityManager'"
+    )
+    print(
+        "✓ Added route: <Route path='availability' element={<AvailabilityManager />} />"
+    )
     print("✓ Route is within protected dashboard routes")
     print("✓ Frontend build succeeded without errors")
     print()
-    
+
     print("COMPLETED FEATURES:")
     print("✓ Cross-day availability support (overnight shifts)")
     print("✓ Disabled account prevention with validation")
@@ -53,12 +60,13 @@ def test_availability_route():
     print("✓ Navigation integration from OperatorDashboard")
     print("✓ Route registration in App.jsx")
     print()
-    
+
     print("STATUS: Route implementation complete! 🎉")
     print("The /availability route should now be fully functional.")
     print()
-    
+
     return True
+
 
 if __name__ == "__main__":
     success = test_availability_route()
