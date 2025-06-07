@@ -146,7 +146,7 @@ if (isAuthLoading) {
 
 Created test scripts to validate the fix:
 
-- `test_refresh_behavior.js` - Browser console test
+- `archive/scripts/testing/test_refresh_behavior.js` - Browser console test
 - `test_refresh_navigation_guide.js` - Manual testing guide
 - `test_refresh_navigation.js` - Automated Selenium test
 

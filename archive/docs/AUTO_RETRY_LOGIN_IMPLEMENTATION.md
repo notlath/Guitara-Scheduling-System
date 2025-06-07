@@ -147,7 +147,7 @@ Run the test script:
 
 ```bash
 cd Guitara-Scheduling-System
-python test_auto_retry_login.py
+python archive/scripts/testing/test_auto_retry_login.py
 ```
 
 ## Benefits
