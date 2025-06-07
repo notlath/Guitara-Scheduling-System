@@ -9,6 +9,14 @@ import {
   rejectAppointment,
   updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
+import {
+  LoadingSpinner,
+  LoadingButton,
+  PageLoadingState,
+  SkeletonLoader,
+  TableLoadingState,
+  OptimisticIndicator
+} from "./common/LoadingComponents";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 
@@ -491,7 +499,7 @@ const TherapistDashboard = () => {
       </div>{" "}
       {/* Only show loading spinner on initial load, not for background updates */}
       {loading && isInitialLoad && (
-        <div className="loading-spinner">Loading appointments...</div>
+        <PageLoadingState message="Loading your appointments..." />
       )}
       {/* Improved error handling with retry option */}
       {error && !isInitialLoad && (

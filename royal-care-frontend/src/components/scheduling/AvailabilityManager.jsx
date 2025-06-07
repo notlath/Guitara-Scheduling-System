@@ -7,6 +7,14 @@ import {
   fetchStaffMembers,
   updateAvailability,
 } from "../../features/scheduling/schedulingSlice";
+import {
+  LoadingSpinner,
+  LoadingButton,
+  PageLoadingState,
+  SkeletonLoader,
+  TableLoadingState,
+  OptimisticIndicator
+} from "../common/LoadingComponents";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import "../../styles/AvailabilityManager.css";
 
@@ -614,14 +622,14 @@ const AvailabilityManager = () => {
                   checked={newAvailabilityForm.isAvailable}
                   onChange={handleNewAvailabilityChange}
                 />
-              </div>
-              <button
+              </div>              <LoadingButton
                 className="add-button"
                 onClick={handleAddAvailability}
-                disabled={!selectedStaff || loading}
+                disabled={!selectedStaff}
+                loading={loading}
               >
                 Add Availability
-              </button>
+              </LoadingButton>
             </div>
           </div>
         )}{" "}
@@ -675,10 +683,11 @@ const AvailabilityManager = () => {
               </div>
             )}
           </div>
-        )}
-
-        {loading ? (
-          <div className="loading">Loading...</div>
+        )}        {loading ? (
+          <TableLoadingState 
+            columns={["Date", "Start Time", "End Time", "Status", "Actions"]}
+            rows={3}
+          />
         ) : availabilities.length === 0 ? (
           <p>No availability set for this date.</p>
         ) : (
