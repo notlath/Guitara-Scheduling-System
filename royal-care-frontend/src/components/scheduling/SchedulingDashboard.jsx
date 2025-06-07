@@ -17,6 +17,7 @@ import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
 import WebSocketStatus from "./WebSocketStatus";
 import WeekView from "./WeekView";
+import { MdNotifications, MdAdd } from "react-icons/md";
 
 const SchedulingDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -246,7 +247,7 @@ const SchedulingDashboard = () => {
             onClick={() => setIsNotificationVisible(!isNotificationVisible)}
             title="Notifications"
           >
-            <FaBell size={20} />
+            <MdNotifications size={20} />
             {unreadNotificationCount > 0 && (
               <span className="notification-badge">
                 {unreadNotificationCount}
@@ -260,7 +261,7 @@ const SchedulingDashboard = () => {
               onClick={handleCreateAppointment}
               title="Create Booking"
             >
-              <FiPlus size={20} />
+              <MdAdd size={20} />
               Create Booking
             </button>
           )}

@@ -32,29 +32,32 @@ import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import { validateToken } from "./services/auth";
 // Import auth fixer for automatic testing
 import "./utils/authFixer";
+import SettingsAccountPage from "./pages/SettingsAccountPage";
+import SettingsDataPage from "./pages/SettingsDataPage";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);
-  const dispatch = useDispatch();  useEffect(() => {
+  const dispatch = useDispatch();
+  useEffect(() => {
     // Check if user data exists in localStorage and validate the token
     const checkStoredAuth = async () => {
       const storedUser = localStorage.getItem("user");
       const storedToken = localStorage.getItem("knoxToken");
-      
+
       // Only proceed if both user data and token exist
       if (storedUser && storedToken) {
         try {
           const parsedUser = JSON.parse(storedUser);
-            // Validate if user object has required fields
+          // Validate if user object has required fields
           if (parsedUser && parsedUser.id && parsedUser.role) {
             try {
               // Try to validate the token with the backend
               const validation = await validateToken();
-              
+
               if (validation.valid) {
                 // Token and account are valid, restore session
                 dispatch(login(parsedUser));
-              } else if (validation.reason === 'ACCOUNT_DISABLED') {
+              } else if (validation.reason === "ACCOUNT_DISABLED") {
                 // Account is disabled, clear stored data
                 console.log("Account is disabled, clearing stored data");
                 localStorage.removeItem("user");
@@ -62,12 +65,20 @@ const App = () => {
               } else {
                 // Other validation errors (network, endpoint not found, etc.)
                 // Still restore session but log the issue
-                console.log("Token validation failed:", validation.reason, "- restoring session anyway");
+                console.log(
+                  "Token validation failed:",
+                  validation.reason,
+                  "- restoring session anyway"
+                );
                 dispatch(login(parsedUser));
               }
             } catch (validationError) {
               // If validation fails due to network issues, still restore the session
-              console.log("Token validation error:", validationError, "- restoring session anyway");
+              console.log(
+                "Token validation error:",
+                validationError,
+                "- restoring session anyway"
+              );
               dispatch(login(parsedUser));
             }
           } else {
@@ -83,7 +94,7 @@ const App = () => {
         }
       }
     };
-    
+
     checkStoredAuth();
   }, [dispatch]);
 
@@ -113,7 +124,14 @@ const App = () => {
           path="/forgot-password-confirmation"
           element={<ForgotPasswordConfirmationPage />}
         />{" "}
-        <Route path="/dashboard" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route
             index
             element={
@@ -135,6 +153,8 @@ const App = () => {
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="settings/account" element={<SettingsAccountPage />} />
+          <Route path="settings/data" element={<SettingsDataPage />} />
           {/* Help Pages */}
           <Route path="help">
             <Route path="user-guide" element={<UserGuidePage />} />

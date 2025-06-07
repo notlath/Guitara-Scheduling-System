@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { FaMapMarkerAlt } from "react-icons/fa";
+import { MdLocationOn } from "react-icons/md";
 import "../../styles/CompanyInfo.css";
 
 const CompanyInfoPage = () => {
@@ -115,7 +115,7 @@ const CompanyInfoPage = () => {
                     className="address-link"
                   >
                     38 Kalinangan St., Caniogan, Pasig{" "}
-                    <FaMapMarkerAlt className="map-icon" />
+                    <MdLocationOn className="map-icon" />
                   </a>
                 </p>
                 <p>

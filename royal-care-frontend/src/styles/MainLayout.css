@@ -7,7 +7,7 @@
 
 .sidebar {
   width: 280px;
-  background-color: var(--background-50);
+  background-color: var(--background-25);
   border-right: 1px solid var(--background-100);
   display: flex;
   flex-direction: column;
@@ -44,6 +44,18 @@
   display: flex;
   align-items: center;
   gap: 0.5em;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sublinks a,
+.sublink-parent {
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sublinks a:hover:not(.active-link),
+.sublink-parent:hover {
+  /* background-color: var(--background-100);
+  color: var(--primary); */
 }
 
 .divider {
@@ -86,7 +98,7 @@
 
 .sublinks a {
   font-size: var(--font-size-base);
-  padding: calc(var(--spacing-xm) - 2px) var(--spacing-sm);
+  padding: calc(var(--spacing-xm)) var(--spacing-sm);
   color: var(--text);
   border-radius: 4px;
   background: none;
@@ -104,16 +116,29 @@
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
+  transition: background-color 0.2s, color 0.2s,
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sublinks.open a,
+.sublinks.open a.active-link {
+  transition: background-color 0.2s, color 0.2s, opacity 0.3s, transform 0.3s;
+}
+
+.sublinks.open a:hover:not(.active-link) {
+  /* background-color: var(--background-100);
+  color: var(--primary); */
 }
 
 .sublinks.open a:nth-child(1) {
-  transition-delay: 0.05s;
+  transition-delay: 0s, 0s, 0.05s, 0.05s;
 }
 .sublinks.open a:nth-child(2) {
-  transition-delay: 0.12s;
+  transition-delay: 0s, 0s, 0.12s, 0.12s;
 }
 .sublinks.open a:nth-child(3) {
-  transition-delay: 0.19s;
+  transition-delay: 0s, 0s, 0.19s, 0.19s;
 }
 
 .sublinks:not(.open) a {
@@ -215,6 +240,23 @@
 .sidebar-link-content {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* Sidebar sublink icon size variable */
+:root {
+  --sidebar-sublink-icon-size: 1em;
+}
+
+/* Fix icon shrinking when text is long in sidebar links */
+.sublinks a svg,
+.sidebar-link-content svg {
+  flex: 0 0 auto;
+  min-width: var(--sidebar-sublink-icon-size);
+  min-height: var(--sidebar-sublink-icon-size);
+  max-width: var(--sidebar-sublink-icon-size);
+  max-height: var(--sidebar-sublink-icon-size);
+  font-size: var(--sidebar-sublink-icon-size) !important;
+  display: inline-block;
 }
 
 @media (max-width: 768px) {

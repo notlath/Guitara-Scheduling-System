@@ -27,6 +27,7 @@ const MainLayout = () => {
   const location = useLocation();
   const [showHelpSublinks, setShowHelpSublinks] = useState(false);
   const [showAboutSublinks, setShowAboutSublinks] = useState(false);
+  const [showSettingsSublinks, setShowSettingsSublinks] = useState(false); // State for settings sublinks
   // Get current user from Redux store
   const { user } = useSelector((state) => state.auth);
 
@@ -50,12 +51,21 @@ const MainLayout = () => {
     e.preventDefault();
     setShowHelpSublinks(!showHelpSublinks);
     setShowAboutSublinks(false); // Close other sublinks when opening this one
+    setShowSettingsSublinks(false); // Close settings sublinks
   };
 
   const toggleAboutSublinks = (e) => {
     e.preventDefault();
     setShowAboutSublinks(!showAboutSublinks);
     setShowHelpSublinks(false); // Close other sublinks when opening this one
+    setShowSettingsSublinks(false); // Close settings sublinks
+  };
+
+  const toggleSettingsSublinks = (e) => {
+    e.preventDefault();
+    setShowSettingsSublinks(!showSettingsSublinks);
+    setShowHelpSublinks(false);
+    setShowAboutSublinks(false);
   };
 
   return (
@@ -146,13 +156,41 @@ const MainLayout = () => {
             <MdPerson style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
             Profile
           </NavLink>
-          <NavLink
-            to="/dashboard/settings"
-            className={({ isActive }) => (isActive ? "active-link" : "")}
+          {/* Settings Section with Sublinks */}
+          <a
+            href="#"
+            className="sidebar-link sublink-parent"
+            onClick={toggleSettingsSublinks}
           >
-            <MdSettings style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
-            Settings
-          </NavLink>
+            <span className="sidebar-link-content">
+              <MdSettings style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
+              Settings
+            </span>
+            <span
+              className={`dropdown-icon ${showSettingsSublinks ? "open" : ""}`}
+            >
+              <MdKeyboardArrowDown style={{ fontSize: "1.2em" }} />
+            </span>
+          </a>
+          <div className={`sublinks${showSettingsSublinks ? " open" : ""}`}>
+            <NavLink
+              to="/dashboard/settings/account"
+              className={({ isActive }) => (isActive ? "active-link" : "")}
+            >
+              <MdPerson style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
+              Account (WAIT PLANO KO TO BAGUHIN)
+            </NavLink>
+            <NavLink
+              to="/dashboard/settings/data"
+              className={({ isActive }) => (isActive ? "active-link" : "")}
+            >
+              <MdInventory
+                style={{ marginRight: "0.5em", fontSize: "1.2em" }}
+              />
+              Data
+            </NavLink>
+          </div>
+
           {/* Help Section with Sublinks */}
           <a
             href="#"
@@ -174,7 +212,7 @@ const MainLayout = () => {
               to="/dashboard/help/user-guide"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdMenuBook style={{ marginRight: "0.5em", fontSize: "1.1em" }} />
+              <MdMenuBook style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
               User Guide
             </NavLink>
             <NavLink
@@ -182,7 +220,7 @@ const MainLayout = () => {
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
               <MdQuestionAnswer
-                style={{ marginRight: "0.5em", fontSize: "1.1em" }}
+                style={{ marginRight: "0.5em", fontSize: "1.2em" }}
               />
               FAQs
             </NavLink>
@@ -190,7 +228,7 @@ const MainLayout = () => {
               to="/dashboard/help/contact"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdEmail style={{ marginRight: "0.5em", fontSize: "1.1em" }} />
+              <MdEmail style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
               Contact Email Support
             </NavLink>
           </div>
@@ -218,21 +256,21 @@ const MainLayout = () => {
               to="/dashboard/about/company"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdBusiness style={{ marginRight: "0.5em", fontSize: "1.1em" }} />
+              <MdBusiness style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
               Company Information
             </NavLink>
             <NavLink
               to="/dashboard/about/system"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdDevices style={{ marginRight: "0.5em", fontSize: "1.1em" }} />
+              <MdDevices style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
               System Information
             </NavLink>
             <NavLink
               to="/dashboard/about/developers"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdPeople style={{ marginRight: "0.5em", fontSize: "1.1em" }} />
+              <MdPeople style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
               Developer Information
             </NavLink>
           </div>

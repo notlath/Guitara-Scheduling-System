@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchAvailableDrivers,
@@ -188,10 +188,10 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
         <div className="calendar-header">
           <div className="calendar-nav-buttons">
             <button onClick={prevMonth}>
-              <FaChevronLeft />
+              <MdChevronLeft />
             </button>
             <button onClick={nextMonth}>
-              <FaChevronRight />
+              <MdChevronRight />
             </button>
           </div>
           <h2>

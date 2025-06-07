@@ -28,7 +28,7 @@ coverage==7.4.1
 
 # Utility
 python-dotenv==1.0.0
-bleach
+bleach==6.1.0
 
 # Supabase client
 supabase-py==2.3.5
