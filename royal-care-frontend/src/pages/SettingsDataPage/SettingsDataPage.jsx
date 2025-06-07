@@ -1,5 +1,5 @@
-import "../styles/Placeholders.css";
-import "../styles/Settings.css";
+import "../../styles/Placeholders.css";
+import "../../styles/Settings.css";
 
 const SettingsDataPage = () => {
   return (
