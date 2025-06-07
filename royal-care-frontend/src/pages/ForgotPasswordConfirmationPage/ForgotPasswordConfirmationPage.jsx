@@ -30,7 +30,7 @@ function ForgotPasswordConfirmationPage() {
           <button
             type="submit"
             onClick={handleButtonClick}
-            className={styles.formButton}
+            className="action-btn"
           >
             Back to login
           </button>

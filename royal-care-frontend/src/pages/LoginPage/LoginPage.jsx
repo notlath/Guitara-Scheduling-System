@@ -316,9 +316,8 @@ function LoginPage() {
             </div>
             <button
               type="submit"
-              className={`${styles.loginButton} ${
-                isLoading ? styles.loginButtonDisabled : ""
-              }`}
+              className={`action-btn${isLoading ? " disabled" : ""}`}
+              disabled={isLoading}
             >
               {needs2FA ? "Verify Code" : "Login"}
             </button>

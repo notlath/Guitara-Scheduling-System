@@ -60,15 +60,17 @@ button {
   border-radius: 6px;
 }
 
-input {
+input,
+select,
+textarea {
   width: 100%;
   border: 1px solid var(--background-100);
-  background-color: var(--background-50);
+  background-color: var(--background-35);
   padding: var(--spacing-xm) var(--spacing-sm); /* 8px vertical, 16px horizontal padding */
   border-radius: 6px;
 }
 
-.loginButton {
+.action-btn {
   background-color: var(--primary);
   color: var(--background);
   border: none;
@@ -78,13 +80,14 @@ input {
   border-radius: 6px;
 }
 
-.loginButtonDisabled {
+.action-btn:disabled,
+.action-btn.disabled {
   pointer-events: none;
   cursor: not-allowed;
   background-color: var(--background-400);
 }
 
-.loginButton:hover {
+.action-btn:hover:not(:disabled):not(.disabled) {
   background-color: var(--primary-hover);
 }
 
