@@ -10,6 +10,7 @@ import {
 } from "../features/scheduling/schedulingSlice";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
+import AvailabilityManager from "./scheduling/AvailabilityManager";
 
 import "../styles/OperatorDashboard.css";
 import "../styles/TabSwitcher.css";
@@ -531,8 +532,8 @@ const OperatorDashboard = () => {
           Notifications
         </button>{" "}
         <button
-          className="availability-button"
-          onClick={() => navigate("availability")}
+          className={currentView === "availability" ? "active" : ""}
+          onClick={() => setView("availability")}
         >
           Manage Availability
         </button>
@@ -544,25 +545,27 @@ const OperatorDashboard = () => {
             {renderRejectedAppointments()}
           </div>
         )}
-
         {currentView === "timeouts" && (
           <div className="timeout-monitoring">
             <h2>Timeout Monitoring</h2>
             {renderTimeoutMonitoring()}
           </div>
         )}
-
         {currentView === "all" && (
           <div className="all-appointments">
             <h2>All Appointments</h2>
             {renderAllAppointments()}
           </div>
-        )}
-
+        )}{" "}
         {currentView === "notifications" && (
           <div className="notifications">
             <h2>Notifications</h2>
             {renderNotifications()}
+          </div>
+        )}
+        {currentView === "availability" && (
+          <div className="availability-management">
+            <AvailabilityManager />
           </div>
         )}
       </div>
