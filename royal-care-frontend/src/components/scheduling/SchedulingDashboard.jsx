@@ -6,6 +6,8 @@ import {
   fetchTodayAppointments,
   fetchUpcomingAppointments,
 } from "../../features/scheduling/schedulingSlice";
+import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
+import syncService from "../../services/syncService";
 
 import { FaBell } from "react-icons/fa";
 import { FiPlus } from "react-icons/fi";
@@ -21,6 +23,9 @@ import WeekView from "./WeekView";
 import { MdNotifications, MdAdd } from "react-icons/md";
 
 const SchedulingDashboard = () => {
+  // Set up sync event handlers to update Redux state
+  useSyncEventHandlers();
+  
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
@@ -49,18 +54,29 @@ const SchedulingDashboard = () => {
     // Setup polling for real-time updates (WebSocket connections disabled)
     console.log("WebSocket connections disabled - using polling mode");
 
-    const interval = setInterval(() => {
-      // Call dispatch actions directly to avoid dependency issues
-      dispatch(fetchAppointments());
-      dispatch(fetchTodayAppointments());
-      dispatch(fetchUpcomingAppointments());
-    }, 20000); // Poll every 20 seconds
+    // Real-time sync is handled by useSyncEventHandlers hook
+    // Here we only set up periodic polling as a fallback
+
+    // Smart polling with user activity detection
+    const setupPolling = () => {
+      const interval = syncService.getPollingInterval(20000); // Base 20 seconds
+      return setInterval(() => {
+        if (syncService.shouldRefresh('scheduling_appointments')) {
+          dispatch(fetchAppointments());
+          dispatch(fetchTodayAppointments());
+          dispatch(fetchUpcomingAppointments());
+          syncService.markUpdated('scheduling_appointments');
+        }
+      }, interval);
+    };
+
+    const pollingInterval = setupPolling();
 
     // Cleanup polling interval when component unmounts
     return () => {
-      clearInterval(interval);
+      clearInterval(pollingInterval);
     };
-  }, [dispatch]); // Include dispatch in dependencies
+  }, [dispatch]); // Simplified dependencies
 
   const handleDateSelected = (date) => {
     setSelectedDate(date);

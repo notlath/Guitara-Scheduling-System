@@ -8,6 +8,8 @@ import {
   fetchNotifications,
   reviewRejection,
 } from "../features/scheduling/schedulingSlice";
+import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
+import syncService from "../services/syncService";
 
 import "../styles/OperatorDashboard.css";
 import "../styles/TabSwitcher.css";
@@ -15,6 +17,10 @@ import "../styles/TabSwitcher.css";
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  
+  // Set up sync event handlers to update Redux state
+  useSyncEventHandlers();
+  
   const [view, setView] = useState("rejected"); // 'rejected', 'all', 'notifications', 'timeouts'
   const [reviewModal, setReviewModal] = useState({
     isOpen: false,
@@ -55,23 +61,32 @@ const OperatorDashboard = () => {
   const refreshData = useCallback(() => {
     dispatch(fetchAppointments());
     dispatch(fetchNotifications());
-  }, [dispatch]);
-
-  // Setup polling for real-time updates (WebSocket connections disabled)
+  }, [dispatch]);  // Setup polling for real-time updates (WebSocket connections disabled)
   useEffect(() => {
     console.log("WebSocket connections disabled - using polling mode");
 
-    // Set up polling for real-time updates
-    const interval = setInterval(() => {
-      // Call dispatch actions directly to avoid dependency issues
-      dispatch(fetchAppointments());
-      dispatch(fetchNotifications());
-    }, 20000); // Poll every 20 seconds
+    // Real-time sync is handled by useSyncEventHandlers hook
+    // Here we only set up periodic polling as a fallback
 
-    return () => {
-      clearInterval(interval);
+    // Set up adaptive polling based on user activity
+    const setupPolling = () => {
+      const interval = syncService.getPollingInterval(20000); // Base 20 seconds
+      return setInterval(() => {
+        if (syncService.shouldRefresh('operator_appointments')) {
+          dispatch(fetchAppointments());
+          dispatch(fetchNotifications());
+          syncService.markUpdated('operator_appointments');
+        }
+      }, interval);
     };
-  }, [dispatch]); // Only depend on dispatch
+
+    const pollingInterval = setupPolling();
+
+    // Cleanup polling
+    return () => {
+      clearInterval(pollingInterval);
+    };
+  }, [dispatch]); // Simplified dependencies
 
   // Load data on component mount
   useEffect(() => {
