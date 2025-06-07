@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   MdAccessTime,
+  MdAutoAwesomeMosaic,
   MdBarChart,
   MdBusiness,
   MdCalendarMonth,
@@ -16,7 +17,6 @@ import {
   MdQuestionAnswer,
   MdSchedule,
   MdSettings,
-  MdAutoAwesomeMosaic, // Added for Data icon
 } from "react-icons/md";
 import { useSelector } from "react-redux";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
@@ -69,12 +69,38 @@ const MainLayout = () => {
     setShowAboutSublinks(false);
   };
 
+  // Helper function to get the appropriate dashboard route based on user role
+  const getDashboardRoute = () => {
+    if (!user) return "/dashboard";
+
+    switch (user.role) {
+      case "operator":
+        // Operators use the main dashboard (OperatorDashboard)
+        return "/dashboard";
+      case "therapist":
+        // Therapists use the specific TherapistDashboard
+        return "/dashboard";
+      case "driver":
+        // Drivers use the DriverDashboard  
+        return "/dashboard";
+      default:
+        return "/dashboard";
+    }
+  };
+
+  const handleLogoClick = () => {
+    const route = getDashboardRoute();
+    console.log(
+      `Logo clicked - User role: ${user?.role}, Redirecting to: ${route}`
+    );
+  };
+
   return (
     <div className="main-layout">
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="logo">
-          <NavLink to="/dashboard">
+          <NavLink to={getDashboardRoute()} onClick={handleLogoClick}>
             <img src={rcLogo} alt="Royal Care Logo" />
           </NavLink>
         </div>

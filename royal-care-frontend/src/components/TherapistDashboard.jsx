@@ -27,7 +27,6 @@ const TherapistDashboard = () => {
 
   // URL search params for view persistence
   const [searchParams, setSearchParams] = useSearchParams();
-
   // Get view from URL params, default to 'today'
   const currentView = searchParams.get("view") || "today";
 
@@ -37,8 +36,6 @@ const TherapistDashboard = () => {
     newSearchParams.set("view", newView);
     setSearchParams(newSearchParams);
   };
-
-  const [pollingInterval, setPollingInterval] = useState(null);
   const [rejectionModal, setRejectionModal] = useState({
     isOpen: false,
     appointmentId: null,
@@ -62,10 +59,11 @@ const TherapistDashboard = () => {
   const myTodayAppointments = todayAppointments.filter(
     (apt) => apt.therapist === user?.id
   );
-
   const myUpcomingAppointments = upcomingAppointments.filter(
     (apt) => apt.therapist === user?.id
-  ); // Refresh appointments data silently in background
+  );
+
+  // Refresh appointments data silently in background
   const refreshAppointments = useCallback(
     async (isBackground = false, targetView = null) => {
       // Never show loading indicators for background updates
@@ -75,8 +73,8 @@ const TherapistDashboard = () => {
         // Optimize by only fetching what's needed based on current view
         if (isBackground) {
           // For background updates, fetch only the currently viewed data to reduce load
-          const currentView = targetView || view;
-          switch (currentView) {
+          const viewToUse = targetView || currentView;
+          switch (viewToUse) {
             case "today":
               await dispatch(fetchTodayAppointments());
               break;
@@ -103,7 +101,7 @@ const TherapistDashboard = () => {
         }
       }
     },
-    [dispatch, view]
+    [dispatch, currentView]
   ); // Remove isInitialLoad from dependencies to prevent loops  // Setup polling for real-time updates (WebSocket connections disabled)
   useEffect(() => {
     console.log("WebSocket connections disabled - using polling mode");
@@ -179,7 +177,6 @@ const TherapistDashboard = () => {
       mounted = false;
     };
   }, [dispatch]); // Only depend on dispatch
-
   // Refresh specific view data when view changes (silent background update)
   useEffect(() => {
     if (!isInitialLoad) {
@@ -188,7 +185,7 @@ const TherapistDashboard = () => {
       dispatch(fetchTodayAppointments());
       dispatch(fetchUpcomingAppointments());
     }
-  }, [view, dispatch, isInitialLoad]); // Include all dependencies
+  }, [currentView, dispatch, isInitialLoad]); // Include all dependencies
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");
@@ -520,41 +517,41 @@ const TherapistDashboard = () => {
             Retry
           </button>
         </div>
-      )}
+      )}{" "}
       <div className="view-selector">
         <button
-          className={view === "today" ? "active" : ""}
+          className={currentView === "today" ? "active" : ""}
           onClick={() => setView("today")}
         >
           Today's Appointments
         </button>
         <button
-          className={view === "upcoming" ? "active" : ""}
+          className={currentView === "upcoming" ? "active" : ""}
           onClick={() => setView("upcoming")}
         >
           Upcoming Appointments
         </button>
         <button
-          className={view === "all" ? "active" : ""}
+          className={currentView === "all" ? "active" : ""}
           onClick={() => setView("all")}
         >
           All My Appointments
         </button>
       </div>
       <div className="dashboard-content">
-        {view === "today" && (
+        {currentView === "today" && (
           <div className="todays-appointments">
             <h2>Today's Appointments</h2>
             {renderAppointmentsList(myTodayAppointments)}
           </div>
         )}
-        {view === "upcoming" && (
+        {currentView === "upcoming" && (
           <div className="upcoming-appointments">
             <h2>Upcoming Appointments</h2>
             {renderAppointmentsList(myUpcomingAppointments)}
           </div>
         )}
-        {view === "all" && (
+        {currentView === "all" && (
           <div className="all-appointments">
             <h2>All My Appointments</h2>
             {renderAppointmentsList(myAppointments)}
