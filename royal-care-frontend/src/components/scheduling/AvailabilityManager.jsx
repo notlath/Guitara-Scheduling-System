@@ -7,6 +7,7 @@ import {
   fetchStaffMembers,
   updateAvailability,
 } from "../../features/scheduling/schedulingSlice";
+import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import "../../styles/AvailabilityManager.css";
 
 // Helper function to safely evaluate is_active field
@@ -59,6 +60,10 @@ const AvailabilityManager = () => {
   const { staffMembers, availabilities, loading, error } = useSelector(
     (state) => state.scheduling
   );
+  
+  // Set up sync event handlers to update Redux state
+  useSyncEventHandlers();
+  
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedStaff, setSelectedStaff] = useState("");
   const [timeSlots, setTimeSlots] = useState([]);
@@ -125,7 +130,9 @@ const AvailabilityManager = () => {
       ...prev,
       date: formattedDate,
     }));
-  }, [selectedDate]);
+  }, [selectedDate]);  // Real-time sync is handled entirely by Redux sync reducers and useSyncEventHandlers
+  // No need for component-level subscriptions since Redux state updates trigger re-renders automatically
+
   const handleStaffChange = (e) => {
     const staffId = e.target.value;
     setSelectedStaff(staffId);
@@ -236,10 +243,9 @@ const AvailabilityManager = () => {
         start_time: newAvailabilityForm.startTime,
         end_time: newAvailabilityForm.endTime,
         is_available: newAvailabilityForm.isAvailable,
-      })
-    ).then((result) => {
-      if (createAvailability.fulfilled.match(result)) {
-        console.log("✅ Availability created successfully:", result.payload);
+      })    ).then((result) => {
+      if (createAvailability.fulfilled.match(result)) {        console.log("✅ Availability created successfully:", result.payload);
+
         // Success - reset form to selected date (not today)
         const currentFormDate = selectedDate.toISOString().split("T")[0];
         setNewAvailabilityForm({
@@ -248,52 +254,9 @@ const AvailabilityManager = () => {
           endTime: "14:00", // Changed from "1:00" to "14:00" for better UX
           isAvailable: true,
         });
-        // If the created availability is for the currently viewed date and staff,
-        // refresh the availability data to ensure it shows up
-        const createdAvailability = result.payload;
-        const currentViewDate = selectedDate.toISOString().split("T")[0];
 
-        console.log("🔍 Checking if refresh needed:", {
-          selectedStaff: selectedStaff,
-          createdAvailabilityUser: createdAvailability.user,
-          staffMatch: createdAvailability.user === parseInt(selectedStaff, 10),
-          currentViewDate: currentViewDate,
-          createdDate: createdAvailability.date,
-          dateMatch: createdAvailability.date === currentViewDate,
-          formDate: newAvailabilityForm.date,
-        });
-
-        if (
-          selectedStaff &&
-          createdAvailability.user === parseInt(selectedStaff, 10) &&
-          createdAvailability.date === currentViewDate
-        ) {
-          console.log(
-            "🔄 Refreshing availability data - created availability matches current view"
-          );
-          // Force refresh to get latest data
-          setTimeout(() => {
-            dispatch(
-              fetchAvailability({
-                staffId: selectedStaff,
-                date: currentViewDate,
-                forceRefresh: true, // Force refresh to ensure we get the latest data
-              })
-            );
-          }, 100);
-        } else {
-          console.log(
-            "ℹ️ Created availability is not for current view, skipping refresh"
-          );
-          console.log(
-            "   - Staff match:",
-            createdAvailability.user === parseInt(selectedStaff, 10)
-          );
-          console.log(
-            "   - Date match:",
-            createdAvailability.date === currentViewDate
-          );
-        }
+        // Redux state will be updated automatically via sync events
+        // No need for manual refresh - the useSyncEventHandlers hook handles this
 
         alert("Availability created successfully!");
       } else if (createAvailability.rejected.match(result)) {
@@ -303,14 +266,17 @@ const AvailabilityManager = () => {
         alert(`Error: ${errorMsg}`);
       }
     });
-  };
-
-  const handleDeleteAvailability = (availabilityId) => {
+  };  const handleDeleteAvailability = (availabilityId) => {
     if (window.confirm("Are you sure you want to delete this availability?")) {
-      dispatch(deleteAvailability(availabilityId));
+      dispatch(deleteAvailability(availabilityId)).then((result) => {
+        if (deleteAvailability.fulfilled.match(result)) {
+          console.log("✅ Availability deleted successfully");
+          // Redux state will be updated automatically via sync events
+          // No need for manual refresh - the useSyncEventHandlers hook handles this
+        }
+      });
     }
-  };
-  const handleToggleAvailability = (availability) => {
+  };  const handleToggleAvailability = (availability) => {
     dispatch(
       updateAvailability({
         id: availability.id,
@@ -319,7 +285,13 @@ const AvailabilityManager = () => {
           is_available: !availability.is_available,
         },
       })
-    );
+    ).then((result) => {
+      if (updateAvailability.fulfilled.match(result)) {
+        console.log("✅ Availability updated successfully");
+        // Redux state will be updated automatically via sync events
+        // No need for manual refresh - the useSyncEventHandlers hook handles this
+      }
+    });
   };
   const handleToggleAccountStatus = async () => {
     if (!selectedStaffData) return;

@@ -9,6 +9,8 @@ import {
   rejectAppointment,
   updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
+import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
+import syncService from "../services/syncService";
 
 import "../styles/TherapistDashboard.css";
 import "../styles/TabSwitcher.css";
@@ -19,6 +21,10 @@ import WebSocketStatus from "./scheduling/WebSocketStatus";
 const TherapistDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  
+  // Set up sync event handlers to update Redux state
+  useSyncEventHandlers();
+  
   const [view, setView] = useState("today"); // 'today', 'upcoming', 'all'  const [pollingInterval, setPollingInterval] = useState(null);
   const [rejectionModal, setRejectionModal] = useState({
     isOpen: false,
@@ -89,18 +95,28 @@ const TherapistDashboard = () => {
   useEffect(() => {
     console.log("WebSocket connections disabled - using polling mode");
 
-    // Set up polling for real-time updates
-    const pollingInterval = setInterval(() => {
-      // Call dispatch actions directly to avoid dependency issues
-      dispatch(fetchAppointments());
-      dispatch(fetchTodayAppointments());
-      dispatch(fetchUpcomingAppointments());
-    }, 30000); // Every 30 seconds
+    // Real-time sync is handled by useSyncEventHandlers hook
+    // Here we only set up periodic polling as a fallback
+
+    // Set up adaptive polling with smart refresh
+    const setupPolling = () => {
+      const interval = syncService.getPollingInterval(30000); // Base 30 seconds for therapist
+      return setInterval(() => {
+        if (syncService.shouldRefresh('therapist_appointments')) {
+          dispatch(fetchAppointments());
+          dispatch(fetchTodayAppointments());
+          dispatch(fetchUpcomingAppointments());
+          syncService.markUpdated('therapist_appointments');
+        }
+      }, interval);
+    };
+
+    const pollingInterval = setupPolling();
 
     return () => {
       clearInterval(pollingInterval);
     };
-  }, [dispatch]); // Only depend on dispatch
+  }, [dispatch]); // Simplified dependencies
   // Load appointments on component mount and debug authentication
   useEffect(() => {
     let mounted = true;
