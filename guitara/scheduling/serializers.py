@@ -66,6 +66,7 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "role",
+            "is_active",  # Added missing is_active field
             "specialization",
             "massage_pressure",
             "license_number",

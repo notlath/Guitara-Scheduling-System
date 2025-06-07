@@ -15,7 +15,8 @@
 .alertCard {
   background: white;
   border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   max-width: 500px;
   width: 100%;
   overflow: hidden;
@@ -116,7 +117,8 @@
   flex-direction: column;
 }
 
-.primaryButton, .secondaryButton {
+.primaryButton,
+.secondaryButton {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -163,8 +165,9 @@
   .actionButtons {
     flex-direction: row;
   }
-  
-  .primaryButton, .secondaryButton {
+
+  .primaryButton,
+  .secondaryButton {
     flex: 1;
   }
 }
@@ -173,11 +176,11 @@
   .alertContainer {
     padding: 0.5rem;
   }
-  
+
   .alertContent {
     padding: 1.5rem;
   }
-  
+
   .alertTitle {
     font-size: 1.25rem;
   }

@@ -8,6 +8,7 @@ import MainLayout from "./components/MainLayout";
 import OperatorDashboard from "./components/OperatorDashboard";
 import TherapistDashboard from "./components/TherapistDashboard";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AvailabilityManager from "./components/scheduling/AvailabilityManager";
 import { login } from "./features/auth/authSlice"; // Import Redux action
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
 import CompanyInfoPage from "./pages/AboutPages/CompanyInfoPage";
@@ -147,6 +148,7 @@ const App = () => {
             }
           />{" "}
           <Route path="scheduling" element={<SchedulingPage />} />
+          <Route path="availability" element={<AvailabilityManager />} />
           <Route path="bookings" element={<BookingsPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="sales-reports" element={<SalesReportsPage />} />
