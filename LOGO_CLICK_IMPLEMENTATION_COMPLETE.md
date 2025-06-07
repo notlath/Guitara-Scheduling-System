@@ -19,17 +19,17 @@
 - **Logic**:
   ```javascript
   const getDashboardRoute = () => {
-    if (!user) return '/dashboard';
-    
+    if (!user) return "/dashboard";
+
     switch (user.role) {
-      case 'operator':
-        return '/dashboard';
-      case 'therapist':
-        return '/dashboard';
-      case 'driver':
-        return '/dashboard';
+      case "operator":
+        return "/dashboard";
+      case "therapist":
+        return "/dashboard";
+      case "driver":
+        return "/dashboard";
       default:
-        return '/dashboard';
+        return "/dashboard";
     }
   };
   ```
@@ -40,7 +40,7 @@
 - **Routes**:
   - `/dashboard` → Role-based dashboard routing:
     - `OperatorDashboard` (for operators)
-    - `TherapistDashboard` (for therapists)  
+    - `TherapistDashboard` (for therapists)
     - `DriverDashboard` (for drivers)
   - `/dashboard/scheduling` → `SchedulingPage` → `SchedulingDashboard` (separate scheduling view)
 - **Protection**: All routes properly wrapped with `ProtectedRoute`
