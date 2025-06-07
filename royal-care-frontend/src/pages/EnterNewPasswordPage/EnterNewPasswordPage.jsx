@@ -45,7 +45,7 @@ function EnterNewPasswordPage() {
           <button
             type="submit"
             onClick={handleButtonClick}
-            className={styles.formButton}
+            className="action-btn"
           >
             Submit
           </button>

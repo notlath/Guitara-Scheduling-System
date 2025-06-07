@@ -2,7 +2,6 @@
 
 .global-container {
   padding: var(--spacing-lg) 0;
-  /* background: var(--background-35); */
   min-height: 100vh;
 }
 
@@ -11,15 +10,11 @@
   margin: 0 auto;
   background: var(--background);
   border-radius: 12px;
-  /* box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07); */
-  /* border: 1px solid var(--background-100); */
-  /* padding: var(--spacing-md) var(--spacing-ml) var(--spacing-ml)
-    var(--spacing-ml); */
 }
 
 .header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--spacing-mm);
+  margin-bottom: var(--spacing-mmd);
 }

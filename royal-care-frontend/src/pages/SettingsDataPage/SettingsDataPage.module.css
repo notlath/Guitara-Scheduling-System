@@ -19,7 +19,7 @@
 }
 .data-table th,
 .data-table td {
-  padding: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-sm);
   text-align: left;
 }
 .data-table th {
@@ -43,4 +43,82 @@
   text-align: center;
   color: var(--background-500);
   font-weight: 400;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Frosted glass effect */
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.modal {
+  background: var(--background);
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  min-width: 340px;
+  max-width: 95vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  position: relative;
+  animation: fadeIn 0.2s;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.2rem;
+}
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #888;
+  cursor: pointer;
+  margin-left: 1rem;
+}
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.success-prompt {
+  position: fixed;
+  top: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2ecc40;
+  color: #fff;
+  padding: 0.8rem 2rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  z-index: 1100;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  animation: fadeIn 0.2s;
+}
+.global-content.faded {
+  filter: blur(2px) brightness(0.7);
+  pointer-events: none;
+  user-select: none;
 }

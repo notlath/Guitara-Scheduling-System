@@ -359,9 +359,7 @@ const Register = () => {
 
                 <button
                   type="submit"
-                  className={`${styles.loginButton} ${
-                    isSubmitting ? styles.loginButtonDisabled : ""
-                  }`}
+                  className={`action-btn${isSubmitting ? " disabled" : ""}`}
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? "Processing..." : "Register"}
