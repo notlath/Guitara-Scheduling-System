@@ -78,6 +78,15 @@ const MATERIAL_OPTIONS = [
   "Ventosa Cup",
 ];
 
+// Map plural tab names to their singular form for modal titles
+const TAB_SINGULARS = {
+  Therapists: "Therapist",
+  Drivers: "Driver",
+  Operators: "Operator",
+  Services: "Service",
+  Materials: "Material",
+};
+
 const SettingsDataPage = () => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [showModal, setShowModal] = useState(false);
@@ -296,7 +305,7 @@ const SettingsDataPage = () => {
         <div className={styles["modal-overlay"]}>
           <div className={styles["modal"]}>
             <div className={styles["modal-header"]}>
-              <h2>Register {activeTab.slice(0, -1)}</h2>
+              <h2>Register {TAB_SINGULARS[activeTab]}</h2>
               <button
                 className={styles["close-btn"]}
                 onClick={handleCloseModal}
