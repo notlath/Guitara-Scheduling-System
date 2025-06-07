@@ -1,8 +1,8 @@
 /* Operator Dashboard Styles */
 .operator-dashboard {
-  padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
+  /* padding: var(--spacing-md); */
 }
 
 .dashboard-header {
