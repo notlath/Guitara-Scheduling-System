@@ -386,23 +386,24 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
         Override perform_create to add validation for disabled accounts
         """
         user = self.request.user
-        
+
         # Get the target user for availability creation
-        target_user = serializer.validated_data.get('user')
-        
+        target_user = serializer.validated_data.get("user")
+
         # If no user specified in data, use the requesting user
         if not target_user:
             target_user = user
-            serializer.validated_data['user'] = user
-        
+            serializer.validated_data["user"] = user
+
         # Check if target user account is disabled
         if not target_user.is_active:
             from rest_framework.exceptions import ValidationError
+
             raise ValidationError(
                 f"Cannot create availability for {target_user.first_name} {target_user.last_name}. "
                 "This staff account is currently disabled. Please contact an administrator to reactivate the account."
             )
-        
+
         # Check if requesting user has permission to create availability for target user
         if user.role == "operator":
             # Operators can create availability for anyone (if account is active)
@@ -410,8 +411,9 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
         elif target_user != user:
             # Non-operators can only create availability for themselves
             from rest_framework.exceptions import PermissionDenied
+
             raise PermissionDenied("You can only manage your own availability")
-        
+
         # Proceed with creation
         serializer.save()
 
@@ -649,11 +651,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
+        return Response(serializer.data) @ action(detail=True, methods=["post"])
 
-    @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
-        """Therapist rejects an appointment with a reason"""
+        """Therapist or Driver rejects an appointment with a reason"""
         print(f"🔍 BACKEND DEBUG - reject endpoint called:")
         print(f"  - pk: {pk}")
         print(f"  - request.user: {request.user}")
@@ -663,11 +664,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
         print(f"  - appointment: {appointment}")
         print(f"  - appointment.therapist: {appointment.therapist}")
+        print(f"  - appointment.driver: {appointment.driver}")
 
-        # Only the assigned therapist can reject
-        if request.user != appointment.therapist:
+        # Only the assigned therapist or driver can reject
+        if request.user != appointment.therapist and request.user != appointment.driver:
             print(
-                f"❌ BACKEND: User {request.user} is not the assigned therapist {appointment.therapist}"
+                f"❌ BACKEND: User {request.user} is not the assigned therapist {appointment.therapist} or driver {appointment.driver}"
             )
             return Response(
                 {"error": "You can only reject your own appointments"},
@@ -711,19 +713,25 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.rejection_reason = rejection_reason.strip()
         appointment.rejected_by = request.user
         appointment.rejected_at = timezone.now()
-        appointment.save()
-
-        # Create notification for operator
+        appointment.save()  # Create notification for operator
         if appointment.operator:
+            # Determine the role of the user who rejected
+            rejecter_role = (
+                "Therapist" if request.user == appointment.therapist else "Driver"
+            )
+            notification_message = f"{rejecter_role} {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}"
+
             Notification.objects.create(
                 user=appointment.operator,
                 appointment=appointment,
                 rejection=rejection,
                 notification_type="appointment_rejected",
-                message=f"Therapist {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}",
-            )
-        # Send WebSocket notification
+                message=notification_message,
+            )  # Send WebSocket notification
         channel_layer = get_channel_layer()
+        rejecter_role = (
+            "Therapist" if request.user == appointment.therapist else "Driver"
+        )
         async_to_sync(channel_layer.group_send)(
             "appointments",
             {
@@ -732,11 +740,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     "type": "appointment_rejected",
                     "appointment_id": appointment.id,
                     "rejection_id": rejection.id,
-                    "therapist_id": request.user.id,
+                    "rejected_by_id": request.user.id,
+                    "rejected_by_role": rejecter_role,
+                    "therapist_id": (
+                        appointment.therapist.id if appointment.therapist else None
+                    ),
+                    "driver_id": appointment.driver.id if appointment.driver else None,
                     "operator_id": (
                         appointment.operator.id if appointment.operator else None
                     ),
-                    "message": f"Appointment rejected by {request.user.get_full_name()}",
+                    "message": f"Appointment rejected by {rejecter_role} {request.user.get_full_name()}",
                 },
             },
         )
@@ -1042,20 +1055,28 @@ class NotificationViewSet(viewsets.ModelViewSet):
         """Delete all notifications for the current user"""
         deleted_count = Notification.objects.filter(user=request.user).count()
         Notification.objects.filter(user=request.user).delete()
-        return Response({
-            "message": f"Deleted {deleted_count} notifications",
-            "deleted_count": deleted_count
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "message": f"Deleted {deleted_count} notifications",
+                "deleted_count": deleted_count,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["delete"])
     def delete_read(self, request):
         """Delete all read notifications for the current user"""
-        deleted_count = Notification.objects.filter(user=request.user, is_read=True).count()
+        deleted_count = Notification.objects.filter(
+            user=request.user, is_read=True
+        ).count()
         Notification.objects.filter(user=request.user, is_read=True).delete()
-        return Response({
-            "message": f"Deleted {deleted_count} read notifications",
-            "deleted_count": deleted_count
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "message": f"Deleted {deleted_count} read notifications",
+                "deleted_count": deleted_count,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class StaffViewSet(viewsets.ReadOnlyModelViewSet):

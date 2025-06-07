@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
@@ -8,13 +8,13 @@ import {
   fetchNotifications,
   reviewRejection,
 } from "../features/scheduling/schedulingSlice";
+import LayoutRow from "../globals/LayoutRow";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
-import LayoutRow from "../globals/LayoutRow";
 
-import "../styles/OperatorDashboard.css";
 import "../globals/TabSwitcher.css";
+import "../styles/OperatorDashboard.css";
 
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
@@ -56,7 +56,6 @@ const OperatorDashboard = () => {
   const pendingAppointments = appointments.filter(
     (apt) => apt.status === "pending" && apt.response_deadline
   );
-
   // Calculate which appointments are overdue
   const overdueAppointments = pendingAppointments.filter(
     (apt) => new Date(apt.response_deadline) < new Date()
@@ -70,6 +69,24 @@ const OperatorDashboard = () => {
     const minutesDiff = timeDiff / (1000 * 60);
     return minutesDiff > 0 && minutesDiff <= 10;
   });
+
+  // Calculate rejection statistics
+  const rejectionStats = useMemo(() => {
+    const rejected = appointments.filter((apt) => apt.status === "rejected");
+    const therapistRejections = rejected.filter(
+      (apt) => apt.rejected_by_details?.role?.toLowerCase() === "therapist"
+    );
+    const driverRejections = rejected.filter(
+      (apt) => apt.rejected_by_details?.role?.toLowerCase() === "driver"
+    );
+
+    return {
+      total: rejected.length,
+      therapist: therapistRejections.length,
+      driver: driverRejections.length,
+      pending: rejectedAppointments.length,
+    };
+  }, [appointments, rejectedAppointments]);
   // Refresh data
   const refreshData = useCallback(() => {
     dispatch(fetchAppointments());
@@ -218,6 +235,43 @@ const OperatorDashboard = () => {
         return "";
     }
   };
+  // Helper function to determine who rejected the appointment
+  const getRejectedByInfo = (appointment) => {
+    if (!appointment.rejected_by_details) {
+      return {
+        text: "Unknown",
+        role: "unknown",
+        badgeClass: "rejection-unknown",
+      };
+    }
+
+    const rejectedBy = appointment.rejected_by_details;
+    const name = `${rejectedBy.first_name} ${rejectedBy.last_name}`;
+
+    // Use the role from rejected_by_details for accurate identification
+    const role = rejectedBy.role?.toLowerCase();
+
+    switch (role) {
+      case "therapist":
+        return {
+          text: `Therapist: ${name}`,
+          role: "therapist",
+          badgeClass: "rejection-therapist",
+        };
+      case "driver":
+        return {
+          text: `Driver: ${name}`,
+          role: "driver",
+          badgeClass: "rejection-driver",
+        };
+      default:
+        return {
+          text: `${rejectedBy.role || "Staff"}: ${name}`,
+          role: rejectedBy.role?.toLowerCase() || "staff",
+          badgeClass: "rejection-other",
+        };
+    }
+  };
 
   const renderRejectedAppointments = () => {
     if (rejectedAppointments.length === 0) {
@@ -259,7 +313,7 @@ const OperatorDashboard = () => {
               <p>
                 <strong>Services:</strong>{" "}
                 {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>
+              </p>{" "}
               <p className="rejection-reason">
                 <strong>Rejection Reason:</strong>{" "}
                 {appointment.rejection_reason}
@@ -268,6 +322,16 @@ const OperatorDashboard = () => {
                 <strong>Rejected At:</strong>{" "}
                 {new Date(appointment.rejected_at).toLocaleString()}
               </p>
+              <div className="rejected-by-info">
+                <strong>Rejected By:</strong>{" "}
+                <span
+                  className={`rejection-badge ${
+                    getRejectedByInfo(appointment).badgeClass
+                  }`}
+                >
+                  {getRejectedByInfo(appointment).text}
+                </span>
+              </div>
             </div>
 
             <div className="appointment-actions">
@@ -323,12 +387,24 @@ const OperatorDashboard = () => {
               <p>
                 <strong>Services:</strong>{" "}
                 {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>
+              </p>{" "}
               {appointment.rejection_reason && (
-                <p className="rejection-reason">
+                <div className="rejection-reason">
                   <strong>Rejection Reason:</strong>{" "}
                   {appointment.rejection_reason}
-                </p>
+                </div>
+              )}
+              {appointment.rejected_by_details && (
+                <div className="rejected-by-info">
+                  <strong>Rejected By:</strong>{" "}
+                  <span
+                    className={`rejection-badge ${
+                      getRejectedByInfo(appointment).badgeClass
+                    }`}
+                  >
+                    {getRejectedByInfo(appointment).text}
+                  </span>
+                </div>
               )}
               {appointment.review_decision && (
                 <p>
@@ -500,6 +576,32 @@ const OperatorDashboard = () => {
                 : error}
             </div>
           )}{" "}
+          {/* Statistics Dashboard */}
+          <div className="stats-dashboard">
+            <div className="stats-card">
+              <h4>Rejection Overview</h4>
+              <div className="stats-grid">
+                <div className="stat-item">
+                  <span className="stat-number">{rejectionStats.total}</span>
+                  <span className="stat-label">Total Rejections</span>
+                </div>
+                <div className="stat-item therapist-stat">
+                  <span className="stat-number">
+                    {rejectionStats.therapist}
+                  </span>
+                  <span className="stat-label">Therapist Rejections</span>
+                </div>
+                <div className="stat-item driver-stat">
+                  <span className="stat-number">{rejectionStats.driver}</span>
+                  <span className="stat-label">Driver Rejections</span>
+                </div>
+                <div className="stat-item pending-stat">
+                  <span className="stat-number">{rejectionStats.pending}</span>
+                  <span className="stat-label">Pending Reviews</span>
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="view-selector">
             <button
               className={currentView === "rejected" ? "active" : ""}

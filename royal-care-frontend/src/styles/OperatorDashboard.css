@@ -421,6 +421,180 @@
   background-color: #5a6268;
 }
 
+/* Rejection Badge Styles */
+.rejected-by-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.rejection-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+}
+
+.rejection-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.rejection-therapist {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #bbdefb;
+}
+
+.rejection-therapist::before {
+  background-color: #1565c0;
+}
+
+.rejection-driver {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+  border: 1px solid #ce93d8;
+}
+
+.rejection-driver::before {
+  background-color: #7b1fa2;
+}
+
+.rejection-other {
+  background-color: #f5f5f5;
+  color: #616161;
+  border: 1px solid #e0e0e0;
+}
+
+.rejection-other::before {
+  background-color: #616161;
+}
+
+.rejection-unknown {
+  background-color: #ffebee;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
+}
+
+.rejection-unknown::before {
+  background-color: #c62828;
+}
+
+/* Enhanced rejection reason styling */
+.rejection-reason {
+  background-color: #fff8e1;
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 4px solid #ff9800;
+  margin: 10px 0;
+  font-style: italic;
+}
+
+.rejection-reason strong {
+  color: #e65100;
+}
+
+/* Statistics Dashboard */
+.stats-dashboard {
+  margin: 20px 0;
+  padding: 0;
+}
+
+.stats-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  color: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.stats-card h4 {
+  margin: 0 0 15px 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 15px;
+}
+
+.stat-item {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.stat-number {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.therapist-stat {
+  border-left: 4px solid #2196f3;
+}
+
+.driver-stat {
+  border-left: 4px solid #9c27b0;
+}
+
+.pending-stat {
+  border-left: 4px solid #ff9800;
+}
+
+/* Responsive stats */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-item {
+    padding: 12px;
+  }
+
+  .stat-number {
+    font-size: 1.5rem;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .dashboard-header {
