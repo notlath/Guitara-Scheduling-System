@@ -131,12 +131,32 @@ export const fetchAppointmentsByDate = createAsyncThunk(
   }
 );
 
-// Create a new appointment
+// Enhanced optimistic update handling for instant UI responsiveness
 export const createAppointment = createAsyncThunk(
   "scheduling/createAppointment",
   async (appointmentData, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
+
+    // Generate temporary ID for optimistic update
+    const tempId = `temp_${Date.now()}_${Math.random()}`;
+    const optimisticAppointment = {
+      ...appointmentData,
+      id: tempId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: "confirmed",
+      isOptimistic: true,
+    };
+
+    // Track optimistic update for reconciliation
+    syncService.addOptimisticUpdate(tempId, optimisticAppointment);
+
+    // Immediately broadcast optimistic update to all dashboards
+    syncService.broadcastWithImmediate("appointment_created_optimistic", {
+      appointment: optimisticAppointment,
+      tempId,
+    });
 
     try {
       // Data sanitation to ensure correct format for backend API
@@ -176,16 +196,31 @@ export const createAppointment = createAsyncThunk(
           },
         }
       );
-      // Notify via WebSocket
+
+      // Remove optimistic update and broadcast real data
+      syncService.removeOptimisticUpdate(tempId);
+
+      // Broadcast the real appointment data to replace optimistic version
+      syncService.broadcastWithImmediate("appointment_created_confirmed", {
+        appointment: response.data,
+        tempId, // For identifying which optimistic update to replace
+        wasOptimistic: true,
+      });
+
+      // Notify via WebSocket (if enabled)
       if (response.data.id) {
         sendAppointmentCreate(response.data.id);
       }
+
       return response.data;
     } catch (error) {
-      console.error("API Error Details:", {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
+      // Remove failed optimistic update
+      syncService.removeOptimisticUpdate(tempId);
+
+      // Broadcast failure to remove optimistic appointment from UI
+      syncService.broadcastWithImmediate("appointment_created_failed", {
+        tempId,
+        error: error.response?.data,
       });
 
       // Specific handling for therapist availability error
@@ -210,49 +245,56 @@ export const createAppointment = createAsyncThunk(
   }
 );
 
-// Update an existing appointment
+// Enhanced updateAppointment with optimistic updates
 export const updateAppointment = createAsyncThunk(
   "scheduling/updateAppointment",
   async ({ id, data }, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
+    // Create optimistic update
+    const optimisticUpdate = {
+      ...data,
+      id,
+      updated_at: new Date().toISOString(),
+      isOptimistic: true,
+    };
+
+    // Immediately broadcast optimistic update
+    syncService.broadcastWithImmediate("appointment_updated_optimistic", {
+      appointment: optimisticUpdate,
+      appointmentId: id,
+    });
+
     try {
-      // Data sanitation to ensure correct format for backend API
-      const formattedData = {
-        ...data,
-        // Ensure therapist is an integer, not an array
-        therapist: Array.isArray(data.therapist)
-          ? data.therapist.length > 0
-            ? parseInt(data.therapist[0], 10)
-            : null
-          : typeof data.therapist === "string"
-          ? parseInt(data.therapist, 10)
-          : data.therapist,
-        // Ensure services is an array of integers
-        services: Array.isArray(data.services)
-          ? data.services.map((id) =>
-              typeof id === "string" ? parseInt(id, 10) : id
-            )
-          : data.services
-          ? [parseInt(data.services, 10)]
-          : [],
-      };
-
-      console.log("API update data:", formattedData);
-
-      const response = await axios.put(
+      const response = await axios.patch(
         `${API_URL}appointments/${id}/`,
-        formattedData,
+        data,
         {
-          headers: { Authorization: `Token ${token}` },
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
+
+      // Broadcast confirmed update
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
+        appointment: response.data,
+        appointmentId: id,
+        wasOptimistic: true,
+      });
 
       // Notify via WebSocket
       sendAppointmentUpdate(id);
       return response.data;
     } catch (error) {
+      // Broadcast failure to revert optimistic update
+      syncService.broadcastWithImmediate("appointment_updated_failed", {
+        appointmentId: id,
+        error: error.response?.data,
+      });
+
       console.error("API Update Error:", {
         status: error.response?.status,
         data: error.response?.data,
@@ -265,12 +307,17 @@ export const updateAppointment = createAsyncThunk(
   }
 );
 
-// Delete an appointment
+// Enhanced deleteAppointment with optimistic updates
 export const deleteAppointment = createAsyncThunk(
   "scheduling/deleteAppointment",
   async (id, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
+
+    // Immediately broadcast optimistic deletion
+    syncService.broadcastWithImmediate("appointment_deleted_optimistic", {
+      appointmentId: id,
+    });
 
     try {
       await axios.delete(`${API_URL}appointments/${id}/`, {
@@ -278,10 +325,23 @@ export const deleteAppointment = createAsyncThunk(
           Authorization: `Token ${token}`,
         },
       });
+
+      // Broadcast confirmed deletion
+      syncService.broadcastWithImmediate("appointment_deleted_confirmed", {
+        appointmentId: id,
+        wasOptimistic: true,
+      });
+
       // Notify via WebSocket
       sendAppointmentDelete(id);
       return id;
     } catch (error) {
+      // Broadcast failure to restore deleted appointment
+      syncService.broadcastWithImmediate("appointment_deleted_failed", {
+        appointmentId: id,
+        error: error.response?.data,
+      });
+
       console.error("Delete appointment error:", error.response?.data);
       return rejectWithValue(
         handleApiError(error, "Could not delete appointment")
@@ -290,12 +350,25 @@ export const deleteAppointment = createAsyncThunk(
   }
 );
 
-// Update appointment status (for therapists to accept/reject/complete)
+// Enhanced updateAppointmentStatus with optimistic updates
 export const updateAppointmentStatus = createAsyncThunk(
   "scheduling/updateAppointmentStatus",
   async ({ id, status }, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
+
+    // Create optimistic status update
+    const optimisticUpdate = {
+      status,
+      updated_at: new Date().toISOString(),
+      isOptimistic: true,
+    };
+
+    // Immediately broadcast optimistic status update
+    syncService.broadcastWithImmediate("appointment_updated_optimistic", {
+      appointment: optimisticUpdate,
+      appointmentId: id,
+    });
 
     try {
       let response;
@@ -320,10 +393,23 @@ export const updateAppointmentStatus = createAsyncThunk(
         );
       }
 
+      // Broadcast confirmed status update
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
+        appointment: response.data,
+        appointmentId: id,
+        wasOptimistic: true,
+      });
+
       // Notify via WebSocket
       sendAppointmentUpdate(response.data.id);
       return response.data;
     } catch (error) {
+      // Broadcast failure to revert optimistic status update
+      syncService.broadcastWithImmediate("appointment_updated_failed", {
+        appointmentId: id,
+        error: error.response?.data,
+      });
+
       console.error("API Status Update Error:", {
         status: error.response?.status,
         data: error.response?.data,
@@ -1236,12 +1322,150 @@ const schedulingSlice = createSlice({
 
       // Invalidate cache for this staff/date
       const cacheKey = `${user}-${date}`;
-      delete state.availabilityCache[cacheKey];
-
-      // Remove from current availabilities
+      delete state.availabilityCache[cacheKey]; // Remove from current availabilities
       state.availabilities = state.availabilities.filter(
         (avail) => avail.id !== id
       );
+    },
+    // Real-time sync reducers for appointment optimistic updates
+    syncAppointmentCreatedOptimistic: (state, action) => {
+      const { appointment } = action.payload;
+      console.log(
+        "🔄 syncAppointmentCreatedOptimistic: Adding optimistic appointment",
+        appointment
+      );
+
+      // Add optimistic appointment to the beginning of the list for immediate visibility
+      state.appointments.unshift({ ...appointment, isOptimistic: true });
+    },
+    syncAppointmentCreatedConfirmed: (state, action) => {
+      const { appointment, tempId } = action.payload;
+      console.log(
+        "🔄 syncAppointmentCreatedConfirmed: Confirming appointment",
+        { appointment, tempId }
+      );
+
+      // Replace optimistic appointment with real one
+      const optimisticIndex = state.appointments.findIndex(
+        (apt) => apt.id === tempId
+      );
+      if (optimisticIndex !== -1) {
+        state.appointments[optimisticIndex] = appointment;
+      } else {
+        // If optimistic not found, just add the real one
+        state.appointments.unshift(appointment);
+      }
+    },
+    syncAppointmentCreatedFailed: (state, action) => {
+      const { tempId } = action.payload;
+      console.log(
+        "🔄 syncAppointmentCreatedFailed: Removing failed optimistic appointment",
+        tempId
+      );
+
+      // Remove failed optimistic appointment
+      state.appointments = state.appointments.filter(
+        (apt) => apt.id !== tempId
+      );
+    },
+    syncAppointmentUpdatedOptimistic: (state, action) => {
+      const { appointment, appointmentId } = action.payload;
+      console.log("🔄 syncAppointmentUpdatedOptimistic: Optimistic update", {
+        appointment,
+        appointmentId,
+      });
+
+      const index = state.appointments.findIndex(
+        (apt) => apt.id === appointmentId
+      );
+      if (index !== -1) {
+        state.appointments[index] = {
+          ...state.appointments[index],
+          ...appointment,
+          isOptimistic: true,
+        };
+      }
+    },
+    syncAppointmentUpdatedConfirmed: (state, action) => {
+      const { appointment, appointmentId } = action.payload;
+      console.log("🔄 syncAppointmentUpdatedConfirmed: Confirming update", {
+        appointment,
+        appointmentId,
+      });
+
+      const index = state.appointments.findIndex(
+        (apt) => apt.id === appointmentId
+      );
+      if (index !== -1) {
+        state.appointments[index] = { ...appointment, isOptimistic: false };
+      }
+    },
+    syncAppointmentUpdatedFailed: (state, action) => {
+      const { appointmentId } = action.payload;
+      console.log(
+        "🔄 syncAppointmentUpdatedFailed: Reverting failed update",
+        appointmentId
+      );
+
+      // In a real app, you'd revert to the previous state
+      // For now, we'll refetch or mark as needing refresh
+      const index = state.appointments.findIndex(
+        (apt) => apt.id === appointmentId
+      );
+      if (index !== -1) {
+        state.appointments[index] = {
+          ...state.appointments[index],
+          isOptimistic: false,
+          needsRefresh: true,
+        };
+      }
+    },
+    syncAppointmentDeletedOptimistic: (state, action) => {
+      const { appointmentId } = action.payload;
+      console.log(
+        "🔄 syncAppointmentDeletedOptimistic: Optimistic deletion",
+        appointmentId
+      );
+
+      // Mark as optimistically deleted
+      const index = state.appointments.findIndex(
+        (apt) => apt.id === appointmentId
+      );
+      if (index !== -1) {
+        state.appointments[index] = {
+          ...state.appointments[index],
+          isOptimisticDeleted: true,
+        };
+      }
+    },
+    syncAppointmentDeletedConfirmed: (state, action) => {
+      const { appointmentId } = action.payload;
+      console.log(
+        "🔄 syncAppointmentDeletedConfirmed: Confirming deletion",
+        appointmentId
+      );
+
+      // Remove the appointment completely
+      state.appointments = state.appointments.filter(
+        (apt) => apt.id !== appointmentId
+      );
+    },
+    syncAppointmentDeletedFailed: (state, action) => {
+      const { appointmentId } = action.payload;
+      console.log(
+        "🔄 syncAppointmentDeletedFailed: Reverting failed deletion",
+        appointmentId
+      );
+
+      // Restore the appointment
+      const index = state.appointments.findIndex(
+        (apt) => apt.id === appointmentId
+      );
+      if (index !== -1) {
+        const restored = { ...state.appointments[index] };
+        delete restored.isOptimisticDeleted;
+        state.appointments[index] = restored;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -1772,5 +1996,14 @@ export const {
   syncAvailabilityCreated,
   syncAvailabilityUpdated,
   syncAvailabilityDeleted,
+  syncAppointmentCreatedOptimistic,
+  syncAppointmentCreatedConfirmed,
+  syncAppointmentCreatedFailed,
+  syncAppointmentUpdatedOptimistic,
+  syncAppointmentUpdatedConfirmed,
+  syncAppointmentUpdatedFailed,
+  syncAppointmentDeletedOptimistic,
+  syncAppointmentDeletedConfirmed,
+  syncAppointmentDeletedFailed,
 } = schedulingSlice.actions;
 export default schedulingSlice.reducer;
