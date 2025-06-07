@@ -213,7 +213,3 @@ The `start_all.bat` script in this project root automates the process of startin
    ```powershell
    .\start_all.bat
    ```
-
-**Note:**
-- All commands will run in the same terminal session, so after the backend server starts, you may need to open a new terminal to run the frontend if you want both running simultaneously.
-- For a more advanced workflow, see the `.vscode/tasks.json` for parallel execution in VS Code terminals.
