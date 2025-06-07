@@ -35,13 +35,13 @@ function LoginPage() {
 
     if (from && from !== "/" && from.startsWith("/dashboard")) {
       return from;
-    }    // Default redirect based on user role for new logins
+    } // Default redirect based on user role for new logins
     if (userRole === "operator") {
       return "/dashboard";
     } else if (userRole === "therapist") {
       return "/dashboard"; // Therapists use TherapistDashboard
     } else if (userRole === "driver") {
-      return "/dashboard"; // Drivers use DriverDashboard  
+      return "/dashboard"; // Drivers use DriverDashboard
     } else {
       return "/dashboard"; // Default fallback
     }

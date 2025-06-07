@@ -57,9 +57,7 @@ console.log(
 console.log(
   "- Therapist clicks logo → redirects to /dashboard (TherapistDashboard)"
 );
-console.log(
-  "- Driver clicks logo → redirects to /dashboard (DriverDashboard)"
-);
+console.log("- Driver clicks logo → redirects to /dashboard (DriverDashboard)");
 console.log("");
 console.log("Manual Testing Required:");
 console.log("1. Start the application: npm run dev (in royal-care-frontend)");

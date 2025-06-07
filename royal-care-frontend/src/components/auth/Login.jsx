@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { login } from "../../features/auth/authSlice";
 import { api } from "../../services/api";
 import { sanitizeString } from "../../utils/sanitization";
@@ -11,7 +11,8 @@ const Login = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [needs2FA, setNeeds2FA] = useState(false); // Track 2FA state
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);  const dispatch = useDispatch();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -19,10 +20,10 @@ const Login = () => {
   const getRedirectPath = (userRole) => {
     // Check if there's a saved location to return to
     const from = location.state?.from?.pathname;
-    
+
     if (from && from !== "/" && from.startsWith("/dashboard")) {
       return from;
-    }    // Default redirect based on user role for new logins
+    } // Default redirect based on user role for new logins
     if (userRole === "operator") {
       return "/dashboard";
     } else if (userRole === "therapist") {
@@ -125,7 +126,7 @@ const Login = () => {
         const response = await api.post("/auth/two-factor-verify/", {
           email: formData.username, // Assuming username is email
           code: verificationCode,
-        });        // On success
+        }); // On success
         localStorage.setItem("knoxToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         dispatch(login(response.data.user));
