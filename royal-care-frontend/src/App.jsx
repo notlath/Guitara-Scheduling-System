@@ -26,14 +26,14 @@ import LoginPage from "./pages/LoginPage/LoginPage";
 import ProfilePage from "./pages/ProfilePage/ProfilePage";
 import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
-import SchedulingPage from "./pages/SchedulingPage";
+import SchedulingPage from "./pages/SchedulingPage/SchedulingPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import { validateToken } from "./services/auth";
 // Import auth fixer for automatic testing
 import "./utils/authFixer";
-import SettingsAccountPage from "./pages/SettingsAccountPage";
-import SettingsDataPage from "./pages/SettingsDataPage";
+import SettingsAccountPage from "./pages/SettingsAccountPage/SettingsAccountPage";
+import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);

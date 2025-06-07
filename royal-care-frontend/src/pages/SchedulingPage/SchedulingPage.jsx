@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
-import SchedulingDashboard from "../components/scheduling/SchedulingDashboard";
+import SchedulingDashboard from "../../components/scheduling/SchedulingDashboard";
 
 const SchedulingPage = () => {
   const { user } = useSelector((state) => state.auth);
