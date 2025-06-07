@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/theme.css";
 import styles from "./LoginPage.module.css";
 
@@ -22,9 +22,26 @@ function LoginPage() {
   const [disabledAccountInfo, setDisabledAccountInfo] = useState({
     type: "account",
     message: "",
-    contactInfo: null,  });
-  const dispatch = useDispatch();
+    contactInfo: null,  });  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Helper function to determine post-login redirect
+  const getRedirectPath = (userRole) => {
+    // Check if there's a saved location to return to
+    const from = location.state?.from?.pathname;
+    
+    if (from && from !== "/" && from.startsWith("/dashboard")) {
+      return from;
+    }
+
+    // Default redirect based on user role for new logins
+    if (userRole === "operator") {
+      return "/dashboard";
+    } else {
+      return "/dashboard/scheduling";
+    }
+  };
 
   useEffect(() => {
     document.title = "Royal Care";
@@ -69,12 +86,11 @@ function LoginPage() {
 
           if (response.data.message === "2FA code sent") {
             setNeeds2FA(true); // Show 2FA input
-          } else {
-            // Handle non-2FA login (if allowed)
+          } else {            // Handle non-2FA login (if allowed)
             localStorage.setItem("knoxToken", response.data.token);
             localStorage.setItem("user", JSON.stringify(response.data.user));
             dispatch(login(response.data.user));
-            navigate("/dashboard/scheduling");
+            navigate(getRedirectPath(response.data.user.role));
           }        } catch (authError) {
           // Use enhanced error handling utility
           const errorInfo = handleAuthError(authError);
@@ -100,13 +116,11 @@ function LoginPage() {
         const response = await api.post("/auth/two-factor-verify/", {
           email: formData.username, // Assuming username is email
           code: verificationCode,
-        });
-
-        // On success
+        });        // On success
         localStorage.setItem("knoxToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         dispatch(login(response.data.user));
-        navigate("/dashboard/scheduling");
+        navigate(getRedirectPath(response.data.user.role));
       }
     } catch (err) {
       // Handle 2FA verification errors

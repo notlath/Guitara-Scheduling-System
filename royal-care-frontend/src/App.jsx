@@ -1,4 +1,3 @@
-// src/App.js
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
@@ -8,8 +7,9 @@ import MainLayout from "./components/MainLayout";
 import OperatorDashboard from "./components/OperatorDashboard";
 import TherapistDashboard from "./components/TherapistDashboard";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import RouteHandler from "./components/auth/RouteHandler";
 import AvailabilityManager from "./components/scheduling/AvailabilityManager";
-import { login } from "./features/auth/authSlice"; // Import Redux action
+import { login, authInitialized } from "./features/auth/authSlice"; // Import new action
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
 import CompanyInfoPage from "./pages/AboutPages/CompanyInfoPage";
 import DeveloperInfoPage from "./pages/AboutPages/DeveloperInfoPage";
@@ -39,6 +39,7 @@ import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
 const App = () => {
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  
   useEffect(() => {
     // Check if user data exists in localStorage and validate the token
     const checkStoredAuth = async () => {
@@ -63,6 +64,7 @@ const App = () => {
                 console.log("Account is disabled, clearing stored data");
                 localStorage.removeItem("user");
                 localStorage.removeItem("knoxToken");
+                dispatch(authInitialized()); // Mark auth as initialized
               } else {
                 // Other validation errors (network, endpoint not found, etc.)
                 // Still restore session but log the issue
@@ -86,18 +88,22 @@ const App = () => {
             // Clear invalid stored data
             localStorage.removeItem("user");
             localStorage.removeItem("knoxToken");
+            dispatch(authInitialized()); // Mark auth as initialized
           }
         } catch (error) {
           // Clear corrupted stored data or handle validation errors
           console.error("Error validating stored authentication:", error);
           localStorage.removeItem("user");
           localStorage.removeItem("knoxToken");
+          dispatch(authInitialized()); // Mark auth as initialized
         }
+      } else {
+        // No stored auth data
+        dispatch(authInitialized()); // Mark auth as initialized
       }
     };
 
-    checkStoredAuth();
-  }, [dispatch]);
+    checkStoredAuth();  }, [dispatch]);
 
   // Add debugging to check route matching
   useEffect(() => {
@@ -107,11 +113,10 @@ const App = () => {
     }
   }, []);
   return (
-    <BrowserRouter>
-      <Routes>
+    <BrowserRouter>      <Routes>
         <Route
           path="/"
-          element={!user ? <LoginPage /> : <Navigate to="/dashboard" />}
+          element={<RouteHandler />}
         />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/2fa" element={<TwoFactorAuthPage />} />
