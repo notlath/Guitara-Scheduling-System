@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import styles from "./SettingsDataPage.module.css";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
-import "../../styles/LayoutRow.css";
+import "../../globals/LayoutRow.css";
 import { MdAdd } from "react-icons/md";
-import LayoutRow from "../../components/LayoutRow";
+import LayoutRow from "../../globals/LayoutRow";
 
 const TABS = ["Therapists", "Drivers", "Operators", "Services", "Materials"];
 

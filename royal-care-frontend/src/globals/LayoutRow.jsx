@@ -1,5 +1,5 @@
 import React from "react";
-import "../styles/LayoutRow.css";
+import "../globals/LayoutRow.css";
 
 const LayoutRow = ({ title, children }) => (
   <div className="header-row">

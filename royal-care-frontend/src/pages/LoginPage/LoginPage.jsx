@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import "../../styles/theme.css";
+import "../../globals/theme.css";
 import styles from "./LoginPage.module.css";
 
 import { useDispatch } from "react-redux";

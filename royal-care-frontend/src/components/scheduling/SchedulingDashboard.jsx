@@ -20,7 +20,7 @@ import syncService from "../../services/syncService";
 
 import { MdAdd, MdNotifications } from "react-icons/md";
 import "../../styles/SchedulingDashboard.css";
-import "../../styles/TabSwitcher.css";
+import "../../globals/TabSwitcher.css";
 import ErrorBoundary from "../common/ErrorBoundary";
 import AppointmentForm from "./AppointmentForm";
 import AvailabilityManager from "./AvailabilityManager";
@@ -28,7 +28,7 @@ import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
 import WebSocketStatus from "./WebSocketStatus";
 import WeekView from "./WeekView";
-import LayoutRow from "../LayoutRow";
+import LayoutRow from "../../globals/LayoutRow";
 
 const SchedulingDashboard = () => {
   // Set up sync event handlers to update Redux state
