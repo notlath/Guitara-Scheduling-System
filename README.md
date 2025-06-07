@@ -47,7 +47,7 @@ A web-based scheduling system designed to streamline operations for Royal Care H
 
 - **Language**: Python 3.12.8
 - **Framework**: Django 5.1.4
-- **Database**: PostgreSQL 17.2
+- **Database**: SQLite 3.41.2 (development) / PostgreSQL 17.2 (production)
 - **Authentication**: Django REST Knox
 - **Real-time**: WebSockets (Django Channels)
 
@@ -58,17 +58,50 @@ A web-based scheduling system designed to streamline operations for Royal Care H
 - **Styling**: CSS Modules
 - **API Client**: Axios
 
-### **Tools**
+### **Tools & Development**
 
-- **Email**: SMTP (Gmail)
-- **Deployment**: Docker (TBD)
-- **Testing**: pytest (TBD)
+- **Version Control**: Git
+- **Code Quality**: ESLint (Frontend)
+- **Package Management**: pip (Backend), npm (Frontend)
+- **Development**: Hot reload via Django dev server & Vite
+- **Testing**: pytest framework (Test scripts archived)
+- **Email**: SMTP (Gmail integration)
+- **Deployment**: Docker ready (configuration pending)
+
+---
+
+## 📊 Project Status
+
+### **Current Development State**
+
+- ✅ **Core Backend**: Django REST API with authentication, scheduling, and user management
+- ✅ **Frontend Interface**: React-based dashboard with role-specific views
+- ✅ **Database**: SQLite development setup with PostgreSQL production support
+- ✅ **Real-time Features**: WebSocket integration for live updates
+- ✅ **Archive Organization**: Complete reorganization of test scripts and documentation
+
+### **Recent Improvements (January 2025)**
+
+- Complete archive system organization with categorized scripts and documentation
+- Database transition from Supabase to local SQLite for easier development
+- Improved documentation structure with implementation guides and fix summaries
+- Enhanced development workflow with automated startup scripts
+- Comprehensive test script preservation and organization
+
+### **Ready for Development**
+
+The project is fully organized and ready for continued development with:
+
+- Clean, focused main directories for active development
+- Comprehensive archive system for reference and testing
+- Streamlined development environment setup
+- Complete documentation of all implementations and fixes
 
 ---
 
 ## 📥 Installation
 
-**Prerequisites:** Python 3.12+, Node.js 18+, PostgreSQL 17.2
+**Prerequisites:** Python 3.12+, Node.js 18+, SQLite (included with Python)
 
 **Backend (Windows):**
 
@@ -83,8 +116,11 @@ cd guitara
 # Install dependencies
 pip install -r requirements.txt
 
-# Apply migrations
+# Apply migrations (uses SQLite by default)
 python manage.py migrate
+
+# Create a superuser (optional)
+python manage.py createsuperuser
 
 # Start the development server
 python manage.py runserver
@@ -107,8 +143,25 @@ npm run dev
 
 ## ⚙️ Configuration
 
-- **Backend:** Update `guitara/settings.py` for database and email settings.
-- **Frontend:** Update API base URL in `royal-care-frontend/.env`.
+### **Backend Configuration**
+
+- **Database**: The project uses SQLite for development (located at `guitara/db.sqlite3`). For production deployment, configure PostgreSQL in `guitara/guitara/settings.py`.
+- **Environment Variables**: Create a `.env` file in the `guitara/` directory with your email settings:
+  ```
+  EMAIL_HOST=smtp.gmail.com
+  EMAIL_PORT=587
+  EMAIL_USE_TLS=True
+  EMAIL_HOST_USER=your-email@gmail.com
+  EMAIL_HOST_PASSWORD=your-app-password
+  DEFAULT_FROM_EMAIL=Royal Care <noreply@royalcare.com>
+  ```
+
+### **Frontend Configuration**
+
+- **API Configuration**: Update API base URL in `royal-care-frontend/.env` if needed:
+  ```
+  VITE_API_BASE_URL=http://localhost:8000/api
+  ```
 
 ---
 
@@ -151,16 +204,24 @@ npm run dev
 
 ## 🗄️ Archive
 
-The project includes an `/archive` directory that contains utility scripts, migration helpers, and test files that were used during development but are no longer needed for day-to-day operations. These files are preserved for reference purposes.
+The project includes a comprehensive `/archive` directory that contains:
 
-See [Archive README](archive/README.md) for a detailed listing of archived files and why they were stored there.
+- **Test Scripts**: All validation and testing scripts (Python & JavaScript) organized by category
+- **Documentation**: Complete implementation documentation, fix summaries, and progress tracking
+- **Migration History**: Database migration files and schema evolution tracking
+- **Utility Scripts**: Database setup, notification testing, and validation tools
 
-Recent archives:
+### Recent Organization Updates
 
-- **June 7, 2025** - Complete archive organization and documentation cleanup - All test scripts, validation tools, and documentation are now properly organized with updated references ([details](archive/README.md))
-- June 5, 2025 - Test scripts and database utilities cleanup - **UPDATED** with comprehensive test script cleanup ([details](archive/documentation/archive_log_2025-06-05.md))
-- June 2, 2025 - Migration and test scripts after database schema stabilization ([details](archive/documentation/archive_log_2025-06-02.md))
-- June 1, 2025 - Initial migration scripts and temporary files ([details](archive/documentation/archive_log_2025-06-01.md))
+- **January 2025** - Complete archive organization and documentation cleanup:
+  - All test scripts moved to `archive/scripts/testing/` with organized subdirectories
+  - Documentation updated with proper script references and implementation details
+  - Database migration history preserved in `archive/migrations_history/`
+  - Utility scripts categorized in `archive/scripts/database/`, `archive/scripts/notification/`
+
+The archive preserves the complete development history while keeping the main project directories clean and focused on active development code.
+
+See [Archive README](archive/README.md) for detailed information about archived content and how to access specific scripts or documentation.
 
 ---
 
@@ -183,34 +244,35 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📝 Development Notes
 
-### Repository Organization
+### **Repository Organization**
 
-This repository is actively maintained and organized for clarity:
+This repository has been thoroughly organized for clarity and maintainability:
 
-- **Core Code** - Essential application code lives in the main directories
-- **Utility Scripts** - Located in their respective app folders or root directory
-- **Archive** - One-time scripts, migration helpers, and test files have been moved to the `/archive` directory
+- **Core Application** - Main application code in `guitara/` (Django backend) and `royal-care-frontend/` (React frontend)
+- **Archive** - Complete archive system containing test scripts, documentation, and development artifacts in organized categories
+- **Root Directory** - Essential project files including `start_all.bat`, configuration files, and this README
 
-If you're looking for specific utility scripts (database migrations, service setup, etc.), check the archive first as they may have been moved there after being used.
+### **Database Evolution**
 
-### Database Configuration
+The project has evolved through different database configurations:
 
-The project now uses SQLite for development, but supports PostgreSQL for production. The transition from Supabase/PostgreSQL to SQLite has been completed as of June 2025.
+- **Current**: SQLite for development (file: `guitara/db.sqlite3`)
+- **Production**: PostgreSQL support maintained in settings
+- **History**: Originally used Supabase/PostgreSQL, transitioned to local SQLite for easier development setup
 
-## start_all.bat Usage
+### **Quick Start with start_all.bat**
 
-The `start_all.bat` script in this project root automates the process of starting both the Django backend and the frontend development server. It performs the following steps:
+The `start_all.bat` script automates the complete development environment setup:
 
-1. Activates the Python virtual environment and runs Django migrations.
-2. Starts the Django development server.
-3. Switches to the frontend directory and starts the frontend dev server.
-4. Opens http://localhost:5173/ in your default browser.
+1. **Backend Setup**: Activates virtual environment, runs migrations, starts Django server
+2. **Frontend Setup**: Switches to frontend directory, starts Vite development server
+3. **Browser Launch**: Automatically opens http://localhost:5173/ in your default browser
 
-### How to Use
+#### Usage
 
-1. Open the VS Code integrated terminal.
-2. Navigate to the project root if you are not already there.
-3. Run the script:
-   ```powershell
-   .\start_all.bat
-   ```
+```cmd
+# From project root directory
+.\start_all.bat
+```
+
+This script is ideal for quickly getting both backend and frontend running simultaneously during development.
