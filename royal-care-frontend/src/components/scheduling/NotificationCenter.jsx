@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  MdClose,
   MdDelete,
+  MdEventAvailable,
+  MdEventBusy,
   MdMarkAsUnread,
   MdMoreVert,
-  MdRefresh,
+  MdNotifications,
+  MdSchedule,
+  MdUpdate,
 } from "react-icons/md";
 import styles from "../../styles/NotificationCenter.module.css";
 
@@ -14,6 +17,7 @@ const NotificationCenter = ({ onClose }) => {
   const [error, setError] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const notificationRef = useRef(null);
 
   // Fetch notifications directly from API
   const fetchNotifications = async () => {
@@ -59,7 +63,7 @@ const NotificationCenter = ({ onClose }) => {
       const token = localStorage.getItem("knoxToken");
 
       const response = await fetch(
-        `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark-read/`,
+        `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_read/`,
         {
           method: "POST",
           headers: {
@@ -70,15 +74,18 @@ const NotificationCenter = ({ onClose }) => {
       );
 
       if (response.ok) {
-        // Update local state
+        // Update local state to mark as read
         setNotifications((prev) =>
           prev.map((notif) =>
             notif.id === notificationId ? { ...notif, is_read: true } : notif
           )
         );
+      } else {
+        const errorData = await response.text();
+        console.error("Failed to mark as read:", response.status, errorData);
       }
-    } catch {
-      // Silently fail - user will see no change in read status
+    } catch (error) {
+      console.error("Error in markAsRead:", error);
     }
   };
 
@@ -88,7 +95,7 @@ const NotificationCenter = ({ onClose }) => {
       const token = localStorage.getItem("knoxToken");
 
       const response = await fetch(
-        `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark-unread/`,
+        `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_unread/`,
         {
           method: "POST",
           headers: {
@@ -105,9 +112,12 @@ const NotificationCenter = ({ onClose }) => {
             notif.id === notificationId ? { ...notif, is_read: false } : notif
           )
         );
+      } else {
+        const errorData = await response.text();
+        console.error("Failed to mark as unread:", response.status, errorData);
       }
-    } catch {
-      // Silently fail - user will see no change in read status
+    } catch (error) {
+      console.error("Error in markAsUnread:", error);
     }
   };
 
@@ -132,42 +142,21 @@ const NotificationCenter = ({ onClose }) => {
         setNotifications((prev) =>
           prev.filter((notif) => notif.id !== notificationId)
         );
+      } else {
+        const errorData = await response.text();
+        console.error("Failed to delete:", response.status, errorData);
       }
-    } catch {
-      // Silently fail - user will see no change
-    }
-  };
-
-  // Mark all as read
-  const markAllAsRead = async () => {
-    try {
-      const token = localStorage.getItem("knoxToken");
-
-      const response = await fetch(
-        "http://localhost:8000/api/scheduling/notifications/mark-all-read/",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.ok) {
-        // Update all notifications to read
-        setNotifications((prev) =>
-          prev.map((notif) => ({ ...notif, is_read: true }))
-        );
-      }
-    } catch {
-      // Silently fail - user will see no change
+    } catch (error) {
+      console.error("Error in deleteNotification:", error);
     }
   };
 
   // Handle menu actions
   const handleMenuAction = (action, notificationId) => {
-    setOpenMenuId(null);
+    // Close menu after a small delay to allow click event to be processed
+    setTimeout(() => {
+      setOpenMenuId(null);
+    }, 10);
 
     switch (action) {
       case "markRead":
@@ -179,15 +168,34 @@ const NotificationCenter = ({ onClose }) => {
       case "delete":
         deleteNotification(notificationId);
         break;
+      default:
+        console.log("Unknown action:", action);
     }
   };
 
-  // Close menu when clicking outside
+  // Close menu when clicking outside or close notification center when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => setOpenMenuId(null);
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+    const handleClickOutside = (event) => {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
+        // Clicked outside the notification center - close it
+        onClose();
+      } else {
+        // Clicked inside the notification center
+        // Only close menu if not clicking on a menu button or menu dropdown
+        const isMenuButton = event.target.closest(`.${styles.menuButton}`);
+        const isMenuDropdown = event.target.closest(`.${styles.menuDropdown}`);
+
+        if (!isMenuButton && !isMenuDropdown) {
+          setOpenMenuId(null);
+        }
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
 
   // Fetch notifications on mount
   useEffect(() => {
@@ -198,8 +206,6 @@ const NotificationCenter = ({ onClose }) => {
   const filteredNotifications = showAll
     ? notifications
     : notifications.filter((notif) => !notif.is_read);
-
-  const unreadCount = notifications.filter((notif) => !notif.is_read).length;
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
@@ -215,43 +221,37 @@ const NotificationCenter = ({ onClose }) => {
     }
   };
 
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "appointment_created":
+        return <MdEventAvailable size={20} />;
+      case "appointment_updated":
+        return <MdUpdate size={20} />;
+      case "appointment_cancelled":
+        return <MdEventBusy size={20} />;
+      case "appointment_reminder":
+        return <MdSchedule size={20} />;
+      default:
+        return <MdNotifications size={20} />;
+    }
+  };
+
   return (
-    <div className={styles.notificationCenter}>
+    <div className={styles.notificationCenter} ref={notificationRef}>
       {/* Header */}
       <div className={styles.notificationHeader}>
-        <h2>Notifications {unreadCount > 0 && `(${unreadCount})`}</h2>
+        <h2>Notifications</h2>
         <div className={styles.notificationControls}>
-          <button
-            className={styles.refreshButton}
-            onClick={fetchNotifications}
-            disabled={loading}
-            title="Refresh notifications"
-          >
-            <MdRefresh size={16} />
-          </button>
-          <button
-            className={styles.toggleButton}
-            onClick={() => setShowAll(!showAll)}
-            title={showAll ? "Show only unread" : "Show all notifications"}
-          >
-            {showAll ? "Unread" : "All"}
-          </button>
-          {unreadCount > 0 && (
-            <button
-              className={styles.markAllButton}
-              onClick={markAllAsRead}
-              title="Mark all as read"
-            >
-              ✓ All
-            </button>
-          )}
-          <button
-            className={styles.closeButton}
-            onClick={onClose}
-            title="Close notifications"
-          >
-            <MdClose size={18} />
-          </button>
+          <label className={styles.toggleSwitch}>
+            <span className={styles.toggleLabel}>Show only unread</span>
+            <input
+              type="checkbox"
+              checked={!showAll}
+              onChange={() => setShowAll(!showAll)}
+              className={styles.toggleInput}
+            />
+            <span className={styles.toggleSlider}></span>
+          </label>
         </div>
       </div>
 
@@ -284,13 +284,11 @@ const NotificationCenter = ({ onClose }) => {
               className={`${styles.notificationItem} ${
                 !notification.is_read ? styles.unread : ""
               }`}
+              data-type={notification.type}
             >
               <div className={styles.notificationContent}>
                 <div className={styles.notificationIcon}>
-                  {notification.type === "appointment_created" && "📅"}
-                  {notification.type === "appointment_updated" && "🔄"}
-                  {notification.type === "appointment_cancelled" && "❌"}
-                  {notification.type === "appointment_reminder" && "⏰"}
+                  {getNotificationIcon(notification.type)}
                 </div>
                 <div className={styles.notificationText}>
                   <div className={styles.notificationTitle}>
@@ -311,31 +309,40 @@ const NotificationCenter = ({ onClose }) => {
                   className={styles.menuButton}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setOpenMenuId(
-                      openMenuId === notification.id ? null : notification.id
-                    );
+                    const newMenuId =
+                      openMenuId === notification.id ? null : notification.id;
+                    setOpenMenuId(newMenuId);
                   }}
                 >
                   <MdMoreVert size={16} />
                 </button>
 
                 {openMenuId === notification.id && (
-                  <div className={styles.menuDropdown}>
+                  <div
+                    className={styles.menuDropdown}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
                     <button
-                      onClick={() =>
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
                         handleMenuAction(
                           notification.is_read ? "markUnread" : "markRead",
                           notification.id
-                        )
-                      }
+                        );
+                      }}
                     >
                       <MdMarkAsUnread size={14} />
                       {notification.is_read ? "Mark as unread" : "Mark as read"}
                     </button>
                     <button
-                      onClick={() =>
-                        handleMenuAction("delete", notification.id)
-                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleMenuAction("delete", notification.id);
+                      }}
                     >
                       <MdDelete size={14} />
                       Delete
