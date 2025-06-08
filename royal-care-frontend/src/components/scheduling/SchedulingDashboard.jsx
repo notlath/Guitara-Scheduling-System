@@ -294,7 +294,9 @@ const SchedulingDashboard = () => {
             <div className="action-buttons">
               <button
                 className="notification-button"
-                onClick={() => setIsNotificationVisible(!isNotificationVisible)}
+                onClick={() => {
+                  setIsNotificationVisible(!isNotificationVisible);
+                }}
                 title="Notifications"
               >
                 <MdNotifications size={20} />

@@ -1135,9 +1135,16 @@ export const fetchNotifications = createAsyncThunk(
 export const markNotificationAsRead = createAsyncThunk(
   "scheduling/markNotificationAsRead",
   async (id, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
     try {
       const response = await axios.post(
-        `${API_URL}notifications/${id}/mark_as_read/`
+        `${API_URL}notifications/${id}/mark_as_read/`,
+        {},
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
       );
       return response.data;
     } catch (error) {

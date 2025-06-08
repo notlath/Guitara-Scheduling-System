@@ -36,72 +36,65 @@
 
 .notificationControls {
   display: flex;
-  gap: var(--spacing-xs);
   align-items: center;
 }
 
-.notificationControls button {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--background-50);
-  color: var(--text-600);
-  border: 1px solid var(--background-200);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  transition: all 0.2s ease;
+/* Toggle Switch Styles */
+.toggleSwitch {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xxs);
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--text-600);
 }
 
-.notificationControls button:hover {
-  background: var(--primary-50);
-  color: var(--primary-700);
-  border-color: var(--primary-200);
-  transform: translateY(-1px);
+.toggleLabel {
+  user-select: none;
 }
 
-.notificationControls button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
+.toggleInput {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
 }
 
-.refreshButton {
-  padding: var(--spacing-xs) !important;
-  min-width: 36px;
-  justify-content: center;
+.toggleSlider {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--background-200);
+  border-radius: 12px;
+  transition: background-color 0.3s ease;
 }
 
-.toggleButton {
-  font-weight: 600;
+.toggleSlider::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--background);
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.markAllButton {
-  background: var(--primary-500) !important;
-  color: var(--background) !important;
-  border-color: var(--primary-500) !important;
-  font-weight: 600;
+.toggleInput:checked + .toggleSlider {
+  background: var(--primary-500);
 }
 
-.markAllButton:hover {
-  background: var(--primary-600) !important;
-  border-color: var(--primary-600) !important;
+.toggleInput:checked + .toggleSlider::before {
+  transform: translateX(20px);
 }
 
-.closeButton {
-  background: var(--background-50) !important;
-  color: var(--text-500) !important;
-  border-color: var(--background-200) !important;
-  min-width: 36px;
-  justify-content: center;
+.toggleSwitch:hover .toggleSlider {
+  background: var(--background-300);
 }
 
-.closeButton:hover {
-  background: var(--error-bg) !important;
-  color: var(--error-text) !important;
-  border-color: var(--error) !important;
+.toggleSwitch:hover .toggleInput:checked + .toggleSlider {
+  background: var(--primary-600);
 }
 
 .notificationsList {
@@ -250,6 +243,9 @@
   align-items: center;
   gap: var(--spacing-xs);
   transition: background-color 0.2s ease;
+  pointer-events: auto; /* Ensure buttons are clickable */
+  z-index: 1002; /* Higher than dropdown */
+  position: relative;
 }
 
 .menuDropdown button:hover {
@@ -300,17 +296,6 @@
 .retryButton:hover {
   background: var(--primary-600);
   transform: translateY(-1px);
-}
-
-/* Badge for unread count */
-.unreadBadge {
-  background: var(--primary-500);
-  color: var(--background);
-  border-radius: 12px;
-  padding: 2px 8px;
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  margin-left: var(--spacing-xs);
 }
 
 /* Notification type indicators */
