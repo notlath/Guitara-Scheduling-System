@@ -17,6 +17,7 @@ import { PageLoadingState } from "./common/LoadingComponents";
 import LayoutRow from "../globals/LayoutRow";
 import "../globals/TabSwitcher.css";
 import "../styles/TherapistDashboard.css";
+import "../styles/DriverCoordination.css";
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
@@ -205,16 +206,45 @@ const TherapistDashboard = () => {
       }
     }
   };
-
   const handleCompleteAppointment = async (appointmentId) => {
+    const appointment = myAppointments.find(apt => apt.id === appointmentId);
+    const needsPickup = appointment?.driver_details ? true : false;
+    
     if (window.confirm("Mark this appointment as completed?")) {
       try {
         await dispatch(
           updateAppointmentStatus({
             id: appointmentId,
             status: "completed",
+            session_end_time: new Date().toISOString(),
+            pickup_requested: needsPickup,
+            pickup_request_time: needsPickup ? new Date().toISOString() : null,
+            pickup_urgency: 'normal'
           })
         ).unwrap();
+        
+        // If transportation was used, automatically request pickup
+        if (needsPickup) {
+          // Broadcast pickup request to operators
+          try {
+            // This would trigger real-time notification to operators
+            syncService.broadcast('pickup_requested', {
+              therapist_id: user.id,
+              therapist_name: `${user.first_name} ${user.last_name}`,
+              appointment_id: appointmentId,
+              location: appointment.location,
+              urgency: 'normal',
+              session_end_time: new Date().toISOString(),
+              client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`
+            });
+            
+            alert("Session completed! Pickup request has been sent to our coordination team.");
+          } catch (broadcastError) {
+            console.error("Failed to broadcast pickup request:", broadcastError);
+            alert("Session completed! Please manually request pickup if needed.");
+          }
+        }
+        
         refreshAppointments(true);
       } catch (error) {
         if (
@@ -225,6 +255,76 @@ const TherapistDashboard = () => {
         } else {
           alert("Failed to complete appointment. Please try again.");
         }
+      }
+    }
+  };
+
+  // New function to manually request pickup
+  const handleRequestPickup = async (appointmentId) => {
+    const appointment = myAppointments.find(apt => apt.id === appointmentId);
+    if (!appointment) return;
+
+    try {
+      await dispatch(
+        updateAppointmentStatus({
+          id: appointmentId,
+          pickup_requested: true,
+          pickup_request_time: new Date().toISOString(),
+          pickup_urgency: 'normal'
+        })
+      ).unwrap();
+
+      // Broadcast pickup request to operators
+      syncService.broadcast('pickup_requested', {
+        therapist_id: user.id,
+        therapist_name: `${user.first_name} ${user.last_name}`,
+        appointment_id: appointmentId,
+        location: appointment.location,
+        urgency: 'normal',
+        session_end_time: appointment.session_end_time || new Date().toISOString(),
+        client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`
+      });
+
+      refreshAppointments(true);
+      alert("Pickup request sent! You'll be notified when a driver is assigned.");
+    } catch (error) {
+      console.error("Failed to request pickup:", error);
+      alert("Failed to request pickup. Please try again.");
+    }
+  };
+
+  // Function to request urgent pickup
+  const handleRequestUrgentPickup = async (appointmentId) => {
+    const appointment = myAppointments.find(apt => apt.id === appointmentId);
+    if (!appointment) return;
+
+    if (window.confirm("Request URGENT pickup? This will prioritize your request.")) {
+      try {
+        await dispatch(
+          updateAppointmentStatus({
+            id: appointmentId,
+            pickup_requested: true,
+            pickup_request_time: new Date().toISOString(),
+            pickup_urgency: 'urgent'
+          })
+        ).unwrap();
+
+        // Broadcast urgent pickup request
+        syncService.broadcast('urgent_pickup_requested', {
+          therapist_id: user.id,
+          therapist_name: `${user.first_name} ${user.last_name}`,
+          appointment_id: appointmentId,
+          location: appointment.location,
+          urgency: 'urgent',
+          session_end_time: appointment.session_end_time || new Date().toISOString(),
+          client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`
+        });
+
+        refreshAppointments(true);
+        alert("URGENT pickup request sent! A driver will be assigned immediately.");
+      } catch (error) {
+        console.error("Failed to request urgent pickup:", error);
+        alert("Failed to request urgent pickup. Please try again.");
       }
     }
   };
@@ -365,9 +465,7 @@ const TherapistDashboard = () => {
               </div>{" "}
             </div>
           );
-        }
-
-      case "in_progress":
+        }      case "in_progress":
         return (
           <div className="appointment-actions">
             <button
@@ -378,6 +476,68 @@ const TherapistDashboard = () => {
             </button>
           </div>
         );
+
+      case "completed":
+        // Show pickup options for appointments with drivers
+        if (appointment.driver_details) {
+          return (
+            <div className="appointment-actions">
+              {appointment.pickup_requested ? (
+                <div className="pickup-status">
+                  {appointment.assigned_driver ? (
+                    <div className="driver-assigned">
+                      <span className="success-badge">✅ Driver Assigned</span>
+                      <p>Driver en route for pickup</p>
+                      {appointment.estimated_pickup_time && (
+                        <p><strong>ETA:</strong> {new Date(appointment.estimated_pickup_time).toLocaleTimeString()}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="pickup-pending">
+                      <span className={`pickup-badge ${appointment.pickup_urgency || 'normal'}`}>
+                        {appointment.pickup_urgency === 'urgent' ? '🚨 URGENT Pickup Requested' : '⏰ Pickup Requested'}
+                      </span>
+                      <p>Waiting for driver assignment...</p>
+                      {appointment.pickup_urgency !== 'urgent' && (
+                        <button
+                          className="urgent-pickup-button"
+                          onClick={() => handleRequestUrgentPickup(id)}
+                        >
+                          Request Urgent Pickup
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="pickup-actions">
+                  <p className="pickup-info">Session completed. Need pickup?</p>
+                  <button
+                    className="request-pickup-button"
+                    onClick={() => handleRequestPickup(id)}
+                  >
+                    Request Pickup
+                  </button>
+                  <button
+                    className="urgent-pickup-button"
+                    onClick={() => handleRequestUrgentPickup(id)}
+                  >
+                    Request Urgent Pickup
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        } else {
+          return (
+            <div className="appointment-actions">
+              <div className="completed-status">
+                <span className="success-badge">✅ Session Completed</span>
+                <p>No transport needed</p>
+              </div>
+            </div>
+          );
+        }
 
       default:
         return null;
