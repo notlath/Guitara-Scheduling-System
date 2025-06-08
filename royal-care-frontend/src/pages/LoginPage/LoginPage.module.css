@@ -1,3 +1,5 @@
+@import "../../globals/FormField.css";
+
 .loginContainer {
   display: flex;
   flex-direction: column;
@@ -67,35 +69,15 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  gap: var(--spacing-xm); /* 4px between label and input */
-}
-
-.formGroup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xxs); /* 4px between label and input */
-}
-
-.formLabel {
-  color: var(--muted);
-  font-size: var(--font-size-sm);
-  font-weight: 400;
-}
-
-.formInput {
-  width: 100%;
-  border: 1px solid var(--background-100);
-  background-color: var(--background-50);
-  padding: var(--spacing-xm) var(--spacing-sm); /* 8px vertical, 16px horizontal padding */
-  border-radius: 6px;
+  /* gap: var(--spacing-xm); 4px between label and input */
 }
 
 .forgotPassword {
   text-align: right;
   font-size: var(--font-size-sm);
   margin: 0;
-  margin-bottom: var(--spacing-md);
-  margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-xm);
+  /* margin-top: var(--spacing-xs); */
 }
 
 .forgotPasswordLink {
@@ -191,11 +173,4 @@
   ); /* Increased gap between phone number field and register button */
 }
 
-/* Style the role selection dropdown to match other inputs */
-.formInput[type="select"] {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 30px;
-}
+/* Keep only unique styles for LoginPage */

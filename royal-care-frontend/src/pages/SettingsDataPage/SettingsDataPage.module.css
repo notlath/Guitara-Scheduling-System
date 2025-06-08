@@ -1,4 +1,5 @@
 @import "../../globals/TabSwitcher.css";
+@import "../../globals/FormField.css";
 
 /* Place your SettingsDataPage specific styles here */
 
@@ -9,7 +10,7 @@
   background: var(--background);
   border-radius: 12px;
   /* box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04); */
-  border: 1px solid var(--background-50);
+  border: 1px solid var(--background-100);
 }
 
 .data-table {
@@ -100,7 +101,7 @@
 .modal-form {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  /* gap: 0.8rem; */
 }
 
 .success-prompt {
@@ -122,3 +123,5 @@
   pointer-events: none;
   user-select: none;
 }
+
+/* Removed local field styles, now using global FormField.css */

@@ -71,6 +71,8 @@ small {
   --secondary: #adbdae;
   --accent: #9ab096;
   --error: #ff312e;
+  --border-color: var(--background-200);
+  --border-radius: 6px;
 
   /* Text color shades */
   --text-50: #f9f5ec;

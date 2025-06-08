@@ -3,8 +3,10 @@ import styles from "./SettingsDataPage.module.css";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
 import "../../globals/LayoutRow.css";
-import { MdAdd } from "react-icons/md";
+import { MdAdd, MdClose } from "react-icons/md";
 import LayoutRow from "../../globals/LayoutRow";
+import PageLayout from "../../globals/PageLayout";
+import { FormField } from "../../globals/FormField";
 
 const TABS = ["Therapists", "Drivers", "Operators", "Services", "Materials"];
 
@@ -140,39 +142,39 @@ const SettingsDataPage = () => {
       case "Therapists":
         return (
           <>
-            <input
-              name="firstName"
-              placeholder="First Name"
-              value={formData.firstName || ""}
-              onChange={handleInputChange}
-              required
-            />
-            <input
-              name="lastName"
-              placeholder="Last Name"
-              value={formData.lastName || ""}
-              onChange={handleInputChange}
-              required
-            />
-            <input
+            <div className={styles["flex-row-fields"]}>
+              <FormField
+                name="firstName"
+                label="First Name"
+                value={formData.firstName || ""}
+                onChange={handleInputChange}
+              />
+              <FormField
+                name="lastName"
+                label="Last Name"
+                value={formData.lastName || ""}
+                onChange={handleInputChange}
+              />
+            </div>
+            <FormField
               name="username"
-              placeholder="Username"
+              label="Username"
               value={formData.username || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="email"
-              placeholder="Email"
+              label="Email"
+              type="email"
               value={formData.email || ""}
               onChange={handleInputChange}
-              required
             />
-            <select
+            <FormField
+              as="select"
               name="specialization"
+              label="Specialization"
               value={formData.specialization || ""}
               onChange={handleInputChange}
-              required
             >
               <option value="">Select Specialization</option>
               {SPECIALIZATION_OPTIONS.map((opt) => (
@@ -180,12 +182,13 @@ const SettingsDataPage = () => {
                   {opt}
                 </option>
               ))}
-            </select>
-            <select
+            </FormField>
+            <FormField
+              as="select"
               name="pressure"
+              label="Pressure Level"
               value={formData.pressure || ""}
               onChange={handleInputChange}
-              required
             >
               <option value="">Select Pressure Level</option>
               {PRESSURE_OPTIONS.map((opt) => (
@@ -193,104 +196,104 @@ const SettingsDataPage = () => {
                   {opt}
                 </option>
               ))}
-            </select>
+            </FormField>
           </>
         );
       case "Drivers":
       case "Operators":
         return (
           <>
-            <input
-              name="firstName"
-              placeholder="First Name"
-              value={formData.firstName || ""}
-              onChange={handleInputChange}
-              required
-            />
-            <input
-              name="lastName"
-              placeholder="Last Name"
-              value={formData.lastName || ""}
-              onChange={handleInputChange}
-              required
-            />
-            <input
+            <div className={styles["flex-row-fields"]}>
+              <FormField
+                name="firstName"
+                label="First Name"
+                value={formData.firstName || ""}
+                onChange={handleInputChange}
+              />
+              <FormField
+                name="lastName"
+                label="Last Name"
+                value={formData.lastName || ""}
+                onChange={handleInputChange}
+              />
+            </div>
+            <FormField
               name="username"
-              placeholder="Username"
+              label="Username"
               value={formData.username || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="email"
-              placeholder="Email"
+              label="Email"
+              type="email"
               value={formData.email || ""}
               onChange={handleInputChange}
-              required
             />
           </>
         );
       case "Services":
         return (
           <>
-            <input
+            <FormField
               name="name"
-              placeholder="Service Name"
+              label="Service Name"
               value={formData.name || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="description"
-              placeholder="Description"
+              label="Description"
+              as="textarea"
               value={formData.description || ""}
               onChange={handleInputChange}
-              required
+              inputProps={{ className: "global-form-field-textarea" }}
             />
-            <input
+            <FormField
               name="duration"
-              placeholder="Duration (e.g. 30 mins)"
+              label="Duration"
               value={formData.duration || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="price"
-              placeholder="Price (e.g. P800)"
+              label="Price"
               value={formData.price || ""}
               onChange={handleInputChange}
-              required
             />
-            <select
+            <FormField
+              as="select"
               name="materials"
-              multiple
+              label="Materials"
               value={formData.materials || []}
               onChange={handleMultiSelectChange}
+              multiple
+              required={false}
             >
               {MATERIAL_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
               ))}
-            </select>
+            </FormField>
           </>
         );
       case "Materials":
         return (
           <>
-            <input
+            <FormField
               name="name"
-              placeholder="Material Name"
+              label="Material Name"
               value={formData.name || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="description"
-              placeholder="Description"
+              label="Description"
+              as="textarea"
               value={formData.description || ""}
               onChange={handleInputChange}
-              required
+              inputProps={{ className: "global-form-field-textarea" }}
             />
           </>
         );
@@ -299,8 +302,56 @@ const SettingsDataPage = () => {
     }
   };
 
+  // Helper to get table columns and row data per tab
+  const getTableConfig = () => {
+    switch (activeTab) {
+      case "Drivers":
+      case "Operators":
+        return {
+          columns: [
+            { key: "Username", label: "Username" },
+            { key: "Name", label: "Name" },
+            { key: "Email", label: "Email" },
+            { key: "Contact", label: "Contact Number" },
+          ],
+        };
+      case "Services":
+        return {
+          columns: [
+            { key: "Name", label: "Name" },
+            { key: "Description", label: "Description" },
+            { key: "Duration", label: "Duration" },
+            { key: "Price", label: "Price" },
+            { key: "Materials", label: "Materials" },
+          ],
+        };
+      case "Materials":
+        return {
+          columns: [
+            { key: "Name", label: "Name" },
+            { key: "Description", label: "Description" },
+          ],
+        };
+      case "Therapists":
+      default:
+        return {
+          columns: [
+            { key: "Username", label: "Username" },
+            { key: "Name", label: "Name" },
+            { key: "Email", label: "Email" },
+            { key: "Contact", label: "Contact Number" },
+            { key: "Specialization", label: "Specialization" },
+            { key: "Pressure", label: "Pressure Level" },
+          ],
+        };
+    }
+  };
+
+  // Cache table config to avoid multiple calls
+  const tableConfig = getTableConfig();
+
   return (
-    <div className="global-container">
+    <PageLayout>
       {showModal && (
         <div className={styles["modal-overlay"]}>
           <div className={styles["modal"]}>
@@ -310,7 +361,7 @@ const SettingsDataPage = () => {
                 className={styles["close-btn"]}
                 onClick={handleCloseModal}
               >
-                &times;
+                <MdClose size={20} />
               </button>
             </div>
             <form className={styles["modal-form"]} onSubmit={handleSubmit}>
@@ -351,12 +402,11 @@ const SettingsDataPage = () => {
           <table className={styles["data-table"]}>
             <thead>
               <tr>
-                <th scope="col">Username</th>
-                <th scope="col">Name</th>
-                <th scope="col">Email</th>
-                <th scope="col">Contact Number</th>
-                <th scope="col">Specialization</th>
-                <th scope="col">Pressure Level</th>
+                {tableConfig.columns.map((col) => (
+                  <th key={col.key} scope="col">
+                    {col.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -364,17 +414,19 @@ const SettingsDataPage = () => {
               TAB_PLACEHOLDERS[activeTab].length > 0 ? (
                 TAB_PLACEHOLDERS[activeTab].map((row, idx) => (
                   <tr key={idx}>
-                    <td>{row.Username}</td>
-                    <td>{row.Name}</td>
-                    <td>{row.Email}</td>
-                    <td>{row.Contact}</td>
-                    <td>{row.Specialization}</td>
-                    <td>{row.Pressure}</td>
+                    {tableConfig.columns.map((col) => (
+                      <td key={col.key}>
+                        {row[col.key] !== undefined ? row[col.key] : "-"}
+                      </td>
+                    ))}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className={styles["no-data"]}>
+                  <td
+                    colSpan={tableConfig.columns.length}
+                    className={styles["no-data"]}
+                  >
                     No data available.
                   </td>
                 </tr>
@@ -383,7 +435,7 @@ const SettingsDataPage = () => {
           </table>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

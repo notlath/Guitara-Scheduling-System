@@ -196,6 +196,17 @@ This frontend connects to the Django backend located in the `/guitara` directory
   - Place the main component (e.g., `MyNewPage.jsx`) and its CSS module (e.g., `MyNewPage.module.css`) inside that folder.
   - This keeps code organized and makes it easy to manage page-specific logic and styles.
 
+## Global Components and Styles
+
+- If you are creating a new global file (such as a layout component, tab switcher, or shared theme/styles), place it in the `src/globals/` directory.
+- Examples of global files include:
+  - `src/globals/LayoutRow.jsx`
+  - `src/globals/LayoutRow.css`
+  - `src/globals/PageLayout.jsx`
+  - `src/globals/TabSwitcher.css`
+  - `src/globals/theme.css`
+- This keeps all shared/global components and styles organized and easy to find.
+
 ---
 
 For backend setup and API documentation, see the `guitara/` directory and its `README.md`.

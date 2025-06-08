@@ -22,6 +22,7 @@ import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
 import WebSocketStatus from "./WebSocketStatus";
 import WeekView from "./WeekView";
+import PageLayout from "../../globals/PageLayout";
 
 const SchedulingDashboard = () => {
   // Set up sync event handlers to update Redux state
@@ -287,156 +288,154 @@ const SchedulingDashboard = () => {
   };
 
   return (
-    <div className="global-container">
-      <div className="global-content">
-        <div className="scheduling-dashboard">
-          <LayoutRow title="Bookings">
-            <div className="action-buttons">
-              <button
-                className="notification-button"
-                onClick={() => {
-                  setIsNotificationVisible(!isNotificationVisible);
-                }}
-                title="Notifications"
-              >
-                <MdNotifications size={20} />
-                {unreadNotificationCount > 0 && (
-                  <span className="notification-badge">
-                    {unreadNotificationCount}
-                  </span>
-                )}
-              </button>
-
-              {user.role === "operator" && (
-                <button
-                  className="primary-action-btn"
-                  onClick={handleCreateAppointment}
-                  title="Create Booking"
-                >
-                  <span className="primary-action-icon">
-                    <MdAdd size={20} />
-                  </span>
-                  Create Booking
-                </button>
+    <PageLayout>
+      <div className="scheduling-dashboard">
+        <LayoutRow title="Bookings">
+          <div className="action-buttons">
+            <button
+              className="notification-button"
+              onClick={() => {
+                setIsNotificationVisible(!isNotificationVisible);
+              }}
+              title="Notifications"
+            >
+              <MdNotifications size={20} />
+              {unreadNotificationCount > 0 && (
+                <span className="notification-badge">
+                  {unreadNotificationCount}
+                </span>
               )}
-            </div>
-          </LayoutRow>
-          <div className="view-selector">
-            <button
-              className={currentView === "calendar" ? "active" : ""}
-              onClick={() => setView("calendar")}
-            >
-              Month View
             </button>
-            <button
-              className={currentView === "week" ? "active" : ""}
-              onClick={() => setView("week")}
-            >
-              Week View
-            </button>
-            <button
-              className={currentView === "today" ? "active" : ""}
-              onClick={() => setView("today")}
-            >
-              Today's Bookings
-            </button>
-            <button
-              className={currentView === "list" ? "active" : ""}
-              onClick={() => setView("list")}
-            >
-              Upcoming Bookings
-            </button>
-            <button
-              className={currentView === "availability" ? "active" : ""}
-              onClick={() => setView("availability")}
-            >
-              Manage Availability
-            </button>
-          </div>
 
-          {loading && (
-            <PageLoadingState
-              title="Loading dashboard..."
-              subtitle="Please wait while we fetch your appointments"
-              className="dashboard-loading"
+            {user.role === "operator" && (
+              <button
+                className="primary-action-btn"
+                onClick={handleCreateAppointment}
+                title="Create Booking"
+              >
+                <span className="primary-action-icon">
+                  <MdAdd size={20} />
+                </span>
+                Create Booking
+              </button>
+            )}
+          </div>
+        </LayoutRow>
+        <div className="view-selector">
+          <button
+            className={currentView === "calendar" ? "active" : ""}
+            onClick={() => setView("calendar")}
+          >
+            Month View
+          </button>
+          <button
+            className={currentView === "week" ? "active" : ""}
+            onClick={() => setView("week")}
+          >
+            Week View
+          </button>
+          <button
+            className={currentView === "today" ? "active" : ""}
+            onClick={() => setView("today")}
+          >
+            Today's Bookings
+          </button>
+          <button
+            className={currentView === "list" ? "active" : ""}
+            onClick={() => setView("list")}
+          >
+            Upcoming Bookings
+          </button>
+          <button
+            className={currentView === "availability" ? "active" : ""}
+            onClick={() => setView("availability")}
+          >
+            Manage Availability
+          </button>
+        </div>
+
+        {loading && (
+          <PageLoadingState
+            title="Loading dashboard..."
+            subtitle="Please wait while we fetch your appointments"
+            className="dashboard-loading"
+          />
+        )}
+
+        {error && (
+          <div className="error-message">
+            {typeof error === "object"
+              ? error.message || error.error || JSON.stringify(error)
+              : error}
+          </div>
+        )}
+
+        {/* Display notifications panel when visible */}
+        {isNotificationVisible && (
+          <div className="notifications-panel">
+            <NotificationCenter
+              onClose={() => setIsNotificationVisible(false)}
+            />
+          </div>
+        )}
+
+        {/* Display different views based on user selection */}
+        <div className="dashboard-content">
+          {currentView === "calendar" && !isFormVisible && (
+            <Calendar
+              onDateSelected={handleDateSelected}
+              onTimeSelected={handleTimeSelected}
+              selectedDate={selectedDate}
             />
           )}
 
-          {error && (
-            <div className="error-message">
-              {typeof error === "object"
-                ? error.message || error.error || JSON.stringify(error)
-                : error}
+          {currentView === "week" && !isFormVisible && (
+            <WeekView
+              onAppointmentSelect={handleEditAppointment}
+              selectedDate={selectedDate || defaultDate}
+            />
+          )}
+
+          {currentView === "today" && !isFormVisible && (
+            <div className="todays-appointments">
+              <h2>Today's Bookings</h2>
+              {renderAppointmentsList(todayAppointments)}
             </div>
           )}
 
-          {/* Display notifications panel when visible */}
-          {isNotificationVisible && (
-            <div className="notifications-panel">
-              <NotificationCenter
-                onClose={() => setIsNotificationVisible(false)}
-              />
+          {currentView === "list" && !isFormVisible && (
+            <div className="upcoming-appointments">
+              <h2>Upcoming Bookings</h2>
+              {renderAppointmentsList(upcomingAppointments)}
             </div>
           )}
 
-          {/* Display different views based on user selection */}
-          <div className="dashboard-content">
-            {currentView === "calendar" && !isFormVisible && (
-              <Calendar
-                onDateSelected={handleDateSelected}
-                onTimeSelected={handleTimeSelected}
+          {currentView === "availability" && !isFormVisible && (
+            <AvailabilityManager />
+          )}
+
+          {isFormVisible && (
+            <ErrorBoundary onReset={() => setIsFormVisible(false)}>
+              <AppointmentForm
+                key={
+                  selectedAppointment
+                    ? `edit-${selectedAppointment.id}`
+                    : "create-new"
+                }
+                appointment={selectedAppointment}
+                onSubmitSuccess={handleFormSubmitSuccess}
+                onCancel={handleFormCancel}
                 selectedDate={selectedDate}
+                selectedTime={selectedTime}
               />
-            )}
-
-            {currentView === "week" && !isFormVisible && (
-              <WeekView
-                onAppointmentSelect={handleEditAppointment}
-                selectedDate={selectedDate || defaultDate}
-              />
-            )}
-
-            {currentView === "today" && !isFormVisible && (
-              <div className="todays-appointments">
-                <h2>Today's Bookings</h2>
-                {renderAppointmentsList(todayAppointments)}
-              </div>
-            )}
-
-            {currentView === "list" && !isFormVisible && (
-              <div className="upcoming-appointments">
-                <h2>Upcoming Bookings</h2>
-                {renderAppointmentsList(upcomingAppointments)}
-              </div>
-            )}
-
-            {currentView === "availability" && !isFormVisible && (
-              <AvailabilityManager />
-            )}
-
-            {isFormVisible && (
-              <ErrorBoundary onReset={() => setIsFormVisible(false)}>
-                <AppointmentForm
-                  key={
-                    selectedAppointment
-                      ? `edit-${selectedAppointment.id}`
-                      : "create-new"
-                  }
-                  appointment={selectedAppointment}
-                  onSubmitSuccess={handleFormSubmitSuccess}
-                  onCancel={handleFormCancel}
-                  selectedDate={selectedDate}
-                  selectedTime={selectedTime}
-                />
-              </ErrorBoundary>
-            )}
-          </div>
-
-          {/* Display WebSocket status notification */}
-          <WebSocketStatus />
+            </ErrorBoundary>
+          )}
         </div>
+
+        {/* Display WebSocket status notification */}
+        <WebSocketStatus />
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

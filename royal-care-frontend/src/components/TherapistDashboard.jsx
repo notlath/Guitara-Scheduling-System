@@ -15,6 +15,7 @@ import syncService from "../services/syncService";
 import { PageLoadingState } from "./common/LoadingComponents";
 
 import LayoutRow from "../globals/LayoutRow";
+import PageLayout from "../globals/PageLayout";
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css";
@@ -677,99 +678,97 @@ const TherapistDashboard = () => {
   };
 
   return (
-    <div className="global-container">
-      <div className="global-content">
-        <div className="therapist-dashboard">
-          <LayoutRow title="Therapist Dashboard">
-            <div className="action-buttons">
-              <p style={{ margin: 0 }}>
-                Welcome, {user?.first_name} {user?.last_name}!
-              </p>
-              <button onClick={handleLogout} className="logout-button">
-                Logout
-              </button>
+    <PageLayout>
+      <div className="therapist-dashboard">
+        <LayoutRow title="Therapist Dashboard">
+          <div className="action-buttons">
+            <p style={{ margin: 0 }}>
+              Welcome, {user?.first_name} {user?.last_name}!
+            </p>
+            <button onClick={handleLogout} className="logout-button">
+              Logout
+            </button>
+          </div>
+        </LayoutRow>
+        {/* Only show loading spinner on initial load, not for background updates */}
+        {loading && isInitialLoad && (
+          <PageLoadingState message="Loading your appointments..." />
+        )}
+        {/* Improved error handling with retry option */}
+        {error && !isInitialLoad && (
+          <div className="error-message">
+            <div>
+              {typeof error === "object"
+                ? error.message || error.error || "An error occurred"
+                : error}
             </div>
-          </LayoutRow>
-          {/* Only show loading spinner on initial load, not for background updates */}
-          {loading && isInitialLoad && (
-            <PageLoadingState message="Loading your appointments..." />
+            <button
+              onClick={() => refreshAppointments(false)}
+              className="retry-button"
+              style={{
+                marginTop: "10px",
+                padding: "5px 10px",
+                backgroundColor: "var(--primary)",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        <div className="view-selector">
+          <button
+            className={currentView === "today" ? "active" : ""}
+            onClick={() => setView("today")}
+          >
+            Today's Appointments
+          </button>
+          <button
+            className={currentView === "upcoming" ? "active" : ""}
+            onClick={() => setView("upcoming")}
+          >
+            Upcoming Appointments
+          </button>
+          <button
+            className={currentView === "all" ? "active" : ""}
+            onClick={() => setView("all")}
+          >
+            All My Appointments
+          </button>
+        </div>
+        <div className="dashboard-content">
+          {currentView === "today" && (
+            <div className="todays-appointments">
+              <h2>Today's Appointments</h2>
+              {renderAppointmentsList(myTodayAppointments)}
+            </div>
           )}
-          {/* Improved error handling with retry option */}
-          {error && !isInitialLoad && (
-            <div className="error-message">
-              <div>
-                {typeof error === "object"
-                  ? error.message || error.error || "An error occurred"
-                  : error}
-              </div>
-              <button
-                onClick={() => refreshAppointments(false)}
-                className="retry-button"
-                style={{
-                  marginTop: "10px",
-                  padding: "5px 10px",
-                  backgroundColor: "var(--primary)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                Retry
-              </button>
+          {currentView === "upcoming" && (
+            <div className="upcoming-appointments">
+              <h2>Upcoming Appointments</h2>
+              {renderAppointmentsList(myUpcomingAppointments)}
+            </div>
+          )}
+          {currentView === "all" && (
+            <div className="all-appointments">
+              <h2>All My Appointments</h2>
+              {renderAppointmentsList(myAppointments)}
             </div>
           )}{" "}
-          <div className="view-selector">
-            <button
-              className={currentView === "today" ? "active" : ""}
-              onClick={() => setView("today")}
-            >
-              Today's Appointments
-            </button>
-            <button
-              className={currentView === "upcoming" ? "active" : ""}
-              onClick={() => setView("upcoming")}
-            >
-              Upcoming Appointments
-            </button>
-            <button
-              className={currentView === "all" ? "active" : ""}
-              onClick={() => setView("all")}
-            >
-              All My Appointments
-            </button>
-          </div>
-          <div className="dashboard-content">
-            {currentView === "today" && (
-              <div className="todays-appointments">
-                <h2>Today's Appointments</h2>
-                {renderAppointmentsList(myTodayAppointments)}
-              </div>
-            )}
-            {currentView === "upcoming" && (
-              <div className="upcoming-appointments">
-                <h2>Upcoming Appointments</h2>
-                {renderAppointmentsList(myUpcomingAppointments)}
-              </div>
-            )}
-            {currentView === "all" && (
-              <div className="all-appointments">
-                <h2>All My Appointments</h2>
-                {renderAppointmentsList(myAppointments)}
-              </div>
-            )}{" "}
-          </div>
-          <WebSocketStatus />
-          <RejectionModal
-            isOpen={rejectionModal.isOpen}
-            onClose={handleRejectionCancel}
-            onSubmit={handleRejectionSubmit}
-            appointmentId={rejectionModal.appointmentId}
-            loading={loading}
-          />
         </div>
+        <WebSocketStatus />
+        <RejectionModal
+          isOpen={rejectionModal.isOpen}
+          onClose={handleRejectionCancel}
+          onSubmit={handleRejectionSubmit}
+          appointmentId={rejectionModal.appointmentId}
+          loading={loading}
+        />
       </div>
-    </div>
+    </PageLayout>
   );
 };
 
