@@ -1223,6 +1223,38 @@ export const deleteReadNotifications = createAsyncThunk(
   }
 );
 
+// Accept appointment (for dual acceptance workflow)
+export const acceptAppointment = createAsyncThunk(
+  "scheduling/acceptAppointment",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/accept/`,
+        {},
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
+      // Broadcast the acceptance update
+      syncService.broadcastWithImmediate("appointment_accepted", {
+        appointment: response.data,
+        appointmentId: appointmentId,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error("Accept appointment error:", error.response?.data);
+      return rejectWithValue(
+        handleApiError(error, "Could not accept appointment")
+      );
+    }
+  }
+);
+
 // Initial state
 const initialState = {
   appointments: [],
