@@ -13,6 +13,7 @@ import LayoutRow from "../globals/LayoutRow";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
+import PageLayout from "../globals/PageLayout";
 
 import "../globals/TabSwitcher.css";
 import "../styles/OperatorDashboard.css";
@@ -837,179 +838,172 @@ const OperatorDashboard = () => {
   };
 
   return (
-    <div className="global-container">
-      <div className="global-content">
-        <div className="operator-dashboard">
-          <LayoutRow title="Operator Dashboard">
-            <div className="action-buttons">
-              <button onClick={handleLogout} className="logout-button">
-                Logout
-              </button>
+    <PageLayout>
+      <div className="operator-dashboard">
+        <LayoutRow title="Operator Dashboard">
+          <div className="action-buttons">
+            <button onClick={handleLogout} className="logout-button">
+              Logout
+            </button>
+          </div>
+        </LayoutRow>
+        {loading && <div className="loading-spinner">Loading...</div>}
+        {error && (
+          <div className="error-message">
+            {typeof error === "object"
+              ? error.message || error.error || JSON.stringify(error)
+              : error}
+          </div>
+        )}{" "}
+        {/* Statistics Dashboard */}
+        <div className="stats-dashboard">
+          <div className="stats-card">
+            <h4>Rejection Overview</h4>
+            <div className="stats-grid">
+              <div className="stat-item">
+                <span className="stat-number">{rejectionStats.total}</span>
+                <span className="stat-label">Total Rejections</span>
+              </div>
+              <div className="stat-item therapist-stat">
+                <span className="stat-number">{rejectionStats.therapist}</span>
+                <span className="stat-label">Therapist Rejections</span>
+              </div>
+              <div className="stat-item driver-stat">
+                <span className="stat-number">{rejectionStats.driver}</span>
+                <span className="stat-label">Driver Rejections</span>
+              </div>
+              <div className="stat-item pending-stat">
+                <span className="stat-number">{rejectionStats.pending}</span>
+                <span className="stat-label">Pending Reviews</span>
+              </div>
             </div>
-          </LayoutRow>
-          {loading && <div className="loading-spinner">Loading...</div>}
-          {error && (
-            <div className="error-message">
-              {typeof error === "object"
-                ? error.message || error.error || JSON.stringify(error)
-                : error}
+          </div>
+        </div>{" "}
+        <div className="view-selector">
+          <button
+            className={currentView === "rejected" ? "active" : ""}
+            onClick={() => setView("rejected")}
+          >
+            Pending Reviews ({rejectedAppointments.length})
+          </button>
+          <button
+            className={currentView === "pending" ? "active" : ""}
+            onClick={() => setView("pending")}
+          >
+            Pending Acceptance ({pendingAppointments.length})
+          </button>
+          <button
+            className={currentView === "timeouts" ? "active" : ""}
+            onClick={() => setView("timeouts")}
+          >
+            Timeouts (
+            {overdueAppointments.length +
+              approachingDeadlineAppointments.length}
+            )
+          </button>
+          <button
+            className={currentView === "all" ? "active" : ""}
+            onClick={() => setView("all")}
+          >
+            All Appointments
+          </button>{" "}
+          <button
+            className={currentView === "notifications" ? "active" : ""}
+            onClick={() => setView("notifications")}
+          >
+            Notifications
+          </button>{" "}
+          <button
+            className={currentView === "availability" ? "active" : ""}
+            onClick={() => setView("availability")}
+          >
+            Manage Availability
+          </button>
+        </div>{" "}
+        <div className="dashboard-content">
+          {currentView === "rejected" && (
+            <div className="rejected-appointments">
+              <h2>Rejection Reviews</h2>
+              {renderRejectedAppointments()}
+            </div>
+          )}
+          {currentView === "pending" && (
+            <div className="pending-appointments">
+              <h2>Pending Acceptance Appointments</h2>
+              {renderPendingAcceptanceAppointments()}
+            </div>
+          )}
+          {currentView === "timeouts" && (
+            <div className="timeout-monitoring">
+              <h2>Timeout Monitoring</h2>
+              {renderTimeoutMonitoring()}
+            </div>
+          )}
+          {currentView === "all" && (
+            <div className="all-appointments">
+              <h2>All Appointments</h2>
+              {renderAllAppointments()}
             </div>
           )}{" "}
-          {/* Statistics Dashboard */}
-          <div className="stats-dashboard">
-            <div className="stats-card">
-              <h4>Rejection Overview</h4>
-              <div className="stats-grid">
-                <div className="stat-item">
-                  <span className="stat-number">{rejectionStats.total}</span>
-                  <span className="stat-label">Total Rejections</span>
-                </div>
-                <div className="stat-item therapist-stat">
-                  <span className="stat-number">
-                    {rejectionStats.therapist}
-                  </span>
-                  <span className="stat-label">Therapist Rejections</span>
-                </div>
-                <div className="stat-item driver-stat">
-                  <span className="stat-number">{rejectionStats.driver}</span>
-                  <span className="stat-label">Driver Rejections</span>
-                </div>
-                <div className="stat-item pending-stat">
-                  <span className="stat-number">{rejectionStats.pending}</span>
-                  <span className="stat-label">Pending Reviews</span>
-                </div>
-              </div>
+          {currentView === "notifications" && (
+            <div className="notifications">
+              <h2>Notifications</h2>
+              {renderNotifications()}
             </div>
-          </div>{" "}
-          <div className="view-selector">
-            <button
-              className={currentView === "rejected" ? "active" : ""}
-              onClick={() => setView("rejected")}
-            >
-              Pending Reviews ({rejectedAppointments.length})
-            </button>
-            <button
-              className={currentView === "pending" ? "active" : ""}
-              onClick={() => setView("pending")}
-            >
-              Pending Acceptance ({pendingAppointments.length})
-            </button>
-            <button
-              className={currentView === "timeouts" ? "active" : ""}
-              onClick={() => setView("timeouts")}
-            >
-              Timeouts (
-              {overdueAppointments.length +
-                approachingDeadlineAppointments.length}
-              )
-            </button>
-            <button
-              className={currentView === "all" ? "active" : ""}
-              onClick={() => setView("all")}
-            >
-              All Appointments
-            </button>{" "}
-            <button
-              className={currentView === "notifications" ? "active" : ""}
-              onClick={() => setView("notifications")}
-            >
-              Notifications
-            </button>{" "}
-            <button
-              className={currentView === "availability" ? "active" : ""}
-              onClick={() => setView("availability")}
-            >
-              Manage Availability
-            </button>
-          </div>{" "}
-          <div className="dashboard-content">
-            {currentView === "rejected" && (
-              <div className="rejected-appointments">
-                <h2>Rejection Reviews</h2>
-                {renderRejectedAppointments()}
-              </div>
-            )}
-            {currentView === "pending" && (
-              <div className="pending-appointments">
-                <h2>Pending Acceptance Appointments</h2>
-                {renderPendingAcceptanceAppointments()}
-              </div>
-            )}
-            {currentView === "timeouts" && (
-              <div className="timeout-monitoring">
-                <h2>Timeout Monitoring</h2>
-                {renderTimeoutMonitoring()}
-              </div>
-            )}
-            {currentView === "all" && (
-              <div className="all-appointments">
-                <h2>All Appointments</h2>
-                {renderAllAppointments()}
-              </div>
-            )}{" "}
-            {currentView === "notifications" && (
-              <div className="notifications">
-                <h2>Notifications</h2>
-                {renderNotifications()}
-              </div>
-            )}
-            {currentView === "availability" && (
-              <div className="availability-management">
-                <AvailabilityManager />
-              </div>
-            )}
-          </div>
-          {/* Review Rejection Modal */}
-          {reviewModal.isOpen && (
-            <div className="modal-overlay">
-              <div className="review-modal">
-                <h3>Review Appointment Rejection</h3>
-                <div className="rejection-details">
-                  <p>
-                    <strong>Rejection Reason:</strong>
-                  </p>
-                  <p className="rejection-reason-text">
-                    {reviewModal.rejectionReason}
-                  </p>
-                </div>
-
-                <div className="review-notes">
-                  <label htmlFor="reviewNotes">Review Notes (optional):</label>
-                  <textarea
-                    id="reviewNotes"
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    placeholder="Add any additional notes about your decision..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="modal-actions">
-                  <button
-                    className="accept-button"
-                    onClick={() => handleReviewSubmit("accept")}
-                  >
-                    Accept Rejection
-                  </button>
-                  <button
-                    className="deny-button"
-                    onClick={() => handleReviewSubmit("deny")}
-                  >
-                    Deny Rejection
-                  </button>
-                  <button
-                    className="cancel-button"
-                    onClick={handleReviewCancel}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
+          )}
+          {currentView === "availability" && (
+            <div className="availability-management">
+              <AvailabilityManager />
             </div>
           )}
         </div>
+        {/* Review Rejection Modal */}
+        {reviewModal.isOpen && (
+          <div className="modal-overlay">
+            <div className="review-modal">
+              <h3>Review Appointment Rejection</h3>
+              <div className="rejection-details">
+                <p>
+                  <strong>Rejection Reason:</strong>
+                </p>
+                <p className="rejection-reason-text">
+                  {reviewModal.rejectionReason}
+                </p>
+              </div>
+
+              <div className="review-notes">
+                <label htmlFor="reviewNotes">Review Notes (optional):</label>
+                <textarea
+                  id="reviewNotes"
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
+                  placeholder="Add any additional notes about your decision..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  className="accept-button"
+                  onClick={() => handleReviewSubmit("accept")}
+                >
+                  Accept Rejection
+                </button>
+                <button
+                  className="deny-button"
+                  onClick={() => handleReviewSubmit("deny")}
+                >
+                  Deny Rejection
+                </button>
+                <button className="cancel-button" onClick={handleReviewCancel}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

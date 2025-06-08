@@ -5,6 +5,7 @@ import "../../styles/Settings.css";
 import "../../globals/LayoutRow.css";
 import { MdAdd } from "react-icons/md";
 import LayoutRow from "../../globals/LayoutRow";
+import PageLayout from "../../globals/PageLayout";
 
 const TABS = ["Therapists", "Drivers", "Operators", "Services", "Materials"];
 
@@ -300,7 +301,7 @@ const SettingsDataPage = () => {
   };
 
   return (
-    <div className="global-container">
+    <PageLayout>
       {showModal && (
         <div className={styles["modal-overlay"]}>
           <div className={styles["modal"]}>
@@ -383,7 +384,7 @@ const SettingsDataPage = () => {
           </table>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

@@ -9,7 +9,7 @@
   background: var(--background);
   border-radius: 12px;
   /* box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04); */
-  border: 1px solid var(--background-50);
+  border: 1px solid var(--background-100);
 }
 
 .data-table {
