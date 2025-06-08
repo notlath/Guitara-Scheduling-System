@@ -180,9 +180,8 @@ const OperatorDashboard = () => {
       unsubscribe();
     };
   }, []);
-  const { appointments, notifications, staffMembers, loading, error } = useSelector(
-    (state) => state.scheduling
-  );
+  const { appointments, notifications, staffMembers, loading, error } =
+    useSelector((state) => state.scheduling);
   // Filter rejected appointments for review
   const rejectedAppointments = appointments.filter(
     (apt) => apt.status === "rejected" && !apt.review_decision
@@ -701,7 +700,8 @@ const OperatorDashboard = () => {
   };
 
   const getActiveJourneys = () => {
-    return appointments.filter((apt) =>      ["journey", "arrived", "dropped_off"].includes(apt.status)
+    return appointments.filter((apt) =>
+      ["journey", "arrived", "dropped_off"].includes(apt.status)
     );
   };
 
@@ -766,7 +766,7 @@ const OperatorDashboard = () => {
 
   const getPickupRequests = useCallback(() => {
     return pickupRequests;
-  }, [pickupRequests]);// Memoized available drivers calculation to prevent re-computation on every render
+  }, [pickupRequests]); // Memoized available drivers calculation to prevent re-computation on every render
   const availableDrivers = useMemo(() => {
     if (!staffMembers || !Array.isArray(staffMembers)) {
       return [];
@@ -791,7 +791,7 @@ const OperatorDashboard = () => {
   // Enhanced automatic driver assignment
   const handleAutoAssignPickup = async (appointment) => {
     const currentAvailableDrivers = getAvailableDrivers();
-    
+
     // Filter drivers by vehicle type (this would require additional driver profile fields)
     const suitableDrivers = currentAvailableDrivers.filter(() => {
       // For now, assume all drivers can handle both vehicle types
@@ -1089,7 +1089,9 @@ const OperatorDashboard = () => {
             <span className="stat-label">Pending Pickups</span>
           </div>
           <div className="stat-item">
-            <span className="stat-number">{currentAvailableDrivers.length}</span>
+            <span className="stat-number">
+              {currentAvailableDrivers.length}
+            </span>
             <span className="stat-label">Available Drivers</span>
           </div>
           <div className="stat-item">
