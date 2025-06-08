@@ -180,8 +180,7 @@ const OperatorDashboard = () => {
       unsubscribe();
     };
   }, []);
-
-  const { appointments, notifications, loading, error } = useSelector(
+  const { appointments, notifications, staffMembers, loading, error } = useSelector(
     (state) => state.scheduling
   );
   // Filter rejected appointments for review
@@ -702,25 +701,48 @@ const OperatorDashboard = () => {
   };
 
   const getActiveJourneys = () => {
-    return appointments.filter((apt) =>
-      ["journey", "arrived", "dropped_off"].includes(apt.status)
+    return appointments.filter((apt) =>      ["journey", "arrived", "dropped_off"].includes(apt.status)
     );
   };
 
-  const getActiveSessions = () => {
+  // Memoized calculations for better performance
+  const activeSessions = useMemo(() => {
+    if (!appointments || !Array.isArray(appointments)) {
+      return [];
+    }
     return appointments.filter((apt) => apt.status === "session_in_progress");
-  };
+  }, [appointments]);
 
-  const getAwaitingPayment = () => {
+  const awaitingPayment = useMemo(() => {
+    if (!appointments || !Array.isArray(appointments)) {
+      return [];
+    }
     return appointments.filter((apt) => apt.status === "awaiting_payment");
-  };
+  }, [appointments]);
 
-  const getGroupAppointments = () => {
+  const groupAppointments = useMemo(() => {
+    if (!appointments || !Array.isArray(appointments)) {
+      return [];
+    }
     return appointments.filter((apt) => apt.group_size > 1);
-  };
+  }, [appointments]);
 
-  // Enhanced pickup request handling
-  const getPickupRequests = () => {
+  const getActiveSessions = useCallback(() => {
+    return activeSessions;
+  }, [activeSessions]);
+
+  const getAwaitingPayment = useCallback(() => {
+    return awaitingPayment;
+  }, [awaitingPayment]);
+
+  const getGroupAppointments = useCallback(() => {
+    return groupAppointments;
+  }, [groupAppointments]);
+  // Memoized pickup requests calculation
+  const pickupRequests = useMemo(() => {
+    if (!appointments || !Array.isArray(appointments)) {
+      return [];
+    }
     return appointments
       .filter(
         (apt) =>
@@ -740,9 +762,15 @@ const OperatorDashboard = () => {
         required_vehicle: apt.group_size > 1 ? "car" : "motorcycle",
       }))
       .sort((a, b) => a.priority - b.priority);
-  };
+  }, [appointments]);
 
-  const getAvailableDrivers = () => {
+  const getPickupRequests = useCallback(() => {
+    return pickupRequests;
+  }, [pickupRequests]);// Memoized available drivers calculation to prevent re-computation on every render
+  const availableDrivers = useMemo(() => {
+    if (!staffMembers || !Array.isArray(staffMembers)) {
+      return [];
+    }
     return staffMembers
       .filter(
         (member) =>
@@ -755,17 +783,19 @@ const OperatorDashboard = () => {
           new Date(a.driver_available_since) -
           new Date(b.driver_available_since)
       );
-  };
+  }, [staffMembers]);
 
+  const getAvailableDrivers = useCallback(() => {
+    return availableDrivers;
+  }, [availableDrivers]);
   // Enhanced automatic driver assignment
   const handleAutoAssignPickup = async (appointment) => {
-    const availableDrivers = getAvailableDrivers();
-    const requiredVehicle = appointment.group_size > 1 ? "car" : "motorcycle";
-
+    const currentAvailableDrivers = getAvailableDrivers();
+    
     // Filter drivers by vehicle type (this would require additional driver profile fields)
-    const suitableDrivers = availableDrivers.filter((driver) => {
+    const suitableDrivers = currentAvailableDrivers.filter(() => {
       // For now, assume all drivers can handle both vehicle types
-      // In production, this would check driver.vehicle_type
+      // In production, this would check driver.vehicle_type against required vehicle type
       return true;
     });
 
@@ -962,17 +992,16 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderActiveSessionsView = () => {
-    const activeSessions = getActiveSessions();
+    const currentActiveSessions = getActiveSessions();
 
-    if (activeSessions.length === 0) {
+    if (currentActiveSessions.length === 0) {
       return <div className="no-sessions">No active therapy sessions</div>;
     }
 
     return (
       <div className="active-sessions-list">
-        {activeSessions.map((appointment) => {
+        {currentActiveSessions.map((appointment) => {
           const progress = getSessionProgress(appointment);
           return (
             <div key={appointment.id} className="session-card">
@@ -1048,10 +1077,9 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderPickupRequestsView = () => {
     const pickupRequests = getPickupRequests();
-    const availableDrivers = getAvailableDrivers();
+    const currentAvailableDrivers = getAvailableDrivers();
 
     return (
       <div className="pickup-requests-container">
@@ -1061,7 +1089,7 @@ const OperatorDashboard = () => {
             <span className="stat-label">Pending Pickups</span>
           </div>
           <div className="stat-item">
-            <span className="stat-number">{availableDrivers.length}</span>
+            <span className="stat-number">{currentAvailableDrivers.length}</span>
             <span className="stat-label">Available Drivers</span>
           </div>
           <div className="stat-item">
@@ -1287,13 +1315,13 @@ const OperatorDashboard = () => {
             className={currentView === "active_sessions" ? "active" : ""}
             onClick={() => setView("active_sessions")}
           >
-            Active Sessions ({getActiveSessions().length})
+            Active Sessions ({activeSessions.length})
           </button>
           <button
             className={currentView === "pickup_requests" ? "active" : ""}
             onClick={() => setView("pickup_requests")}
           >
-            Pickup Requests ({getPickupRequests().length})
+            Pickup Requests ({pickupRequests.length})
           </button>
         </div>{" "}
         <div className="dashboard-content">
