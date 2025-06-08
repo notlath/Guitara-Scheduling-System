@@ -123,10 +123,16 @@ const OperatorDashboard = () => {
           ],
           pendingPickups: [],
         });
-      }
+      }    };
+
+    // Load initial data
+    const loadInitialData = async () => {
+      await loadDriverData();
+      // Also fetch notifications on initial load
+      dispatch(fetchNotifications());
     };
 
-    loadDriverData();
+    loadInitialData();
   }, [dispatch]);
   // Listen for real-time driver updates via sync service
   useEffect(() => {
@@ -1436,8 +1442,7 @@ const OperatorDashboard = () => {
         </div>
       </div>
     );
-  };
-  const renderNotifications = () => {
+  };  const renderNotifications = () => {
     // Integration with NotificationCenter component
     return (
       <div className="notifications-content">
@@ -1445,9 +1450,9 @@ const OperatorDashboard = () => {
           <h3>System Notifications</h3>
           <div className="notification-summary">
             <span className="notification-count">
-              {notifications.length} total notifications
+              {notifications?.length || 0} total notifications
             </span>
-            {notifications.filter(n => !n.is_read).length > 0 && (
+            {notifications && notifications.filter(n => !n.is_read).length > 0 && (
               <span className="unread-count">
                 {notifications.filter(n => !n.is_read).length} unread
               </span>
