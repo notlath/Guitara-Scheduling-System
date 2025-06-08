@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
+  acceptAppointment,
   fetchAppointments,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
@@ -197,12 +198,7 @@ const TherapistDashboard = () => {
   }; // Handle appointment status changes with optimized refresh and optimistic updates
   const handleAcceptAppointment = async (appointmentId) => {
     try {
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "confirmed",
-        })
-      ).unwrap();
+      await dispatch(acceptAppointment(appointmentId)).unwrap();
       // Only refresh current view data to minimize API calls
       refreshAppointments(true);
     } catch (error) {

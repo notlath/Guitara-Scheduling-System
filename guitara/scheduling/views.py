@@ -609,9 +609,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Determine who is accepting
         is_therapist = request.user == appointment.therapist
-        is_driver = request.user == appointment.driver
-
-        # Update acceptance status
+        is_driver = request.user == appointment.driver  # Update acceptance status
         if is_therapist:
             appointment.therapist_accepted = True
             appointment.therapist_accepted_at = timezone.now()
@@ -621,21 +619,28 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment.driver_accepted_at = timezone.now()
             accepter_role = "Driver"
 
-        # Check if both parties have now accepted
-        if appointment.both_parties_accepted():
+        # Save the appointment first to persist the acceptance
+        appointment.save()
+
+        # Check if both parties have now accepted - ONLY change status if BOTH have accepted
+        both_accepted = appointment.both_parties_accepted()
+
+        if both_accepted:
+            # Both parties have accepted - change status to confirmed
             appointment.status = "confirmed"
+            appointment.save()
 
             # Create notification that appointment is fully confirmed
             self._create_notifications(
                 appointment,
                 "appointment_confirmed",
-                f"Appointment for {appointment.client} on {appointment.date} is now confirmed. Both {accepter_role} and the other party have accepted.",
+                f"Appointment for {appointment.client} on {appointment.date} is now confirmed. Both therapist and driver have accepted.",
             )
 
             message_type = "appointment_confirmed"
             message_text = f"Appointment fully confirmed - both parties accepted"
         else:
-            # Only partial acceptance
+            # Only partial acceptance - appointment remains pending
             pending_parties = appointment.get_pending_acceptances()
             pending_text = ", ".join(pending_parties)
 
@@ -675,8 +680,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response(serializer.data) @ action(detail=True, methods=["post"])
+        return Response(serializer.data)
 
+    @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
         """Therapist starts an appointment"""
         appointment = self.get_object()
