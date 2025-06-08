@@ -3,7 +3,7 @@ import styles from "./SettingsDataPage.module.css";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
 import "../../globals/LayoutRow.css";
-import { MdAdd } from "react-icons/md";
+import { MdAdd, MdClose } from "react-icons/md";
 import LayoutRow from "../../globals/LayoutRow";
 import PageLayout from "../../globals/PageLayout";
 import { FormField } from "../../globals/FormField";
@@ -203,18 +203,20 @@ const SettingsDataPage = () => {
       case "Operators":
         return (
           <>
-            <FormField
-              name="firstName"
-              label="First Name"
-              value={formData.firstName || ""}
-              onChange={handleInputChange}
-            />
-            <FormField
-              name="lastName"
-              label="Last Name"
-              value={formData.lastName || ""}
-              onChange={handleInputChange}
-            />
+            <div className={styles["flex-row-fields"]}>
+              <FormField
+                name="firstName"
+                label="First Name"
+                value={formData.firstName || ""}
+                onChange={handleInputChange}
+              />
+              <FormField
+                name="lastName"
+                label="Last Name"
+                value={formData.lastName || ""}
+                onChange={handleInputChange}
+              />
+            </div>
             <FormField
               name="username"
               label="Username"
@@ -356,7 +358,7 @@ const SettingsDataPage = () => {
                 className={styles["close-btn"]}
                 onClick={handleCloseModal}
               >
-                &times;
+                <MdClose size={20} />
               </button>
             </div>
             <form className={styles["modal-form"]} onSubmit={handleSubmit}>

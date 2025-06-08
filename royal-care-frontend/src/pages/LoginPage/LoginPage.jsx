@@ -235,7 +235,7 @@ function LoginPage() {
       <div className={styles.imageSide}>
         <img src={loginSidepic} alt="Background" />
       </div>
-      <div className={styles.formSide}>
+      <div className={styles.formSide + " global-form-field-container"}>
         <div className={styles.formContainer}>
           <div className={styles.logo}>
             <img src={rcLogo} alt="Royal Care Logo" />
@@ -254,9 +254,9 @@ function LoginPage() {
                     onChange={handleChange}
                     inputProps={{
                       placeholder: "Username",
-                      className: fieldErrors.username
-                        ? "global-form-field-input " + styles.inputError
-                        : "global-form-field-input",
+                      className:
+                        "global-form-field-input " +
+                        (fieldErrors.username ? styles.inputError : ""),
                     }}
                   />
                   {fieldErrors.username && (
@@ -274,9 +274,9 @@ function LoginPage() {
                     onChange={handleChange}
                     inputProps={{
                       placeholder: "Password",
-                      className: fieldErrors.password
-                        ? "global-form-field-input " + styles.inputError
-                        : "global-form-field-input",
+                      className:
+                        "global-form-field-input " +
+                        (fieldErrors.password ? styles.inputError : ""),
                     }}
                   />
                   {fieldErrors.password && (
@@ -296,9 +296,9 @@ function LoginPage() {
                   inputProps={{
                     placeholder: "Enter 6-digit code",
                     maxLength: 6,
-                    className: fieldErrors.verificationCode
-                      ? "global-form-field-input " + styles.inputError
-                      : "global-form-field-input",
+                    className:
+                      "global-form-field-input " +
+                      (fieldErrors.verificationCode ? styles.inputError : ""),
                   }}
                 />
                 {fieldErrors.verificationCode && (
