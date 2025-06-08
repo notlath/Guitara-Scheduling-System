@@ -236,10 +236,11 @@ const DriverDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");
-    localStorage.removeItem("user");    dispatch(logout());
+    localStorage.removeItem("user");
+    dispatch(logout());
     navigate("/");
   };
-  
+
   // Handle appointment status changes with optimized refresh and optimistic updates
   const handleAcceptAppointment = async (appointmentId) => {
     try {
