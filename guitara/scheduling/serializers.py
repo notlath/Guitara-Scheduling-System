@@ -14,7 +14,9 @@ try:
     from registration.models import Service
 except ImportError:
     # Create a fallback Service class if import fails
-    print("WARNING: Could not import Service model in serializers, using mock class")
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning("Could not import Service model in serializers, using mock class")
     from django.db import models
 
     class Service:
@@ -344,7 +346,9 @@ class NotificationSerializer(serializers.ModelSerializer):
 
             return data
         except Exception as e:
-            print(f"❌ NotificationSerializer error: {e}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"NotificationSerializer error: {e}")
             # Return minimal data if there's an error
             return {
                 "id": instance.id if hasattr(instance, "id") else None,

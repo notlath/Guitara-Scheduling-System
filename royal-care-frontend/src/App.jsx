@@ -30,10 +30,8 @@ import SchedulingPage from "./pages/SchedulingPage/SchedulingPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import { validateToken } from "./services/auth";
-// Import auth fixer for automatic testing
 import SettingsAccountPage from "./pages/SettingsAccountPage/SettingsAccountPage";
 import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
-import "./utils/authFixer";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);

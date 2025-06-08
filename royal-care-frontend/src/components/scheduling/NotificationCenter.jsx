@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { MdClose, MdMoreVert, MdMarkAsUnread, MdDelete, MdRefresh } from 'react-icons/md';
-import styles from '../../styles/NotificationCenter_NEW.module.css';
+import styles from '../../styles/NotificationCenter.module.css';
 
 const NotificationCenter = ({ onClose }) => {
   const [notifications, setNotifications] = useState([]);
@@ -9,8 +8,6 @@ const NotificationCenter = ({ onClose }) => {
   const [error, setError] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
-
-  const { user } = useSelector((state) => state.auth);
 
   // Fetch notifications directly from API
   const fetchNotifications = async () => {
@@ -41,7 +38,6 @@ const NotificationCenter = ({ onClose }) => {
       const data = await response.json();
       setNotifications(data || []);
     } catch (err) {
-      console.error('Error fetching notifications:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -71,8 +67,8 @@ const NotificationCenter = ({ onClose }) => {
           )
         );
       }
-    } catch (err) {
-      console.error('Error marking as read:', err);
+    } catch {
+      // Silently fail - user will see no change in read status
     }
   };
 
@@ -99,8 +95,8 @@ const NotificationCenter = ({ onClose }) => {
           )
         );
       }
-    } catch (err) {
-      console.error('Error marking as unread:', err);
+    } catch {
+      // Silently fail - user will see no change in read status
     }
   };
 
@@ -121,8 +117,8 @@ const NotificationCenter = ({ onClose }) => {
         // Remove from local state
         setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
       }
-    } catch (err) {
-      console.error('Error deleting notification:', err);
+    } catch {
+      // Silently fail - user will see no change
     }
   };
 
@@ -145,8 +141,8 @@ const NotificationCenter = ({ onClose }) => {
           prev.map(notif => ({ ...notif, is_read: true }))
         );
       }
-    } catch (err) {
-      console.error('Error marking all as read:', err);
+    } catch {
+      // Silently fail - user will see no change
     }
   };
 
@@ -319,13 +315,6 @@ const NotificationCenter = ({ onClose }) => {
           </div>
         ))}
       </div>
-
-      {/* User info for debugging */}
-      {user && (
-        <div className={styles.debugInfo}>
-          Logged in as: {user.username} ({user.role})
-        </div>
-      )}
     </div>
   );
 };

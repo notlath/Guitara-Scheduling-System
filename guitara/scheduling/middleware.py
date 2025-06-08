@@ -10,14 +10,11 @@ def get_user(token_key):
     try:
         token_auth = TokenAuthentication()
         # Authenticate using raw token string (without encoding to bytes)
-        user, auth_token = token_auth.authenticate_credentials(token_key)
-        print(f"Authentication successful for user: {user.username}")
+        user, auth_token = token_auth.authenticate_credentials(token_key)        # Authentication successful
         return user
-    except AuthenticationFailed as e:
-        print(f"Authentication failed: {str(e)}")
+    except AuthenticationFailed:
         return AnonymousUser()
-    except Exception as e:
-        print(f"Unexpected error during authentication: {str(e)}")
+    except Exception:
         return AnonymousUser()
 
 class TokenAuthMiddleware:
@@ -28,10 +25,8 @@ class TokenAuthMiddleware:
         self.inner = inner
         
     async def __call__(self, scope, receive, send):
-        try:
-            # Get query parameters
+        try:            # Get query parameters
             query_string = scope.get('query_string', b'').decode()
-            print(f"Query string: {query_string}")
             
             # Safely parse query parameters
             query_params = {}
@@ -42,18 +37,14 @@ class TokenAuthMiddleware:
             
             # Extract token from query params
             token_key = query_params.get('token', '')
-            print(f"Token found: {bool(token_key)}")
             
             if token_key:
                 # Get user from token
                 scope['user'] = await get_user(token_key)
-                print(f"User authenticated: {scope['user'].is_authenticated}")
             else:
                 scope['user'] = AnonymousUser()
-                print("No token provided, using AnonymousUser")
             
             return await self.inner(scope, receive, send)
-        except Exception as e:
-            print(f"Error in TokenAuthMiddleware: {str(e)}")
+        except Exception:
             scope['user'] = AnonymousUser()
             return await self.inner(scope, receive, send)

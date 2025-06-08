@@ -17,7 +17,6 @@ import { PageLoadingState } from "./common/LoadingComponents";
 import LayoutRow from "../globals/LayoutRow";
 import "../globals/TabSwitcher.css";
 import "../styles/TherapistDashboard.css"; // Reuse therapist styles for consistency
-import { runAuthDiagnostics, testLogin } from "../utils/authFixer";
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
@@ -104,11 +103,8 @@ const DriverDashboard = () => {
     },
     [dispatch, currentView]
   );
-
   // Setup polling for real-time updates (WebSocket connections disabled)
   useEffect(() => {
-    console.log("WebSocket connections disabled - using polling mode");
-
     // Real-time sync is handled by useSyncEventHandlers hook
     // Here we only set up periodic polling as a fallback
 
@@ -131,38 +127,14 @@ const DriverDashboard = () => {
       clearInterval(pollingInterval);
     };
   }, [dispatch]);
-
-  // Load appointments on component mount and debug authentication
+  // Load appointments on component mount
   useEffect(() => {
     let mounted = true;
 
-    // Debug authentication on mount using new diagnostics
-    console.log(
-      "🚀 DriverDashboard mounted - running authentication diagnostics..."
-    );
-    const runDiagnostics = async () => {
+    const loadInitialData = async () => {
       if (!mounted) return;
 
-      const isAuthOk = await runAuthDiagnostics();
-
-      if (!isAuthOk) {
-        console.log(
-          "❌ Authentication diagnostics failed - attempting test login..."
-        );
-        // Try automatic login with test credentials for development
-        const token = localStorage.getItem("knoxToken");
-        if (!token && import.meta.env.MODE === "development") {
-          console.log("🔄 No token found, attempting test login...");
-          const loginSuccess = await testLogin();
-          if (loginSuccess) {
-            console.log("✅ Test login successful, retrying diagnostics...");
-            await runAuthDiagnostics();
-          }
-        }
-      }
-
-      // Initialize appointment fetching regardless (will show proper errors if auth fails)
-      console.log("🚀 DriverDashboard: Initial load, fetching appointments...");
+      // Initialize appointment fetching
       if (mounted) {
         await Promise.all([
           dispatch(fetchAppointments()),
@@ -173,7 +145,7 @@ const DriverDashboard = () => {
       }
     };
 
-    runDiagnostics();
+    loadInitialData();
 
     return () => {
       mounted = false;
@@ -201,9 +173,7 @@ const DriverDashboard = () => {
     try {
       await dispatch(acceptAppointment(appointmentId)).unwrap();
       // Only refresh current view data to minimize API calls
-      refreshAppointments(true);
-    } catch (error) {
-      console.error("Error accepting appointment:", error);
+      refreshAppointments(true);    } catch (error) {
       // More user-friendly error message
       if (
         error?.message?.includes("401") ||
@@ -224,9 +194,7 @@ const DriverDashboard = () => {
           status: "driving_to_location",
         })
       ).unwrap();
-      refreshAppointments(true);
-    } catch (error) {
-      console.error("Error starting drive:", error);
+      refreshAppointments(true);    } catch (error) {
       if (
         error?.message?.includes("401") ||
         error?.message?.includes("Authentication")
@@ -246,9 +214,7 @@ const DriverDashboard = () => {
           status: "at_location",
         })
       ).unwrap();
-      refreshAppointments(true);
-    } catch (error) {
-      console.error("Error marking arrival:", error);
+      refreshAppointments(true);    } catch (error) {
       if (
         error?.message?.includes("401") ||
         error?.message?.includes("Authentication")
@@ -269,9 +235,7 @@ const DriverDashboard = () => {
             status: "transport_completed",
           })
         ).unwrap();
-        refreshAppointments(true);
-      } catch (error) {
-        console.error("Error completing transport:", error);
+        refreshAppointments(true);      } catch (error) {
         if (
           error?.message?.includes("401") ||
           error?.message?.includes("Authentication")
@@ -290,42 +254,23 @@ const DriverDashboard = () => {
       appointmentId: appointmentId,
     });
   };
-
   const handleRejectionSubmit = async (appointmentId, rejectionReason) => {
-    console.log("🔍 DriverDashboard handleRejectionSubmit - DETAILED DEBUG:", {
-      appointmentId,
-      rejectionReason,
-      reasonType: typeof rejectionReason,
-      reasonLength: rejectionReason?.length,
-      reasonTrimmed: String(rejectionReason || "").trim(),
-      reasonTrimmedLength: String(rejectionReason || "").trim().length,
-    });
-
     // Additional validation on the frontend
     const cleanReason = String(rejectionReason || "").trim();
     if (!cleanReason) {
-      console.error("❌ DriverDashboard: Empty reason detected");
       alert("Please provide a reason for rejection.");
       return;
     }
 
-    console.log("✅ DriverDashboard: Dispatching rejectAppointment with:", {
-      id: appointmentId,
-      rejectionReason: cleanReason,
-    });
-
     try {
-      const result = await dispatch(
+      await dispatch(
         rejectAppointment({
           id: appointmentId,
           rejectionReason: cleanReason,
         })
       ).unwrap();
-      console.log("✅ DriverDashboard: Rejection successful:", result);
       refreshAppointments(true); // Silent background refresh after action
-      setRejectionModal({ isOpen: false, appointmentId: null });
-    } catch (error) {
-      console.error("❌ DriverDashboard: Error rejecting appointment:", error);
+      setRejectionModal({ isOpen: false, appointmentId: null });    } catch (error) {
 
       // Better error message handling with authentication awareness
       let errorMessage = "Failed to reject appointment. Please try again.";

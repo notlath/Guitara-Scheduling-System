@@ -72,7 +72,7 @@ const SchedulingDashboard = () => {
     dispatch(fetchUpcomingAppointments());
 
     // Setup polling for real-time updates (WebSocket connections disabled)
-    console.log("WebSocket connections disabled - using polling mode");
+    // Using polling mode for real-time updates
 
     // Real-time sync is handled by useSyncEventHandlers hook
     // Here we only set up periodic polling as a fallback
@@ -130,7 +130,6 @@ const SchedulingDashboard = () => {
         dispatch(fetchTodayAppointments());
         dispatch(fetchUpcomingAppointments());
       } catch (error) {
-        console.error("Error deleting booking:", error);
         // Add user feedback
         alert(`Failed to delete appointment: ${error.message || error}`);
       }

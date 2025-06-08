@@ -21,9 +21,10 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'guitara.settings')
 # Initialize Django ASGI application early to catch any startup errors
 try:
     django_asgi_app = get_asgi_application()
-    print("Django ASGI application initialized successfully")
 except Exception as e:
-    print(f"Error initializing Django ASGI application: {e}")
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.error(f"Error initializing Django ASGI application: {e}")
     traceback.print_exc(file=sys.stdout)
     raise
 
@@ -37,8 +38,9 @@ try:
             )
         ),
     })
-    print("ASGI application configured successfully")
 except Exception as e:
-    print(f"Error configuring ASGI application: {e}")
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.error(f"Error configuring ASGI application: {e}")
     traceback.print_exc(file=sys.stdout)
     raise
