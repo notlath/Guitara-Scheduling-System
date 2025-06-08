@@ -39,7 +39,7 @@
   color: var(--text);
   outline: none;
   transition: border-color 0.2s;
-  padding: var(--spacing-xs) var(--spacing-xm);
+  padding: var(--spacing-xs) var(--spacing-sm);
   resize: vertical;
   line-height: 1.5;
   box-sizing: border-box;
