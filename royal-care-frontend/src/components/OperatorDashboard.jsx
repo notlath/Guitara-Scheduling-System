@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
+  assignDriverToPickup,
   autoCancelOverdueAppointments,
   fetchAppointments,
   fetchNotifications,
@@ -11,10 +12,10 @@ import {
   updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
 import LayoutRow from "../globals/LayoutRow";
+import PageLayout from "../globals/PageLayout";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
-import PageLayout from "../globals/PageLayout";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
@@ -416,7 +417,6 @@ const OperatorDashboard = () => {
       setAutoCancelLoading(false);
     }
   };
-
   // Driver coordination functions
   const handleAssignDriverPickup = async (therapistId, driverId) => {
     try {
@@ -434,12 +434,12 @@ const OperatorDashboard = () => {
         driver.last_location,
         therapist.location
       );
+
+      // Use the dedicated assignDriverToPickup action
       await dispatch(
-        updateAppointmentStatus({
-          id: therapist.appointment_id,
-          status: "driver_assigned_pickup",
-          driver: driverId,
-          notes: `Driver assigned for pickup - ETA: ${estimatedArrival}`,
+        assignDriverToPickup({
+          appointmentId: therapist.appointment_id,
+          driverId: driverId,
         })
       ).unwrap();
 
@@ -557,25 +557,27 @@ const OperatorDashboard = () => {
       return { score: 5, label: "Different Zone" };
     }
   };
-
-  // Mock data for pending pickups (this would come from API in real implementation)
+  // Get therapists who have requested pickup from appointments
   const pendingPickups = appointments
     .filter(
       (apt) =>
-        apt.status === "completed" &&
-        apt.pickup_requested &&
-        !apt.assigned_driver
+        apt.status === "pickup_requested" && // Correct status for pickup requests
+        !apt.driver // No driver assigned yet
     )
     .map((apt) => ({
-      id: apt.therapist,
+      id: apt.therapist_details?.id || apt.therapist,
       name: apt.therapist_details
         ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
-        : "Unknown",
+        : "Unknown Therapist",
       location: apt.location,
       appointment_id: apt.id,
-      session_end_time: apt.session_end_time,
-      urgency: apt.pickup_urgency || "normal",
-      requested_at: apt.pickup_request_time,
+      session_end_time: apt.updated_at, // When the pickup was requested
+      urgency: apt.notes?.includes("URGENT") ? "urgent" : "normal",
+      requested_at: apt.updated_at,
+      client_name: apt.client_details
+        ? `${apt.client_details.first_name} ${apt.client_details.last_name}`
+        : "Unknown Client",
+      appointment_time: `${apt.date} ${apt.start_time}`,
     }));
 
   const getTimeRemaining = (deadline) => {
@@ -588,13 +590,14 @@ const OperatorDashboard = () => {
     }
 
     const minutes = Math.floor(timeDiff / (1000 * 60));
-    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
 
-    if (minutes <= 0) {
-      return `${seconds}s`;
+    if (hours > 0) {
+      return `${hours}h ${remainingMinutes}m`;
+    } else {
+      return `${remainingMinutes}m`;
     }
-
-    return `${minutes}m ${seconds}s`;
   };
 
   const getStatusBadgeClass = (status) => {
@@ -650,531 +653,98 @@ const OperatorDashboard = () => {
         };
     }
   };
-  // Helper function to get acceptance status display
-  const getAcceptanceStatus = (appointment) => {
-    if (!appointment.therapist && !appointment.driver) {
-      return { text: "No staff assigned", class: "acceptance-none" };
-    }
 
-    const therapistStatus = appointment.therapist
-      ? appointment.therapist_accepted
-        ? "✓ Accepted"
-        : "⏳ Pending"
-      : "N/A";
-    const driverStatus = appointment.driver
-      ? appointment.driver_accepted
-        ? "✓ Accepted"
-        : "⏳ Pending"
-      : "N/A";
+  // Helper function to calculate time elapsed
+  const getTimeElapsed = (timestamp) => {
+    const now = new Date();
+    const then = new Date(timestamp);
+    const diffMs = now - then;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
 
-    const bothAccepted = appointment.both_parties_accepted;
-    const pendingCount = appointment.pending_acceptances?.length || 0;
-
-    return {
-      text: `Therapist: ${therapistStatus} | Driver: ${driverStatus}`,
-      class: bothAccepted ? "acceptance-complete" : "acceptance-pending",
-      bothAccepted,
-      pendingCount,
-      pendingList: appointment.pending_acceptances || [],
-      canProceed: bothAccepted,
-    };
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    return `${diffHours}h ${diffMins % 60}m ago`;
   };
 
+  // Helper function to calculate estimated travel time
+  const calculateEstimatedTime = (fromLocation, toLocation) => {
+    const proximity = calculateProximityScore(fromLocation, toLocation);
+    const baseTime =
+      proximity.score === 10 ? 15 : proximity.score === 7 ? 25 : 45;
+
+    // Adjust for current time (traffic)
+    const hour = new Date().getHours();
+    let multiplier = 1.0;
+    if ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)) {
+      multiplier = 1.5; // Rush hour
+    } else if (hour >= 12 && hour <= 13) {
+      multiplier = 1.2; // Lunch time
+    }
+
+    return Math.round(baseTime * multiplier);
+  };
+
+  // Render function for rejected appointments
   const renderRejectedAppointments = () => {
     if (rejectedAppointments.length === 0) {
-      return <p className="no-appointments">No pending rejection reviews.</p>;
-    }
-
-    return (
-      <div className="appointments-list">
-        {rejectedAppointments.map((appointment) => (
-          <div key={appointment.id} className="appointment-card rejected">
-            <div className="appointment-header">
-              <h3>
-                {appointment.client_details?.first_name}{" "}
-                {appointment.client_details?.last_name}
-              </h3>
-              <span
-                className={`status-badge ${getStatusBadgeClass(
-                  appointment.status
-                )}`}
-              >
-                Rejected - Pending Review
-              </span>
-            </div>
-
-            <div className="appointment-details">
-              <p>
-                <strong>Date:</strong>{" "}
-                {new Date(appointment.date).toLocaleDateString()}
-              </p>
-              <p>
-                <strong>Time:</strong> {appointment.start_time} -{" "}
-                {appointment.end_time}
-              </p>
-              <p>
-                <strong>Therapist:</strong> {renderTherapistInfo(appointment)}
-              </p>{" "}
-              <p>
-                <strong>Services:</strong>{" "}
-                {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>
-              {/* Show acceptance status for pending appointments */}
-              {appointment.status === "pending" && (
-                <div className="acceptance-status">
-                  <strong>Acceptance Status:</strong>{" "}
-                  <span
-                    className={`acceptance-badge ${
-                      getAcceptanceStatus(appointment).class
-                    }`}
-                  >
-                    {getAcceptanceStatus(appointment).text}
-                  </span>
-                  {getAcceptanceStatus(appointment).pendingCount > 0 && (
-                    <div className="pending-acceptances">
-                      <small>
-                        Waiting for:{" "}
-                        {getAcceptanceStatus(appointment).pendingList.join(
-                          ", "
-                        )}
-                      </small>
-                    </div>
-                  )}
-                </div>
-              )}
-              <p className="rejection-reason">
-                <strong>Rejection Reason:</strong>{" "}
-                {appointment.rejection_reason}
-              </p>
-              <p>
-                <strong>Rejected At:</strong>{" "}
-                {new Date(appointment.rejected_at).toLocaleString()}
-              </p>
-              <div className="rejected-by-info">
-                <strong>Rejected By:</strong>{" "}
-                <span
-                  className={`rejection-badge ${
-                    getRejectedByInfo(appointment).badgeClass
-                  }`}
-                >
-                  {getRejectedByInfo(appointment).text}
-                </span>
-              </div>
-            </div>
-
-            <div className="appointment-actions">
-              <button
-                className="review-button"
-                onClick={() => handleReviewRejection(appointment)}
-              >
-                Review Rejection
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const renderAllAppointments = () => {
-    return (
-      <div className="appointments-list">
-        {appointments.map((appointment) => (
-          <div key={appointment.id} className="appointment-card">
-            <div className="appointment-header">
-              <h3>
-                {appointment.client_details?.first_name}{" "}
-                {appointment.client_details?.last_name}
-              </h3>
-              <span
-                className={`status-badge ${getStatusBadgeClass(
-                  appointment.status
-                )}`}
-              >
-                {appointment.status.charAt(0).toUpperCase() +
-                  appointment.status.slice(1)}
-              </span>
-            </div>
-
-            <div className="appointment-details">
-              <p>
-                <strong>Date:</strong>{" "}
-                {new Date(appointment.date).toLocaleDateString()}
-              </p>
-              <p>
-                <strong>Time:</strong> {appointment.start_time} -{" "}
-                {appointment.end_time}
-              </p>{" "}
-              {(appointment.therapist_details ||
-                appointment.therapists_details) && (
-                <p>
-                  <strong>Therapist:</strong> {renderTherapistInfo(appointment)}
-                </p>
-              )}{" "}
-              <p>
-                <strong>Services:</strong>{" "}
-                {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>
-              {/* Show acceptance status for pending appointments */}
-              {appointment.status === "pending" && (
-                <div className="acceptance-status">
-                  <strong>Acceptance Status:</strong>{" "}
-                  <span
-                    className={`acceptance-badge ${
-                      getAcceptanceStatus(appointment).class
-                    }`}
-                  >
-                    {getAcceptanceStatus(appointment).text}
-                  </span>
-                  {getAcceptanceStatus(appointment).pendingCount > 0 && (
-                    <div className="pending-acceptances">
-                      <small>
-                        Waiting for:{" "}
-                        {getAcceptanceStatus(appointment).pendingList.join(
-                          ", "
-                        )}
-                      </small>
-                    </div>
-                  )}
-                </div>
-              )}
-              {appointment.rejection_reason && (
-                <div className="rejection-reason">
-                  <strong>Rejection Reason:</strong>{" "}
-                  {appointment.rejection_reason}
-                </div>
-              )}
-              {appointment.rejected_by_details && (
-                <div className="rejected-by-info">
-                  <strong>Rejected By:</strong>{" "}
-                  <span
-                    className={`rejection-badge ${
-                      getRejectedByInfo(appointment).badgeClass
-                    }`}
-                  >
-                    {getRejectedByInfo(appointment).text}
-                  </span>
-                </div>
-              )}
-              {appointment.review_decision && (
-                <p>
-                  <strong>Review Decision:</strong>{" "}
-                  {appointment.review_decision}
-                </p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-  const renderNotifications = () => {
-    const unreadNotifications = notifications?.filter((n) => !n.is_read) || [];
-
-    if (unreadNotifications.length === 0) {
-      return <p className="no-notifications">No unread notifications.</p>;
-    }
-
-    return (
-      <div className="notifications-list">
-        {unreadNotifications.map((notification) => (
-          <div key={notification.id} className="notification-card">
-            <h4>
-              {notification.notification_type.replace("_", " ").toUpperCase()}
-            </h4>
-            <p>{notification.message}</p>
-            <p className="notification-time">
-              {new Date(notification.created_at).toLocaleString()}
-            </p>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const renderTimeoutMonitoring = () => {
-    return (
-      <div className="timeout-monitoring">
-        <div className="timeout-controls">
-          <h3>Timeout Management</h3>
-          <div className="auto-cancel-section">
-            <p>
-              Auto-cancel overdue appointments and disable unresponsive
-              therapists
-            </p>
-            <button
-              className="auto-cancel-button"
-              onClick={handleAutoCancelOverdue}
-              disabled={autoCancelLoading}
-            >
-              {autoCancelLoading
-                ? "Processing..."
-                : "Process Overdue Appointments"}
-            </button>
-          </div>
-        </div>
-
-        {overdueAppointments.length > 0 && (
-          <div className="overdue-section">
-            <h4>Overdue Appointments ({overdueAppointments.length})</h4>
-            <div className="appointments-list">
-              {overdueAppointments.map((appointment) => (
-                <div key={appointment.id} className="appointment-card overdue">
-                  <div className="appointment-header">
-                    <h3>
-                      {appointment.client_details?.first_name}{" "}
-                      {appointment.client_details?.last_name}
-                    </h3>
-                    <span className="status-badge status-overdue">OVERDUE</span>
-                  </div>
-                  <div className="appointment-details">
-                    <p>
-                      <strong>Date:</strong>{" "}
-                      {new Date(appointment.date).toLocaleDateString()}
-                    </p>{" "}
-                    <p>
-                      <strong>Time:</strong> {appointment.start_time} -{" "}
-                      {appointment.end_time}
-                    </p>
-                    <p>
-                      <strong>Therapist:</strong>{" "}
-                      {renderTherapistInfo(appointment)}
-                    </p>
-                    <p>
-                      <strong>Deadline Passed:</strong>{" "}
-                      {new Date(appointment.response_deadline).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {approachingDeadlineAppointments.length > 0 && (
-          <div className="approaching-deadline-section">
-            <h4>
-              Approaching Deadline ({approachingDeadlineAppointments.length})
-            </h4>
-            <div className="appointments-list">
-              {approachingDeadlineAppointments.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="appointment-card approaching-deadline"
-                >
-                  <div className="appointment-header">
-                    <h3>
-                      {appointment.client_details?.first_name}{" "}
-                      {appointment.client_details?.last_name}
-                    </h3>
-                    <span className="status-badge status-warning">
-                      {getTimeRemaining(appointment.response_deadline)}{" "}
-                      remaining
-                    </span>
-                  </div>
-                  <div className="appointment-details">
-                    <p>
-                      <strong>Date:</strong>{" "}
-                      {new Date(appointment.date).toLocaleDateString()}
-                    </p>{" "}
-                    <p>
-                      <strong>Time:</strong> {appointment.start_time} -{" "}
-                      {appointment.end_time}
-                    </p>
-                    <p>
-                      <strong>Therapist:</strong>{" "}
-                      {renderTherapistInfo(appointment)}
-                    </p>
-                    <p>
-                      <strong>Response Deadline:</strong>{" "}
-                      {new Date(appointment.response_deadline).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {pendingAppointments.length === 0 && (
-          <p className="no-appointments">
-            No pending appointments with timeouts.
-          </p>
-        )}
-      </div>
-    );
-  };
-
-  const renderPendingAcceptanceAppointments = () => {
-    if (pendingAppointments.length === 0) {
       return (
-        <p className="no-appointments">No pending acceptance appointments.</p>
+        <div className="no-appointments">
+          <p>No rejected appointments pending review.</p>
+        </div>
       );
     }
 
     return (
       <div className="appointments-list">
-        {pendingAppointments.map((appointment) => {
-          const acceptanceStatus = getAcceptanceStatus(appointment);
+        {rejectedAppointments.map((appointment) => {
+          const rejectedBy = getRejectedByInfo(appointment);
           return (
-            <div
-              key={appointment.id}
-              className="appointment-card pending-acceptance"
-            >
+            <div key={appointment.id} className="appointment-card rejected">
               <div className="appointment-header">
-                <h3>
-                  {appointment.client_details?.first_name}{" "}
-                  {appointment.client_details?.last_name}
-                </h3>
-                <span
-                  className={`status-badge ${getStatusBadgeClass(
-                    appointment.status
-                  )}`}
-                >
-                  Pending Acceptance
+                <h3>Appointment #{appointment.id}</h3>
+                <span className={`rejection-badge ${rejectedBy.badgeClass}`}>
+                  Rejected by {rejectedBy.text}
                 </span>
               </div>
 
               <div className="appointment-details">
                 <p>
-                  <strong>Date:</strong>{" "}
-                  {new Date(appointment.date).toLocaleDateString()}
+                  <strong>Client:</strong>{" "}
+                  {appointment.client_details
+                    ? `${appointment.client_details.first_name} ${appointment.client_details.last_name}`
+                    : "Unknown Client"}
+                </p>
+                <p>
+                  <strong>Date:</strong> {appointment.date}
                 </p>
                 <p>
                   <strong>Time:</strong> {appointment.start_time} -{" "}
                   {appointment.end_time}
-                </p>{" "}
-                {(appointment.therapist_details ||
-                  appointment.therapists_details) && (
-                  <p>
-                    <strong>Therapist:</strong>{" "}
-                    {renderTherapistInfo(appointment)}
-                    <span
-                      className={`acceptance-indicator ${
-                        getTherapistAcceptanceStatus(appointment).class
-                      }`}
-                    >
-                      {getTherapistAcceptanceStatus(appointment).display}
-                    </span>
-                  </p>
-                )}
-                {appointment.driver_details && (
-                  <p>
-                    <strong>Driver:</strong>{" "}
-                    {appointment.driver_details.first_name}{" "}
-                    {appointment.driver_details.last_name}
-                    <span
-                      className={`acceptance-indicator ${
-                        appointment.driver_accepted ? "accepted" : "pending"
-                      }`}
-                    >
-                      {appointment.driver_accepted ? " ✓" : " ⏳"}
-                    </span>
-                  </p>
-                )}
-                <p>
-                  <strong>Services:</strong>{" "}
-                  {appointment.services_details?.map((s) => s.name).join(", ")}
                 </p>
-                {/* Enhanced acceptance status display */}
-                <div className="dual-acceptance-status">
-                  <h4>Acceptance Status:</h4>
-                  <div className="acceptance-grid">
-                    <div
-                      className={`acceptance-item ${
-                        appointment.therapist_accepted ? "accepted" : "pending"
-                      }`}
-                    >
-                      <span className="role">Therapist</span>
-                      <span className="status">
-                        {appointment.therapist_accepted
-                          ? "Accepted ✓"
-                          : "Pending ⏳"}
-                      </span>
-                      {appointment.therapist_accepted_at && (
-                        <small>
-                          {new Date(
-                            appointment.therapist_accepted_at
-                          ).toLocaleString()}
-                        </small>
-                      )}
-                    </div>
-                    {appointment.driver && (
-                      <div
-                        className={`acceptance-item ${
-                          appointment.driver_accepted ? "accepted" : "pending"
-                        }`}
-                      >
-                        <span className="role">Driver</span>
-                        <span className="status">
-                          {appointment.driver_accepted
-                            ? "Accepted ✓"
-                            : "Pending ⏳"}
-                        </span>
-                        {appointment.driver_accepted_at && (
-                          <small>
-                            {new Date(
-                              appointment.driver_accepted_at
-                            ).toLocaleString()}
-                          </small>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                <p>
+                  <strong>Location:</strong> {appointment.location}
+                </p>
+                <p>
+                  <strong>Service:</strong>{" "}
+                  {appointment.service_name || "Unknown Service"}
+                </p>
+                <p>
+                  <strong>Therapist:</strong> {renderTherapistInfo(appointment)}
+                </p>
+                <p>
+                  <strong>Rejection Reason:</strong>{" "}
+                  {appointment.rejection_reason || "No reason provided"}
+                </p>
+              </div>
 
-                  {/* Overall status */}
-                  <div
-                    className={`overall-status ${
-                      acceptanceStatus.bothAccepted ? "ready" : "waiting"
-                    }`}
-                  >
-                    {acceptanceStatus.bothAccepted ? (
-                      <strong>
-                        ✅ Ready to Confirm - Both parties accepted
-                      </strong>
-                    ) : (
-                      <strong>
-                        ⚠️ Waiting for acceptance from:{" "}
-                        {acceptanceStatus.pendingList.join(", ")}
-                      </strong>
-                    )}
-                  </div>
-
-                  {/* Operator actions */}
-                  <div className="operator-actions">
-                    {acceptanceStatus.bothAccepted ? (
-                      <button
-                        className="confirm-button"
-                        onClick={() => handleConfirmAppointment(appointment.id)}
-                        title="Manually confirm appointment (both parties have accepted)"
-                      >
-                        Confirm Appointment
-                      </button>
-                    ) : (
-                      <div className="blocked-actions">
-                        <button
-                          className="confirm-button disabled"
-                          disabled
-                          title="Cannot confirm - waiting for all parties to accept"
-                        >
-                          Confirm Appointment (Blocked)
-                        </button>
-                        <small>
-                          Both parties must accept before confirmation
-                        </small>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {appointment.response_deadline && (
-                  <div className="deadline-info">
-                    <strong>Response Deadline:</strong>{" "}
-                    {new Date(appointment.response_deadline).toLocaleString()}
-                    {appointment.is_overdue && (
-                      <span className="overdue-warning"> (OVERDUE)</span>
-                    )}
-                  </div>
-                )}
+              <div className="appointment-actions">
+                <button
+                  className="review-button"
+                  onClick={() => handleReviewRejection(appointment)}
+                >
+                  Review Rejection
+                </button>
               </div>
             </div>
           );
@@ -1183,17 +753,318 @@ const OperatorDashboard = () => {
     );
   };
 
-  // Handle manual confirmation by operator (only when both parties accepted)
+  // Render function for pending acceptance appointments
+  const renderPendingAcceptanceAppointments = () => {
+    if (pendingAppointments.length === 0) {
+      return (
+        <div className="no-appointments">
+          <p>No appointments pending acceptance.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="appointments-list">
+        {pendingAppointments.map((appointment) => {
+          const acceptanceStatus = getTherapistAcceptanceStatus(appointment);
+          const timeRemaining = appointment.response_deadline
+            ? getTimeRemaining(appointment.response_deadline)
+            : "No deadline";
+
+          return (
+            <div key={appointment.id} className="appointment-card pending">
+              <div className="appointment-header">
+                <h3>Appointment #{appointment.id}</h3>
+                <span className={`acceptance-badge ${acceptanceStatus.class}`}>
+                  {acceptanceStatus.display}
+                </span>
+              </div>
+
+              <div className="appointment-details">
+                <p>
+                  <strong>Client:</strong>{" "}
+                  {appointment.client_details
+                    ? `${appointment.client_details.first_name} ${appointment.client_details.last_name}`
+                    : "Unknown Client"}
+                </p>
+                <p>
+                  <strong>Date:</strong> {appointment.date}
+                </p>
+                <p>
+                  <strong>Time:</strong> {appointment.start_time} -{" "}
+                  {appointment.end_time}
+                </p>
+                <p>
+                  <strong>Location:</strong> {appointment.location}
+                </p>
+                <p>
+                  <strong>Service:</strong>{" "}
+                  {appointment.service_name || "Unknown Service"}
+                </p>
+                <p>
+                  <strong>Therapist:</strong> {renderTherapistInfo(appointment)}
+                </p>
+                <p>
+                  <strong>Time Remaining:</strong>
+                  <span
+                    className={timeRemaining === "OVERDUE" ? "overdue" : ""}
+                  >
+                    {timeRemaining}
+                  </span>
+                </p>
+              </div>
+
+              <div className="appointment-actions">
+                <button
+                  className="confirm-button"
+                  onClick={() => handleConfirmAppointment(appointment.id)}
+                >
+                  Force Confirm
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Render function for timeout monitoring
+  const renderTimeoutMonitoring = () => {
+    return (
+      <div className="timeout-monitoring">
+        <div className="timeout-actions">
+          <button
+            className="auto-cancel-button"
+            onClick={handleAutoCancelOverdue}
+            disabled={autoCancelLoading || overdueAppointments.length === 0}
+          >
+            {autoCancelLoading
+              ? "Processing..."
+              : `Auto-Cancel Overdue (${overdueAppointments.length})`}
+          </button>
+        </div>
+
+        {/* Overdue Appointments */}
+        {overdueAppointments.length > 0 && (
+          <div className="timeout-section overdue">
+            <h3>🚨 Overdue Appointments ({overdueAppointments.length})</h3>
+            <div className="appointments-list">
+              {overdueAppointments.map((appointment) => (
+                <div key={appointment.id} className="appointment-card overdue">
+                  <div className="appointment-header">
+                    <h3>Appointment #{appointment.id}</h3>
+                    <span className="timeout-badge overdue">OVERDUE</span>
+                  </div>
+
+                  <div className="appointment-details">
+                    <p>
+                      <strong>Client:</strong>{" "}
+                      {appointment.client_details
+                        ? `${appointment.client_details.first_name} ${appointment.client_details.last_name}`
+                        : "Unknown Client"}
+                    </p>
+                    <p>
+                      <strong>Date:</strong> {appointment.date}
+                    </p>
+                    <p>
+                      <strong>Time:</strong> {appointment.start_time} -{" "}
+                      {appointment.end_time}
+                    </p>
+                    <p>
+                      <strong>Therapist:</strong>{" "}
+                      {renderTherapistInfo(appointment)}
+                    </p>
+                    <p>
+                      <strong>Overdue by:</strong>{" "}
+                      {getTimeRemaining(appointment.response_deadline)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Approaching Deadline Appointments */}
+        {approachingDeadlineAppointments.length > 0 && (
+          <div className="timeout-section approaching">
+            <h3>
+              ⚠️ Approaching Deadline ({approachingDeadlineAppointments.length})
+            </h3>
+            <div className="appointments-list">
+              {approachingDeadlineAppointments.map((appointment) => (
+                <div
+                  key={appointment.id}
+                  className="appointment-card approaching"
+                >
+                  <div className="appointment-header">
+                    <h3>Appointment #{appointment.id}</h3>
+                    <span className="timeout-badge approaching">
+                      {getTimeRemaining(appointment.response_deadline)}
+                    </span>
+                  </div>
+
+                  <div className="appointment-details">
+                    <p>
+                      <strong>Client:</strong>{" "}
+                      {appointment.client_details
+                        ? `${appointment.client_details.first_name} ${appointment.client_details.last_name}`
+                        : "Unknown Client"}
+                    </p>
+                    <p>
+                      <strong>Date:</strong> {appointment.date}
+                    </p>
+                    <p>
+                      <strong>Time:</strong> {appointment.start_time} -{" "}
+                      {appointment.end_time}
+                    </p>
+                    <p>
+                      <strong>Therapist:</strong>{" "}
+                      {renderTherapistInfo(appointment)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {overdueAppointments.length === 0 &&
+          approachingDeadlineAppointments.length === 0 && (
+            <div className="no-timeouts">
+              <p>No appointments with timeout issues.</p>
+            </div>
+          )}
+      </div>
+    );
+  };
+
+  // Render function for all appointments
+  const renderAllAppointments = () => {
+    if (appointments.length === 0) {
+      return (
+        <div className="no-appointments">
+          <p>No appointments found.</p>
+          <button onClick={refreshData} className="refresh-button">
+            Refresh Data
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="appointments-list">
+        {appointments.map((appointment) => (
+          <div
+            key={appointment.id}
+            className={`appointment-card ${appointment.status}`}
+          >
+            <div className="appointment-header">
+              <h3>Appointment #{appointment.id}</h3>
+              <span
+                className={`status-badge ${getStatusBadgeClass(
+                  appointment.status
+                )}`}
+              >
+                {appointment.status.replace(/_/g, " ").toUpperCase()}
+              </span>
+            </div>
+
+            <div className="appointment-details">
+              <p>
+                <strong>Client:</strong>{" "}
+                {appointment.client_details
+                  ? `${appointment.client_details.first_name} ${appointment.client_details.last_name}`
+                  : "Unknown Client"}
+              </p>
+              <p>
+                <strong>Date:</strong> {appointment.date}
+              </p>
+              <p>
+                <strong>Time:</strong> {appointment.start_time} -{" "}
+                {appointment.end_time}
+              </p>
+              <p>
+                <strong>Location:</strong> {appointment.location}
+              </p>
+              <p>
+                <strong>Service:</strong>{" "}
+                {appointment.service_name || "Unknown Service"}
+              </p>
+              <p>
+                <strong>Therapist:</strong> {renderTherapistInfo(appointment)}
+              </p>
+              {appointment.driver_details && (
+                <p>
+                  <strong>Driver:</strong>{" "}
+                  {appointment.driver_details.first_name}{" "}
+                  {appointment.driver_details.last_name}
+                </p>
+              )}
+              {appointment.rejection_reason && (
+                <p>
+                  <strong>Rejection Reason:</strong>{" "}
+                  {appointment.rejection_reason}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Render function for notifications
+  const renderNotifications = () => {
+    if (!notifications || notifications.length === 0) {
+      return (
+        <div className="no-notifications">
+          <p>No notifications found.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="notifications-list">
+        {notifications.map((notification) => (
+          <div
+            key={notification.id}
+            className={`notification-card ${notification.type || "info"}`}
+          >
+            <div className="notification-header">
+              <h4>{notification.title || "Notification"}</h4>
+              <span className="notification-time">
+                {notification.created_at
+                  ? new Date(notification.created_at).toLocaleString()
+                  : "Unknown time"}
+              </span>
+            </div>
+            <div className="notification-content">
+              <p>
+                {notification.message ||
+                  notification.description ||
+                  "No message"}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Function to handle manual appointment confirmation
   const handleConfirmAppointment = async (appointmentId) => {
     const appointment = appointments.find((apt) => apt.id === appointmentId);
-    if (!appointment?.both_parties_accepted) {
-      alert("Cannot confirm appointment - both parties must accept first");
+
+    if (!appointment) {
+      alert("Appointment not found");
       return;
     }
 
     if (
       window.confirm(
-        "Manually confirm this appointment? Both parties have already accepted."
+        "Manually confirm this appointment? This will override the pending status."
       )
     ) {
       try {
@@ -1212,23 +1083,27 @@ const OperatorDashboard = () => {
 
   // Driver coordination panel rendering
   const renderDriverCoordinationPanel = () => {
+    // Get therapists who have requested pickup
     const pendingPickups = appointments
       .filter(
         (apt) =>
-          apt.status === "completed" &&
-          apt.pickup_requested &&
-          !apt.assigned_driver
+          apt.status === "pickup_requested" && // Look for pickup_requested status
+          !apt.driver // No driver assigned yet
       )
       .map((apt) => ({
-        id: apt.therapist,
+        id: apt.therapist_details?.id || apt.therapist,
         name: apt.therapist_details
           ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
-          : "Unknown",
+          : "Unknown Therapist",
         location: apt.location,
         appointment_id: apt.id,
-        session_end_time: apt.session_end_time,
-        urgency: apt.pickup_urgency || "normal",
-        requested_at: apt.pickup_request_time,
+        session_end_time: apt.updated_at, // When the pickup was requested
+        urgency: apt.notes?.includes("URGENT") ? "urgent" : "normal",
+        requested_at: apt.updated_at,
+        client_name: apt.client_details
+          ? `${apt.client_details.first_name} ${apt.client_details.last_name}`
+          : "Unknown Client",
+        appointment_time: `${apt.date} ${apt.start_time}`,
       }));
 
     const availableDrivers = driverAssignment.availableDrivers;
@@ -1255,13 +1130,20 @@ const OperatorDashboard = () => {
                         ? "🚨 URGENT"
                         : "⏰ Normal"}
                     </span>
-                  </div>
+                  </div>{" "}
                   <div className="request-details">
                     <p>
-                      <strong>Location:</strong> {therapist.location}
+                      <strong>📍 Location:</strong> {therapist.location}
                     </p>
                     <p>
-                      <strong>Session Ended:</strong>{" "}
+                      <strong>👤 Client:</strong> {therapist.client_name}
+                    </p>
+                    <p>
+                      <strong>📅 Original Appointment:</strong>{" "}
+                      {therapist.appointment_time}
+                    </p>
+                    <p>
+                      <strong>⏰ Pickup Requested:</strong>{" "}
                       {therapist.session_end_time
                         ? new Date(
                             therapist.session_end_time
@@ -1269,13 +1151,20 @@ const OperatorDashboard = () => {
                         : "Just now"}
                     </p>
                     <p>
-                      <strong>Waiting Time:</strong>{" "}
-                      {therapist.requested_at
-                        ? getTimeElapsed(therapist.requested_at)
-                        : "Just now"}
+                      <strong>🕒 Waiting Time:</strong>{" "}
+                      <span
+                        className={
+                          therapist.urgency === "urgent"
+                            ? "waiting-time urgent"
+                            : "waiting-time"
+                        }
+                      >
+                        {therapist.requested_at
+                          ? getTimeElapsed(therapist.requested_at)
+                          : "Just now"}
+                      </span>
                     </p>
                   </div>
-
                   {/* Driver Assignment Actions */}
                   <div className="assignment-actions">
                     {availableDrivers.length > 0 ? (
@@ -1434,47 +1323,17 @@ const OperatorDashboard = () => {
             <div className="coordination-tips">
               <h4>💡 Coordination Tips:</h4>
               <ul>
+                {" "}
                 <li>Same zone pickups: 10-15 minutes</li>
                 <li>Adjacent zone pickups: 20-30 minutes</li>
                 <li>Cross-city pickups: 45+ minutes</li>
                 <li>Rush hour: Add 50% to estimated time</li>
               </ul>
-            </div>
+            </div>{" "}
           </div>
         </div>
       </div>
     );
-  };
-
-  // Helper function to calculate time elapsed
-  const getTimeElapsed = (timestamp) => {
-    const now = new Date();
-    const then = new Date(timestamp);
-    const diffMs = now - then;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins} min ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    return `${diffHours}h ${diffMins % 60}m ago`;
-  };
-
-  // Helper function to calculate estimated travel time
-  const calculateEstimatedTime = (fromLocation, toLocation) => {
-    const proximity = calculateProximityScore(fromLocation, toLocation);
-    const baseTime =
-      proximity.score === 10 ? 15 : proximity.score === 7 ? 25 : 45;
-
-    // Adjust for current time (traffic)
-    const hour = new Date().getHours();
-    let multiplier = 1.0;
-    if ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)) {
-      multiplier = 1.5; // Rush hour
-    } else if (hour >= 12 && hour <= 13) {
-      multiplier = 1.2; // Lunch time
-    }
-
-    return Math.round(baseTime * multiplier);
   };
 
   return (
@@ -1559,12 +1418,12 @@ const OperatorDashboard = () => {
           >
             Manage Availability
           </button>
-            <button
-              className={currentView === "drivers" ? "active" : ""}
-              onClick={() => setView("drivers")}
-            >
-              Driver Coordination
-            </button>
+          <button
+            className={currentView === "drivers" ? "active" : ""}
+            onClick={() => setView("drivers")}
+          >
+            Driver Coordination
+          </button>
         </div>{" "}
         <div className="dashboard-content">
           {currentView === "rejected" && (
@@ -1602,12 +1461,12 @@ const OperatorDashboard = () => {
               <AvailabilityManager />
             </div>
           )}
-            {currentView === "drivers" && (
-              <div className="driver-coordination">
-                <h2>Driver Coordination Center</h2>
-                {renderDriverCoordinationPanel()}
-              </div>
-            )}
+          {currentView === "drivers" && (
+            <div className="driver-coordination">
+              <h2>Driver Coordination Center</h2>
+              {renderDriverCoordinationPanel()}
+            </div>
+          )}
         </div>
         {/* Review Rejection Modal */}
         {reviewModal.isOpen && (
