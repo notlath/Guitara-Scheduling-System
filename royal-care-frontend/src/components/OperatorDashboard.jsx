@@ -15,6 +15,7 @@ import PageLayout from "../globals/PageLayout";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
+import NotificationCenter from "./scheduling/NotificationCenter";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
@@ -1436,29 +1437,31 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderNotifications = () => {
-    // This would connect to the notification system
+    // Integration with NotificationCenter component
     return (
       <div className="notifications-content">
         <div className="notifications-header">
           <h3>System Notifications</h3>
-          <div className="notification-actions">
-            <button className="mark-all-read-btn">Mark All Read</button>
-            <button className="clear-all-btn">Clear All</button>
+          <div className="notification-summary">
+            <span className="notification-count">
+              {notifications.length} total notifications
+            </span>
+            {notifications.filter(n => !n.is_read).length > 0 && (
+              <span className="unread-count">
+                {notifications.filter(n => !n.is_read).length} unread
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="notifications-placeholder">
-          <p>Notification system integration in progress.</p>
-          <p>This section will display:</p>
-          <ul>
-            <li>New appointment requests</li>
-            <li>Therapist acceptance/rejection notifications</li>
-            <li>Driver assignment updates</li>
-            <li>Payment completion alerts</li>
-            <li>System status updates</li>
-          </ul>
+        <div className="notification-panel-wrapper">
+          <NotificationCenter 
+            onClose={() => {
+              // This is embedded in the dashboard, so we don't need to close it
+              // but we provide the prop for component compatibility
+            }}
+          />
         </div>
       </div>
     );
