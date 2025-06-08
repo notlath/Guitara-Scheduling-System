@@ -115,6 +115,26 @@ class SyncService {
     };
   }
 
+  // Cleanup method to unsubscribe all listeners (for safety/testing)
+  unsubscribe(eventType, callback) {
+    if (callback) {
+      // Remove specific callback
+      const listeners = this.listeners.get(eventType);
+      if (listeners) {
+        listeners.delete(callback);
+        if (listeners.size === 0) {
+          this.listeners.delete(eventType);
+        }
+      }
+    } else if (eventType) {
+      // Remove all listeners for this event type
+      this.listeners.delete(eventType);
+    } else {
+      // Remove all listeners
+      this.listeners.clear();
+    }
+  }
+
   // Check if data should be refreshed based on last update time
   shouldRefresh(dataType, maxAge = 30000) {
     // 30 seconds default
