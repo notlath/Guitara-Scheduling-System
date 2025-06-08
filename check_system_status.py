@@ -9,6 +9,7 @@ import json
 import sys
 import os
 
+
 def check_backend():
     """Check if backend is running and healthy"""
     try:
@@ -26,6 +27,7 @@ def check_backend():
     except Exception as e:
         print(f"❌ Backend check failed: {e}")
         return False
+
 
 def check_frontend():
     """Check if frontend is running"""
@@ -45,6 +47,7 @@ def check_frontend():
         print(f"❌ Frontend check failed: {e}")
         return False
 
+
 def check_database():
     """Check database connectivity"""
     try:
@@ -59,6 +62,7 @@ def check_database():
         print(f"❌ Database check failed: {e}")
         return False
 
+
 def check_files():
     """Check if key implementation files exist"""
     files_to_check = [
@@ -67,45 +71,46 @@ def check_files():
         "royal-care-frontend/src/components/OperatorDashboard.jsx",
         "royal-care-frontend/src/components/TherapistDashboard.jsx",
         "royal-care-frontend/src/components/DriverDashboard.jsx",
-        "royal-care-frontend/src/features/scheduling/schedulingSlice.js"
+        "royal-care-frontend/src/features/scheduling/schedulingSlice.js",
     ]
-    
+
     print("\n📋 Checking implementation files...")
     all_exist = True
-    
+
     for file_path in files_to_check:
         if os.path.exists(file_path):
             print(f"✅ {file_path}")
         else:
             print(f"❌ {file_path}")
             all_exist = False
-    
+
     return all_exist
+
 
 def main():
     """Main status check function"""
     print("🏠 Royal Care Scheduling System - Status Check")
     print("=" * 55)
-    
+
     # Check implementation files
     files_ok = check_files()
-    
+
     print("\n🌐 Checking development servers...")
     backend_ok = check_backend()
     frontend_ok = check_frontend()
-    
+
     if backend_ok:
         print("\n🗄️ Checking database...")
         db_ok = check_database()
     else:
         db_ok = False
-    
+
     print("\n📊 Status Summary:")
     print(f"   Implementation Files: {'✅ Ready' if files_ok else '❌ Missing'}")
     print(f"   Backend Server: {'✅ Running' if backend_ok else '❌ Stopped'}")
     print(f"   Frontend Server: {'✅ Running' if frontend_ok else '❌ Stopped'}")
     print(f"   Database: {'✅ Connected' if db_ok else '❌ Disconnected'}")
-    
+
     if all([files_ok, backend_ok, frontend_ok, db_ok]):
         print("\n🎉 System Status: READY FOR TESTING!")
         print("\n🚀 Next Steps:")
@@ -122,6 +127,7 @@ def main():
             print("   → Start frontend: cd royal-care-frontend && npm run dev")
         if not db_ok and backend_ok:
             print("   → Run migrations: cd guitara && python manage.py migrate")
+
 
 if __name__ == "__main__":
     main()

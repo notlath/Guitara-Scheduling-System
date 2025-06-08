@@ -4,14 +4,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
   acceptAppointment,
+  driverConfirm,
   fetchAppointments,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
-  rejectAppointment,
-  updateAppointmentStatus,
-  driverConfirm,
-  startJourney,
   markArrived,
+  rejectAppointment,
+  startJourney,
+  updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
@@ -656,7 +656,8 @@ const DriverDashboard = () => {
       default:
         return "";
     }
-  };  const renderActionButtons = (appointment) => {
+  };
+  const renderActionButtons = (appointment) => {
     const { status, id, both_parties_accepted, requires_car } = appointment;
     const isGroupTransport =
       appointment.therapist_group && appointment.therapist_group.length > 1;
@@ -693,8 +694,13 @@ const DriverDashboard = () => {
           return (
             <div className="appointment-actions">
               <div className="waiting-status">
-                <span className="waiting-badge">⏳ Waiting for confirmations</span>
-                <p>All parties accepted. Waiting for therapist and driver confirmation...</p>
+                <span className="waiting-badge">
+                  ⏳ Waiting for confirmations
+                </span>
+                <p>
+                  All parties accepted. Waiting for therapist and driver
+                  confirmation...
+                </p>
               </div>
             </div>
           );
@@ -779,7 +785,9 @@ const DriverDashboard = () => {
         return (
           <div className="appointment-actions">
             <div className="arrived-status">
-              <span className="arrived-badge">📍 Arrived at pickup location</span>
+              <span className="arrived-badge">
+                📍 Arrived at pickup location
+              </span>
               <p>Therapist can now proceed to client location.</p>
             </div>
           </div>
@@ -802,7 +810,9 @@ const DriverDashboard = () => {
           <div className="appointment-actions">
             <div className="pickup-requested">
               <span className="pickup-badge">🚖 Pickup requested</span>
-              <p>Therapist needs pickup. Check operator dashboard for assignment.</p>
+              <p>
+                Therapist needs pickup. Check operator dashboard for assignment.
+              </p>
             </div>
           </div>
         );
@@ -878,7 +888,8 @@ const DriverDashboard = () => {
               <p>Available for new assignments</p>
             </div>
           </div>
-        );      default:
+        );
+      default:
         return null;
     }
   };
