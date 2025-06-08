@@ -1386,7 +1386,591 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 f"Driver {selected_driver.get_full_name()} automatically assigned for pickup of {appointment.therapist.get_full_name()}.",
             )
 
-    # ...existing methods...
+    @action(detail=True, methods=["post"])
+    def auto_assign_pickup_driver(self, request, pk=None):
+        """Automatically assign the best available driver for pickup based on availability timestamp"""
+        appointment = self.get_object()
+        
+        if appointment.status != "pickup_requested":
+            return Response(
+                {"error": "Appointment must be in pickup_requested status for auto-assignment"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Find available drivers with matching vehicle type
+        required_vehicle = appointment.get_required_vehicle_type()
+        
+        # Get drivers available for pickup (based on last availability timestamp)
+        from core.models import CustomUser
+        available_drivers = CustomUser.objects.filter(
+            role="driver",
+            is_active=True,
+            driver_appointments__status="therapist_dropped_off",  # Recently completed a job
+        ).exclude(
+            driver_appointments__status__in=["pending", "therapist_confirm", "driver_confirm", "journey", "arrived", "session_in_progress"]
+        ).order_by('driver_appointments__updated_at')  # Earliest available first
+        
+        if not available_drivers.exists():
+            return Response(
+                {"error": "No drivers currently available for pickup assignment"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Assign the driver who has been available the longest
+        best_driver = available_drivers.first()
+        appointment.driver = best_driver
+        appointment.status = "driver_assigned_pickup"
+        appointment.driver_available_since = timezone.now()
+        appointment.save()
+        
+        # Create notification
+        self._create_notifications(
+            appointment,
+            "driver_auto_assigned_pickup",
+            f"Driver {best_driver.get_full_name()} has been automatically assigned for pickup of {appointment.client} appointment.",
+        )
+        
+        # Broadcast assignment
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": "driver_auto_assigned_pickup",
+                    "appointment_id": appointment.id,
+                    "driver_id": best_driver.id,
+                    "driver_name": best_driver.get_full_name(),
+                    "vehicle_type": appointment.get_display_vehicle_type(),
+                    "estimated_arrival": "15 minutes",  # Default estimate
+                },
+            },
+        )
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def enforce_workflow_transition(self, request, pk=None):
+        """Enforce proper workflow status transitions with validation"""
+        appointment = self.get_object()
+        new_status = request.data.get("status")
+        
+        if not new_status:
+            return Response(
+                {"error": "Status field is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Check if transition is allowed
+        if not appointment.enforce_status_transition_rules(new_status):
+            return Response(
+                {"error": f"Invalid status transition from {appointment.status} to {new_status}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Additional validation based on new status
+        if new_status == "driver_confirm" and appointment.is_group_appointment():
+            if not appointment.group_confirmation_complete:
+                return Response(
+                    {"error": "All therapists must confirm before driver can confirm for group appointments"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        
+        # Update status and relevant timestamps
+        old_status = appointment.status
+        appointment.status = new_status
+        
+        # Set appropriate timestamps
+        if new_status == "journey":
+            appointment.journey_started_at = timezone.now()
+        elif new_status == "arrived":
+            appointment.arrived_at = timezone.now()
+        elif new_status == "session_in_progress":
+            appointment.session_started_at = timezone.now()
+        elif new_status == "completed":
+            appointment.session_end_time = timezone.now()
+        elif new_status == "driver_en_route_pickup":
+            # Driver confirmed pickup assignment and is en route
+            pass
+        elif new_status == "driver_arrived_pickup":
+            # Driver has arrived at pickup location
+            pass
+        elif new_status == "therapist_picked_up":
+            # Therapist is now in vehicle
+            pass
+            
+        appointment.save()
+        
+        # Create appropriate notifications
+        self._create_notifications(
+            appointment,
+            f"status_changed_{new_status}",
+            f"Appointment status changed from {old_status} to {new_status}",
+        )
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def start_session_with_progress_tracking(self, request, pk=None):
+        """Start therapy session with progress tracking for operator visibility"""
+        appointment = self.get_object()
+        
+        if appointment.status != "arrived":
+            return Response(
+                {"error": "Therapist(s) must be marked as arrived before starting session"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        appointment.status = "session_in_progress"
+        appointment.session_started_at = timezone.now()
+        appointment.save()
+        
+        # Calculate expected session duration for operator tracking
+        duration_minutes = appointment.get_session_duration_minutes()
+        expected_end_time = timezone.now() + timedelta(minutes=duration_minutes)
+        
+        # Broadcast session start with progress information
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": "session_started_with_tracking",
+                    "appointment_id": appointment.id,
+                    "session_start_time": appointment.session_started_at.isoformat(),
+                    "expected_duration_minutes": duration_minutes,
+                    "expected_end_time": expected_end_time.isoformat(),
+                    "client_name": str(appointment.client),
+                    "therapist_names": [
+                        t.get_full_name() for t in appointment.therapists.all()
+                    ] if appointment.is_group_appointment() else [appointment.therapist.get_full_name()],
+                    "location": appointment.location,
+                },
+            },
+        )
+        
+        self._create_notifications(
+            appointment,
+            "session_started_tracking",
+            f"Therapy session started for {appointment.client}. Expected duration: {duration_minutes} minutes.",
+        )
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"])
+    def get_workflow_status(self, request, pk=None):
+        """Get comprehensive workflow status including next required actions"""
+        appointment = self.get_object()
+        
+        # Get next required confirmations
+        next_confirmations = appointment.get_next_required_confirmations()
+        
+        # Get session progress if in progress
+        session_progress = None
+        if appointment.status == "session_in_progress" and appointment.session_started_at:
+            elapsed_minutes = int((timezone.now() - appointment.session_started_at).total_seconds() / 60)
+            total_minutes = appointment.get_session_duration_minutes()
+            progress_percentage = min(100, (elapsed_minutes / total_minutes) * 100) if total_minutes > 0 else 0
+            
+            session_progress = {
+                "elapsed_minutes": elapsed_minutes,
+                "total_minutes": total_minutes,
+                "progress_percentage": round(progress_percentage, 1),
+                "estimated_completion": (appointment.session_started_at + timedelta(minutes=total_minutes)).isoformat() if total_minutes > 0 else None,
+            }
+        
+        workflow_data = {
+            "appointment_id": appointment.id,
+            "current_status": appointment.status,
+            "is_group_appointment": appointment.is_group_appointment(),
+            "vehicle_type_required": appointment.get_display_vehicle_type(),
+            "next_confirmations_needed": next_confirmations,
+            "session_progress": session_progress,
+            "can_auto_assign_pickup": appointment.status == "pickup_requested" and appointment.is_eligible_for_auto_pickup_assignment(),
+            "status_timestamps": {
+                "therapist_confirmed_at": appointment.therapist_confirmed_at.isoformat() if appointment.therapist_confirmed_at else None,
+                "driver_confirmed_at": appointment.driver_confirmed_at.isoformat() if appointment.driver_confirmed_at else None,
+                "journey_started_at": appointment.journey_started_at.isoformat() if appointment.journey_started_at else None,
+                "arrived_at": appointment.arrived_at.isoformat() if appointment.arrived_at else None,
+                "session_started_at": appointment.session_started_at.isoformat() if appointment.session_started_at else None,
+                "session_end_time": appointment.session_end_time.isoformat() if appointment.session_end_time else None,
+            }
+        }
+        
+        return Response(workflow_data)
+
+    @action(detail=True, methods=["post"])
+    def auto_assign_pickup_driver(self, request, pk=None):
+        """Automatically assign the best available driver for pickup based on availability timestamp"""
+        appointment = self.get_object()
+        
+        if appointment.status != "pickup_requested":
+            return Response(
+                {"error": "Appointment must be in pickup_requested status for auto-assignment"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Find available drivers with matching vehicle type
+        required_vehicle = appointment.get_required_vehicle_type()
+        
+        # Get drivers available for pickup (based on last availability timestamp)
+        from core.models import CustomUser
+        available_drivers = CustomUser.objects.filter(
+            role="driver",
+            is_active=True,
+            driver_appointments__status="therapist_dropped_off",  # Recently completed a job
+        ).exclude(
+            driver_appointments__status__in=["pending", "therapist_confirm", "driver_confirm", "journey", "arrived", "session_in_progress"]
+        ).order_by('driver_appointments__updated_at')  # Earliest available first
+        
+        if not available_drivers.exists():
+            return Response(
+                {"error": "No drivers currently available for pickup assignment"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Assign the driver who has been available the longest
+        best_driver = available_drivers.first()
+        appointment.driver = best_driver
+        appointment.status = "driver_assigned_pickup"
+        appointment.driver_available_since = timezone.now()
+        appointment.save()
+        
+        # Create notification
+        self._create_notifications(
+            appointment,
+            "driver_auto_assigned_pickup",
+            f"Driver {best_driver.get_full_name()} has been automatically assigned for pickup of {appointment.client} appointment.",
+        )
+        
+        # Broadcast assignment
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": "driver_auto_assigned_pickup",
+                    "appointment_id": appointment.id,
+                    "driver_id": best_driver.id,
+                    "driver_name": best_driver.get_full_name(),
+                    "vehicle_type": appointment.get_display_vehicle_type(),
+                    "estimated_arrival": "15 minutes",  # Default estimate
+                },
+            },
+        )
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def enforce_workflow_transition(self, request, pk=None):
+        """Enforce proper workflow status transitions with validation"""
+        appointment = self.get_object()
+        new_status = request.data.get("status")
+        
+        if not new_status:
+            return Response(
+                {"error": "Status field is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Check if transition is allowed
+        if not appointment.enforce_status_transition_rules(new_status):
+            return Response(
+                {"error": f"Invalid status transition from {appointment.status} to {new_status}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Additional validation based on new status
+        if new_status == "driver_confirm" and appointment.is_group_appointment():
+            if not appointment.group_confirmation_complete:
+                return Response(
+                    {"error": "All therapists must confirm before driver can confirm for group appointments"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        
+        # Update status and relevant timestamps
+        old_status = appointment.status
+        appointment.status = new_status
+        
+        # Set appropriate timestamps
+        if new_status == "journey":
+            appointment.journey_started_at = timezone.now()
+        elif new_status == "arrived":
+            appointment.arrived_at = timezone.now()
+        elif new_status == "session_in_progress":
+            appointment.session_started_at = timezone.now()
+        elif new_status == "completed":
+            appointment.session_end_time = timezone.now()
+        elif new_status == "driver_en_route_pickup":
+            # Driver confirmed pickup assignment and is en route
+            pass
+        elif new_status == "driver_arrived_pickup":
+            # Driver has arrived at pickup location
+            pass
+        elif new_status == "therapist_picked_up":
+            # Therapist is now in vehicle
+            pass
+            
+        appointment.save()
+        
+        # Create appropriate notifications
+        self._create_notifications(
+            appointment,
+            f"status_changed_{new_status}",
+            f"Appointment status changed from {old_status} to {new_status}",
+        )
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def start_session_with_progress_tracking(self, request, pk=None):
+        """Start therapy session with progress tracking for operator visibility"""
+        appointment = self.get_object()
+        
+        if appointment.status != "arrived":
+            return Response(
+                {"error": "Therapist(s) must be marked as arrived before starting session"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        appointment.status = "session_in_progress"
+        appointment.session_started_at = timezone.now()
+        appointment.save()
+        
+        # Calculate expected session duration for operator tracking
+        duration_minutes = appointment.get_session_duration_minutes()
+        expected_end_time = timezone.now() + timedelta(minutes=duration_minutes)
+        
+        # Broadcast session start with progress information
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": "session_started_with_tracking",
+                    "appointment_id": appointment.id,
+                    "session_start_time": appointment.session_started_at.isoformat(),
+                    "expected_duration_minutes": duration_minutes,
+                    "expected_end_time": expected_end_time.isoformat(),
+                    "client_name": str(appointment.client),
+                    "therapist_names": [
+                        t.get_full_name() for t in appointment.therapists.all()
+                    ] if appointment.is_group_appointment() else [appointment.therapist.get_full_name()],
+                    "location": appointment.location,
+                },
+            },
+        )
+        
+        self._create_notifications(
+            appointment,
+            "session_started_tracking",
+            f"Therapy session started for {appointment.client}. Expected duration: {duration_minutes} minutes.",
+        )
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"])
+    def get_workflow_status(self, request, pk=None):
+        """Get comprehensive workflow status including next required actions"""
+        appointment = self.get_object()
+        
+        # Get next required confirmations
+        next_confirmations = appointment.get_next_required_confirmations()
+        
+        # Get session progress if in progress
+        session_progress = None
+        if appointment.status == "session_in_progress" and appointment.session_started_at:
+            elapsed_minutes = int((timezone.now() - appointment.session_started_at).total_seconds() / 60)
+            total_minutes = appointment.get_session_duration_minutes()
+            progress_percentage = min(100, (elapsed_minutes / total_minutes) * 100) if total_minutes > 0 else 0
+            
+            session_progress = {
+                "elapsed_minutes": elapsed_minutes,
+                "total_minutes": total_minutes,
+                "progress_percentage": round(progress_percentage, 1),
+                "estimated_completion": (appointment.session_started_at + timedelta(minutes=total_minutes)).isoformat() if total_minutes > 0 else None,
+            }
+        
+        workflow_data = {
+            "appointment_id": appointment.id,
+            "current_status": appointment.status,
+            "is_group_appointment": appointment.is_group_appointment(),
+            "vehicle_type_required": appointment.get_display_vehicle_type(),
+            "next_confirmations_needed": next_confirmations,
+            "session_progress": session_progress,
+            "can_auto_assign_pickup": appointment.status == "pickup_requested" and appointment.is_eligible_for_auto_pickup_assignment(),
+            "status_timestamps": {
+                "therapist_confirmed_at": appointment.therapist_confirmed_at.isoformat() if appointment.therapist_confirmed_at else None,
+                "driver_confirmed_at": appointment.driver_confirmed_at.isoformat() if appointment.driver_confirmed_at else None,
+                "journey_started_at": appointment.journey_started_at.isoformat() if appointment.journey_started_at else None,
+                "arrived_at": appointment.arrived_at.isoformat() if appointment.arrived_at else None,
+                "session_started_at": appointment.session_started_at.isoformat() if appointment.session_started_at else None,
+                "session_end_time": appointment.session_end_time.isoformat() if appointment.session_end_time else None,
+            }
+        }
+        
+        return Response(workflow_data)    # ...existing methods...
+
+    @action(detail=True, methods=["post"])
+    def auto_assign_pickup_driver(self, request, pk=None):
+        """Automatically assign the best available driver for pickup based on availability timestamp"""
+        appointment = self.get_object()
+        
+        if appointment.status != "pickup_requested":
+            return Response(
+                {"error": "Appointment must be in pickup_requested status for auto-assignment"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Find available drivers with matching vehicle type
+        required_vehicle = appointment.get_required_vehicle_type()
+        
+        # Get drivers available for pickup (based on last availability timestamp)
+        from core.models import CustomUser
+        available_drivers = CustomUser.objects.filter(
+            role="driver",
+            is_active=True,
+        ).exclude(
+            driver_appointments__status__in=[
+                "pending", "therapist_confirm", "driver_confirm", 
+                "journey", "arrived", "session_in_progress"
+            ]
+        ).order_by('driver_appointments__updated_at')  # Earliest available first
+        
+        if not available_drivers.exists():
+            return Response(
+                {"error": "No drivers currently available for pickup assignment"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Assign the driver who has been available the longest
+        best_driver = available_drivers.first()
+        appointment.driver = best_driver
+        appointment.status = "driver_assigned_pickup"
+        appointment.driver_available_since = timezone.now()
+        appointment.save()
+        
+        # Create notification
+        self._create_notifications(
+            appointment,
+            "driver_auto_assigned_pickup",
+            f"Driver {best_driver.get_full_name()} has been automatically assigned for pickup of {appointment.client} appointment.",
+        )
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def start_session_with_progress_tracking(self, request, pk=None):
+        """Start therapy session with progress tracking for operator visibility"""
+        appointment = self.get_object()
+        
+        if appointment.status != "arrived":
+            return Response(
+                {"error": "Therapist(s) must be marked as arrived before starting session"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        appointment.status = "session_in_progress"
+        appointment.session_started_at = timezone.now()
+        appointment.save()
+        
+        # Calculate expected session duration for operator tracking
+        duration_minutes = appointment.get_session_duration_minutes()
+        expected_end_time = timezone.now() + timedelta(minutes=duration_minutes)
+        
+        # Broadcast session start with progress information
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": "session_started_with_tracking",
+                    "appointment_id": appointment.id,
+                    "session_start_time": appointment.session_started_at.isoformat(),
+                    "expected_duration_minutes": duration_minutes,
+                    "expected_end_time": expected_end_time.isoformat(),
+                    "client_name": str(appointment.client),
+                    "therapist_names": [
+                        t.get_full_name() for t in appointment.therapists.all()
+                    ] if appointment.is_group_appointment() else [appointment.therapist.get_full_name()],
+                    "location": appointment.location,
+                },
+            },
+        )
+        
+        self._create_notifications(
+            appointment,
+            "session_started_tracking",
+            f"Therapy session started for {appointment.client}. Expected duration: {duration_minutes} minutes.",
+        )
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"])
+    def get_workflow_status(self, request, pk=None):
+        """Get comprehensive workflow status including next required actions"""
+        appointment = self.get_object()
+        
+        # Get next required confirmations
+        next_confirmations = appointment.get_next_required_confirmations()
+        
+        # Get session progress if in progress
+        session_progress = None
+        if appointment.status == "session_in_progress" and appointment.session_started_at:
+            elapsed_minutes = int((timezone.now() - appointment.session_started_at).total_seconds() / 60)
+            total_minutes = appointment.get_session_duration_minutes()
+            progress_percentage = min(100, (elapsed_minutes / total_minutes) * 100) if total_minutes > 0 else 0
+            
+            session_progress = {
+                "elapsed_minutes": elapsed_minutes,
+                "total_minutes": total_minutes,
+                "progress_percentage": round(progress_percentage, 1),
+                "estimated_completion": (appointment.session_started_at + timedelta(minutes=total_minutes)).isoformat() if total_minutes > 0 else None,
+            }
+        
+        workflow_data = {
+            "appointment_id": appointment.id,
+            "current_status": appointment.status,
+            "is_group_appointment": appointment.is_group_appointment(),
+            "vehicle_type_required": appointment.get_display_vehicle_type(),
+            "next_confirmations_needed": next_confirmations,
+            "session_progress": session_progress,
+            "can_auto_assign_pickup": appointment.status == "pickup_requested" and appointment.is_eligible_for_auto_pickup_assignment(),
+            "status_timestamps": {
+                "therapist_confirmed_at": appointment.therapist_confirmed_at.isoformat() if appointment.therapist_confirmed_at else None,
+                "driver_confirmed_at": appointment.driver_confirmed_at.isoformat() if appointment.driver_confirmed_at else None,
+                "journey_started_at": appointment.journey_started_at.isoformat() if appointment.journey_started_at else None,
+                "arrived_at": appointment.arrived_at.isoformat() if appointment.arrived_at else None,
+                "session_started_at": appointment.session_started_at.isoformat() if appointment.session_started_at else None,
+                "session_end_time": appointment.session_end_time.isoformat() if appointment.session_end_time else None,
+            }
+        }
+        
+        return Response(workflow_data)
 
 
 class NotificationViewSet(viewsets.ModelViewSet):
@@ -1823,227 +2407,4 @@ class ServiceViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
 
         # Only the assigned driver can start journey
-        if request.user != appointment.driver:
-            return Response(
-                {"error": "You can only start journey for your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_start_journey():
-            return Response(
-                {"error": "Journey cannot be started at this time"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "journey"
-        appointment.journey_started_at = timezone.now()
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "journey_started",
-            f"Driver has started journey to {appointment.client}'s location for appointment on {appointment.date}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def mark_arrived(self, request, pk=None):
-        """Driver marks arrival at client location"""
-        appointment = self.get_object()
-
-        # Only the assigned driver can mark arrival
-        if request.user != appointment.driver:
-            return Response(
-                {"error": "You can only mark arrival for your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_arrive():
-            return Response(
-                {"error": "Cannot mark arrival at this time"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "arrived"
-        appointment.arrived_at = timezone.now()
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "therapist_arrived",
-            f"Therapist(s) have arrived at {appointment.client}'s location for appointment on {appointment.date}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def start_session(self, request, pk=None):
-        """Therapist starts the therapy session"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can start session
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only start your own therapy sessions"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_start_session():
-            return Response(
-                {"error": "Session cannot be started at this time"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "session_in_progress"
-        appointment.session_started_at = timezone.now()
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "session_started",
-            f"Therapy session started for {appointment.client} on {appointment.date}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def request_payment(self, request, pk=None):
-        """Therapist requests payment after session completion"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can request payment
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only request payment for your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_request_payment():
-            return Response(
-                {"error": "Payment cannot be requested at this time"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "awaiting_payment"
-        appointment.payment_initiated_at = timezone.now()
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "payment_requested",
-            f"Payment requested for completed therapy session with {appointment.client} on {appointment.date}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def complete_appointment(self, request, pk=None):
-        """Complete the appointment after payment"""
-        appointment = self.get_object()
-
-        # Only operator or assigned therapist can complete
-        if request.user.role != "operator" and request.user != appointment.therapist:
-            return Response(
-                {"error": "Only operators or assigned therapists can complete appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_complete():
-            return Response(
-                {"error": "Appointment cannot be completed at this time"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "completed"
-        appointment.session_end_time = timezone.now()
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "appointment_completed",
-            f"Appointment for {appointment.client} on {appointment.date} has been completed.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def request_pickup(self, request, pk=None):
-        """Therapist requests pickup after completed appointment"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can request pickup
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only request pickup for your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_request_pickup():
-            return Response(
-                {"error": "Pickup cannot be requested at this time"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        pickup_urgency = request.data.get('pickup_urgency', 'normal')
-        pickup_notes = request.data.get('pickup_notes', '')
-
-        appointment.status = "pickup_requested"
-        appointment.pickup_requested = True
-        appointment.pickup_request_time = timezone.now()
-        appointment.pickup_urgency = pickup_urgency
-        appointment.pickup_notes = pickup_notes
-        appointment.save()
-
-        # Check for automatic driver assignment
-        if appointment.is_eligible_for_auto_pickup_assignment():
-            self._try_auto_assign_pickup_driver(appointment)
-
-        self._create_notifications(
-            appointment,
-            "pickup_requested",
-            f"Pickup requested by {request.user.get_full_name()} after completed appointment for {appointment.client}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    def _try_auto_assign_pickup_driver(self, appointment):
-        """Try to automatically assign a driver for pickup based on availability and vehicle type"""
-        from django.db.models import Q
-        
-        required_vehicle = appointment.get_required_vehicle_type()
-        
-        # Find available drivers with correct vehicle type, ordered by availability time
-        available_drivers = CustomUser.objects.filter(
-            role="driver",
-            is_active=True,
-            driver_available_since__isnull=False
-        ).exclude(
-            # Exclude drivers already assigned to other pickups
-            driver_appointments__status__in=["pickup_requested", "driver_assigned_pickup", "return_journey"]
-        ).order_by('driver_available_since')
-        
-        # Filter by vehicle type if needed
-        if required_vehicle == "car":
-            # For car requirements, we need drivers with cars
-            # This would require additional driver profile fields
-            pass
-        
-        if available_drivers.exists():
-            selected_driver = available_drivers.first()
-            appointment.driver = selected_driver
-            appointment.status = "driver_assigned_pickup"
-            appointment.driver_available_since = None  # Clear availability
-            appointment.save()
-            
-            self._create_notifications(
-                appointment,
-                "driver_auto_assigned_pickup",
-                f"Driver {selected_driver.get_full_name()} automatically assigned for pickup of {appointment.therapist.get_full_name()}.",
-            )
+        if request.user != appointment
