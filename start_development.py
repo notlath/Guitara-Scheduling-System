@@ -10,6 +10,7 @@ import subprocess
 import platform
 import time
 import webbrowser
+import urllib.request
 from pathlib import Path
 
 
@@ -172,6 +173,23 @@ def check_requirements():
     return True
 
 
+def wait_for_server(url, timeout=60, interval=1):
+    """Wait until the server at the given URL is up or timeout is reached."""
+    print(f"⏳ Waiting for {url} to be available...")
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            with urllib.request.urlopen(url) as response:
+                if response.status == 200:
+                    print(f"✅ {url} is up!")
+                    return True
+        except Exception:
+            pass
+        time.sleep(interval)
+    print(f"❌ Timeout waiting for {url}")
+    return False
+
+
 def main():
     print("🎯 Guitara Development Server Starter")
     print("=" * 40)
@@ -187,18 +205,28 @@ def main():
     # Start servers
     backend_ok = start_backend()
     if backend_ok:
+        # Wait for backend to be up
+        backend_ready = wait_for_server("http://127.0.0.1:8000/", timeout=60)
+        if not backend_ready:
+            print("\n⚠️ Backend did not start in time")
+            return
         time.sleep(2)  # Wait a bit before starting frontend
         frontend_ok = start_frontend()
 
         if frontend_ok:
-            # Open browser automatically
-            open_browser()
+            # Wait for frontend to be up
+            frontend_ready = wait_for_server("http://localhost:5173/", timeout=60)
+            if frontend_ready:
+                # Open browser automatically
+                open_browser()
 
-            print("\n🎉 Both servers started!")
-            print("📋 Running on:")
-            print("   🖥️  Django Backend: http://127.0.0.1:8000/")
-            print("   💻 React Frontend: http://localhost:5173/")
-            print("\n✨ Press Ctrl+C in each terminal to stop servers")
+                print("\n🎉 Both servers started!")
+                print("📋 Running on:")
+                print("   🖥️  Django Backend: http://127.0.0.1:8000/")
+                print("   💻 React Frontend: http://localhost:5173/")
+                print("\n✨ Press Ctrl+C in each terminal to stop servers")
+            else:
+                print("\n⚠️ Frontend did not start in time")
         else:
             print("\n⚠️ Frontend failed to start")
     else:
