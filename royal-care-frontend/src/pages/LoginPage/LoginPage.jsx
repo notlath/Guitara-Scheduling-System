@@ -235,7 +235,7 @@ function LoginPage() {
       <div className={styles.imageSide}>
         <img src={loginSidepic} alt="Background" />
       </div>
-      <div className={styles.formSide + " global-form-field-container"}>
+      <div className={`${styles.formSide} global-form-field-container`}>
         <div className={styles.formContainer}>
           <div className={styles.logo}>
             <img src={rcLogo} alt="Royal Care Logo" />

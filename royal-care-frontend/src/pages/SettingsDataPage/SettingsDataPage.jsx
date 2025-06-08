@@ -347,6 +347,9 @@ const SettingsDataPage = () => {
     }
   };
 
+  // Cache table config to avoid multiple calls
+  const tableConfig = getTableConfig();
+
   return (
     <PageLayout>
       {showModal && (
@@ -399,7 +402,7 @@ const SettingsDataPage = () => {
           <table className={styles["data-table"]}>
             <thead>
               <tr>
-                {getTableConfig().columns.map((col) => (
+                {tableConfig.columns.map((col) => (
                   <th key={col.key} scope="col">
                     {col.label}
                   </th>
@@ -411,7 +414,7 @@ const SettingsDataPage = () => {
               TAB_PLACEHOLDERS[activeTab].length > 0 ? (
                 TAB_PLACEHOLDERS[activeTab].map((row, idx) => (
                   <tr key={idx}>
-                    {getTableConfig().columns.map((col) => (
+                    {tableConfig.columns.map((col) => (
                       <td key={col.key}>
                         {row[col.key] !== undefined ? row[col.key] : "-"}
                       </td>
@@ -421,7 +424,7 @@ const SettingsDataPage = () => {
               ) : (
                 <tr>
                   <td
-                    colSpan={getTableConfig().columns.length}
+                    colSpan={tableConfig.columns.length}
                     className={styles["no-data"]}
                   >
                     No data available.
