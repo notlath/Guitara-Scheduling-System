@@ -173,7 +173,8 @@ const DriverDashboard = () => {
     try {
       await dispatch(acceptAppointment(appointmentId)).unwrap();
       // Only refresh current view data to minimize API calls
-      refreshAppointments(true);    } catch (error) {
+      refreshAppointments(true);
+    } catch (error) {
       // More user-friendly error message
       if (
         error?.message?.includes("401") ||
@@ -194,7 +195,8 @@ const DriverDashboard = () => {
           status: "driving_to_location",
         })
       ).unwrap();
-      refreshAppointments(true);    } catch (error) {
+      refreshAppointments(true);
+    } catch (error) {
       if (
         error?.message?.includes("401") ||
         error?.message?.includes("Authentication")
@@ -214,7 +216,8 @@ const DriverDashboard = () => {
           status: "at_location",
         })
       ).unwrap();
-      refreshAppointments(true);    } catch (error) {
+      refreshAppointments(true);
+    } catch (error) {
       if (
         error?.message?.includes("401") ||
         error?.message?.includes("Authentication")
@@ -235,7 +238,8 @@ const DriverDashboard = () => {
             status: "transport_completed",
           })
         ).unwrap();
-        refreshAppointments(true);      } catch (error) {
+        refreshAppointments(true);
+      } catch (error) {
         if (
           error?.message?.includes("401") ||
           error?.message?.includes("Authentication")
@@ -270,8 +274,8 @@ const DriverDashboard = () => {
         })
       ).unwrap();
       refreshAppointments(true); // Silent background refresh after action
-      setRejectionModal({ isOpen: false, appointmentId: null });    } catch (error) {
-
+      setRejectionModal({ isOpen: false, appointmentId: null });
+    } catch (error) {
       // Better error message handling with authentication awareness
       let errorMessage = "Failed to reject appointment. Please try again.";
 

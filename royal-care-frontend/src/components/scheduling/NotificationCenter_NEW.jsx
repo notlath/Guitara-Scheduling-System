@@ -6,7 +6,8 @@ import {
   MdMoreVert,
   MdRefresh,
 } from "react-icons/md";
-import styles from "../../styles/NotificationCenter.module.css";
+import { useSelector } from "react-redux";
+import styles from "../../styles/NotificationCenter_NEW.module.css";
 
 const NotificationCenter = ({ onClose }) => {
   const [notifications, setNotifications] = useState([]);
@@ -14,6 +15,8 @@ const NotificationCenter = ({ onClose }) => {
   const [error, setError] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+
+  const { user } = useSelector((state) => state.auth);
 
   // Fetch notifications directly from API
   const fetchNotifications = async () => {
@@ -47,6 +50,7 @@ const NotificationCenter = ({ onClose }) => {
       const data = await response.json();
       setNotifications(data || []);
     } catch (err) {
+      console.error("Error fetching notifications:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -77,8 +81,8 @@ const NotificationCenter = ({ onClose }) => {
           )
         );
       }
-    } catch {
-      // Silently fail - user will see no change in read status
+    } catch (err) {
+      console.error("Error marking as read:", err);
     }
   };
 
@@ -106,8 +110,8 @@ const NotificationCenter = ({ onClose }) => {
           )
         );
       }
-    } catch {
-      // Silently fail - user will see no change in read status
+    } catch (err) {
+      console.error("Error marking as unread:", err);
     }
   };
 
@@ -133,8 +137,8 @@ const NotificationCenter = ({ onClose }) => {
           prev.filter((notif) => notif.id !== notificationId)
         );
       }
-    } catch {
-      // Silently fail - user will see no change
+    } catch (err) {
+      console.error("Error deleting notification:", err);
     }
   };
 
@@ -160,8 +164,8 @@ const NotificationCenter = ({ onClose }) => {
           prev.map((notif) => ({ ...notif, is_read: true }))
         );
       }
-    } catch {
-      // Silently fail - user will see no change
+    } catch (err) {
+      console.error("Error marking all as read:", err);
     }
   };
 
@@ -346,6 +350,13 @@ const NotificationCenter = ({ onClose }) => {
             </div>
           ))}
       </div>
+
+      {/* User info for debugging */}
+      {user && (
+        <div className={styles.debugInfo}>
+          Logged in as: {user.username} ({user.role})
+        </div>
+      )}
     </div>
   );
 };

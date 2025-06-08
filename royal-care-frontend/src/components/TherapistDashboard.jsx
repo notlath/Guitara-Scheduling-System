@@ -171,7 +171,8 @@ const TherapistDashboard = () => {
     try {
       await dispatch(acceptAppointment(appointmentId)).unwrap();
       // Only refresh current view data to minimize API calls
-      refreshAppointments(true);    } catch (error) {
+      refreshAppointments(true);
+    } catch (error) {
       // More user-friendly error message
       if (
         error?.message?.includes("401") ||
@@ -192,7 +193,8 @@ const TherapistDashboard = () => {
           status: "in_progress",
         })
       ).unwrap();
-      refreshAppointments(true);    } catch (error) {
+      refreshAppointments(true);
+    } catch (error) {
       if (
         error?.message?.includes("401") ||
         error?.message?.includes("Authentication")
@@ -213,7 +215,8 @@ const TherapistDashboard = () => {
             status: "completed",
           })
         ).unwrap();
-        refreshAppointments(true);      } catch (error) {
+        refreshAppointments(true);
+      } catch (error) {
         if (
           error?.message?.includes("401") ||
           error?.message?.includes("Authentication")
@@ -237,7 +240,8 @@ const TherapistDashboard = () => {
     if (!cleanReason) {
       alert("Please provide a reason for rejection.");
       return;
-    }    try {
+    }
+    try {
       await dispatch(
         rejectAppointment({
           id: appointmentId,
@@ -247,7 +251,6 @@ const TherapistDashboard = () => {
       refreshAppointments(true); // Silent background refresh after action
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
-
       // Better error message handling with authentication awareness
       let errorMessage = "Failed to reject appointment. Please try again.";
 

@@ -15,6 +15,7 @@ try:
 except ImportError:
     # Create a fallback Service class if import fails
     import logging
+
     logger = logging.getLogger(__name__)
     logger.warning("Could not import Service model in serializers, using mock class")
     from django.db import models
@@ -347,6 +348,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             return data
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"NotificationSerializer error: {e}")
             # Return minimal data if there's an error

@@ -15,6 +15,7 @@ try:
 except ImportError:
     # Create a fallback Service class if import fails
     import logging
+
     logger = logging.getLogger(__name__)
     logger.warning("Could not import Service model, using mock class")
     from django.db import models
@@ -714,7 +715,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
 
         appointment.status = "in_progress"
-        appointment.save()        # Create notifications
+        appointment.save()  # Create notifications
         self._create_notifications(
             appointment,
             "appointment_started",
@@ -807,7 +808,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     ),
                     "message": f"Appointment rejected by {rejecter_role} {request.user.get_full_name()}",
                 },
-            },        )
+            },
+        )
 
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
@@ -1139,6 +1141,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         queryset = Service.objects.all()
     except Exception as e:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.warning(f"Could not get Service queryset: {e}")
         queryset = []
@@ -1157,6 +1160,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
             return Service.objects.all()
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(f"Error getting Service queryset: {e}")
             return []
@@ -1238,6 +1242,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         except Exception as e:
             # If database is not available, use hardcoded services
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"Error fetching services from database: {e}")
             services = self.FALLBACK_SERVICES
@@ -1253,6 +1258,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         except Exception as e:
             # Return only active services from the hardcoded list
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"Error fetching active services: {e}")
             active_services = [

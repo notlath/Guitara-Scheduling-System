@@ -223,6 +223,15 @@
   font-size: var(--font-size-xs);
 }
 
+.debugInfo {
+  padding: var(--spacing-xs);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-size: var(--font-size-xs);
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .notificationCenter {

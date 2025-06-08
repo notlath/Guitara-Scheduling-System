@@ -16,13 +16,14 @@ from channels.auth import AuthMiddlewareStack
 from scheduling.middleware import TokenAuthMiddleware
 import scheduling.routing
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'guitara.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "guitara.settings")
 
 # Initialize Django ASGI application early to catch any startup errors
 try:
     django_asgi_app = get_asgi_application()
 except Exception as e:
     import logging
+
     logger = logging.getLogger(__name__)
     logger.error(f"Error initializing Django ASGI application: {e}")
     traceback.print_exc(file=sys.stdout)
@@ -30,16 +31,17 @@ except Exception as e:
 
 # Define the ASGI application
 try:
-    application = ProtocolTypeRouter({
-        "http": django_asgi_app,
-        "websocket": TokenAuthMiddleware(
-            URLRouter(
-                scheduling.routing.websocket_urlpatterns
-            )
-        ),
-    })
+    application = ProtocolTypeRouter(
+        {
+            "http": django_asgi_app,
+            "websocket": TokenAuthMiddleware(
+                URLRouter(scheduling.routing.websocket_urlpatterns)
+            ),
+        }
+    )
 except Exception as e:
     import logging
+
     logger = logging.getLogger(__name__)
     logger.error(f"Error configuring ASGI application: {e}")
     traceback.print_exc(file=sys.stdout)

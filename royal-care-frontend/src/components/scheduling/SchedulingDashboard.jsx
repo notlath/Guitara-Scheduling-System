@@ -7,20 +7,14 @@ import {
   fetchTodayAppointments,
   fetchUpcomingAppointments,
 } from "../../features/scheduling/schedulingSlice";
-import {
-  LoadingSpinner,
-  LoadingButton,
-  PageLoadingState,
-  SkeletonLoader,
-  TableLoadingState,
-  InlineLoader,
-} from "../common/LoadingComponents";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import syncService from "../../services/syncService";
+import { PageLoadingState, SkeletonLoader } from "../common/LoadingComponents";
 
 import { MdAdd, MdNotifications } from "react-icons/md";
-import "../../styles/SchedulingDashboard.css";
+import LayoutRow from "../../globals/LayoutRow";
 import "../../globals/TabSwitcher.css";
+import "../../styles/SchedulingDashboard.css";
 import ErrorBoundary from "../common/ErrorBoundary";
 import AppointmentForm from "./AppointmentForm";
 import AvailabilityManager from "./AvailabilityManager";
@@ -28,7 +22,6 @@ import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
 import WebSocketStatus from "./WebSocketStatus";
 import WeekView from "./WeekView";
-import LayoutRow from "../../globals/LayoutRow";
 
 const SchedulingDashboard = () => {
   // Set up sync event handlers to update Redux state

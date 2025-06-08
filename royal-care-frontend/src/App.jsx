@@ -27,11 +27,11 @@ import ProfilePage from "./pages/ProfilePage/ProfilePage";
 import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
 import SchedulingPage from "./pages/SchedulingPage/SchedulingPage";
+import SettingsAccountPage from "./pages/SettingsAccountPage/SettingsAccountPage";
+import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import { validateToken } from "./services/auth";
-import SettingsAccountPage from "./pages/SettingsAccountPage/SettingsAccountPage";
-import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);
