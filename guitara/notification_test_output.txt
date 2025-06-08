@@ -1,0 +1,72 @@
+(0.219) SELECT COUNT(*) AS "__count" FROM "core_customuser"; args=(); alias=default
+(0.219) SELECT "core_customuser"."id", "core_customuser"."password", "core_customuser"."last_login", "core_customuser"."is_superuser", "core_customuser"."username", "core_customuser"."first_name", "core_customuser"."last_name", "core_customuser"."email", "core_customuser"."is_staff", "core_customuser"."is_active", "core_customuser"."date_joined", "core_customuser"."role", "core_customuser"."specialization", "core_customuser"."massage_pressure", "core_customuser"."license_number", "core_customuser"."motorcycle_plate", "core_customuser"."phone_number", "core_customuser"."failed_login_attempts", "core_customuser"."locked_until", "core_customuser"."email_verified", "core_customuser"."verification_code", "core_customuser"."two_factor_enabled" FROM "core_customuser"; args=(); alias=default
+(0.218) SELECT COUNT(*) AS "__count" FROM "scheduling_appointment"; args=(); alias=default
+(0.219) SELECT "scheduling_appointment"."id", "scheduling_appointment"."client_id", "scheduling_appointment"."therapist_id", "scheduling_appointment"."driver_id", "scheduling_appointment"."operator_id", "scheduling_appointment"."date", "scheduling_appointment"."start_time", "scheduling_appointment"."end_time", "scheduling_appointment"."status", "scheduling_appointment"."payment_status", "scheduling_appointment"."payment_amount", "scheduling_appointment"."location", "scheduling_appointment"."notes", "scheduling_appointment"."required_materials", "scheduling_appointment"."rejection_reason", "scheduling_appointment"."rejected_by_id", "scheduling_appointment"."rejected_at", "scheduling_appointment"."response_deadline", "scheduling_appointment"."auto_cancelled_at", "scheduling_appointment"."therapist_accepted", "scheduling_appointment"."therapist_accepted_at", "scheduling_appointment"."driver_accepted", "scheduling_appointment"."driver_accepted_at", "scheduling_appointment"."created_at", "scheduling_appointment"."updated_at" FROM "scheduling_appointment" ORDER BY "scheduling_appointment"."created_at" DESC LIMIT 10; args=(); alias=default
+(0.219) SELECT "scheduling_client"."id", "scheduling_client"."first_name", "scheduling_client"."last_name", "scheduling_client"."email", "scheduling_client"."phone_number", "scheduling_client"."address", "scheduling_client"."notes", "scheduling_client"."created_at" FROM "scheduling_client" WHERE "scheduling_client"."id" = 1 LIMIT 21; args=(1,); alias=default
+(0.219) SELECT "core_customuser"."id", "core_customuser"."password", "core_customuser"."last_login", "core_customuser"."is_superuser", "core_customuser"."username", "core_customuser"."first_name", "core_customuser"."last_name", "core_customuser"."email", "core_customuser"."is_staff", "core_customuser"."is_active", "core_customuser"."date_joined", "core_customuser"."role", "core_customuser"."specialization", "core_customuser"."massage_pressure", "core_customuser"."license_number", "core_customuser"."motorcycle_plate", "core_customuser"."phone_number", "core_customuser"."failed_login_attempts", "core_customuser"."locked_until", "core_customuser"."email_verified", "core_customuser"."verification_code", "core_customuser"."two_factor_enabled" FROM "core_customuser" WHERE "core_customuser"."id" = 13 LIMIT 21; args=(13,); alias=default
+(0.219) SELECT "core_customuser"."id", "core_customuser"."password", "core_customuser"."last_login", "core_customuser"."is_superuser", "core_customuser"."username", "core_customuser"."first_name", "core_customuser"."last_name", "core_customuser"."email", "core_customuser"."is_staff", "core_customuser"."is_active", "core_customuser"."date_joined", "core_customuser"."role", "core_customuser"."specialization", "core_customuser"."massage_pressure", "core_customuser"."license_number", "core_customuser"."motorcycle_plate", "core_customuser"."phone_number", "core_customuser"."failed_login_attempts", "core_customuser"."locked_until", "core_customuser"."email_verified", "core_customuser"."verification_code", "core_customuser"."two_factor_enabled" FROM "core_customuser" WHERE "core_customuser"."id" = 15 LIMIT 21; args=(15,); alias=default
+(0.219) SELECT COUNT(*) AS "__count" FROM "scheduling_notification"; args=(); alias=default
+(0.218) SELECT "scheduling_notification"."id", "scheduling_notification"."user_id", "scheduling_notification"."appointment_id", "scheduling_notification"."notification_type", "scheduling_notification"."message", "scheduling_notification"."is_read", "scheduling_notification"."created_at", "scheduling_notification"."rejection_id" FROM "scheduling_notification" ORDER BY "scheduling_notification"."created_at" DESC LIMIT 20; args=(); alias=default
+(0.219) SELECT "core_customuser"."id", "core_customuser"."password", "core_customuser"."last_login", "core_customuser"."is_superuser", "core_customuser"."username", "core_customuser"."first_name", "core_customuser"."last_name", "core_customuser"."email", "core_customuser"."is_staff", "core_customuser"."is_active", "core_customuser"."date_joined", "core_customuser"."role", "core_customuser"."specialization", "core_customuser"."massage_pressure", "core_customuser"."license_number", "core_customuser"."motorcycle_plate", "core_customuser"."phone_number", "core_customuser"."failed_login_attempts", "core_customuser"."locked_until", "core_customuser"."email_verified", "core_customuser"."verification_code", "core_customuser"."two_factor_enabled" FROM "core_customuser" WHERE "core_customuser"."id" = 12 LIMIT 21; args=(12,); alias=default
+(0.219) SELECT "core_customuser"."id", "core_customuser"."password", "core_customuser"."last_login", "core_customuser"."is_superuser", "core_customuser"."username", "core_customuser"."first_name", "core_customuser"."last_name", "core_customuser"."email", "core_customuser"."is_staff", "core_customuser"."is_active", "core_customuser"."date_joined", "core_customuser"."role", "core_customuser"."specialization", "core_customuser"."massage_pressure", "core_customuser"."license_number", "core_customuser"."motorcycle_plate", "core_customuser"."phone_number", "core_customuser"."failed_login_attempts", "core_customuser"."locked_until", "core_customuser"."email_verified", "core_customuser"."verification_code", "core_customuser"."two_factor_enabled" FROM "core_customuser" WHERE "core_customuser"."id" = 15 LIMIT 21; args=(15,); alias=default
+(0.219) SELECT "core_customuser"."id", "core_customuser"."password", "core_customuser"."last_login", "core_customuser"."is_superuser", "core_customuser"."username", "core_customuser"."first_name", "core_customuser"."last_name", "core_customuser"."email", "core_customuser"."is_staff", "core_customuser"."is_active", "core_customuser"."date_joined", "core_customuser"."role", "core_customuser"."specialization", "core_customuser"."massage_pressure", "core_customuser"."license_number", "core_customuser"."motorcycle_plate", "core_customuser"."phone_number", "core_customuser"."failed_login_attempts", "core_customuser"."locked_until", "core_customuser"."email_verified", "core_customuser"."verification_code", "core_customuser"."two_factor_enabled" FROM "core_customuser" WHERE "core_customuser"."id" = 13 LIMIT 21; args=(13,); alias=default
+(0.218) SELECT "core_customuser"."id", "core_customuser"."password", "core_customuser"."last_login", "core_customuser"."is_superuser", "core_customuser"."username", "core_customuser"."first_name", "core_customuser"."last_name", "core_customuser"."email", "core_customuser"."is_staff", "core_customuser"."is_active", "core_customuser"."date_joined", "core_customuser"."role", "core_customuser"."specialization", "core_customuser"."massage_pressure", "core_customuser"."license_number", "core_customuser"."motorcycle_plate", "core_customuser"."phone_number", "core_customuser"."failed_login_attempts", "core_customuser"."locked_until", "core_customuser"."email_verified", "core_customuser"."verification_code", "core_customuser"."two_factor_enabled" FROM "core_customuser" WHERE "core_customuser"."id" = 12 LIMIT 21; args=(12,); alias=default
+(0.219) SELECT "core_customuser"."id", "core_customuser"."password", "core_customuser"."last_login", "core_customuser"."is_superuser", "core_customuser"."username", "core_customuser"."first_name", "core_customuser"."last_name", "core_customuser"."email", "core_customuser"."is_staff", "core_customuser"."is_active", "core_customuser"."date_joined", "core_customuser"."role", "core_customuser"."specialization", "core_customuser"."massage_pressure", "core_customuser"."license_number", "core_customuser"."motorcycle_plate", "core_customuser"."phone_number", "core_customuser"."failed_login_attempts", "core_customuser"."locked_until", "core_customuser"."email_verified", "core_customuser"."verification_code", "core_customuser"."two_factor_enabled" FROM "core_customuser" WHERE "core_customuser"."id" = 15 LIMIT 21; args=(15,); alias=default
+(0.219) SELECT "core_customuser"."id", "core_customuser"."password", "core_customuser"."last_login", "core_customuser"."is_superuser", "core_customuser"."username", "core_customuser"."first_name", "core_customuser"."last_name", "core_customuser"."email", "core_customuser"."is_staff", "core_customuser"."is_active", "core_customuser"."date_joined", "core_customuser"."role", "core_customuser"."specialization", "core_customuser"."massage_pressure", "core_customuser"."license_number", "core_customuser"."motorcycle_plate", "core_customuser"."phone_number", "core_customuser"."failed_login_attempts", "core_customuser"."locked_until", "core_customuser"."email_verified", "core_customuser"."verification_code", "core_customuser"."two_factor_enabled" FROM "core_customuser" WHERE "core_customuser"."id" = 13 LIMIT 21; args=(13,); alias=default
+Traceback (most recent call last):
+  File "c:\Users\USer\Downloads\Guitara-Scheduling-System\guitara\test_notifications.py", line 175, in main
+    notifications = check_notifications()
+                    ^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\USer\Downloads\Guitara-Scheduling-System\guitara\test_notifications.py", line 88, in check_notifications
+    print(f"  - {notif.title}")
+                 ^^^^^^^^^^^
+AttributeError: 'Notification' object has no attribute 'title'
+NOTIFICATION SYSTEM TEST
+Test run at: 2025-06-08 05:58:32.384489+00:00
+
+============================================================
+ CHECKING USERS AND ROLES
+============================================================
+Total users: 12
+- test_operator_notif (operator_notif@test.com) - Role: operator
+-  (test_user@example.com) - Role: operator
+- test_operator (test@example.com) - Role: operator
+- operator (operator@test.com) - Role: operator
+- active_therapist (active_therapist@test.com) - Role: therapist
+- disabled_therapist (disabled_therapist@test.com) - Role: therapist
+- rc_rada (jhervincerada@gmail.com) - Role: therapist
+- rc_therapist (rc.therapist@gmail.com) - Role: therapist
+- testuser (test@example.com) - Role: 
+- jangler_test (qjgptan@tip.edu.ph) - Role: operator
+- rc_admin (lathrellxd@gmail.com) - Role: operator
+- rc_driver (rc.driver@gmail.com) - Role: driver
+
+Role distribution:
+- operator: 6 users
+- therapist: 4 users
+- : 1 users
+- driver: 1 users
+
+============================================================
+ CHECKING APPOINTMENTS
+============================================================
+Total appointments: 1
+Showing last 10 appointments:
+- ID: 38
+  Client: Lathrell Pagsuguiron
+  Date: 2025-06-08
+  Time: 15:00:00 - 16:00:00
+  Therapist: rc_therapist
+  Driver: rc_driver
+  Status: rejected
+  Created: 2025-06-08 02:20:38.994672+00:00
+
+
+============================================================
+ CHECKING NOTIFICATIONS
+============================================================
+Total notifications: 6
+Showing last 20 notifications:
+
+rc_admin (operator) - 2 notifications:
+Error during test: 'Notification' object has no attribute 'title'
