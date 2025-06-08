@@ -695,10 +695,14 @@ const AppointmentForm = ({
       // Log the sanitized data for debugging
       console.log("Sanitized form data:", sanitizedFormData);
 
-      // Triple check the therapist field specifically to ensure it's an integer
-      if (typeof sanitizedFormData.therapist !== "number") {
+      // Triple check the therapist field specifically to ensure it's correct for the appointment type
+      // For multi-therapist appointments, therapist should remain null
+      if (
+        !formData.multipleTherapists &&
+        typeof sanitizedFormData.therapist !== "number"
+      ) {
         console.warn(
-          "Therapist field is not a number, attempting to fix:",
+          "Single therapist appointment but therapist field is not a number, attempting to fix:",
           sanitizedFormData.therapist
         );
         try {
@@ -722,6 +726,12 @@ const AppointmentForm = ({
           console.error("Failed to fix therapist field:", e);
           sanitizedFormData.therapist = null;
         }
+      } else if (formData.multipleTherapists) {
+        // Ensure therapist is null for multi-therapist appointments
+        sanitizedFormData.therapist = null;
+        console.log(
+          "Multi-therapist appointment - therapist field set to null"
+        );
       }
 
       // Log the sanitized data for debugging
@@ -757,18 +767,24 @@ const AppointmentForm = ({
       });
 
       // Final verification of data formats for critical fields
-      // Ensure therapist is an integer, not an array
-      if (Array.isArray(finalAppointmentData.therapist)) {
+      // For single therapist appointments, ensure therapist is an integer, not an array
+      if (
+        !formData.multipleTherapists &&
+        Array.isArray(finalAppointmentData.therapist)
+      ) {
         console.warn(
-          "Converting therapist from array to integer:",
+          "Converting therapist from array to integer for single therapist appointment:",
           finalAppointmentData.therapist
         );
         finalAppointmentData.therapist =
           finalAppointmentData.therapist.length > 0
             ? parseInt(finalAppointmentData.therapist[0], 10)
             : null;
-      } else if (typeof finalAppointmentData.therapist !== "number") {
-        // Try to parse it as a number if it's not already
+      } else if (
+        !formData.multipleTherapists &&
+        typeof finalAppointmentData.therapist !== "number"
+      ) {
+        // Try to parse it as a number if it's not already (for single therapist appointments)
         try {
           if (
             typeof finalAppointmentData.therapist === "string" &&
@@ -785,6 +801,9 @@ const AppointmentForm = ({
           console.error("Failed to convert therapist to integer:", e);
           finalAppointmentData.therapist = null;
         }
+      } else if (formData.multipleTherapists) {
+        // For multi-therapist appointments, ensure therapist is null
+        finalAppointmentData.therapist = null;
       }
 
       // Ensure services is an array of integers
@@ -816,15 +835,22 @@ const AppointmentForm = ({
       }
 
       // Validate critical fields again before API call
+      // For multi-therapist appointments, either therapist OR therapists array should be present
+      const hasTherapist =
+        finalAppointmentData.therapist ||
+        (Array.isArray(finalAppointmentData.therapists) &&
+          finalAppointmentData.therapists.length > 0);
+
       if (
         !finalAppointmentData.client ||
-        !finalAppointmentData.therapist ||
+        !hasTherapist ||
         !finalAppointmentData.date ||
         !finalAppointmentData.start_time ||
         !finalAppointmentData.end_time ||
         !finalAppointmentData.services ||
         finalAppointmentData.services.length === 0
       ) {
+        console.error("Validation failed. Current data:", finalAppointmentData);
         throw new Error("Missing required fields. Please check your form.");
       }
 

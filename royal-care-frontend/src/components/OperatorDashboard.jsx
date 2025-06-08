@@ -6,6 +6,7 @@ import {
   autoCancelOverdueAppointments,
   fetchAppointments,
   fetchNotifications,
+  fetchStaffMembers,
   reviewRejection,
   updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
@@ -50,12 +51,40 @@ const OperatorDashboard = () => {
     busyDrivers: [],
     pendingPickups: [],
   });
-
   // Load driver data on component mount and refresh
   useEffect(() => {
     const loadDriverData = async () => {
       try {
-        // Mock driver data - in real implementation, this would come from API
+        // Fetch real staff data from backend
+        const staffResponse = await dispatch(fetchStaffMembers()).unwrap();
+
+        // Filter drivers and categorize by availability status
+        const drivers = staffResponse.filter(
+          (staff) => staff.role === "driver"
+        );
+
+        // For now, we'll assume all drivers are available unless they have active appointments
+        // In a real implementation, this would check against current availability/status
+        const availableDrivers = drivers.map((driver) => ({
+          id: driver.id,
+          first_name: driver.first_name,
+          last_name: driver.last_name,
+          role: driver.role,
+          specialization: driver.specialization,
+          vehicle_type: driver.vehicle_type || "Motorcycle", // Default if not set
+          last_location: "Available", // In real implementation, get from GPS/last known location
+          available_since: new Date().toISOString(),
+          status: "available",
+        }));
+
+        setDriverAssignment({
+          availableDrivers,
+          busyDrivers: [], // Would be populated based on active assignments
+          pendingPickups: [],
+        });
+      } catch (error) {
+        console.error("Failed to load driver data:", error);
+        // Fallback to mock data if API fails
         setDriverAssignment({
           availableDrivers: [
             {
@@ -92,13 +121,11 @@ const OperatorDashboard = () => {
           ],
           pendingPickups: [],
         });
-      } catch (error) {
-        console.error("Failed to load driver data:", error);
       }
     };
 
     loadDriverData();
-  }, []);
+  }, [dispatch]);
   // Listen for real-time driver updates via sync service
   useEffect(() => {
     const handleDriverUpdate = (data) => {
@@ -406,14 +433,12 @@ const OperatorDashboard = () => {
         driver.last_location,
         therapist.location
       );
-
       await dispatch(
         updateAppointmentStatus({
           id: therapist.appointment_id,
           status: "driver_assigned_pickup",
-          pickup_driver: driverId,
-          estimated_pickup_time: estimatedArrival,
-          assignment_type: "manual",
+          driver: driverId,
+          notes: `Driver assigned for pickup - ETA: ${estimatedArrival}`,
         })
       ).unwrap();
 

@@ -65,6 +65,15 @@ class Appointment(models.Model):
         ("cancelled", "Cancelled"),
         ("rejected", "Rejected"),
         ("auto_cancelled", "Auto Cancelled"),
+        ("pickup_requested", "Pickup Requested"),
+        ("driver_assigned", "Driver Assigned"),
+        ("driving_to_location", "Driver En Route"),
+        ("at_location", "Driver at Location"),
+        ("therapist_dropped_off", "Therapist Dropped Off"),
+        ("transport_completed", "Transport Completed"),
+        ("picking_up_therapists", "Picking Up Therapists"),
+        ("transporting_group", "Transporting Group"),
+        ("driver_assigned_pickup", "Driver Assigned for Pickup"),
     ]
 
     PAYMENT_STATUS = [
@@ -110,7 +119,7 @@ class Appointment(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
 
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="pending")
     payment_status = models.CharField(
         max_length=20, choices=PAYMENT_STATUS, default="unpaid"
     )

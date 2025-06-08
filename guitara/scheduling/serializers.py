@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db.models import Q
 from .models import (
     Client,
     Availability,
@@ -197,7 +198,30 @@ class AppointmentSerializer(serializers.ModelSerializer):
         """
         Validate appointment data, checking for conflicts and availability
         """
-        instance = getattr(self, "instance", None)
+        instance = getattr(
+            self, "instance", None
+        )  # Skip complex validation for status-only updates
+        # This allows simple status changes without running full appointment validation
+        if instance and hasattr(self, "initial_data"):
+            # Check if this is a simple status update (only status and related driver/therapist fields)
+            # Only include fields that actually exist in the Appointment model
+            status_update_fields = {
+                "status",
+                "therapist_accepted",
+                "therapist_accepted_at",
+                "driver_accepted",
+                "driver_accepted_at",
+                "rejection_reason",
+                "rejected_by",
+                "rejected_at",
+                "notes",
+                "location",
+            }
+            provided_fields = set(self.initial_data.keys())
+
+            # If only status-update fields are provided, skip complex validation
+            if provided_fields.issubset(status_update_fields):
+                return data
 
         # Validate therapist availability and conflicts
         therapist = data.get(
@@ -235,9 +259,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
                             {
                                 "therapist": f"Therapist is already booked during this time slot ({appointment.start_time} - {appointment.end_time})"
                             }
-                        )
-
-                # Check if therapist has marked availability
+                        )  # Check if therapist has marked availability
                 has_availability = Availability.objects.filter(
                     user=therapist,
                     date=date,
@@ -251,7 +273,76 @@ class AppointmentSerializer(serializers.ModelSerializer):
                         {
                             "therapist": "Therapist is not available during this time slot"
                         }
-                    )
+                    )  # Validate multiple therapists availability and conflicts (when using therapists field)
+        # Note: This validation runs on the serializer data, but actual therapists are set in the view
+        # The view should perform this validation on the request data
+        therapists_ids = (
+            self.initial_data.get("therapists", [])
+            if hasattr(self, "initial_data")
+            else []
+        )
+        if therapists_ids:
+            date = data.get(
+                "date", getattr(instance, "date", None) if instance else None
+            )
+            start_time = data.get(
+                "start_time",
+                getattr(instance, "start_time", None) if instance else None,
+            )
+            end_time = data.get(
+                "end_time", getattr(instance, "end_time", None) if instance else None
+            )
+
+            if date and start_time and end_time:
+                for therapist_id in therapists_ids:
+                    try:
+                        therapist = CustomUser.objects.get(
+                            id=therapist_id, role="therapist"
+                        )
+
+                        # Check for conflicting appointments
+                        conflicting_query = Appointment.objects.filter(
+                            Q(therapist=therapist) | Q(therapists=therapist),
+                            date=date,
+                            status__in=["pending", "confirmed", "in_progress"],
+                        )
+                        if instance:
+                            conflicting_query = conflicting_query.exclude(
+                                pk=instance.pk
+                            )
+
+                        for appointment in conflicting_query:
+                            if (
+                                start_time <= appointment.end_time
+                                and end_time >= appointment.start_time
+                            ):
+                                raise serializers.ValidationError(
+                                    {
+                                        "therapists": f"Therapist {therapist.get_full_name()} is already booked during this time slot ({appointment.start_time} - {appointment.end_time})"
+                                    }
+                                )
+
+                        # Check if therapist has marked availability
+                        has_availability = Availability.objects.filter(
+                            user=therapist,
+                            date=date,
+                            start_time__lte=start_time,
+                            end_time__gte=end_time,
+                            is_available=True,
+                        ).exists()
+
+                        if not has_availability:
+                            raise serializers.ValidationError(
+                                {
+                                    "therapists": f"Therapist {therapist.get_full_name()} is not available during this time slot"
+                                }
+                            )
+                    except CustomUser.DoesNotExist:
+                        raise serializers.ValidationError(
+                            {
+                                "therapists": f"Therapist with ID {therapist_id} does not exist"
+                            }
+                        )
 
         # Validate driver availability and conflicts
         driver = data.get(

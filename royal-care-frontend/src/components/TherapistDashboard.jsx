@@ -221,10 +221,9 @@ const TherapistDashboard = () => {
           updateAppointmentStatus({
             id: appointmentId,
             status: "completed",
-            session_end_time: new Date().toISOString(),
-            pickup_requested: needsPickup,
-            pickup_request_time: needsPickup ? new Date().toISOString() : null,
-            pickup_urgency: "normal",
+            notes: needsPickup
+              ? "Pickup requested after session completion"
+              : "",
           })
         ).unwrap();
 
@@ -276,13 +275,11 @@ const TherapistDashboard = () => {
     const appointment = myAppointments.find((apt) => apt.id === appointmentId);
     if (!appointment) return;
 
-    try {
-      await dispatch(
+    try {      await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
-          pickup_requested: true,
-          pickup_request_time: new Date().toISOString(),
-          pickup_urgency: "normal",
+          status: "pickup_requested",
+          notes: "Manual pickup requested by therapist",
         })
       ).unwrap();
 
@@ -318,13 +315,11 @@ const TherapistDashboard = () => {
         "Request URGENT pickup? This will prioritize your request."
       )
     ) {
-      try {
-        await dispatch(
+      try {        await dispatch(
           updateAppointmentStatus({
             id: appointmentId,
-            pickup_requested: true,
-            pickup_request_time: new Date().toISOString(),
-            pickup_urgency: "urgent",
+            status: "pickup_requested",
+            notes: "URGENT pickup requested by therapist",
           })
         ).unwrap();
 

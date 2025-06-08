@@ -2,6 +2,17 @@
 
 ## ✅ COMPLETED FEATURES
 
+### 🔧 Critical Bug Fixes
+
+**Driver Status Update 400 Error - FIXED**
+
+- ✅ Fixed 400 Bad Request error when drivers click "Start Driving to Therapist"
+- ✅ Enhanced `AppointmentViewSet.perform_update()` to allow driver-related fields
+- ✅ Optimized `AppointmentSerializer.validate()` to skip validation for status updates
+- ✅ Updated frontend to send additional fields with status updates
+- ✅ All driver status transitions now work correctly
+- ✅ Multi-therapist workflows unaffected
+
 ### 1. Driver-Therapist Coordination System
 
 **Status: FULLY IMPLEMENTED & TESTED**

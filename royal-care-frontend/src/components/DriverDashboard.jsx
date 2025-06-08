@@ -329,9 +329,9 @@ const DriverDashboard = () => {
         updateAppointmentStatus({
           id: appointmentId,
           status: "therapist_dropped_off",
-          driver_available_for_next: true,
-          drop_off_location: appointment.location,
-          drop_off_timestamp: new Date().toISOString(),
+          notes: `Dropped off at ${
+            appointment.location
+          } at ${new Date().toISOString()}`,
         })
       ).unwrap();
 
@@ -430,7 +430,7 @@ const DriverDashboard = () => {
         updateAppointmentStatus({
           id: appointmentId,
           status: "picking_up_therapists",
-          pickup_started_at: new Date().toISOString(),
+          notes: `Started group pickup at ${new Date().toISOString()}`,
         })
       ).unwrap();
       refreshAppointments(true);
@@ -446,7 +446,7 @@ const DriverDashboard = () => {
         updateAppointmentStatus({
           id: appointmentId,
           status: "transporting_group",
-          all_therapists_picked_up_at: new Date().toISOString(),
+          notes: `All therapists picked up at ${new Date().toISOString()}`,
         })
       ).unwrap();
       refreshAppointments(true);
@@ -462,8 +462,8 @@ const DriverDashboard = () => {
         updateAppointmentStatus({
           id: pickupData.appointment_id,
           status: "driver_assigned_pickup",
-          pickup_driver: user.id,
-          estimated_pickup_time: pickupData.estimated_arrival,
+          driver: user.id,
+          notes: `Driver assigned for pickup, estimated arrival: ${pickupData.estimated_arrival}`,
         })
       ).unwrap();
       refreshAppointments(true);
@@ -483,9 +483,9 @@ const DriverDashboard = () => {
         updateAppointmentStatus({
           id: appointmentId,
           status: "pickup_requested",
-          pickup_requested: true,
-          pickup_request_time: new Date().toISOString(),
-          therapist_location: appointment.location,
+          notes: `Pickup requested at ${
+            appointment.location
+          } on ${new Date().toISOString()}`,
         })
       ).unwrap();
 

@@ -398,10 +398,10 @@ export const updateAppointmentStatus = createAsyncThunk(
 
     try {
       let response;
-      const updateData = { status, ...additionalFields };
 
       if (status === "completed") {
-        // Use the specific complete endpoint
+        // Use the specific complete endpoint - only send additional fields for completion
+        const updateData = { status, ...additionalFields };
         response = await axios.post(
           `${API_URL}appointments/${id}/complete/`,
           updateData,
@@ -410,7 +410,8 @@ export const updateAppointmentStatus = createAsyncThunk(
           }
         );
       } else {
-        // Use regular update for other status changes
+        // For regular status updates, send status and any additional fields
+        const updateData = { status, ...additionalFields };
         response = await axios.patch(
           `${API_URL}appointments/${id}/`,
           updateData,
@@ -1035,7 +1036,7 @@ export const fetchAvailability = createAsyncThunk(
 
     try {
       const response = await axios.get(
-        `${API_URL}availability/?user=${staffId}&date=${date}`,
+        `${API_URL}availabilities/?user=${staffId}&date=${date}`,
         {
           headers: {
             Authorization: `Token ${token}`,
@@ -1070,7 +1071,7 @@ export const createAvailability = createAsyncThunk(
 
     try {
       const response = await axios.post(
-        `${API_URL}availability/`,
+        `${API_URL}availabilities/`,
         availabilityData,
         {
           headers: {
@@ -1106,7 +1107,7 @@ export const updateAvailability = createAsyncThunk(
 
     try {
       const response = await axios.patch(
-        `${API_URL}availability/${id}/`,
+        `${API_URL}availabilities/${id}/`,
         data,
         {
           headers: {
@@ -1147,7 +1148,7 @@ export const deleteAvailability = createAsyncThunk(
     );
 
     try {
-      await axios.delete(`${API_URL}availability/${id}/`, {
+      await axios.delete(`${API_URL}availabilities/${id}/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
