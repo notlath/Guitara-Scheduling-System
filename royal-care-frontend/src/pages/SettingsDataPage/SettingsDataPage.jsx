@@ -300,6 +300,51 @@ const SettingsDataPage = () => {
     }
   };
 
+  // Helper to get table columns and row data per tab
+  const getTableConfig = () => {
+    switch (activeTab) {
+      case "Drivers":
+      case "Operators":
+        return {
+          columns: [
+            { key: "Username", label: "Username" },
+            { key: "Name", label: "Name" },
+            { key: "Email", label: "Email" },
+            { key: "Contact", label: "Contact Number" },
+          ],
+        };
+      case "Services":
+        return {
+          columns: [
+            { key: "Name", label: "Name" },
+            { key: "Description", label: "Description" },
+            { key: "Duration", label: "Duration" },
+            { key: "Price", label: "Price" },
+            { key: "Materials", label: "Materials" },
+          ],
+        };
+      case "Materials":
+        return {
+          columns: [
+            { key: "Name", label: "Name" },
+            { key: "Description", label: "Description" },
+          ],
+        };
+      case "Therapists":
+      default:
+        return {
+          columns: [
+            { key: "Username", label: "Username" },
+            { key: "Name", label: "Name" },
+            { key: "Email", label: "Email" },
+            { key: "Contact", label: "Contact Number" },
+            { key: "Specialization", label: "Specialization" },
+            { key: "Pressure", label: "Pressure Level" },
+          ],
+        };
+    }
+  };
+
   return (
     <PageLayout>
       {showModal && (
@@ -352,12 +397,11 @@ const SettingsDataPage = () => {
           <table className={styles["data-table"]}>
             <thead>
               <tr>
-                <th scope="col">Username</th>
-                <th scope="col">Name</th>
-                <th scope="col">Email</th>
-                <th scope="col">Contact Number</th>
-                <th scope="col">Specialization</th>
-                <th scope="col">Pressure Level</th>
+                {getTableConfig().columns.map((col) => (
+                  <th key={col.key} scope="col">
+                    {col.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -365,17 +409,19 @@ const SettingsDataPage = () => {
               TAB_PLACEHOLDERS[activeTab].length > 0 ? (
                 TAB_PLACEHOLDERS[activeTab].map((row, idx) => (
                   <tr key={idx}>
-                    <td>{row.Username}</td>
-                    <td>{row.Name}</td>
-                    <td>{row.Email}</td>
-                    <td>{row.Contact}</td>
-                    <td>{row.Specialization}</td>
-                    <td>{row.Pressure}</td>
+                    {getTableConfig().columns.map((col) => (
+                      <td key={col.key}>
+                        {row[col.key] !== undefined ? row[col.key] : "-"}
+                      </td>
+                    ))}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className={styles["no-data"]}>
+                  <td
+                    colSpan={getTableConfig().columns.length}
+                    className={styles["no-data"]}
+                  >
                     No data available.
                   </td>
                 </tr>
