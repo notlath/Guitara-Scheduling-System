@@ -4,15 +4,15 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
   acceptAppointment,
+  completeAppointment,
   fetchAppointments,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
   rejectAppointment,
-  therapistConfirm,
-  startSession,
   requestPayment,
-  completeAppointment,
   requestPickup,
+  startSession,
+  therapistConfirm,
 } from "../features/scheduling/schedulingSlice";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
@@ -176,7 +176,8 @@ const TherapistDashboard = () => {
     localStorage.removeItem("knoxToken");
     localStorage.removeItem("user");
     dispatch(logout());
-    navigate("/");  }; 
+    navigate("/");
+  };
 
   // Handle appointment status changes with optimized refresh and optimistic updates
   const handleAcceptAppointment = async (appointmentId) => {
@@ -246,13 +247,15 @@ const TherapistDashboard = () => {
 
       alert(`Failed to reject appointment: ${errorMessage}`);
       setRejectionModal({ isOpen: false, appointmentId: null });
-    }  };
+    }
+  };
 
   // Enhanced workflow handlers for new service flow
   const handleTherapistConfirm = async (appointmentId) => {
     try {
       await dispatch(therapistConfirm(appointmentId)).unwrap();
-      refreshAppointments(true);    } catch (error) {
+      refreshAppointments(true);
+    } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
     }
@@ -261,7 +264,8 @@ const TherapistDashboard = () => {
   const handleStartSession = async (appointmentId) => {
     try {
       await dispatch(startSession(appointmentId)).unwrap();
-      refreshAppointments(true);    } catch (error) {
+      refreshAppointments(true);
+    } catch (error) {
       console.error("Failed to start session:", error);
       alert("Failed to start session. Please try again.");
     }
@@ -270,32 +274,46 @@ const TherapistDashboard = () => {
   const handleRequestPayment = async (appointmentId) => {
     try {
       await dispatch(requestPayment(appointmentId)).unwrap();
-      refreshAppointments(true);    } catch (error) {
+      refreshAppointments(true);
+    } catch (error) {
       console.error("Failed to request payment:", error);
       alert("Failed to request payment. Please try again.");
     }
   };
 
   const handleCompleteSession = async (appointmentId) => {
-    if (window.confirm("Complete this session? This action cannot be undone.")) {
+    if (
+      window.confirm("Complete this session? This action cannot be undone.")
+    ) {
       try {
         await dispatch(completeAppointment(appointmentId)).unwrap();
-        refreshAppointments(true);      } catch (error) {
+        refreshAppointments(true);
+      } catch (error) {
         console.error("Failed to complete session:", error);
         alert("Failed to complete session. Please try again.");
       }
     }
   };
 
-  const handleRequestPickupNew = async (appointmentId, urgency = 'normal') => {
+  const handleRequestPickupNew = async (appointmentId, urgency = "normal") => {
     try {
-      await dispatch(requestPickup({ 
-        appointmentId, 
-        pickup_urgency: urgency,
-        pickup_notes: urgency === 'urgent' ? 'Urgent pickup requested by therapist' : 'Pickup requested by therapist'
-      })).unwrap();
+      await dispatch(
+        requestPickup({
+          appointmentId,
+          pickup_urgency: urgency,
+          pickup_notes:
+            urgency === "urgent"
+              ? "Urgent pickup requested by therapist"
+              : "Pickup requested by therapist",
+        })
+      ).unwrap();
       refreshAppointments(true);
-      alert(urgency === 'urgent' ? 'Urgent pickup request sent!' : 'Pickup request sent!');    } catch (error) {
+      alert(
+        urgency === "urgent"
+          ? "Urgent pickup request sent!"
+          : "Pickup request sent!"
+      );
+    } catch (error) {
       console.error("Failed to request pickup:", error);
       alert("Failed to request pickup. Please try again.");
     }
@@ -360,7 +378,8 @@ const TherapistDashboard = () => {
     }
     return null;
   };
-  const renderActionButtons = (appointment) => {    const {
+  const renderActionButtons = (appointment) => {
+    const {
       status,
       id,
       therapist_accepted,
@@ -435,7 +454,10 @@ const TherapistDashboard = () => {
                 Confirm Ready
               </button>
               <div className="workflow-info">
-                <p>✅ All parties accepted. Please confirm you're ready to proceed.</p>
+                <p>
+                  ✅ All parties accepted. Please confirm you're ready to
+                  proceed.
+                </p>
               </div>
             </div>
           );
@@ -555,7 +577,9 @@ const TherapistDashboard = () => {
                 <div className="pickup-status">
                   {appointment.assigned_pickup_driver ? (
                     <div className="driver-assigned">
-                      <span className="success-badge">✅ Pickup Driver Assigned</span>
+                      <span className="success-badge">
+                        ✅ Pickup Driver Assigned
+                      </span>
                       <p>Driver en route for pickup</p>
                       {appointment.estimated_pickup_time && (
                         <p>
@@ -581,7 +605,7 @@ const TherapistDashboard = () => {
                       {appointment.pickup_urgency !== "urgent" && (
                         <button
                           className="urgent-pickup-button"
-                          onClick={() => handleRequestPickupNew(id, 'urgent')}
+                          onClick={() => handleRequestPickupNew(id, "urgent")}
                         >
                           Request Urgent Pickup
                         </button>
@@ -594,13 +618,13 @@ const TherapistDashboard = () => {
                   <p className="pickup-info">Session completed. Need pickup?</p>
                   <button
                     className="request-pickup-button"
-                    onClick={() => handleRequestPickupNew(id, 'normal')}
+                    onClick={() => handleRequestPickupNew(id, "normal")}
                   >
                     Request Pickup
                   </button>
                   <button
                     className="urgent-pickup-button"
-                    onClick={() => handleRequestPickupNew(id, 'urgent')}
+                    onClick={() => handleRequestPickupNew(id, "urgent")}
                   >
                     Request Urgent Pickup
                   </button>

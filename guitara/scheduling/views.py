@@ -1101,7 +1101,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         appointment.status = "therapist_confirm"
         appointment.therapist_confirmed_at = timezone.now()
-        
+
         # For group appointments, check if all therapists have confirmed
         if appointment.group_size > 1:
             appointment.update_group_confirmation_status()
@@ -1112,7 +1112,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     "group_confirmation_complete",
                     f"All therapists have confirmed the group appointment for {appointment.client} on {appointment.date}. Waiting for driver confirmation.",
                 )
-        
+
         appointment.save()
 
         self._create_notifications(
@@ -1138,7 +1138,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         if not appointment.can_driver_confirm():
             return Response(
-                {"error": "Driver cannot confirm this appointment yet. Waiting for therapist confirmation."},
+                {
+                    "error": "Driver cannot confirm this appointment yet. Waiting for therapist confirmation."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -1287,7 +1289,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Only operator or assigned therapist can complete
         if request.user.role != "operator" and request.user != appointment.therapist:
             return Response(
-                {"error": "Only operators or assigned therapists can complete appointments"},
+                {
+                    "error": "Only operators or assigned therapists can complete appointments"
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -1328,8 +1332,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        pickup_urgency = request.data.get('pickup_urgency', 'normal')
-        pickup_notes = request.data.get('pickup_notes', '')
+        pickup_urgency = request.data.get("pickup_urgency", "normal")
+        pickup_notes = request.data.get("pickup_notes", "")
 
         appointment.status = "pickup_requested"
         appointment.pickup_requested = True
@@ -1354,32 +1358,38 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def _try_auto_assign_pickup_driver(self, appointment):
         """Try to automatically assign a driver for pickup based on availability and vehicle type"""
         from django.db.models import Q
-        
+
         required_vehicle = appointment.get_required_vehicle_type()
-        
+
         # Find available drivers with correct vehicle type, ordered by availability time
-        available_drivers = CustomUser.objects.filter(
-            role="driver",
-            is_active=True,
-            driver_available_since__isnull=False
-        ).exclude(
-            # Exclude drivers already assigned to other pickups
-            driver_appointments__status__in=["pickup_requested", "driver_assigned_pickup", "return_journey"]
-        ).order_by('driver_available_since')
-        
+        available_drivers = (
+            CustomUser.objects.filter(
+                role="driver", is_active=True, driver_available_since__isnull=False
+            )
+            .exclude(
+                # Exclude drivers already assigned to other pickups
+                driver_appointments__status__in=[
+                    "pickup_requested",
+                    "driver_assigned_pickup",
+                    "return_journey",
+                ]
+            )
+            .order_by("driver_available_since")
+        )
+
         # Filter by vehicle type if needed
         if required_vehicle == "car":
             # For car requirements, we need drivers with cars
             # This would require additional driver profile fields
             pass
-        
+
         if available_drivers.exists():
             selected_driver = available_drivers.first()
             appointment.driver = selected_driver
             appointment.status = "driver_assigned_pickup"
             appointment.driver_available_since = None  # Clear availability
             appointment.save()
-            
+
             self._create_notifications(
                 appointment,
                 "driver_auto_assigned_pickup",
@@ -1763,7 +1773,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
         appointment.status = "therapist_confirm"
         appointment.therapist_confirmed_at = timezone.now()
-        
+
         # For group appointments, check if all therapists have confirmed
         if appointment.group_size > 1:
             appointment.update_group_confirmation_status()
@@ -1774,7 +1784,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
                     "group_confirmation_complete",
                     f"All therapists have confirmed the group appointment for {appointment.client} on {appointment.date}. Waiting for driver confirmation.",
                 )
-        
+
         appointment.save()
 
         self._create_notifications(
@@ -1800,7 +1810,9 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
         if not appointment.can_driver_confirm():
             return Response(
-                {"error": "Driver cannot confirm this appointment yet. Waiting for therapist confirmation."},
+                {
+                    "error": "Driver cannot confirm this appointment yet. Waiting for therapist confirmation."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -1949,7 +1961,9 @@ class ServiceViewSet(viewsets.ModelViewSet):
         # Only operator or assigned therapist can complete
         if request.user.role != "operator" and request.user != appointment.therapist:
             return Response(
-                {"error": "Only operators or assigned therapists can complete appointments"},
+                {
+                    "error": "Only operators or assigned therapists can complete appointments"
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -1990,8 +2004,8 @@ class ServiceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        pickup_urgency = request.data.get('pickup_urgency', 'normal')
-        pickup_notes = request.data.get('pickup_notes', '')
+        pickup_urgency = request.data.get("pickup_urgency", "normal")
+        pickup_notes = request.data.get("pickup_notes", "")
 
         appointment.status = "pickup_requested"
         appointment.pickup_requested = True
@@ -2016,32 +2030,38 @@ class ServiceViewSet(viewsets.ModelViewSet):
     def _try_auto_assign_pickup_driver(self, appointment):
         """Try to automatically assign a driver for pickup based on availability and vehicle type"""
         from django.db.models import Q
-        
+
         required_vehicle = appointment.get_required_vehicle_type()
-        
+
         # Find available drivers with correct vehicle type, ordered by availability time
-        available_drivers = CustomUser.objects.filter(
-            role="driver",
-            is_active=True,
-            driver_available_since__isnull=False
-        ).exclude(
-            # Exclude drivers already assigned to other pickups
-            driver_appointments__status__in=["pickup_requested", "driver_assigned_pickup", "return_journey"]
-        ).order_by('driver_available_since')
-        
+        available_drivers = (
+            CustomUser.objects.filter(
+                role="driver", is_active=True, driver_available_since__isnull=False
+            )
+            .exclude(
+                # Exclude drivers already assigned to other pickups
+                driver_appointments__status__in=[
+                    "pickup_requested",
+                    "driver_assigned_pickup",
+                    "return_journey",
+                ]
+            )
+            .order_by("driver_available_since")
+        )
+
         # Filter by vehicle type if needed
         if required_vehicle == "car":
             # For car requirements, we need drivers with cars
             # This would require additional driver profile fields
             pass
-        
+
         if available_drivers.exists():
             selected_driver = available_drivers.first()
             appointment.driver = selected_driver
             appointment.status = "driver_assigned_pickup"
             appointment.driver_available_since = None  # Clear availability
             appointment.save()
-            
+
             self._create_notifications(
                 appointment,
                 "driver_auto_assigned_pickup",

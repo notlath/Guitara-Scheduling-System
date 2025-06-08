@@ -993,9 +993,7 @@ export const startJourney = createAsyncThunk(
 
       return response.data;
     } catch (error) {
-      return rejectWithValue(
-        handleApiError(error, "Could not start journey")
-      );
+      return rejectWithValue(handleApiError(error, "Could not start journey"));
     }
   }
 );
@@ -1022,9 +1020,7 @@ export const markArrived = createAsyncThunk(
 
       return response.data;
     } catch (error) {
-      return rejectWithValue(
-        handleApiError(error, "Could not mark arrival")
-      );
+      return rejectWithValue(handleApiError(error, "Could not mark arrival"));
     }
   }
 );
@@ -1051,9 +1047,7 @@ export const startSession = createAsyncThunk(
 
       return response.data;
     } catch (error) {
-      return rejectWithValue(
-        handleApiError(error, "Could not start session")
-      );
+      return rejectWithValue(handleApiError(error, "Could not start session"));
     }
   }
 );
@@ -1118,7 +1112,10 @@ export const completeAppointment = createAsyncThunk(
 
 export const requestPickup = createAsyncThunk(
   "scheduling/requestPickup",
-  async ({ appointmentId, pickup_urgency = 'normal', pickup_notes = '' }, { rejectWithValue }) => {
+  async (
+    { appointmentId, pickup_urgency = "normal", pickup_notes = "" },
+    { rejectWithValue }
+  ) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
@@ -1138,9 +1135,7 @@ export const requestPickup = createAsyncThunk(
 
       return response.data;
     } catch (error) {
-      return rejectWithValue(
-        handleApiError(error, "Could not request pickup")
-      );
+      return rejectWithValue(handleApiError(error, "Could not request pickup"));
     }
   }
 );

@@ -9,7 +9,6 @@ import {
   fetchNotifications,
   fetchStaffMembers,
   reviewRejection,
-  updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -751,8 +750,10 @@ const OperatorDashboard = () => {
           member.is_active &&
           member.driver_available_since
       )
-      .sort((a, b) =>
-        new Date(a.driver_available_since) - new Date(b.driver_available_since)
+      .sort(
+        (a, b) =>
+          new Date(a.driver_available_since) -
+          new Date(b.driver_available_since)
       );
   };
 
@@ -927,7 +928,9 @@ const OperatorDashboard = () => {
                       : "No Therapist"}
                   </span>
                   {apt.group_size > 1 && (
-                    <span className="group-badge">Group ({apt.group_size})</span>
+                    <span className="group-badge">
+                      Group ({apt.group_size})
+                    </span>
                   )}
                   {stage.status === "session_in_progress" &&
                     renderSessionProgress(apt)}
@@ -954,9 +957,7 @@ const OperatorDashboard = () => {
         </div>
         <div className="progress-text">
           {progress.elapsed}m / {progress.estimatedDuration}m
-          {progress.isOvertime && (
-            <span className="overtime">⚠️ Overtime</span>
-          )}
+          {progress.isOvertime && <span className="overtime">⚠️ Overtime</span>}
         </div>
       </div>
     );
@@ -982,7 +983,10 @@ const OperatorDashboard = () => {
                     : "Unknown Client"}
                 </h3>
                 <span className="session-time">
-                  Started: {new Date(appointment.session_started_at).toLocaleTimeString()}
+                  Started:{" "}
+                  {new Date(
+                    appointment.session_started_at
+                  ).toLocaleTimeString()}
                 </span>
               </div>
 
@@ -1032,8 +1036,8 @@ const OperatorDashboard = () => {
                   {progress.isOvertime && (
                     <div className="overtime-warning">
                       ⚠️ Session is running{" "}
-                      {progress.elapsed - progress.estimatedDuration} minutes over
-                      estimated time
+                      {progress.elapsed - progress.estimatedDuration} minutes
+                      over estimated time
                     </div>
                   )}
                 </div>
@@ -1134,9 +1138,12 @@ const OperatorDashboard = () => {
                         <option value="">Select Driver</option>
                         {availableDrivers.map((driver) => (
                           <option key={driver.id} value={driver.id}>
-                            {driver.first_name} {driver.last_name}{" "}
-                            (Available since{" "}
-                            {new Date(driver.driver_available_since).toLocaleTimeString()})
+                            {driver.first_name} {driver.last_name} (Available
+                            since{" "}
+                            {new Date(
+                              driver.driver_available_since
+                            ).toLocaleTimeString()}
+                            )
                           </option>
                         ))}
                       </select>

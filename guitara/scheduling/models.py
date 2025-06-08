@@ -227,52 +227,45 @@ class Appointment(models.Model):
 
     # Enhanced workflow fields
     therapist_confirmed_at = models.DateTimeField(
-        null=True, blank=True, 
-        help_text="When therapist confirmed the appointment"
+        null=True, blank=True, help_text="When therapist confirmed the appointment"
     )
     driver_confirmed_at = models.DateTimeField(
-        null=True, blank=True,
-        help_text="When driver confirmed the appointment"
+        null=True, blank=True, help_text="When driver confirmed the appointment"
     )
     journey_started_at = models.DateTimeField(
-        null=True, blank=True,
-        help_text="When the journey to client location started"
+        null=True, blank=True, help_text="When the journey to client location started"
     )
     arrived_at = models.DateTimeField(
-        null=True, blank=True,
-        help_text="When therapist(s) arrived at client location"
+        null=True, blank=True, help_text="When therapist(s) arrived at client location"
     )
     session_started_at = models.DateTimeField(
-        null=True, blank=True,
-        help_text="When the therapy session actually started"
+        null=True, blank=True, help_text="When the therapy session actually started"
     )
     payment_initiated_at = models.DateTimeField(
-        null=True, blank=True,
-        help_text="When payment process was initiated"
+        null=True, blank=True, help_text="When payment process was initiated"
     )
-    
+
     # Carpooling support
     requires_car = models.BooleanField(
         default=False,
-        help_text="Whether this appointment requires a car (for multiple therapists)"
+        help_text="Whether this appointment requires a car (for multiple therapists)",
     )
     group_confirmation_complete = models.BooleanField(
-        default=False,
-        help_text="Whether all therapists in group have confirmed"
+        default=False, help_text="Whether all therapists in group have confirmed"
     )
     group_size = models.PositiveIntegerField(
-        default=1,
-        help_text="Number of therapists for this appointment"
+        default=1, help_text="Number of therapists for this appointment"
     )
-    
+
     # Driver assignment tracking
     driver_available_since = models.DateTimeField(
-        null=True, blank=True,
-        help_text="When driver became available for pickup assignment"
+        null=True,
+        blank=True,
+        help_text="When driver became available for pickup assignment",
     )
     auto_assignment_eligible = models.BooleanField(
         default=True,
-        help_text="Whether this appointment is eligible for automatic driver assignment"
+        help_text="Whether this appointment is eligible for automatic driver assignment",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -424,79 +417,80 @@ class Appointment(models.Model):
     def can_therapist_confirm(self):
         """Check if therapist can confirm the appointment"""
         return self.status == "pending"
-    
+
     def can_driver_confirm(self):
         """Check if driver can confirm the appointment"""
         if self.group_size > 1:
             # For group appointments, all therapists must confirm first
-            return self.status == "therapist_confirm" and self.group_confirmation_complete
+            return (
+                self.status == "therapist_confirm" and self.group_confirmation_complete
+            )
         else:
             # For single therapist, driver can confirm after therapist
             return self.status == "therapist_confirm"
-    
+
     def can_start_journey(self):
         """Check if journey can be started"""
         return self.status == "driver_confirm"
-    
+
     def can_arrive(self):
         """Check if therapist(s) can be marked as arrived"""
         return self.status == "journey"
-    
+
     def can_start_session(self):
         """Check if session can be started"""
         return self.status == "arrived"
-    
+
     def can_request_payment(self):
         """Check if payment can be requested"""
         return self.status == "session_in_progress"
-    
+
     def can_complete(self):
         """Check if appointment can be completed"""
         return self.status == "awaiting_payment"
-    
+
     def can_request_pickup(self):
         """Check if pickup can be requested"""
         return self.status == "completed"
-    
+
     def is_eligible_for_auto_pickup_assignment(self):
         """Check if appointment is eligible for automatic pickup driver assignment"""
         return (
-            self.status == "pickup_requested" and
-            self.auto_assignment_eligible and
-            not self.driver  # No driver currently assigned
+            self.status == "pickup_requested"
+            and self.auto_assignment_eligible
+            and not self.driver  # No driver currently assigned
         )
-    
+
     def get_required_vehicle_type(self):
         """Get the required vehicle type based on group size"""
         return "car" if self.group_size > 1 or self.requires_car else "motorcycle"
-    
+
     def all_therapists_confirmed(self):
         """Check if all therapists in a group have confirmed"""
         if self.group_size <= 1:
             return self.therapist_confirmed_at is not None
-        
+
         # For multi-therapist appointments, check therapists many-to-many field
         confirmed_count = self.therapists.filter(
             multi_therapist_appointments__therapist_confirmed_at__isnull=False
         ).count()
         return confirmed_count == self.group_size
-    
+
     def update_group_confirmation_status(self):
         """Update the group confirmation status"""
         if self.group_size > 1:
             self.group_confirmation_complete = self.all_therapists_confirmed()
-            self.save(update_fields=['group_confirmation_complete'])
-    
+            self.save(update_fields=["group_confirmation_complete"])
+
     def get_session_duration_minutes(self):
         """Get the estimated session duration in minutes"""
         if self.session_started_at and self.session_end_time:
             delta = self.session_end_time - self.session_started_at
             return int(delta.total_seconds() / 60)
-        
+
         # Fallback to service duration
         total_duration = sum(
-            [service.duration for service in self.services.all()], 
-            timedelta()
+            [service.duration for service in self.services.all()], timedelta()
         )
         return int(total_duration.total_seconds() / 60)
 
