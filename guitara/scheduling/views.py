@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions, filters, status
+from rest_framework import viewsets, permissions, filters, status, serializers
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django_filters.rest_framework import (
@@ -469,9 +469,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if user.role == "operator":
             return Appointment.objects.all()
 
-        # Therapists can see their own appointments
+        # Therapists can see their own appointments (both single and multi-therapist)
         elif user.role == "therapist":
-            return Appointment.objects.filter(therapist=user)
+            from django.db.models import Q
+
+            return Appointment.objects.filter(
+                Q(therapist=user) | Q(therapists=user)
+            ).distinct()
 
         # Drivers can see their own appointments
         elif user.role == "driver":
@@ -485,8 +489,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if self.request.user.role != "operator":
             raise permissions.PermissionDenied("Only operators can create appointments")
 
-        # Set the operator to the current user
-        serializer.save(operator=self.request.user)
+        # Extract therapists data from request if present
+        therapists_data = self.request.data.get(
+            "therapists", []
+        )  # Set the operator to the current user and save the appointment
+        appointment = serializer.save(operator=self.request.user)
+
+        # Handle multiple therapists if provided
+        if therapists_data:
+            appointment.therapists.set(therapists_data)
+            appointment.save()
 
     def perform_update(self, serializer):
         # Ensure only operators can update appointments or staff can update specific fields
@@ -496,12 +508,52 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if user.role == "operator":
             # Operators can update any field
             serializer.save()
-        elif user.role == "therapist" and instance.therapist == user:
-            # Therapists can only update the status
-            serializer.save(updated_fields=["status"])
+        elif user.role == "therapist" and (
+            instance.therapist == user or user in instance.therapists.all()
+        ):
+            # Therapists can update status and related fields
+            allowed_fields = [
+                "status",
+                "pickup_requested",
+                "pickup_request_time",
+                "pickup_urgency",
+                "session_end_time",
+            ]
+            update_data = {
+                field: self.request.data[field]
+                for field in allowed_fields
+                if field in self.request.data
+            }
+            if update_data:
+                for field, value in update_data.items():
+                    setattr(instance, field, value)
+                instance.save(update_fields=list(update_data.keys()))
+            else:
+                raise serializers.ValidationError("No valid fields provided for update")
         elif user.role == "driver" and instance.driver == user:
-            # Drivers can only update the status
-            serializer.save(updated_fields=["status"])
+            # Drivers can update status and driver-related fields
+            allowed_fields = [
+                "status",
+                "driver_available_for_next",
+                "drop_off_location",
+                "drop_off_timestamp",
+                "pickup_started_at",
+                "all_therapists_picked_up_at",
+                "estimated_pickup_time",
+                "pickup_driver",
+                "assignment_type",
+            ]
+            update_data = {
+                field: self.request.data[field]
+                for field in allowed_fields
+                if field in self.request.data
+            }
+            if update_data:
+                for field, value in update_data.items():
+                    setattr(instance, field, value)
+                instance.save(update_fields=list(update_data.keys()))
+            else:
+                raise serializers.ValidationError("No valid fields provided for update")
         else:
             raise permissions.PermissionDenied(
                 "You don't have permission to update this appointment"

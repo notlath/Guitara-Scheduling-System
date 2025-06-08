@@ -201,6 +201,21 @@
   font-style: italic;
 }
 
+/* Multi-therapist team display */
+.therapist-team {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.therapist-team strong {
+  color: #343a40;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .dashboard-header {
