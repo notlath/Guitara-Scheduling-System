@@ -202,8 +202,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             self, "instance", None
         )  # Skip complex validation for status-only updates
         # This allows simple status changes without running full appointment validation
-        if instance and hasattr(self, "initial_data"):
-            # Check if this is a simple status update (only status and related driver/therapist fields)
+        if instance and hasattr(self, "initial_data"):            # Check if this is a simple status update (only status and related driver/therapist fields)
             # Only include fields that actually exist in the Appointment model
             status_update_fields = {
                 "status",
@@ -211,6 +210,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
                 "therapist_accepted_at",
                 "driver_accepted",
                 "driver_accepted_at",
+                "driver",  # Add driver field for assignments
                 "rejection_reason",
                 "rejected_by",
                 "rejected_at",

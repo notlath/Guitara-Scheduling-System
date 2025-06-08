@@ -83,6 +83,11 @@ class Appointment(models.Model):
         ("refunded", "Refunded"),
     ]
 
+    PICKUP_URGENCY_CHOICES = [
+        ("normal", "Normal"),
+        ("urgent", "Urgent"),
+    ]
+
     client = models.ForeignKey(
         Client, on_delete=models.CASCADE, related_name="appointments"
     )
@@ -129,6 +134,33 @@ class Appointment(models.Model):
     notes = models.TextField(blank=True, null=True)
     required_materials = models.TextField(
         blank=True, null=True, help_text="Materials needed for this appointment"
+    )
+
+    # Pickup request fields
+    pickup_requested = models.BooleanField(
+        default=False, help_text="Whether therapist has requested pickup after session"
+    )
+    pickup_request_time = models.DateTimeField(
+        null=True, blank=True, help_text="When pickup was requested"
+    )
+    pickup_urgency = models.CharField(
+        max_length=10,
+        choices=PICKUP_URGENCY_CHOICES,
+        default="normal",
+        help_text="Urgency level of pickup request",
+    )
+    pickup_notes = models.TextField(
+        blank=True, null=True, help_text="Additional notes for pickup request"
+    )
+    estimated_pickup_time = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Estimated time for driver arrival at pickup location",
+    )
+    session_end_time = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the therapy session actually ended",
     )
 
     # New fields for rejection system
