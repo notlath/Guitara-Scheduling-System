@@ -3,12 +3,15 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
-  acceptAppointment,
+  completeAppointment,
   fetchAppointments,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
   rejectAppointment,
-  updateAppointmentStatus,
+  requestPayment,
+  requestPickup,
+  startSession,
+  therapistConfirm,
 } from "../features/scheduling/schedulingSlice";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
@@ -173,10 +176,12 @@ const TherapistDashboard = () => {
     localStorage.removeItem("user");
     dispatch(logout());
     navigate("/");
-  }; // Handle appointment status changes with optimized refresh and optimistic updates
+  };
+
+  // Handle appointment status changes with optimized refresh and optimistic updates
   const handleAcceptAppointment = async (appointmentId) => {
     try {
-      await dispatch(acceptAppointment(appointmentId)).unwrap();
+      await dispatch(therapistConfirm(appointmentId)).unwrap();
       // Only refresh current view data to minimize API calls
       refreshAppointments(true);
     } catch (error) {
@@ -192,166 +197,13 @@ const TherapistDashboard = () => {
     }
   };
 
-  const handleStartAppointment = async (appointmentId) => {
-    try {
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "in_progress",
-        })
-      ).unwrap();
-      refreshAppointments(true);
-    } catch (error) {
-      if (
-        error?.message?.includes("401") ||
-        error?.message?.includes("Authentication")
-      ) {
-        alert("Session expired. Please refresh the page and log in again.");
-      } else {
-        alert("Failed to start appointment. Please try again.");
-      }
-    }
-  };
-  const handleCompleteAppointment = async (appointmentId) => {
-    const appointment = myAppointments.find((apt) => apt.id === appointmentId);
-    const needsPickup = appointment?.driver_details ? true : false;
-
-    if (window.confirm("Mark this appointment as completed?")) {
-      try {
-        await dispatch(
-          updateAppointmentStatus({
-            id: appointmentId,
-            status: "completed",
-            notes: needsPickup
-              ? "Pickup requested after session completion"
-              : "",
-          })
-        ).unwrap();
-
-        // If transportation was used, automatically request pickup
-        if (needsPickup) {
-          // Broadcast pickup request to operators
-          try {
-            // This would trigger real-time notification to operators
-            syncService.broadcast("pickup_requested", {
-              therapist_id: user.id,
-              therapist_name: `${user.first_name} ${user.last_name}`,
-              appointment_id: appointmentId,
-              location: appointment.location,
-              urgency: "normal",
-              session_end_time: new Date().toISOString(),
-              client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`,
-            });
-
-            alert(
-              "Session completed! Pickup request has been sent to our coordination team."
-            );
-          } catch (broadcastError) {
-            console.error(
-              "Failed to broadcast pickup request:",
-              broadcastError
-            );
-            alert(
-              "Session completed! Please manually request pickup if needed."
-            );
-          }
-        }
-
-        refreshAppointments(true);
-      } catch (error) {
-        if (
-          error?.message?.includes("401") ||
-          error?.message?.includes("Authentication")
-        ) {
-          alert("Session expired. Please refresh the page and log in again.");
-        } else {
-          alert("Failed to complete appointment. Please try again.");
-        }
-      }
-    }
-  };
-
-  // New function to manually request pickup
-  const handleRequestPickup = async (appointmentId) => {
-    const appointment = myAppointments.find((apt) => apt.id === appointmentId);
-    if (!appointment) return;
-
-    try {      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "pickup_requested",
-          notes: "Manual pickup requested by therapist",
-        })
-      ).unwrap();
-
-      // Broadcast pickup request to operators
-      syncService.broadcast("pickup_requested", {
-        therapist_id: user.id,
-        therapist_name: `${user.first_name} ${user.last_name}`,
-        appointment_id: appointmentId,
-        location: appointment.location,
-        urgency: "normal",
-        session_end_time:
-          appointment.session_end_time || new Date().toISOString(),
-        client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`,
-      });
-
-      refreshAppointments(true);
-      alert(
-        "Pickup request sent! You'll be notified when a driver is assigned."
-      );
-    } catch (error) {
-      console.error("Failed to request pickup:", error);
-      alert("Failed to request pickup. Please try again.");
-    }
-  };
-
-  // Function to request urgent pickup
-  const handleRequestUrgentPickup = async (appointmentId) => {
-    const appointment = myAppointments.find((apt) => apt.id === appointmentId);
-    if (!appointment) return;
-
-    if (
-      window.confirm(
-        "Request URGENT pickup? This will prioritize your request."
-      )
-    ) {
-      try {        await dispatch(
-          updateAppointmentStatus({
-            id: appointmentId,
-            status: "pickup_requested",
-            notes: "URGENT pickup requested by therapist",
-          })
-        ).unwrap();
-
-        // Broadcast urgent pickup request
-        syncService.broadcast("urgent_pickup_requested", {
-          therapist_id: user.id,
-          therapist_name: `${user.first_name} ${user.last_name}`,
-          appointment_id: appointmentId,
-          location: appointment.location,
-          urgency: "urgent",
-          session_end_time:
-            appointment.session_end_time || new Date().toISOString(),
-          client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`,
-        });
-
-        refreshAppointments(true);
-        alert(
-          "URGENT pickup request sent! A driver will be assigned immediately."
-        );
-      } catch (error) {
-        console.error("Failed to request urgent pickup:", error);
-        alert("Failed to request urgent pickup. Please try again.");
-      }
-    }
-  };
   const handleRejectAppointment = (appointmentId) => {
     setRejectionModal({
       isOpen: true,
       appointmentId: appointmentId,
     });
   };
+
   const handleRejectionSubmit = async (appointmentId, rejectionReason) => {
     // Additional validation on the frontend
     const cleanReason = String(rejectionReason || "").trim();
@@ -397,16 +249,101 @@ const TherapistDashboard = () => {
     }
   };
 
+  // Enhanced workflow handlers for new service flow
+  const handleTherapistConfirm = async (appointmentId) => {
+    try {
+      await dispatch(therapistConfirm(appointmentId)).unwrap();
+      refreshAppointments(true);
+    } catch (error) {
+      console.error("Failed to confirm appointment:", error);
+      alert("Failed to confirm appointment. Please try again.");
+    }
+  };
+
+  const handleStartSession = async (appointmentId) => {
+    try {
+      await dispatch(startSession(appointmentId)).unwrap();
+      refreshAppointments(true);
+    } catch (error) {
+      console.error("Failed to start session:", error);
+      alert("Failed to start session. Please try again.");
+    }
+  };
+
+  const handleRequestPayment = async (appointmentId) => {
+    try {
+      await dispatch(requestPayment(appointmentId)).unwrap();
+      refreshAppointments(true);
+    } catch (error) {
+      console.error("Failed to request payment:", error);
+      alert("Failed to request payment. Please try again.");
+    }
+  };
+
+  const handleCompleteSession = async (appointmentId) => {
+    if (
+      window.confirm("Complete this session? This action cannot be undone.")
+    ) {
+      try {
+        await dispatch(completeAppointment(appointmentId)).unwrap();
+        refreshAppointments(true);
+      } catch (error) {
+        console.error("Failed to complete session:", error);
+        alert("Failed to complete session. Please try again.");
+      }
+    }
+  };
+
+  const handleRequestPickupNew = async (appointmentId, urgency = "normal") => {
+    try {
+      await dispatch(
+        requestPickup({
+          appointmentId,
+          pickup_urgency: urgency,
+          pickup_notes:
+            urgency === "urgent"
+              ? "Urgent pickup requested by therapist"
+              : "Pickup requested by therapist",
+        })
+      ).unwrap();
+      refreshAppointments(true);
+      alert(
+        urgency === "urgent"
+          ? "Urgent pickup request sent!"
+          : "Pickup request sent!"
+      );
+    } catch (error) {
+      console.error("Failed to request pickup:", error);
+      alert("Failed to request pickup. Please try again.");
+    }
+  };
+
+  // Legacy handlers (keeping for backward compatibility)
   const handleRejectionCancel = () => {
     setRejectionModal({ isOpen: false, appointmentId: null });
   };
-
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case "pending":
         return "status-pending";
       case "confirmed":
         return "status-confirmed";
+      case "therapist_confirmed":
+        return "status-therapist-confirmed";
+      case "driver_confirmed":
+        return "status-driver-confirmed";
+      case "journey_started":
+        return "status-journey-started";
+      case "arrived":
+        return "status-arrived";
+      case "session_started":
+        return "status-session-started";
+      case "payment_requested":
+        return "status-payment-requested";
+      case "payment_completed":
+        return "status-payment-completed";
+      case "pickup_requested":
+        return "status-pickup-requested";
       case "in_progress":
         return "status-in-progress";
       case "completed":
@@ -440,7 +377,6 @@ const TherapistDashboard = () => {
     }
     return null;
   };
-
   const renderActionButtons = (appointment) => {
     const {
       status,
@@ -450,6 +386,8 @@ const TherapistDashboard = () => {
       pending_acceptances,
       therapists_accepted,
       therapists,
+      requires_car,
+      driver_confirmed,
     } = appointment;
 
     // Helper function to check if current therapist has accepted
@@ -504,36 +442,128 @@ const TherapistDashboard = () => {
         }
 
       case "confirmed":
-        // Only show start button if both parties have accepted
+        // New workflow: therapist needs to confirm readiness
         if (both_parties_accepted) {
           return (
             <div className="appointment-actions">
               <button
-                className="start-button"
-                onClick={() => handleStartAppointment(id)}
+                className="confirm-button"
+                onClick={() => handleTherapistConfirm(id)}
               >
-                Start Session
+                Confirm Ready
               </button>
+              <div className="workflow-info">
+                <p>
+                  ✅ All parties accepted. Please confirm you're ready to
+                  proceed.
+                </p>
+              </div>
             </div>
           );
         } else {
           return (
             <div className="appointment-actions">
               <div className="warning-status">
-                ⚠ Waiting for all parties to accept before starting
-              </div>{" "}
+                ⚠ Waiting for all parties to accept before confirmation
+              </div>
             </div>
           );
         }
-      case "in_progress":
+
+      case "therapist_confirmed":
+        // Waiting for driver to confirm (if car required)
+        if (requires_car && !driver_confirmed) {
+          return (
+            <div className="appointment-actions">
+              <div className="waiting-status">
+                <span className="confirmed-badge">✅ You confirmed</span>
+                <p>Waiting for driver confirmation...</p>
+              </div>
+            </div>
+          );
+        } else if (!requires_car) {
+          // No car needed, can start session
+          return (
+            <div className="appointment-actions">
+              <button
+                className="start-session-button"
+                onClick={() => handleStartSession(id)}
+              >
+                Start Session
+              </button>
+            </div>
+          );
+        }
+        return null;
+
+      case "driver_confirmed":
+        // Both confirmed, waiting for journey or can start session if no travel
+        return (
+          <div className="appointment-actions">
+            <div className="ready-status">
+              <span className="ready-badge">🚀 Ready to start</span>
+              <p>All confirmations complete. Journey will begin shortly.</p>
+            </div>
+          </div>
+        );
+
+      case "journey_started":
+        return (
+          <div className="appointment-actions">
+            <div className="journey-status">
+              <span className="journey-badge">🚗 En route</span>
+              <p>Driver is on the way to pick you up</p>
+            </div>
+          </div>
+        );
+
+      case "arrived":
+        return (
+          <div className="appointment-actions">
+            <div className="arrived-status">
+              <span className="arrived-badge">📍 Driver arrived</span>
+              <p>Driver has arrived. Ready to proceed to client.</p>
+            </div>
+          </div>
+        );
+
+      case "session_started":
         return (
           <div className="appointment-actions">
             <button
-              className="complete-button"
-              onClick={() => handleCompleteAppointment(id)}
+              className="payment-button"
+              onClick={() => handleRequestPayment(id)}
             >
-              Mark Complete
+              Request Payment
             </button>
+            <div className="session-info">
+              <p>💆 Session in progress</p>
+            </div>
+          </div>
+        );
+
+      case "payment_requested":
+        return (
+          <div className="appointment-actions">
+            <div className="payment-status">
+              <span className="payment-badge">💳 Payment requested</span>
+              <p>Waiting for client payment...</p>
+            </div>
+          </div>
+        );
+
+      case "payment_completed":
+        return (
+          <div className="appointment-actions">
+            <button
+              className="complete-session-button"
+              onClick={() => handleCompleteSession(id)}
+            >
+              Complete Session
+            </button>
+            <div className="payment-info">
+              <p>✅ Payment received</p>
+            </div>
           </div>
         );
 
@@ -544,9 +574,11 @@ const TherapistDashboard = () => {
             <div className="appointment-actions">
               {appointment.pickup_requested ? (
                 <div className="pickup-status">
-                  {appointment.assigned_driver ? (
+                  {appointment.assigned_pickup_driver ? (
                     <div className="driver-assigned">
-                      <span className="success-badge">✅ Driver Assigned</span>
+                      <span className="success-badge">
+                        ✅ Pickup Driver Assigned
+                      </span>
                       <p>Driver en route for pickup</p>
                       {appointment.estimated_pickup_time && (
                         <p>
@@ -572,7 +604,7 @@ const TherapistDashboard = () => {
                       {appointment.pickup_urgency !== "urgent" && (
                         <button
                           className="urgent-pickup-button"
-                          onClick={() => handleRequestUrgentPickup(id)}
+                          onClick={() => handleRequestPickupNew(id, "urgent")}
                         >
                           Request Urgent Pickup
                         </button>
@@ -585,13 +617,13 @@ const TherapistDashboard = () => {
                   <p className="pickup-info">Session completed. Need pickup?</p>
                   <button
                     className="request-pickup-button"
-                    onClick={() => handleRequestPickup(id)}
+                    onClick={() => handleRequestPickupNew(id, "normal")}
                   >
                     Request Pickup
                   </button>
                   <button
                     className="urgent-pickup-button"
-                    onClick={() => handleRequestUrgentPickup(id)}
+                    onClick={() => handleRequestPickupNew(id, "urgent")}
                   >
                     Request Urgent Pickup
                   </button>
@@ -609,6 +641,16 @@ const TherapistDashboard = () => {
             </div>
           );
         }
+
+      case "pickup_requested":
+        return (
+          <div className="appointment-actions">
+            <div className="pickup-requested-status">
+              <span className="pickup-badge">🚖 Pickup requested</span>
+              <p>Waiting for pickup assignment...</p>
+            </div>
+          </div>
+        );
 
       default:
         return null;

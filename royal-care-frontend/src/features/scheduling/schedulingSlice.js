@@ -739,6 +739,539 @@ export const fetchAvailableDrivers = createAsyncThunk(
   }
 );
 
+// Fetch all staff members (therapists and drivers)
+export const fetchStaffMembers = createAsyncThunk(
+  "scheduling/fetchStaffMembers",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("fetchStaffMembers: Starting API call");
+
+    try {
+      const response = await axios.get(`${API_URL}staff/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      console.log(
+        "fetchStaffMembers: Success, received",
+        response.data.length,
+        "staff members"
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "fetchStaffMembers: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not fetch staff members" }
+      );
+    }
+  }
+);
+
+// Fetch availability for a specific staff member and date
+export const fetchAvailability = createAsyncThunk(
+  "scheduling/fetchAvailability",
+  async ({ staffId, date }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("fetchAvailability: Starting API call", { staffId, date });
+
+    try {
+      const response = await axios.get(`${API_URL}availabilities/`, {
+        params: { staff_id: staffId, date },
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      console.log(
+        "fetchAvailability: Success, received",
+        response.data.length,
+        "availability records"
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "fetchAvailability: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not fetch availability" }
+      );
+    }
+  }
+);
+
+// Create new availability record
+export const createAvailability = createAsyncThunk(
+  "scheduling/createAvailability",
+  async (availabilityData, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("createAvailability: Starting API call", availabilityData);
+
+    try {
+      const response = await axios.post(
+        `${API_URL}availabilities/`,
+        availabilityData,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("createAvailability: Success", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "createAvailability: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not create availability" }
+      );
+    }
+  }
+);
+
+// Update existing availability record
+export const updateAvailability = createAsyncThunk(
+  "scheduling/updateAvailability",
+  async ({ id, ...availabilityData }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("updateAvailability: Starting API call", {
+      id,
+      ...availabilityData,
+    });
+
+    try {
+      const response = await axios.put(
+        `${API_URL}availabilities/${id}/`,
+        availabilityData,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("updateAvailability: Success", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "updateAvailability: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not update availability" }
+      );
+    }
+  }
+);
+
+// Delete availability record
+export const deleteAvailability = createAsyncThunk(
+  "scheduling/deleteAvailability",
+  async (id, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("deleteAvailability: Starting API call", { id });
+
+    try {
+      await axios.delete(`${API_URL}availabilities/${id}/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      console.log("deleteAvailability: Success");
+      return id;
+    } catch (error) {
+      console.error(
+        "deleteAvailability: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not delete availability" }
+      );
+    }
+  }
+);
+
+// Fetch notifications for the current user
+export const fetchNotifications = createAsyncThunk(
+  "scheduling/fetchNotifications",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("fetchNotifications: Starting API call");
+
+    try {
+      const response = await axios.get(`${API_URL}notifications/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      console.log(
+        "fetchNotifications: Success, received",
+        response.data.length,
+        "notifications"
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "fetchNotifications: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not fetch notifications" }
+      );
+    }
+  }
+);
+
+// Mark notification as read
+export const markNotificationAsRead = createAsyncThunk(
+  "scheduling/markNotificationAsRead",
+  async (notificationId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("markNotificationAsRead: Starting API call", {
+      notificationId,
+    });
+
+    try {
+      const response = await axios.patch(
+        `${API_URL}notifications/${notificationId}/`,
+        { is_read: true },
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("markNotificationAsRead: Success", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "markNotificationAsRead: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not mark notification as read" }
+      );
+    }
+  }
+);
+
+// Mark all notifications as read
+export const markAllNotificationsAsRead = createAsyncThunk(
+  "scheduling/markAllNotificationsAsRead",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("markAllNotificationsAsRead: Starting API call");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}notifications/mark_all_read/`,
+        {},
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("markAllNotificationsAsRead: Success");
+      return response.data;
+    } catch (error) {
+      console.error(
+        "markAllNotificationsAsRead: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || {
+          error: "Could not mark all notifications as read",
+        }
+      );
+    }
+  }
+);
+
+// Mark notification as unread
+export const markNotificationAsUnread = createAsyncThunk(
+  "scheduling/markNotificationAsUnread",
+  async (notificationId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("markNotificationAsUnread: Starting API call", {
+      notificationId,
+    });
+
+    try {
+      const response = await axios.patch(
+        `${API_URL}notifications/${notificationId}/`,
+        { is_read: false },
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("markNotificationAsUnread: Success", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "markNotificationAsUnread: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || {
+          error: "Could not mark notification as unread",
+        }
+      );
+    }
+  }
+);
+
+// Delete read notifications
+export const deleteReadNotifications = createAsyncThunk(
+  "scheduling/deleteReadNotifications",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("deleteReadNotifications: Starting API call");
+
+    try {
+      const response = await axios.delete(
+        `${API_URL}notifications/delete_read/`,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
+      console.log("deleteReadNotifications: Success");
+      return response.data;
+    } catch (error) {
+      console.error(
+        "deleteReadNotifications: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not delete read notifications" }
+      );
+    }
+  }
+);
+
+// Fetch clients for appointments
+export const fetchClients = createAsyncThunk(
+  "scheduling/fetchClients",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("fetchClients: Starting API call");
+
+    try {
+      const response = await axios.get(`${API_URL}clients/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      console.log(
+        "fetchClients: Success, received",
+        response.data.length,
+        "clients"
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "fetchClients: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not fetch clients" }
+      );
+    }
+  }
+);
+
+// Fetch services for appointments
+export const fetchServices = createAsyncThunk(
+  "scheduling/fetchServices",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("fetchServices: Starting API call");
+
+    try {
+      const response = await axios.get(`${API_URL}services/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      console.log(
+        "fetchServices: Success, received",
+        response.data.length,
+        "services"
+      );
+      return response.data.length > 0 ? response.data : FALLBACK_SERVICES;
+    } catch (error) {
+      console.error(
+        "fetchServices: Error, using fallback services",
+        error.response?.data || error.message
+      );
+      return FALLBACK_SERVICES;
+    }
+  }
+);
+
+// Fetch appointments by week
+export const fetchAppointmentsByWeek = createAsyncThunk(
+  "scheduling/fetchAppointmentsByWeek",
+  async (weekStart, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("fetchAppointmentsByWeek: Starting API call", { weekStart });
+
+    try {
+      const response = await axios.get(`${API_URL}appointments/by_week/`, {
+        params: { week_start: weekStart },
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      console.log(
+        "fetchAppointmentsByWeek: Success, received",
+        response.data.length,
+        "appointments"
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "fetchAppointmentsByWeek: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || {
+          error: "Could not fetch appointments by week",
+        }
+      );
+    }
+  }
+);
+
+// Delete a specific notification
+export const deleteNotification = createAsyncThunk(
+  "scheduling/deleteNotification",
+  async (notificationId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("deleteNotification: Starting API call", { notificationId });
+
+    try {
+      await axios.delete(`${API_URL}notifications/${notificationId}/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      console.log("deleteNotification: Success");
+      return notificationId;
+    } catch (error) {
+      console.error(
+        "deleteNotification: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not delete notification" }
+      );
+    }
+  }
+);
+
+// Delete all notifications
+export const deleteAllNotifications = createAsyncThunk(
+  "scheduling/deleteAllNotifications",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("deleteAllNotifications: Starting API call");
+
+    try {
+      const response = await axios.delete(
+        `${API_URL}notifications/delete_all/`,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
+      console.log("deleteAllNotifications: Success");
+      return response.data;
+    } catch (error) {
+      console.error(
+        "deleteAllNotifications: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not delete all notifications" }
+      );
+    }
+  }
+);
+
 // Assign driver to pickup request
 export const assignDriverToPickup = createAsyncThunk(
   "scheduling/assignDriverToPickup",
@@ -912,469 +1445,230 @@ export const requestPickupAssignment = createAsyncThunk(
   }
 );
 
-// Fetch all clients
-export const fetchClients = createAsyncThunk(
-  "scheduling/fetchClients",
-  async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    console.log("fetchClients: Starting API call to", `${API_URL}clients/`);
-    try {
-      const response = await axios.get(`${API_URL}clients/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
-      console.log(
-        "fetchClients: Success, received",
-        response.data.length,
-        "clients"
-      );
-      return response.data;
-    } catch (error) {
-      console.error(
-        "fetchClients: Error",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(error.response?.data || "Could not fetch clients");
-    }
-  }
-);
-
-// Fetch all services
-export const fetchServices = createAsyncThunk(
-  "scheduling/fetchServices",
-  async () => {
-    const token = localStorage.getItem("knoxToken");
-    try {
-      const response = await axios.get(`${API_URL}services/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      console.error(
-        "fetchServices: Error",
-        error.response?.data || error.message
-      );
-      // Return fallback services if API fails
-      return FALLBACK_SERVICES;
-    }
-  }
-);
-
-// Fetch appointments by week
-export const fetchAppointmentsByWeek = createAsyncThunk(
-  "scheduling/fetchAppointmentsByWeek",
-  async ({ startDate, endDate }, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) return rejectWithValue("Authentication required");
-    try {
-      const response = await axios.get(
-        `${API_URL}appointments/week/?start_date=${startDate}&end_date=${endDate}`,
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(
-        handleApiError(error, "Could not fetch week appointments")
-      );
-    }
-  }
-);
-
-// Fetch staff members
-export const fetchStaffMembers = createAsyncThunk(
-  "scheduling/fetchStaffMembers",
-  async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    try {
-      const response = await axios.get(`${API_URL}staff/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      console.error(
-        "fetchStaffMembers: Error",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(
-        error.response?.data || "Could not fetch staff members"
-      );
-    }
-  }
-);
-
-// Fetch availability for specific staff and date
-export const fetchAvailability = createAsyncThunk(
-  "scheduling/fetchAvailability",
-  async (
-    { staffId, date, forceRefresh = false },
-    { rejectWithValue, getState }
-  ) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) return rejectWithValue("Authentication required");
-
-    const cacheKey = `${staffId}-${date}`;
-    const state = getState();
-
-    // Check cache first unless forced refresh
-    if (!forceRefresh && state.scheduling.availabilityCache[cacheKey]) {
-      console.log(`📋 Using cached availability for ${cacheKey}`);
-      return {
-        data: state.scheduling.availabilityCache[cacheKey],
-        cached: true,
-        cacheKey,
-      };
-    }
-
-    try {
-      const response = await axios.get(
-        `${API_URL}availabilities/?user=${staffId}&date=${date}`,
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        }
-      );
-
-      console.log(`📋 Fetched fresh availability for ${cacheKey}`);
-      return {
-        data: response.data,
-        cached: false,
-        cacheKey,
-      };
-    } catch (error) {
-      console.error(
-        "fetchAvailability: Error",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(
-        error.response?.data || "Could not fetch availability"
-      );
-    }
-  }
-);
-
-// Create availability
-export const createAvailability = createAsyncThunk(
-  "scheduling/createAvailability",
-  async (availabilityData, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) return rejectWithValue("Authentication required");
-
-    try {
-      const response = await axios.post(
-        `${API_URL}availabilities/`,
-        availabilityData,
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        }
-      );
-
-      // Broadcast availability creation
-      syncService.broadcastWithImmediate("availability_created", {
-        availability: response.data,
-      });
-
-      return response.data;
-    } catch (error) {
-      console.error(
-        "createAvailability: Error",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(
-        error.response?.data || "Could not create availability"
-      );
-    }
-  }
-);
-
-// Update availability
-export const updateAvailability = createAsyncThunk(
-  "scheduling/updateAvailability",
-  async ({ id, data }, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) return rejectWithValue("Authentication required");
-
-    try {
-      const response = await axios.patch(
-        `${API_URL}availabilities/${id}/`,
-        data,
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        }
-      );
-
-      // Broadcast availability update
-      syncService.broadcastWithImmediate("availability_updated", {
-        availability: response.data,
-      });
-
-      return response.data;
-    } catch (error) {
-      console.error(
-        "updateAvailability: Error",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(
-        error.response?.data || "Could not update availability"
-      );
-    }
-  }
-);
-
-// Delete availability
-export const deleteAvailability = createAsyncThunk(
-  "scheduling/deleteAvailability",
-  async (id, { rejectWithValue, getState }) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) return rejectWithValue("Authentication required");
-
-    // Get availability data before deletion for sync broadcast
-    const state = getState();
-    const availability = state.scheduling.availabilities.find(
-      (a) => a.id === id
-    );
-
-    try {
-      await axios.delete(`${API_URL}availabilities/${id}/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
-
-      // Broadcast availability deletion
-      if (availability) {
-        syncService.broadcastWithImmediate("availability_deleted", {
-          id,
-          user: availability.user,
-          date: availability.date,
-        });
-      }
-
-      return id;
-    } catch (error) {
-      console.error(
-        "deleteAvailability: Error",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(
-        error.response?.data || "Could not delete availability"
-      );
-    }
-  }
-);
-
-// Fetch notifications
-export const fetchNotifications = createAsyncThunk(
-  "scheduling/fetchNotifications",
-  async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) return rejectWithValue("Authentication required");
-
-    try {
-      const response = await axios.get(`${API_URL}notifications/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
-
-      // Calculate unread count
-      const notifications = response.data;
-      const unreadCount = notifications.filter((n) => !n.is_read).length;
-
-      return {
-        notifications,
-        unreadCount,
-      };
-    } catch (error) {
-      console.error(
-        "fetchNotifications: Error",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(
-        error.response?.data || "Could not fetch notifications"
-      );
-    }
-  }
-);
-
-// Mark notification as read
-export const markNotificationAsRead = createAsyncThunk(
-  "scheduling/markNotificationAsRead",
-  async (notificationId, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) return rejectWithValue("Authentication required");
-
-    try {
-      await axios.patch(
-        `${API_URL}notifications/${notificationId}/`,
-        { is_read: true },
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        }
-      );
-      return notificationId;
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data || "Could not mark notification as read"
-      );
-    }
-  }
-);
-
-// Delete all notifications
-export const deleteAllNotifications = createAsyncThunk(
-  "scheduling/deleteAllNotifications",
-  async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    try {
-      await axios.delete(`${API_URL}notifications/delete_all/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
-      return true;
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data || "Could not delete all notifications"
-      );
-    }
-  }
-);
-
-// Delete read notifications only
-export const deleteReadNotifications = createAsyncThunk(
-  "scheduling/deleteReadNotifications",
-  async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    try {
-      await axios.delete(`${API_URL}notifications/delete_read/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
-      return true;
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data || "Could not delete read notifications"
-      );
-    }
-  }
-);
-
-// Accept appointment (for dual acceptance workflow)
-export const acceptAppointment = createAsyncThunk(
-  "scheduling/acceptAppointment",
+// Enhanced workflow action functions
+export const therapistConfirm = createAsyncThunk(
+  "scheduling/therapistConfirm",
   async (appointmentId, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/accept/`,
+        `${API_URL}appointments/${appointmentId}/therapist_confirm/`,
         {},
         {
           headers: { Authorization: `Token ${token}` },
         }
       );
 
-      // Broadcast the acceptance update
-      syncService.broadcastWithImmediate("appointment_accepted", {
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
         appointment: response.data,
-        appointmentId: appointmentId,
+        appointmentId,
       });
 
       return response.data;
     } catch (error) {
-      console.error("Accept appointment error:", error.response?.data);
       return rejectWithValue(
-        handleApiError(error, "Could not accept appointment")
+        handleApiError(error, "Could not confirm appointment")
       );
     }
   }
 );
 
-// Mark all notifications as read
-export const markAllNotificationsAsRead = createAsyncThunk(
-  "scheduling/markAllNotificationsAsRead",
-  async (_, { rejectWithValue }) => {
+export const driverConfirm = createAsyncThunk(
+  "scheduling/driverConfirm",
+  async (appointmentId, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
     try {
-      const response = await axios.patch(
-        `${API_URL}notifications/mark-all-read/`,
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/driver_confirm/`,
         {},
         {
           headers: { Authorization: `Token ${token}` },
         }
       );
+
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
+        appointment: response.data,
+        appointmentId,
+      });
+
       return response.data;
     } catch (error) {
-      console.error("Mark all notifications read error:", error);
       return rejectWithValue(
-        handleApiError(error, "Could not mark all notifications as read")
+        handleApiError(error, "Could not confirm appointment")
       );
     }
   }
 );
 
-// Mark notification as unread
-export const markNotificationAsUnread = createAsyncThunk(
-  "scheduling/markNotificationAsUnread",
-  async (notificationId, { rejectWithValue }) => {
+export const startJourney = createAsyncThunk(
+  "scheduling/startJourney",
+  async (appointmentId, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
     try {
-      const response = await axios.patch(
-        `${API_URL}notifications/${notificationId}/mark-unread/`,
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/start_journey/`,
         {},
         {
           headers: { Authorization: `Token ${token}` },
         }
       );
+
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
+        appointment: response.data,
+        appointmentId,
+      });
+
       return response.data;
     } catch (error) {
-      console.error("Mark notification unread error:", error);
+      return rejectWithValue(handleApiError(error, "Could not start journey"));
+    }
+  }
+);
+
+export const markArrived = createAsyncThunk(
+  "scheduling/markArrived",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/mark_arrived/`,
+        {},
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
+        appointment: response.data,
+        appointmentId,
+      });
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(handleApiError(error, "Could not mark arrival"));
+    }
+  }
+);
+
+export const startSession = createAsyncThunk(
+  "scheduling/startSession",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/start_session/`,
+        {},
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
+        appointment: response.data,
+        appointmentId,
+      });
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(handleApiError(error, "Could not start session"));
+    }
+  }
+);
+
+export const requestPayment = createAsyncThunk(
+  "scheduling/requestPayment",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/request_payment/`,
+        {},
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
+        appointment: response.data,
+        appointmentId,
+      });
+
+      return response.data;
+    } catch (error) {
       return rejectWithValue(
-        handleApiError(error, "Could not mark notification as unread")
+        handleApiError(error, "Could not request payment")
       );
     }
   }
 );
 
-// Delete notification
-export const deleteNotification = createAsyncThunk(
-  "scheduling/deleteNotification",
-  async (notificationId, { rejectWithValue }) => {
+export const completeAppointment = createAsyncThunk(
+  "scheduling/completeAppointment",
+  async (appointmentId, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
     try {
-      await axios.delete(`${API_URL}notifications/${notificationId}/`, {
-        headers: { Authorization: `Token ${token}` },
-      });
-      return notificationId;
-    } catch (error) {
-      console.error("Delete notification error:", error);
-      return rejectWithValue(
-        handleApiError(error, "Could not delete notification")
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/complete_appointment/`,
+        {},
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
       );
+
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
+        appointment: response.data,
+        appointmentId,
+      });
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        handleApiError(error, "Could not complete appointment")
+      );
+    }
+  }
+);
+
+export const requestPickup = createAsyncThunk(
+  "scheduling/requestPickup",
+  async (
+    { appointmentId, pickup_urgency = "normal", pickup_notes = "" },
+    { rejectWithValue }
+  ) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/request_pickup/`,
+        { pickup_urgency, pickup_notes },
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
+        appointment: response.data,
+        appointmentId,
+      });
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(handleApiError(error, "Could not request pickup"));
     }
   }
 );
