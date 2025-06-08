@@ -32,6 +32,17 @@ export function FormField({
         >
           {children}
         </select>
+      ) : as === "textarea" ? (
+        <textarea
+          className={inputProps.className || "global-form-field-textarea"}
+          name={name}
+          id={name}
+          value={value}
+          onChange={onChange}
+          required={required}
+          {...inputProps}
+          {...rest}
+        />
       ) : (
         <input
           className="global-form-field-input"

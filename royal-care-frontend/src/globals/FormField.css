@@ -3,6 +3,7 @@
   margin-bottom: var(--spacing-xm);
   display: flex;
   flex-direction: column;
+  align-items: stretch; /* Ensure children fill vertically, textarea starts at top */
 }
 .global-form-field-label {
   font-size: var(--font-size-sm);
@@ -28,14 +29,6 @@
 .global-form-field-select:focus {
   border-color: var(--primary-color, #007bff);
 }
-.global-form-field-input.description-field {
-  min-height: 5.5em;
-  resize: vertical;
-  line-height: 1.5;
-  padding-top: 0.75em;
-  padding-bottom: 0.75em;
-  /* Looks more like a textarea/paragraph field */
-}
 
 /* Optionally, if you want a true textarea for description: */
 .global-form-field-textarea {
@@ -53,9 +46,9 @@
   line-height: 1.5;
   box-sizing: border-box;
   display: block;
-  /* Ensure text starts at the top */
   text-align: left;
-  /* Remove vertical-align and flex properties for textarea */
+  /* Remove vertical-align, align-self, and flex properties for textarea */
+  /* Ensure textarea is not centered by parent flex */
 }
 .global-form-field-textarea:focus {
   border-color: var(--primary-color, #007bff);
