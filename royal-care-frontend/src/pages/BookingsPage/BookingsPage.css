@@ -96,8 +96,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state {
@@ -303,23 +307,23 @@
   .bookings-page {
     padding: 1rem;
   }
-  
+
   .bookings-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
-  
+
   .filter-tabs {
     overflow-x: auto;
     white-space: nowrap;
     padding-bottom: 0.5rem;
   }
-  
+
   .bookings-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .summary-stats {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -329,18 +333,18 @@
   .summary-stats {
     grid-template-columns: 1fr;
   }
-  
+
   .booking-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .detail-row {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .detail-row .value {
     text-align: left;
     margin-left: 0;

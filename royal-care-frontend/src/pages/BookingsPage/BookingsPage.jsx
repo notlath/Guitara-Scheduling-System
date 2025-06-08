@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { NavLink } from "react-router-dom";
-import { fetchAppointments, fetchTodayAppointments, fetchUpcomingAppointments } from "../../features/scheduling/schedulingSlice";
 import "../../../src/styles/Placeholders.css";
+import {
+  fetchAppointments,
+  fetchTodayAppointments,
+  fetchUpcomingAppointments,
+} from "../../features/scheduling/schedulingSlice";
 import "./BookingsPage.css";
 
 const BookingsPage = () => {
@@ -10,7 +14,7 @@ const BookingsPage = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { appointments, todayAppointments, upcomingAppointments, loading } = 
+  const { appointments, todayAppointments, upcomingAppointments, loading } =
     useSelector((state) => state.scheduling);
 
   useEffect(() => {
@@ -24,7 +28,7 @@ const BookingsPage = () => {
   // Filter appointments based on active filter
   const getFilteredAppointments = () => {
     let appointmentList = [];
-    
+
     switch (activeFilter) {
       case "today":
         appointmentList = todayAppointments || [];
@@ -33,13 +37,19 @@ const BookingsPage = () => {
         appointmentList = upcomingAppointments || [];
         break;
       case "pending":
-        appointmentList = (appointments || []).filter(apt => apt.status === "pending");
+        appointmentList = (appointments || []).filter(
+          (apt) => apt.status === "pending"
+        );
         break;
       case "confirmed":
-        appointmentList = (appointments || []).filter(apt => apt.status === "confirmed");
+        appointmentList = (appointments || []).filter(
+          (apt) => apt.status === "confirmed"
+        );
         break;
       case "completed":
-        appointmentList = (appointments || []).filter(apt => apt.status === "completed");
+        appointmentList = (appointments || []).filter(
+          (apt) => apt.status === "completed"
+        );
         break;
       default:
         appointmentList = appointments || [];
@@ -47,12 +57,17 @@ const BookingsPage = () => {
 
     // Apply search filter
     if (searchTerm) {
-      appointmentList = appointmentList.filter(apt => 
-        apt.client_details?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        apt.client_details?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        apt.services_details?.some(service => 
-          service.name?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+      appointmentList = appointmentList.filter(
+        (apt) =>
+          apt.client_details?.first_name
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          apt.client_details?.last_name
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          apt.services_details?.some((service) =>
+            service.name?.toLowerCase().includes(searchTerm.toLowerCase())
+          )
       );
     }
 
@@ -63,12 +78,18 @@ const BookingsPage = () => {
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case "pending": return "status-pending";
-      case "confirmed": return "status-confirmed";
-      case "completed": return "status-completed";
-      case "cancelled": return "status-cancelled";
-      case "rejected": return "status-rejected";
-      default: return "status-default";
+      case "pending":
+        return "status-pending";
+      case "confirmed":
+        return "status-confirmed";
+      case "completed":
+        return "status-completed";
+      case "cancelled":
+        return "status-cancelled";
+      case "rejected":
+        return "status-rejected";
+      default:
+        return "status-default";
     }
   };
 
@@ -108,25 +129,33 @@ const BookingsPage = () => {
             Today ({todayAppointments?.length || 0})
           </button>
           <button
-            className={`filter-tab ${activeFilter === "upcoming" ? "active" : ""}`}
+            className={`filter-tab ${
+              activeFilter === "upcoming" ? "active" : ""
+            }`}
             onClick={() => setActiveFilter("upcoming")}
           >
             Upcoming ({upcomingAppointments?.length || 0})
           </button>
           <button
-            className={`filter-tab ${activeFilter === "pending" ? "active" : ""}`}
+            className={`filter-tab ${
+              activeFilter === "pending" ? "active" : ""
+            }`}
             onClick={() => setActiveFilter("pending")}
           >
             Pending
           </button>
           <button
-            className={`filter-tab ${activeFilter === "confirmed" ? "active" : ""}`}
+            className={`filter-tab ${
+              activeFilter === "confirmed" ? "active" : ""
+            }`}
             onClick={() => setActiveFilter("confirmed")}
           >
             Confirmed
           </button>
           <button
-            className={`filter-tab ${activeFilter === "completed" ? "active" : ""}`}
+            className={`filter-tab ${
+              activeFilter === "completed" ? "active" : ""
+            }`}
             onClick={() => setActiveFilter("completed")}
           >
             Completed
@@ -144,13 +173,17 @@ const BookingsPage = () => {
           <div className="empty-state">
             <h3>No bookings found</h3>
             <p>
-              {searchTerm 
+              {searchTerm
                 ? `No bookings match your search for "${searchTerm}"`
-                : `No ${activeFilter === "all" ? "" : activeFilter} bookings found`
-              }
+                : `No ${
+                    activeFilter === "all" ? "" : activeFilter
+                  } bookings found`}
             </p>
             {activeFilter === "all" && !searchTerm && (
-              <NavLink to="/dashboard/scheduling" className="create-first-booking-btn">
+              <NavLink
+                to="/dashboard/scheduling"
+                className="create-first-booking-btn"
+              >
                 Create Your First Booking
               </NavLink>
             )}
@@ -164,7 +197,11 @@ const BookingsPage = () => {
                     {appointment.client_details?.first_name}{" "}
                     {appointment.client_details?.last_name}
                   </h3>
-                  <span className={`status-badge ${getStatusBadgeClass(appointment.status)}`}>
+                  <span
+                    className={`status-badge ${getStatusBadgeClass(
+                      appointment.status
+                    )}`}
+                  >
                     {appointment.status}
                   </span>
                 </div>
@@ -185,40 +222,46 @@ const BookingsPage = () => {
                   <div className="detail-row">
                     <span className="label">Service:</span>
                     <span className="value">
-                      {appointment.services_details?.map(s => s.name).join(", ") || "N/A"}
+                      {appointment.services_details
+                        ?.map((s) => s.name)
+                        .join(", ") || "N/A"}
                     </span>
                   </div>
                   <div className="detail-row">
                     <span className="label">Therapist:</span>
                     <span className="value">
-                      {appointment.therapist_details 
+                      {appointment.therapist_details
                         ? `${appointment.therapist_details.first_name} ${appointment.therapist_details.last_name}`
-                        : appointment.therapists_details?.map(t => `${t.first_name} ${t.last_name}`).join(", ")
-                        || "Not assigned"}
+                        : appointment.therapists_details
+                            ?.map((t) => `${t.first_name} ${t.last_name}`)
+                            .join(", ") || "Not assigned"}
                     </span>
                   </div>
                   {appointment.driver_details && (
                     <div className="detail-row">
                       <span className="label">Driver:</span>
                       <span className="value">
-                        {appointment.driver_details.first_name} {appointment.driver_details.last_name}
+                        {appointment.driver_details.first_name}{" "}
+                        {appointment.driver_details.last_name}
                       </span>
                     </div>
                   )}
                   <div className="detail-row">
                     <span className="label">Duration:</span>
-                    <span className="value">{appointment.duration} minutes</span>
+                    <span className="value">
+                      {appointment.duration} minutes
+                    </span>
                   </div>
                 </div>
 
                 <div className="booking-actions">
-                  <NavLink 
+                  <NavLink
                     to={`/dashboard/scheduling?edit=${appointment.id}`}
                     className="edit-btn"
                   >
                     Edit
                   </NavLink>
-                  <button 
+                  <button
                     className="view-btn"
                     onClick={() => {
                       // Could open a modal or navigate to detailed view
@@ -231,11 +274,13 @@ const BookingsPage = () => {
 
                 <div className="booking-meta">
                   <small>
-                    Created: {new Date(appointment.created_at).toLocaleDateString()}
+                    Created:{" "}
+                    {new Date(appointment.created_at).toLocaleDateString()}
                   </small>
                   {appointment.updated_at !== appointment.created_at && (
                     <small>
-                      Updated: {new Date(appointment.updated_at).toLocaleDateString()}
+                      Updated:{" "}
+                      {new Date(appointment.updated_at).toLocaleDateString()}
                     </small>
                   )}
                 </div>
@@ -252,18 +297,26 @@ const BookingsPage = () => {
             <span className="stat-label">Total Bookings</span>
           </div>
           <div className="stat-item">
-            <span className="stat-number">{todayAppointments?.length || 0}</span>
+            <span className="stat-number">
+              {todayAppointments?.length || 0}
+            </span>
             <span className="stat-label">Today's Bookings</span>
           </div>
           <div className="stat-item">
             <span className="stat-number">
-              {(appointments || []).filter(apt => apt.status === "pending").length}
+              {
+                (appointments || []).filter((apt) => apt.status === "pending")
+                  .length
+              }
             </span>
             <span className="stat-label">Pending</span>
           </div>
           <div className="stat-item">
             <span className="stat-number">
-              {(appointments || []).filter(apt => apt.status === "confirmed").length}
+              {
+                (appointments || []).filter((apt) => apt.status === "confirmed")
+                  .length
+              }
             </span>
             <span className="stat-label">Confirmed</span>
           </div>

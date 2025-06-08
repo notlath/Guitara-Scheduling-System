@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchStaffMembers } from "../../features/scheduling/schedulingSlice";
 import "../../../src/styles/Placeholders.css";
+import { fetchStaffMembers } from "../../features/scheduling/schedulingSlice";
 import "./AttendancePage.css";
 
 const AttendancePage = () => {
   const dispatch = useDispatch();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [attendanceFilter, setAttendanceFilter] = useState("all");
 
   const { staffMembers, loading } = useSelector((state) => state.scheduling);
@@ -22,26 +24,31 @@ const AttendancePage = () => {
     const selectedDay = new Date(selectedDate);
     const isToday = selectedDay.toDateString() === today.toDateString();
     const isPastDate = selectedDay < today;
-    
+
     // Generate realistic attendance data
     const statuses = ["present", "absent", "late", "on_leave"];
     const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-    
+
     return {
       id: staffMember.id,
       staffMember: staffMember,
       date: selectedDate,
-      status: isPastDate ? randomStatus : (isToday ? "present" : "scheduled"),
+      status: isPastDate ? randomStatus : isToday ? "present" : "scheduled",
       checkInTime: isPastDate && randomStatus === "present" ? "08:30" : null,
       checkOutTime: isPastDate && randomStatus === "present" ? "17:00" : null,
       hoursWorked: isPastDate && randomStatus === "present" ? 8.5 : 0,
-      notes: randomStatus === "late" ? "Traffic delay" : randomStatus === "absent" ? "Sick leave" : ""
+      notes:
+        randomStatus === "late"
+          ? "Traffic delay"
+          : randomStatus === "absent"
+          ? "Sick leave"
+          : "",
     };
   };
 
   const attendanceData = (staffMembers || []).map(generateMockAttendance);
 
-  const filteredAttendance = attendanceData.filter(record => {
+  const filteredAttendance = attendanceData.filter((record) => {
     if (attendanceFilter === "all") return true;
     return record.status === attendanceFilter;
   });
@@ -52,9 +59,9 @@ const AttendancePage = () => {
       absent: { class: "status-absent", label: "Absent", icon: "❌" },
       late: { class: "status-late", label: "Late", icon: "⏰" },
       on_leave: { class: "status-leave", label: "On Leave", icon: "🏖️" },
-      scheduled: { class: "status-scheduled", label: "Scheduled", icon: "📅" }
+      scheduled: { class: "status-scheduled", label: "Scheduled", icon: "📅" },
     };
-    
+
     const config = statusConfig[status] || statusConfig.scheduled;
     return (
       <span className={`status-badge ${config.class}`}>
@@ -65,11 +72,13 @@ const AttendancePage = () => {
 
   const getAttendanceStats = () => {
     const total = attendanceData.length;
-    const present = attendanceData.filter(r => r.status === "present").length;
-    const absent = attendanceData.filter(r => r.status === "absent").length;
-    const late = attendanceData.filter(r => r.status === "late").length;
-    const onLeave = attendanceData.filter(r => r.status === "on_leave").length;
-    
+    const present = attendanceData.filter((r) => r.status === "present").length;
+    const absent = attendanceData.filter((r) => r.status === "absent").length;
+    const late = attendanceData.filter((r) => r.status === "late").length;
+    const onLeave = attendanceData.filter(
+      (r) => r.status === "on_leave"
+    ).length;
+
     return { total, present, absent, late, onLeave };
   };
 
@@ -122,25 +131,33 @@ const AttendancePage = () => {
           All ({attendanceData.length})
         </button>
         <button
-          className={`filter-btn ${attendanceFilter === "present" ? "active" : ""}`}
+          className={`filter-btn ${
+            attendanceFilter === "present" ? "active" : ""
+          }`}
           onClick={() => setAttendanceFilter("present")}
         >
           Present ({stats.present})
         </button>
         <button
-          className={`filter-btn ${attendanceFilter === "absent" ? "active" : ""}`}
+          className={`filter-btn ${
+            attendanceFilter === "absent" ? "active" : ""
+          }`}
           onClick={() => setAttendanceFilter("absent")}
         >
           Absent ({stats.absent})
         </button>
         <button
-          className={`filter-btn ${attendanceFilter === "late" ? "active" : ""}`}
+          className={`filter-btn ${
+            attendanceFilter === "late" ? "active" : ""
+          }`}
           onClick={() => setAttendanceFilter("late")}
         >
           Late ({stats.late})
         </button>
         <button
-          className={`filter-btn ${attendanceFilter === "on_leave" ? "active" : ""}`}
+          className={`filter-btn ${
+            attendanceFilter === "on_leave" ? "active" : ""
+          }`}
           onClick={() => setAttendanceFilter("on_leave")}
         >
           On Leave ({stats.onLeave})
@@ -156,7 +173,10 @@ const AttendancePage = () => {
         ) : filteredAttendance.length === 0 ? (
           <div className="empty-state">
             <h3>No attendance records found</h3>
-            <p>No staff members match the selected filter for {new Date(selectedDate).toLocaleDateString()}</p>
+            <p>
+              No staff members match the selected filter for{" "}
+              {new Date(selectedDate).toLocaleDateString()}
+            </p>
           </div>
         ) : (
           <div className="attendance-table-container">
@@ -175,35 +195,33 @@ const AttendancePage = () => {
               </thead>
               <tbody>
                 {filteredAttendance.map((record) => (
-                  <tr key={record.id} className={`attendance-row ${record.status}`}>
+                  <tr
+                    key={record.id}
+                    className={`attendance-row ${record.status}`}
+                  >
                     <td className="staff-info">
                       <div className="staff-name">
-                        {record.staffMember.first_name} {record.staffMember.last_name}
+                        {record.staffMember.first_name}{" "}
+                        {record.staffMember.last_name}
                       </div>
                       <div className="staff-email">
                         {record.staffMember.email}
                       </div>
                     </td>
                     <td className="role">
-                      <span className={`role-badge role-${record.staffMember.role}`}>
+                      <span
+                        className={`role-badge role-${record.staffMember.role}`}
+                      >
                         {record.staffMember.role}
                       </span>
                     </td>
-                    <td className="status">
-                      {getStatusBadge(record.status)}
-                    </td>
-                    <td className="check-in">
-                      {record.checkInTime || "-"}
-                    </td>
-                    <td className="check-out">
-                      {record.checkOutTime || "-"}
-                    </td>
+                    <td className="status">{getStatusBadge(record.status)}</td>
+                    <td className="check-in">{record.checkInTime || "-"}</td>
+                    <td className="check-out">{record.checkOutTime || "-"}</td>
                     <td className="hours">
                       {record.hoursWorked > 0 ? `${record.hoursWorked}h` : "-"}
                     </td>
-                    <td className="notes">
-                      {record.notes || "-"}
-                    </td>
+                    <td className="notes">{record.notes || "-"}</td>
                     <td className="actions">
                       <button className="edit-btn" title="Edit attendance">
                         ✏️
@@ -222,26 +240,43 @@ const AttendancePage = () => {
 
       <div className="attendance-summary">
         <div className="summary-section">
-          <h3>Attendance Summary for {new Date(selectedDate).toLocaleDateString()}</h3>
+          <h3>
+            Attendance Summary for {new Date(selectedDate).toLocaleDateString()}
+          </h3>
           <div className="summary-grid">
             <div className="summary-item">
               <span className="summary-label">Attendance Rate:</span>
               <span className="summary-value">
-                {stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0}%
+                {stats.total > 0
+                  ? Math.round((stats.present / stats.total) * 100)
+                  : 0}
+                %
               </span>
             </div>
             <div className="summary-item">
               <span className="summary-label">Total Hours:</span>
               <span className="summary-value">
-                {attendanceData.reduce((total, record) => total + record.hoursWorked, 0)}h
+                {attendanceData.reduce(
+                  (total, record) => total + record.hoursWorked,
+                  0
+                )}
+                h
               </span>
             </div>
             <div className="summary-item">
               <span className="summary-label">Average Hours:</span>
               <span className="summary-value">
-                {stats.present > 0 
-                  ? Math.round((attendanceData.reduce((total, record) => total + record.hoursWorked, 0) / stats.present) * 10) / 10
-                  : 0}h
+                {stats.present > 0
+                  ? Math.round(
+                      (attendanceData.reduce(
+                        (total, record) => total + record.hoursWorked,
+                        0
+                      ) /
+                        stats.present) *
+                        10
+                    ) / 10
+                  : 0}
+                h
               </span>
             </div>
           </div>
@@ -250,8 +285,8 @@ const AttendancePage = () => {
         <div className="demo-notice">
           <h4>📊 Demo Data Notice</h4>
           <p>
-            This page demonstrates the attendance tracking interface with simulated data. 
-            In a production environment, this would connect to:
+            This page demonstrates the attendance tracking interface with
+            simulated data. In a production environment, this would connect to:
           </p>
           <ul>
             <li>Time clock systems for automatic check-in/out</li>

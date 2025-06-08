@@ -123,7 +123,8 @@ const OperatorDashboard = () => {
           ],
           pendingPickups: [],
         });
-      }    };
+      }
+    };
 
     // Load initial data
     const loadInitialData = async () => {
@@ -186,7 +187,8 @@ const OperatorDashboard = () => {
     return () => {
       unsubscribe();
     };
-  }, []);  const {
+  }, []);
+  const {
     appointments,
     todayAppointments,
     upcomingAppointments,
@@ -488,7 +490,7 @@ const OperatorDashboard = () => {
     }
   };
 
-  const handleUrgentPickupRequest = async (therapistId) => {
+  const _handleUrgentPickupRequest = async (therapistId) => {
     try {
       const therapist = pendingPickups.find((t) => t.id === therapistId);
       const availableDrivers = driverAssignment.availableDrivers;
@@ -610,7 +612,7 @@ const OperatorDashboard = () => {
     }
   };
 
-  const getStatusBadgeClass = (status) => {
+  const _getStatusBadgeClass = (status) => {
     switch (status) {
       case "pending":
         return "status-pending";
@@ -627,7 +629,7 @@ const OperatorDashboard = () => {
     }
   };
   // Helper function to determine who rejected the appointment
-  const getRejectedByInfo = (appointment) => {
+  const _getRejectedByInfo = (appointment) => {
     if (!appointment.rejected_by_details) {
       return {
         text: "Unknown",
@@ -665,7 +667,7 @@ const OperatorDashboard = () => {
   };
 
   // Helper function to calculate time elapsed
-  const getTimeElapsed = (timestamp) => {
+  const _getTimeElapsed = (timestamp) => {
     const now = new Date();
     const then = new Date(timestamp);
     const diffMs = now - then;
@@ -678,7 +680,7 @@ const OperatorDashboard = () => {
   };
 
   // Helper function to calculate estimated travel time
-  const calculateEstimatedTime = (fromLocation, toLocation) => {
+  const _calculateEstimatedTime = (fromLocation, toLocation) => {
     const proximity = calculateProximityScore(fromLocation, toLocation);
     const baseTime =
       proximity.score === 10 ? 15 : proximity.score === 7 ? 25 : 45;
@@ -744,7 +746,7 @@ const OperatorDashboard = () => {
     return activeSessions;
   }, [activeSessions]);
 
-  const getAwaitingPayment = useCallback(() => {
+  const _getAwaitingPayment = useCallback(() => {
     return awaitingPayment;
   }, [awaitingPayment]);
 
@@ -1238,15 +1240,30 @@ const OperatorDashboard = () => {
                 {appointment.client_details?.last_name}
               </h3>
               <span className="rejection-date">
-                Rejected: {new Date(appointment.updated_at).toLocaleDateString()}
+                Rejected:{" "}
+                {new Date(appointment.updated_at).toLocaleDateString()}
               </span>
             </div>
-            
+
             <div className="appointment-details">
-              <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
-              <p><strong>Time:</strong> {appointment.start_time} - {appointment.end_time}</p>
-              <p><strong>Service:</strong> {appointment.services_details?.map(s => s.name).join(", ")}</p>
-              <p><strong>Rejected by:</strong> {appointment.rejected_by_details?.first_name} {appointment.rejected_by_details?.last_name} ({appointment.rejected_by_role})</p>
+              <p>
+                <strong>Date:</strong>{" "}
+                {new Date(appointment.date).toLocaleDateString()}
+              </p>
+              <p>
+                <strong>Time:</strong> {appointment.start_time} -{" "}
+                {appointment.end_time}
+              </p>
+              <p>
+                <strong>Service:</strong>{" "}
+                {appointment.services_details?.map((s) => s.name).join(", ")}
+              </p>
+              <p>
+                <strong>Rejected by:</strong>{" "}
+                {appointment.rejected_by_details?.first_name}{" "}
+                {appointment.rejected_by_details?.last_name} (
+                {appointment.rejected_by_role})
+              </p>
             </div>
 
             {appointment.rejection_reason && (
@@ -1292,11 +1309,19 @@ const OperatorDashboard = () => {
                 {appointment.start_time} - {appointment.end_time}
               </span>
             </div>
-            
+
             <div className="appointment-details">
-              <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
-              <p><strong>Service:</strong> {appointment.services_details?.map(s => s.name).join(", ")}</p>
-              <p><strong>Duration:</strong> {appointment.duration} minutes</p>
+              <p>
+                <strong>Date:</strong>{" "}
+                {new Date(appointment.date).toLocaleDateString()}
+              </p>
+              <p>
+                <strong>Service:</strong>{" "}
+                {appointment.services_details?.map((s) => s.name).join(", ")}
+              </p>
+              <p>
+                <strong>Duration:</strong> {appointment.duration} minutes
+              </p>
               {renderTherapistInfo(appointment)}
             </div>
 
@@ -1305,7 +1330,10 @@ const OperatorDashboard = () => {
             </div>
 
             <div className="time-remaining">
-              <p><strong>Time since created:</strong> {getTimeRemaining(appointment.created_at)}</p>
+              <p>
+                <strong>Time since created:</strong>{" "}
+                {getTimeRemaining(appointment.created_at)}
+              </p>
             </div>
           </div>
         ))}
@@ -1314,7 +1342,10 @@ const OperatorDashboard = () => {
   };
 
   const renderTimeoutMonitoring = () => {
-    const allTimeoutAppointments = [...overdueAppointments, ...approachingDeadlineAppointments];
+    const allTimeoutAppointments = [
+      ...overdueAppointments,
+      ...approachingDeadlineAppointments,
+    ];
 
     if (allTimeoutAppointments.length === 0) {
       return (
@@ -1328,49 +1359,77 @@ const OperatorDashboard = () => {
       <div className="timeout-monitoring-content">
         <div className="auto-cancel-section">
           <h3>Auto-Cancel Overdue Appointments</h3>
-          <p>Automatically cancel appointments that have been pending for too long.</p>
+          <p>
+            Automatically cancel appointments that have been pending for too
+            long.
+          </p>
           <button
             className="auto-cancel-button"
             onClick={handleAutoCancelOverdue}
             disabled={autoCancelLoading || overdueAppointments.length === 0}
           >
-            {autoCancelLoading ? "Processing..." : `Auto-Cancel ${overdueAppointments.length} Overdue`}
+            {autoCancelLoading
+              ? "Processing..."
+              : `Auto-Cancel ${overdueAppointments.length} Overdue`}
           </button>
         </div>
 
         <div className="timeout-appointments-list">
           <h3>Appointments Requiring Attention</h3>
           {allTimeoutAppointments.map((appointment) => {
-            const isOverdue = overdueAppointments.some(apt => apt.id === appointment.id);
+            const isOverdue = overdueAppointments.some(
+              (apt) => apt.id === appointment.id
+            );
             const timeRemaining = getTimeRemaining(appointment.created_at);
-            
+
             return (
-              <div key={appointment.id} className={`timeout-appointment-card ${isOverdue ? 'overdue' : 'warning'}`}>
+              <div
+                key={appointment.id}
+                className={`timeout-appointment-card ${
+                  isOverdue ? "overdue" : "warning"
+                }`}
+              >
                 <div className="appointment-header">
                   <h4>
                     {appointment.client_details?.first_name}{" "}
                     {appointment.client_details?.last_name}
                   </h4>
-                  <span className={`timeout-badge ${isOverdue ? 'overdue' : 'warning'}`}>
-                    {isOverdue ? '🔴 OVERDUE' : '⚠️ WARNING'}
+                  <span
+                    className={`timeout-badge ${
+                      isOverdue ? "overdue" : "warning"
+                    }`}
+                  >
+                    {isOverdue ? "🔴 OVERDUE" : "⚠️ WARNING"}
                   </span>
                 </div>
-                
+
                 <div className="appointment-details">
-                  <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
-                  <p><strong>Time:</strong> {appointment.start_time}</p>
-                  <p><strong>Created:</strong> {timeRemaining} ago</p>
-                  <p><strong>Status:</strong> {getTherapistAcceptanceStatus(appointment).display}</p>
+                  <p>
+                    <strong>Date:</strong>{" "}
+                    {new Date(appointment.date).toLocaleDateString()}
+                  </p>
+                  <p>
+                    <strong>Time:</strong> {appointment.start_time}
+                  </p>
+                  <p>
+                    <strong>Created:</strong> {timeRemaining} ago
+                  </p>
+                  <p>
+                    <strong>Status:</strong>{" "}
+                    {getTherapistAcceptanceStatus(appointment).display}
+                  </p>
                 </div>
 
                 <div className="timeout-countdown">
                   {isOverdue ? (
                     <div className="overdue-message">
-                      ⏰ This appointment is overdue for acceptance and should be reviewed or cancelled.
+                      ⏰ This appointment is overdue for acceptance and should
+                      be reviewed or cancelled.
                     </div>
                   ) : (
                     <div className="warning-message">
-                      ⚠️ This appointment is approaching the acceptance deadline.
+                      ⚠️ This appointment is approaching the acceptance
+                      deadline.
                     </div>
                   )}
                 </div>
@@ -1416,25 +1475,49 @@ const OperatorDashboard = () => {
                   {appointment.client_details?.first_name}{" "}
                   {appointment.client_details?.last_name}
                 </h4>
-                <span className={`status-badge ${appointment.status.replace('_', '-')}`}>
-                  {appointment.status.replace('_', ' ')}
+                <span
+                  className={`status-badge ${appointment.status.replace(
+                    "_",
+                    "-"
+                  )}`}
+                >
+                  {appointment.status.replace("_", " ")}
                 </span>
               </div>
-              
+
               <div className="appointment-details">
-                <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
-                <p><strong>Time:</strong> {appointment.start_time} - {appointment.end_time}</p>
-                <p><strong>Service:</strong> {appointment.services_details?.map(s => s.name).join(", ")}</p>
+                <p>
+                  <strong>Date:</strong>{" "}
+                  {new Date(appointment.date).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>Time:</strong> {appointment.start_time} -{" "}
+                  {appointment.end_time}
+                </p>
+                <p>
+                  <strong>Service:</strong>{" "}
+                  {appointment.services_details?.map((s) => s.name).join(", ")}
+                </p>
                 {renderTherapistInfo(appointment)}
                 {appointment.driver_details && (
-                  <p><strong>Driver:</strong> {appointment.driver_details.first_name} {appointment.driver_details.last_name}</p>
+                  <p>
+                    <strong>Driver:</strong>{" "}
+                    {appointment.driver_details.first_name}{" "}
+                    {appointment.driver_details.last_name}
+                  </p>
                 )}
               </div>
 
               <div className="appointment-meta">
-                <small>Created: {new Date(appointment.created_at).toLocaleDateString()}</small>
+                <small>
+                  Created:{" "}
+                  {new Date(appointment.created_at).toLocaleDateString()}
+                </small>
                 {appointment.updated_at !== appointment.created_at && (
-                  <small>Updated: {new Date(appointment.updated_at).toLocaleDateString()}</small>
+                  <small>
+                    Updated:{" "}
+                    {new Date(appointment.updated_at).toLocaleDateString()}
+                  </small>
                 )}
               </div>
             </div>
@@ -1442,7 +1525,8 @@ const OperatorDashboard = () => {
         </div>
       </div>
     );
-  };  const renderNotifications = () => {
+  };
+  const renderNotifications = () => {
     // Integration with NotificationCenter component
     return (
       <div className="notifications-content">
@@ -1452,16 +1536,17 @@ const OperatorDashboard = () => {
             <span className="notification-count">
               {notifications?.length || 0} total notifications
             </span>
-            {notifications && notifications.filter(n => !n.is_read).length > 0 && (
-              <span className="unread-count">
-                {notifications.filter(n => !n.is_read).length} unread
-              </span>
-            )}
+            {notifications &&
+              notifications.filter((n) => !n.is_read).length > 0 && (
+                <span className="unread-count">
+                  {notifications.filter((n) => !n.is_read).length} unread
+                </span>
+              )}
           </div>
         </div>
 
         <div className="notification-panel-wrapper">
-          <NotificationCenter 
+          <NotificationCenter
             onClose={() => {
               // This is embedded in the dashboard, so we don't need to close it
               // but we provide the prop for component compatibility
@@ -1503,8 +1588,15 @@ const OperatorDashboard = () => {
                 {availableDrivers.map((driver) => (
                   <div key={driver.id} className="driver-card available">
                     <div className="driver-info">
-                      <h4>{driver.first_name} {driver.last_name}</h4>
-                      <p>Available since: {new Date(driver.driver_available_since).toLocaleTimeString()}</p>
+                      <h4>
+                        {driver.first_name} {driver.last_name}
+                      </h4>
+                      <p>
+                        Available since:{" "}
+                        {new Date(
+                          driver.driver_available_since
+                        ).toLocaleTimeString()}
+                      </p>
                     </div>
                     <div className="driver-actions">
                       <button className="assign-btn">Assign to Pickup</button>
@@ -1524,7 +1616,9 @@ const OperatorDashboard = () => {
                 {busyDrivers.map((driver) => (
                   <div key={driver.id} className="driver-card busy">
                     <div className="driver-info">
-                      <h4>{driver.first_name} {driver.last_name}</h4>
+                      <h4>
+                        {driver.first_name} {driver.last_name}
+                      </h4>
                       <p>Status: {driver.driver_status}</p>
                     </div>
                     <div className="driver-eta">

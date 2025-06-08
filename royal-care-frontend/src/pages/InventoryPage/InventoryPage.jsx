@@ -12,7 +12,7 @@ const InventoryPage = () => {
     minStock: 0,
     unit: "",
     supplier: "",
-    costPerUnit: 0
+    costPerUnit: 0,
   });
 
   useEffect(() => {
@@ -31,7 +31,7 @@ const InventoryPage = () => {
       supplier: "Wellness Supplies Co.",
       costPerUnit: 15.99,
       lastRestocked: "2024-01-15",
-      expiryDate: "2025-06-15"
+      expiryDate: "2025-06-15",
     },
     {
       id: 2,
@@ -43,7 +43,7 @@ const InventoryPage = () => {
       supplier: "Wellness Supplies Co.",
       costPerUnit: 15.99,
       lastRestocked: "2024-01-10",
-      expiryDate: "2025-06-10"
+      expiryDate: "2025-06-10",
     },
     {
       id: 3,
@@ -53,9 +53,9 @@ const InventoryPage = () => {
       minStock: 20,
       unit: "pieces",
       supplier: "Comfort Linens Ltd.",
-      costPerUnit: 12.50,
+      costPerUnit: 12.5,
       lastRestocked: "2024-01-20",
-      expiryDate: null
+      expiryDate: null,
     },
     {
       id: 4,
@@ -67,7 +67,7 @@ const InventoryPage = () => {
       supplier: "MedSupply Inc.",
       costPerUnit: 0.75,
       lastRestocked: "2024-01-18",
-      expiryDate: null
+      expiryDate: null,
     },
     {
       id: 5,
@@ -79,7 +79,7 @@ const InventoryPage = () => {
       supplier: "ProTherapy Equipment",
       costPerUnit: 299.99,
       lastRestocked: "2023-12-01",
-      expiryDate: null
+      expiryDate: null,
     },
     {
       id: 6,
@@ -91,16 +91,21 @@ const InventoryPage = () => {
       supplier: "Health Essentials",
       costPerUnit: 8.99,
       lastRestocked: "2024-01-12",
-      expiryDate: "2025-12-31"
-    }
+      expiryDate: "2025-12-31",
+    },
   ];
 
-  const categories = ["all", ...new Set(inventoryItems.map(item => item.category))];
+  const categories = [
+    "all",
+    ...new Set(inventoryItems.map((item) => item.category)),
+  ];
 
-  const filteredItems = inventoryItems.filter(item => {
-    const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.supplier.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredItems = inventoryItems.filter((item) => {
+    const matchesCategory =
+      selectedCategory === "all" || item.category === selectedCategory;
+    const matchesSearch =
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.supplier.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -108,7 +113,11 @@ const InventoryPage = () => {
     if (item.currentStock <= item.minStock) {
       return { status: "low", label: "Low Stock", class: "stock-low" };
     } else if (item.currentStock <= item.minStock * 1.5) {
-      return { status: "warning", label: "Getting Low", class: "stock-warning" };
+      return {
+        status: "warning",
+        label: "Getting Low",
+        class: "stock-warning",
+      };
     } else {
       return { status: "good", label: "In Stock", class: "stock-good" };
     }
@@ -116,10 +125,16 @@ const InventoryPage = () => {
 
   const getInventoryStats = () => {
     const totalItems = inventoryItems.length;
-    const lowStockItems = inventoryItems.filter(item => item.currentStock <= item.minStock).length;
-    const totalValue = inventoryItems.reduce((sum, item) => sum + (item.currentStock * item.costPerUnit), 0);
-    const categories = new Set(inventoryItems.map(item => item.category)).size;
-    
+    const lowStockItems = inventoryItems.filter(
+      (item) => item.currentStock <= item.minStock
+    ).length;
+    const totalValue = inventoryItems.reduce(
+      (sum, item) => sum + item.currentStock * item.costPerUnit,
+      0
+    );
+    const categories = new Set(inventoryItems.map((item) => item.category))
+      .size;
+
     return { totalItems, lowStockItems, totalValue, categories };
   };
 
@@ -137,7 +152,7 @@ const InventoryPage = () => {
       minStock: 0,
       unit: "",
       supplier: "",
-      costPerUnit: 0
+      costPerUnit: 0,
     });
   };
 
@@ -145,10 +160,7 @@ const InventoryPage = () => {
     <div className="inventory-page">
       <div className="inventory-header">
         <h1>Inventory Management</h1>
-        <button 
-          className="add-item-btn"
-          onClick={() => setShowAddModal(true)}
-        >
+        <button className="add-item-btn" onClick={() => setShowAddModal(true)}>
           Add New Item
         </button>
       </div>
@@ -191,7 +203,7 @@ const InventoryPage = () => {
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="category-select"
           >
-            {categories.map(category => (
+            {categories.map((category) => (
               <option key={category} value={category}>
                 {category === "all" ? "All Categories" : category}
               </option>
@@ -217,7 +229,7 @@ const InventoryPage = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map(item => {
+            {filteredItems.map((item) => {
               const stockStatus = getStockStatus(item);
               return (
                 <tr key={item.id}>
@@ -226,14 +238,19 @@ const InventoryPage = () => {
                       {item.name}
                       {item.expiryDate && (
                         <div className="expiry-date">
-                          Expires: {new Date(item.expiryDate).toLocaleDateString()}
+                          Expires:{" "}
+                          {new Date(item.expiryDate).toLocaleDateString()}
                         </div>
                       )}
                     </div>
                   </td>
                   <td>{item.category}</td>
-                  <td>{item.currentStock} {item.unit}</td>
-                  <td>{item.minStock} {item.unit}</td>
+                  <td>
+                    {item.currentStock} {item.unit}
+                  </td>
+                  <td>
+                    {item.minStock} {item.unit}
+                  </td>
                   <td>
                     <span className={`status-badge ${stockStatus.class}`}>
                       {stockStatus.label}
@@ -261,7 +278,7 @@ const InventoryPage = () => {
           <div className="modal">
             <div className="modal-header">
               <h3>Add New Inventory Item</h3>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setShowAddModal(false)}
               >
@@ -274,7 +291,9 @@ const InventoryPage = () => {
                 <input
                   type="text"
                   value={newItem.name}
-                  onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, name: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -283,7 +302,9 @@ const InventoryPage = () => {
                 <input
                   type="text"
                   value={newItem.category}
-                  onChange={(e) => setNewItem({...newItem, category: e.target.value})}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, category: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -293,7 +314,12 @@ const InventoryPage = () => {
                   <input
                     type="number"
                     value={newItem.currentStock}
-                    onChange={(e) => setNewItem({...newItem, currentStock: parseInt(e.target.value)})}
+                    onChange={(e) =>
+                      setNewItem({
+                        ...newItem,
+                        currentStock: parseInt(e.target.value),
+                      })
+                    }
                     required
                   />
                 </div>
@@ -302,7 +328,12 @@ const InventoryPage = () => {
                   <input
                     type="number"
                     value={newItem.minStock}
-                    onChange={(e) => setNewItem({...newItem, minStock: parseInt(e.target.value)})}
+                    onChange={(e) =>
+                      setNewItem({
+                        ...newItem,
+                        minStock: parseInt(e.target.value),
+                      })
+                    }
                     required
                   />
                 </div>
@@ -313,7 +344,9 @@ const InventoryPage = () => {
                   <input
                     type="text"
                     value={newItem.unit}
-                    onChange={(e) => setNewItem({...newItem, unit: e.target.value})}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, unit: e.target.value })
+                    }
                     placeholder="e.g., bottles, pieces, kg"
                     required
                   />
@@ -324,7 +357,12 @@ const InventoryPage = () => {
                     type="number"
                     step="0.01"
                     value={newItem.costPerUnit}
-                    onChange={(e) => setNewItem({...newItem, costPerUnit: parseFloat(e.target.value)})}
+                    onChange={(e) =>
+                      setNewItem({
+                        ...newItem,
+                        costPerUnit: parseFloat(e.target.value),
+                      })
+                    }
                     required
                   />
                 </div>
@@ -334,7 +372,9 @@ const InventoryPage = () => {
                 <input
                   type="text"
                   value={newItem.supplier}
-                  onChange={(e) => setNewItem({...newItem, supplier: e.target.value})}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, supplier: e.target.value })
+                  }
                   required
                 />
               </div>
