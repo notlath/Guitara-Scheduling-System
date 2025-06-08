@@ -1071,12 +1071,30 @@ export const fetchNotifications = createAsyncThunk(
   "scheduling/fetchNotifications",
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
+
+    console.log("🔍 fetchNotifications: Starting request...", {
+      hasToken: !!token,
+      apiUrl: `${API_URL}notifications/`,
+    });
+
+    if (!token) {
+      console.error("❌ fetchNotifications: No authentication token found");
+      return rejectWithValue("Authentication required");
+    }
+
     try {
+      console.log(
+        "📡 fetchNotifications: Making API call to get notifications..."
+      );
       const response = await axios.get(`${API_URL}notifications/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
+
+      console.log(
+        "📡 fetchNotifications: Making API call to get unread count..."
+      );
       // Also get unread count
       const countResponse = await axios.get(
         `${API_URL}notifications/unread_count/`,
@@ -1086,11 +1104,26 @@ export const fetchNotifications = createAsyncThunk(
           },
         }
       );
-      return {
+
+      const result = {
         notifications: response.data,
         unreadCount: countResponse.data.count,
       };
+
+      console.log("✅ fetchNotifications: Success", {
+        notificationCount: result.notifications?.length || 0,
+        unreadCount: result.unreadCount,
+        notifications: result.notifications,
+      });
+
+      return result;
     } catch (error) {
+      console.error("❌ fetchNotifications: Error", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+
       return rejectWithValue(
         error.response?.data || "Could not fetch notifications"
       );
@@ -1902,10 +1935,19 @@ const schedulingSlice = createSlice({
         state.loading = false;
         state.notifications = action.payload.notifications;
         state.unreadNotificationCount = action.payload.unreadCount;
+        console.log("✅ Redux: fetchNotifications fulfilled", {
+          notificationCount: action.payload.notifications?.length || 0,
+          unreadCount: action.payload.unreadCount,
+          hasArray: Array.isArray(action.payload.notifications),
+        });
       })
       .addCase(fetchNotifications.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        console.error("❌ Redux: fetchNotifications rejected", {
+          payload: action.payload,
+          error: action.error,
+        });
       })
       // markNotificationAsRead
       .addCase(markNotificationAsRead.pending, (state) => {

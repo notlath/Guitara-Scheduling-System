@@ -14,7 +14,10 @@ try:
     from registration.models import Service
 except ImportError:
     # Create a fallback Service class if import fails
-    print("WARNING: Could not import Service model, using mock class")
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.warning("Could not import Service model, using mock class")
     from django.db import models
 
     class Service:
@@ -712,9 +715,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
 
         appointment.status = "in_progress"
-        appointment.save()
-
-        # Create notifications
+        appointment.save()  # Create notifications
         self._create_notifications(
             appointment,
             "appointment_started",
@@ -722,49 +723,29 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response(serializer.data) @ action(detail=True, methods=["post"])
+        return Response(serializer.data)
 
+    @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
         """Therapist or Driver rejects an appointment with a reason"""
-        print(f"🔍 BACKEND DEBUG - reject endpoint called:")
-        print(f"  - pk: {pk}")
-        print(f"  - request.user: {request.user}")
-        print(f"  - request.data: {request.data}")
-        print(f"  - request.content_type: {request.content_type}")
-
         appointment = self.get_object()
-        print(f"  - appointment: {appointment}")
-        print(f"  - appointment.therapist: {appointment.therapist}")
-        print(f"  - appointment.driver: {appointment.driver}")
 
         # Only the assigned therapist or driver can reject
         if request.user != appointment.therapist and request.user != appointment.driver:
-            print(
-                f"❌ BACKEND: User {request.user} is not the assigned therapist {appointment.therapist} or driver {appointment.driver}"
-            )
             return Response(
                 {"error": "You can only reject your own appointments"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         if appointment.status != "pending":
-            print(
-                f"❌ BACKEND: Appointment status is {appointment.status}, not pending"
-            )
             return Response(
                 {"error": "Only pending appointments can be rejected"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         rejection_reason = request.data.get("rejection_reason")
-        print(
-            f"🔍 BACKEND: rejection_reason extracted: '{rejection_reason}' (type: {type(rejection_reason)})"
-        )
 
         if not rejection_reason or not rejection_reason.strip():
-            print(
-                f"❌ BACKEND: Rejection reason validation failed - reason: '{rejection_reason}', stripped: '{rejection_reason.strip() if rejection_reason else None}'"
-            )
             return Response(
                 {"error": "Rejection reason is required"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -830,10 +811,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             },
         )
 
-        print(
-            f"✅ BACKEND: Appointment {appointment.id} successfully rejected with reason: '{rejection_reason.strip()}'"
-        )
-
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
@@ -857,12 +834,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         response_action = request.data.get("action")  # 'accept' or 'deny'
         response_reason = request.data.get("reason", "")
 
-        print(f"🔍 Review rejection for appointment {appointment.id}")
-        print(f"🔍 Request data: {request.data}")
-        print(f"🔍 Action: {response_action}, Reason: {response_reason}")
-
         if response_action not in ["accept", "deny"]:
-            print(f"❌ Invalid action: {response_action}")
             return Response(
                 {"error": "Action must be 'accept' or 'deny'"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -1071,26 +1043,16 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Users can only see their own notifications"""
         try:
-            print(
-                f"🔍 NotificationViewSet: Getting notifications for user {self.request.user}"
-            )
             queryset = Notification.objects.filter(user=self.request.user)
-            print(f"🔍 NotificationViewSet: Found {queryset.count()} notifications")
             return queryset
         except Exception as e:
-            print(f"❌ NotificationViewSet get_queryset error: {e}")
             return Notification.objects.none()
 
     def list(self, request, *args, **kwargs):
-        """Override list to add debugging"""
+        """Override list to handle errors gracefully"""
         try:
-            print(f"🔍 NotificationViewSet list: Starting for user {request.user}")
             return super().list(request, *args, **kwargs)
         except Exception as e:
-            print(f"❌ NotificationViewSet list error: {e}")
-            import traceback
-
-            traceback.print_exc()
             return Response(
                 {"error": "Failed to fetch notifications", "detail": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1178,7 +1140,10 @@ class ServiceViewSet(viewsets.ModelViewSet):
     try:
         queryset = Service.objects.all()
     except Exception as e:
-        print(f"WARNING: Could not get Service queryset: {e}")
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Could not get Service queryset: {e}")
         queryset = []
 
     serializer_class = ServiceSerializer
@@ -1194,7 +1159,10 @@ class ServiceViewSet(viewsets.ModelViewSet):
         try:
             return Service.objects.all()
         except Exception as e:
-            print(f"WARNING: Error getting Service queryset: {e}")
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error getting Service queryset: {e}")
             return []
 
     # Hardcoded service data to use when the API is not available
@@ -1273,7 +1241,10 @@ class ServiceViewSet(viewsets.ModelViewSet):
             return super().list(request, *args, **kwargs)
         except Exception as e:
             # If database is not available, use hardcoded services
-            print(f"Error fetching services from database: {e}")
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error fetching services from database: {e}")
             services = self.FALLBACK_SERVICES
             return Response(services)
 
@@ -1286,7 +1257,10 @@ class ServiceViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         except Exception as e:
             # Return only active services from the hardcoded list
-            print(f"Error fetching active services: {e}")
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error fetching active services: {e}")
             active_services = [
                 s for s in self.FALLBACK_SERVICES if s.get("is_active", True)
             ]

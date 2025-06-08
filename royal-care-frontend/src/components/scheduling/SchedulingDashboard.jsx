@@ -7,20 +7,14 @@ import {
   fetchTodayAppointments,
   fetchUpcomingAppointments,
 } from "../../features/scheduling/schedulingSlice";
-import {
-  LoadingSpinner,
-  LoadingButton,
-  PageLoadingState,
-  SkeletonLoader,
-  TableLoadingState,
-  InlineLoader,
-} from "../common/LoadingComponents";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import syncService from "../../services/syncService";
+import { PageLoadingState, SkeletonLoader } from "../common/LoadingComponents";
 
 import { MdAdd, MdNotifications } from "react-icons/md";
-import "../../styles/SchedulingDashboard.css";
+import LayoutRow from "../../globals/LayoutRow";
 import "../../globals/TabSwitcher.css";
+import "../../styles/SchedulingDashboard.css";
 import ErrorBoundary from "../common/ErrorBoundary";
 import AppointmentForm from "./AppointmentForm";
 import AvailabilityManager from "./AvailabilityManager";
@@ -28,7 +22,6 @@ import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
 import WebSocketStatus from "./WebSocketStatus";
 import WeekView from "./WeekView";
-import LayoutRow from "../../globals/LayoutRow";
 
 const SchedulingDashboard = () => {
   // Set up sync event handlers to update Redux state
@@ -72,7 +65,7 @@ const SchedulingDashboard = () => {
     dispatch(fetchUpcomingAppointments());
 
     // Setup polling for real-time updates (WebSocket connections disabled)
-    console.log("WebSocket connections disabled - using polling mode");
+    // Using polling mode for real-time updates
 
     // Real-time sync is handled by useSyncEventHandlers hook
     // Here we only set up periodic polling as a fallback
@@ -130,7 +123,6 @@ const SchedulingDashboard = () => {
         dispatch(fetchTodayAppointments());
         dispatch(fetchUpcomingAppointments());
       } catch (error) {
-        console.error("Error deleting booking:", error);
         // Add user feedback
         alert(`Failed to delete appointment: ${error.message || error}`);
       }

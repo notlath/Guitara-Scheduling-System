@@ -17,7 +17,6 @@ import { PageLoadingState } from "./common/LoadingComponents";
 import LayoutRow from "../globals/LayoutRow";
 import "../globals/TabSwitcher.css";
 import "../styles/TherapistDashboard.css";
-import { runAuthDiagnostics, testLogin } from "../utils/authFixer";
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
@@ -107,8 +106,6 @@ const TherapistDashboard = () => {
     [dispatch, currentView]
   ); // Remove isInitialLoad from dependencies to prevent loops  // Setup polling for real-time updates (WebSocket connections disabled)
   useEffect(() => {
-    console.log("WebSocket connections disabled - using polling mode");
-
     // Real-time sync is handled by useSyncEventHandlers hook
     // Here we only set up periodic polling as a fallback
 
@@ -130,40 +127,14 @@ const TherapistDashboard = () => {
     return () => {
       clearInterval(pollingInterval);
     };
-  }, [dispatch]); // Simplified dependencies
-  // Load appointments on component mount and debug authentication
+  }, [dispatch]); // Simplified dependencies  // Load appointments on component mount
   useEffect(() => {
     let mounted = true;
 
-    // Debug authentication on mount using new diagnostics
-    console.log(
-      "🚀 TherapistDashboard mounted - running authentication diagnostics..."
-    );
-    const runDiagnostics = async () => {
+    const loadInitialData = async () => {
       if (!mounted) return;
 
-      const isAuthOk = await runAuthDiagnostics();
-
-      if (!isAuthOk) {
-        console.log(
-          "❌ Authentication diagnostics failed - attempting test login..."
-        );
-        // Try automatic login with test credentials for development
-        const token = localStorage.getItem("knoxToken");
-        if (!token && import.meta.env.MODE === "development") {
-          console.log("🔄 No token found, attempting test login...");
-          const loginSuccess = await testLogin();
-          if (loginSuccess) {
-            console.log("✅ Test login successful, retrying diagnostics...");
-            await runAuthDiagnostics();
-          }
-        }
-      }
-
-      // Initialize appointment fetching regardless (will show proper errors if auth fails)
-      console.log(
-        "🚀 TherapistDashboard: Initial load, fetching appointments..."
-      );
+      // Initialize appointment fetching
       if (mounted) {
         await Promise.all([
           dispatch(fetchAppointments()),
@@ -174,7 +145,7 @@ const TherapistDashboard = () => {
       }
     };
 
-    runDiagnostics();
+    loadInitialData();
 
     return () => {
       mounted = false;
@@ -202,7 +173,6 @@ const TherapistDashboard = () => {
       // Only refresh current view data to minimize API calls
       refreshAppointments(true);
     } catch (error) {
-      console.error("Error accepting appointment:", error);
       // More user-friendly error message
       if (
         error?.message?.includes("401") ||
@@ -225,7 +195,6 @@ const TherapistDashboard = () => {
       ).unwrap();
       refreshAppointments(true);
     } catch (error) {
-      console.error("Error starting appointment:", error);
       if (
         error?.message?.includes("401") ||
         error?.message?.includes("Authentication")
@@ -248,7 +217,6 @@ const TherapistDashboard = () => {
         ).unwrap();
         refreshAppointments(true);
       } catch (error) {
-        console.error("Error completing appointment:", error);
         if (
           error?.message?.includes("401") ||
           error?.message?.includes("Authentication")
@@ -266,49 +234,23 @@ const TherapistDashboard = () => {
       appointmentId: appointmentId,
     });
   };
-
   const handleRejectionSubmit = async (appointmentId, rejectionReason) => {
-    console.log(
-      "🔍 TherapistDashboard handleRejectionSubmit - DETAILED DEBUG:",
-      {
-        appointmentId,
-        rejectionReason,
-        reasonType: typeof rejectionReason,
-        reasonLength: rejectionReason?.length,
-        reasonTrimmed: String(rejectionReason || "").trim(),
-        reasonTrimmedLength: String(rejectionReason || "").trim().length,
-      }
-    );
-
     // Additional validation on the frontend
     const cleanReason = String(rejectionReason || "").trim();
     if (!cleanReason) {
-      console.error("❌ TherapistDashboard: Empty reason detected");
       alert("Please provide a reason for rejection.");
       return;
     }
-
-    console.log("✅ TherapistDashboard: Dispatching rejectAppointment with:", {
-      id: appointmentId,
-      rejectionReason: cleanReason,
-    });
-
     try {
-      const result = await dispatch(
+      await dispatch(
         rejectAppointment({
           id: appointmentId,
           rejectionReason: cleanReason,
         })
       ).unwrap();
-      console.log("✅ TherapistDashboard: Rejection successful:", result);
       refreshAppointments(true); // Silent background refresh after action
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
-      console.error(
-        "❌ TherapistDashboard: Error rejecting appointment:",
-        error
-      );
-
       // Better error message handling with authentication awareness
       let errorMessage = "Failed to reject appointment. Please try again.";
 

@@ -94,8 +94,6 @@ const OperatorDashboard = () => {
     dispatch(fetchNotifications());
   }, [dispatch]); // Setup polling for real-time updates (WebSocket connections disabled)
   useEffect(() => {
-    console.log("WebSocket connections disabled - using polling mode");
-
     // Real-time sync is handled by useSyncEventHandlers hook
     // Here we only set up periodic polling as a fallback
 
@@ -169,8 +167,7 @@ const OperatorDashboard = () => {
         rejectionReason: "",
       });
       setReviewNotes("");
-    } catch (error) {
-      console.error("Error reviewing rejection:", error);
+    } catch {
       alert("Failed to review rejection. Please try again.");
     }
   };
@@ -193,8 +190,7 @@ const OperatorDashboard = () => {
       await dispatch(autoCancelOverdueAppointments()).unwrap();
       refreshData();
       alert("Successfully processed overdue appointments");
-    } catch (error) {
-      console.error("Error auto-cancelling overdue appointments:", error);
+    } catch {
       alert("Failed to process overdue appointments. Please try again.");
     } finally {
       setAutoCancelLoading(false);
@@ -834,8 +830,7 @@ const OperatorDashboard = () => {
           })
         ).unwrap();
         refreshData();
-      } catch (error) {
-        console.error("Error confirming appointment:", error);
+      } catch {
         alert("Failed to confirm appointment. Please try again.");
       }
     }
