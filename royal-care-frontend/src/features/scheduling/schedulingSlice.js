@@ -739,6 +739,41 @@ export const fetchAvailableDrivers = createAsyncThunk(
   }
 );
 
+// Fetch all staff members (therapists and drivers)
+export const fetchStaffMembers = createAsyncThunk(
+  "scheduling/fetchStaffMembers",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue({ error: "Authentication required" });
+    }
+
+    console.log("fetchStaffMembers: Starting API call");
+
+    try {
+      const response = await axios.get(`${API_URL}staff/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      console.log(
+        "fetchStaffMembers: Success, received",
+        response.data.length,
+        "staff members"
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "fetchStaffMembers: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || { error: "Could not fetch staff members" }
+      );
+    }
+  }
+);
+
 // Assign driver to pickup request
 export const assignDriverToPickup = createAsyncThunk(
   "scheduling/assignDriverToPickup",
