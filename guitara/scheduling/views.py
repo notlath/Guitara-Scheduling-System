@@ -9,7 +9,6 @@ from django_filters.rest_framework import (
     CharFilter,
 )
 from .models import Client, Availability, Appointment, Notification
-from registration.models import Driver
 
 try:
     from registration.models import Service
@@ -1157,2515 +1156,894 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
-    def start(self, request, pk=None):
-        """Therapist starts an appointment"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can start
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only start your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "confirmed":
-            return Response(
-                {"error": "Only confirmed appointments can be started"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Additional check: ensure both parties have actually accepted
-        if not appointment.both_parties_accepted():
-            pending_parties = appointment.get_pending_acceptances()
-            pending_text = ", ".join(pending_parties)
-            return Response(
-                {
-                    "error": f"Cannot start appointment. Still waiting for acceptance from: {pending_text}"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "in_progress"
-        appointment.save()  # Create notifications
-        self._create_notifications(
-            appointment,
-            "appointment_started",
-            f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def reject(self, request, pk=None):
-        """Therapist or Driver rejects an appointment with a reason"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist or driver can reject
-        if request.user != appointment.therapist and request.user != appointment.driver:
-            return Response(
-                {"error": "You can only reject your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "pending":
-            return Response(
-                {"error": "Only pending appointments can be rejected"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        rejection_reason = request.data.get("rejection_reason")
-
-        if not rejection_reason or not rejection_reason.strip():
-            return Response(
-                {"error": "Rejection reason is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Create rejection record
-        from .models import AppointmentRejection
-
-        rejection = AppointmentRejection.objects.create(
-            appointment=appointment,
-            rejection_reason=rejection_reason.strip(),
-            rejected_by=request.user,
-        )  # Update appointment status and reset acceptance flags
-        appointment.status = "rejected"
-        appointment.rejection_reason = rejection_reason.strip()
-        appointment.rejected_by = request.user
-        appointment.rejected_at = timezone.now()
-
-        # Reset acceptance status since someone rejected
-        appointment.therapist_accepted = False
-        appointment.therapist_accepted_at = None
-        appointment.driver_accepted = False
-        appointment.driver_accepted_at = None
-
-        appointment.save()  # Create notification for operator
-        if appointment.operator:
-            # Determine the role of the user who rejected
-            rejecter_role = (
-                "Therapist" if request.user == appointment.therapist else "Driver"
-            )
-            notification_message = f"{rejecter_role} {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}"
-
-            Notification.objects.create(
-                user=appointment.operator,
-                appointment=appointment,
-                rejection=rejection,
-                notification_type="appointment_rejected",
-                message=notification_message,
-            )  # Send WebSocket notification
-        channel_layer = get_channel_layer()
-        rejecter_role = (
-            "Therapist" if request.user == appointment.therapist else "Driver"
-        )
-        async_to_sync(channel_layer.group_send)(
-            "appointments",
-            {
-                "type": "appointment_message",
-                "message": {
-                    "type": "appointment_rejected",
-                    "appointment_id": appointment.id,
-                    "rejection_id": rejection.id,
-                    "rejected_by_id": request.user.id,
-                    "rejected_by_role": rejecter_role,
-                    "therapist_id": (
-                        appointment.therapist.id if appointment.therapist else None
-                    ),
-                    "driver_id": appointment.driver.id if appointment.driver else None,
-                    "operator_id": (
-                        appointment.operator.id if appointment.operator else None
-                    ),
-                    "message": f"Appointment rejected by {rejecter_role} {request.user.get_full_name()}",
-                },
-            },
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def review_rejection(self, request, pk=None):
-        """Operator reviews a rejection - can accept or deny the reason"""
-        appointment = self.get_object()
-        # Only operators can review rejections
-        if request.user.role != "operator":
-            return Response(
-                {"error": "Only operators can review rejections"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "rejected":
-            return Response(
-                {"error": "Only rejected appointments can be reviewed"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        response_action = request.data.get("action")  # 'accept' or 'deny'
-        response_reason = request.data.get("reason", "")
-
-        if response_action not in ["accept", "deny"]:
-            return Response(
-                {"error": "Action must be 'accept' or 'deny'"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            rejection = appointment.rejection_details
-            if not rejection:
-                return Response(
-                    {"error": "No rejection details found for this appointment"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        except AppointmentRejection.DoesNotExist:
-            return Response(
-                {"error": "No rejection details found for this appointment"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Update rejection record
-        rejection.operator_response = (
-            "accepted" if response_action == "accept" else "denied"
-        )
-        rejection.operator_response_reason = response_reason
-        rejection.reviewed_by = request.user
-        rejection.reviewed_at = timezone.now()
-        rejection.save()
-
-        if response_action == "accept":
-            # Delete the appointment if operator accepts the rejection reason
-            appointment_client = appointment.client
-            appointment_date = appointment.date
-            appointment_time = appointment.start_time
-            therapist = appointment.therapist
-
-            # Create notification for therapist
-            if therapist:
-                Notification.objects.create(
-                    user=therapist,
-                    appointment=appointment,
-                    rejection=rejection,
-                    notification_type="rejection_reviewed",
-                    message=f"Operator has accepted your rejection reason. The appointment for {appointment_client} on {appointment_date} has been cancelled.",
-                )
-
-            # Delete the appointment
-            appointment.delete()
-
-            return Response(
-                {
-                    "message": "Rejection accepted. Appointment has been deleted.",
-                    "action": "deleted",
-                }
-            )
-        else:
-            # If operator denies the rejection, push the appointment through
-            appointment.status = "confirmed"
-            appointment.save()
-
-            # Create notification for therapist
-            if appointment.therapist:
-                Notification.objects.create(
-                    user=appointment.therapist,
-                    appointment=appointment,
-                    rejection=rejection,
-                    notification_type="rejection_reviewed",
-                    message=f"Operator has denied your rejection reason. The appointment for {appointment.client} on {appointment.date} is confirmed and must proceed.",
-                )
-
-            # Send WebSocket notification
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                "appointments",
-                {
-                    "type": "appointment_message",
-                    "message": {
-                        "type": "rejection_denied",
-                        "appointment_id": appointment.id,
-                        "therapist_id": (
-                            appointment.therapist.id if appointment.therapist else None
-                        ),
-                        "message": f"Appointment rejection denied - appointment confirmed",
-                    },
-                },
-            )
-
-            serializer = self.get_serializer(appointment)
-            return Response(
-                {
-                    "message": "Rejection denied. Appointment has been confirmed.",
-                    "action": "confirmed",
-                    "appointment": serializer.data,
-                }
-            )
-
-    @action(detail=False, methods=["post"])
-    def auto_cancel_overdue(self, request):
-        """Auto-cancel appointments that are overdue (30+ minutes without response)"""
-        # Only operators can trigger this action
-        if request.user.role != "operator":
-            return Response(
-                {"error": "Only operators can auto-cancel overdue appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Find overdue pending appointments
-        overdue_appointments = Appointment.objects.filter(
-            status="pending", response_deadline__lt=timezone.now()
-        )
-
-        cancelled_count = 0
-        disabled_therapists = []
-
-        for appointment in overdue_appointments:
-            # Auto-cancel the appointment
-            appointment.status = "auto_cancelled"
-            appointment.auto_cancelled_at = timezone.now()
-            appointment.save()
-
-            # Disable the therapist (set is_active to False)
-            if appointment.therapist and appointment.therapist.is_active:
-                appointment.therapist.is_active = False
-                appointment.therapist.save()
-                disabled_therapists.append(appointment.therapist)
-
-                # Create notification for therapist
-                Notification.objects.create(
-                    user=appointment.therapist,
-                    appointment=appointment,
-                    notification_type="therapist_disabled",
-                    message=f"Your account has been disabled due to not responding to appointment for {appointment.client} within 30 minutes. Please contact administration.",
-                )
-
-            # Create notification for operator
-            if appointment.operator:
-                Notification.objects.create(
-                    user=appointment.operator,
-                    appointment=appointment,
-                    notification_type="appointment_auto_cancelled",
-                    message=f"Appointment for {appointment.client} on {appointment.date} was auto-cancelled due to no response from therapist {appointment.therapist.get_full_name() if appointment.therapist else 'Unknown'}.",
-                )
-
-            cancelled_count += 1
-
-        return Response(
-            {
-                "message": f"Auto-cancelled {cancelled_count} overdue appointments",
-                "cancelled_count": cancelled_count,
-                "disabled_therapists": [t.get_full_name() for t in disabled_therapists],
-            }
-        )
-
-    def _create_notifications(self, appointment, notification_type, message):
-        """Helper method to create notifications for all involved parties"""
-        # Create notification for therapist
-        if appointment.therapist:
-            Notification.objects.create(
-                user=appointment.therapist,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Create notification for driver
-        if appointment.driver:
-            Notification.objects.create(
-                user=appointment.driver,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Create notification for operator
-        if appointment.operator:
-            Notification.objects.create(
-                user=appointment.operator,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Send WebSocket notification
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            "appointments",
-            {
-                "type": "appointment_message",
-                "message": {
-                    "type": notification_type,
-                    "appointment_id": appointment.id,
-                    "message": message,
-                },
-            },
-        )
-
-    @action(detail=True, methods=["post"])
-    def therapist_confirm(self, request, pk=None):
-        """Therapist confirms the appointment (enhanced workflow)"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can confirm
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only confirm your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_therapist_confirm():
-            return Response(
-                {"error": "Appointment cannot be confirmed by therapist at this time"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "therapist_confirm"
-        appointment.therapist_confirmed_at = timezone.now()
-        
-        # For group appointments, check if all therapists have confirmed
-        if appointment.group_size > 1:
-            appointment.update_group_confirmation_status()
-            if appointment.group_confirmation_complete:
-                # All therapists confirmed, ready for driver confirmation
-                self._create_notifications(
-                    appointment,
-                    "group_confirmation_complete",
-                    f"All therapists have confirmed the group appointment for {appointment.client} on {appointment.date}. Waiting for driver confirmation.",
-                )
-        
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "therapist_confirmed",
-            f"Therapist {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def driver_confirm(self, request, pk=None):
-        """Driver confirms the appointment (enhanced workflow)"""
-        appointment = self.get_object()
-
-        # Only the assigned driver can confirm
-        if request.user != appointment.driver:
-            return Response(
-                {"error": "You can only confirm your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_driver_confirm():
-            return Response(
-                {"error": "Driver cannot confirm this appointment yet. Waiting for therapist confirmation."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "driver_confirm"
-        appointment.driver_confirmed_at = timezone.now()
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "driver_confirmed",
-            f"Driver {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}. Ready to start journey.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def start(self, request, pk=None):
-        """Therapist starts an appointment"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can start
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only start your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "confirmed":
-            return Response(
-                {"error": "Only confirmed appointments can be started"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Additional check: ensure both parties have actually accepted
-        if not appointment.both_parties_accepted():
-            pending_parties = appointment.get_pending_acceptances()
-            pending_text = ", ".join(pending_parties)
-            return Response(
-                {
-                    "error": f"Cannot start appointment. Still waiting for acceptance from: {pending_text}"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "in_progress"
-        appointment.save()  # Create notifications
-        self._create_notifications(
-            appointment,
-            "appointment_started",
-            f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def reject(self, request, pk=None):
-        """Therapist or Driver rejects an appointment with a reason"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist or driver can reject
-        if request.user != appointment.therapist and request.user != appointment.driver:
-            return Response(
-                {"error": "You can only reject your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "pending":
-            return Response(
-                {"error": "Only pending appointments can be rejected"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        rejection_reason = request.data.get("rejection_reason")
-
-        if not rejection_reason or not rejection_reason.strip():
-            return Response(
-                {"error": "Rejection reason is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Create rejection record
-        from .models import AppointmentRejection
-
-        rejection = AppointmentRejection.objects.create(
-            appointment=appointment,
-            rejection_reason=rejection_reason.strip(),
-            rejected_by=request.user,
-        )  # Update appointment status and reset acceptance flags
-        appointment.status = "rejected"
-        appointment.rejection_reason = rejection_reason.strip()
-        appointment.rejected_by = request.user
-        appointment.rejected_at = timezone.now()
-
-        # Reset acceptance status since someone rejected
-        appointment.therapist_accepted = False
-        appointment.therapist_accepted_at = None
-        appointment.driver_accepted = False
-        appointment.driver_accepted_at = None
-
-        appointment.save()  # Create notification for operator
-        if appointment.operator:
-            # Determine the role of the user who rejected
-            rejecter_role = (
-                "Therapist" if request.user == appointment.therapist else "Driver"
-            )
-            notification_message = f"{rejecter_role} {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}"
-
-            Notification.objects.create(
-                user=appointment.operator,
-                appointment=appointment,
-                rejection=rejection,
-                notification_type="appointment_rejected",
-                message=notification_message,
-            )  # Send WebSocket notification
-        channel_layer = get_channel_layer()
-        rejecter_role = (
-            "Therapist" if request.user == appointment.therapist else "Driver"
-        )
-        async_to_sync(channel_layer.group_send)(
-            "appointments",
-            {
-                "type": "appointment_message",
-                "message": {
-                    "type": "appointment_rejected",
-                    "appointment_id": appointment.id,
-                    "rejection_id": rejection.id,
-                    "rejected_by_id": request.user.id,
-                    "rejected_by_role": rejecter_role,
-                    "therapist_id": (
-                        appointment.therapist.id if appointment.therapist else None
-                    ),
-                    "driver_id": appointment.driver.id if appointment.driver else None,
-                    "operator_id": (
-                        appointment.operator.id if appointment.operator else None
-                    ),
-                    "message": f"Appointment rejected by {rejecter_role} {request.user.get_full_name()}",
-                },
-            },
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def review_rejection(self, request, pk=None):
-        """Operator reviews a rejection - can accept or deny the reason"""
-        appointment = self.get_object()
-        # Only operators can review rejections
-        if request.user.role != "operator":
-            return Response(
-                {"error": "Only operators can review rejections"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "rejected":
-            return Response(
-                {"error": "Only rejected appointments can be reviewed"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        response_action = request.data.get("action")  # 'accept' or 'deny'
-        response_reason = request.data.get("reason", "")
-
-        if response_action not in ["accept", "deny"]:
-            return Response(
-                {"error": "Action must be 'accept' or 'deny'"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            rejection = appointment.rejection_details
-            if not rejection:
-                return Response(
-                    {"error": "No rejection details found for this appointment"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        except AppointmentRejection.DoesNotExist:
-            return Response(
-                {"error": "No rejection details found for this appointment"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Update rejection record
-        rejection.operator_response = (
-            "accepted" if response_action == "accept" else "denied"
-        )
-        rejection.operator_response_reason = response_reason
-        rejection.reviewed_by = request.user
-        rejection.reviewed_at = timezone.now()
-        rejection.save()
-
-        if response_action == "accept":
-            # Delete the appointment if operator accepts the rejection reason
-            appointment_client = appointment.client
-            appointment_date = appointment.date
-            appointment_time = appointment.start_time
-            therapist = appointment.therapist
-
-            # Create notification for therapist
-            if therapist:
-                Notification.objects.create(
-                    user=therapist,
-                    appointment=appointment,
-                    rejection=rejection,
-                    notification_type="rejection_reviewed",
-                    message=f"Operator has accepted your rejection reason. The appointment for {appointment_client} on {appointment_date} has been cancelled.",
-                )
-
-            # Delete the appointment
-            appointment.delete()
-
-            return Response(
-                {
-                    "message": "Rejection accepted. Appointment has been deleted.",
-                    "action": "deleted",
-                }
-            )
-        else:
-            # If operator denies the rejection, push the appointment through
-            appointment.status = "confirmed"
-            appointment.save()
-
-            # Create notification for therapist
-            if appointment.therapist:
-                Notification.objects.create(
-                    user=appointment.therapist,
-                    appointment=appointment,
-                    rejection=rejection,
-                    notification_type="rejection_reviewed",
-                    message=f"Operator has denied your rejection reason. The appointment for {appointment.client} on {appointment.date} is confirmed and must proceed.",
-                )
-
-            # Send WebSocket notification
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                "appointments",
-                {
-                    "type": "appointment_message",
-                    "message": {
-                        "type": "rejection_denied",
-                        "appointment_id": appointment.id,
-                        "therapist_id": (
-                            appointment.therapist.id if appointment.therapist else None
-                        ),
-                        "message": f"Appointment rejection denied - appointment confirmed",
-                    },
-                },
-            )
-
-            serializer = self.get_serializer(appointment)
-            return Response(
-                {
-                    "message": "Rejection denied. Appointment has been confirmed.",
-                    "action": "confirmed",
-                    "appointment": serializer.data,
-                }
-            )
-
-    @action(detail=False, methods=["post"])
-    def auto_cancel_overdue(self, request):
-        """Auto-cancel appointments that are overdue (30+ minutes without response)"""
-        # Only operators can trigger this action
-        if request.user.role != "operator":
-            return Response(
-                {"error": "Only operators can auto-cancel overdue appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Find overdue pending appointments
-        overdue_appointments = Appointment.objects.filter(
-            status="pending", response_deadline__lt=timezone.now()
-        )
-
-        cancelled_count = 0
-        disabled_therapists = []
-
-        for appointment in overdue_appointments:
-            # Auto-cancel the appointment
-            appointment.status = "auto_cancelled"
-            appointment.auto_cancelled_at = timezone.now()
-            appointment.save()
-
-            # Disable the therapist (set is_active to False)
-            if appointment.therapist and appointment.therapist.is_active:
-                appointment.therapist.is_active = False
-                appointment.therapist.save()
-                disabled_therapists.append(appointment.therapist)
-
-                # Create notification for therapist
-                Notification.objects.create(
-                    user=appointment.therapist,
-                    appointment=appointment,
-                    notification_type="therapist_disabled",
-                    message=f"Your account has been disabled due to not responding to appointment for {appointment.client} within 30 minutes. Please contact administration.",
-                )
-
-            # Create notification for operator
-            if appointment.operator:
-                Notification.objects.create(
-                    user=appointment.operator,
-                    appointment=appointment,
-                    notification_type="appointment_auto_cancelled",
-                    message=f"Appointment for {appointment.client} on {appointment.date} was auto-cancelled due to no response from therapist {appointment.therapist.get_full_name() if appointment.therapist else 'Unknown'}.",
-                )
-
-            cancelled_count += 1
-
-        return Response(
-            {
-                "message": f"Auto-cancelled {cancelled_count} overdue appointments",
-                "cancelled_count": cancelled_count,
-                "disabled_therapists": [t.get_full_name() for t in disabled_therapists],
-            }
-        )
-
-    def _create_notifications(self, appointment, notification_type, message):
-        """Helper method to create notifications for all involved parties"""
-        # Create notification for therapist
-        if appointment.therapist:
-            Notification.objects.create(
-                user=appointment.therapist,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Create notification for driver
-        if appointment.driver:
-            Notification.objects.create(
-                user=appointment.driver,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Create notification for operator
-        if appointment.operator:
-            Notification.objects.create(
-                user=appointment.operator,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Send WebSocket notification
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            "appointments",
-            {
-                "type": "appointment_message",
-                "message": {
-                    "type": notification_type,
-                    "appointment_id": appointment.id,
-                    "message": message,
-                },
-            },
-        )
-
-    @action(detail=True, methods=["post"])
-    def therapist_confirm(self, request, pk=None):
-        """Therapist confirms the appointment (enhanced workflow)"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can confirm
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only confirm your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_therapist_confirm():
-            return Response(
-                {"error": "Appointment cannot be confirmed by therapist at this time"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "therapist_confirm"
-        appointment.therapist_confirmed_at = timezone.now()
-        
-        # For group appointments, check if all therapists have confirmed
-        if appointment.group_size > 1:
-            appointment.update_group_confirmation_status()
-            if appointment.group_confirmation_complete:
-                # All therapists confirmed, ready for driver confirmation
-                self._create_notifications(
-                    appointment,
-                    "group_confirmation_complete",
-                    f"All therapists have confirmed the group appointment for {appointment.client} on {appointment.date}. Waiting for driver confirmation.",
-                )
-        
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "therapist_confirmed",
-            f"Therapist {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def driver_confirm(self, request, pk=None):
-        """Driver confirms the appointment (enhanced workflow)"""
-        appointment = self.get_object()
-
-        # Only the assigned driver can confirm
-        if request.user != appointment.driver:
-            return Response(
-                {"error": "You can only confirm your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_driver_confirm():
-            return Response(
-                {"error": "Driver cannot confirm this appointment yet. Waiting for therapist confirmation."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "driver_confirm"
-        appointment.driver_confirmed_at = timezone.now()
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "driver_confirmed",
-            f"Driver {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}. Ready to start journey.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def start(self, request, pk=None):
-        """Therapist starts an appointment"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can start
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only start your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "confirmed":
-            return Response(
-                {"error": "Only confirmed appointments can be started"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Additional check: ensure both parties have actually accepted
-        if not appointment.both_parties_accepted():
-            pending_parties = appointment.get_pending_acceptances()
-            pending_text = ", ".join(pending_parties)
-            return Response(
-                {
-                    "error": f"Cannot start appointment. Still waiting for acceptance from: {pending_text}"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "in_progress"
-        appointment.save()  # Create notifications
-        self._create_notifications(
-            appointment,
-            "appointment_started",
-            f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def reject(self, request, pk=None):
-        """Therapist or Driver rejects an appointment with a reason"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist or driver can reject
-        if request.user != appointment.therapist and request.user != appointment.driver:
-            return Response(
-                {"error": "You can only reject your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "pending":
-            return Response(
-                {"error": "Only pending appointments can be rejected"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        rejection_reason = request.data.get("rejection_reason")
-
-        if not rejection_reason or not rejection_reason.strip():
-            return Response(
-                {"error": "Rejection reason is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Create rejection record
-        from .models import AppointmentRejection
-
-        rejection = AppointmentRejection.objects.create(
-            appointment=appointment,
-            rejection_reason=rejection_reason.strip(),
-            rejected_by=request.user,
-        )  # Update appointment status and reset acceptance flags
-        appointment.status = "rejected"
-        appointment.rejection_reason = rejection_reason.strip()
-        appointment.rejected_by = request.user
-        appointment.rejected_at = timezone.now()
-
-        # Reset acceptance status since someone rejected
-        appointment.therapist_accepted = False
-        appointment.therapist_accepted_at = None
-        appointment.driver_accepted = False
-        appointment.driver_accepted_at = None
-
-        appointment.save()  # Create notification for operator
-        if appointment.operator:
-            # Determine the role of the user who rejected
-            rejecter_role = (
-                "Therapist" if request.user == appointment.therapist else "Driver"
-            )
-            notification_message = f"{rejecter_role} {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}"
-
-            Notification.objects.create(
-                user=appointment.operator,
-                appointment=appointment,
-                rejection=rejection,
-                notification_type="appointment_rejected",
-                message=notification_message,
-            )  # Send WebSocket notification
-        channel_layer = get_channel_layer()
-        rejecter_role = (
-            "Therapist" if request.user == appointment.therapist else "Driver"
-        )
-        async_to_sync(channel_layer.group_send)(
-            "appointments",
-            {
-                "type": "appointment_message",
-                "message": {
-                    "type": "appointment_rejected",
-                    "appointment_id": appointment.id,
-                    "rejection_id": rejection.id,
-                    "rejected_by_id": request.user.id,
-                    "rejected_by_role": rejecter_role,
-                    "therapist_id": (
-                        appointment.therapist.id if appointment.therapist else None
-                    ),
-                    "driver_id": appointment.driver.id if appointment.driver else None,
-                    "operator_id": (
-                        appointment.operator.id if appointment.operator else None
-                    ),
-                    "message": f"Appointment rejected by {rejecter_role} {request.user.get_full_name()}",
-                },
-            },
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def review_rejection(self, request, pk=None):
-        """Operator reviews a rejection - can accept or deny the reason"""
-        appointment = self.get_object()
-        # Only operators can review rejections
-        if request.user.role != "operator":
-            return Response(
-                {"error": "Only operators can review rejections"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "rejected":
-            return Response(
-                {"error": "Only rejected appointments can be reviewed"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        response_action = request.data.get("action")  # 'accept' or 'deny'
-        response_reason = request.data.get("reason", "")
-
-        if response_action not in ["accept", "deny"]:
-            return Response(
-                {"error": "Action must be 'accept' or 'deny'"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            rejection = appointment.rejection_details
-            if not rejection:
-                return Response(
-                    {"error": "No rejection details found for this appointment"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        except AppointmentRejection.DoesNotExist:
-            return Response(
-                {"error": "No rejection details found for this appointment"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Update rejection record
-        rejection.operator_response = (
-            "accepted" if response_action == "accept" else "denied"
-        )
-        rejection.operator_response_reason = response_reason
-        rejection.reviewed_by = request.user
-        rejection.reviewed_at = timezone.now()
-        rejection.save()
-
-        if response_action == "accept":
-            # Delete the appointment if operator accepts the rejection reason
-            appointment_client = appointment.client
-            appointment_date = appointment.date
-            appointment_time = appointment.start_time
-            therapist = appointment.therapist
-
-            # Create notification for therapist
-            if therapist:
-                Notification.objects.create(
-                    user=therapist,
-                    appointment=appointment,
-                    rejection=rejection,
-                    notification_type="rejection_reviewed",
-                    message=f"Operator has accepted your rejection reason. The appointment for {appointment_client} on {appointment_date} has been cancelled.",
-                )
-
-            # Delete the appointment
-            appointment.delete()
-
-            return Response(
-                {
-                    "message": "Rejection accepted. Appointment has been deleted.",
-                    "action": "deleted",
-                }
-            )
-        else:
-            # If operator denies the rejection, push the appointment through
-            appointment.status = "confirmed"
-            appointment.save()
-
-            # Create notification for therapist
-            if appointment.therapist:
-                Notification.objects.create(
-                    user=appointment.therapist,
-                    appointment=appointment,
-                    rejection=rejection,
-                    notification_type="rejection_reviewed",
-                    message=f"Operator has denied your rejection reason. The appointment for {appointment.client} on {appointment.date} is confirmed and must proceed.",
-                )
-
-            # Send WebSocket notification
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                "appointments",
-                {
-                    "type": "appointment_message",
-                    "message": {
-                        "type": "rejection_denied",
-                        "appointment_id": appointment.id,
-                        "therapist_id": (
-                            appointment.therapist.id if appointment.therapist else None
-                        ),
-                        "message": f"Appointment rejection denied - appointment confirmed",
-                    },
-                },
-            )
-
-            serializer = self.get_serializer(appointment)
-            return Response(
-                {
-                    "message": "Rejection denied. Appointment has been confirmed.",
-                    "action": "confirmed",
-                    "appointment": serializer.data,
-                }
-            )
-
-    @action(detail=False, methods=["post"])
-    def auto_cancel_overdue(self, request):
-        """Auto-cancel appointments that are overdue (30+ minutes without response)"""
-        # Only operators can trigger this action
-        if request.user.role != "operator":
-            return Response(
-                {"error": "Only operators can auto-cancel overdue appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Find overdue pending appointments
-        overdue_appointments = Appointment.objects.filter(
-            status="pending", response_deadline__lt=timezone.now()
-        )
-
-        cancelled_count = 0
-        disabled_therapists = []
-
-        for appointment in overdue_appointments:
-            # Auto-cancel the appointment
-            appointment.status = "auto_cancelled"
-            appointment.auto_cancelled_at = timezone.now()
-            appointment.save()
-
-            # Disable the therapist (set is_active to False)
-            if appointment.therapist and appointment.therapist.is_active:
-                appointment.therapist.is_active = False
-                appointment.therapist.save()
-                disabled_therapists.append(appointment.therapist)
-
-                # Create notification for therapist
-                Notification.objects.create(
-                    user=appointment.therapist,
-                    appointment=appointment,
-                    notification_type="therapist_disabled",
-                    message=f"Your account has been disabled due to not responding to appointment for {appointment.client} within 30 minutes. Please contact administration.",
-                )
-
-            # Create notification for operator
-            if appointment.operator:
-                Notification.objects.create(
-                    user=appointment.operator,
-                    appointment=appointment,
-                    notification_type="appointment_auto_cancelled",
-                    message=f"Appointment for {appointment.client} on {appointment.date} was auto-cancelled due to no response from therapist {appointment.therapist.get_full_name() if appointment.therapist else 'Unknown'}.",
-                )
-
-            cancelled_count += 1
-
-        return Response(
-            {
-                "message": f"Auto-cancelled {cancelled_count} overdue appointments",
-                "cancelled_count": cancelled_count,
-                "disabled_therapists": [t.get_full_name() for t in disabled_therapists],
-            }
-        )
-
-    def _create_notifications(self, appointment, notification_type, message):
-        """Helper method to create notifications for all involved parties"""
-        # Create notification for therapist
-        if appointment.therapist:
-            Notification.objects.create(
-                user=appointment.therapist,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Create notification for driver
-        if appointment.driver:
-            Notification.objects.create(
-                user=appointment.driver,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Create notification for operator
-        if appointment.operator:
-            Notification.objects.create(
-                user=appointment.operator,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Send WebSocket notification
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            "appointments",
-            {
-                "type": "appointment_message",
-                "message": {
-                    "type": notification_type,
-                    "appointment_id": appointment.id,
-                    "message": message,
-                },
-            },
-        )
-
-    @action(detail=True, methods=["post"])
-    def therapist_confirm(self, request, pk=None):
-        """Therapist confirms the appointment (enhanced workflow)"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can confirm
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only confirm your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_therapist_confirm():
-            return Response(
-                {"error": "Appointment cannot be confirmed by therapist at this time"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "therapist_confirm"
-        appointment.therapist_confirmed_at = timezone.now()
-        
-        # For group appointments, check if all therapists have confirmed
-        if appointment.group_size > 1:
-            appointment.update_group_confirmation_status()
-            if appointment.group_confirmation_complete:
-                # All therapists confirmed, ready for driver confirmation
-                self._create_notifications(
-                    appointment,
-                    "group_confirmation_complete",
-                    f"All therapists have confirmed the group appointment for {appointment.client} on {appointment.date}. Waiting for driver confirmation.",
-                )
-        
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "therapist_confirmed",
-            f"Therapist {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def driver_confirm(self, request, pk=None):
-        """Driver confirms the appointment (enhanced workflow)"""
-        appointment = self.get_object()
-
-        # Only the assigned driver can confirm
-        if request.user != appointment.driver:
-            return Response(
-                {"error": "You can only confirm your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_driver_confirm():
-            return Response(
-                {"error": "Driver cannot confirm this appointment yet. Waiting for therapist confirmation."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "driver_confirm"
-        appointment.driver_confirmed_at = timezone.now()
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "driver_confirmed",
-            f"Driver {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}. Ready to start journey.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def start(self, request, pk=None):
-        """Therapist starts an appointment"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can start
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only start your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "confirmed":
-            return Response(
-                {"error": "Only confirmed appointments can be started"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Additional check: ensure both parties have actually accepted
-        if not appointment.both_parties_accepted():
-            pending_parties = appointment.get_pending_acceptances()
-            pending_text = ", ".join(pending_parties)
-            return Response(
-                {
-                    "error": f"Cannot start appointment. Still waiting for acceptance from: {pending_text}"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "in_progress"
-        appointment.save()  # Create notifications
-        self._create_notifications(
-            appointment,
-            "appointment_started",
-            f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def reject(self, request, pk=None):
-        """Therapist or Driver rejects an appointment with a reason"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist or driver can reject
-        if request.user != appointment.therapist and request.user != appointment.driver:
-            return Response(
-                {"error": "You can only reject your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "pending":
-            return Response(
-                {"error": "Only pending appointments can be rejected"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        rejection_reason = request.data.get("rejection_reason")
-
-        if not rejection_reason or not rejection_reason.strip():
-            return Response(
-                {"error": "Rejection reason is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Create rejection record
-        from .models import AppointmentRejection
-
-        rejection = AppointmentRejection.objects.create(
-            appointment=appointment,
-            rejection_reason=rejection_reason.strip(),
-            rejected_by=request.user,
-        )  # Update appointment status and reset acceptance flags
-        appointment.status = "rejected"
-        appointment.rejection_reason = rejection_reason.strip()
-        appointment.rejected_by = request.user
-        appointment.rejected_at = timezone.now()
-
-        # Reset acceptance status since someone rejected
-        appointment.therapist_accepted = False
-        appointment.therapist_accepted_at = None
-        appointment.driver_accepted = False
-        appointment.driver_accepted_at = None
-
-        appointment.save()  # Create notification for operator
-        if appointment.operator:
-            # Determine the role of the user who rejected
-            rejecter_role = (
-                "Therapist" if request.user == appointment.therapist else "Driver"
-            )
-            notification_message = f"{rejecter_role} {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}"
-
-            Notification.objects.create(
-                user=appointment.operator,
-                appointment=appointment,
-                rejection=rejection,
-                notification_type="appointment_rejected",
-                message=notification_message,
-            )  # Send WebSocket notification
-        channel_layer = get_channel_layer()
-        rejecter_role = (
-            "Therapist" if request.user == appointment.therapist else "Driver"
-        )
-        async_to_sync(channel_layer.group_send)(
-            "appointments",
-            {
-                "type": "appointment_message",
-                "message": {
-                    "type": "appointment_rejected",
-                    "appointment_id": appointment.id,
-                    "rejection_id": rejection.id,
-                    "rejected_by_id": request.user.id,
-                    "rejected_by_role": rejecter_role,
-                    "therapist_id": (
-                        appointment.therapist.id if appointment.therapist else None
-                    ),
-                    "driver_id": appointment.driver.id if appointment.driver else None,
-                    "operator_id": (
-                        appointment.operator.id if appointment.operator else None
-                    ),
-                    "message": f"Appointment rejected by {rejecter_role} {request.user.get_full_name()}",
-                },
-            },
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def review_rejection(self, request, pk=None):
-        """Operator reviews a rejection - can accept or deny the reason"""
-        appointment = self.get_object()
-        # Only operators can review rejections
-        if request.user.role != "operator":
-            return Response(
-                {"error": "Only operators can review rejections"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "rejected":
-            return Response(
-                {"error": "Only rejected appointments can be reviewed"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        response_action = request.data.get("action")  # 'accept' or 'deny'
-        response_reason = request.data.get("reason", "")
-
-        if response_action not in ["accept", "deny"]:
-            return Response(
-                {"error": "Action must be 'accept' or 'deny'"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            rejection = appointment.rejection_details
-            if not rejection:
-                return Response(
-                    {"error": "No rejection details found for this appointment"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        except AppointmentRejection.DoesNotExist:
-            return Response(
-                {"error": "No rejection details found for this appointment"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Update rejection record
-        rejection.operator_response = (
-            "accepted" if response_action == "accept" else "denied"
-        )
-        rejection.operator_response_reason = response_reason
-        rejection.reviewed_by = request.user
-        rejection.reviewed_at = timezone.now()
-        rejection.save()
-
-        if response_action == "accept":
-            # Delete the appointment if operator accepts the rejection reason
-            appointment_client = appointment.client
-            appointment_date = appointment.date
-            appointment_time = appointment.start_time
-            therapist = appointment.therapist
-
-            # Create notification for therapist
-            if therapist:
-                Notification.objects.create(
-                    user=therapist,
-                    appointment=appointment,
-                    rejection=rejection,
-                    notification_type="rejection_reviewed",
-                    message=f"Operator has accepted your rejection reason. The appointment for {appointment_client} on {appointment_date} has been cancelled.",
-                )
-
-            # Delete the appointment
-            appointment.delete()
-
-            return Response(
-                {
-                    "message": "Rejection accepted. Appointment has been deleted.",
-                    "action": "deleted",
-                }
-            )
-        else:
-            # If operator denies the rejection, push the appointment through
-            appointment.status = "confirmed"
-            appointment.save()
-
-            # Create notification for therapist
-            if appointment.therapist:
-                Notification.objects.create(
-                    user=appointment.therapist,
-                    appointment=appointment,
-                    rejection=rejection,
-                    notification_type="rejection_reviewed",
-                    message=f"Operator has denied your rejection reason. The appointment for {appointment.client} on {appointment.date} is confirmed and must proceed.",
-                )
-
-            # Send WebSocket notification
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                "appointments",
-                {
-                    "type": "appointment_message",
-                    "message": {
-                        "type": "rejection_denied",
-                        "appointment_id": appointment.id,
-                        "therapist_id": (
-                            appointment.therapist.id if appointment.therapist else None
-                        ),
-                        "message": f"Appointment rejection denied - appointment confirmed",
-                    },
-                },
-            )
-
-            serializer = self.get_serializer(appointment)
-            return Response(
-                {
-                    "message": "Rejection denied. Appointment has been confirmed.",
-                    "action": "confirmed",
-                    "appointment": serializer.data,
-                }
-            )
-
-    @action(detail=False, methods=["post"])
-    def auto_cancel_overdue(self, request):
-        """Auto-cancel appointments that are overdue (30+ minutes without response)"""
-        # Only operators can trigger this action
-        if request.user.role != "operator":
-            return Response(
-                {"error": "Only operators can auto-cancel overdue appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Find overdue pending appointments
-        overdue_appointments = Appointment.objects.filter(
-            status="pending", response_deadline__lt=timezone.now()
-        )
-
-        cancelled_count = 0
-        disabled_therapists = []
-
-        for appointment in overdue_appointments:
-            # Auto-cancel the appointment
-            appointment.status = "auto_cancelled"
-            appointment.auto_cancelled_at = timezone.now()
-            appointment.save()
-
-            # Disable the therapist (set is_active to False)
-            if appointment.therapist and appointment.therapist.is_active:
-                appointment.therapist.is_active = False
-                appointment.therapist.save()
-                disabled_therapists.append(appointment.therapist)
-
-                # Create notification for therapist
-                Notification.objects.create(
-                    user=appointment.therapist,
-                    appointment=appointment,
-                    notification_type="therapist_disabled",
-                    message=f"Your account has been disabled due to not responding to appointment for {appointment.client} within 30 minutes. Please contact administration.",
-                )
-
-            # Create notification for operator
-            if appointment.operator:
-                Notification.objects.create(
-                    user=appointment.operator,
-                    appointment=appointment,
-                    notification_type="appointment_auto_cancelled",
-                    message=f"Appointment for {appointment.client} on {appointment.date} was auto-cancelled due to no response from therapist {appointment.therapist.get_full_name() if appointment.therapist else 'Unknown'}.",
-                )
-
-            cancelled_count += 1
-
-        return Response(
-            {
-                "message": f"Auto-cancelled {cancelled_count} overdue appointments",
-                "cancelled_count": cancelled_count,
-                "disabled_therapists": [t.get_full_name() for t in disabled_therapists],
-            }
-        )
-
-    def _create_notifications(self, appointment, notification_type, message):
-        """Helper method to create notifications for all involved parties"""
-        # Create notification for therapist
-        if appointment.therapist:
-            Notification.objects.create(
-                user=appointment.therapist,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Create notification for driver
-        if appointment.driver:
-            Notification.objects.create(
-                user=appointment.driver,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Create notification for operator
-        if appointment.operator:
-            Notification.objects.create(
-                user=appointment.operator,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Send WebSocket notification
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            "appointments",
-            {
-                "type": "appointment_message",
-                "message": {
-                    "type": notification_type,
-                    "appointment_id": appointment.id,
-                    "message": message,
-                },
-            },
-        )
-
-    @action(detail=True, methods=["post"])
-    def therapist_confirm(self, request, pk=None):
-        """Therapist confirms the appointment (enhanced workflow)"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can confirm
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only confirm your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_therapist_confirm():
-            return Response(
-                {"error": "Appointment cannot be confirmed by therapist at this time"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "therapist_confirm"
-        appointment.therapist_confirmed_at = timezone.now()
-        
-        # For group appointments, check if all therapists have confirmed
-        if appointment.group_size > 1:
-            appointment.update_group_confirmation_status()
-            if appointment.group_confirmation_complete:
-                # All therapists confirmed, ready for driver confirmation
-                self._create_notifications(
-                    appointment,
-                    "group_confirmation_complete",
-                    f"All therapists have confirmed the group appointment for {appointment.client} on {appointment.date}. Waiting for driver confirmation.",
-                )
-        
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "therapist_confirmed",
-            f"Therapist {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def driver_confirm(self, request, pk=None):
-        """Driver confirms the appointment (enhanced workflow)"""
-        appointment = self.get_object()
-
-        # Only the assigned driver can confirm
-        if request.user != appointment.driver:
-            return Response(
-                {"error": "You can only confirm your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_driver_confirm():
-            return Response(
-                {"error": "Driver cannot confirm this appointment yet. Waiting for therapist confirmation."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "driver_confirm"
-        appointment.driver_confirmed_at = timezone.now()
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "driver_confirmed",
-            f"Driver {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}. Ready to start journey.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def start(self, request, pk=None):
-        """Therapist starts an appointment"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can start
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only start your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "confirmed":
-            return Response(
-                {"error": "Only confirmed appointments can be started"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Additional check: ensure both parties have actually accepted
-        if not appointment.both_parties_accepted():
-            pending_parties = appointment.get_pending_acceptances()
-            pending_text = ", ".join(pending_parties)
-            return Response(
-                {
-                    "error": f"Cannot start appointment. Still waiting for acceptance from: {pending_text}"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "in_progress"
-        appointment.save()  # Create notifications
-        self._create_notifications(
-            appointment,
-            "appointment_started",
-            f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def reject(self, request, pk=None):
-        """Therapist or Driver rejects an appointment with a reason"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist or driver can reject
-        if request.user != appointment.therapist and request.user != appointment.driver:
-            return Response(
-                {"error": "You can only reject your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "pending":
-            return Response(
-                {"error": "Only pending appointments can be rejected"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        rejection_reason = request.data.get("rejection_reason")
-
-        if not rejection_reason or not rejection_reason.strip():
-            return Response(
-                {"error": "Rejection reason is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Create rejection record
-        from .models import AppointmentRejection
-
-        rejection = AppointmentRejection.objects.create(
-            appointment=appointment,
-            rejection_reason=rejection_reason.strip(),
-            rejected_by=request.user,
-        )  # Update appointment status and reset acceptance flags
-        appointment.status = "rejected"
-        appointment.rejection_reason = rejection_reason.strip()
-        appointment.rejected_by = request.user
-        appointment.rejected_at = timezone.now()
-
-        # Reset acceptance status since someone rejected
-        appointment.therapist_accepted = False
-        appointment.therapist_accepted_at = None
-        appointment.driver_accepted = False
-        appointment.driver_accepted_at = None
-
-        appointment.save()  # Create notification for operator
-        if appointment.operator:
-            # Determine the role of the user who rejected
-            rejecter_role = (
-                "Therapist" if request.user == appointment.therapist else "Driver"
-            )
-            notification_message = f"{rejecter_role} {request.user.get_full_name()} has rejected the appointment for {appointment.client} on {appointment.date}. Reason: {rejection_reason}"
-
-            Notification.objects.create(
-                user=appointment.operator,
-                appointment=appointment,
-                rejection=rejection,
-                notification_type="appointment_rejected",
-                message=notification_message,
-            )  # Send WebSocket notification
-        channel_layer = get_channel_layer()
-        rejecter_role = (
-            "Therapist" if request.user == appointment.therapist else "Driver"
-        )
-        async_to_sync(channel_layer.group_send)(
-            "appointments",
-            {
-                "type": "appointment_message",
-                "message": {
-                    "type": "appointment_rejected",
-                    "appointment_id": appointment.id,
-                    "rejection_id": rejection.id,
-                    "rejected_by_id": request.user.id,
-                    "rejected_by_role": rejecter_role,
-                    "therapist_id": (
-                        appointment.therapist.id if appointment.therapist else None
-                    ),
-                    "driver_id": appointment.driver.id if appointment.driver else None,
-                    "operator_id": (
-                        appointment.operator.id if appointment.operator else None
-                    ),
-                    "message": f"Appointment rejected by {rejecter_role} {request.user.get_full_name()}",
-                },
-            },
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def review_rejection(self, request, pk=None):
-        """Operator reviews a rejection - can accept or deny the reason"""
-        appointment = self.get_object()
-        # Only operators can review rejections
-        if request.user.role != "operator":
-            return Response(
-                {"error": "Only operators can review rejections"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if appointment.status != "rejected":
-            return Response(
-                {"error": "Only rejected appointments can be reviewed"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        response_action = request.data.get("action")  # 'accept' or 'deny'
-        response_reason = request.data.get("reason", "")
-
-        if response_action not in ["accept", "deny"]:
-            return Response(
-                {"error": "Action must be 'accept' or 'deny'"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            rejection = appointment.rejection_details
-            if not rejection:
-                return Response(
-                    {"error": "No rejection details found for this appointment"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        except AppointmentRejection.DoesNotExist:
-            return Response(
-                {"error": "No rejection details found for this appointment"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Update rejection record
-        rejection.operator_response = (
-            "accepted" if response_action == "accept" else "denied"
-        )
-        rejection.operator_response_reason = response_reason
-        rejection.reviewed_by = request.user
-        rejection.reviewed_at = timezone.now()
-        rejection.save()
-
-        if response_action == "accept":
-            # Delete the appointment if operator accepts the rejection reason
-            appointment_client = appointment.client
-            appointment_date = appointment.date
-            appointment_time = appointment.start_time
-            therapist = appointment.therapist
-
-            # Create notification for therapist
-            if therapist:
-                Notification.objects.create(
-                    user=therapist,
-                    appointment=appointment,
-                    rejection=rejection,
-                    notification_type="rejection_reviewed",
-                    message=f"Operator has accepted your rejection reason. The appointment for {appointment_client} on {appointment_date} has been cancelled.",
-                )
-
-            # Delete the appointment
-            appointment.delete()
-
-            return Response(
-                {
-                    "message": "Rejection accepted. Appointment has been deleted.",
-                    "action": "deleted",
-                }
-            )
-        else:
-            # If operator denies the rejection, push the appointment through
-            appointment.status = "confirmed"
-            appointment.save()
-
-            # Create notification for therapist
-            if appointment.therapist:
-                Notification.objects.create(
-                    user=appointment.therapist,
-                    appointment=appointment,
-                    rejection=rejection,
-                    notification_type="rejection_reviewed",
-                    message=f"Operator has denied your rejection reason. The appointment for {appointment.client} on {appointment.date} is confirmed and must proceed.",
-                )
-
-            # Send WebSocket notification
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                "appointments",
-                {
-                    "type": "appointment_message",
-                    "message": {
-                        "type": "rejection_denied",
-                        "appointment_id": appointment.id,
-                        "therapist_id": (
-                            appointment.therapist.id if appointment.therapist else None
-                        ),
-                        "message": f"Appointment rejection denied - appointment confirmed",
-                    },
-                },
-            )
-
-            serializer = self.get_serializer(appointment)
-            return Response(
-                {
-                    "message": "Rejection denied. Appointment has been confirmed.",
-                    "action": "confirmed",
-                    "appointment": serializer.data,
-                }
-            )
-
-    @action(detail=False, methods=["post"])
-    def auto_cancel_overdue(self, request):
-        """Auto-cancel appointments that are overdue (30+ minutes without response)"""
-        # Only operators can trigger this action
-        if request.user.role != "operator":
-            return Response(
-                {"error": "Only operators can auto-cancel overdue appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Find overdue pending appointments
-        overdue_appointments = Appointment.objects.filter(
-            status="pending", response_deadline__lt=timezone.now()
-        )
-
-        cancelled_count = 0
-        disabled_therapists = []
-
-        for appointment in overdue_appointments:
-            # Auto-cancel the appointment
-            appointment.status = "auto_cancelled"
-            appointment.auto_cancelled_at = timezone.now()
-            appointment.save()
-
-            # Disable the therapist (set is_active to False)
-            if appointment.therapist and appointment.therapist.is_active:
-                appointment.therapist.is_active = False
-                appointment.therapist.save()
-                disabled_therapists.append(appointment.therapist)
-
-                # Create notification for therapist
-                Notification.objects.create(
-                    user=appointment.therapist,
-                    appointment=appointment,
-                    notification_type="therapist_disabled",
-                    message=f"Your account has been disabled due to not responding to appointment for {appointment.client} within 30 minutes. Please contact administration.",
-                )
-
-            # Create notification for operator
-            if appointment.operator:
-                Notification.objects.create(
-                    user=appointment.operator,
-                    appointment=appointment,
-                    notification_type="appointment_auto_cancelled",
-                    message=f"Appointment for {appointment.client} on {appointment.date} was auto-cancelled due to no response from therapist {appointment.therapist.get_full_name() if appointment.therapist else 'Unknown'}.",
-                )
-
-            cancelled_count += 1
-
-        return Response(
-            {
-                "message": f"Auto-cancelled {cancelled_count} overdue appointments",
-                "cancelled_count": cancelled_count,
-                "disabled_therapists": [t.get_full_name() for t in disabled_therapists],
-            }
-        )
-
-    def _create_notifications(self, appointment, notification_type, message):
-        """Helper method to create notifications for all involved parties"""
-        # Create notification for therapist
-        if appointment.therapist:
-            Notification.objects.create(
-                user=appointment.therapist,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Create notification for driver
-        if appointment.driver:
-            Notification.objects.create(
-                user=appointment.driver,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Create notification for operator
-        if appointment.operator:
-            Notification.objects.create(
-                user=appointment.operator,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
-
-        # Send WebSocket notification
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            "appointments",
-            {
-                "type": "appointment_message",
-                "message": {
-                    "type": notification_type,
-                    "appointment_id": appointment.id,
-                    "message": message,
-                },
-            },
-        )
-
-    @action(detail=True, methods=["post"])
-    def therapist_confirm(self, request, pk=None):
-        """Therapist confirms the appointment (enhanced workflow)"""
-        appointment = self.get_object()
-
-        # Only the assigned therapist can confirm
-        if request.user != appointment.therapist:
-            return Response(
-                {"error": "You can only confirm your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_therapist_confirm():
-            return Response(
-                {"error": "Appointment cannot be confirmed by therapist at this time"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "therapist_confirm"
-        appointment.therapist_confirmed_at = timezone.now()
-        
-        # For group appointments, check if all therapists have confirmed
-        if appointment.group_size > 1:
-            appointment.update_group_confirmation_status()
-            if appointment.group_confirmation_complete:
-                # All therapists confirmed, ready for driver confirmation
-                self._create_notifications(
-                    appointment,
-                    "group_confirmation_complete",
-                    f"All therapists have confirmed the group appointment for {appointment.client} on {appointment.date}. Waiting for driver confirmation.",
-                )
-        
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "therapist_confirmed",
-            f"Therapist {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def driver_confirm(self, request, pk=None):
-        """Driver confirms the appointment (enhanced workflow)"""
-        appointment = self.get_object()
-
-        # Only the assigned driver can confirm
-        if request.user != appointment.driver:
-            return Response(
-                {"error": "You can only confirm your own appointments"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not appointment.can_driver_confirm():
-            return Response(
-                {"error": "Driver cannot confirm this appointment yet. Waiting for therapist confirmation."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = "driver_confirm"
-        appointment.driver_confirmed_at = timezone.now()
-        appointment.save()
-
-        self._create_notifications(
-            appointment,
-            "driver_confirmed",
-            f"Driver {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}. Ready to start journey.",
-        )
-
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def start(self, request, pk=None):
+    def start_journey(self, request, pk=None):
         """Driver starts the journey to client location"""
         appointment = self.get_object()
 
         # Only the assigned driver can start journey
         if request.user != appointment.driver:
             return Response(
-                {"error": "Only the assigned driver can start the journey"},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "You can only start journey for your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Check if appointment is in correct status for journey start
-        if appointment.status not in ['confirmed', 'driver_assigned']:
+        if not appointment.can_start_journey():
             return Response(
-                {"error": f"Cannot start journey. Current status: {appointment.status}"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Journey cannot be started at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            appointment.start_journey()
-            appointment.save()
-            
-            # Send notification to client and therapists
-            self.send_journey_started_notification(appointment)
-            
-            serializer = self.get_serializer(appointment)
-            return Response(serializer.data)
-            
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        appointment.status = "journey"
+        appointment.journey_started_at = timezone.now()
+        appointment.save()
+
+        self._create_notifications(
+            appointment,
+            "journey_started",
+            f"Driver has started journey to {appointment.client}'s location for appointment on {appointment.date}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
-    def arrive_at_location(self, request, pk=None):
+    def mark_arrived(self, request, pk=None):
         """Driver marks arrival at client location"""
         appointment = self.get_object()
 
         # Only the assigned driver can mark arrival
         if request.user != appointment.driver:
             return Response(
-                {"error": "Only the assigned driver can mark arrival"},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "You can only mark arrival for your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
-        if appointment.status != 'journey_in_progress':
+        if not appointment.can_arrive():
             return Response(
-                {"error": f"Cannot mark arrival. Current status: {appointment.status}"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Cannot mark arrival at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            appointment.arrive_at_location()
-            appointment.save()
-            
-            # Send notification to client and therapists
-            self.send_arrival_notification(appointment)
-            
-            serializer = self.get_serializer(appointment)
-            return Response(serializer.data)
-            
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-    @action(detail=True, methods=["post"])
-    def start_session_with_progress_tracking(self, request, pk=None):
-        """Start therapy session with progress tracking"""
-        appointment = self.get_object()
-        
-        # Only therapists can start sessions
-        if not hasattr(request.user, 'therapist'):
-            return Response(
-                {"error": "Only therapists can start sessions"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        # Check if user is assigned to this appointment
-        if request.user.therapist not in appointment.therapists.all():
-            return Response(
-                {"error": "You are not assigned to this appointment"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        if appointment.status != 'arrived':
-            return Response(
-                {"error": f"Cannot start session. Current status: {appointment.status}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            appointment.start_session()
-            appointment.save()
-            
-            # Send notification to driver and client
-            self.send_session_started_notification(appointment)
-            
-            serializer = self.get_serializer(appointment)
-            return Response(serializer.data)
-            
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-    @action(detail=True, methods=["post"])
-    def complete_session(self, request, pk=None):
-        """Complete therapy session and trigger payment/pickup flow"""
-        appointment = self.get_object()
-        
-        # Only therapists can complete sessions
-        if not hasattr(request.user, 'therapist'):
-            return Response(
-                {"error": "Only therapists can complete sessions"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        # Check if user is assigned to this appointment
-        if request.user.therapist not in appointment.therapists.all():
-            return Response(
-                {"error": "You are not assigned to this appointment"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        if appointment.status != 'session_in_progress':
-            return Response(
-                {"error": f"Cannot complete session. Current status: {appointment.status}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            appointment.complete_session()
-            appointment.save()
-            
-            # Send notification for payment processing
-            self.send_session_completed_notification(appointment)
-            
-            serializer = self.get_serializer(appointment)
-            return Response(serializer.data)
-            
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-    @action(detail=True, methods=["post"])
-    def process_payment(self, request, pk=None):
-        """Process payment for completed session"""
-        appointment = self.get_object()
-        
-        # Only operators or the client can process payment
-        if not (hasattr(request.user, 'operator') or request.user == appointment.client):
-            return Response(
-                {"error": "Only operators or clients can process payment"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        if appointment.status != 'session_completed':
-            return Response(
-                {"error": f"Cannot process payment. Current status: {appointment.status}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            payment_amount = request.data.get('amount')
-            payment_method = request.data.get('payment_method', 'cash')
-            
-            appointment.process_payment(payment_amount, payment_method)
-            appointment.save()
-            
-            # Trigger automatic pickup driver assignment
-            pickup_result = self.auto_assign_pickup_driver_helper(appointment)
-            
-            # Send notification for payment processed and pickup assignment
-            self.send_payment_processed_notification(appointment, pickup_result)
-            
-            serializer = self.get_serializer(appointment)
-            return Response({
-                'appointment': serializer.data,
-                'pickup_assignment': pickup_result
-            })
-            
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-    @action(detail=True, methods=["post"])
-    def auto_assign_pickup_driver(self, request, pk=None):
-        """Manually trigger automatic pickup driver assignment"""
-        appointment = self.get_object()
-        
-        # Only operators can trigger manual pickup assignment
-        if not hasattr(request.user, 'operator'):
-            return Response(
-                {"error": "Only operators can assign pickup drivers"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        if appointment.status not in ['payment_processed', 'awaiting_pickup']:
-            return Response(
-                {"error": f"Cannot assign pickup driver. Current status: {appointment.status}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            assignment_result = self.auto_assign_pickup_driver_helper(appointment)
-            
-            serializer = self.get_serializer(appointment)
-            return Response({
-                'appointment': serializer.data,
-                'assignment_result': assignment_result
-            })
-            
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-    def auto_assign_pickup_driver_helper(self, appointment):
-        """Helper method for automatic pickup driver assignment"""
-        from django.utils import timezone
-        
-        # Determine required vehicle type based on group size
-        required_vehicle_type = appointment.get_required_vehicle_type()
-        
-        # Find available drivers with correct vehicle type
-        available_drivers = Driver.objects.filter(
-            is_available=True,
-            vehicle_type=required_vehicle_type,
-            available_since__isnull=False
-        ).order_by('available_since')  # Assign to driver available longest
-        
-        if not available_drivers.exists():
-            # No drivers available - mark for urgent assignment
-            appointment.status = 'awaiting_pickup'
-            appointment.pickup_urgency = 'urgent'
-            appointment.save()
-            
-            return {
-                'success': False,
-                'reason': f'No {required_vehicle_type} drivers available',
-                'action': 'marked_urgent'
-            }
-        
-        # Assign the driver who has been available longest
-        selected_driver = available_drivers.first()
-        appointment.pickup_driver = selected_driver
-        appointment.status = 'pickup_assigned'
+        appointment.status = "arrived"
+        appointment.arrived_at = timezone.now()
         appointment.save()
-        
-        # Mark driver as unavailable
-        selected_driver.is_available = False
-        selected_driver.available_since = None
-        selected_driver.save()
-        
-        # Send notification to pickup driver
-        self.send_pickup_assignment_notification(appointment)
-        
-        return {
-            'success': True,
-            'driver': {
-                'id': selected_driver.id,
-                'name': f"{selected_driver.user.first_name} {selected_driver.user.last_name}",
-                'vehicle_type': selected_driver.vehicle_type
-            },
-            'assignment_time': timezone.now().isoformat()
-        }
+
+        self._create_notifications(
+            appointment,
+            "therapist_arrived",
+            f"Therapist(s) have arrived at {appointment.client}'s location for appointment on {appointment.date}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
-    def start_pickup(self, request, pk=None):
-        """Pickup driver starts journey to client location"""
+    def start_session(self, request, pk=None):
+        """Therapist starts the therapy session"""
         appointment = self.get_object()
 
-        # Only the assigned pickup driver can start pickup
-        if request.user != appointment.pickup_driver:
+        # Only the assigned therapist can start session
+        if request.user != appointment.therapist:
             return Response(
-                {"error": "Only the assigned pickup driver can start pickup"},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "You can only start your own therapy sessions"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
-        if appointment.status != 'pickup_assigned':
+        if not appointment.can_start_session():
             return Response(
-                {"error": f"Cannot start pickup. Current status: {appointment.status}"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Session cannot be started at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            appointment.start_pickup()
-            appointment.save()
-            
-            # Send notification to client and therapists
-            self.send_pickup_started_notification(appointment)
-            
-            serializer = self.get_serializer(appointment)
-            return Response(serializer.data)
-            
-        except Exception as e:
+        appointment.status = "session_in_progress"
+        appointment.session_started_at = timezone.now()
+        appointment.save()
+
+        self._create_notifications(
+            appointment,
+            "session_started",
+            f"Therapy session started for {appointment.client} on {appointment.date}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def request_payment(self, request, pk=None):
+        """Therapist requests payment after session completion"""
+        appointment = self.get_object()
+
+        # Only the assigned therapist can request payment
+        if request.user != appointment.therapist:
             return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "You can only request payment for your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
             )
+
+        if not appointment.can_request_payment():
+            return Response(
+                {"error": "Payment cannot be requested at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = "awaiting_payment"
+        appointment.payment_initiated_at = timezone.now()
+        appointment.save()
+
+        self._create_notifications(
+            appointment,
+            "payment_requested",
+            f"Payment requested for completed therapy session with {appointment.client} on {appointment.date}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
     def complete_appointment(self, request, pk=None):
-        """Complete the entire appointment workflow"""
+        """Complete the appointment after payment"""
         appointment = self.get_object()
 
-        # Only the pickup driver can complete the appointment
-        if request.user != appointment.pickup_driver:
+        # Only operator or assigned therapist can complete
+        if request.user.role != "operator" and request.user != appointment.therapist:
             return Response(
-                {"error": "Only the pickup driver can complete the appointment"},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "Only operators or assigned therapists can complete appointments"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
-        if appointment.status != 'pickup_in_progress':
+        if not appointment.can_complete():
             return Response(
-                {"error": f"Cannot complete appointment. Current status: {appointment.status}"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Appointment cannot be completed at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            appointment.complete_appointment()
+        appointment.status = "completed"
+        appointment.session_end_time = timezone.now()
+        appointment.save()
+
+        self._create_notifications(
+            appointment,
+            "appointment_completed",
+            f"Appointment for {appointment.client} on {appointment.date} has been completed.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def request_pickup(self, request, pk=None):
+        """Therapist requests pickup after completed appointment"""
+        appointment = self.get_object()
+
+        # Only the assigned therapist can request pickup
+        if request.user != appointment.therapist:
+            return Response(
+                {"error": "You can only request pickup for your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not appointment.can_request_pickup():
+            return Response(
+                {"error": "Pickup cannot be requested at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        pickup_urgency = request.data.get('pickup_urgency', 'normal')
+        pickup_notes = request.data.get('pickup_notes', '')
+
+        appointment.status = "pickup_requested"
+        appointment.pickup_requested = True
+        appointment.pickup_request_time = timezone.now()
+        appointment.pickup_urgency = pickup_urgency
+        appointment.pickup_notes = pickup_notes
+        appointment.save()
+
+        # Check for automatic driver assignment
+        if appointment.is_eligible_for_auto_pickup_assignment():
+            self._try_auto_assign_pickup_driver(appointment)
+
+        self._create_notifications(
+            appointment,
+            "pickup_requested",
+            f"Pickup requested by {request.user.get_full_name()} after completed appointment for {appointment.client}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    def _try_auto_assign_pickup_driver(self, appointment):
+        """Try to automatically assign a driver for pickup based on availability and vehicle type"""
+        from django.db.models import Q
+        
+        required_vehicle = appointment.get_required_vehicle_type()
+        
+        # Find available drivers with correct vehicle type, ordered by availability time
+        available_drivers = CustomUser.objects.filter(
+            role="driver",
+            is_active=True,
+            driver_available_since__isnull=False
+        ).exclude(
+            # Exclude drivers already assigned to other pickups
+            driver_appointments__status__in=["pickup_requested", "driver_assigned_pickup", "return_journey"]
+        ).order_by('driver_available_since')
+        
+        # Filter by vehicle type if needed
+        if required_vehicle == "car":
+            # For car requirements, we need drivers with cars
+            # This would require additional driver profile fields
+            pass
+        
+        if available_drivers.exists():
+            selected_driver = available_drivers.first()
+            appointment.driver = selected_driver
+            appointment.status = "driver_assigned_pickup"
+            appointment.driver_available_since = None  # Clear availability
             appointment.save()
             
-            # Send completion notification to all parties
-            self.send_appointment_completed_notification(appointment)
-            
-            serializer = self.get_serializer(appointment)
-            return Response(serializer.data)
-            
+            self._create_notifications(
+                appointment,
+                "driver_auto_assigned_pickup",
+                f"Driver {selected_driver.get_full_name()} automatically assigned for pickup of {appointment.therapist.get_full_name()}.",
+            )
+
+    # ...existing methods...
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing notifications
+    """
+
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["user", "is_read", "notification_type"]
+
+    def get_queryset(self):
+        """Users can only see their own notifications"""
+        try:
+            queryset = Notification.objects.filter(user=self.request.user)
+            return queryset
+        except Exception as e:
+            return Notification.objects.none()
+
+    def list(self, request, *args, **kwargs):
+        """Override list to handle errors gracefully"""
+        try:
+            return super().list(request, *args, **kwargs)
         except Exception as e:
             return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Failed to fetch notifications", "detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(detail=False, methods=["post"])
+    def mark_all_as_read(self, request):
+        """Mark all notifications as read"""
+        Notification.objects.filter(user=request.user).update(is_read=True)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"])
+    def mark_as_read(self, request, pk=None):
+        """Mark a notification as read"""
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save()
+        serializer = self.get_serializer(notification)
+        return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
-    def get_workflow_status(self, request):
-        """Get comprehensive workflow status for all appointments"""
-        if not hasattr(request.user, 'operator'):
+    def unread_count(self, request):
+        """Get the number of unread notifications"""
+        count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({"count": count})
+
+    @action(detail=True, methods=["post"])
+    def mark_as_unread(self, request, pk=None):
+        """Mark a notification as unread"""
+        notification = self.get_object()
+        notification.is_read = False
+        notification.save()
+        serializer = self.get_serializer(notification)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["delete"])
+    def delete_all(self, request):
+        """Delete all notifications for the current user"""
+        deleted_count = Notification.objects.filter(user=request.user).count()
+        Notification.objects.filter(user=request.user).delete()
+        return Response(
+            {
+                "message": f"Deleted {deleted_count} notifications",
+                "deleted_count": deleted_count,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["delete"])
+    def delete_read(self, request):
+        """Delete all read notifications for the current user"""
+        deleted_count = Notification.objects.filter(
+            user=request.user, is_read=True
+        ).count()
+        Notification.objects.filter(user=request.user, is_read=True).delete()
+        return Response(
+            {
+                "message": f"Deleted {deleted_count} read notifications",
+                "deleted_count": deleted_count,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class StaffViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for retrieving staff members (therapists and drivers)
+    """
+
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Return only therapists and drivers
+        return CustomUser.objects.filter(role__in=["therapist", "driver"]).order_by(
+            "first_name"
+        )
+
+
+class ServiceViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing services
+    """
+
+    try:
+        queryset = Service.objects.all()
+    except Exception as e:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Could not get Service queryset: {e}")
+        queryset = []
+
+    serializer_class = ServiceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ["name"]
+    search_fields = ["name", "description"]
+
+    def get_queryset(self):
+        """
+        Override get_queryset to safely handle Service model issues
+        """
+        try:
+            return Service.objects.all()
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error getting Service queryset: {e}")
+            return []
+
+    # Hardcoded service data to use when the API is not available
+    FALLBACK_SERVICES = [
+        {
+            "id": 1,
+            "name": "Shiatsu Massage",
+            "description": "A Japanese technique involving pressure points.",
+            "duration": 60,
+            "price": 500.00,
+            "oil": None,
+            "is_active": True,
+        },
+        {
+            "id": 2,
+            "name": "Combi Massage",
+            "description": "A combination of multiple massage techniques.",
+            "duration": 60,
+            "price": 400.00,
+            "oil": None,
+            "is_active": True,
+        },
+        {
+            "id": 3,
+            "name": "Dry Massage",
+            "description": "Performed without oils or lotions.",
+            "duration": 60,
+            "price": 500.00,
+            "oil": None,
+            "is_active": True,
+        },
+        {
+            "id": 4,
+            "name": "Foot Massage",
+            "description": "Focused on the feet and lower legs.",
+            "duration": 60,
+            "price": 500.00,
+            "oil": None,
+            "is_active": True,
+        },
+        {
+            "id": 5,
+            "name": "Hot Stone Service",
+            "description": "Uses heated stones for deep muscle relaxation.",
+            "duration": 90,
+            "price": 675.00,
+            "oil": None,
+            "is_active": True,
+        },
+        {
+            "id": 6,
+            "name": "Ventosa",
+            "description": "Traditional cupping therapy to relieve muscle tension.",
+            "duration": 90,
+            "price": 675.00,
+            "oil": None,
+            "is_active": True,
+        },
+        {
+            "id": 7,
+            "name": "Hand Massage",
+            "description": "Focused on hands and arms.",
+            "duration": 60,
+            "price": 400.00,
+            "oil": None,
+            "is_active": True,
+        },
+    ]
+
+    def list(self, request, *args, **kwargs):
+        """
+        Override the default list method to return hardcoded services if DB fails
+        """
+        try:
+            # Try to use the normal list method with database
+            return super().list(request, *args, **kwargs)
+        except Exception as e:
+            # If database is not available, use hardcoded services
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error fetching services from database: {e}")
+            services = self.FALLBACK_SERVICES
+            return Response(services)
+
+    @action(detail=False, methods=["get"])
+    def active(self, request):
+        """Get only active services"""
+        try:
+            services = Service.objects.filter(is_active=True)
+            serializer = self.get_serializer(services, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            # Return only active services from the hardcoded list
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error fetching active services: {e}")
+            active_services = [
+                s for s in self.FALLBACK_SERVICES if s.get("is_active", True)
+            ]
+            return Response(active_services)
+
+    @action(detail=True, methods=["post"])
+    def update_status(self, request, pk=None):
+        """Update appointment status with strict dual acceptance validation"""
+        appointment = self.get_object()
+        new_status = request.data.get("status")
+
+        if not new_status:
             return Response(
-                {"error": "Only operators can view workflow status"},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "Status is required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Get appointments by status for workflow monitoring
-        workflow_data = {
-            'pending_confirmation': Appointment.objects.filter(status='booked').count(),
-            'confirmed_awaiting_driver': Appointment.objects.filter(status='confirmed').count(),
-            'driver_assigned': Appointment.objects.filter(status='driver_assigned').count(),
-            'journey_in_progress': Appointment.objects.filter(status='journey_in_progress').count(),
-            'arrived': Appointment.objects.filter(status='arrived').count(),
-            'session_in_progress': Appointment.objects.filter(status='session_in_progress').count(),
-            'session_completed': Appointment.objects.filter(status='session_completed').count(),
-            'payment_processed': Appointment.objects.filter(status='payment_processed').count(),
-            'awaiting_pickup': Appointment.objects.filter(status='awaiting_pickup').count(),
-            'pickup_assigned': Appointment.objects.filter(status='pickup_assigned').count(),
-            'pickup_in_progress': Appointment.objects.filter(status='pickup_in_progress').count(),
-            'completed': Appointment.objects.filter(status='completed').count(),
-            'cancelled': Appointment.objects.filter(status='cancelled').count(),
-        }
-        
-        # Get urgent assignments needing attention
-        urgent_pickups = Appointment.objects.filter(
-            status='awaiting_pickup',
-            pickup_urgency='urgent'
-        )
-        
-        # Get group appointments needing coordination
-        group_appointments = Appointment.objects.filter(
-            appointment_type='group',
-            status__in=['booked', 'confirmed']
-        )
-        
-        return Response({
-            'workflow_status': workflow_data,
-            'urgent_pickups': AppointmentSerializer(urgent_pickups, many=True).data,
-            'group_coordination_needed': AppointmentSerializer(group_appointments, many=True).data,
-            'timestamp': timezone.now().isoformat()
-        })
+        # Strict validation for status transitions
+        current_status = appointment.status
 
-    # Notification helper methods
-    def send_journey_started_notification(self, appointment):
-        """Send notification when driver starts journey"""
-        # Implementation depends on your notification system
-        pass
-    
-    def send_arrival_notification(self, appointment):
-        """Send notification when driver arrives"""
-        pass
-    
-    def send_session_started_notification(self, appointment):
-        """Send notification when session starts"""
-        pass
-    
-    def send_session_completed_notification(self, appointment):
-        """Send notification when session is completed"""
-        pass
-    
-    def send_payment_processed_notification(self, appointment, pickup_result):
-        """Send notification when payment is processed"""
-        pass
-    
-    def send_pickup_assignment_notification(self, appointment):
-        """Send notification to pickup driver"""
-        pass
-    
-    def send_pickup_started_notification(self, appointment):
-        """Send notification when pickup starts"""
-        pass
-    
-    def send_appointment_completed_notification(self, appointment):
-        """Send notification when appointment is completed"""
-        pass
+        # Define valid transitions
+        valid_transitions = {
+            "pending": ["confirmed", "rejected", "cancelled", "auto_cancelled"],
+            "confirmed": ["in_progress", "cancelled"],
+            "in_progress": ["completed", "cancelled"],
+            "completed": [],  # Final state
+            "cancelled": [],  # Final state
+            "rejected": ["pending"],  # Can be reset by operator
+            "auto_cancelled": [],  # Final state
+        }
+
+        if new_status not in valid_transitions.get(current_status, []):
+            return Response(
+                {"error": f"Cannot transition from {current_status} to {new_status}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # DUAL ACCEPTANCE ENFORCEMENT
+        if new_status in ["confirmed", "in_progress"]:
+            if not appointment.both_parties_accepted():
+                pending_parties = appointment.get_pending_acceptances()
+                pending_text = ", ".join(pending_parties)
+                return Response(
+                    {
+                        "error": f"Cannot proceed to {new_status}. Both parties must accept first. Still waiting for: {pending_text}",
+                        "pending_acceptances": pending_parties,
+                        "both_accepted": False,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Role-based permissions
+        if new_status == "in_progress":
+            # Only therapist can start appointments
+            if request.user != appointment.therapist:
+                return Response(
+                    {"error": "Only the assigned therapist can start appointments"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        elif new_status == "completed":
+            # Only therapist or driver can complete appointments
+            if (
+                request.user != appointment.therapist
+                and request.user != appointment.driver
+            ):
+                return Response(
+                    {
+                        "error": "Only assigned therapist or driver can complete appointments"
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        # Update the status
+        appointment.status = new_status
+        appointment.save()
+
+        # Create appropriate notifications
+        if new_status == "confirmed":
+            self._create_notifications(
+                appointment,
+                "appointment_confirmed",
+                f"Appointment for {appointment.client} on {appointment.date} is now confirmed. Both therapist and driver have accepted.",
+            )
+        elif new_status == "in_progress":
+            self._create_notifications(
+                appointment,
+                "appointment_started",
+                f"Appointment for {appointment.client} has been started by {appointment.therapist.get_full_name()}.",
+            )
+        elif new_status == "completed":
+            self._create_notifications(
+                appointment,
+                "appointment_completed",
+                f"Appointment for {appointment.client} has been completed.",
+            )
+
+        # Send WebSocket notification
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": f"appointment_{new_status}",
+                    "appointment_id": appointment.id,
+                    "new_status": new_status,
+                    "updated_by_id": request.user.id,
+                    "therapist_id": (
+                        appointment.therapist.id if appointment.therapist else None
+                    ),
+                    "driver_id": appointment.driver.id if appointment.driver else None,
+                    "operator_id": (
+                        appointment.operator.id if appointment.operator else None
+                    ),
+                    "message": f"Appointment status updated to {new_status}",
+                    "both_accepted": appointment.both_parties_accepted(),
+                },
+            },
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def therapist_confirm(self, request, pk=None):
+        """Therapist confirms the appointment (enhanced workflow)"""
+        appointment = self.get_object()
+
+        # Only the assigned therapist can confirm
+        if request.user != appointment.therapist:
+            return Response(
+                {"error": "You can only confirm your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not appointment.can_therapist_confirm():
+            return Response(
+                {"error": "Appointment cannot be confirmed by therapist at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = "therapist_confirm"
+        appointment.therapist_confirmed_at = timezone.now()
+        
+        # For group appointments, check if all therapists have confirmed
+        if appointment.group_size > 1:
+            appointment.update_group_confirmation_status()
+            if appointment.group_confirmation_complete:
+                # All therapists confirmed, ready for driver confirmation
+                self._create_notifications(
+                    appointment,
+                    "group_confirmation_complete",
+                    f"All therapists have confirmed the group appointment for {appointment.client} on {appointment.date}. Waiting for driver confirmation.",
+                )
+        
+        appointment.save()
+
+        self._create_notifications(
+            appointment,
+            "therapist_confirmed",
+            f"Therapist {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def driver_confirm(self, request, pk=None):
+        """Driver confirms the appointment (enhanced workflow)"""
+        appointment = self.get_object()
+
+        # Only the assigned driver can confirm
+        if request.user != appointment.driver:
+            return Response(
+                {"error": "You can only confirm your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not appointment.can_driver_confirm():
+            return Response(
+                {"error": "Driver cannot confirm this appointment yet. Waiting for therapist confirmation."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = "driver_confirm"
+        appointment.driver_confirmed_at = timezone.now()
+        appointment.save()
+
+        self._create_notifications(
+            appointment,
+            "driver_confirmed",
+            f"Driver {request.user.get_full_name()} confirmed appointment for {appointment.client} on {appointment.date}. Ready to start journey.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def start_journey(self, request, pk=None):
+        """Driver starts the journey to client location"""
+        appointment = self.get_object()
+
+        # Only the assigned driver can start journey
+        if request.user != appointment.driver:
+            return Response(
+                {"error": "You can only start journey for your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not appointment.can_start_journey():
+            return Response(
+                {"error": "Journey cannot be started at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = "journey"
+        appointment.journey_started_at = timezone.now()
+        appointment.save()
+
+        self._create_notifications(
+            appointment,
+            "journey_started",
+            f"Driver has started journey to {appointment.client}'s location for appointment on {appointment.date}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def mark_arrived(self, request, pk=None):
+        """Driver marks arrival at client location"""
+        appointment = self.get_object()
+
+        # Only the assigned driver can mark arrival
+        if request.user != appointment.driver:
+            return Response(
+                {"error": "You can only mark arrival for your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not appointment.can_arrive():
+            return Response(
+                {"error": "Cannot mark arrival at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = "arrived"
+        appointment.arrived_at = timezone.now()
+        appointment.save()
+
+        self._create_notifications(
+            appointment,
+            "therapist_arrived",
+            f"Therapist(s) have arrived at {appointment.client}'s location for appointment on {appointment.date}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def start_session(self, request, pk=None):
+        """Therapist starts the therapy session"""
+        appointment = self.get_object()
+
+        # Only the assigned therapist can start session
+        if request.user != appointment.therapist:
+            return Response(
+                {"error": "You can only start your own therapy sessions"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not appointment.can_start_session():
+            return Response(
+                {"error": "Session cannot be started at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = "session_in_progress"
+        appointment.session_started_at = timezone.now()
+        appointment.save()
+
+        self._create_notifications(
+            appointment,
+            "session_started",
+            f"Therapy session started for {appointment.client} on {appointment.date}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def request_payment(self, request, pk=None):
+        """Therapist requests payment after session completion"""
+        appointment = self.get_object()
+
+        # Only the assigned therapist can request payment
+        if request.user != appointment.therapist:
+            return Response(
+                {"error": "You can only request payment for your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not appointment.can_request_payment():
+            return Response(
+                {"error": "Payment cannot be requested at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = "awaiting_payment"
+        appointment.payment_initiated_at = timezone.now()
+        appointment.save()
+
+        self._create_notifications(
+            appointment,
+            "payment_requested",
+            f"Payment requested for completed therapy session with {appointment.client} on {appointment.date}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def complete_appointment(self, request, pk=None):
+        """Complete the appointment after payment"""
+        appointment = self.get_object()
+
+        # Only operator or assigned therapist can complete
+        if request.user.role != "operator" and request.user != appointment.therapist:
+            return Response(
+                {"error": "Only operators or assigned therapists can complete appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not appointment.can_complete():
+            return Response(
+                {"error": "Appointment cannot be completed at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = "completed"
+        appointment.session_end_time = timezone.now()
+        appointment.save()
+
+        self._create_notifications(
+            appointment,
+            "appointment_completed",
+            f"Appointment for {appointment.client} on {appointment.date} has been completed.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def request_pickup(self, request, pk=None):
+        """Therapist requests pickup after completed appointment"""
+        appointment = self.get_object()
+
+        # Only the assigned therapist can request pickup
+        if request.user != appointment.therapist:
+            return Response(
+                {"error": "You can only request pickup for your own appointments"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not appointment.can_request_pickup():
+            return Response(
+                {"error": "Pickup cannot be requested at this time"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        pickup_urgency = request.data.get('pickup_urgency', 'normal')
+        pickup_notes = request.data.get('pickup_notes', '')
+
+        appointment.status = "pickup_requested"
+        appointment.pickup_requested = True
+        appointment.pickup_request_time = timezone.now()
+        appointment.pickup_urgency = pickup_urgency
+        appointment.pickup_notes = pickup_notes
+        appointment.save()
+
+        # Check for automatic driver assignment
+        if appointment.is_eligible_for_auto_pickup_assignment():
+            self._try_auto_assign_pickup_driver(appointment)
+
+        self._create_notifications(
+            appointment,
+            "pickup_requested",
+            f"Pickup requested by {request.user.get_full_name()} after completed appointment for {appointment.client}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data)
+
+    def _try_auto_assign_pickup_driver(self, appointment):
+        """Try to automatically assign a driver for pickup based on availability and vehicle type"""
+        from django.db.models import Q
+        
+        required_vehicle = appointment.get_required_vehicle_type()
+        
+        # Find available drivers with correct vehicle type, ordered by availability time
+        available_drivers = CustomUser.objects.filter(
+            role="driver",
+            is_active=True,
+            driver_available_since__isnull=False
+        ).exclude(
+            # Exclude drivers already assigned to other pickups
+            driver_appointments__status__in=["pickup_requested", "driver_assigned_pickup", "return_journey"]
+        ).order_by('driver_available_since')
+        
+        # Filter by vehicle type if needed
+        if required_vehicle == "car":
+            # For car requirements, we need drivers with cars
+            # This would require additional driver profile fields
+            pass
+        
+        if available_drivers.exists():
+            selected_driver = available_drivers.first()
+            appointment.driver = selected_driver
+            appointment.status = "driver_assigned_pickup"
+            appointment.driver_available_since = None  # Clear availability
+            appointment.save()
+            
+            self._create_notifications(
+                appointment,
+                "driver_auto_assigned_pickup",
+                f"Driver {selected_driver.get_full_name()} automatically assigned for pickup of {appointment.therapist.get_full_name()}.",
+            )

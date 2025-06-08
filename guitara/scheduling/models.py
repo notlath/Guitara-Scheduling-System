@@ -58,37 +58,26 @@ class Appointment(models.Model):
     """Model to store appointment/booking information"""
 
     STATUS_CHOICES = [
-        # Initial booking and confirmation flow
         ("pending", "Pending"),
-        ("therapist_confirm", "Therapist Confirm"),  # Therapist has confirmed
-        ("driver_confirm", "Driver Confirm"),        # Driver has confirmed (ready to start)
-        
-        # Journey and service flow
-        ("journey", "Journey"),                      # Driver en route to client location
-        ("arrived", "Arrived"),                      # Therapist(s) arrived at client location
-        ("session_in_progress", "Session In Progress"),  # Therapy session ongoing
-        ("awaiting_payment", "Awaiting Payment"),    # Session complete, waiting for payment
-        ("completed", "Completed"),                  # Appointment fully completed
-        
-        # Pickup flow (after session completion)
-        ("pickup_requested", "Pickup Requested"),   # Therapist requests pickup
-        ("driver_assigned_pickup", "Driver Assigned for Pickup"),  # Operator assigns driver
-        ("driver_en_route_pickup", "Driver En Route for Pickup"),  # Driver going to pickup
-        ("driver_arrived_pickup", "Driver Arrived for Pickup"),    # Driver at pickup location
-        ("therapist_picked_up", "Therapist Picked Up"),            # Therapist in vehicle
-        ("return_journey", "Return Journey"),       # Returning to base/drop-off location
-        
-        # Terminal states
+        ("therapist_confirm", "Therapist Confirm"),
+        ("driver_confirm", "Driver Confirm"),
+        ("in_progress", "In Progress"),
+        ("journey", "Journey"),
+        ("arrived", "Arrived"),
+        ("dropped_off", "Dropped Off"),
+        ("session_in_progress", "Session In Progress"),
+        ("awaiting_payment", "Awaiting Payment"),
+        ("completed", "Completed"),
+        ("pickup_requested", "Pickup Requested"),
+        ("driver_assigned_pickup", "Driver Assigned for Pickup"),
+        ("return_journey", "Return Journey"),
         ("cancelled", "Cancelled"),
         ("rejected", "Rejected"),
         ("auto_cancelled", "Auto Cancelled"),
-        
         # Legacy statuses for backward compatibility
         ("confirmed", "Confirmed"),
-        ("in_progress", "In Progress"),
         ("driving_to_location", "Driver En Route"),
         ("at_location", "Driver at Location"),
-        ("dropped_off", "Dropped Off"),
         ("therapist_dropped_off", "Therapist Dropped Off"),
         ("transport_completed", "Transport Completed"),
         ("picking_up_therapists", "Picking Up Therapists"),
@@ -510,68 +499,6 @@ class Appointment(models.Model):
             timedelta()
         )
         return int(total_duration.total_seconds() / 60)
-    
-    def enforce_status_transition_rules(self, new_status):
-        """Enforce status transition rules based on workflow requirements"""
-        current_status = self.status
-        
-        # Define valid transitions
-        valid_transitions = {
-            "pending": ["therapist_confirm", "cancelled", "rejected", "auto_cancelled"],
-            "therapist_confirm": ["driver_confirm", "cancelled"],
-            "driver_confirm": ["journey", "cancelled"],
-            "journey": ["arrived", "cancelled"],
-            "arrived": ["session_in_progress", "cancelled"],
-            "session_in_progress": ["awaiting_payment"],
-            "awaiting_payment": ["completed"],
-            "completed": ["pickup_requested"],
-            "pickup_requested": ["driver_assigned_pickup"],
-            "driver_assigned_pickup": ["driver_en_route_pickup"],
-            "driver_en_route_pickup": ["driver_arrived_pickup"],
-            "driver_arrived_pickup": ["therapist_picked_up"],
-            "therapist_picked_up": ["return_journey"],
-            "return_journey": ["completed"],  # Final completion
-        }
-        
-        # Allow emergency cancellation from any non-terminal state
-        terminal_states = ["completed", "cancelled", "rejected", "auto_cancelled"]
-        if new_status == "cancelled" and current_status not in terminal_states:
-            return True
-            
-        # Check if transition is valid
-        if current_status in valid_transitions:
-            return new_status in valid_transitions[current_status]
-        
-        # If current status not in our workflow, allow transition (backward compatibility)
-        return True
-    
-    def get_next_required_confirmations(self):
-        """Get list of who needs to confirm next in the workflow"""
-        required = []
-        
-        if self.status == "pending":
-            if self.group_size > 1:
-                # For group appointments, check individual therapist confirmations
-                for therapist in self.therapists.all():
-                    if not self.therapist_confirmed_at:  # Simplified check
-                        required.append(f"Therapist {therapist.get_full_name()}")
-            else:
-                if not self.therapist_confirmed_at:
-                    required.append(f"Therapist {self.therapist.get_full_name() if self.therapist else 'TBD'}")
-        
-        elif self.status == "therapist_confirm":
-            if self.driver and not self.driver_confirmed_at:
-                required.append(f"Driver {self.driver.get_full_name()}")
-        
-        return required
-    
-    def is_group_appointment(self):
-        """Check if this is a group appointment (multiple therapists)"""
-        return self.group_size > 1 or self.therapists.count() > 1
-    
-    def get_display_vehicle_type(self):
-        """Get human-readable vehicle type requirement"""
-        return "🚗 Company Car" if self.get_required_vehicle_type() == "car" else "🏍️ Motorcycle"
 
 
 class AppointmentRejection(models.Model):
