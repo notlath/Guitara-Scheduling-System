@@ -9,16 +9,14 @@ import {
   fetchStaffMembers,
   updateAppointment,
 } from "../../features/scheduling/schedulingSlice";
-import {
-  LoadingSpinner,
-  LoadingButton,
-  FormLoadingOverlay,
-  InlineLoader,
-  OptimisticIndicator,
-  SkeletonLoader
-} from "../common/LoadingComponents";
 import "../../styles/AppointmentForm.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
+import {
+  FormLoadingOverlay,
+  LoadingButton,
+  LoadingSpinner,
+  OptimisticIndicator,
+} from "../common/LoadingComponents";
 
 // Fallback data for therapists and drivers in case API calls fail
 const FALLBACK_THERAPISTS = [
@@ -69,7 +67,9 @@ const AppointmentForm = ({
     client: "",
     services: "", // Changed from array to string for single service selection
     therapist: "",
+    therapists: [], // For multi-therapist booking
     driver: "",
+    multipleTherapists: false, // Checkbox for multiple therapist option
     date: selectedDate
       ? (() => {
           try {
@@ -143,7 +143,8 @@ const AppointmentForm = ({
     // If we have specifically fetched available therapists based on date/time, use those
     if (
       fetchedAvailableTherapists &&
-      Array.isArray(fetchedAvailableTherapists)
+      Array.isArray(fetchedAvailableTherapists) &&
+      fetchedAvailableTherapists.length > 0
     ) {
       console.log(
         "Using fetched available therapists:",
@@ -159,19 +160,21 @@ const AppointmentForm = ({
       !availabilityParams.start_time ||
       !availabilityParams.services
     ) {
-      return staffMembers?.length > 0
-        ? staffMembers.filter(
-            (member) =>
-              member.role === "therapist" || member.role === "Therapist"
-          )
-        : import.meta.env.DEV
-        ? FALLBACK_THERAPISTS
-        : [];
+      const therapistStaff =
+        staffMembers?.length > 0
+          ? staffMembers.filter(
+              (member) =>
+                member.role === "therapist" || member.role === "Therapist"
+            )
+          : [];
+
+      // If no staff members available, use fallback data
+      return therapistStaff.length > 0 ? therapistStaff : FALLBACK_THERAPISTS;
     }
 
-    // If we have date/time/service but no fetched results, return empty array
-    // This means no therapists are available for the selected time
-    return [];
+    // If we have date/time/service but no fetched results or empty results, use fallback
+    // This means no therapists are available for the selected time or API failed
+    return FALLBACK_THERAPISTS;
   }, [
     staffMembers,
     fetchedAvailableTherapists,
@@ -183,7 +186,11 @@ const AppointmentForm = ({
   // Update the availableDrivers memo similarly
   const availableDrivers = useMemo(() => {
     // If we have specifically fetched available drivers based on date/time, use those
-    if (fetchedAvailableDrivers && Array.isArray(fetchedAvailableDrivers)) {
+    if (
+      fetchedAvailableDrivers &&
+      Array.isArray(fetchedAvailableDrivers) &&
+      fetchedAvailableDrivers.length > 0
+    ) {
       console.log("Using fetched available drivers:", fetchedAvailableDrivers);
       return fetchedAvailableDrivers;
     }
@@ -194,17 +201,19 @@ const AppointmentForm = ({
       !availabilityParams.start_time ||
       !availabilityParams.services
     ) {
-      return staffMembers?.length > 0
-        ? staffMembers.filter(
-            (member) => member.role === "driver" || member.role === "Driver"
-          )
-        : import.meta.env.DEV
-        ? FALLBACK_DRIVERS
-        : [];
+      const driverStaff =
+        staffMembers?.length > 0
+          ? staffMembers.filter(
+              (member) => member.role === "driver" || member.role === "Driver"
+            )
+          : [];
+
+      // If no staff members available, use fallback data
+      return driverStaff.length > 0 ? driverStaff : FALLBACK_DRIVERS;
     }
 
-    // If we have date/time/service but no fetched results, return empty array
-    return [];
+    // If we have date/time/service but no fetched results or empty results, use fallback
+    return FALLBACK_DRIVERS;
   }, [
     staffMembers,
     fetchedAvailableDrivers,
@@ -263,8 +272,19 @@ const AppointmentForm = ({
         ? availableTherapists
         : "Empty",
       availableDrivers: availableDrivers?.length ? availableDrivers : "Empty",
+      multipleTherapists: formData.multipleTherapists,
+      selectedTherapist: formData.therapist,
+      selectedTherapists: formData.therapists,
     });
-  }, [clients, services, availableTherapists, availableDrivers]);
+  }, [
+    clients,
+    services,
+    availableTherapists,
+    availableDrivers,
+    formData.multipleTherapists,
+    formData.therapist,
+    formData.therapists,
+  ]);
 
   // Fetch clients and services when component mounts
   useEffect(() => {
@@ -483,7 +503,26 @@ const AppointmentForm = ({
   }, [selectedTime, formData.start_time]);
 
   const handleChange = useCallback((e) => {
-    const { name, value, type, options } = e.target;
+    const { name, value, type, checked, options } = e.target;
+
+    // Handle checkbox inputs
+    if (type === "checkbox") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: checked,
+      }));
+
+      // Clear therapists array when switching from multi to single mode
+      if (name === "multipleTherapists" && !checked) {
+        setFormData((prev) => ({
+          ...prev,
+          therapists: [],
+          therapist: "", // Reset single therapist selection
+        }));
+      }
+
+      return;
+    }
 
     // Handle multi-select for services
     if (name === "services" && type === "select-multiple") {
@@ -494,6 +533,17 @@ const AppointmentForm = ({
       setFormData((prev) => ({
         ...prev,
         [name]: selectedOptions,
+      }));
+    }
+    // Handle multi-select for therapists
+    else if (name === "therapists" && type === "select-multiple") {
+      const selectedTherapists = Array.from(options)
+        .filter((option) => option.selected)
+        .map((option) => Number(option.value));
+
+      setFormData((prev) => ({
+        ...prev,
+        therapists: selectedTherapists,
       }));
     } else {
       // Sanitize input before setting it in state (use lighter sanitization for better UX)
@@ -527,7 +577,16 @@ const AppointmentForm = ({
 
     if (!formData.client) newErrors.client = "Client is required";
     if (!formData.services) newErrors.services = "Service is required";
-    if (!formData.therapist) newErrors.therapist = "Therapist is required";
+
+    // Validate therapist selection based on mode
+    if (formData.multipleTherapists) {
+      if (!formData.therapists || formData.therapists.length === 0) {
+        newErrors.therapists = "At least one therapist is required";
+      }
+    } else {
+      if (!formData.therapist) newErrors.therapist = "Therapist is required";
+    }
+
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.start_time) newErrors.start_time = "Start time is required";
     if (!formData.location) newErrors.location = "Location is required";
@@ -542,15 +601,26 @@ const AppointmentForm = ({
   const sanitizeDataForApi = useCallback((data) => {
     const result = { ...data };
 
-    // Ensure therapist is an integer, not an array
-    if (Array.isArray(result.therapist)) {
-      result.therapist =
-        result.therapist.length > 0 ? parseInt(result.therapist[0], 10) : null;
-    } else if (
-      typeof result.therapist === "string" &&
-      result.therapist.trim() !== ""
-    ) {
-      result.therapist = parseInt(result.therapist, 10);
+    // Handle single therapist
+    if (result.therapist) {
+      if (Array.isArray(result.therapist)) {
+        result.therapist =
+          result.therapist.length > 0
+            ? parseInt(result.therapist[0], 10)
+            : null;
+      } else if (
+        typeof result.therapist === "string" &&
+        result.therapist.trim() !== ""
+      ) {
+        result.therapist = parseInt(result.therapist, 10);
+      }
+    }
+
+    // Handle multiple therapists
+    if (result.therapists && Array.isArray(result.therapists)) {
+      result.therapists = result.therapists
+        .map((t) => (typeof t === "number" ? t : parseInt(t, 10)))
+        .filter((t) => !isNaN(t));
     }
 
     // Ensure services is an array of integers
@@ -608,12 +678,18 @@ const AppointmentForm = ({
       const sanitizedFormData = {
         client: parseInt(formData.client, 10) || null,
         services: formData.services ? [parseInt(formData.services, 10)] : [],
-        therapist: parseInt(formData.therapist, 10) || null,
+        therapist: formData.multipleTherapists
+          ? null
+          : parseInt(formData.therapist, 10) || null,
+        therapists: formData.multipleTherapists
+          ? formData.therapists || []
+          : [],
         driver: formData.driver ? parseInt(formData.driver, 10) : null,
         date: formData.date || "",
         start_time: formData.start_time || "",
         location: formData.location || "",
         notes: formData.notes || "",
+        multipleTherapists: formData.multipleTherapists || false,
       };
 
       // Log the sanitized data for debugging
@@ -648,28 +724,8 @@ const AppointmentForm = ({
         }
       }
 
-      // Pre-submission verification for therapist field
-      console.log("FINAL PRE-SUBMISSION CHECK:");
-      console.log("Therapist value:", sanitizedFormData.therapist);
-      console.log("Therapist type:", typeof sanitizedFormData.therapist);
-
-      // Force therapist to be an integer as a final safeguard
-      if (typeof sanitizedFormData.therapist !== "number") {
-        try {
-          const therapistId = parseInt(
-            String(sanitizedFormData.therapist).replace(/[^0-9]/g, ""),
-            10
-          );
-          if (!isNaN(therapistId)) {
-            console.log("Converted therapist to number:", therapistId);
-            sanitizedFormData.therapist = therapistId;
-          } else {
-            console.error("Could not convert therapist to a valid number");
-          }
-        } catch (e) {
-          console.error("Error converting therapist to number:", e);
-        }
-      }
+      // Log the sanitized data for debugging
+      console.log("Sanitized form data:", sanitizedFormData);
 
       // Prepare appointment data with required fields
       const appointmentData = {
@@ -691,6 +747,9 @@ const AppointmentForm = ({
           ? `Array of ${finalAppointmentData.services.length} items`
           : typeof finalAppointmentData.services,
         therapist: typeof finalAppointmentData.therapist,
+        therapists: Array.isArray(finalAppointmentData.therapists)
+          ? `Array of ${finalAppointmentData.therapists.length} items`
+          : typeof finalAppointmentData.therapists,
         driver: typeof finalAppointmentData.driver,
         date: typeof finalAppointmentData.date,
         start_time: typeof finalAppointmentData.start_time,
@@ -862,10 +921,10 @@ const AppointmentForm = ({
   // Show loading only if we don't have essential form data yet
   if (!isFormReady && (loading || !services.length) && services.length === 0) {
     return (
-      <LoadingSpinner 
-        size="large" 
-        variant="primary" 
-        text="Loading appointment form..." 
+      <LoadingSpinner
+        size="large"
+        variant="primary"
+        text="Loading appointment form..."
         className="appointment-form-loading"
       />
     );
@@ -874,26 +933,33 @@ const AppointmentForm = ({
   // If we have services but form is still not ready after timeout, show form anyway
   if (!isFormReady && services.length > 0) {
     console.warn("Form forced to display despite not being ready");
-  }  return (
+  }
+  return (
     <div className="appointment-form-container">
       <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
 
       {errors.form && <div className="error-message">{errors.form}</div>}
 
       {/* Form Loading Overlay for submission */}
-      <FormLoadingOverlay 
-        show={isSubmitting} 
-        message={appointment ? "Updating appointment..." : "Creating appointment..."} 
+      <FormLoadingOverlay
+        show={isSubmitting}
+        message={
+          appointment ? "Updating appointment..." : "Creating appointment..."
+        }
       />
 
       {/* Optimistic indicator for availability fetching */}
-      <OptimisticIndicator 
-        show={fetchingAvailability} 
-        message="Checking availability..." 
+      <OptimisticIndicator
+        show={fetchingAvailability}
+        message="Checking availability..."
         position="top-right"
       />
 
-      <form onSubmit={handleSubmit} className="appointment-form" style={{ position: 'relative' }}>
+      <form
+        onSubmit={handleSubmit}
+        className="appointment-form"
+        style={{ position: "relative" }}
+      >
         <div className="form-group">
           <label htmlFor="client">Client:</label>
           <select
@@ -919,7 +985,6 @@ const AppointmentForm = ({
           </select>
           {errors.client && <div className="error-text">{errors.client}</div>}
         </div>
-
         <div className="form-group">
           <label htmlFor="services">Service:</label>
           <select
@@ -947,48 +1012,110 @@ const AppointmentForm = ({
             <div className="error-text">{errors.services}</div>
           )}
         </div>
-
+        {/* Multi-therapist option checkbox */}
         <div className="form-group">
-          <label htmlFor="therapist">Therapist:</label>
-          <select
-            id="therapist"
-            name="therapist"
-            value={formData.therapist}
-            onChange={handleChange}
-            className={errors.therapist ? "error" : ""}
-          >
-            <option value="">Select a therapist</option>            {fetchingAvailability ? (
-              <option value="" disabled>
-                <InlineLoader size="small" variant="subtle" /> Checking availability...
-              </option>
-            ) : availableTherapists && availableTherapists.length > 0 ? (
-              availableTherapists.map((therapist) => (
-                <option key={therapist.id} value={therapist.id}>
-                  {therapist.first_name || ""} {therapist.last_name || ""} - {" "}
-                  {therapist.specialization || "General"} - {" "}
-                  {therapist.massage_pressure || "Standard"}{" "}
-                  {therapist.start_time && therapist.end_time
-                    ? `(Available: ${therapist.start_time}-${therapist.end_time})`
-                    : ""}
-                </option>
-              ))
-            ) : (
-              <option value="" disabled>
-                {formData.date && formData.start_time && formData.services
-                  ? `No available therapists for selected time${
-                      import.meta.env.DEV
-                        ? " (using fallback data in development)"
-                        : ""
-                    }`
-                  : "Select date, time and service first"}
-              </option>
-            )}
-          </select>
-          {errors.therapist && (
-            <div className="error-text">{errors.therapist}</div>
-          )}
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              name="multipleTherapists"
+              checked={formData.multipleTherapists}
+              onChange={handleChange}
+            />
+            <span className="checkbox-text">
+              Book multiple therapists for this appointment
+            </span>
+          </label>
         </div>
-
+        {/* Single Therapist Selection */}
+        {!formData.multipleTherapists && (
+          <div className="form-group">
+            <label htmlFor="therapist">Therapist:</label>
+            <select
+              id="therapist"
+              name="therapist"
+              value={formData.therapist}
+              onChange={handleChange}
+              className={errors.therapist ? "error" : ""}
+            >
+              <option value="">Select a therapist</option>
+              {fetchingAvailability ? (
+                <option value="" disabled>
+                  Checking availability...
+                </option>
+              ) : availableTherapists && availableTherapists.length > 0 ? (
+                availableTherapists.map((therapist) => (
+                  <option key={therapist.id} value={therapist.id}>
+                    {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
+                    {therapist.specialization || "General"} -{" "}
+                    {therapist.massage_pressure || "Standard"}{" "}
+                    {therapist.start_time && therapist.end_time
+                      ? `(Available: ${therapist.start_time}-${therapist.end_time})`
+                      : ""}
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>
+                  {formData.date && formData.start_time && formData.services
+                    ? `No available therapists for selected time${
+                        import.meta.env.DEV
+                          ? " (using fallback data in development)"
+                          : ""
+                      }`
+                    : "Select date, time and service first"}
+                </option>
+              )}
+            </select>
+            {errors.therapist && (
+              <div className="error-text">{errors.therapist}</div>
+            )}
+          </div>
+        )}
+        {/* Multiple Therapists Selection */}
+        {formData.multipleTherapists && (
+          <div className="form-group">
+            <label htmlFor="therapists">Select Multiple Therapists:</label>
+            <select
+              id="therapists"
+              name="therapists"
+              multiple
+              value={formData.therapists}
+              onChange={handleChange}
+              className={
+                errors.therapists ? "error multi-select" : "multi-select"
+              }
+              size="5"
+            >
+              {fetchingAvailability ? (
+                <option value="" disabled>
+                  Checking availability...
+                </option>
+              ) : availableTherapists && availableTherapists.length > 0 ? (
+                availableTherapists.map((therapist) => (
+                  <option key={therapist.id} value={therapist.id}>
+                    {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
+                    {therapist.specialization || "General"} -{" "}
+                    {therapist.massage_pressure || "Standard"}{" "}
+                    {therapist.start_time && therapist.end_time
+                      ? `(Available: ${therapist.start_time}-${therapist.end_time})`
+                      : ""}
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>
+                  {formData.date && formData.start_time && formData.services
+                    ? "No available therapists for selected time"
+                    : "Select date, time and service first"}
+                </option>
+              )}
+            </select>
+            <small className="help-text">
+              Hold Ctrl (Cmd on Mac) to select multiple therapists
+            </small>
+            {errors.therapists && (
+              <div className="error-text">{errors.therapists}</div>
+            )}
+          </div>
+        )}
         <div className="form-group">
           <label htmlFor="driver">Driver (Optional):</label>
           <select
@@ -997,9 +1124,10 @@ const AppointmentForm = ({
             value={formData.driver}
             onChange={handleChange}
           >
-            <option value="">No driver needed</option>            {fetchingAvailability ? (
+            <option value="">No driver needed</option>{" "}
+            {fetchingAvailability ? (
               <option value="" disabled>
-                <InlineLoader size="small" variant="subtle" /> Checking availability...
+                Checking availability...
               </option>
             ) : availableDrivers && availableDrivers.length > 0 ? (
               availableDrivers.map((driver) => (
@@ -1024,7 +1152,6 @@ const AppointmentForm = ({
             )}
           </select>
         </div>
-
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="date">Date:</label>
@@ -1069,7 +1196,6 @@ const AppointmentForm = ({
             )}
           </div>
         </div>
-
         <div className="form-group">
           <label htmlFor="location">Location:</label>
           <input
@@ -1085,7 +1211,6 @@ const AppointmentForm = ({
             <div className="error-text">{errors.location}</div>
           )}
         </div>
-
         <div className="form-group">
           <label htmlFor="notes">Notes (Optional):</label>
           <textarea
@@ -1096,7 +1221,8 @@ const AppointmentForm = ({
             placeholder="Any special instructions or notes"
             rows="3"
           />
-        </div>        <div className="form-actions">
+        </div>{" "}
+        <div className="form-actions">
           <button
             type="button"
             className="cancel-button"

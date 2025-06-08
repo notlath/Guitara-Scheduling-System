@@ -154,6 +154,7 @@ class AppointmentRejectionSerializer(serializers.ModelSerializer):
 class AppointmentSerializer(serializers.ModelSerializer):
     client_details = ClientSerializer(source="client", read_only=True)
     therapist_details = UserSerializer(source="therapist", read_only=True)
+    therapists_details = UserSerializer(source="therapists", many=True, read_only=True)
     driver_details = UserSerializer(source="driver", read_only=True)
     operator_details = UserSerializer(source="operator", read_only=True)
     rejected_by_details = UserSerializer(source="rejected_by", read_only=True)

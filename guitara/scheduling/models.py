@@ -166,6 +166,15 @@ class Appointment(models.Model):
         null=True, blank=True, help_text="When the driver accepted the appointment"
     )
 
+    # Multiple therapists support
+    therapists = models.ManyToManyField(
+        CustomUser,
+        related_name="multi_therapist_appointments",
+        limit_choices_to={"role": "therapist"},
+        blank=True,
+        help_text="Multiple therapists for group appointments",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

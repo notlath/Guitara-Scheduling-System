@@ -125,3 +125,45 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* Multi-therapist selection styles */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.checkbox-text {
+  font-weight: 500;
+  color: #333;
+}
+
+.multi-select {
+  min-height: 120px;
+  padding: 8px;
+}
+
+.multi-select option {
+  padding: 4px 8px;
+  margin: 2px 0;
+}
+
+.help-text {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* Error state for multi-select */
+.multi-select.error {
+  border-color: #ff6b6b;
+  background-color: #fff5f5;
+}

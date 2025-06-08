@@ -20,23 +20,23 @@ const FALLBACK_SERVICES = [
     id: 1,
     name: "Swedish Massage",
     duration: 60,
-    price: 100.00,
-    description: "Relaxing full-body massage"
+    price: 100.0,
+    description: "Relaxing full-body massage",
   },
   {
     id: 2,
     name: "Deep Tissue Massage",
     duration: 90,
-    price: 150.00,
-    description: "Therapeutic deep tissue work"
+    price: 150.0,
+    description: "Therapeutic deep tissue work",
   },
   {
     id: 3,
     name: "Hot Stone Massage",
     duration: 75,
-    price: 130.00,
-    description: "Heated stone therapy massage"
-  }
+    price: 130.0,
+    description: "Heated stone therapy massage",
+  },
 ];
 
 // Helper function to handle API errors consistently
@@ -741,7 +741,10 @@ export const fetchAvailableDrivers = createAsyncThunk(
 // Assign driver to pickup request
 export const assignDriverToPickup = createAsyncThunk(
   "scheduling/assignDriverToPickup",
-  async ({ appointmentId, driverId, estimatedPickupTime }, { rejectWithValue }) => {
+  async (
+    { appointmentId, driverId, estimatedPickupTime },
+    { rejectWithValue }
+  ) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
@@ -753,7 +756,7 @@ export const assignDriverToPickup = createAsyncThunk(
           assigned_driver: driverId,
           estimated_pickup_time: estimatedPickupTime,
           status: "driver_assigned_pickup",
-          assignment_type: 'manual'
+          assignment_type: "manual",
         },
         {
           headers: { Authorization: `Token ${token}` },
@@ -765,7 +768,7 @@ export const assignDriverToPickup = createAsyncThunk(
         appointment: response.data,
         driverId,
         appointmentId,
-        estimatedPickupTime
+        estimatedPickupTime,
       });
 
       return response.data;
@@ -781,24 +784,27 @@ export const assignDriverToPickup = createAsyncThunk(
 // Update driver status with photo verification
 export const updateDriverStatusWithPhoto = createAsyncThunk(
   "scheduling/updateDriverStatusWithPhoto",
-  async ({ appointmentId, status, photo, location, notes }, { rejectWithValue }) => {
+  async (
+    { appointmentId, status, photo, location, notes },
+    { rejectWithValue }
+  ) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
     try {
       const formData = new FormData();
-      formData.append('status', status);
-      if (photo) formData.append('verification_photo', photo);
-      if (location) formData.append('location_note', location);
-      if (notes) formData.append('driver_notes', notes);
+      formData.append("status", status);
+      if (photo) formData.append("verification_photo", photo);
+      if (location) formData.append("location_note", location);
+      if (notes) formData.append("driver_notes", notes);
 
       const response = await axios.patch(
         `${API_URL}appointments/${appointmentId}/driver-status/`,
         formData,
         {
-          headers: { 
+          headers: {
             Authorization: `Token ${token}`,
-            'Content-Type': 'multipart/form-data'
+            "Content-Type": "multipart/form-data",
           },
         }
       );
@@ -810,7 +816,7 @@ export const updateDriverStatusWithPhoto = createAsyncThunk(
         status,
         hasPhoto: !!photo,
         location,
-        notes
+        notes,
       });
 
       return response.data;
@@ -826,7 +832,10 @@ export const updateDriverStatusWithPhoto = createAsyncThunk(
 // Broadcast driver availability after drop-off
 export const broadcastDriverAvailability = createAsyncThunk(
   "scheduling/broadcastDriverAvailability",
-  async ({ driverId, currentLocation, vehicleType, zone }, { rejectWithValue }) => {
+  async (
+    { driverId, currentLocation, vehicleType, zone },
+    { rejectWithValue }
+  ) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
@@ -834,11 +843,11 @@ export const broadcastDriverAvailability = createAsyncThunk(
       const response = await axios.post(
         `${API_URL}drivers/${driverId}/broadcast-availability/`,
         {
-          status: 'available_for_pickup',
+          status: "available_for_pickup",
           current_location: currentLocation,
           vehicle_type: vehicleType,
           preferred_zone: zone,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
         {
           headers: { Authorization: `Token ${token}` },
@@ -851,7 +860,7 @@ export const broadcastDriverAvailability = createAsyncThunk(
         currentLocation,
         vehicleType,
         zone,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       return response.data;
@@ -876,8 +885,8 @@ export const requestPickupAssignment = createAsyncThunk(
         `${API_URL}appointments/${appointmentId}/request-pickup/`,
         {
           ...requestDetails,
-          status: 'pickup_requested',
-          timestamp: new Date().toISOString()
+          status: "pickup_requested",
+          timestamp: new Date().toISOString(),
         },
         {
           headers: { Authorization: `Token ${token}` },
@@ -889,7 +898,7 @@ export const requestPickupAssignment = createAsyncThunk(
         appointment: response.data,
         appointmentId,
         requestDetails,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       return response.data;
@@ -943,7 +952,10 @@ export const fetchServices = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
-      console.error("fetchServices: Error", error.response?.data || error.message);
+      console.error(
+        "fetchServices: Error",
+        error.response?.data || error.message
+      );
       // Return fallback services if API fails
       return FALLBACK_SERVICES;
     }
@@ -987,8 +999,13 @@ export const fetchStaffMembers = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
-      console.error("fetchStaffMembers: Error", error.response?.data || error.message);
-      return rejectWithValue(error.response?.data || "Could not fetch staff members");
+      console.error(
+        "fetchStaffMembers: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || "Could not fetch staff members"
+      );
     }
   }
 );
@@ -996,20 +1013,23 @@ export const fetchStaffMembers = createAsyncThunk(
 // Fetch availability for specific staff and date
 export const fetchAvailability = createAsyncThunk(
   "scheduling/fetchAvailability",
-  async ({ staffId, date, forceRefresh = false }, { rejectWithValue, getState }) => {
+  async (
+    { staffId, date, forceRefresh = false },
+    { rejectWithValue, getState }
+  ) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
     const cacheKey = `${staffId}-${date}`;
     const state = getState();
-    
+
     // Check cache first unless forced refresh
     if (!forceRefresh && state.scheduling.availabilityCache[cacheKey]) {
       console.log(`📋 Using cached availability for ${cacheKey}`);
       return {
         data: state.scheduling.availabilityCache[cacheKey],
         cached: true,
-        cacheKey
+        cacheKey,
       };
     }
 
@@ -1022,16 +1042,21 @@ export const fetchAvailability = createAsyncThunk(
           },
         }
       );
-      
+
       console.log(`📋 Fetched fresh availability for ${cacheKey}`);
       return {
         data: response.data,
         cached: false,
-        cacheKey
+        cacheKey,
       };
     } catch (error) {
-      console.error("fetchAvailability: Error", error.response?.data || error.message);
-      return rejectWithValue(error.response?.data || "Could not fetch availability");
+      console.error(
+        "fetchAvailability: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || "Could not fetch availability"
+      );
     }
   }
 );
@@ -1053,16 +1078,21 @@ export const createAvailability = createAsyncThunk(
           },
         }
       );
-      
+
       // Broadcast availability creation
       syncService.broadcastWithImmediate("availability_created", {
-        availability: response.data
+        availability: response.data,
       });
-      
+
       return response.data;
     } catch (error) {
-      console.error("createAvailability: Error", error.response?.data || error.message);
-      return rejectWithValue(error.response?.data || "Could not create availability");
+      console.error(
+        "createAvailability: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || "Could not create availability"
+      );
     }
   }
 );
@@ -1084,16 +1114,21 @@ export const updateAvailability = createAsyncThunk(
           },
         }
       );
-      
+
       // Broadcast availability update
       syncService.broadcastWithImmediate("availability_updated", {
-        availability: response.data
+        availability: response.data,
       });
-      
+
       return response.data;
     } catch (error) {
-      console.error("updateAvailability: Error", error.response?.data || error.message);
-      return rejectWithValue(error.response?.data || "Could not update availability");
+      console.error(
+        "updateAvailability: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || "Could not update availability"
+      );
     }
   }
 );
@@ -1107,7 +1142,9 @@ export const deleteAvailability = createAsyncThunk(
 
     // Get availability data before deletion for sync broadcast
     const state = getState();
-    const availability = state.scheduling.availabilities.find(a => a.id === id);
+    const availability = state.scheduling.availabilities.find(
+      (a) => a.id === id
+    );
 
     try {
       await axios.delete(`${API_URL}availability/${id}/`, {
@@ -1115,20 +1152,25 @@ export const deleteAvailability = createAsyncThunk(
           Authorization: `Token ${token}`,
         },
       });
-      
+
       // Broadcast availability deletion
       if (availability) {
         syncService.broadcastWithImmediate("availability_deleted", {
           id,
           user: availability.user,
-          date: availability.date
+          date: availability.date,
         });
       }
-      
+
       return id;
     } catch (error) {
-      console.error("deleteAvailability: Error", error.response?.data || error.message);
-      return rejectWithValue(error.response?.data || "Could not delete availability");
+      console.error(
+        "deleteAvailability: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || "Could not delete availability"
+      );
     }
   }
 );
@@ -1146,18 +1188,23 @@ export const fetchNotifications = createAsyncThunk(
           Authorization: `Token ${token}`,
         },
       });
-      
+
       // Calculate unread count
       const notifications = response.data;
-      const unreadCount = notifications.filter(n => !n.is_read).length;
-      
+      const unreadCount = notifications.filter((n) => !n.is_read).length;
+
       return {
         notifications,
-        unreadCount
+        unreadCount,
       };
     } catch (error) {
-      console.error("fetchNotifications: Error", error.response?.data || error.message);
-      return rejectWithValue(error.response?.data || "Could not fetch notifications");
+      console.error(
+        "fetchNotifications: Error",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data || "Could not fetch notifications"
+      );
     }
   }
 );
@@ -1318,12 +1365,9 @@ export const deleteNotification = createAsyncThunk(
     if (!token) return rejectWithValue("Authentication required");
 
     try {
-      await axios.delete(
-        `${API_URL}notifications/${notificationId}/`,
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
-      );
+      await axios.delete(`${API_URL}notifications/${notificationId}/`, {
+        headers: { Authorization: `Token ${token}` },
+      });
       return notificationId;
     } catch (error) {
       console.error("Delete notification error:", error);

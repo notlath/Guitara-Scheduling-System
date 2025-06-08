@@ -469,9 +469,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if user.role == "operator":
             return Appointment.objects.all()
 
-        # Therapists can see their own appointments
+        # Therapists can see their own appointments (both single and multi-therapist)
         elif user.role == "therapist":
-            return Appointment.objects.filter(therapist=user)
+            from django.db.models import Q
+
+            return Appointment.objects.filter(
+                Q(therapist=user) | Q(therapists=user)
+            ).distinct()
 
         # Drivers can see their own appointments
         elif user.role == "driver":
@@ -485,8 +489,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if self.request.user.role != "operator":
             raise permissions.PermissionDenied("Only operators can create appointments")
 
-        # Set the operator to the current user
-        serializer.save(operator=self.request.user)
+        # Extract therapists data from request if present
+        therapists_data = self.request.data.get("therapists", [])
+
+        # Set the operator to the current user and save the appointment
+        appointment = serializer.save(operator=self.request.user)
+
+        # Handle multiple therapists if provided
+        if therapists_data:
+            appointment.therapists.set(therapists_data)
+            appointment.save()
 
     def perform_update(self, serializer):
         # Ensure only operators can update appointments or staff can update specific fields

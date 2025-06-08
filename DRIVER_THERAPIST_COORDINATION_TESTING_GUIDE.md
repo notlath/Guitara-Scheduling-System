@@ -1,11 +1,13 @@
 # Driver-Therapist Coordination Workflow Testing Guide
 
 ## 🎯 Overview
+
 This guide provides comprehensive instructions for testing the dynamic, efficient, and safety-focused driver-therapist coordination workflow implemented in the Guitara Scheduling Management System.
 
 ## 🚀 Starting the Development Environment
 
 ### Option 1: Using the Development Script (Recommended)
+
 ```bash
 # Navigate to project root
 cd "C:\Users\USer\Downloads\Guitara-Scheduling-System"
@@ -15,6 +17,7 @@ python start_development.py
 ```
 
 ### Option 2: Manual Setup
+
 ```bash
 # Terminal 1: Start Django Backend
 cd "C:\Users\USer\Downloads\Guitara-Scheduling-System\guitara"
@@ -28,6 +31,7 @@ npm run dev
 ## 📊 Test Users & Roles
 
 Ensure you have test users for each role:
+
 - **Driver**: Tests transport coordination, pickup assignments, photo verification
 - **Therapist**: Tests session completion, pickup requests, urgent pickup scenarios
 - **Operator**: Tests driver assignment, coordination oversight, urgent response
@@ -39,6 +43,7 @@ Ensure you have test users for each role:
 **Scenario**: Standard appointment with driver transport (Motorcycle)
 
 **Steps**:
+
 1. **Login as Operator** → Create appointment with driver assignment
 2. **Login as Driver** → Accept appointment, start driving
 3. **Driver**: Pick up therapist → Mark "Therapist Picked Up"
@@ -49,6 +54,7 @@ Ensure you have test users for each role:
 8. **Login as Driver** → Accept pickup assignment, complete transport
 
 **Expected Results**:
+
 - Real-time status updates across all dashboards
 - Driver automatically becomes available after drop-off
 - Pickup request triggers operator notifications
@@ -60,6 +66,7 @@ Ensure you have test users for each role:
 **Scenario**: Multiple therapists transported together
 
 **Steps**:
+
 1. **Operator**: Create appointment with multiple therapists + car driver
 2. **Driver**: Accept group appointment
 3. **Driver**: Start group pickup → Collect all therapists
@@ -69,6 +76,7 @@ Ensure you have test users for each role:
 7. **Operator**: Coordinate staggered pickup assignments
 
 **Expected Results**:
+
 - Group transport UI displays correctly
 - Individual therapist tracking within group
 - Staggered pickup coordination works
@@ -79,14 +87,16 @@ Ensure you have test users for each role:
 **Scenario**: Therapist needs immediate pickup
 
 **Steps**:
+
 1. **Therapist**: Complete session normally
-2. **Therapist**: Click "Request Urgent Pickup" 
+2. **Therapist**: Click "Request Urgent Pickup"
 3. **Operator**: Receive urgent notification
 4. **Operator**: Auto-assign nearest available driver
 5. **Driver**: Receive urgent pickup assignment
 6. **Driver**: Accept and complete urgent pickup
 
 **Expected Results**:
+
 - Urgent notifications prominently displayed
 - Automatic nearest driver assignment
 - Priority handling in operator dashboard
@@ -97,6 +107,7 @@ Ensure you have test users for each role:
 **Scenario**: Driver becomes available and gets reassigned
 
 **Steps**:
+
 1. **Driver A**: Complete drop-off → Broadcast availability
 2. **Therapist B**: (Different appointment) Request pickup
 3. **Operator**: See Driver A in available drivers list
@@ -104,6 +115,7 @@ Ensure you have test users for each role:
 5. **Driver A**: Accept new assignment immediately
 
 **Expected Results**:
+
 - Driver appears in available pool after drop-off
 - Zone-based proximity calculation works
 - Time estimation for pickup assignment
@@ -114,6 +126,7 @@ Ensure you have test users for each role:
 **Scenario**: Testing non-GPS manual coordination
 
 **Steps**:
+
 1. **Driver**: Use manual status updates for each stage
 2. **Operator**: Monitor time-based estimates vs actual times
 3. **Test**: Zone-based proximity calculations
@@ -121,6 +134,7 @@ Ensure you have test users for each role:
 5. **Test**: Photo verification workflow (if enabled)
 
 **Expected Results**:
+
 - Manual status updates work reliably
 - Time estimates are reasonable (zone-based)
 - Operator can track progress without GPS
@@ -129,21 +143,25 @@ Ensure you have test users for each role:
 ## 🔧 Technical Integration Tests
 
 ### 1. Real-Time Synchronization
+
 - **Test**: Status changes propagate across all open dashboards
 - **Check**: SyncService broadcasts work correctly
 - **Verify**: No data conflicts or race conditions
 
 ### 2. Redux State Management
+
 - **Test**: All async thunks execute successfully
 - **Check**: State updates are consistent
 - **Verify**: Error handling works properly
 
 ### 3. Error Handling & Recovery
+
 - **Test**: Network failures and retry logic
 - **Check**: Authentication expiry handling
 - **Verify**: Graceful degradation when services unavailable
 
 ### 4. Performance & Responsiveness
+
 - **Test**: Dashboard loading times
 - **Check**: Polling intervals are appropriate
 - **Verify**: Background updates don't disrupt UX
@@ -151,17 +169,20 @@ Ensure you have test users for each role:
 ## 🚨 Critical Test Cases
 
 ### Safety & Verification
+
 1. **Photo Verification**: Test upload and verification workflow
 2. **Status Confirmations**: Ensure all critical status changes are recorded
 3. **Time Tracking**: Verify session times and transport duration logging
 
 ### Coordination Edge Cases
+
 1. **No Available Drivers**: Test urgent pickup when no drivers available
 2. **Driver Cancellation**: Test driver canceling mid-transport
 3. **Therapist No-Show**: Test handling therapist not at pickup location
 4. **Simultaneous Requests**: Test multiple urgent pickups simultaneously
 
 ### Data Consistency
+
 1. **Cross-Dashboard Sync**: Verify data consistency across all dashboards
 2. **Status Conflicts**: Test handling conflicting status updates
 3. **Session Cleanup**: Ensure sessions complete properly in all scenarios
@@ -169,6 +190,7 @@ Ensure you have test users for each role:
 ## 📱 UI/UX Testing
 
 ### Driver Dashboard
+
 - [ ] Vehicle type selection and display
 - [ ] Group vs single transport UI differences
 - [ ] Pickup assignment notifications
@@ -176,6 +198,7 @@ Ensure you have test users for each role:
 - [ ] Time estimation displays
 
 ### Operator Dashboard
+
 - [ ] Driver coordination panel functionality
 - [ ] Available/busy driver status display
 - [ ] Urgent pickup handling interface
@@ -183,6 +206,7 @@ Ensure you have test users for each role:
 - [ ] Real-time monitoring capabilities
 
 ### Therapist Dashboard
+
 - [ ] Session completion workflow
 - [ ] Pickup request buttons and status
 - [ ] Urgent pickup request functionality
@@ -192,18 +216,21 @@ Ensure you have test users for each role:
 ## 🔍 Monitoring & Debugging
 
 ### Browser Console
+
 - Monitor for JavaScript errors
 - Check Redux action dispatching
 - Verify API call success/failure
 - Watch SyncService broadcast events
 
 ### Network Tab
+
 - Verify API endpoints respond correctly
 - Check authentication headers
 - Monitor polling frequency
 - Validate WebSocket fallback behavior
 
 ### Local Storage
+
 - Check token persistence
 - Verify user data storage
 - Monitor sync service state
@@ -211,6 +238,7 @@ Ensure you have test users for each role:
 ## 📊 Success Criteria
 
 ### Functional Requirements ✅
+
 - [x] Single/group therapist transport logic
 - [x] Dynamic driver reassignment after drop-off
 - [x] Operator-mediated, zone-based driver assignment
@@ -219,6 +247,7 @@ Ensure you have test users for each role:
 - [x] Real-time coordination and notifications
 
 ### Technical Requirements ✅
+
 - [x] Cross-dashboard real-time synchronization
 - [x] Redux state management integration
 - [x] Error handling and recovery
@@ -226,6 +255,7 @@ Ensure you have test users for each role:
 - [x] No-GPS coordination workflow
 
 ### Safety & Efficiency ✅
+
 - [x] Manual check-in and status verification
 - [x] Time-based travel estimation
 - [x] Zone-based proximity logic
@@ -244,6 +274,7 @@ Ensure you have test users for each role:
 ## 🎉 Implementation Status
 
 **COMPLETED** ✅
+
 - Complete driver-therapist coordination workflow
 - All dashboard implementations (Driver, Operator, Therapist)
 - Redux state management and async thunks

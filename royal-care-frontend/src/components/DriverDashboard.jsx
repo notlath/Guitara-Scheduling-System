@@ -16,8 +16,8 @@ import { PageLoadingState } from "./common/LoadingComponents";
 
 import LayoutRow from "../globals/LayoutRow";
 import "../globals/TabSwitcher.css";
-import "../styles/TherapistDashboard.css"; // Reuse therapist styles for consistency
 import "../styles/DriverCoordination.css";
+import "../styles/TherapistDashboard.css"; // Reuse therapist styles for consistency
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
@@ -321,7 +321,7 @@ const DriverDashboard = () => {
   };
   // Enhanced drop-off handler for dynamic coordination
   const handleDropOffComplete = async (appointmentId) => {
-    const appointment = myAppointments.find(apt => apt.id === appointmentId);
+    const appointment = myAppointments.find((apt) => apt.id === appointmentId);
     if (!appointment) return;
 
     try {
@@ -331,18 +331,18 @@ const DriverDashboard = () => {
           status: "therapist_dropped_off",
           driver_available_for_next: true,
           drop_off_location: appointment.location,
-          drop_off_timestamp: new Date().toISOString()
+          drop_off_timestamp: new Date().toISOString(),
         })
       ).unwrap();
-      
+
       // Notify system that driver is available for reassignment
-      syncService.broadcast('driver_available', {
+      syncService.broadcast("driver_available", {
         driver_id: user.id,
         last_location: appointment.location,
-        vehicle_type: appointment.transport_mode || 'motorcycle',
-        available_at: new Date().toISOString()
+        vehicle_type: appointment.transport_mode || "motorcycle",
+        available_at: new Date().toISOString(),
       });
-      
+
       refreshAppointments(true);
     } catch (error) {
       if (
@@ -358,49 +358,59 @@ const DriverDashboard = () => {
 
   // Time-based coordination helper functions
   const TRAVEL_TIME_MATRIX = {
-    'quezon_city_to_makati': 45,
-    'manila_to_pasig': 30,
-    'taguig_to_paranaque': 20,
-    'makati_to_manila': 25,
-    'pasig_to_quezon_city': 35,
+    quezon_city_to_makati: 45,
+    manila_to_pasig: 30,
+    taguig_to_paranaque: 20,
+    makati_to_manila: 25,
+    pasig_to_quezon_city: 35,
   };
 
   const TRAFFIC_MULTIPLIERS = {
-    'morning_rush': 1.5,    // 7-9 AM
-    'lunch_time': 1.2,      // 12-1 PM  
-    'evening_rush': 1.8,    // 5-7 PM
-    'night_time': 0.8,      // 8 PM-6 AM
-    'normal': 1.0
+    morning_rush: 1.5, // 7-9 AM
+    lunch_time: 1.2, // 12-1 PM
+    evening_rush: 1.8, // 5-7 PM
+    night_time: 0.8, // 8 PM-6 AM
+    normal: 1.0,
   };
 
-  const _calculateEstimatedPickupTime = (driverLocation, therapistLocation, currentTime = new Date()) => {
+  const _calculateEstimatedPickupTime = (
+    driverLocation,
+    therapistLocation,
+    currentTime = new Date()
+  ) => {
     const hour = currentTime.getHours();
-    
+
     // Determine traffic condition
-    let trafficCondition = 'normal';
-    if (hour >= 7 && hour <= 9) trafficCondition = 'morning_rush';
-    else if (hour >= 12 && hour <= 13) trafficCondition = 'lunch_time';
-    else if (hour >= 17 && hour <= 19) trafficCondition = 'evening_rush';
-    else if (hour >= 20 || hour <= 6) trafficCondition = 'night_time';
+    let trafficCondition = "normal";
+    if (hour >= 7 && hour <= 9) trafficCondition = "morning_rush";
+    else if (hour >= 12 && hour <= 13) trafficCondition = "lunch_time";
+    else if (hour >= 17 && hour <= 19) trafficCondition = "evening_rush";
+    else if (hour >= 20 || hour <= 6) trafficCondition = "night_time";
 
     // Get base travel time
-    const routeKey = `${formatLocationKey(driverLocation)}_to_${formatLocationKey(therapistLocation)}`;
-    const baseTime = TRAVEL_TIME_MATRIX[routeKey] || estimateByZoneDistance(driverLocation, therapistLocation);
-    
+    const routeKey = `${formatLocationKey(
+      driverLocation
+    )}_to_${formatLocationKey(therapistLocation)}`;
+    const baseTime =
+      TRAVEL_TIME_MATRIX[routeKey] ||
+      estimateByZoneDistance(driverLocation, therapistLocation);
+
     // Apply traffic multiplier
-    const adjustedTime = Math.round(baseTime * TRAFFIC_MULTIPLIERS[trafficCondition]);
-    
+    const adjustedTime = Math.round(
+      baseTime * TRAFFIC_MULTIPLIERS[trafficCondition]
+    );
+
     // Add buffer time (10% minimum)
     const bufferTime = Math.max(adjustedTime * 0.1, 5);
-    
+
     const totalMinutes = adjustedTime + bufferTime;
-    const eta = new Date(currentTime.getTime() + (totalMinutes * 60000));
-    
+    const eta = new Date(currentTime.getTime() + totalMinutes * 60000);
+
     return {
       estimatedMinutes: totalMinutes,
       eta: eta,
       trafficCondition: trafficCondition,
-      confidence: getConfidenceLevel(routeKey)
+      confidence: getConfidenceLevel(routeKey),
     };
   };
 
@@ -410,7 +420,7 @@ const DriverDashboard = () => {
   };
 
   const getConfidenceLevel = (routeKey) => {
-    return TRAVEL_TIME_MATRIX[routeKey] ? 'high' : 'medium';
+    return TRAVEL_TIME_MATRIX[routeKey] ? "high" : "medium";
   };
 
   // Group transport handlers
@@ -420,11 +430,12 @@ const DriverDashboard = () => {
         updateAppointmentStatus({
           id: appointmentId,
           status: "picking_up_therapists",
-          pickup_started_at: new Date().toISOString()
+          pickup_started_at: new Date().toISOString(),
         })
       ).unwrap();
-      refreshAppointments(true);    } catch (error) {
-      console.error('Error starting group pickup:', error);
+      refreshAppointments(true);
+    } catch (error) {
+      console.error("Error starting group pickup:", error);
       alert("Failed to start group pickup. Please try again.");
     }
   };
@@ -435,11 +446,12 @@ const DriverDashboard = () => {
         updateAppointmentStatus({
           id: appointmentId,
           status: "transporting_group",
-          all_therapists_picked_up_at: new Date().toISOString()
+          all_therapists_picked_up_at: new Date().toISOString(),
         })
       ).unwrap();
-      refreshAppointments(true);    } catch (error) {
-      console.error('Error marking all therapists picked up:', error);
+      refreshAppointments(true);
+    } catch (error) {
+      console.error("Error marking all therapists picked up:", error);
       alert("Failed to mark all therapists picked up. Please try again.");
     }
   };
@@ -451,7 +463,7 @@ const DriverDashboard = () => {
           id: pickupData.appointment_id,
           status: "driver_assigned_pickup",
           pickup_driver: user.id,
-          estimated_pickup_time: pickupData.estimated_arrival
+          estimated_pickup_time: pickupData.estimated_arrival,
         })
       ).unwrap();
       refreshAppointments(true);
@@ -463,7 +475,7 @@ const DriverDashboard = () => {
 
   // Enhanced request pickup handler for therapists
   const _handleRequestPickup = async (appointmentId) => {
-    const appointment = myAppointments.find(apt => apt.id === appointmentId);
+    const appointment = myAppointments.find((apt) => apt.id === appointmentId);
     if (!appointment) return;
 
     try {
@@ -473,22 +485,24 @@ const DriverDashboard = () => {
           status: "pickup_requested",
           pickup_requested: true,
           pickup_request_time: new Date().toISOString(),
-          therapist_location: appointment.location
+          therapist_location: appointment.location,
         })
       ).unwrap();
 
       // Broadcast pickup request to operators
-      syncService.broadcast('pickup_requested', {
+      syncService.broadcast("pickup_requested", {
         therapist_id: user.id,
         appointment_id: appointmentId,
         location: appointment.location,
-        urgency: 'normal',
+        urgency: "normal",
         session_end_time: new Date().toISOString(),
-        therapist_name: `${user.first_name} ${user.last_name}`
+        therapist_name: `${user.first_name} ${user.last_name}`,
       });
 
       refreshAppointments(true);
-      alert("Pickup request sent! You'll be notified when a driver is assigned.");
+      alert(
+        "Pickup request sent! You'll be notified when a driver is assigned."
+      );
     } catch (error) {
       console.error("Failed to request pickup:", error);
       alert("Failed to request pickup. Please try again.");
@@ -496,17 +510,21 @@ const DriverDashboard = () => {
   };
 
   // Photo verification helper
-  const _handlePhotoVerification = async (appointmentId, verificationType, photoFile) => {
+  const _handlePhotoVerification = async (
+    appointmentId,
+    verificationType,
+    photoFile
+  ) => {
     try {
       const formData = new FormData();
-      formData.append('photo', photoFile);
-      formData.append('verification_type', verificationType);
-      formData.append('appointment_id', appointmentId);
-      formData.append('timestamp', new Date().toISOString());
+      formData.append("photo", photoFile);
+      formData.append("verification_type", verificationType);
+      formData.append("appointment_id", appointmentId);
+      formData.append("timestamp", new Date().toISOString());
 
       // This would be an API call to upload verification photo
       // await api.uploadVerificationPhoto(formData);
-      
+
       alert(`${verificationType} photo uploaded successfully`);
     } catch (error) {
       console.error("Failed to upload verification photo:", error);
@@ -587,9 +605,11 @@ const DriverDashboard = () => {
       default:
         return "";
     }
-  };  const renderActionButtons = (appointment) => {
+  };
+  const renderActionButtons = (appointment) => {
     const { status, id, both_parties_accepted } = appointment;
-    const isGroupTransport = appointment.therapist_group && appointment.therapist_group.length > 1;
+    const isGroupTransport =
+      appointment.therapist_group && appointment.therapist_group.length > 1;
     const requiresCompanyCar = isGroupTransport;
 
     switch (status) {
@@ -600,7 +620,7 @@ const DriverDashboard = () => {
               className="accept-button"
               onClick={() => handleAcceptAppointment(id)}
             >
-              Accept {isGroupTransport ? 'Group Transport' : 'Transport'}
+              Accept {isGroupTransport ? "Group Transport" : "Transport"}
             </button>
             <button
               className="reject-button"
@@ -610,7 +630,9 @@ const DriverDashboard = () => {
             </button>
             {requiresCompanyCar && (
               <div className="transport-info">
-                <span className="vehicle-required">🚗 Company Car Required</span>
+                <span className="vehicle-required">
+                  🚗 Company Car Required
+                </span>
               </div>
             )}
           </div>
@@ -687,7 +709,9 @@ const DriverDashboard = () => {
               className="drop-off-button"
               onClick={() => handleDropOffComplete(id)}
             >
-              {isGroupTransport ? 'Drop Off All Therapists' : 'Drop Off Therapist'}
+              {isGroupTransport
+                ? "Drop Off All Therapists"
+                : "Drop Off Therapist"}
             </button>
           </div>
         );
@@ -697,7 +721,9 @@ const DriverDashboard = () => {
           <div className="appointment-actions">
             <div className="status-info">
               <span className="success-badge">✅ Therapist(s) Dropped Off</span>
-              <p className="driver-status">You are now available for next assignment</p>
+              <p className="driver-status">
+                You are now available for next assignment
+              </p>
             </div>
           </div>
         );
@@ -739,14 +765,22 @@ const DriverDashboard = () => {
     return (
       <div className="appointments-list">
         {appointmentsList.map((appointment) => {
-          const isGroupTransport = appointment.therapist_group && appointment.therapist_group.length > 1;
+          const isGroupTransport =
+            appointment.therapist_group &&
+            appointment.therapist_group.length > 1;
           const requiresCompanyCar = isGroupTransport;
-          
+
           return (
-            <div key={appointment.id} className={`appointment-card ${requiresCompanyCar ? 'group-transport' : ''}`}>
+            <div
+              key={appointment.id}
+              className={`appointment-card ${
+                requiresCompanyCar ? "group-transport" : ""
+              }`}
+            >
               <div className="appointment-header">
                 <h3>
-                  {isGroupTransport ? 'Group Transport' : 'Transport'} for {appointment.client_details?.first_name}{" "}
+                  {isGroupTransport ? "Group Transport" : "Transport"} for{" "}
+                  {appointment.client_details?.first_name}{" "}
                   {appointment.client_details?.last_name}
                 </h3>
                 <div className="header-badges">
@@ -791,19 +825,30 @@ const DriverDashboard = () => {
                 {/* Therapist Information */}
                 {isGroupTransport ? (
                   <div className="therapist-group-info">
-                    <strong>Therapists ({appointment.therapist_group?.length || 0}):</strong>
+                    <strong>
+                      Therapists ({appointment.therapist_group?.length || 0}):
+                    </strong>
                     <div className="therapist-list">
                       {appointment.therapist_group?.map((therapist, index) => (
-                        <div key={therapist.id || index} className="therapist-item">
+                        <div
+                          key={therapist.id || index}
+                          className="therapist-item"
+                        >
                           <span className="therapist-name">
                             {therapist.first_name} {therapist.last_name}
                           </span>
                           <span className="therapist-specialization">
                             {therapist.specialization}
                           </span>
-                          {appointment.status === 'picking_up_therapists' && (
-                            <span className={`pickup-status ${therapist.pickup_status || 'waiting'}`}>
-                              {therapist.pickup_status === 'picked_up' ? '✓ In Vehicle' : '⏳ Waiting'}
+                          {appointment.status === "picking_up_therapists" && (
+                            <span
+                              className={`pickup-status ${
+                                therapist.pickup_status || "waiting"
+                              }`}
+                            >
+                              {therapist.pickup_status === "picked_up"
+                                ? "✓ In Vehicle"
+                                : "⏳ Waiting"}
                             </span>
                           )}
                         </div>
@@ -817,14 +862,17 @@ const DriverDashboard = () => {
                       {appointment.therapist_details.first_name}{" "}
                       {appointment.therapist_details.last_name}
                       {appointment.therapist_details.specialization && (
-                        <span className="specialization"> - {appointment.therapist_details.specialization}</span>
+                        <span className="specialization">
+                          {" "}
+                          - {appointment.therapist_details.specialization}
+                        </span>
                       )}
                     </p>
                   )
                 )}
 
                 {/* Driver Status Information */}
-                {appointment.status === 'therapist_dropped_off' && (
+                {appointment.status === "therapist_dropped_off" && (
                   <div className="driver-status-info">
                     <p className="status-message">
                       <strong>Status:</strong> Available for next assignment
@@ -836,30 +884,36 @@ const DriverDashboard = () => {
                 )}
 
                 {/* Pickup Assignment Information */}
-                {appointment.status === 'driver_assigned_pickup' && (
+                {appointment.status === "driver_assigned_pickup" && (
                   <div className="pickup-assignment-info">
                     <p>
                       <strong>Pickup Location:</strong> {appointment.location}
                     </p>
                     {appointment.estimated_pickup_time && (
                       <p>
-                        <strong>Estimated Arrival:</strong> {new Date(appointment.estimated_pickup_time).toLocaleTimeString()}
+                        <strong>Estimated Arrival:</strong>{" "}
+                        {new Date(
+                          appointment.estimated_pickup_time
+                        ).toLocaleTimeString()}
                       </p>
                     )}
                   </div>
                 )}
 
                 {/* Session Progress for Completed Transport */}
-                {appointment.status === 'transport_completed' && appointment.session_details && (
-                  <div className="session-summary">
-                    <p>
-                      <strong>Session Duration:</strong> {appointment.session_details.duration || 'N/A'}
-                    </p>
-                    <p>
-                      <strong>Payment Status:</strong> {appointment.payment_status || 'Pending'}
-                    </p>
-                  </div>
-                )}
+                {appointment.status === "transport_completed" &&
+                  appointment.session_details && (
+                    <div className="session-summary">
+                      <p>
+                        <strong>Session Duration:</strong>{" "}
+                        {appointment.session_details.duration || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Payment Status:</strong>{" "}
+                        {appointment.payment_status || "Pending"}
+                      </p>
+                    </div>
+                  )}
 
                 {appointment.notes && (
                   <p>

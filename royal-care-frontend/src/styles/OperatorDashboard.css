@@ -698,6 +698,48 @@
   display: block;
 }
 
+/* Multi-therapist display styles */
+.therapists-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.therapist-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.therapist-name {
+  font-weight: 500;
+}
+
+.therapist-separator {
+  color: #666;
+}
+
+.no-therapist {
+  color: #999;
+  font-style: italic;
+}
+
+/* Acceptance status styles for multi-therapist */
+.acceptance-indicator.partial {
+  color: #f39c12;
+}
+
+.acceptance-indicator.all-accepted {
+  color: #27ae60;
+}
+
+.acceptance-indicator.none-accepted {
+  color: #e74c3c;
+}
+
+.acceptance-indicator.no-therapist {
+  color: #999;
+}
+
 /* Statistics Dashboard */
 .stats-dashboard {
   margin: 20px 0;

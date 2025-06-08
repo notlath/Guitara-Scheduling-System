@@ -78,9 +78,15 @@
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.7; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .request-details {
@@ -489,22 +495,22 @@
   .drivers-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .zone-map {
     grid-template-columns: 1fr;
   }
-  
+
   .request-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
   }
-  
+
   .header-badges {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .therapist-item {
     flex-direction: column;
     align-items: flex-start;

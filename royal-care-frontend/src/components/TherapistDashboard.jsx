@@ -16,8 +16,8 @@ import { PageLoadingState } from "./common/LoadingComponents";
 
 import LayoutRow from "../globals/LayoutRow";
 import "../globals/TabSwitcher.css";
-import "../styles/TherapistDashboard.css";
 import "../styles/DriverCoordination.css";
+import "../styles/TherapistDashboard.css";
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
@@ -53,17 +53,22 @@ const TherapistDashboard = () => {
     loading,
     error,
   } = useSelector((state) => state.scheduling);
-
-  // Filter appointments for current therapist
+  // Filter appointments for current therapist (both single and multi-therapist)
   const myAppointments = appointments.filter(
-    (apt) => apt.therapist === user?.id
+    (apt) =>
+      apt.therapist === user?.id ||
+      (apt.therapists && apt.therapists.includes(user?.id))
   );
 
   const myTodayAppointments = todayAppointments.filter(
-    (apt) => apt.therapist === user?.id
+    (apt) =>
+      apt.therapist === user?.id ||
+      (apt.therapists && apt.therapists.includes(user?.id))
   );
   const myUpcomingAppointments = upcomingAppointments.filter(
-    (apt) => apt.therapist === user?.id
+    (apt) =>
+      apt.therapist === user?.id ||
+      (apt.therapists && apt.therapists.includes(user?.id))
   );
 
   // Refresh appointments data silently in background
@@ -207,9 +212,9 @@ const TherapistDashboard = () => {
     }
   };
   const handleCompleteAppointment = async (appointmentId) => {
-    const appointment = myAppointments.find(apt => apt.id === appointmentId);
+    const appointment = myAppointments.find((apt) => apt.id === appointmentId);
     const needsPickup = appointment?.driver_details ? true : false;
-    
+
     if (window.confirm("Mark this appointment as completed?")) {
       try {
         await dispatch(
@@ -219,32 +224,39 @@ const TherapistDashboard = () => {
             session_end_time: new Date().toISOString(),
             pickup_requested: needsPickup,
             pickup_request_time: needsPickup ? new Date().toISOString() : null,
-            pickup_urgency: 'normal'
+            pickup_urgency: "normal",
           })
         ).unwrap();
-        
+
         // If transportation was used, automatically request pickup
         if (needsPickup) {
           // Broadcast pickup request to operators
           try {
             // This would trigger real-time notification to operators
-            syncService.broadcast('pickup_requested', {
+            syncService.broadcast("pickup_requested", {
               therapist_id: user.id,
               therapist_name: `${user.first_name} ${user.last_name}`,
               appointment_id: appointmentId,
               location: appointment.location,
-              urgency: 'normal',
+              urgency: "normal",
               session_end_time: new Date().toISOString(),
-              client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`
+              client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`,
             });
-            
-            alert("Session completed! Pickup request has been sent to our coordination team.");
+
+            alert(
+              "Session completed! Pickup request has been sent to our coordination team."
+            );
           } catch (broadcastError) {
-            console.error("Failed to broadcast pickup request:", broadcastError);
-            alert("Session completed! Please manually request pickup if needed.");
+            console.error(
+              "Failed to broadcast pickup request:",
+              broadcastError
+            );
+            alert(
+              "Session completed! Please manually request pickup if needed."
+            );
           }
         }
-        
+
         refreshAppointments(true);
       } catch (error) {
         if (
@@ -261,7 +273,7 @@ const TherapistDashboard = () => {
 
   // New function to manually request pickup
   const handleRequestPickup = async (appointmentId) => {
-    const appointment = myAppointments.find(apt => apt.id === appointmentId);
+    const appointment = myAppointments.find((apt) => apt.id === appointmentId);
     if (!appointment) return;
 
     try {
@@ -270,23 +282,26 @@ const TherapistDashboard = () => {
           id: appointmentId,
           pickup_requested: true,
           pickup_request_time: new Date().toISOString(),
-          pickup_urgency: 'normal'
+          pickup_urgency: "normal",
         })
       ).unwrap();
 
       // Broadcast pickup request to operators
-      syncService.broadcast('pickup_requested', {
+      syncService.broadcast("pickup_requested", {
         therapist_id: user.id,
         therapist_name: `${user.first_name} ${user.last_name}`,
         appointment_id: appointmentId,
         location: appointment.location,
-        urgency: 'normal',
-        session_end_time: appointment.session_end_time || new Date().toISOString(),
-        client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`
+        urgency: "normal",
+        session_end_time:
+          appointment.session_end_time || new Date().toISOString(),
+        client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`,
       });
 
       refreshAppointments(true);
-      alert("Pickup request sent! You'll be notified when a driver is assigned.");
+      alert(
+        "Pickup request sent! You'll be notified when a driver is assigned."
+      );
     } catch (error) {
       console.error("Failed to request pickup:", error);
       alert("Failed to request pickup. Please try again.");
@@ -295,33 +310,40 @@ const TherapistDashboard = () => {
 
   // Function to request urgent pickup
   const handleRequestUrgentPickup = async (appointmentId) => {
-    const appointment = myAppointments.find(apt => apt.id === appointmentId);
+    const appointment = myAppointments.find((apt) => apt.id === appointmentId);
     if (!appointment) return;
 
-    if (window.confirm("Request URGENT pickup? This will prioritize your request.")) {
+    if (
+      window.confirm(
+        "Request URGENT pickup? This will prioritize your request."
+      )
+    ) {
       try {
         await dispatch(
           updateAppointmentStatus({
             id: appointmentId,
             pickup_requested: true,
             pickup_request_time: new Date().toISOString(),
-            pickup_urgency: 'urgent'
+            pickup_urgency: "urgent",
           })
         ).unwrap();
 
         // Broadcast urgent pickup request
-        syncService.broadcast('urgent_pickup_requested', {
+        syncService.broadcast("urgent_pickup_requested", {
           therapist_id: user.id,
           therapist_name: `${user.first_name} ${user.last_name}`,
           appointment_id: appointmentId,
           location: appointment.location,
-          urgency: 'urgent',
-          session_end_time: appointment.session_end_time || new Date().toISOString(),
-          client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`
+          urgency: "urgent",
+          session_end_time:
+            appointment.session_end_time || new Date().toISOString(),
+          client_name: `${appointment.client_details?.first_name} ${appointment.client_details?.last_name}`,
         });
 
         refreshAppointments(true);
-        alert("URGENT pickup request sent! A driver will be assigned immediately.");
+        alert(
+          "URGENT pickup request sent! A driver will be assigned immediately."
+        );
       } catch (error) {
         console.error("Failed to request urgent pickup:", error);
         alert("Failed to request urgent pickup. Please try again.");
@@ -399,6 +421,30 @@ const TherapistDashboard = () => {
         return "";
     }
   };
+
+  // Helper function to display therapist team information
+  const renderTherapistTeam = (appointment) => {
+    if (
+      appointment.therapists_details &&
+      appointment.therapists_details.length > 1
+    ) {
+      const otherTherapists = appointment.therapists_details.filter(
+        (t) => t.id !== user?.id
+      );
+      if (otherTherapists.length > 0) {
+        return (
+          <div className="therapist-team">
+            <strong>Team members:</strong>{" "}
+            {otherTherapists
+              .map((t) => `${t.first_name} ${t.last_name}`)
+              .join(", ")}
+          </div>
+        );
+      }
+    }
+    return null;
+  };
+
   const renderActionButtons = (appointment) => {
     const {
       status,
@@ -406,12 +452,29 @@ const TherapistDashboard = () => {
       therapist_accepted,
       both_parties_accepted,
       pending_acceptances,
+      therapists_accepted,
+      therapists,
     } = appointment;
+
+    // Helper function to check if current therapist has accepted
+    const hasCurrentTherapistAccepted = () => {
+      // For multi-therapist appointments
+      if (therapists && therapists.length > 0) {
+        const therapistIndex = therapists.indexOf(user?.id);
+        return (
+          therapistIndex !== -1 &&
+          therapists_accepted &&
+          therapists_accepted[therapistIndex]
+        );
+      }
+      // For single therapist appointments (legacy)
+      return therapist_accepted;
+    };
 
     switch (status) {
       case "pending":
-        // Show accept/reject only if therapist hasn't accepted yet
-        if (!therapist_accepted) {
+        // Show accept/reject only if current therapist hasn't accepted yet
+        if (!hasCurrentTherapistAccepted()) {
           return (
             <div className="appointment-actions">
               <button
@@ -465,7 +528,8 @@ const TherapistDashboard = () => {
               </div>{" "}
             </div>
           );
-        }      case "in_progress":
+        }
+      case "in_progress":
         return (
           <div className="appointment-actions">
             <button
@@ -489,16 +553,27 @@ const TherapistDashboard = () => {
                       <span className="success-badge">✅ Driver Assigned</span>
                       <p>Driver en route for pickup</p>
                       {appointment.estimated_pickup_time && (
-                        <p><strong>ETA:</strong> {new Date(appointment.estimated_pickup_time).toLocaleTimeString()}</p>
+                        <p>
+                          <strong>ETA:</strong>{" "}
+                          {new Date(
+                            appointment.estimated_pickup_time
+                          ).toLocaleTimeString()}
+                        </p>
                       )}
                     </div>
                   ) : (
                     <div className="pickup-pending">
-                      <span className={`pickup-badge ${appointment.pickup_urgency || 'normal'}`}>
-                        {appointment.pickup_urgency === 'urgent' ? '🚨 URGENT Pickup Requested' : '⏰ Pickup Requested'}
+                      <span
+                        className={`pickup-badge ${
+                          appointment.pickup_urgency || "normal"
+                        }`}
+                      >
+                        {appointment.pickup_urgency === "urgent"
+                          ? "🚨 URGENT Pickup Requested"
+                          : "⏰ Pickup Requested"}
                       </span>
                       <p>Waiting for driver assignment...</p>
-                      {appointment.pickup_urgency !== 'urgent' && (
+                      {appointment.pickup_urgency !== "urgent" && (
                         <button
                           className="urgent-pickup-button"
                           onClick={() => handleRequestUrgentPickup(id)}
@@ -584,6 +659,7 @@ const TherapistDashboard = () => {
                 <strong>Services:</strong>{" "}
                 {appointment.services_details?.map((s) => s.name).join(", ")}
               </p>
+              {renderTherapistTeam(appointment)}
               {appointment.driver_details && (
                 <p>
                   <strong>Driver:</strong>{" "}
