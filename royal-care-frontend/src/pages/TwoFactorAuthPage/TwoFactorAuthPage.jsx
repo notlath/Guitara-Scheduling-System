@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import styles from "./TwoFactorAuthPage.module.css";
 
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
+import { FormField } from "../../globals/FormField";
 
 function TwoFactorAuthPage() {
   useEffect(() => {
@@ -26,14 +27,13 @@ function TwoFactorAuthPage() {
             <h2 className={styles.formHeading}>
               Check your email for a verification code
             </h2>
-            <label htmlFor="username" className={styles.formLabel}>
-              Code
-            </label>
-            <input
+            <FormField
+              name="verificationCode"
+              label="Code"
               type="number"
-              id="verificationCode"
-              placeholder="Enter verification code"
-              className={styles.formInput}
+              inputProps={{
+                placeholder: "Enter verification code",
+              }}
             />
           </div>
 

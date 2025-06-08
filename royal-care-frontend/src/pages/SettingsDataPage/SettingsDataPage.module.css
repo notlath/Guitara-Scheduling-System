@@ -1,4 +1,5 @@
 @import "../../globals/TabSwitcher.css";
+@import "../../globals/FormField.css";
 
 /* Place your SettingsDataPage specific styles here */
 
@@ -122,3 +123,5 @@
   pointer-events: none;
   user-select: none;
 }
+
+/* Removed local field styles, now using global FormField.css */

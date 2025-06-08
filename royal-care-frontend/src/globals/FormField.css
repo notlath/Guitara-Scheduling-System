@@ -1,0 +1,71 @@
+/* Global form field styles for all pages. Use with className="global-form-field-group" etc. */
+.global-form-field-group {
+  margin-bottom: var(--spacing-xxs);
+  display: flex;
+  flex-direction: column;
+}
+.global-form-field-label {
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+  margin-bottom: var(--spacing-xs, 0.25em);
+  font-weight: 400;
+  align-self: flex-start;
+  /* letter-spacing: 0.01em; */
+}
+.global-form-field-input,
+.global-form-field-select {
+  width: 100%;
+  font-size: var(--font-size-base, 1rem);
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: var(--border-radius, 4px);
+  background: var(--input-bg, #fff);
+  color: var(--text-color, #222);
+  outline: none;
+  transition: border-color 0.2s;
+  /* padding: var(--spacing-md, 12px); */
+}
+.global-form-field-input:focus,
+.global-form-field-select:focus {
+  border-color: var(--primary-color, #007bff);
+}
+.global-form-field-input.description-field {
+  min-height: 5.5em;
+  resize: vertical;
+  line-height: 1.5;
+  padding-top: 0.75em;
+  padding-bottom: 0.75em;
+  /* Looks more like a textarea/paragraph field */
+}
+
+/* Optionally, if you want a true textarea for description: */
+.global-form-field-textarea {
+  width: 100%;
+  min-height: 5.5em;
+  font-size: var(--font-size-base, 1rem);
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: var(--border-radius, 4px);
+  background: var(--input-bg, #fff);
+  color: var(--text-color, #222);
+  outline: none;
+  transition: border-color 0.2s;
+  padding: 0.75em 1em;
+  resize: vertical;
+  line-height: 1.5;
+  box-sizing: border-box;
+  display: block;
+  /* Ensure text starts at the top */
+  text-align: left;
+  /* Remove vertical-align and flex properties for textarea */
+}
+.global-form-field-textarea:focus {
+  border-color: var(--primary-color, #007bff);
+}
+
+.flex-row-fields {
+  display: flex;
+  gap: 1rem;
+}
+.flex-row-fields > * {
+  flex: 1;
+  min-width: 0;
+}

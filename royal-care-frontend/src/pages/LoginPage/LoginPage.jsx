@@ -11,6 +11,7 @@ import { login } from "../../features/auth/authSlice";
 import { api } from "../../services/api";
 import { handleAuthError } from "../../utils/authErrorHandler";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
+import { FormField } from "../../globals/FormField";
 
 function LoginPage() {
   const [formData, setFormData] = useState({ username: "", password: "" });
@@ -246,18 +247,17 @@ function LoginPage() {
             {!needs2FA ? (
               <div className={styles.inputContainer}>
                 <div className={styles.formGroup}>
-                  <label htmlFor="username" className={styles.formLabel}>
-                    Username
-                  </label>
-                  <input
-                    type="text"
+                  <FormField
                     name="username"
-                    placeholder="Username"
+                    label="Username"
                     value={formData.username}
-                    className={`${styles.formInput} ${
-                      fieldErrors.username ? styles.inputError : ""
-                    }`}
                     onChange={handleChange}
+                    inputProps={{
+                      placeholder: "Username",
+                      className: fieldErrors.username
+                        ? "global-form-field-input " + styles.inputError
+                        : "global-form-field-input",
+                    }}
                   />
                   {fieldErrors.username && (
                     <div className={styles.fieldError}>
@@ -266,18 +266,18 @@ function LoginPage() {
                   )}
                 </div>
                 <div className={styles.formGroup}>
-                  <label htmlFor="password" className={styles.formLabel}>
-                    Password
-                  </label>
-                  <input
-                    type="password"
+                  <FormField
                     name="password"
-                    placeholder="Password"
+                    label="Password"
+                    type="password"
                     value={formData.password}
                     onChange={handleChange}
-                    className={`${styles.formInput} ${
-                      fieldErrors.password ? styles.inputError : ""
-                    }`}
+                    inputProps={{
+                      placeholder: "Password",
+                      className: fieldErrors.password
+                        ? "global-form-field-input " + styles.inputError
+                        : "global-form-field-input",
+                    }}
                   />
                   {fieldErrors.password && (
                     <div className={styles.fieldError}>
@@ -288,19 +288,18 @@ function LoginPage() {
               </div>
             ) : (
               <div className={styles.formGroup}>
-                <label htmlFor="verificationCode" className={styles.formLabel}>
-                  2FA Code
-                </label>
-                <input
-                  type="text"
+                <FormField
                   name="verificationCode"
-                  placeholder="Enter 6-digit code"
+                  label="2FA Code"
                   value={verificationCode}
                   onChange={handleChange}
-                  className={`${styles.formInput} ${
-                    fieldErrors.verificationCode ? styles.inputError : ""
-                  }`}
-                  maxLength={6}
+                  inputProps={{
+                    placeholder: "Enter 6-digit code",
+                    maxLength: 6,
+                    className: fieldErrors.verificationCode
+                      ? "global-form-field-input " + styles.inputError
+                      : "global-form-field-input",
+                  }}
                 />
                 {fieldErrors.verificationCode && (
                   <div className={styles.fieldError}>

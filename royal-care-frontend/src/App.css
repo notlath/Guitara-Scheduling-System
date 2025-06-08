@@ -64,7 +64,7 @@ input,
 select,
 textarea {
   width: 100%;
-  border: 1px solid var(--background-100);
+  border: 1px solid var(--background-900);
   background-color: var(--background-35);
   padding: var(--spacing-xm) var(--spacing-sm); /* 8px vertical, 16px horizontal padding */
   border-radius: 6px;

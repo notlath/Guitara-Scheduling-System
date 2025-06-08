@@ -6,6 +6,7 @@ import "../../globals/LayoutRow.css";
 import { MdAdd } from "react-icons/md";
 import LayoutRow from "../../globals/LayoutRow";
 import PageLayout from "../../globals/PageLayout";
+import { FormField } from "../../globals/FormField";
 
 const TABS = ["Therapists", "Drivers", "Operators", "Services", "Materials"];
 
@@ -141,39 +142,39 @@ const SettingsDataPage = () => {
       case "Therapists":
         return (
           <>
-            <input
-              name="firstName"
-              placeholder="First Name"
-              value={formData.firstName || ""}
-              onChange={handleInputChange}
-              required
-            />
-            <input
-              name="lastName"
-              placeholder="Last Name"
-              value={formData.lastName || ""}
-              onChange={handleInputChange}
-              required
-            />
-            <input
+            <div className={styles["flex-row-fields"]}>
+              <FormField
+                name="firstName"
+                label="First Name"
+                value={formData.firstName || ""}
+                onChange={handleInputChange}
+              />
+              <FormField
+                name="lastName"
+                label="Last Name"
+                value={formData.lastName || ""}
+                onChange={handleInputChange}
+              />
+            </div>
+            <FormField
               name="username"
-              placeholder="Username"
+              label="Username"
               value={formData.username || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="email"
-              placeholder="Email"
+              label="Email"
+              type="email"
               value={formData.email || ""}
               onChange={handleInputChange}
-              required
             />
-            <select
+            <FormField
+              as="select"
               name="specialization"
+              label="Specialization"
               value={formData.specialization || ""}
               onChange={handleInputChange}
-              required
             >
               <option value="">Select Specialization</option>
               {SPECIALIZATION_OPTIONS.map((opt) => (
@@ -181,12 +182,13 @@ const SettingsDataPage = () => {
                   {opt}
                 </option>
               ))}
-            </select>
-            <select
+            </FormField>
+            <FormField
+              as="select"
               name="pressure"
+              label="Pressure Level"
               value={formData.pressure || ""}
               onChange={handleInputChange}
-              required
             >
               <option value="">Select Pressure Level</option>
               {PRESSURE_OPTIONS.map((opt) => (
@@ -194,104 +196,102 @@ const SettingsDataPage = () => {
                   {opt}
                 </option>
               ))}
-            </select>
+            </FormField>
           </>
         );
       case "Drivers":
       case "Operators":
         return (
           <>
-            <input
+            <FormField
               name="firstName"
-              placeholder="First Name"
+              label="First Name"
               value={formData.firstName || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="lastName"
-              placeholder="Last Name"
+              label="Last Name"
               value={formData.lastName || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="username"
-              placeholder="Username"
+              label="Username"
               value={formData.username || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="email"
-              placeholder="Email"
+              label="Email"
+              type="email"
               value={formData.email || ""}
               onChange={handleInputChange}
-              required
             />
           </>
         );
       case "Services":
         return (
           <>
-            <input
+            <FormField
               name="name"
-              placeholder="Service Name"
+              label="Service Name"
               value={formData.name || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="description"
-              placeholder="Description"
+              label="Description"
+              as="textarea"
               value={formData.description || ""}
               onChange={handleInputChange}
-              required
+              inputProps={{ className: "global-form-field-textarea" }}
             />
-            <input
+            <FormField
               name="duration"
-              placeholder="Duration (e.g. 30 mins)"
+              label="Duration"
               value={formData.duration || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="price"
-              placeholder="Price (e.g. P800)"
+              label="Price"
               value={formData.price || ""}
               onChange={handleInputChange}
-              required
             />
-            <select
+            <FormField
+              as="select"
               name="materials"
-              multiple
+              label="Materials"
               value={formData.materials || []}
               onChange={handleMultiSelectChange}
+              multiple
+              required={false}
             >
               {MATERIAL_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
               ))}
-            </select>
+            </FormField>
           </>
         );
       case "Materials":
         return (
           <>
-            <input
+            <FormField
               name="name"
-              placeholder="Material Name"
+              label="Material Name"
               value={formData.name || ""}
               onChange={handleInputChange}
-              required
             />
-            <input
+            <FormField
               name="description"
-              placeholder="Description"
+              label="Description"
+              as="textarea"
               value={formData.description || ""}
               onChange={handleInputChange}
-              required
+              inputProps={{ className: "global-form-field-textarea" }}
             />
           </>
         );
