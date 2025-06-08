@@ -260,7 +260,37 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleStartDriving = async (appointmentId) => {
+  const handleDriverConfirm = async (appointmentId) => {
+    try {
+      await dispatch(driverConfirm(appointmentId)).unwrap();
+      refreshAppointments(true);
+    } catch (error) {
+      console.error("Failed to confirm appointment:", error);
+      alert("Failed to confirm appointment. Please try again.");
+    }
+  };
+
+  const handleStartJourney = async (appointmentId) => {
+    try {
+      await dispatch(startJourney(appointmentId)).unwrap();
+      refreshAppointments(true);
+    } catch (error) {
+      console.error("Failed to start journey:", error);
+      alert("Failed to start journey. Please try again.");
+    }
+  };
+
+  const handleMarkArrived = async (appointmentId) => {
+    try {
+      await dispatch(markArrived(appointmentId)).unwrap();
+      refreshAppointments(true);
+    } catch (error) {
+      console.error("Failed to mark arrived:", error);
+      alert("Failed to mark arrived. Please try again.");
+    }
+  };
+
+  const _handleStartDriving = async (appointmentId) => {
     try {
       await dispatch(
         updateAppointmentStatus({
@@ -428,7 +458,7 @@ const DriverDashboard = () => {
   };
 
   // Group transport handlers
-  const handleStartGroupPickup = async (appointmentId) => {
+  const _handleStartGroupPickup = async (appointmentId) => {
     try {
       await dispatch(
         updateAppointmentStatus({
@@ -627,7 +657,7 @@ const DriverDashboard = () => {
         return "";
     }
   };  const renderActionButtons = (appointment) => {
-    const { status, id, both_parties_accepted, therapist_confirmed, requires_car } = appointment;
+    const { status, id, both_parties_accepted, requires_car } = appointment;
     const isGroupTransport =
       appointment.therapist_group && appointment.therapist_group.length > 1;
     const requiresCompanyCar = isGroupTransport;
@@ -848,72 +878,11 @@ const DriverDashboard = () => {
               <p>Available for new assignments</p>
             </div>
           </div>
-        );
-
-      default:
+        );      default:
         return null;
     }
   };
-              Mark Arrived at Client Location
-            </button>
-          </div>
-        );
 
-      case "at_location":
-        return (
-          <div className="appointment-actions">
-            <button
-              className="drop-off-button"
-              onClick={() => handleDropOffComplete(id)}
-            >
-              {isGroupTransport
-                ? "Drop Off All Therapists"
-                : "Drop Off Therapist"}
-            </button>
-          </div>
-        );
-
-      case "therapist_dropped_off":
-        return (
-          <div className="appointment-actions">
-            <div className="status-info">
-              <span className="success-badge">✅ Therapist(s) Dropped Off</span>
-              <p className="driver-status">
-                You are now available for next assignment
-              </p>
-            </div>
-          </div>
-        );
-
-      case "driver_assigned_pickup":
-        return (
-          <div className="appointment-actions">
-            <div className="pickup-assignment">
-              <span className="pickup-badge">📍 Pickup Assignment</span>
-              <p>Pick up therapist after session completion</p>
-              <button
-                className="start-pickup-button"
-                onClick={() => handleStartDriving(id)}
-              >
-                Start Pickup Drive
-              </button>
-            </div>
-          </div>
-        );
-
-      case "transport_completed":
-        return (
-          <div className="appointment-actions">
-            <div className="completed-status">
-              <span className="success-badge">✅ Transport Completed</span>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
   const renderAppointmentsList = (appointmentsList) => {
     if (appointmentsList.length === 0) {
       return <p className="no-appointments">No transport assignments found.</p>;
