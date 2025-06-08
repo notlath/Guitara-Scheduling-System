@@ -179,9 +179,15 @@ const OperatorDashboard = () => {
     return () => {
       unsubscribe();
     };
-  }, []);
-  const { appointments, notifications, staffMembers, loading, error } =
-    useSelector((state) => state.scheduling);
+  }, []);  const {
+    appointments,
+    todayAppointments,
+    upcomingAppointments,
+    notifications,
+    staffMembers,
+    loading,
+    error,
+  } = useSelector((state) => state.scheduling);
   // Filter rejected appointments for review
   const rejectedAppointments = appointments.filter(
     (apt) => apt.status === "rejected" && !apt.review_decision
@@ -788,6 +794,16 @@ const OperatorDashboard = () => {
   const getAvailableDrivers = useCallback(() => {
     return availableDrivers;
   }, [availableDrivers]);
+  // Helper function to get busy drivers
+  const getBusyDrivers = useCallback(() => {
+    if (!staffMembers) return [];
+    return staffMembers.filter(
+      (member) =>
+        member.role === "driver" &&
+        member.driver_status &&
+        member.driver_status !== "available"
+    );
+  }, [staffMembers]);
   // Enhanced automatic driver assignment
   const handleAutoAssignPickup = async (appointment) => {
     const currentAvailableDrivers = getAvailableDrivers();
@@ -1191,30 +1207,329 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
-  // Placeholder render functions for existing features
+  // Enhanced render functions for operator dashboard views
   const renderRejectedAppointments = () => {
-    return <div>Rejected appointments view - implementation needed</div>;
+    const rejectedAppointments = appointments.filter(
+      (apt) => apt.status === "rejected" && apt.rejected_by
+    );
+
+    if (rejectedAppointments.length === 0) {
+      return (
+        <div className="no-appointments">
+          <p>No rejected appointments to review.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="rejected-appointments-list">
+        {rejectedAppointments.map((appointment) => (
+          <div key={appointment.id} className="rejection-review-card">
+            <div className="appointment-header">
+              <h3>
+                {appointment.client_details?.first_name}{" "}
+                {appointment.client_details?.last_name}
+              </h3>
+              <span className="rejection-date">
+                Rejected: {new Date(appointment.updated_at).toLocaleDateString()}
+              </span>
+            </div>
+            
+            <div className="appointment-details">
+              <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
+              <p><strong>Time:</strong> {appointment.start_time} - {appointment.end_time}</p>
+              <p><strong>Service:</strong> {appointment.services_details?.map(s => s.name).join(", ")}</p>
+              <p><strong>Rejected by:</strong> {appointment.rejected_by_details?.first_name} {appointment.rejected_by_details?.last_name} ({appointment.rejected_by_role})</p>
+            </div>
+
+            {appointment.rejection_reason && (
+              <div className="rejection-reason">
+                <h4>Rejection Reason:</h4>
+                <p>{appointment.rejection_reason}</p>
+              </div>
+            )}
+
+            <div className="review-actions">
+              <button
+                className="review-button"
+                onClick={() => handleReviewRejection(appointment)}
+              >
+                Review Rejection
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const renderPendingAcceptanceAppointments = () => {
-    return <div>Pending acceptance view - implementation needed</div>;
+    if (pendingAppointments.length === 0) {
+      return (
+        <div className="no-appointments">
+          <p>No appointments pending acceptance.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="pending-appointments-list">
+        {pendingAppointments.map((appointment) => (
+          <div key={appointment.id} className="pending-appointment-card">
+            <div className="appointment-header">
+              <h3>
+                {appointment.client_details?.first_name}{" "}
+                {appointment.client_details?.last_name}
+              </h3>
+              <span className="appointment-time">
+                {appointment.start_time} - {appointment.end_time}
+              </span>
+            </div>
+            
+            <div className="appointment-details">
+              <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
+              <p><strong>Service:</strong> {appointment.services_details?.map(s => s.name).join(", ")}</p>
+              <p><strong>Duration:</strong> {appointment.duration} minutes</p>
+              {renderTherapistInfo(appointment)}
+            </div>
+
+            <div className="acceptance-status">
+              {getTherapistAcceptanceStatus(appointment).display}
+            </div>
+
+            <div className="time-remaining">
+              <p><strong>Time since created:</strong> {getTimeRemaining(appointment.created_at)}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const renderTimeoutMonitoring = () => {
-    return <div>Timeout monitoring view - implementation needed</div>;
+    const allTimeoutAppointments = [...overdueAppointments, ...approachingDeadlineAppointments];
+
+    if (allTimeoutAppointments.length === 0) {
+      return (
+        <div className="no-appointments">
+          <p>No appointments approaching timeout or overdue.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="timeout-monitoring-content">
+        <div className="auto-cancel-section">
+          <h3>Auto-Cancel Overdue Appointments</h3>
+          <p>Automatically cancel appointments that have been pending for too long.</p>
+          <button
+            className="auto-cancel-button"
+            onClick={handleAutoCancelOverdue}
+            disabled={autoCancelLoading || overdueAppointments.length === 0}
+          >
+            {autoCancelLoading ? "Processing..." : `Auto-Cancel ${overdueAppointments.length} Overdue`}
+          </button>
+        </div>
+
+        <div className="timeout-appointments-list">
+          <h3>Appointments Requiring Attention</h3>
+          {allTimeoutAppointments.map((appointment) => {
+            const isOverdue = overdueAppointments.some(apt => apt.id === appointment.id);
+            const timeRemaining = getTimeRemaining(appointment.created_at);
+            
+            return (
+              <div key={appointment.id} className={`timeout-appointment-card ${isOverdue ? 'overdue' : 'warning'}`}>
+                <div className="appointment-header">
+                  <h4>
+                    {appointment.client_details?.first_name}{" "}
+                    {appointment.client_details?.last_name}
+                  </h4>
+                  <span className={`timeout-badge ${isOverdue ? 'overdue' : 'warning'}`}>
+                    {isOverdue ? '🔴 OVERDUE' : '⚠️ WARNING'}
+                  </span>
+                </div>
+                
+                <div className="appointment-details">
+                  <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
+                  <p><strong>Time:</strong> {appointment.start_time}</p>
+                  <p><strong>Created:</strong> {timeRemaining} ago</p>
+                  <p><strong>Status:</strong> {getTherapistAcceptanceStatus(appointment).display}</p>
+                </div>
+
+                <div className="timeout-countdown">
+                  {isOverdue ? (
+                    <div className="overdue-message">
+                      ⏰ This appointment is overdue for acceptance and should be reviewed or cancelled.
+                    </div>
+                  ) : (
+                    <div className="warning-message">
+                      ⚠️ This appointment is approaching the acceptance deadline.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const renderAllAppointments = () => {
-    return <div>All appointments view - implementation needed</div>;
+    if (appointments.length === 0) {
+      return (
+        <div className="no-appointments">
+          <p>No appointments found.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="all-appointments-content">
+        <div className="appointments-stats">
+          <div className="stat-item">
+            <span className="stat-number">{appointments.length}</span>
+            <span className="stat-label">Total Appointments</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-number">{todayAppointments.length}</span>
+            <span className="stat-label">Today's Appointments</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-number">{upcomingAppointments.length}</span>
+            <span className="stat-label">Upcoming Appointments</span>
+          </div>
+        </div>
+
+        <div className="appointments-grid">
+          {appointments.map((appointment) => (
+            <div key={appointment.id} className="appointment-summary-card">
+              <div className="appointment-header">
+                <h4>
+                  {appointment.client_details?.first_name}{" "}
+                  {appointment.client_details?.last_name}
+                </h4>
+                <span className={`status-badge ${appointment.status.replace('_', '-')}`}>
+                  {appointment.status.replace('_', ' ')}
+                </span>
+              </div>
+              
+              <div className="appointment-details">
+                <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
+                <p><strong>Time:</strong> {appointment.start_time} - {appointment.end_time}</p>
+                <p><strong>Service:</strong> {appointment.services_details?.map(s => s.name).join(", ")}</p>
+                {renderTherapistInfo(appointment)}
+                {appointment.driver_details && (
+                  <p><strong>Driver:</strong> {appointment.driver_details.first_name} {appointment.driver_details.last_name}</p>
+                )}
+              </div>
+
+              <div className="appointment-meta">
+                <small>Created: {new Date(appointment.created_at).toLocaleDateString()}</small>
+                {appointment.updated_at !== appointment.created_at && (
+                  <small>Updated: {new Date(appointment.updated_at).toLocaleDateString()}</small>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   const renderNotifications = () => {
-    return <div>Notifications view - implementation needed</div>;
+    // This would connect to the notification system
+    return (
+      <div className="notifications-content">
+        <div className="notifications-header">
+          <h3>System Notifications</h3>
+          <div className="notification-actions">
+            <button className="mark-all-read-btn">Mark All Read</button>
+            <button className="clear-all-btn">Clear All</button>
+          </div>
+        </div>
+
+        <div className="notifications-placeholder">
+          <p>Notification system integration in progress.</p>
+          <p>This section will display:</p>
+          <ul>
+            <li>New appointment requests</li>
+            <li>Therapist acceptance/rejection notifications</li>
+            <li>Driver assignment updates</li>
+            <li>Payment completion alerts</li>
+            <li>System status updates</li>
+          </ul>
+        </div>
+      </div>
+    );
   };
 
   const renderDriverCoordinationPanel = () => {
-    return <div>Driver coordination panel - implementation needed</div>;
+    const availableDrivers = getAvailableDrivers();
+    const busyDrivers = getBusyDrivers();
+
+    return (
+      <div className="driver-coordination-content">
+        <div className="driver-stats">
+          <div className="stat-card">
+            <h4>Available Drivers</h4>
+            <div className="stat-number">{availableDrivers.length}</div>
+          </div>
+          <div className="stat-card">
+            <h4>Busy Drivers</h4>
+            <div className="stat-number">{busyDrivers.length}</div>
+          </div>
+          <div className="stat-card">
+            <h4>Pending Pickups</h4>
+            <div className="stat-number">{pickupRequests.length}</div>
+          </div>
+        </div>
+
+        <div className="driver-panels">
+          <div className="available-drivers-panel">
+            <h3>Available Drivers</h3>
+            {availableDrivers.length === 0 ? (
+              <p>No available drivers at this time.</p>
+            ) : (
+              <div className="drivers-list">
+                {availableDrivers.map((driver) => (
+                  <div key={driver.id} className="driver-card available">
+                    <div className="driver-info">
+                      <h4>{driver.first_name} {driver.last_name}</h4>
+                      <p>Available since: {new Date(driver.driver_available_since).toLocaleTimeString()}</p>
+                    </div>
+                    <div className="driver-actions">
+                      <button className="assign-btn">Assign to Pickup</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="busy-drivers-panel">
+            <h3>Busy Drivers</h3>
+            {busyDrivers.length === 0 ? (
+              <p>No busy drivers at this time.</p>
+            ) : (
+              <div className="drivers-list">
+                {busyDrivers.map((driver) => (
+                  <div key={driver.id} className="driver-card busy">
+                    <div className="driver-info">
+                      <h4>{driver.first_name} {driver.last_name}</h4>
+                      <p>Status: {driver.driver_status}</p>
+                    </div>
+                    <div className="driver-eta">
+                      <small>ETA: Calculating...</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // ...existing code...
