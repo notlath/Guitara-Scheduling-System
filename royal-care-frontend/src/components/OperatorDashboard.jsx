@@ -16,6 +16,7 @@ import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
 import NotificationCenter from "./scheduling/NotificationCenter";
+import { LoadingSpinner } from "./common/LoadingComponents";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
@@ -1644,9 +1645,16 @@ const OperatorDashboard = () => {
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>
-          </div>
-        </LayoutRow>
-        {loading && <div className="loading-spinner">Loading...</div>}
+          </div>        </LayoutRow>
+        {loading && (
+          <LoadingSpinner 
+            size="large" 
+            variant="primary" 
+            text="Loading dashboard data..." 
+            overlay={false}
+            className="operator-dashboard-loader"
+          />
+        )}
         {error && (
           <div className="error-message">
             {typeof error === "object"
