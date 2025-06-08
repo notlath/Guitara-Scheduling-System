@@ -10,8 +10,9 @@ key = os.getenv("SUPABASE_ANON_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY")
 
 # Debug output to help diagnose issues
 if not url or not key:
-    print("Warning: Supabase URL or key not found in environment variables")
-    print(f"URL found: {'Yes' if url else 'No'}")
-    print(f"Key found: {'Yes' if key else 'No'}")
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.warning("Supabase URL or key not found in environment variables")
 
 supabase: Client = create_client(url, key)

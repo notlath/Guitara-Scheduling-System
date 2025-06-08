@@ -81,7 +81,7 @@ class ServicesMiddleware:
     def __call__(self, request):
         # Check if this is a request to the services endpoint
         if re.search(r"/api/scheduling/services/?$", request.path_info):
-            print(f"ServicesMiddleware: Intercepted request to {request.path_info}")
+            # Intercepted request to services endpoint
             if request.method == "GET":
                 # Return the fallback services directly
                 return JsonResponse(self.fallback_services, safe=False)

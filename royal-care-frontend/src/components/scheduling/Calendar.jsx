@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  fetchAppointmentsByDate,
   fetchAvailableDrivers,
   fetchAvailableTherapists,
 } from "../../features/scheduling/schedulingSlice";
@@ -13,9 +14,12 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   const [view, setView] = useState("month"); // 'month' or 'day'
 
   const dispatch = useDispatch();
-  const { availableTherapists, availableDrivers, appointments } = useSelector(
-    (state) => state.scheduling
-  );
+  const {
+    availableTherapists,
+    availableDrivers,
+    appointments,
+    appointmentsByDate,
+  } = useSelector((state) => state.scheduling);
 
   // Helper to format date as YYYY-MM-DD
   const formatDate = (date) => {
@@ -29,6 +33,22 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
       console.error("Error formatting date:", err);
       return "";
     }
+  };
+
+  // Check if a date is in the past (before today)
+  const isPastDate = (date) => {
+    const today = new Date();
+    const todayMidnight = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+    const checkDateMidnight = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
+    return checkDateMidnight < todayMidnight;
   };
 
   // Generate time slots from 1 PM to 1 AM in 30-minute intervals
@@ -93,25 +113,34 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
       onDateSelected(selectedDate);
       setView("day");
 
-      // When date is selected, fetch available therapists and drivers
+      // Fetch bookings for the selected date
       const formattedDate = formatDate(selectedDate);
-
-      if (!formattedDate) {
-        console.error("Invalid date selected, cannot fetch availabilities");
-        return;
+      if (formattedDate) {
+        dispatch(fetchAppointmentsByDate(formattedDate));
       }
 
-      // Use more realistic time slots instead of broad range
-      // Fetch availability for common appointment hours (1-hour window)
-      const params = {
-        date: formattedDate,
-        start_time: "09:00", // More realistic start time
-        end_time: "10:00", // 1-hour window instead of broader range
-      };
+      // Only fetch availability if it's not a past date
+      if (!isPastDate(selectedDate)) {
+        if (!formattedDate) {
+          console.error("Invalid date selected, cannot fetch availabilities");
+          return;
+        }
 
-      console.log("Calendar: Fetching availabilities for date click:", params);
-      dispatch(fetchAvailableTherapists(params));
-      dispatch(fetchAvailableDrivers(params));
+        // Use more realistic time slots instead of broad range
+        // Fetch availability for common appointment hours (1-hour window)
+        const params = {
+          date: formattedDate,
+          start_time: "09:00", // More realistic start time
+          end_time: "10:00", // 1-hour window instead of broader range
+        };
+
+        console.log(
+          "Calendar: Fetching availabilities for date click:",
+          params
+        );
+        dispatch(fetchAvailableTherapists(params));
+        dispatch(fetchAvailableDrivers(params));
+      }
     }
   };
 
@@ -278,30 +307,133 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     );
   };
 
+  // Render bookings for the selected day
+  const renderDayBookings = () => {
+    // Ensure appointmentsByDate is always an array - handle null, undefined, or non-array values
+    let bookings = [];
+    if (appointmentsByDate && Array.isArray(appointmentsByDate)) {
+      bookings = appointmentsByDate;
+    } else if (appointmentsByDate && typeof appointmentsByDate === "object") {
+      // Handle case where it might be an object with array inside
+      bookings =
+        appointmentsByDate.appointments || appointmentsByDate.data || [];
+    }
+
+    if (!Array.isArray(bookings)) {
+      bookings = [];
+    }
+
+    if (bookings.length === 0) {
+      return (
+        <div className="day-bookings">
+          <h3>Bookings for {selectedDate.toLocaleDateString()}</h3>
+          <p className="no-bookings">No bookings found for this date.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="day-bookings">
+        <h3>Bookings for {selectedDate.toLocaleDateString()}</h3>
+        <div className="bookings-list">
+          {bookings.map((appointment, index) => (
+            <div key={appointment.id || index} className="booking-card">
+              <div className="booking-header">
+                <h4>
+                  {appointment.client_details?.first_name || "N/A"}{" "}
+                  {appointment.client_details?.last_name || ""}
+                </h4>
+                <span
+                  className={`status-badge status-${
+                    appointment.status || "pending"
+                  }`}
+                >
+                  {appointment.status
+                    ? appointment.status.charAt(0).toUpperCase() +
+                      appointment.status.slice(1)
+                    : "Pending"}
+                </span>
+              </div>
+              <div className="booking-details">
+                <p>
+                  <strong>Time:</strong> {appointment.start_time || "N/A"} -{" "}
+                  {appointment.end_time || "N/A"}
+                </p>
+                <p>
+                  <strong>Services:</strong>{" "}
+                  {appointment.services_details
+                    ?.map((s) => s.name)
+                    .join(", ") || "N/A"}
+                </p>
+                {appointment.therapist_details && (
+                  <p>
+                    <strong>Therapist:</strong>{" "}
+                    {appointment.therapist_details.first_name}{" "}
+                    {appointment.therapist_details.last_name}
+                  </p>
+                )}
+                {appointment.driver_details && (
+                  <p>
+                    <strong>Driver:</strong>{" "}
+                    {appointment.driver_details.first_name}{" "}
+                    {appointment.driver_details.last_name}
+                  </p>
+                )}
+                <p>
+                  <strong>Location:</strong> {appointment.location || "N/A"}
+                </p>
+                {appointment.notes && (
+                  <p>
+                    <strong>Notes:</strong> {appointment.notes}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // Generate calendar UI for day view
   const renderDayCalendar = () => {
     const timeSlots = generateTimeSlots();
+    const isDateInPast = isPastDate(selectedDate);
 
     return (
       <div className="day-view-container">
         <div className="day-header">
-          <button onClick={handleBackToMonth}>Back to Month</button>
+          <button className="back-button" onClick={handleBackToMonth}>
+            ← Back to Month
+          </button>
           <h2>{selectedDate.toLocaleDateString()}</h2>
+          {isDateInPast && (
+            <span className="past-date-indicator">Past Date</span>
+          )}
         </div>
 
-        <div className="time-slots">
-          {timeSlots.map((time, index) => (
-            <div
-              key={index}
-              className={`time-slot ${
-                selectedTime === time ? "selected-time" : ""
-              }`}
-              onClick={() => handleTimeClick(time)}
-            >
-              {time}
+        {/* Always show bookings first */}
+        {renderDayBookings()}
+
+        {/* Only show time slots and availability for current/future dates */}
+        {!isDateInPast && (
+          <div className="time-slots">
+            <h3>Available Time Slots</h3>
+            <div className="time-slots-grid">
+              {timeSlots.map((time, index) => (
+                <div
+                  key={index}
+                  className={`time-slot ${
+                    selectedTime === time ? "selected-time" : ""
+                  }`}
+                  onClick={() => handleTimeClick(time)}
+                >
+                  {time}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -310,7 +442,8 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     <div className="calendar-wrapper">
       {view === "month" ? renderMonthCalendar() : renderDayCalendar()}
 
-      {view === "day" && (
+      {/* Only show availability info for current/future dates */}
+      {view === "day" && !isPastDate(selectedDate) && (
         <div className="availability-info">
           <div className="therapists-section">
             <h3>Available Therapists</h3>
