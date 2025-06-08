@@ -2,9 +2,14 @@ import { useEffect, useState } from "react";
 import {
   MdClose,
   MdDelete,
+  MdEventAvailable,
+  MdEventBusy,
   MdMarkAsUnread,
   MdMoreVert,
+  MdNotifications,
   MdRefresh,
+  MdSchedule,
+  MdUpdate,
 } from "react-icons/md";
 import styles from "../../styles/NotificationCenter.module.css";
 
@@ -215,11 +220,31 @@ const NotificationCenter = ({ onClose }) => {
     }
   };
 
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "appointment_created":
+        return <MdEventAvailable size={20} />;
+      case "appointment_updated":
+        return <MdUpdate size={20} />;
+      case "appointment_cancelled":
+        return <MdEventBusy size={20} />;
+      case "appointment_reminder":
+        return <MdSchedule size={20} />;
+      default:
+        return <MdNotifications size={20} />;
+    }
+  };
+
   return (
     <div className={styles.notificationCenter}>
       {/* Header */}
       <div className={styles.notificationHeader}>
-        <h2>Notifications {unreadCount > 0 && `(${unreadCount})`}</h2>
+        <h2>
+          Notifications
+          {unreadCount > 0 && (
+            <span className={styles.unreadBadge}>{unreadCount}</span>
+          )}
+        </h2>
         <div className={styles.notificationControls}>
           <button
             className={styles.refreshButton}
@@ -284,13 +309,11 @@ const NotificationCenter = ({ onClose }) => {
               className={`${styles.notificationItem} ${
                 !notification.is_read ? styles.unread : ""
               }`}
+              data-type={notification.type}
             >
               <div className={styles.notificationContent}>
                 <div className={styles.notificationIcon}>
-                  {notification.type === "appointment_created" && "📅"}
-                  {notification.type === "appointment_updated" && "🔄"}
-                  {notification.type === "appointment_cancelled" && "❌"}
-                  {notification.type === "appointment_reminder" && "⏰"}
+                  {getNotificationIcon(notification.type)}
                 </div>
                 <div className={styles.notificationText}>
                   <div className={styles.notificationTitle}>
