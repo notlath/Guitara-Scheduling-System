@@ -61,6 +61,7 @@ class Appointment(models.Model):
         ("pending", "Pending"),
         ("therapist_confirm", "Therapist Confirm"),
         ("driver_confirm", "Driver Confirm"),
+        ("driver_confirmed", "Driver Confirmed"),
         ("in_progress", "In Progress"),
         ("journey", "Journey"),
         ("arrived", "Arrived"),
@@ -223,14 +224,15 @@ class Appointment(models.Model):
         limit_choices_to={"role": "therapist"},
         blank=True,
         help_text="Multiple therapists for group appointments",
-    )
-
-    # Enhanced workflow fields
+    )    # Enhanced workflow fields
     therapist_confirmed_at = models.DateTimeField(
         null=True, blank=True, help_text="When therapist confirmed the appointment"
     )
     driver_confirmed_at = models.DateTimeField(
         null=True, blank=True, help_text="When driver confirmed the appointment"
+    )
+    started_at = models.DateTimeField(
+        null=True, blank=True, help_text="When the appointment was officially started by operator"
     )
     journey_started_at = models.DateTimeField(
         null=True, blank=True, help_text="When the journey to client location started"
@@ -413,8 +415,7 @@ class Appointment(models.Model):
     def __str__(self):
         return f"Appointment for {self.client} on {self.date} at {self.start_time}"
 
-    # Enhanced workflow helper methods
-    def can_therapist_confirm(self):
+    # Enhanced workflow helper methods    def can_therapist_confirm(self):
         """Check if therapist can confirm the appointment"""
         return self.status == "pending"
 
@@ -431,14 +432,14 @@ class Appointment(models.Model):
 
     def can_start_journey(self):
         """Check if journey can be started"""
-        return self.status == "driver_confirm"
+        return self.status == "in_progress"
 
     def can_arrive(self):
         """Check if therapist(s) can be marked as arrived"""
         return self.status == "journey"
 
     def can_start_session(self):
-        """Check if session can be started"""
+        """Check if session can be started (automatically after drop-off)"""
         return self.status == "arrived"
 
     def can_request_payment(self):
@@ -452,6 +453,14 @@ class Appointment(models.Model):
     def can_request_pickup(self):
         """Check if pickup can be requested"""
         return self.status == "completed"
+
+    def is_visible_to_driver(self):
+        """Check if appointment should be visible to driver"""
+        # Driver can only see appointment after therapist(s) have confirmed
+        if self.group_size > 1:
+            return self.status in ["therapist_confirm", "in_progress", "journey", "arrived", "session_in_progress", "awaiting_payment", "completed"] and self.group_confirmation_complete
+        else:
+            return self.status in ["therapist_confirm", "in_progress", "journey", "arrived", "session_in_progress", "awaiting_payment", "completed"] and self.therapist_confirmed_at is not None
 
     def is_eligible_for_auto_pickup_assignment(self):
         """Check if appointment is eligible for automatic pickup driver assignment"""
@@ -493,6 +502,30 @@ class Appointment(models.Model):
             [service.duration for service in self.services.all()], timedelta()
         )
         return int(total_duration.total_seconds() / 60)
+
+
+class TherapistConfirmation(models.Model):
+    """Model to track individual therapist confirmations for multi-therapist appointments"""
+
+    appointment = models.ForeignKey(
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name="therapist_confirmations",
+    )
+    therapist = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        limit_choices_to={"role": "therapist"},
+    )
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("appointment", "therapist")
+
+    def __str__(self):
+        status = "Confirmed" if self.confirmed_at else "Pending"
+        return f"{self.therapist.get_full_name()} - Appointment #{self.appointment.id} - {status}"
 
 
 class AppointmentRejection(models.Model):

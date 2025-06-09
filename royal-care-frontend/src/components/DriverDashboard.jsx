@@ -124,16 +124,63 @@ const DriverDashboard = () => {
     loading,
     error,
   } = useSelector((state) => state.scheduling);
+  // Filter appointments for current driver - only show those visible to driver
+  const myAppointments = appointments.filter((apt) => {
+    // Driver assigned to this appointment
+    if (apt.driver !== user?.id) return false;
+    
+    // Only show appointments that should be visible to driver:
+    // - therapist_confirm: After therapist(s) confirmed, waiting for driver
+    // - in_progress: Driver confirmed, ready to start journey
+    // - journey: Driver is traveling to client
+    // - arrived: Driver arrived at client location
+    // - session_in_progress: Therapist(s) dropped off, session ongoing
+    // - awaiting_payment: Session complete, awaiting payment
+    // - completed: Appointment complete, may need pickup
+    // - pickup_requested: Therapist requested pickup
+    const visibleStatuses = [
+      "therapist_confirm", 
+      "in_progress", 
+      "journey", 
+      "arrived", 
+      "session_in_progress", 
+      "awaiting_payment", 
+      "completed",
+      "pickup_requested"
+    ];
+    
+    return visibleStatuses.includes(apt.status);
+  });
 
-  // Filter appointments for current driver
-  const myAppointments = appointments.filter((apt) => apt.driver === user?.id);
+  const myTodayAppointments = todayAppointments.filter((apt) => {
+    if (apt.driver !== user?.id) return false;
+    const visibleStatuses = [
+      "therapist_confirm", 
+      "in_progress", 
+      "journey", 
+      "arrived", 
+      "session_in_progress", 
+      "awaiting_payment", 
+      "completed",
+      "pickup_requested"
+    ];
+    return visibleStatuses.includes(apt.status);
+  });
 
-  const myTodayAppointments = todayAppointments.filter(
-    (apt) => apt.driver === user?.id
-  );
-  const myUpcomingAppointments = upcomingAppointments.filter(
-    (apt) => apt.driver === user?.id
-  );
+  const myUpcomingAppointments = upcomingAppointments.filter((apt) => {
+    if (apt.driver !== user?.id) return false;
+    const visibleStatuses = [
+      "therapist_confirm", 
+      "in_progress", 
+      "journey", 
+      "arrived", 
+      "session_in_progress", 
+      "awaiting_payment", 
+      "completed",
+      "pickup_requested"
+    ];
+    return visibleStatuses.includes(apt.status);
+  });
 
   // Refresh appointments data silently in background
   const refreshAppointments = useCallback(
