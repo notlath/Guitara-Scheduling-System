@@ -1088,7 +1088,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
 
         # Only the assigned therapist can confirm
-        if request.user != appointment.therapist and request.user not in appointment.therapists.all():
+        if (
+            request.user != appointment.therapist
+            and request.user not in appointment.therapists.all()
+        ):
             return Response(
                 {"error": "You can only confirm your own appointments"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -1098,17 +1101,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": "Only pending appointments can be confirmed"},
                 status=status.HTTP_400_BAD_REQUEST,
-            )        # Handle multi-therapist appointments
+            )  # Handle multi-therapist appointments
         if appointment.group_size > 1:
             # For multi-therapist appointments, track individual confirmations
             from .models import TherapistConfirmation
             from django.core.exceptions import ObjectDoesNotExist
-            
+
             # Check if this therapist has already confirmed
             try:
                 existing_confirmation = TherapistConfirmation.objects.get(
-                    appointment=appointment,
-                    therapist=request.user
+                    appointment=appointment, therapist=request.user
                 )
                 if existing_confirmation.confirmed_at:
                     return Response(
@@ -1124,20 +1126,21 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 TherapistConfirmation.objects.create(
                     appointment=appointment,
                     therapist=request.user,
-                    confirmed_at=timezone.now()
+                    confirmed_at=timezone.now(),
                 )
-            
+
             # Check if all therapists have confirmed
             total_confirmations = TherapistConfirmation.objects.filter(
-                appointment=appointment,
-                confirmed_at__isnull=False
+                appointment=appointment, confirmed_at__isnull=False
             ).count()
-            
+
             if total_confirmations >= appointment.group_size:
                 appointment.group_confirmation_complete = True
                 appointment.therapist_confirmed_at = timezone.now()
                 appointment.status = "therapist_confirm"
-                message = "All therapists have confirmed. Waiting for driver confirmation."
+                message = (
+                    "All therapists have confirmed. Waiting for driver confirmation."
+                )
             else:
                 # Still waiting for other therapists
                 remaining = appointment.group_size - total_confirmations
@@ -1174,10 +1177,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": message,
-            "appointment": serializer.data
-        })
+        return Response({"message": message, "appointment": serializer.data})
 
     @action(detail=True, methods=["post"])
     def driver_confirm(self, request, pk=None):
@@ -1205,7 +1205,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 )
             else:
                 return Response(
-                    {"error": f"Cannot confirm appointment in {appointment.status} status"},
+                    {
+                        "error": f"Cannot confirm appointment in {appointment.status} status"
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -1214,9 +1216,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": "All therapists must confirm before driver can confirm"},
                 status=status.HTTP_400_BAD_REQUEST,
-            )        # Driver confirms
+            )  # Driver confirms
         appointment.driver_confirmed_at = timezone.now()
-        appointment.status = "driver_confirmed"  # Driver has confirmed, ready for operator to start
+        appointment.status = (
+            "driver_confirmed"  # Driver has confirmed, ready for operator to start
+        )
         appointment.save()
 
         # Create notifications
@@ -1243,10 +1247,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": "Driver confirmed. Appointment is ready to start.",
-            "appointment": serializer.data
-        })
+        return Response(
+            {
+                "message": "Driver confirmed. Appointment is ready to start.",
+                "appointment": serializer.data,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def start_journey(self, request, pk=None):
@@ -1258,10 +1264,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 {"error": "Only the assigned driver can start the journey"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        
+
         if appointment.status not in ["driver_confirmed", "in_progress"]:
             return Response(
-                {"error": "Journey can only be started when appointment is ready (driver confirmed) or in progress"},
+                {
+                    "error": "Journey can only be started when appointment is ready (driver confirmed) or in progress"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -1277,10 +1285,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": "Journey started. Driving to client location.",
-            "appointment": serializer.data
-        })
+        return Response(
+            {
+                "message": "Journey started. Driving to client location.",
+                "appointment": serializer.data,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def arrive_at_location(self, request, pk=None):
@@ -1311,10 +1321,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": "Arrived at client location.",
-            "appointment": serializer.data
-        })
+        return Response(
+            {"message": "Arrived at client location.", "appointment": serializer.data}
+        )
 
     @action(detail=True, methods=["post"])
     def drop_off_therapist(self, request, pk=None):
@@ -1340,7 +1349,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         else:
             appointment.status = "session_in_progress"
             message = "Therapist dropped off. Session automatically started."
-            
+
         appointment.session_started_at = timezone.now()
         appointment.save()
 
@@ -1352,10 +1361,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": message,
-            "appointment": serializer.data
-        })
+        return Response({"message": message, "appointment": serializer.data})
 
     @action(detail=True, methods=["post"])
     def mark_awaiting_payment(self, request, pk=None):
@@ -1363,8 +1369,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
 
         # Either the assigned therapist or any therapist in a group can mark payment
-        if (request.user != appointment.therapist and 
-            request.user not in appointment.therapists.all()):
+        if (
+            request.user != appointment.therapist
+            and request.user not in appointment.therapists.all()
+        ):
             return Response(
                 {"error": "Only assigned therapists can mark payment status"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -1388,10 +1396,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": "Session completed. Awaiting payment from client.",
-            "appointment": serializer.data
-        })
+        return Response(
+            {
+                "message": "Session completed. Awaiting payment from client.",
+                "appointment": serializer.data,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def mark_completed(self, request, pk=None):
@@ -1399,8 +1409,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
 
         # Either the assigned therapist or any therapist in a group can mark complete
-        if (request.user != appointment.therapist and 
-            request.user not in appointment.therapists.all()):
+        if (
+            request.user != appointment.therapist
+            and request.user not in appointment.therapists.all()
+        ):
             return Response(
                 {"error": "Only assigned therapists can mark appointment complete"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -1428,10 +1440,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": f"Appointment completed. Payment received via {payment_method}.",
-            "appointment": serializer.data
-        })
+        return Response(
+            {
+                "message": f"Appointment completed. Payment received via {payment_method}.",
+                "appointment": serializer.data,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def start_appointment(self, request, pk=None):
@@ -1439,7 +1453,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
 
         # Only operators can start appointments
-        if not request.user.is_staff and not hasattr(request.user, 'is_operator'):
+        if not request.user.is_staff and not hasattr(request.user, "is_operator"):
             return Response(
                 {"error": "Only operators can start appointments"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -1449,7 +1463,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if appointment.status != "driver_confirmed":
             if appointment.status == "pending":
                 return Response(
-                    {"error": "Therapist must confirm first before appointment can be started"},
+                    {
+                        "error": "Therapist must confirm first before appointment can be started"
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             elif appointment.status == "therapist_confirm":
@@ -1464,7 +1480,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 )
             else:
                 return Response(
-                    {"error": f"Cannot start appointment in {appointment.status} status"},
+                    {
+                        "error": f"Cannot start appointment in {appointment.status} status"
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -1497,10 +1515,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": "Appointment started successfully. Ready for service delivery.",
-            "appointment": serializer.data
-        })
+        return Response(
+            {
+                "message": "Appointment started successfully. Ready for service delivery.",
+                "appointment": serializer.data,
+            }
+        )
 
     # ...existing code...
 
@@ -1848,12 +1868,14 @@ class ServiceViewSet(viewsets.ModelViewSet):
                     ),
                     "driver_id": appointment.driver.id if appointment.driver else None,
                     "operator_id": (
-                        appointment.operator.id if appointment.operator else None                    ),
+                        appointment.operator.id if appointment.operator else None
+                    ),
                     "message": f"Appointment status updated to {new_status}",
                     "both_accepted": appointment.both_parties_accepted(),
                 },
-            },        )
-        
+            },
+        )
+
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
@@ -1886,10 +1908,9 @@ class ServiceViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": "Arrived at client location.",
-            "appointment": serializer.data
-        })
+        return Response(
+            {"message": "Arrived at client location.", "appointment": serializer.data}
+        )
 
     @action(detail=True, methods=["post"])
     def drop_off_therapist(self, request, pk=None):
@@ -1915,7 +1936,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         else:
             appointment.status = "session_in_progress"
             message = "Therapist dropped off. Session automatically started."
-            
+
         appointment.session_started_at = timezone.now()
         appointment.save()
 
@@ -1927,10 +1948,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": message,
-            "appointment": serializer.data
-        })
+        return Response({"message": message, "appointment": serializer.data})
 
     @action(detail=True, methods=["post"])
     def mark_awaiting_payment(self, request, pk=None):
@@ -1938,8 +1956,10 @@ class ServiceViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
 
         # Either the assigned therapist or any therapist in a group can mark payment
-        if (request.user != appointment.therapist and 
-            request.user not in appointment.therapists.all()):
+        if (
+            request.user != appointment.therapist
+            and request.user not in appointment.therapists.all()
+        ):
             return Response(
                 {"error": "Only assigned therapists can mark payment status"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -1963,10 +1983,12 @@ class ServiceViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": "Session completed. Awaiting payment from client.",
-            "appointment": serializer.data
-        })
+        return Response(
+            {
+                "message": "Session completed. Awaiting payment from client.",
+                "appointment": serializer.data,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def mark_completed(self, request, pk=None):
@@ -1974,8 +1996,10 @@ class ServiceViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
 
         # Either the assigned therapist or any therapist in a group can mark complete
-        if (request.user != appointment.therapist and 
-            request.user not in appointment.therapists.all()):
+        if (
+            request.user != appointment.therapist
+            and request.user not in appointment.therapists.all()
+        ):
             return Response(
                 {"error": "Only assigned therapists can mark appointment complete"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -2003,10 +2027,12 @@ class ServiceViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": f"Appointment completed. Payment received via {payment_method}.",
-            "appointment": serializer.data
-        })
+        return Response(
+            {
+                "message": f"Appointment completed. Payment received via {payment_method}.",
+                "appointment": serializer.data,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def start_appointment(self, request, pk=None):
@@ -2014,7 +2040,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
 
         # Only operators can start appointments
-        if not request.user.is_staff and not hasattr(request.user, 'is_operator'):
+        if not request.user.is_staff and not hasattr(request.user, "is_operator"):
             return Response(
                 {"error": "Only operators can start appointments"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -2024,7 +2050,9 @@ class ServiceViewSet(viewsets.ModelViewSet):
         if appointment.status != "driver_confirmed":
             if appointment.status == "pending":
                 return Response(
-                    {"error": "Therapist must confirm first before appointment can be started"},
+                    {
+                        "error": "Therapist must confirm first before appointment can be started"
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             elif appointment.status == "therapist_confirm":
@@ -2039,7 +2067,9 @@ class ServiceViewSet(viewsets.ModelViewSet):
                 )
             else:
                 return Response(
-                    {"error": f"Cannot start appointment in {appointment.status} status"},
+                    {
+                        "error": f"Cannot start appointment in {appointment.status} status"
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -2072,9 +2102,11 @@ class ServiceViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(appointment)
-        return Response({
-            "message": "Appointment started successfully. Ready for service delivery.",
-            "appointment": serializer.data
-        })
+        return Response(
+            {
+                "message": "Appointment started successfully. Ready for service delivery.",
+                "appointment": serializer.data,
+            }
+        )
 
     # ...existing code...

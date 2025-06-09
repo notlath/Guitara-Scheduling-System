@@ -224,7 +224,7 @@ class Appointment(models.Model):
         limit_choices_to={"role": "therapist"},
         blank=True,
         help_text="Multiple therapists for group appointments",
-    )    # Enhanced workflow fields
+    )  # Enhanced workflow fields
     therapist_confirmed_at = models.DateTimeField(
         null=True, blank=True, help_text="When therapist confirmed the appointment"
     )
@@ -232,7 +232,9 @@ class Appointment(models.Model):
         null=True, blank=True, help_text="When driver confirmed the appointment"
     )
     started_at = models.DateTimeField(
-        null=True, blank=True, help_text="When the appointment was officially started by operator"
+        null=True,
+        blank=True,
+        help_text="When the appointment was officially started by operator",
     )
     journey_started_at = models.DateTimeField(
         null=True, blank=True, help_text="When the journey to client location started"
@@ -415,7 +417,7 @@ class Appointment(models.Model):
     def __str__(self):
         return f"Appointment for {self.client} on {self.date} at {self.start_time}"
 
-    # Enhanced workflow helper methods    def can_therapist_confirm(self):
+        # Enhanced workflow helper methods    def can_therapist_confirm(self):
         """Check if therapist can confirm the appointment"""
         return self.status == "pending"
 
@@ -458,9 +460,33 @@ class Appointment(models.Model):
         """Check if appointment should be visible to driver"""
         # Driver can only see appointment after therapist(s) have confirmed
         if self.group_size > 1:
-            return self.status in ["therapist_confirm", "in_progress", "journey", "arrived", "session_in_progress", "awaiting_payment", "completed"] and self.group_confirmation_complete
+            return (
+                self.status
+                in [
+                    "therapist_confirm",
+                    "in_progress",
+                    "journey",
+                    "arrived",
+                    "session_in_progress",
+                    "awaiting_payment",
+                    "completed",
+                ]
+                and self.group_confirmation_complete
+            )
         else:
-            return self.status in ["therapist_confirm", "in_progress", "journey", "arrived", "session_in_progress", "awaiting_payment", "completed"] and self.therapist_confirmed_at is not None
+            return (
+                self.status
+                in [
+                    "therapist_confirm",
+                    "in_progress",
+                    "journey",
+                    "arrived",
+                    "session_in_progress",
+                    "awaiting_payment",
+                    "completed",
+                ]
+                and self.therapist_confirmed_at is not None
+            )
 
     def is_eligible_for_auto_pickup_assignment(self):
         """Check if appointment is eligible for automatic pickup driver assignment"""

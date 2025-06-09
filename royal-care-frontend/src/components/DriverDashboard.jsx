@@ -128,7 +128,7 @@ const DriverDashboard = () => {
   const myAppointments = appointments.filter((apt) => {
     // Driver assigned to this appointment
     if (apt.driver !== user?.id) return false;
-    
+
     // Only show appointments that should be visible to driver:
     // - therapist_confirm: After therapist(s) confirmed, waiting for driver
     // - in_progress: Driver confirmed, ready to start journey
@@ -139,30 +139,30 @@ const DriverDashboard = () => {
     // - completed: Appointment complete, may need pickup
     // - pickup_requested: Therapist requested pickup
     const visibleStatuses = [
-      "therapist_confirm", 
-      "in_progress", 
-      "journey", 
-      "arrived", 
-      "session_in_progress", 
-      "awaiting_payment", 
+      "therapist_confirm",
+      "in_progress",
+      "journey",
+      "arrived",
+      "session_in_progress",
+      "awaiting_payment",
       "completed",
-      "pickup_requested"
+      "pickup_requested",
     ];
-    
+
     return visibleStatuses.includes(apt.status);
   });
 
   const myTodayAppointments = todayAppointments.filter((apt) => {
     if (apt.driver !== user?.id) return false;
     const visibleStatuses = [
-      "therapist_confirm", 
-      "in_progress", 
-      "journey", 
-      "arrived", 
-      "session_in_progress", 
-      "awaiting_payment", 
+      "therapist_confirm",
+      "in_progress",
+      "journey",
+      "arrived",
+      "session_in_progress",
+      "awaiting_payment",
       "completed",
-      "pickup_requested"
+      "pickup_requested",
     ];
     return visibleStatuses.includes(apt.status);
   });
@@ -170,14 +170,14 @@ const DriverDashboard = () => {
   const myUpcomingAppointments = upcomingAppointments.filter((apt) => {
     if (apt.driver !== user?.id) return false;
     const visibleStatuses = [
-      "therapist_confirm", 
-      "in_progress", 
-      "journey", 
-      "arrived", 
-      "session_in_progress", 
-      "awaiting_payment", 
+      "therapist_confirm",
+      "in_progress",
+      "journey",
+      "arrived",
+      "session_in_progress",
+      "awaiting_payment",
       "completed",
-      "pickup_requested"
+      "pickup_requested",
     ];
     return visibleStatuses.includes(apt.status);
   });

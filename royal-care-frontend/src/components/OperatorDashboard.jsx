@@ -430,6 +430,24 @@ const OperatorDashboard = () => {
     }
   };
 
+  const handleStartAppointment = async (appointmentId) => {
+    try {
+      await dispatch(
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "in_progress",
+          action: "start_appointment",
+        })
+      ).unwrap();
+
+      // Refresh appointments to get updated status
+      dispatch(fetchAppointments());
+    } catch (error) {
+      console.error("Failed to start appointment:", error);
+      alert("Failed to start appointment. Please try again.");
+    }
+  };
+
   // Driver coordination functions
   const handleAssignDriverPickup = async (therapistId, driverId) => {
     try {
@@ -1339,7 +1357,7 @@ const OperatorDashboard = () => {
                 <span className={`status ${appointment.status}`}>
                   {appointment.status}
                 </span>
-              </div>
+              </div>{" "}
               <div className="appointment-details">
                 <div className="detail-row">
                   <span className="label">Client:</span>
@@ -1366,6 +1384,19 @@ const OperatorDashboard = () => {
                   </span>
                 </div>
                 {renderTherapistInfo(appointment)}
+
+                {/* Action buttons for driver_confirmed status */}
+                {appointment.status === "driver_confirmed" && (
+                  <div className="appointment-actions">
+                    <button
+                      className="action-btn start-appointment"
+                      onClick={() => handleStartAppointment(appointment.id)}
+                    >
+                      <i className="fas fa-play"></i>
+                      Start Appointment
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}

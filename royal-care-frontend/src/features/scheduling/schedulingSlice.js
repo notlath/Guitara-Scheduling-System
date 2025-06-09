@@ -429,7 +429,7 @@ export const deleteAppointment = createAsyncThunk(
 // Enhanced updateAppointmentStatus with optimistic updates and additional fields
 export const updateAppointmentStatus = createAsyncThunk(
   "scheduling/updateAppointmentStatus",
-  async ({ id, status, ...additionalFields }, { rejectWithValue }) => {
+  async ({ id, status, action, ...additionalFields }, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
@@ -450,7 +450,16 @@ export const updateAppointmentStatus = createAsyncThunk(
     try {
       let response;
 
-      if (status === "completed") {
+      if (action === "start_appointment") {
+        // Use the specific start_appointment endpoint
+        response = await axios.post(
+          `${API_URL}appointments/${id}/start_appointment/`,
+          {},
+          {
+            headers: { Authorization: `Token ${token}` },
+          }
+        );
+      } else if (status === "completed") {
         // Use the specific complete endpoint - only send additional fields for completion
         const updateData = { status, ...additionalFields };
         response = await axios.post(
