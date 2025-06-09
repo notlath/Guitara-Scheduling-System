@@ -377,7 +377,8 @@ const TherapistDashboard = () => {
     }
     return null;
   };
-  const renderActionButtons = (appointment) => {    const {
+  const renderActionButtons = (appointment) => {
+    const {
       status,
       id,
       therapist_accepted,
@@ -465,7 +466,8 @@ const TherapistDashboard = () => {
               </div>
             </div>
           );
-        }      case "therapist_confirmed":
+        }
+      case "therapist_confirmed":
         // Always waiting for driver to confirm - driver is needed for all appointments
         return (
           <div className="appointment-actions">
@@ -474,13 +476,16 @@ const TherapistDashboard = () => {
               <p>Waiting for driver confirmation...</p>
             </div>
           </div>
-        );      case "driver_confirmed":
+        );
+      case "driver_confirmed":
         // Both confirmed, status will change to in_progress when operator starts
         return (
           <div className="appointment-actions">
             <div className="ready-status">
               <span className="ready-badge">🚀 Ready to start</span>
-              <p>Driver confirmed. Waiting for operator to start appointment.</p>
+              <p>
+                Driver confirmed. Waiting for operator to start appointment.
+              </p>
             </div>
           </div>
         );
@@ -530,7 +535,8 @@ const TherapistDashboard = () => {
               <p>📍 Dropped off at client location</p>
             </div>
           </div>
-        );      case "session_in_progress":
+        );
+      case "session_in_progress":
         return (
           <div className="appointment-actions">
             <button
