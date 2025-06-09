@@ -1,8 +1,0 @@
-{
-  "dependencies": {
-    "react-icons": "^5.5.0"
-  },
-  "devDependencies": {
-    "vite": "^6.3.5"
-  }
-}
