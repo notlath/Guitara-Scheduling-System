@@ -764,34 +764,26 @@ const DriverDashboard = () => {
               )}
             </div>
           );
-        }
-
-      case "therapist_confirmed":
-        // Driver needs to confirm if car is required
-        if (requires_car) {
-          return (
-            <div className="appointment-actions">
-              <button
-                className="confirm-button"
-                onClick={() => handleDriverConfirm(id)}
-              >
-                Confirm Ready to Drive
-              </button>
-              <div className="workflow-info">
-                <p>✅ Therapist confirmed. Please confirm you're ready.</p>
-              </div>
+        }      case "therapist_confirmed":
+        // Driver always needs to confirm regardless of vehicle type
+        return (
+          <div className="appointment-actions">
+            <button
+              className="confirm-button"
+              onClick={() => handleDriverConfirm(id)}
+            >
+              Confirm Ready to Drive
+            </button>
+            <div className="workflow-info">
+              <p>✅ All therapists confirmed. Please confirm you're ready.</p>
+              {requires_car || isGroupTransport ? (
+                <p>🚗 Company car required for this appointment</p>
+              ) : (
+                <p>🏍️ Motorcycle transport for this appointment</p>
+              )}
             </div>
-          );
-        } else {
-          return (
-            <div className="appointment-actions">
-              <div className="ready-status">
-                <span className="ready-badge">✅ Ready</span>
-                <p>No transport needed for this appointment.</p>
-              </div>
-            </div>
-          );
-        }
+          </div>
+        );
 
       case "driver_confirmed":
         // Both confirmed, can start journey

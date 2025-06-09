@@ -59,8 +59,7 @@ class Appointment(models.Model):
 
     STATUS_CHOICES = [
         ("pending", "Pending"),
-        ("therapist_confirm", "Therapist Confirm"),
-        ("driver_confirm", "Driver Confirm"),
+        ("therapist_confirmed", "Therapist Confirmed"),  # Updated for consistency
         ("driver_confirmed", "Driver Confirmed"),
         ("in_progress", "In Progress"),
         ("journey", "Journey"),
@@ -76,6 +75,8 @@ class Appointment(models.Model):
         ("rejected", "Rejected"),
         ("auto_cancelled", "Auto Cancelled"),
         # Legacy statuses for backward compatibility
+        ("therapist_confirm", "Therapist Confirm"),  # Keep for backward compatibility
+        ("driver_confirm", "Driver Confirm"),  # Keep for backward compatibility
         ("confirmed", "Confirmed"),
         ("driving_to_location", "Driver En Route"),
         ("at_location", "Driver at Location"),

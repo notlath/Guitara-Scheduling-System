@@ -1127,9 +1127,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     appointment=appointment,
                     therapist=request.user,
                     confirmed_at=timezone.now(),
-                )
-
-            # Check if all therapists have confirmed
+                )            # Check if all therapists have confirmed
             total_confirmations = TherapistConfirmation.objects.filter(
                 appointment=appointment, confirmed_at__isnull=False
             ).count()
@@ -1137,18 +1135,18 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             if total_confirmations >= appointment.group_size:
                 appointment.group_confirmation_complete = True
                 appointment.therapist_confirmed_at = timezone.now()
-                appointment.status = "therapist_confirm"
+                appointment.status = "therapist_confirmed"  # Use consistent status name
                 message = (
                     "All therapists have confirmed. Waiting for driver confirmation."
                 )
             else:
-                # Still waiting for other therapists
+                # Still waiting for other therapists - keep status as pending
                 remaining = appointment.group_size - total_confirmations
                 message = f"Your confirmation recorded. Waiting for {remaining} more therapist(s)."
-        else:
+                # Don't change appointment status yet, keep it as "pending"        else:
             # Single therapist appointment
             appointment.therapist_confirmed_at = timezone.now()
-            appointment.status = "therapist_confirm"
+            appointment.status = "therapist_confirmed"  # Use consistent status name
             message = "Therapist confirmed. Appointment is now visible to the driver."
 
         appointment.save()
@@ -1189,16 +1187,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": "You can only confirm your own appointments"},
                 status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Driver can only confirm after therapist(s) have confirmed
-        if appointment.status != "therapist_confirm":
+            )        # Driver can only confirm after therapist(s) have confirmed
+        if appointment.status != "therapist_confirmed":
             if appointment.status == "pending":
                 return Response(
-                    {"error": "Therapist must confirm first before driver can confirm"},
+                    {"error": "All therapists must confirm first before driver can confirm"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            elif appointment.status == "driver_confirm":
+            elif appointment.status == "driver_confirmed":
                 return Response(
                     {"error": "Driver has already confirmed this appointment"},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -1206,7 +1202,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             else:
                 return Response(
                     {
-                        "error": f"Cannot confirm appointment in {appointment.status} status"
+                        "error": f"Cannot confirm appointment in {appointment.status} status. All therapists must confirm first."
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
