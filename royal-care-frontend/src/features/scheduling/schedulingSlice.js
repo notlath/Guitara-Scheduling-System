@@ -792,12 +792,16 @@ export const fetchAvailability = createAsyncThunk(
           Authorization: `Token ${token}`,
         },
       });
+
+      // Ensure response data is always an array
+      const data = Array.isArray(response.data) ? response.data : [];
+
       console.log(
         "fetchAvailability: Success, received",
-        response.data.length,
+        data.length,
         "availability records"
       );
-      return response.data;
+      return data;
     } catch (error) {
       console.error(
         "fetchAvailability: Error",
@@ -2225,11 +2229,12 @@ const schedulingSlice = createSlice({
           data
         );
 
-        state.availabilities = data;
+        // Ensure data is always an array to prevent undefined errors
+        state.availabilities = Array.isArray(data) ? data : [];
 
         // Update cache if this is fresh data
         if (!cached) {
-          state.availabilityCache[cacheKey] = data;
+          state.availabilityCache[cacheKey] = Array.isArray(data) ? data : [];
           console.log(`💾 Cached availability data for ${cacheKey}`);
         }
       })
