@@ -1,0 +1,11 @@
+SERVICES COUNT: 7
+  ID=1, NAME=Shiatsu massage, ACTIVE=True
+  ID=2, NAME=Combi massage, ACTIVE=True
+  ID=3, NAME=Dry massage, ACTIVE=True
+  ID=4, NAME=Foot massage, ACTIVE=True
+  ID=5, NAME=Hotstone service, ACTIVE=True
+  ID=6, NAME=Ventosa, ACTIVE=True
+  ID=7, NAME=Hand massage, ACTIVE=True
+
+USERS COUNT: 3
+ERROR: type object 'Token' has no attribute 'DoesNotExist'
