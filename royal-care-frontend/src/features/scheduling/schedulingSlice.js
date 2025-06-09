@@ -2518,6 +2518,25 @@ const schedulingSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // therapistConfirm
+      .addCase(therapistConfirm.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(therapistConfirm.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Therapist confirmation successful.";
+      })
+      .addCase(therapistConfirm.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
       // markArrived
       .addCase(markArrived.pending, (state) => {
         state.loading = true;
@@ -2591,25 +2610,6 @@ const schedulingSlice = createSlice({
         state.successMessage = "Driver confirmation successful.";
       })
       .addCase(driverConfirm.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // rejectAppointment
-      .addCase(rejectAppointment.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(rejectAppointment.fulfilled, (state, action) => {
-        state.loading = false;
-        const index = state.appointments.findIndex(
-          (appt) => appt.id === action.payload.id
-        );
-        if (index !== -1) {
-          state.appointments[index] = action.payload;
-        }
-        state.successMessage = "Appointment rejected successfully.";
-      })
-      .addCase(rejectAppointment.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });
