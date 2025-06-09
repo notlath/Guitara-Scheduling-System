@@ -6,7 +6,8 @@
 
 **Problem**: Driver confirmation button only appeared when `requires_car = true`, leaving single-therapist appointments without a visible button.
 
-**Root Cause**: 
+**Root Cause**:
+
 ```jsx
 // OLD Logic in DriverDashboard.jsx
 case "therapist_confirmed":
@@ -18,6 +19,7 @@ case "therapist_confirmed":
 ```
 
 **✅ Fix Applied**:
+
 ```jsx
 // NEW Logic - Button always appears
 case "therapist_confirmed":
@@ -43,6 +45,7 @@ case "therapist_confirmed":
 **Problem**: `requires_car` was set based on `multipleTherapists` boolean instead of actual therapist count.
 
 **Root Cause**:
+
 ```jsx
 // OLD Logic in AppointmentForm.jsx
 requires_car: formData.multipleTherapists, // Wrong - just a boolean
@@ -50,6 +53,7 @@ group_size: formData.multipleTherapists ? (formData.therapists ? formData.therap
 ```
 
 **✅ Fix Applied**:
+
 ```jsx
 // NEW Logic - Based on actual group size
 requires_car: formData.multipleTherapists && formData.therapists && formData.therapists.length > 1,
@@ -63,6 +67,7 @@ group_size: formData.multipleTherapists && formData.therapists ? formData.therap
 **Root Cause**: Backend logic was not properly enforcing ALL therapists to confirm.
 
 **✅ Fix Applied**:
+
 ```python
 # NEW Logic in views.py - therapist_confirm method
 if appointment.group_size > 1:
@@ -87,6 +92,7 @@ if appointment.group_size > 1:
 **Problem**: Mixed usage of `therapist_confirm` vs `therapist_confirmed` causing confusion.
 
 **✅ Fix Applied**:
+
 - **Standardized to**: `therapist_confirmed` → `driver_confirmed` → `in_progress`
 - **Added to STATUS_CHOICES**: `("therapist_confirmed", "Therapist Confirmed")`
 - **Kept legacy statuses**: For backward compatibility
@@ -95,12 +101,14 @@ if appointment.group_size > 1:
 ## New Workflow (Fixed)
 
 ### ✅ **Single Therapist Workflow**
+
 1. **Operator** books → Status: `pending`
-2. **1 Therapist** confirms → Status: `therapist_confirmed` 
+2. **1 Therapist** confirms → Status: `therapist_confirmed`
 3. **Driver** sees button and confirms → Status: `driver_confirmed`
 4. **Operator** clicks "Start Appointment" → Status: `in_progress`
 
-### ✅ **Multi-Therapist Workflow**  
+### ✅ **Multi-Therapist Workflow**
+
 1. **Operator** books → Status: `pending`
 2. **Therapist 1** confirms → Status: still `pending` (waiting for others)
 3. **Therapist 2** confirms → Status: still `pending` (waiting for others)
@@ -111,22 +119,26 @@ if appointment.group_size > 1:
 ## Files Modified
 
 ### Backend Files
+
 - ✅ `guitara/scheduling/views.py` - Fixed therapist_confirm and driver_confirm logic
 - ✅ `guitara/scheduling/models.py` - Added consistent status choices
 
-### Frontend Files  
+### Frontend Files
+
 - ✅ `royal-care-frontend/src/components/DriverDashboard.jsx` - Fixed button visibility
 - ✅ `royal-care-frontend/src/components/scheduling/AppointmentForm.jsx` - Fixed requires_car logic
 
 ## Verification Results
 
 ### ✅ Status Choices Verified
+
 - `pending`: Pending ✓
-- `therapist_confirmed`: Therapist Confirmed ✓  
+- `therapist_confirmed`: Therapist Confirmed ✓
 - `driver_confirmed`: Driver Confirmed ✓
 - `in_progress`: In Progress ✓
 
 ### ✅ Logic Verified
+
 - Driver button now appears for ALL appointments regardless of vehicle type ✓
 - `requires_car` properly set based on actual group size (>1) ✓
 - Multi-therapist appointments require ALL therapists to confirm ✓
@@ -135,12 +147,14 @@ if appointment.group_size > 1:
 ## Testing Recommendations
 
 1. **Test Single Therapist Flow**:
+
    - Create appointment with 1 therapist
    - Therapist confirms → Check driver dashboard shows button
    - Driver confirms → Check operator can start
 
 2. **Test Multi-Therapist Flow**:
-   - Create appointment with 3 therapists  
+
+   - Create appointment with 3 therapists
    - Only 1 therapist confirms → Driver should NOT see it
    - 2nd therapist confirms → Driver should NOT see it
    - 3rd therapist confirms → Driver should see button
@@ -155,7 +169,7 @@ if appointment.group_size > 1:
 All three major issues have been resolved:
 
 1. ✅ **Driver confirmation button now always appears** when therapists are confirmed
-2. ✅ **requires_car is correctly set** based on actual group size 
+2. ✅ **requires_car is correctly set** based on actual group size
 3. ✅ **ALL therapists must confirm** before multi-therapist appointments become available to drivers
 
 The confirmation flow now works as intended with clear status transitions and proper validation at each step!

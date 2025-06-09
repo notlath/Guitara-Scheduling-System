@@ -764,7 +764,8 @@ const DriverDashboard = () => {
               )}
             </div>
           );
-        }      case "therapist_confirmed":
+        }
+      case "therapist_confirmed":
         // Driver always needs to confirm regardless of vehicle type
         return (
           <div className="appointment-actions">

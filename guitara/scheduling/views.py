@@ -1127,12 +1127,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     appointment=appointment,
                     therapist=request.user,
                     confirmed_at=timezone.now(),
-                )            # Check if all therapists have confirmed
+                )
+
+            # Check if all therapists have confirmed
             total_confirmations = TherapistConfirmation.objects.filter(
                 appointment=appointment, confirmed_at__isnull=False
             ).count()
 
             if total_confirmations >= appointment.group_size:
+                # ALL therapists have confirmed - update appointment status
                 appointment.group_confirmation_complete = True
                 appointment.therapist_confirmed_at = timezone.now()
                 appointment.status = "therapist_confirmed"  # Use consistent status name
@@ -1143,7 +1146,24 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 # Still waiting for other therapists - keep status as pending
                 remaining = appointment.group_size - total_confirmations
                 message = f"Your confirmation recorded. Waiting for {remaining} more therapist(s)."
-                # Don't change appointment status yet, keep it as "pending"        else:
+                # Don't change appointment status yet, keep it as "pending"
+                # Don't save appointment.status change here
+                appointment.save(update_fields=["updated_at"])  # Only update timestamp
+
+                # Send notification but don't change overall status
+                self._create_notifications(
+                    appointment,
+                    "therapist_partial_confirmed",
+                    f"Therapist {request.user.get_full_name()} has confirmed. {remaining} more confirmations needed.",
+                )
+
+                return Response(
+                    {
+                        "message": message,
+                        "appointment": self.get_serializer(appointment).data,
+                    }
+                )
+        else:
             # Single therapist appointment
             appointment.therapist_confirmed_at = timezone.now()
             appointment.status = "therapist_confirmed"  # Use consistent status name
@@ -1187,11 +1207,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": "You can only confirm your own appointments"},
                 status=status.HTTP_403_FORBIDDEN,
-            )        # Driver can only confirm after therapist(s) have confirmed
+            )  # Driver can only confirm after therapist(s) have confirmed
         if appointment.status != "therapist_confirmed":
             if appointment.status == "pending":
                 return Response(
-                    {"error": "All therapists must confirm first before driver can confirm"},
+                    {
+                        "error": "All therapists must confirm first before driver can confirm"
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             elif appointment.status == "driver_confirmed":
