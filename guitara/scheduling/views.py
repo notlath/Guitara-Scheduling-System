@@ -1382,6 +1382,45 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return Response({"message": message, "appointment": serializer.data})
 
     @action(detail=True, methods=["post"])
+    def start_session(self, request, pk=None):
+        """Therapist starts the session (for cases where driver drop-off doesn't auto-start)"""
+        appointment = self.get_object()
+
+        # Check if user is authorized to start session
+        if (
+            request.user != appointment.therapist
+            and request.user not in appointment.therapists.all()
+        ):
+            return Response(
+                {"error": "Only assigned therapists can start sessions"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Check if session can be started
+        if appointment.status not in ["arrived", "driver_confirmed"]:
+            return Response(
+                {"error": "Session can only be started when therapist has arrived or driver confirmed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Start the session
+        appointment.status = "session_in_progress"
+        appointment.session_started_at = timezone.now()
+        appointment.save()
+
+        # Create notifications
+        self._create_notifications(
+            appointment,
+            "session_started",
+            f"Therapy session for {appointment.client} has been started by {request.user.get_full_name()}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(
+            {"message": "Session started successfully.", "appointment": serializer.data}
+        )
+
+    @action(detail=True, methods=["post"])
     def mark_awaiting_payment(self, request, pk=None):
         """Therapist marks session as complete and awaiting payment"""
         appointment = self.get_object()
@@ -1967,6 +2006,45 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(appointment)
         return Response({"message": message, "appointment": serializer.data})
+
+    @action(detail=True, methods=["post"])
+    def start_session(self, request, pk=None):
+        """Therapist starts the session (for cases where driver drop-off doesn't auto-start)"""
+        appointment = self.get_object()
+
+        # Check if user is authorized to start session
+        if (
+            request.user != appointment.therapist
+            and request.user not in appointment.therapists.all()
+        ):
+            return Response(
+                {"error": "Only assigned therapists can start sessions"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Check if session can be started
+        if appointment.status not in ["arrived", "driver_confirmed"]:
+            return Response(
+                {"error": "Session can only be started when therapist has arrived or driver confirmed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Start the session
+        appointment.status = "session_in_progress"
+        appointment.session_started_at = timezone.now()
+        appointment.save()
+
+        # Create notifications
+        self._create_notifications(
+            appointment,
+            "session_started",
+            f"Therapy session for {appointment.client} has been started by {request.user.get_full_name()}.",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(
+            {"message": "Session started successfully.", "appointment": serializer.data}
+        )
 
     @action(detail=True, methods=["post"])
     def mark_awaiting_payment(self, request, pk=None):
