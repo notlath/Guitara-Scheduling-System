@@ -459,6 +459,15 @@ export const updateAppointmentStatus = createAsyncThunk(
             headers: { Authorization: `Token ${token}` },
           }
         );
+      } else if (action === "drop_off_therapist") {
+        // Use the specific drop_off_therapist endpoint
+        response = await axios.post(
+          `${API_URL}appointments/${id}/drop_off_therapist/`,
+          {},
+          {
+            headers: { Authorization: `Token ${token}` },
+          }
+        );
       } else if (status === "completed") {
         // Use the specific complete endpoint - only send additional fields for completion
         const updateData = { status, ...additionalFields };
@@ -1603,7 +1612,7 @@ export const markArrived = createAsyncThunk(
 
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/mark_arrived/`,
+        `${API_URL}appointments/${appointmentId}/arrive_at_location/`,
         {},
         {
           headers: { Authorization: `Token ${token}` },
@@ -2506,6 +2515,101 @@ const schedulingSlice = createSlice({
         // Unread count should remain the same
       })
       .addCase(deleteReadNotifications.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // markArrived
+      .addCase(markArrived.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(markArrived.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Marked arrival successfully.";
+      })
+      .addCase(markArrived.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // startJourney
+      .addCase(startJourney.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(startJourney.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Journey started successfully.";
+      })
+      .addCase(startJourney.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // startSession
+      .addCase(startSession.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(startSession.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Session started successfully.";
+      })
+      .addCase(startSession.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // driverConfirm
+      .addCase(driverConfirm.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(driverConfirm.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Driver confirmation successful.";
+      })
+      .addCase(driverConfirm.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // rejectAppointment
+      .addCase(rejectAppointment.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(rejectAppointment.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Appointment rejected successfully.";
+      })
+      .addCase(rejectAppointment.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

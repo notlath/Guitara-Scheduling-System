@@ -156,14 +156,14 @@ const DriverDashboard = () => {
     // - dropped_off: Driver dropped off therapist
     // - session_in_progress: Therapist(s) dropped off, session ongoing
     // - awaiting_payment: Session complete, awaiting payment
-    // - completed: Appointment complete, may need pickup
-    // - pickup_requested: Therapist requested pickup
+    // - completed: Appointment complete, may need pickup    // - pickup_requested: Therapist requested pickup
     const visibleStatuses = [
       "pending",
       "therapist_confirmed",
       "driver_confirmed",
       "in_progress",
       "journey_started",
+      "journey", // Backend is using this status - needs to be included
       "arrived",
       "dropped_off",
       "session_in_progress",
@@ -173,8 +173,7 @@ const DriverDashboard = () => {
     ];
 
     return visibleStatuses.includes(apt.status);
-  });
-  const myTodayAppointments = todayAppointments.filter((apt) => {
+  });  const myTodayAppointments = todayAppointments.filter((apt) => {
     if (apt.driver !== user?.id) return false;
     const visibleStatuses = [
       "pending",
@@ -182,6 +181,7 @@ const DriverDashboard = () => {
       "driver_confirmed",
       "in_progress",
       "journey_started",
+      "journey", // Added missing status that backend is using
       "arrived",
       "dropped_off",
       "session_in_progress",
@@ -190,8 +190,7 @@ const DriverDashboard = () => {
       "pickup_requested",
     ];
     return visibleStatuses.includes(apt.status);
-  });
-  const myUpcomingAppointments = upcomingAppointments.filter((apt) => {
+  });  const myUpcomingAppointments = upcomingAppointments.filter((apt) => {
     if (apt.driver !== user?.id) return false;
     const visibleStatuses = [
       "pending",
@@ -199,6 +198,7 @@ const DriverDashboard = () => {
       "driver_confirmed",
       "in_progress",
       "journey_started",
+      "journey", // Added missing status that backend is using
       "arrived",
       "dropped_off",
       "session_in_progress",
@@ -720,8 +720,8 @@ const DriverDashboard = () => {
       case "therapist_confirmed":
         return "status-therapist-confirmed";
       case "driver_confirmed":
-        return "status-driver-confirmed";
-      case "journey_started":
+        return "status-driver-confirmed";      case "journey_started":
+      case "journey":
         return "status-journey-started";
       case "arrived":
         return "status-arrived";
@@ -855,9 +855,8 @@ const DriverDashboard = () => {
               </p>
             </div>
           </div>
-        );
-
-      case "journey_started":
+        );      case "journey_started":
+      case "journey": // Handle both journey statuses
         return (
           <div className="appointment-actions">
             <button
