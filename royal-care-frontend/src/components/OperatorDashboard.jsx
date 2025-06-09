@@ -3,12 +3,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
-  assignDriverToPickup,
   autoCancelOverdueAppointments,
   fetchAppointments,
   fetchNotifications,
   fetchStaffMembers,
   reviewRejection,
+  updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -16,7 +16,6 @@ import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import { LoadingSpinner } from "./common/LoadingComponents";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
-import NotificationCenter from "./scheduling/NotificationCenter";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
@@ -194,7 +193,7 @@ const OperatorDashboard = () => {
     todayAppointments,
     upcomingAppointments,
     notifications,
-    staffMembers,
+    staffMembers: _staffMembers,
     loading,
     error,
   } = useSelector((state) => state.scheduling);
@@ -430,10 +429,26 @@ const OperatorDashboard = () => {
       setAutoCancelLoading(false);
     }
   };
+
   // Driver coordination functions
   const handleAssignDriverPickup = async (therapistId, driverId) => {
     try {
-      const therapist = pendingPickups.find((t) => t.id === therapistId);
+      // Get current pending pickup requests from appointments
+      const currentPendingPickups = appointments
+        .filter((apt) => apt.status === "pickup_requested")
+        .map((apt) => ({
+          id: apt.therapist,
+          name: apt.therapist_details
+            ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
+            : "Unknown Therapist",
+          location: apt.location,
+          appointment_id: apt.id,
+          urgency: getUrgencyLevel(apt.pickup_request_time),
+          session_end_time: apt.session_end_time,
+          requested_at: apt.pickup_request_time,
+        }));
+
+      const therapist = currentPendingPickups.find((t) => t.id === therapistId);
       const driver = driverAssignment.availableDrivers.find(
         (d) => d.id === driverId
       );
@@ -443,16 +458,24 @@ const OperatorDashboard = () => {
         return;
       }
 
-      const estimatedArrival = calculateEstimatedArrival(
+      const estimatedTime = calculatePasigEstimatedTime(
         driver.last_location,
         therapist.location
       );
 
-      // Use the dedicated assignDriverToPickup action
+      const estimatedArrival = new Date();
+      estimatedArrival.setMinutes(
+        estimatedArrival.getMinutes() + estimatedTime
+      );
+
       await dispatch(
-        assignDriverToPickup({
-          appointmentId: therapist.appointment_id,
-          driverId: driverId,
+        updateAppointmentStatus({
+          id: therapist.appointment_id,
+          status: "driver_assigned_pickup",
+          driver: driverId,
+          notes: `Driver assigned for pickup in ${getPasigZone(
+            therapist.location
+          )} - ETA: ${estimatedTime} minutes`,
         })
       ).unwrap();
 
@@ -468,6 +491,8 @@ const OperatorDashboard = () => {
             ...driver,
             current_task: `Picking up ${therapist.name}`,
             current_appointment: therapist.appointment_id,
+            estimated_completion: estimatedArrival.toISOString(),
+            current_location: `En route to ${therapist.location}`,
           },
         ],
         pendingPickups: prev.pendingPickups.filter((t) => t.id !== therapistId),
@@ -478,10 +503,12 @@ const OperatorDashboard = () => {
         driver_id: driverId,
         therapist_id: therapistId,
         appointment_id: therapist.appointment_id,
-        estimated_arrival: estimatedArrival,
+        estimated_arrival: estimatedArrival.toISOString(),
         driver_name: `${driver.first_name} ${driver.last_name}`,
         therapist_name: therapist.name,
         pickup_location: therapist.location,
+        pickup_zone: getPasigZone(therapist.location),
+        estimated_time: estimatedTime,
       });
 
       refreshData();
@@ -491,9 +518,24 @@ const OperatorDashboard = () => {
     }
   };
 
-  const _handleUrgentPickupRequest = async (therapistId) => {
+  const handleUrgentPickupRequest = async (therapistId) => {
     try {
-      const therapist = pendingPickups.find((t) => t.id === therapistId);
+      // Get current pending pickup requests from appointments
+      const currentPendingPickups = appointments
+        .filter((apt) => apt.status === "pickup_requested")
+        .map((apt) => ({
+          id: apt.therapist,
+          name: apt.therapist_details
+            ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
+            : "Unknown Therapist",
+          location: apt.location,
+          appointment_id: apt.id,
+          urgency: getUrgencyLevel(apt.pickup_request_time),
+          session_end_time: apt.session_end_time,
+          requested_at: apt.pickup_request_time,
+        }));
+
+      const therapist = currentPendingPickups.find((t) => t.id === therapistId);
       const availableDrivers = driverAssignment.availableDrivers;
 
       if (availableDrivers.length === 0) {
@@ -501,11 +543,19 @@ const OperatorDashboard = () => {
         return;
       }
 
-      // Auto-assign nearest available driver
-      const bestDriver = findNearestDriver(
-        therapist.location,
-        availableDrivers
-      );
+      // Find nearest driver in Pasig
+      const bestDriver = availableDrivers.reduce((nearest, driver) => {
+        const currentScore = calculatePasigProximityScore(
+          driver.last_location,
+          therapist.location
+        );
+        const nearestScore = calculatePasigProximityScore(
+          nearest.last_location,
+          therapist.location
+        );
+        return currentScore.score > nearestScore.score ? driver : nearest;
+      });
+
       await handleAssignDriverPickup(therapistId, bestDriver.id);
     } catch (error) {
       console.error("Failed to process urgent pickup request:", error);
@@ -513,166 +563,11 @@ const OperatorDashboard = () => {
     }
   };
 
-  // Helper functions for driver coordination
-  const calculateEstimatedArrival = (driverLocation, therapistLocation) => {
-    // Simple time estimation based on zones (since no GPS)
-    const baseTime = 20; // Base 20 minutes
-    const proximityScore = calculateProximityScore(
-      driverLocation,
-      therapistLocation
-    );
-    const adjustedTime = baseTime + (10 - proximityScore.score);
-
-    const arrivalTime = new Date();
-    arrivalTime.setMinutes(arrivalTime.getMinutes() + adjustedTime);
-    return arrivalTime.toISOString();
-  };
-
-  const findNearestDriver = (therapistLocation, availableDrivers) => {
-    return availableDrivers.reduce((nearest, driver) => {
-      const currentScore = calculateProximityScore(
-        driver.last_location,
-        therapistLocation
-      );
-      const nearestScore = calculateProximityScore(
-        nearest.last_location,
-        therapistLocation
-      );
-      return currentScore.score > nearestScore.score ? driver : nearest;
-    });
-  };
-
-  const calculateProximityScore = (location1, location2) => {
-    // Same zone logic as in DriverDashboard
-    const ZONE_MAP = {
-      north_manila: ["Quezon City", "Caloocan", "Malabon"],
-      south_manila: ["Makati", "Taguig", "Paranaque"],
-      east_manila: ["Pasig", "Marikina", "Antipolo"],
-      west_manila: ["Manila", "Pasay", "Las Pinas"],
-      central_manila: ["Mandaluyong", "San Juan", "Sta. Mesa"],
-    };
-
-    const zone1 = Object.keys(ZONE_MAP).find((zone) =>
-      ZONE_MAP[zone].some((area) =>
-        location1?.toLowerCase().includes(area.toLowerCase())
-      )
-    );
-
-    const zone2 = Object.keys(ZONE_MAP).find((zone) =>
-      ZONE_MAP[zone].some((area) =>
-        location2?.toLowerCase().includes(area.toLowerCase())
-      )
-    );
-
-    if (zone1 === zone2) {
-      return { score: 10, label: "Same Zone" };
-    } else {
-      return { score: 5, label: "Different Zone" };
-    }
-  };
-  // Get therapists who have requested pickup from appointments
-  const pendingPickups = appointments
-    .filter(
-      (apt) =>
-        apt.status === "pickup_requested" && // Correct status for pickup requests
-        !apt.driver // No driver assigned yet
-    )
-    .map((apt) => ({
-      id: apt.therapist_details?.id || apt.therapist,
-      name: apt.therapist_details
-        ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
-        : "Unknown Therapist",
-      location: apt.location,
-      appointment_id: apt.id,
-      session_end_time: apt.updated_at, // When the pickup was requested
-      urgency: apt.notes?.includes("URGENT") ? "urgent" : "normal",
-      requested_at: apt.updated_at,
-      client_name: apt.client_details
-        ? `${apt.client_details.first_name} ${apt.client_details.last_name}`
-        : "Unknown Client",
-      appointment_time: `${apt.date} ${apt.start_time}`,
-    }));
-
-  const getTimeRemaining = (deadline) => {
+  const getTimeElapsed = (timestamp) => {
     const now = new Date();
-    const deadlineDate = new Date(deadline);
-    const timeDiff = deadlineDate.getTime() - now.getTime();
-
-    if (timeDiff <= 0) {
-      return "OVERDUE";
-    }
-
-    const minutes = Math.floor(timeDiff / (1000 * 60));
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${remainingMinutes}m`;
-    } else {
-      return `${remainingMinutes}m`;
-    }
-  };
-
-  const _getStatusBadgeClass = (status) => {
-    switch (status) {
-      case "pending":
-        return "status-pending";
-      case "confirmed":
-        return "status-confirmed";
-      case "rejected":
-        return "status-rejected";
-      case "cancelled":
-        return "status-cancelled";
-      case "completed":
-        return "status-completed";
-      default:
-        return "";
-    }
-  };
-  // Helper function to determine who rejected the appointment
-  const _getRejectedByInfo = (appointment) => {
-    if (!appointment.rejected_by_details) {
-      return {
-        text: "Unknown",
-        role: "unknown",
-        badgeClass: "rejection-unknown",
-      };
-    }
-
-    const rejectedBy = appointment.rejected_by_details;
-    const name = `${rejectedBy.first_name} ${rejectedBy.last_name}`;
-
-    // Use the role from rejected_by_details for accurate identification
-    const role = rejectedBy.role?.toLowerCase();
-
-    switch (role) {
-      case "therapist":
-        return {
-          text: `Therapist: ${name}`,
-          role: "therapist",
-          badgeClass: "rejection-therapist",
-        };
-      case "driver":
-        return {
-          text: `Driver: ${name}`,
-          role: "driver",
-          badgeClass: "rejection-driver",
-        };
-      default:
-        return {
-          text: `${rejectedBy.role || "Staff"}: ${name}`,
-          role: rejectedBy.role?.toLowerCase() || "staff",
-          badgeClass: "rejection-other",
-        };
-    }
-  };
-
-  // Helper function to calculate time elapsed
-  const _getTimeElapsed = (timestamp) => {
-    const now = new Date();
-    const then = new Date(timestamp);
-    const diffMs = now - then;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const past = new Date(timestamp);
+    const diffMs = now - past;
+    const diffMins = Math.floor(diffMs / 60000);
 
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins} min ago`;
@@ -680,605 +575,561 @@ const OperatorDashboard = () => {
     return `${diffHours}h ${diffMins % 60}m ago`;
   };
 
-  // Helper function to calculate estimated travel time
-  const _calculateEstimatedTime = (fromLocation, toLocation) => {
-    const proximity = calculateProximityScore(fromLocation, toLocation);
-    const baseTime =
-      proximity.score === 10 ? 15 : proximity.score === 7 ? 25 : 45;
+  const getUrgencyLevel = (requestTime) => {
+    if (!requestTime) return "normal";
+    const waitTime = (new Date() - new Date(requestTime)) / (1000 * 60); // minutes
+    return waitTime > 20 ? "urgent" : "normal"; // Reduced to 20 minutes for Pasig City
+  };
 
-    // Adjust for current time (traffic)
-    const hour = new Date().getHours();
-    let multiplier = 1.0;
-    if ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)) {
-      multiplier = 1.5; // Rush hour
-    } else if (hour >= 12 && hour <= 13) {
-      multiplier = 1.2; // Lunch time
+  // Helper functions for Pasig City coordination
+  const getPasigZone = (location) => {
+    if (!location) return "Unknown Zone";
+
+    const PASIG_ZONE_MAP = {
+      north_pasig: ["Ugong Norte", "Bagong Ilog", "Bambang", "Dela Paz"],
+      south_pasig: [
+        "Pineda",
+        "San Joaquin",
+        "Sto. Tomas",
+        "Sagad",
+        "San Nicolas",
+      ],
+      east_pasig: ["Malinao", "Santolan", "San Antonio", "Rosario", "Sumilang"],
+      west_pasig: [
+        "Kapitolyo",
+        "Oranbo",
+        "San Miguel",
+        "Manggahan",
+        "Maybunga",
+      ],
+      central_pasig: [
+        "Caniogan",
+        "Pasig Proper",
+        "Bagong Katipunan",
+        "Kalawaan",
+      ],
+      ortigas_cbd: ["Ortigas Center", "Ugong Sur", "Wack Wack", "San Antonio"],
+    };
+
+    for (const [zone, areas] of Object.entries(PASIG_ZONE_MAP)) {
+      if (
+        areas.some((area) =>
+          location.toLowerCase().includes(area.toLowerCase())
+        )
+      ) {
+        return zone.replace("_", " ").toUpperCase();
+      }
     }
 
-    return Math.round(baseTime * multiplier);
+    return "Central Pasig"; // Default zone
   };
 
-  // Enhanced workflow status filters
-  const getAppointmentsByStatus = (status) => {
-    return appointments.filter((apt) => apt.status === status);
+  const calculatePasigProximityScore = (location1, location2) => {
+    const PASIG_ZONE_MAP = {
+      north_pasig: ["Ugong Norte", "Bagong Ilog", "Bambang", "Dela Paz"],
+      south_pasig: [
+        "Pineda",
+        "San Joaquin",
+        "Sto. Tomas",
+        "Sagad",
+        "San Nicolas",
+      ],
+      east_pasig: ["Malinao", "Santolan", "San Antonio", "Rosario", "Sumilang"],
+      west_pasig: [
+        "Kapitolyo",
+        "Oranbo",
+        "San Miguel",
+        "Manggahan",
+        "Maybunga",
+      ],
+      central_pasig: [
+        "Caniogan",
+        "Pasig Proper",
+        "Bagong Katipunan",
+        "Kalawaan",
+      ],
+      ortigas_cbd: ["Ortigas Center", "Ugong Sur", "Wack Wack", "San Antonio"],
+    };
+
+    // Adjacent zones in Pasig City
+    const ADJACENT_ZONES = {
+      north_pasig: ["central_pasig", "east_pasig"],
+      south_pasig: ["central_pasig", "west_pasig"],
+      east_pasig: ["north_pasig", "central_pasig", "ortigas_cbd"],
+      west_pasig: ["south_pasig", "central_pasig"],
+      central_pasig: [
+        "north_pasig",
+        "south_pasig",
+        "east_pasig",
+        "west_pasig",
+        "ortigas_cbd",
+      ],
+      ortigas_cbd: ["central_pasig", "east_pasig"],
+    };
+
+    const getZone = (location) => {
+      if (!location) return "central_pasig";
+
+      for (const [zone, areas] of Object.entries(PASIG_ZONE_MAP)) {
+        if (
+          areas.some((area) =>
+            location.toLowerCase().includes(area.toLowerCase())
+          )
+        ) {
+          return zone;
+        }
+      }
+      return "central_pasig";
+    };
+
+    const zone1 = getZone(location1);
+    const zone2 = getZone(location2);
+
+    if (zone1 === zone2) {
+      return { score: 10, label: "Same Zone" };
+    } else if (ADJACENT_ZONES[zone1]?.includes(zone2)) {
+      return { score: 7, label: "Adjacent Zone" };
+    } else {
+      return { score: 4, label: "Cross-City" };
+    }
   };
 
-  const getPendingTherapistConfirmations = () => {
-    return appointments.filter((apt) => apt.status === "pending");
-  };
-
-  const getPendingDriverConfirmations = () => {
-    return appointments.filter(
-      (apt) =>
-        apt.status === "therapist_confirm" &&
-        (apt.group_size <= 1 || apt.group_confirmation_complete)
+  const calculatePasigEstimatedTime = (driverLocation, therapistLocation) => {
+    const proximity = calculatePasigProximityScore(
+      driverLocation,
+      therapistLocation
     );
+    const currentHour = new Date().getHours();
+
+    // Base time calculation
+    let baseTime;
+    if (proximity.score >= 10) baseTime = 8; // Same zone: 8 minutes
+    else if (proximity.score >= 7) baseTime = 15; // Adjacent zone: 15 minutes
+    else baseTime = 25; // Cross-city: 25 minutes
+
+    // Traffic adjustments for Pasig City
+    let trafficMultiplier = 1;
+
+    // Rush hour adjustments (7-9 AM, 5-7 PM)
+    if (
+      (currentHour >= 7 && currentHour <= 9) ||
+      (currentHour >= 17 && currentHour <= 19)
+    ) {
+      trafficMultiplier = 1.5;
+    }
+
+    // Ortigas CBD adjustments during business hours
+    if (
+      (driverLocation?.includes("Ortigas") ||
+        therapistLocation?.includes("Ortigas")) &&
+      currentHour >= 8 &&
+      currentHour <= 18
+    ) {
+      trafficMultiplier *= 1.3;
+    }
+
+    return Math.round(baseTime * trafficMultiplier);
   };
 
-  const getActiveJourneys = () => {
-    return appointments.filter((apt) =>
-      ["journey", "arrived", "dropped_off"].includes(apt.status)
-    );
-  };
-
-  // Memoized calculations for better performance
-  const activeSessions = useMemo(() => {
-    if (!appointments || !Array.isArray(appointments)) {
-      return [];
-    }
-    return appointments.filter((apt) => apt.status === "session_in_progress");
-  }, [appointments]);
-
-  const awaitingPayment = useMemo(() => {
-    if (!appointments || !Array.isArray(appointments)) {
-      return [];
-    }
-    return appointments.filter((apt) => apt.status === "awaiting_payment");
-  }, [appointments]);
-
-  const groupAppointments = useMemo(() => {
-    if (!appointments || !Array.isArray(appointments)) {
-      return [];
-    }
-    return appointments.filter((apt) => apt.group_size > 1);
-  }, [appointments]);
-
-  const getActiveSessions = useCallback(() => {
-    return activeSessions;
-  }, [activeSessions]);
-
-  const _getAwaitingPayment = useCallback(() => {
-    return awaitingPayment;
-  }, [awaitingPayment]);
-
-  const getGroupAppointments = useCallback(() => {
-    return groupAppointments;
-  }, [groupAppointments]);
-  // Memoized pickup requests calculation
-  const pickupRequests = useMemo(() => {
-    if (!appointments || !Array.isArray(appointments)) {
-      return [];
-    }
-    return appointments
-      .filter(
-        (apt) =>
-          apt.status === "pickup_requested" && // Correct status for pickup requests
-          !apt.driver // No driver assigned yet
-      )
+  // Main render function for driver coordination panel
+  const renderDriverCoordinationPanel = () => {
+    // Get current pending pickup requests from appointments
+    const currentPendingPickups = appointments
+      .filter((apt) => apt.status === "pickup_requested")
       .map((apt) => ({
-        ...apt,
-        priority: apt.pickup_urgency === "urgent" ? 1 : 2,
-        requested_at: apt.pickup_request_time || apt.updated_at,
-        therapist_name: apt.therapist_details
+        id: apt.therapist,
+        name: apt.therapist_details
           ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
           : "Unknown Therapist",
-        client_name: apt.client_details
-          ? `${apt.client_details.first_name} ${apt.client_details.last_name}`
-          : "Unknown Client",
-        required_vehicle: apt.group_size > 1 ? "car" : "motorcycle",
-      }))
-      .sort((a, b) => a.priority - b.priority);
-  }, [appointments]);
-
-  const getPickupRequests = useCallback(() => {
-    return pickupRequests;
-  }, [pickupRequests]); // Memoized available drivers calculation to prevent re-computation on every render
-  const availableDrivers = useMemo(() => {
-    if (!staffMembers || !Array.isArray(staffMembers)) {
-      return [];
-    }
-    return staffMembers
-      .filter(
-        (member) =>
-          member.role === "driver" &&
-          member.is_active &&
-          member.driver_available_since
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.driver_available_since) -
-          new Date(b.driver_available_since)
-      );
-  }, [staffMembers]);
-
-  const getAvailableDrivers = useCallback(() => {
-    return availableDrivers;
-  }, [availableDrivers]);
-  // Helper function to get busy drivers
-  const getBusyDrivers = useCallback(() => {
-    if (!staffMembers) return [];
-    return staffMembers.filter(
-      (member) =>
-        member.role === "driver" &&
-        member.driver_status &&
-        member.driver_status !== "available"
-    );
-  }, [staffMembers]);
-  // Enhanced automatic driver assignment
-  const handleAutoAssignPickup = async (appointment) => {
-    const currentAvailableDrivers = getAvailableDrivers();
-
-    // Filter drivers by vehicle type (this would require additional driver profile fields)
-    const suitableDrivers = currentAvailableDrivers.filter(() => {
-      // For now, assume all drivers can handle both vehicle types
-      // In production, this would check driver.vehicle_type against required vehicle type
-      return true;
-    });
-
-    if (suitableDrivers.length === 0) {
-      alert("No available drivers for automatic assignment");
-      return;
-    }
-
-    const selectedDriver = suitableDrivers[0]; // Earliest available
-
-    try {
-      await dispatch(
-        assignDriverToPickup({
-          appointmentId: appointment.id,
-          driverId: selectedDriver.id,
-        })
-      );
-
-      // Update driver availability
-      selectedDriver.driver_available_since = null;
-
-      alert(
-        `Driver ${selectedDriver.first_name} ${selectedDriver.last_name} automatically assigned for pickup`
-      );
-    } catch (error) {
-      console.error("Auto assignment failed:", error);
-      alert("Failed to auto-assign driver");
-    }
-  };
-
-  // Session progress tracking
-  const getSessionProgress = (appointment) => {
-    if (!appointment.session_started_at) return null;
-
-    const startTime = new Date(appointment.session_started_at);
-    const now = new Date();
-    const elapsed = Math.floor((now - startTime) / (1000 * 60)); // minutes
-
-    // Estimate total duration from services
-    const estimatedDuration =
-      appointment.services?.reduce(
-        (total, service) => total + (service.duration || 60),
-        0
-      ) || 60;
-
-    const progress = Math.min((elapsed / estimatedDuration) * 100, 100);
-
-    return {
-      elapsed,
-      estimatedDuration,
-      progress,
-      isOvertime: elapsed > estimatedDuration,
-    };
-  };
-
-  // Enhanced workflow render functions
-  const renderServiceWorkflowView = () => {
-    return (
-      <div className="workflow-overview">
-        <div className="workflow-stats">
-          <div className="stat-card">
-            <h3>Pending Confirmations</h3>
-            <div className="stat-number">
-              {getPendingTherapistConfirmations().length}
-            </div>
-            <small>Therapist confirmations needed</small>
-          </div>
-          <div className="stat-card">
-            <h3>Driver Confirmations</h3>
-            <div className="stat-number">
-              {getPendingDriverConfirmations().length}
-            </div>
-            <small>Driver confirmations needed</small>
-          </div>
-          <div className="stat-card">
-            <h3>Active Journeys</h3>
-            <div className="stat-number">{getActiveJourneys().length}</div>
-            <small>En route to clients</small>
-          </div>
-          <div className="stat-card">
-            <h3>Group Appointments</h3>
-            <div className="stat-number">{getGroupAppointments().length}</div>
-            <small>Multi-therapist bookings</small>
-          </div>
-        </div>
-
-        <div className="workflow-stages">
-          <h3>Current Workflow Status</h3>
-          {renderWorkflowStages()}
-        </div>
-      </div>
-    );
-  };
-
-  const renderWorkflowStages = () => {
-    const stages = [
-      {
-        status: "pending",
-        label: "Pending",
-        appointments: getAppointmentsByStatus("pending"),
-      },
-      {
-        status: "therapist_confirm",
-        label: "Therapist Confirmed",
-        appointments: getAppointmentsByStatus("therapist_confirm"),
-      },
-      {
-        status: "driver_confirm",
-        label: "Driver Confirmed",
-        appointments: getAppointmentsByStatus("driver_confirm"),
-      },
-      {
-        status: "journey",
-        label: "Journey",
-        appointments: getAppointmentsByStatus("journey"),
-      },
-      {
-        status: "arrived",
-        label: "Arrived",
-        appointments: getAppointmentsByStatus("arrived"),
-      },
-      {
-        status: "session_in_progress",
-        label: "Session Active",
-        appointments: getAppointmentsByStatus("session_in_progress"),
-      },
-      {
-        status: "awaiting_payment",
-        label: "Awaiting Payment",
-        appointments: getAppointmentsByStatus("awaiting_payment"),
-      },
-      {
-        status: "completed",
-        label: "Completed",
-        appointments: getAppointmentsByStatus("completed"),
-      },
-    ];
+        location: apt.location,
+        appointment_id: apt.id,
+        timestamp: apt.created_at || apt.updated_at,
+        urgency: apt.urgency || "normal",
+      }));
 
     return (
-      <div className="workflow-stages-grid">
-        {stages.map((stage) => (
-          <div key={stage.status} className={`workflow-stage ${stage.status}`}>
-            <h4>
-              {stage.label} ({stage.appointments.length})
-            </h4>
-            {stage.appointments.map((apt) => (
-              <div key={apt.id} className="appointment-mini-card">
-                <div className="appointment-header">
-                  <span className="client-name">
-                    {apt.client_details
-                      ? `${apt.client_details.first_name} ${apt.client_details.last_name}`
-                      : "Unknown Client"}
-                  </span>
-                  <span className="appointment-time">{apt.start_time}</span>
-                </div>
-                <div className="appointment-details">
-                  <span className="therapist">
-                    {apt.therapist_details
-                      ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
-                      : "No Therapist"}
-                  </span>
-                  {apt.group_size > 1 && (
-                    <span className="group-badge">
-                      Group ({apt.group_size})
-                    </span>
-                  )}
-                  {stage.status === "session_in_progress" &&
-                    renderSessionProgress(apt)}
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const renderSessionProgress = (appointment) => {
-    const progress = getSessionProgress(appointment);
-    if (!progress) return null;
-
-    return (
-      <div className="session-progress">
-        <div className="progress-bar">
-          <div
-            className="progress-fill"
-            style={{ width: `${Math.min(progress.progress, 100)}%` }}
-          ></div>
-        </div>
-        <div className="progress-text">
-          {progress.elapsed}m / {progress.estimatedDuration}m
-          {progress.isOvertime && <span className="overtime">⚠️ Overtime</span>}
-        </div>
-      </div>
-    );
-  };
-  const renderActiveSessionsView = () => {
-    const currentActiveSessions = getActiveSessions();
-
-    if (currentActiveSessions.length === 0) {
-      return <div className="no-sessions">No active therapy sessions</div>;
-    }
-
-    return (
-      <div className="active-sessions-list">
-        {currentActiveSessions.map((appointment) => {
-          const progress = getSessionProgress(appointment);
-          return (
-            <div key={appointment.id} className="session-card">
-              <div className="session-header">
-                <h3>
-                  {appointment.client_details
-                    ? `${appointment.client_details.first_name} ${appointment.client_details.last_name}`
-                    : "Unknown Client"}
-                </h3>
-                <span className="session-time">
-                  Started:{" "}
-                  {new Date(
-                    appointment.session_started_at
-                  ).toLocaleTimeString()}
-                </span>
-              </div>
-
-              <div className="session-details">
-                <div className="therapist-info">
-                  <strong>Therapist:</strong>{" "}
-                  {appointment.therapist_details
-                    ? `${appointment.therapist_details.first_name} ${appointment.therapist_details.last_name}`
-                    : "Unknown Therapist"}
-                  {appointment.group_size > 1 && (
-                    <span className="group-indicator">
-                      + {appointment.group_size - 1} more
-                    </span>
-                  )}
-                </div>
-
-                <div className="location-info">
-                  <strong>Location:</strong> {appointment.location}
-                </div>
-
-                <div className="services-info">
-                  <strong>Services:</strong>
-                  {appointment.services
-                    ?.map((service) => service.name)
-                    .join(", ") || "No services listed"}
-                </div>
-              </div>
-
-              {progress && (
-                <div className="session-progress-card">
-                  <div className="progress-header">
-                    <span>Session Progress</span>
-                    <span
-                      className={progress.isOvertime ? "overtime" : "on-time"}
-                    >
-                      {progress.elapsed} / {progress.estimatedDuration} minutes
-                    </span>
-                  </div>
-                  <div className="progress-bar">
-                    <div
-                      className={`progress-fill ${
-                        progress.isOvertime ? "overtime" : ""
-                      }`}
-                      style={{ width: `${Math.min(progress.progress, 100)}%` }}
-                    ></div>
-                  </div>
-                  {progress.isOvertime && (
-                    <div className="overtime-warning">
-                      ⚠️ Session is running{" "}
-                      {progress.elapsed - progress.estimatedDuration} minutes
-                      over estimated time
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-  const renderPickupRequestsView = () => {
-    const pickupRequests = getPickupRequests();
-    const currentAvailableDrivers = getAvailableDrivers();
-
-    return (
-      <div className="pickup-requests-container">
-        <div className="pickup-stats">
-          <div className="stat-item">
-            <span className="stat-number">{pickupRequests.length}</span>
-            <span className="stat-label">Pending Pickups</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-number">
-              {currentAvailableDrivers.length}
+      <div className="driver-coordination-panel">
+        <div className="driver-coord-header">
+          <h3>
+            <i className="fas fa-car"></i>
+            Driver Coordination - Pasig City
+          </h3>
+          <div className="coord-stats">
+            <span className="stat available">
+              <i className="fas fa-user-check"></i>
+              {driverAssignment.availableDrivers.length} Available
             </span>
-            <span className="stat-label">Available Drivers</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-number">
-              {pickupRequests.filter((r) => r.priority === 1).length}
+            <span className="stat busy">
+              <i className="fas fa-user-clock"></i>
+              {driverAssignment.busyDrivers.length} Busy
             </span>
-            <span className="stat-label">Urgent Requests</span>
+            <span className="stat pending">
+              <i className="fas fa-hourglass-half"></i>
+              {currentPendingPickups.length} Pending Pickups
+            </span>
           </div>
         </div>
 
-        {pickupRequests.length === 0 ? (
-          <div className="no-pickups">No pending pickup requests</div>
-        ) : (
-          <div className="pickup-requests-list">
-            {pickupRequests.map((request) => (
-              <div
-                key={request.id}
-                className={`pickup-request-card ${request.pickup_urgency}`}
-              >
-                <div className="request-header">
-                  <h3>{request.therapist_name}</h3>
-                  <div className="request-badges">
-                    {request.pickup_urgency === "urgent" && (
-                      <span className="urgent-badge">🚨 URGENT</span>
-                    )}
-                    <span className="vehicle-badge">
-                      {request.required_vehicle === "car" ? "🚗" : "🏍️"}{" "}
-                      {request.required_vehicle}
-                    </span>
-                  </div>
+        <div className="driver-coord-grid">
+          {/* Available Drivers Section */}
+          <div className="coord-section available-drivers">
+            <div className="section-header">
+              <h4>
+                <i className="fas fa-users"></i>
+                Available Drivers ({driverAssignment.availableDrivers.length})
+              </h4>
+            </div>
+            <div className="driver-list">
+              {driverAssignment.availableDrivers.length === 0 ? (
+                <div className="empty-state">
+                  <i className="fas fa-user-slash"></i>
+                  <p>No drivers currently available</p>
                 </div>
-
-                <div className="request-details">
-                  <div className="client-info">
-                    <strong>Client:</strong> {request.client_name}
-                  </div>
-                  <div className="location-info">
-                    <strong>Pickup Location:</strong> {request.location}
-                  </div>
-                  <div className="timing-info">
-                    <strong>Requested:</strong>{" "}
-                    {new Date(request.requested_at).toLocaleString()}
-                  </div>
-                  {request.pickup_notes && (
-                    <div className="notes-info">
-                      <strong>Notes:</strong> {request.pickup_notes}
+              ) : (
+                driverAssignment.availableDrivers.map((driver) => (
+                  <div key={driver.id} className="driver-card available">
+                    <div className="driver-info">
+                      <div className="driver-name">
+                        <i className="fas fa-user"></i>
+                        {driver.first_name} {driver.last_name}
+                      </div>
+                      <div className="driver-details">
+                        <span className="location">
+                          <i className="fas fa-map-marker-alt"></i>
+                          {driver.current_location || "Location not set"}
+                        </span>
+                        <span className="zone">
+                          <i className="fas fa-globe"></i>
+                          {getPasigZone(driver.current_location)}
+                        </span>
+                      </div>
+                      <div className="driver-status available">
+                        <i className="fas fa-circle"></i>
+                        Ready for Assignment
+                      </div>
                     </div>
-                  )}
-                </div>
-
-                <div className="pickup-actions">
-                  {availableDrivers.length > 0 ? (
-                    <div className="driver-assignment">
-                      <button
-                        className="auto-assign-btn"
-                        onClick={() => handleAutoAssignPickup(request)}
-                      >
-                        Auto-Assign Driver
-                      </button>
+                    <div className="driver-actions">
                       <select
-                        className="driver-select"
                         onChange={(e) => {
                           if (e.target.value) {
-                            // Manual driver assignment
-                            dispatch(
-                              assignDriverToPickup({
-                                appointmentId: request.id,
-                                driverId: parseInt(e.target.value),
-                              })
-                            );
+                            handleAssignDriverPickup(e.target.value, driver.id);
+                            e.target.value = "";
                           }
                         }}
+                        className="pickup-selector"
                       >
-                        <option value="">Select Driver</option>
-                        {availableDrivers.map((driver) => (
-                          <option key={driver.id} value={driver.id}>
-                            {driver.first_name} {driver.last_name} (Available
-                            since{" "}
-                            {new Date(
-                              driver.driver_available_since
-                            ).toLocaleTimeString()}
-                            )
+                        <option value="">Assign Pickup...</option>
+                        {currentPendingPickups.map((pickup) => (
+                          <option key={pickup.id} value={pickup.id}>
+                            {pickup.name} - {pickup.location}
                           </option>
                         ))}
                       </select>
                     </div>
-                  ) : (
-                    <div className="no-drivers-warning">
-                      ⚠️ No available drivers
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Busy Drivers Section */}
+          <div className="coord-section busy-drivers">
+            <div className="section-header">
+              <h4>
+                <i className="fas fa-car"></i>
+                Active Assignments ({driverAssignment.busyDrivers.length})
+              </h4>
+            </div>
+            <div className="driver-list">
+              {driverAssignment.busyDrivers.length === 0 ? (
+                <div className="empty-state">
+                  <i className="fas fa-bed"></i>
+                  <p>No drivers currently on assignment</p>
+                </div>
+              ) : (
+                driverAssignment.busyDrivers.map((driver) => (
+                  <div key={driver.id} className="driver-card busy">
+                    <div className="driver-info">
+                      <div className="driver-name">
+                        <i className="fas fa-user"></i>
+                        {driver.first_name} {driver.last_name}
+                      </div>
+                      <div className="driver-details">
+                        <span className="current-task">
+                          <i className="fas fa-tasks"></i>
+                          {driver.current_task || "On assignment"}
+                        </span>
+                        <span className="location">
+                          <i className="fas fa-route"></i>
+                          {driver.current_location || "En route"}
+                        </span>
+                        <span className="eta">
+                          <i className="fas fa-clock"></i>
+                          ETA:{" "}
+                          {new Date(
+                            driver.estimated_completion
+                          ).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <div className="driver-status busy">
+                        <i className="fas fa-circle"></i>
+                        On Assignment
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Pending Pickups Section */}
+          <div className="coord-section pending-pickups">
+            <div className="section-header">
+              <h4>
+                <i className="fas fa-hourglass-half"></i>
+                Pending Pickups ({currentPendingPickups.length})
+              </h4>
+            </div>
+            <div className="pickup-list">
+              {currentPendingPickups.length === 0 ? (
+                <div className="empty-state">
+                  <i className="fas fa-check-circle"></i>
+                  <p>No pending pickup requests</p>
+                </div>
+              ) : (
+                currentPendingPickups.map((pickup) => (
+                  <div
+                    key={pickup.id}
+                    className={`pickup-card ${getUrgencyLevel(
+                      pickup.timestamp
+                    )}`}
+                  >
+                    <div className="pickup-info">
+                      <div className="therapist-name">
+                        <i className="fas fa-user-md"></i>
+                        {pickup.name}
+                      </div>
+                      <div className="pickup-details">
+                        <span className="location">
+                          <i className="fas fa-map-marker-alt"></i>
+                          {pickup.location}
+                        </span>
+                        <span className="zone">
+                          <i className="fas fa-globe"></i>
+                          {getPasigZone(pickup.location)}
+                        </span>
+                        <span className="time-elapsed">
+                          <i className="fas fa-stopwatch"></i>
+                          {getTimeElapsed(pickup.timestamp)}
+                        </span>
+                      </div>
+                      <div
+                        className={`urgency-indicator ${getUrgencyLevel(
+                          pickup.timestamp
+                        )}`}
+                      >
+                        <i
+                          className={`fas ${
+                            getUrgencyLevel(pickup.timestamp) === "urgent"
+                              ? "fa-exclamation-triangle"
+                              : "fa-clock"
+                          }`}
+                        ></i>
+                        {getUrgencyLevel(pickup.timestamp)
+                          .charAt(0)
+                          .toUpperCase() +
+                          getUrgencyLevel(pickup.timestamp).slice(1)}
+                      </div>
+                    </div>
+                    <div className="pickup-actions">
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAssignDriverPickup(pickup.id, e.target.value);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="driver-selector"
+                      >
+                        <option value="">Assign Driver...</option>
+                        {driverAssignment.availableDrivers.map((driver) => {
+                          const proximityScore = calculatePasigProximityScore(
+                            driver.current_location,
+                            pickup.location
+                          );
+                          const estimatedTime = calculatePasigEstimatedTime(
+                            driver.current_location,
+                            pickup.location
+                          );
+                          return (
+                            <option key={driver.id} value={driver.id}>
+                              {driver.first_name} {driver.last_name} -{" "}
+                              {proximityScore.label} (~{estimatedTime}min)
+                            </option>
+                          );
+                        })}
+                      </select>
+                      {getUrgencyLevel(pickup.timestamp) === "urgent" && (
+                        <button
+                          onClick={() => handleUrgentPickupRequest(pickup.id)}
+                          className="urgent-action-btn"
+                        >
+                          <i className="fas fa-bolt"></i>
+                          Urgent
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Assignment Tools */}
+        <div className="quick-assignment-tools">
+          <div className="tool-section auto-assignment">
+            <h5>
+              <i className="fas fa-magic"></i>
+              Smart Assignment
+            </h5>
+            <p>Automatically assign based on proximity and zone optimization</p>
+            <button
+              onClick={() => {
+                currentPendingPickups.forEach((pickup) => {
+                  const bestDriver = driverAssignment.availableDrivers
+                    .map((driver) => ({
+                      ...driver,
+                      score: calculatePasigProximityScore(
+                        driver.current_location,
+                        pickup.location
+                      ).score,
+                    }))
+                    .sort((a, b) => b.score - a.score)[0];
+
+                  if (bestDriver) {
+                    handleAssignDriverPickup(pickup.id, bestDriver.id);
+                  }
+                });
+              }}
+              disabled={
+                currentPendingPickups.length === 0 ||
+                driverAssignment.availableDrivers.length === 0
+              }
+              className="auto-assign-btn"
+            >
+              <i className="fas fa-robot"></i>
+              Auto-Assign All ({currentPendingPickups.length})
+            </button>
+          </div>
+
+          <div className="tool-section zone-overview">
+            <h5>
+              <i className="fas fa-map"></i>
+              Zone Coverage
+            </h5>
+            <div className="zone-coverage-grid">
+              {[
+                "north_pasig",
+                "south_pasig",
+                "east_pasig",
+                "west_pasig",
+                "central_pasig",
+              ].map((zone) => {
+                const driversInZone = driverAssignment.availableDrivers.filter(
+                  (driver) =>
+                    getPasigZone(driver.current_location) ===
+                    zone
+                      .replace("_", " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase())
+                );
+                const pickupsInZone = currentPendingPickups.filter(
+                  (pickup) =>
+                    getPasigZone(pickup.location) ===
+                    zone
+                      .replace("_", " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase())
+                );
+
+                return (
+                  <div key={zone} className="zone-card">
+                    <div className="zone-name">
+                      {zone
+                        .replace("_", " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase())}
+                    </div>
+                    <div className="zone-stats">
+                      <span className="drivers">
+                        <i className="fas fa-car"></i> {driversInZone.length}
+                      </span>
+                      <span className="pickups">
+                        <i className="fas fa-hand-paper"></i>{" "}
+                        {pickupsInZone.length}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
-  // Enhanced render functions for operator dashboard views
-  const renderRejectedAppointments = () => {
-    const rejectedAppointments = appointments.filter(
-      (apt) => apt.status === "rejected" && apt.rejected_by
-    );
 
+  // Missing render functions
+  const renderRejectedAppointments = () => {
     if (rejectedAppointments.length === 0) {
       return (
-        <div className="no-appointments">
-          <p>No rejected appointments to review.</p>
+        <div className="empty-state">
+          <i className="fas fa-check-circle"></i>
+          <p>No rejected appointments need review</p>
         </div>
       );
     }
 
     return (
-      <div className="rejected-appointments-list">
+      <div className="appointments-list">
         {rejectedAppointments.map((appointment) => (
-          <div key={appointment.id} className="rejection-review-card">
+          <div key={appointment.id} className="appointment-card rejected">
             <div className="appointment-header">
-              <h3>
-                {appointment.client_details?.first_name}{" "}
-                {appointment.client_details?.last_name}
-              </h3>
-              <span className="rejection-date">
-                Rejected:{" "}
-                {new Date(appointment.updated_at).toLocaleDateString()}
-              </span>
+              <h4>
+                <i className="fas fa-times-circle"></i>
+                Appointment #{appointment.id}
+              </h4>
+              <span className="status rejected">Rejected</span>
             </div>
-
             <div className="appointment-details">
-              <p>
-                <strong>Date:</strong>{" "}
-                {new Date(appointment.date).toLocaleDateString()}
-              </p>
-              <p>
-                <strong>Time:</strong> {appointment.start_time} -{" "}
-                {appointment.end_time}
-              </p>
-              <p>
-                <strong>Service:</strong>{" "}
-                {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>
-              <p>
-                <strong>Rejected by:</strong>{" "}
-                {appointment.rejected_by_details?.first_name}{" "}
-                {appointment.rejected_by_details?.last_name} (
-                {appointment.rejected_by_role})
-              </p>
-            </div>
-
-            {appointment.rejection_reason && (
-              <div className="rejection-reason">
-                <h4>Rejection Reason:</h4>
-                <p>{appointment.rejection_reason}</p>
+              <div className="detail-row">
+                <span className="label">Client:</span>
+                <span className="value">
+                  {appointment.client_name || "Unknown"}
+                </span>
               </div>
-            )}
-
-            <div className="review-actions">
+              <div className="detail-row">
+                <span className="label">Date:</span>
+                <span className="value">
+                  {new Date(appointment.date).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Time:</span>
+                <span className="value">{appointment.start_time}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Rejection Reason:</span>
+                <span className="value rejection-reason">
+                  {appointment.rejection_reason || "No reason provided"}
+                </span>
+              </div>
+              {renderTherapistInfo(appointment)}
+            </div>
+            <div className="appointment-actions">
               <button
-                className="review-button"
                 onClick={() => handleReviewRejection(appointment)}
+                className="review-btn"
               >
+                <i className="fas fa-eye"></i>
                 Review Rejection
               </button>
             </div>
@@ -1291,50 +1142,49 @@ const OperatorDashboard = () => {
   const renderPendingAcceptanceAppointments = () => {
     if (pendingAppointments.length === 0) {
       return (
-        <div className="no-appointments">
-          <p>No appointments pending acceptance.</p>
+        <div className="empty-state">
+          <i className="fas fa-clock"></i>
+          <p>No appointments pending acceptance</p>
         </div>
       );
     }
 
     return (
-      <div className="pending-appointments-list">
+      <div className="appointments-list">
         {pendingAppointments.map((appointment) => (
-          <div key={appointment.id} className="pending-appointment-card">
+          <div key={appointment.id} className="appointment-card pending">
             <div className="appointment-header">
-              <h3>
-                {appointment.client_details?.first_name}{" "}
-                {appointment.client_details?.last_name}
-              </h3>
-              <span className="appointment-time">
-                {appointment.start_time} - {appointment.end_time}
-              </span>
+              <h4>
+                <i className="fas fa-hourglass-half"></i>
+                Appointment #{appointment.id}
+              </h4>
+              <span className="status pending">Pending</span>
             </div>
-
             <div className="appointment-details">
-              <p>
-                <strong>Date:</strong>{" "}
-                {new Date(appointment.date).toLocaleDateString()}
-              </p>
-              <p>
-                <strong>Service:</strong>{" "}
-                {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>
-              <p>
-                <strong>Duration:</strong> {appointment.duration} minutes
-              </p>
+              <div className="detail-row">
+                <span className="label">Client:</span>
+                <span className="value">
+                  {appointment.client_name || "Unknown"}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Date:</span>
+                <span className="value">
+                  {new Date(appointment.date).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Time:</span>
+                <span className="value">{appointment.start_time}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Deadline:</span>
+                <span className="value deadline">
+                  {new Date(appointment.response_deadline).toLocaleString()}
+                </span>
+              </div>
               {renderTherapistInfo(appointment)}
-            </div>
-
-            <div className="acceptance-status">
-              {getTherapistAcceptanceStatus(appointment).display}
-            </div>
-
-            <div className="time-remaining">
-              <p>
-                <strong>Time since created:</strong>{" "}
-                {getTimeRemaining(appointment.created_at)}
-              </p>
+              {getTherapistAcceptanceStatus(appointment)}
             </div>
           </div>
         ))}
@@ -1343,101 +1193,107 @@ const OperatorDashboard = () => {
   };
 
   const renderTimeoutMonitoring = () => {
-    const allTimeoutAppointments = [
+    const urgentAppointments = [
       ...overdueAppointments,
       ...approachingDeadlineAppointments,
     ];
 
-    if (allTimeoutAppointments.length === 0) {
-      return (
-        <div className="no-appointments">
-          <p>No appointments approaching timeout or overdue.</p>
-        </div>
-      );
-    }
-
     return (
-      <div className="timeout-monitoring-content">
-        <div className="auto-cancel-section">
-          <h3>Auto-Cancel Overdue Appointments</h3>
-          <p>
-            Automatically cancel appointments that have been pending for too
-            long.
-          </p>
-          <button
-            className="auto-cancel-button"
-            onClick={handleAutoCancelOverdue}
-            disabled={autoCancelLoading || overdueAppointments.length === 0}
-          >
-            {autoCancelLoading
-              ? "Processing..."
-              : `Auto-Cancel ${overdueAppointments.length} Overdue`}
-          </button>
+      <div className="timeout-monitoring">
+        <div className="monitoring-stats">
+          <div className="stat-card overdue">
+            <h4>
+              <i className="fas fa-exclamation-triangle"></i>
+              Overdue
+            </h4>
+            <span className="count">{overdueAppointments.length}</span>
+          </div>
+          <div className="stat-card approaching">
+            <h4>
+              <i className="fas fa-clock"></i>
+              Approaching Deadline
+            </h4>
+            <span className="count">
+              {approachingDeadlineAppointments.length}
+            </span>
+          </div>
         </div>
 
-        <div className="timeout-appointments-list">
-          <h3>Appointments Requiring Attention</h3>
-          {allTimeoutAppointments.map((appointment) => {
-            const isOverdue = overdueAppointments.some(
-              (apt) => apt.id === appointment.id
-            );
-            const timeRemaining = getTimeRemaining(appointment.created_at);
+        {overdueAppointments.length > 0 && (
+          <div className="overdue-section">
+            <h3>
+              <i className="fas fa-exclamation-triangle"></i>
+              Overdue Appointments
+            </h3>
+            <button
+              onClick={handleAutoCancelOverdue}
+              disabled={autoCancelLoading}
+              className="auto-cancel-btn"
+            >
+              <i className="fas fa-times"></i>
+              Auto-Cancel All Overdue ({overdueAppointments.length})
+            </button>
+          </div>
+        )}
 
-            return (
+        {urgentAppointments.length === 0 ? (
+          <div className="empty-state">
+            <i className="fas fa-check-circle"></i>
+            <p>All appointments are within acceptable timeframes</p>
+          </div>
+        ) : (
+          <div className="appointments-list">
+            {urgentAppointments.map((appointment) => (
               <div
                 key={appointment.id}
-                className={`timeout-appointment-card ${
-                  isOverdue ? "overdue" : "warning"
+                className={`appointment-card ${
+                  overdueAppointments.includes(appointment)
+                    ? "overdue"
+                    : "approaching"
                 }`}
               >
                 <div className="appointment-header">
                   <h4>
-                    {appointment.client_details?.first_name}{" "}
-                    {appointment.client_details?.last_name}
+                    <i
+                      className={`fas ${
+                        overdueAppointments.includes(appointment)
+                          ? "fa-exclamation-triangle"
+                          : "fa-clock"
+                      }`}
+                    ></i>
+                    Appointment #{appointment.id}
                   </h4>
                   <span
-                    className={`timeout-badge ${
-                      isOverdue ? "overdue" : "warning"
+                    className={`status ${
+                      overdueAppointments.includes(appointment)
+                        ? "overdue"
+                        : "approaching"
                     }`}
                   >
-                    {isOverdue ? "🔴 OVERDUE" : "⚠️ WARNING"}
+                    {overdueAppointments.includes(appointment)
+                      ? "Overdue"
+                      : "Approaching Deadline"}
                   </span>
                 </div>
-
                 <div className="appointment-details">
-                  <p>
-                    <strong>Date:</strong>{" "}
-                    {new Date(appointment.date).toLocaleDateString()}
-                  </p>
-                  <p>
-                    <strong>Time:</strong> {appointment.start_time}
-                  </p>
-                  <p>
-                    <strong>Created:</strong> {timeRemaining} ago
-                  </p>
-                  <p>
-                    <strong>Status:</strong>{" "}
-                    {getTherapistAcceptanceStatus(appointment).display}
-                  </p>
-                </div>
-
-                <div className="timeout-countdown">
-                  {isOverdue ? (
-                    <div className="overdue-message">
-                      ⏰ This appointment is overdue for acceptance and should
-                      be reviewed or cancelled.
-                    </div>
-                  ) : (
-                    <div className="warning-message">
-                      ⚠️ This appointment is approaching the acceptance
-                      deadline.
-                    </div>
-                  )}
+                  <div className="detail-row">
+                    <span className="label">Client:</span>
+                    <span className="value">
+                      {appointment.client_name || "Unknown"}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Deadline:</span>
+                    <span className="value deadline">
+                      {new Date(appointment.response_deadline).toLocaleString()}
+                    </span>
+                  </div>
+                  {renderTherapistInfo(appointment)}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -1445,81 +1301,71 @@ const OperatorDashboard = () => {
   const renderAllAppointments = () => {
     if (appointments.length === 0) {
       return (
-        <div className="no-appointments">
-          <p>No appointments found.</p>
+        <div className="empty-state">
+          <i className="fas fa-calendar"></i>
+          <p>No appointments found</p>
         </div>
       );
     }
 
     return (
-      <div className="all-appointments-content">
+      <div className="all-appointments">
         <div className="appointments-stats">
-          <div className="stat-item">
-            <span className="stat-number">{appointments.length}</span>
-            <span className="stat-label">Total Appointments</span>
+          <div className="stat-card">
+            <h4>Total Appointments</h4>
+            <span className="count">{appointments.length}</span>
           </div>
-          <div className="stat-item">
-            <span className="stat-number">{todayAppointments.length}</span>
-            <span className="stat-label">Today's Appointments</span>
+          <div className="stat-card">
+            <h4>Today's Appointments</h4>
+            <span className="count">{todayAppointments.length}</span>
           </div>
-          <div className="stat-item">
-            <span className="stat-number">{upcomingAppointments.length}</span>
-            <span className="stat-label">Upcoming Appointments</span>
+          <div className="stat-card">
+            <h4>Upcoming</h4>
+            <span className="count">{upcomingAppointments.length}</span>
           </div>
         </div>
 
-        <div className="appointments-grid">
+        <div className="appointments-list">
           {appointments.map((appointment) => (
-            <div key={appointment.id} className="appointment-summary-card">
+            <div
+              key={appointment.id}
+              className={`appointment-card ${appointment.status}`}
+            >
               <div className="appointment-header">
                 <h4>
-                  {appointment.client_details?.first_name}{" "}
-                  {appointment.client_details?.last_name}
+                  <i className="fas fa-calendar"></i>
+                  Appointment #{appointment.id}
                 </h4>
-                <span
-                  className={`status-badge ${appointment.status.replace(
-                    "_",
-                    "-"
-                  )}`}
-                >
-                  {appointment.status.replace("_", " ")}
+                <span className={`status ${appointment.status}`}>
+                  {appointment.status}
                 </span>
               </div>
-
               <div className="appointment-details">
-                <p>
-                  <strong>Date:</strong>{" "}
-                  {new Date(appointment.date).toLocaleDateString()}
-                </p>
-                <p>
-                  <strong>Time:</strong> {appointment.start_time} -{" "}
-                  {appointment.end_time}
-                </p>
-                <p>
-                  <strong>Service:</strong>{" "}
-                  {appointment.services_details?.map((s) => s.name).join(", ")}
-                </p>
+                <div className="detail-row">
+                  <span className="label">Client:</span>
+                  <span className="value">
+                    {appointment.client_name || "Unknown"}
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <span className="label">Date:</span>
+                  <span className="value">
+                    {new Date(appointment.date).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <span className="label">Time:</span>
+                  <span className="value">
+                    {appointment.start_time} - {appointment.end_time}
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <span className="label">Location:</span>
+                  <span className="value">
+                    {appointment.location || "Not specified"}
+                  </span>
+                </div>
                 {renderTherapistInfo(appointment)}
-                {appointment.driver_details && (
-                  <p>
-                    <strong>Driver:</strong>{" "}
-                    {appointment.driver_details.first_name}{" "}
-                    {appointment.driver_details.last_name}
-                  </p>
-                )}
-              </div>
-
-              <div className="appointment-meta">
-                <small>
-                  Created:{" "}
-                  {new Date(appointment.created_at).toLocaleDateString()}
-                </small>
-                {appointment.updated_at !== appointment.created_at && (
-                  <small>
-                    Updated:{" "}
-                    {new Date(appointment.updated_at).toLocaleDateString()}
-                  </small>
-                )}
               </div>
             </div>
           ))}
@@ -1527,115 +1373,254 @@ const OperatorDashboard = () => {
       </div>
     );
   };
+
   const renderNotifications = () => {
-    // Integration with NotificationCenter component
+    if (!notifications || notifications.length === 0) {
+      return (
+        <div className="empty-state">
+          <i className="fas fa-bell"></i>
+          <p>No notifications</p>
+        </div>
+      );
+    }
+
     return (
-      <div className="notifications-content">
-        <div className="notifications-header">
-          <h3>System Notifications</h3>
-          <div className="notification-summary">
-            <span className="notification-count">
-              {notifications?.length || 0} total notifications
-            </span>
-            {notifications &&
-              notifications.filter((n) => !n.is_read).length > 0 && (
-                <span className="unread-count">
-                  {notifications.filter((n) => !n.is_read).length} unread
+      <div className="notifications-list">
+        {notifications.map((notification) => (
+          <div
+            key={notification.id}
+            className={`notification-card ${notification.type || "info"}`}
+          >
+            <div className="notification-header">
+              <h4>
+                <i
+                  className={`fas ${
+                    notification.type === "urgent"
+                      ? "fa-exclamation-triangle"
+                      : notification.type === "warning"
+                      ? "fa-exclamation-circle"
+                      : notification.type === "success"
+                      ? "fa-check-circle"
+                      : "fa-info-circle"
+                  }`}
+                ></i>
+                {notification.title || "Notification"}
+              </h4>
+              <span className="timestamp">
+                {new Date(notification.created_at).toLocaleString()}
+              </span>
+            </div>
+            <div className="notification-content">
+              <p>{notification.message || notification.content}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderServiceWorkflowView = () => {
+    const workflowSteps = [
+      { id: 1, name: "Appointment Created", status: "completed" },
+      { id: 2, name: "Therapist Assignment", status: "in_progress" },
+      { id: 3, name: "Driver Coordination", status: "pending" },
+      { id: 4, name: "Service Delivery", status: "pending" },
+      { id: 5, name: "Session Complete", status: "pending" },
+    ];
+
+    return (
+      <div className="service-workflow">
+        <div className="workflow-overview">
+          <h3>Service Workflow Management</h3>
+          <p>
+            Monitor the complete service delivery process from appointment
+            creation to completion.
+          </p>
+        </div>
+
+        <div className="workflow-steps">
+          {workflowSteps.map((step) => (
+            <div key={step.id} className={`workflow-step ${step.status}`}>
+              <div className="step-indicator">
+                <span className="step-number">{step.id}</span>
+              </div>
+              <div className="step-content">
+                <h4>{step.name}</h4>
+                <span className={`step-status ${step.status}`}>
+                  {step.status.replace("_", " ").toUpperCase()}
                 </span>
-              )}
-          </div>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <div className="notification-panel-wrapper">
-          <NotificationCenter
-            onClose={() => {
-              // This is embedded in the dashboard, so we don't need to close it
-              // but we provide the prop for component compatibility
-            }}
-          />
+        <div className="workflow-actions">
+          <button className="action-btn">
+            <i className="fas fa-play"></i>
+            Start New Workflow
+          </button>
+          <button className="action-btn">
+            <i className="fas fa-pause"></i>
+            Pause All Workflows
+          </button>
+          <button className="action-btn">
+            <i className="fas fa-sync"></i>
+            Refresh Status
+          </button>
         </div>
       </div>
     );
   };
 
-  const renderDriverCoordinationPanel = () => {
-    const availableDrivers = getAvailableDrivers();
-    const busyDrivers = getBusyDrivers();
+  const renderActiveSessionsView = () => {
+    // Calculate active sessions from appointments
+    const activeSessions = appointments.filter(
+      (apt) =>
+        apt.status === "in_progress" || apt.status === "therapist_en_route"
+    );
+
+    if (activeSessions.length === 0) {
+      return (
+        <div className="empty-state">
+          <i className="fas fa-bed"></i>
+          <p>No active therapy sessions</p>
+        </div>
+      );
+    }
 
     return (
-      <div className="driver-coordination-content">
-        <div className="driver-stats">
-          <div className="stat-card">
-            <h4>Available Drivers</h4>
-            <div className="stat-number">{availableDrivers.length}</div>
-          </div>
-          <div className="stat-card">
-            <h4>Busy Drivers</h4>
-            <div className="stat-number">{busyDrivers.length}</div>
-          </div>
-          <div className="stat-card">
-            <h4>Pending Pickups</h4>
-            <div className="stat-number">{pickupRequests.length}</div>
-          </div>
-        </div>
-
-        <div className="driver-panels">
-          <div className="available-drivers-panel">
-            <h3>Available Drivers</h3>
-            {availableDrivers.length === 0 ? (
-              <p>No available drivers at this time.</p>
-            ) : (
-              <div className="drivers-list">
-                {availableDrivers.map((driver) => (
-                  <div key={driver.id} className="driver-card available">
-                    <div className="driver-info">
-                      <h4>
-                        {driver.first_name} {driver.last_name}
-                      </h4>
-                      <p>
-                        Available since:{" "}
-                        {new Date(
-                          driver.driver_available_since
-                        ).toLocaleTimeString()}
-                      </p>
-                    </div>
-                    <div className="driver-actions">
-                      <button className="assign-btn">Assign to Pickup</button>
-                    </div>
-                  </div>
-                ))}
+      <div className="active-sessions-list">
+        {activeSessions.map((session) => (
+          <div key={session.id} className="session-card active">
+            <div className="session-header">
+              <h4>
+                <i className="fas fa-play-circle"></i>
+                Session #{session.id}
+              </h4>
+              <span className={`status ${session.status}`}>
+                {session.status}
+              </span>
+            </div>
+            <div className="session-details">
+              <div className="detail-row">
+                <span className="label">Client:</span>
+                <span className="value">
+                  {session.client_name || "Unknown"}
+                </span>
               </div>
-            )}
-          </div>
-
-          <div className="busy-drivers-panel">
-            <h3>Busy Drivers</h3>
-            {busyDrivers.length === 0 ? (
-              <p>No busy drivers at this time.</p>
-            ) : (
-              <div className="drivers-list">
-                {busyDrivers.map((driver) => (
-                  <div key={driver.id} className="driver-card busy">
-                    <div className="driver-info">
-                      <h4>
-                        {driver.first_name} {driver.last_name}
-                      </h4>
-                      <p>Status: {driver.driver_status}</p>
-                    </div>
-                    <div className="driver-eta">
-                      <small>ETA: Calculating...</small>
-                    </div>
-                  </div>
-                ))}
+              <div className="detail-row">
+                <span className="label">Location:</span>
+                <span className="value">{session.location}</span>
               </div>
-            )}
+              <div className="detail-row">
+                <span className="label">Started:</span>
+                <span className="value">
+                  {new Date(session.start_time).toLocaleString()}
+                </span>
+              </div>
+              {renderTherapistInfo(session)}
+            </div>
+            <div className="session-actions">
+              <button className="action-btn">
+                <i className="fas fa-phone"></i>
+                Contact Therapist
+              </button>
+              <button className="action-btn">
+                <i className="fas fa-map-marker-alt"></i>
+                Track Location
+              </button>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
     );
   };
 
-  // ...existing code...
+  const renderPickupRequestsView = () => {
+    // Calculate pickup requests from appointments
+    const pickupRequests = appointments.filter(
+      (apt) =>
+        apt.status === "pickup_requested" ||
+        apt.status === "driver_assigned_pickup"
+    );
+
+    if (pickupRequests.length === 0) {
+      return (
+        <div className="empty-state">
+          <i className="fas fa-car"></i>
+          <p>No pending pickup requests</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="pickup-requests-list">
+        {pickupRequests.map((request) => (
+          <div key={request.id} className="pickup-card">
+            <div className="pickup-header">
+              <h4>
+                <i className="fas fa-hand-paper"></i>
+                Pickup Request #{request.id}
+              </h4>
+              <span className={`status ${request.status}`}>
+                {request.status}
+              </span>
+            </div>
+            <div className="pickup-details">
+              <div className="detail-row">
+                <span className="label">Therapist:</span>
+                <span className="value">
+                  {request.therapist_details
+                    ? `${request.therapist_details.first_name} ${request.therapist_details.last_name}`
+                    : "Unknown"}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Pickup Location:</span>
+                <span className="value">{request.location}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Requested:</span>
+                <span className="value">
+                  {new Date(request.created_at).toLocaleString()}
+                </span>
+              </div>
+              {request.driver_details && (
+                <div className="detail-row">
+                  <span className="label">Assigned Driver:</span>
+                  <span className="value">
+                    {request.driver_details.first_name}{" "}
+                    {request.driver_details.last_name}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="pickup-actions">
+              <button className="action-btn">
+                <i className="fas fa-car"></i>
+                Assign Driver
+              </button>
+              <button className="action-btn">
+                <i className="fas fa-phone"></i>
+                Contact Therapist
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Calculate counts for tab buttons
+  const activeSessions = appointments.filter(
+    (apt) => apt.status === "in_progress" || apt.status === "therapist_en_route"
+  );
+
+  const pickupRequests = appointments.filter(
+    (apt) =>
+      apt.status === "pickup_requested" ||
+      apt.status === "driver_assigned_pickup"
+  );
 
   return (
     <PageLayout>
