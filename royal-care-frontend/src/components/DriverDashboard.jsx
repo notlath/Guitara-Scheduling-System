@@ -124,25 +124,48 @@ const DriverDashboard = () => {
     loading,
     error,
   } = useSelector((state) => state.scheduling);
-  // Filter appointments for current driver - only show those visible to driver
-  const myAppointments = appointments.filter((apt) => {
-    // Driver assigned to this appointment
-    if (apt.driver !== user?.id) return false;
 
-    // Only show appointments that should be visible to driver:
-    // - therapist_confirm: After therapist(s) confirmed, waiting for driver
-    // - in_progress: Driver confirmed, ready to start journey
-    // - journey: Driver is traveling to client
+  // Debug: Log all appointments data
+  console.log("🔍 Driver Dashboard Debug:", {
+    user: user,
+    totalAppointments: appointments.length,
+    appointmentsWithDriver: appointments.filter(
+      (apt) => apt.driver === user?.id
+    ),
+    allAppointments: appointments,
+  }); // Filter appointments for current driver - only show those visible to driver
+  const myAppointments = appointments.filter((apt) => {
+    // Debug: Log all appointments for this driver
+    if (apt.driver === user?.id) {
+      console.log(
+        `🚗 Driver appointment ${apt.id}: status="${apt.status}", client="${
+          apt.client_details?.first_name || "Unknown"
+        }"`,
+        apt
+      );
+    }
+
+    // Driver assigned to this appointment
+    if (apt.driver !== user?.id) return false; // Only show appointments that should be visible to driver:
+    // - pending: Initial booking (driver needs to see to accept)
+    // - therapist_confirmed: After therapist(s) confirmed, waiting for driver
+    // - driver_confirmed: Driver confirmed, ready to start journey
+    // - in_progress: Operator started appointment, ready for journey
+    // - journey_started: Driver is traveling to client
     // - arrived: Driver arrived at client location
+    // - dropped_off: Driver dropped off therapist
     // - session_in_progress: Therapist(s) dropped off, session ongoing
     // - awaiting_payment: Session complete, awaiting payment
     // - completed: Appointment complete, may need pickup
     // - pickup_requested: Therapist requested pickup
     const visibleStatuses = [
-      "therapist_confirm",
+      "pending",
+      "therapist_confirmed",
+      "driver_confirmed",
       "in_progress",
-      "journey",
+      "journey_started",
       "arrived",
+      "dropped_off",
       "session_in_progress",
       "awaiting_payment",
       "completed",
@@ -151,14 +174,16 @@ const DriverDashboard = () => {
 
     return visibleStatuses.includes(apt.status);
   });
-
   const myTodayAppointments = todayAppointments.filter((apt) => {
     if (apt.driver !== user?.id) return false;
     const visibleStatuses = [
-      "therapist_confirm",
+      "pending",
+      "therapist_confirmed",
+      "driver_confirmed",
       "in_progress",
-      "journey",
+      "journey_started",
       "arrived",
+      "dropped_off",
       "session_in_progress",
       "awaiting_payment",
       "completed",
@@ -166,14 +191,16 @@ const DriverDashboard = () => {
     ];
     return visibleStatuses.includes(apt.status);
   });
-
   const myUpcomingAppointments = upcomingAppointments.filter((apt) => {
     if (apt.driver !== user?.id) return false;
     const visibleStatuses = [
-      "therapist_confirm",
+      "pending",
+      "therapist_confirmed",
+      "driver_confirmed",
       "in_progress",
-      "journey",
+      "journey_started",
       "arrived",
+      "dropped_off",
       "session_in_progress",
       "awaiting_payment",
       "completed",
@@ -434,6 +461,22 @@ const DriverDashboard = () => {
       } else {
         alert("Failed to mark drop-off complete. Please try again.");
       }
+    }
+  };
+
+  const handleDropOff = async (appointmentId) => {
+    try {
+      await dispatch(
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "dropped_off",
+          action: "drop_off_therapist",
+        })
+      ).unwrap();
+      refreshAppointments(true);
+    } catch (error) {
+      console.error("Failed to mark drop off:", error);
+      alert("Failed to mark drop off. Please try again.");
     }
   };
 
@@ -785,25 +828,34 @@ const DriverDashboard = () => {
             </div>
           </div>
         );
-
       case "driver_confirmed":
-        // Both confirmed, can start journey
-        if (requires_car) {
-          return (
-            <div className="appointment-actions">
-              <button
-                className="start-journey-button"
-                onClick={() => handleStartJourney(id)}
-              >
-                Start Journey
-              </button>
-              <div className="ready-info">
-                <p>🚀 All confirmations complete. Ready to start!</p>
-              </div>
+        // Both confirmed, operator will start appointment
+        return (
+          <div className="appointment-actions">
+            <div className="waiting-status">
+              <span className="ready-badge">✅ Driver confirmed</span>
+              <p>Waiting for operator to start appointment...</p>
             </div>
-          );
-        }
-        return null;
+          </div>
+        );
+
+      case "in_progress":
+        // Operator started appointment, driver can start journey
+        return (
+          <div className="appointment-actions">
+            <button
+              className="start-journey-button"
+              onClick={() => handleStartJourney(id)}
+            >
+              Start Journey
+            </button>
+            <div className="ready-info">
+              <p>
+                🚀 Appointment started by operator. Ready to begin transport!
+              </p>
+            </div>
+          </div>
+        );
 
       case "journey_started":
         return (
@@ -820,20 +872,37 @@ const DriverDashboard = () => {
             </div>
           </div>
         );
-
       case "arrived":
         return (
           <div className="appointment-actions">
+            <button
+              className="drop-off-button"
+              onClick={() => handleDropOff(id)}
+            >
+              Drop Off Therapist
+            </button>
             <div className="arrived-status">
               <span className="arrived-badge">
                 📍 Arrived at pickup location
               </span>
-              <p>Therapist can now proceed to client location.</p>
+              <p>Ready to transport therapist to client location.</p>
             </div>
           </div>
         );
 
-      case "session_started":
+      case "dropped_off":
+        return (
+          <div className="appointment-actions">
+            <div className="dropped-off-status">
+              <span className="dropped-off-badge">
+                ✅ Therapist dropped off
+              </span>
+              <p>Therapist delivered to client. Session can begin.</p>
+            </div>
+          </div>
+        );
+
+      case "session_in_progress":
       case "payment_requested":
       case "payment_completed":
         return (

@@ -1394,7 +1394,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": "Only assigned therapists can start sessions"},
                 status=status.HTTP_403_FORBIDDEN,
-            )        # Check if session can be started - only when dropped off at client location
+            )  # Check if session can be started - only when dropped off at client location
         if appointment.status != "dropped_off":
             return Response(
                 {
