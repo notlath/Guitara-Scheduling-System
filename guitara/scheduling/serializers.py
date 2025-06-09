@@ -165,10 +165,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
     )
     total_duration = serializers.SerializerMethodField()
     total_price = serializers.SerializerMethodField()
-
     # Add acceptance status fields
     both_parties_accepted = serializers.SerializerMethodField()
     pending_acceptances = serializers.SerializerMethodField()
+
+    # Add explicit services field to handle ManyToManyField properly
+    services = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Service.objects.all(), required=True
+    )
 
     class Meta:
         model = Appointment
@@ -193,6 +197,20 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def get_pending_acceptances(self, obj):
         """Get list of parties that still need to accept"""
         return obj.get_pending_acceptances()
+
+    def validate_services(self, value):
+        """Validate that services exist and are active"""
+        if not value:
+            raise serializers.ValidationError("At least one service must be selected.")
+
+        # Check that all services exist and are active
+        for service in value:
+            if not service.is_active:
+                raise serializers.ValidationError(
+                    f"Service '{service.name}' is not currently active."
+                )
+
+        return value
 
     def validate(self, data):
         """

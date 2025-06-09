@@ -46,8 +46,40 @@ const handleApiError = (error, fallbackMessage) => {
     return "Authentication failed";
   }
 
-  // Return the API error or fallback message
-  return error.response?.data || fallbackMessage;
+  // If we have detailed API error data, format it properly
+  if (error.response?.data) {
+    const errorData = error.response.data;
+
+    // If it's a validation error with field-specific messages
+    if (typeof errorData === "object" && !Array.isArray(errorData)) {
+      // Check for common error patterns
+      if (errorData.detail) {
+        return errorData.detail;
+      }
+
+      // Handle field-specific errors
+      const fieldErrors = [];
+      Object.entries(errorData).forEach(([field, messages]) => {
+        if (Array.isArray(messages)) {
+          fieldErrors.push(`${field}: ${messages.join(", ")}`);
+        } else if (typeof messages === "string") {
+          fieldErrors.push(`${field}: ${messages}`);
+        }
+      });
+
+      if (fieldErrors.length > 0) {
+        return fieldErrors.join("; ");
+      }
+    }
+
+    // If it's a string message
+    if (typeof errorData === "string") {
+      return errorData;
+    }
+  }
+
+  // Return the fallback message
+  return fallbackMessage;
 };
 
 // Async thunks for API calls
@@ -207,9 +239,11 @@ export const createAppointment = createAsyncThunk(
 
       console.log("API submission data:", formattedData);
       console.log(
-        "About to send appointment data to API:",
+        "📤 About to send appointment data to API:",
         JSON.stringify(formattedData, null, 2)
       );
+      console.log("🔗 API endpoint:", `${API_URL}appointments/`);
+      console.log("🔑 Authorization token present:", !!token);
 
       const response = await axios.post(
         `${API_URL}appointments/`,
@@ -242,6 +276,14 @@ export const createAppointment = createAsyncThunk(
       // Remove failed optimistic update
       syncService.removeOptimisticUpdate(tempId);
 
+      // Log detailed error information for debugging
+      console.error("❌ createAppointment error:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+      });
+
       // Broadcast failure to remove optimistic appointment from UI
       syncService.broadcastWithImmediate("appointment_created_failed", {
         tempId,
@@ -261,6 +303,15 @@ export const createAppointment = createAsyncThunk(
             "This therapist is not available during the selected time. Please select another therapist or time slot.",
           _original: error.response.data,
         });
+      }
+
+      // Handle specific 400 Bad Request errors with field validation
+      if (error.response?.status === 400 && error.response?.data) {
+        const errorData = error.response.data;
+        console.error("📋 Validation errors:", errorData);
+
+        // Return the structured error data for form field validation
+        return rejectWithValue(errorData);
       }
 
       return rejectWithValue(
@@ -792,12 +843,16 @@ export const fetchAvailability = createAsyncThunk(
           Authorization: `Token ${token}`,
         },
       });
+
+      // Ensure response data is always an array
+      const data = Array.isArray(response.data) ? response.data : [];
+
       console.log(
         "fetchAvailability: Success, received",
-        response.data.length,
+        data.length,
         "availability records"
       );
-      return response.data;
+      return data;
     } catch (error) {
       console.error(
         "fetchAvailability: Error",
@@ -2225,11 +2280,12 @@ const schedulingSlice = createSlice({
           data
         );
 
-        state.availabilities = data;
+        // Ensure data is always an array to prevent undefined errors
+        state.availabilities = Array.isArray(data) ? data : [];
 
         // Update cache if this is fresh data
         if (!cached) {
-          state.availabilityCache[cacheKey] = data;
+          state.availabilityCache[cacheKey] = Array.isArray(data) ? data : [];
           console.log(`💾 Cached availability data for ${cacheKey}`);
         }
       })

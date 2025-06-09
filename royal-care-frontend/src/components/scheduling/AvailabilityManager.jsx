@@ -7,16 +7,9 @@ import {
   fetchStaffMembers,
   updateAvailability,
 } from "../../features/scheduling/schedulingSlice";
-import {
-  LoadingSpinner,
-  LoadingButton,
-  PageLoadingState,
-  SkeletonLoader,
-  TableLoadingState,
-  OptimisticIndicator
-} from "../common/LoadingComponents";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import "../../styles/AvailabilityManager.css";
+import { LoadingButton, TableLoadingState } from "../common/LoadingComponents";
 
 // Helper function to safely evaluate is_active field
 const isStaffActive = (staff) => {
@@ -68,6 +61,9 @@ const AvailabilityManager = () => {
   const { staffMembers, availabilities, loading, error } = useSelector(
     (state) => state.scheduling
   );
+
+  // Ensure availabilities is always an array to prevent undefined errors
+  const safeAvailabilities = availabilities || [];
 
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
@@ -622,7 +618,8 @@ const AvailabilityManager = () => {
                   checked={newAvailabilityForm.isAvailable}
                   onChange={handleNewAvailabilityChange}
                 />
-              </div>              <LoadingButton
+              </div>{" "}
+              <LoadingButton
                 className="add-button"
                 onClick={handleAddAvailability}
                 disabled={!selectedStaff}
@@ -635,7 +632,6 @@ const AvailabilityManager = () => {
         )}{" "}
       <div className="availability-list">
         <h3>Current Availability</h3>
-
         {/* Account Status Section - Only show for operators when staff is selected */}
         {user.role === "operator" && selectedStaffData && (
           <div className="account-status-section">
@@ -683,12 +679,13 @@ const AvailabilityManager = () => {
               </div>
             )}
           </div>
-        )}        {loading ? (
-          <TableLoadingState 
+        )}{" "}
+        {loading ? (
+          <TableLoadingState
             columns={["Date", "Start Time", "End Time", "Status", "Actions"]}
             rows={3}
           />
-        ) : availabilities.length === 0 ? (
+        ) : safeAvailabilities.length === 0 ? (
           <p>No availability set for this date.</p>
         ) : (
           <table className="availability-table">
@@ -702,7 +699,7 @@ const AvailabilityManager = () => {
               </tr>
             </thead>
             <tbody>
-              {availabilities.map((availability) => (
+              {safeAvailabilities.map((availability) => (
                 <tr
                   key={availability.id}
                   className={

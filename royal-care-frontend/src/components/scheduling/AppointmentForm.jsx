@@ -884,7 +884,45 @@ const AppointmentForm = ({
         return;
       }
 
-      // More detailed error logging with enhanced diagnostics
+      // Handle Redux thunk rejection errors (from rejectWithValue)
+      if (typeof error === "object" && error !== null && !error.response) {
+        console.error(
+          "📋 Redux thunk error (likely from rejectWithValue):",
+          error
+        );
+
+        // This is likely a validation error object from the API
+        if (typeof error === "object") {
+          // Create user-friendly error messages
+          let errorMessages = [];
+          const apiErrors = {};
+
+          Object.entries(error).forEach(([field, messages]) => {
+            if (field === "_original" || field === "therapist") return; // Skip meta fields
+
+            if (Array.isArray(messages)) {
+              errorMessages.push(`${field}: ${messages.join(", ")}`);
+              apiErrors[field] = messages[0]; // Use first error message
+            } else if (typeof messages === "string") {
+              errorMessages.push(`${field}: ${messages}`);
+              apiErrors[field] = messages;
+            } else if (typeof messages === "object") {
+              const messageStr = JSON.stringify(messages);
+              errorMessages.push(`${field}: ${messageStr}`);
+              apiErrors[field] = messageStr;
+            }
+          });
+
+          // Update form errors with API validation errors
+          if (Object.keys(apiErrors).length > 0) {
+            setErrors((prev) => ({ ...prev, ...apiErrors }));
+            alert(`Form validation failed:\n${errorMessages.join("\n")}`);
+            return;
+          }
+        }
+      }
+
+      // Handle Axios response errors (legacy support)
       if (error.response) {
         console.error("API Response Error:", error.response.data);
         console.error("API Status:", error.response.status);
@@ -932,7 +970,7 @@ const AppointmentForm = ({
           alert(`Form submission failed: ${errorMessages.join("\n")}`);
         }
       } else {
-        console.error("Unknown error:", error.message);
+        console.error("Unknown error:", error.message || error);
         alert("Failed to submit appointment. Please try again.");
       }
 
