@@ -165,12 +165,22 @@
 .inputError {
   border-color: var(--error) !important;
   background-color: var(--error-bg, #fef2f2) !important;
+  /* border-radius removed to allow FormField.css to control it */
 }
 
 .phoneFormGroup {
   margin-bottom: var(
     --spacing-lg
   ); /* Increased gap between phone number field and register button */
+}
+
+.statusText {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xxs);
+  margin-left: 0;
+  font-style: italic;
+  letter-spacing: 0.01em;
 }
 
 /* Keep only unique styles for LoginPage */

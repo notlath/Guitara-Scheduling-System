@@ -23,10 +23,6 @@
   transition: border-color 0.2s;
   padding: var(--spacing-xs) var(--spacing-xm);
 }
-.global-form-field-input:focus,
-.global-form-field-select:focus {
-  /* border-color: var(--primary-color); */
-}
 
 /* Optionally, if you want a true textarea for description: */
 .global-form-field-textarea {
