@@ -1666,7 +1666,7 @@ export const requestPayment = createAsyncThunk(
 
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/mark-awaiting-payment/`,
+        `${API_URL}appointments/${appointmentId}/mark_awaiting_payment/`,
         {},
         {
           headers: { Authorization: `Token ${token}` },
