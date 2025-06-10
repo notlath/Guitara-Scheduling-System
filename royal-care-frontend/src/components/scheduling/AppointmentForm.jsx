@@ -297,8 +297,8 @@ const AppointmentForm = ({
     if (services.length > 0 && !loading) {
       if (!isFormReady) {
         console.log("Form is now ready - services loaded successfully");
+        setIsFormReady(true);
       }
-      setIsFormReady(true);
     }
   }, [services.length, loading, isFormReady]);
 
@@ -311,10 +311,17 @@ const AppointmentForm = ({
         hasWarnedRef.current = true;
         setIsFormReady(true);
       }
-    }, 5000); // Reduced from 10 seconds to 5 seconds
+    }, 3000); // Reduced from 5 seconds to 3 seconds for faster fallback
 
     return () => clearTimeout(timeout);
   }, [isFormReady, loading]);
+
+  // Reset warning flag when form becomes ready naturally
+  useEffect(() => {
+    if (isFormReady) {
+      hasWarnedRef.current = false;
+    }
+  }, [isFormReady]);
 
   // Update end time when relevant form data changes
   useEffect(() => {
@@ -1044,8 +1051,8 @@ const AppointmentForm = ({
       setIsSubmitting(false);
     }
   };
-  // Show loading only if we don't have essential form data yet
-  if (!isFormReady && (loading || !services.length) && services.length === 0) {
+  // Show loading spinner only if form is not ready and we're still loading essential data
+  if (!isFormReady || (loading && services.length === 0)) {
     return (
       <LoadingSpinner
         size="large"
@@ -1120,7 +1127,7 @@ const AppointmentForm = ({
             <option value="">Select a service</option>
             {services && services.length > 0 ? (
               services.map((service) => (
-                <option key={service.id} value={service.id}>
+                <option key={`service-${service.id}`} value={service.id}>
                   {service.name || "Unnamed Service"} - {service.duration || 0}{" "}
                   min - ₱{service.price || 0}
                 </option>
