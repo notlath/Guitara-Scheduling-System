@@ -14,13 +14,36 @@ logger = logging.getLogger(__name__)
 # Try to get from environment variables with various naming conventions
 def get_supabase_client():
     url = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL")
-    key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY")
+    # Prioritize service key for write operations, fallback to anon key
+    key = (
+        os.getenv("SUPABASE_SERVICE_KEY")
+        or os.getenv("SUPABASE_KEY")
+        or os.getenv("VITE_SUPABASE_ANON_KEY")
+    )
 
     # Debug output to help diagnose issues
     if not url or not key:
         logger.warning("Supabase URL or key not found in environment variables")
+        logger.warning(
+            f"Available env vars: {[k for k in os.environ.keys() if 'SUPABASE' in k]}"
+        )
         return None
-    return create_client(url, key)
+
+    # Log which key type we're using (without exposing the actual key)
+    if os.getenv("SUPABASE_SERVICE_KEY"):
+        logger.info("Using Supabase service key for operations")
+    elif os.getenv("SUPABASE_KEY"):
+        logger.info("Using Supabase key for operations")
+    else:
+        logger.warning(
+            "Using anonymous key - may have limited permissions for write operations"
+        )
+
+    try:
+        return create_client(url, key)
+    except Exception as e:
+        logger.error(f"Failed to create Supabase client: {e}")
+        return None
 
 
 def safe_supabase_operation(operation, timeout=10):

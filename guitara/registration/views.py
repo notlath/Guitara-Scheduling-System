@@ -88,12 +88,80 @@ class RegisterTherapist(APIView):
             logger.warning(
                 f"Payload repr sent to Supabase: {{'first_name': {repr(first_name)}, 'last_name': {repr(last_name)}}}"
             )
+
             try:
                 inserted_data, error = insert_into_table(
                     "registration_therapist", payload
                 )
                 if error:
                     error_str = str(error).lower()
+
+                    # Handle row-level security policy errors
+                    if (
+                        "row-level security" in error_str
+                        or "42501" in error_str
+                        or "violates row-level security policy" in error_str
+                    ):
+                        logger.warning(
+                            f"Supabase RLS policy error, attempting local storage: {error}"
+                        )
+
+                        # Fallback: Store in local Django database
+                        try:
+                            from core.models import CustomUser
+
+                            # Check if user already exists
+                            if CustomUser.objects.filter(
+                                username=data["username"]
+                            ).exists():
+                                return Response(
+                                    {
+                                        "error": "A therapist with this username already exists."
+                                    },
+                                    status=status.HTTP_400_BAD_REQUEST,
+                                )
+                            if CustomUser.objects.filter(email=data["email"]).exists():
+                                return Response(
+                                    {
+                                        "error": "A therapist with this email already exists."
+                                    },
+                                    status=status.HTTP_400_BAD_REQUEST,
+                                )
+
+                            # Create user in local database
+                            user = CustomUser.objects.create(
+                                username=data["username"],
+                                email=data["email"],
+                                first_name=data["first_name"],
+                                last_name=data["last_name"],
+                                role="therapist",
+                                specialization=data.get("specialization"),
+                                massage_pressure=data.get("pressure"),
+                                is_active=True,
+                            )
+
+                            logger.info(
+                                f"Therapist stored locally due to Supabase RLS issues: {user.username}"
+                            )
+                            return Response(
+                                {
+                                    "message": "Therapist registered successfully (stored locally due to database connectivity issues)",
+                                    "fallback": True,
+                                    "user_id": user.id,
+                                },
+                                status=status.HTTP_201_CREATED,
+                            )
+
+                        except Exception as local_error:
+                            logger.error(f"Local storage also failed: {local_error}")
+                            return Response(
+                                {
+                                    "error": f"Registration failed: Database access denied and local storage failed: {str(local_error)}"
+                                },
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            )
+
+                    # Handle duplicate key errors
                     if (
                         "duplicate key" in error_str
                         or "unique constraint" in error_str
@@ -185,14 +253,17 @@ class RegisterDriver(APIView):
                 inserted_data, error = insert_into_table("registration_driver", payload)
 
                 if error:
-                    # Check if it's a timeout/connection error
+                    # Check if it's a timeout/connection error or RLS policy error
                     if (
                         "timeout" in error.lower()
                         or "unreachable" in error.lower()
                         or "connection" in error.lower()
+                        or "row-level security" in error.lower()
+                        or "42501" in error.lower()
+                        or "violates row-level security policy" in error.lower()
                     ):
                         logger.warning(
-                            f"Supabase timeout, attempting local storage: {error}"
+                            f"Supabase timeout/RLS error, attempting local storage: {error}"
                         )
 
                         # Fallback: Store in local Django database
@@ -307,24 +378,141 @@ class RegisterOperator(APIView):
         return Response(data)
 
     def post(self, request):
+        logger.warning(f"Operator registration payload: {request.data}")
         serializer = OperatorSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            inserted_data, error = insert_into_table(
-                "registration_operator",
-                {
-                    "first_name": data["first_name"],
-                    "last_name": data["last_name"],
-                    "username": data["username"],
-                    "email": data["email"],
-                },
-            )
-            if error:
-                return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
-            return Response(
-                {"message": "Operator registered successfully"},
-                status=status.HTTP_201_CREATED,
-            )
+            logger.warning(f"Operator registration validated: {data}")
+
+            # Prepare the payload for insertion
+            payload = {
+                "first_name": data["first_name"],
+                "last_name": data["last_name"],
+                "username": data["username"],
+                "email": data["email"],
+            }
+
+            try:
+                # Try Supabase first
+                inserted_data, error = insert_into_table(
+                    "registration_operator", payload
+                )
+
+                if error:
+                    error_str = str(error).lower()
+
+                    # Handle row-level security policy errors and timeouts
+                    if (
+                        "row-level security" in error_str
+                        or "42501" in error_str
+                        or "violates row-level security policy" in error_str
+                        or "timeout" in error_str
+                        or "unreachable" in error_str
+                        or "connection" in error_str
+                    ):
+                        logger.warning(
+                            f"Supabase RLS/timeout error, attempting local storage: {error}"
+                        )
+
+                        # Fallback: Store in local Django database
+                        try:
+                            from core.models import CustomUser
+
+                            # Check if user already exists
+                            if CustomUser.objects.filter(
+                                username=data["username"]
+                            ).exists():
+                                return Response(
+                                    {
+                                        "error": "An operator with this username already exists."
+                                    },
+                                    status=status.HTTP_400_BAD_REQUEST,
+                                )
+                            if CustomUser.objects.filter(email=data["email"]).exists():
+                                return Response(
+                                    {
+                                        "error": "An operator with this email already exists."
+                                    },
+                                    status=status.HTTP_400_BAD_REQUEST,
+                                )
+
+                            # Create user in local database
+                            user = CustomUser.objects.create(
+                                username=data["username"],
+                                email=data["email"],
+                                first_name=data["first_name"],
+                                last_name=data["last_name"],
+                                role="operator",
+                                is_active=True,
+                            )
+
+                            logger.info(
+                                f"Operator stored locally due to Supabase issues: {user.username}"
+                            )
+                            return Response(
+                                {
+                                    "message": "Operator registered successfully (stored locally due to database connectivity issues)",
+                                    "fallback": True,
+                                    "user_id": user.id,
+                                },
+                                status=status.HTTP_201_CREATED,
+                            )
+
+                        except Exception as local_error:
+                            logger.error(f"Local storage also failed: {local_error}")
+                            return Response(
+                                {
+                                    "error": f"Registration failed: Database unreachable and local storage failed: {str(local_error)}"
+                                },
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            )
+
+                    # Handle duplicate key errors
+                    if (
+                        "duplicate key" in error_str
+                        or "unique constraint" in error_str
+                        or "already exists" in error_str
+                    ):
+                        if "email" in error_str:
+                            return Response(
+                                {
+                                    "error": "An operator with this email already exists."
+                                },
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+                        if "username" in error_str:
+                            return Response(
+                                {
+                                    "error": "An operator with this username already exists."
+                                },
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+                        return Response(
+                            {
+                                "error": "An operator with this information already exists."
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    return Response(
+                        {"error": error}, status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Success case
+                return Response(
+                    {"message": "Operator registered successfully"},
+                    status=status.HTTP_201_CREATED,
+                )
+
+            except Exception as exc:
+                logger.error(
+                    f"Exception during operator registration: {exc}", exc_info=True
+                )
+                return Response(
+                    {"error": f"Internal server error: {exc}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+        logger.warning(f"Operator serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

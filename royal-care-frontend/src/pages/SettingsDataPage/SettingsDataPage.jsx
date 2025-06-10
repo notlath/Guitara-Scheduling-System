@@ -144,27 +144,28 @@ const fetchers = {
       }));
   },
   Operators: async () => {
-    // Operators need to fetch from users endpoint since they're not in staff
+    // Operators need to fetch from registration endpoint
     const token = localStorage.getItem("knoxToken");
-    const res = await fetch("http://localhost:8000/api/auth/users/", {
-      headers: {
-        Authorization: `Token ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await fetch(
+      "http://localhost:8000/api/registration/register/operator/",
+      {
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
     if (!res.ok) return [];
     const data = await res.json();
-    // Filter for operators only
-    return data
-      .filter((item) => item.role === "operator")
-      .map((item) => ({
-        Username: item.username,
-        Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
-        Email: item.email,
-        Contact: item.phone_number || "-",
-        Specialization: "N/A",
-        Pressure: "N/A",
-      }));
+    // Map registration data to frontend table fields
+    return data.map((item) => ({
+      Username: item.username || "-",
+      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim() || "-",
+      Email: item.email || "-",
+      Contact: "-", // Registration table doesn't have phone numbers
+      Specialization: "N/A",
+      Pressure: "N/A",
+    }));
   },
   Services: async () => {
     const token = localStorage.getItem("knoxToken");
