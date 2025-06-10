@@ -73,8 +73,8 @@
 }
 .global-form-field-error {
   color: var(--error);
-  /* font-size: var(--font-size-sm); */
-  /* margin-top: var(--spacing-xxs); */
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xxs);
   margin-left: 0;
   font-weight: 400;
 }

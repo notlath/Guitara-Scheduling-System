@@ -270,6 +270,46 @@
   width: 32px;
 }
 
+.phoneInputWrapper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.phonePrefix {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius) 0 0 var(--border-radius);
+  padding: var(--spacing-xs) 10px;
+  font-size: var(--font-size-base);
+  color: var(--text);
+  min-width: 44px;
+  user-select: none;
+  pointer-events: none;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  /* border-right: none; */
+  transition: border-color 0.2s;
+}
+.phoneInput:focus {
+  border-color: var(--focus-color);
+  outline: none;
+}
+.phoneInput:focus ~ .phonePrefix,
+.phoneInput:focus + .phonePrefix {
+  border-color: var(--focus-color);
+}
+.phoneInputWrapper:focus-within .phonePrefix {
+  border-color: var(--focus-color);
+}
+
+.phoneInput {
+  border-radius: 0 var(--border-radius) var(--border-radius) 0 !important;
+  border-left: none;
+  flex: 1;
+  height: 40px;
+}
+
 /* Ensure the parent of the input is position: relative for absolute icon */
 .global-form-field-relative-wrapper {
   position: relative;

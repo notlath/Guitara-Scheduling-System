@@ -270,7 +270,7 @@ const Register = () => {
                       inputProps={{
                         placeholder: "Username",
                         className: `global-form-field-input${
-                          errors.username ? ` global-form-field-error` : ""
+                          errors.username ? "" : ""
                         }`,
                         title:
                           "Username must be 3-30 characters and contain only letters, numbers, and underscores",
@@ -284,33 +284,62 @@ const Register = () => {
                       )}
                     </FormField>
                   </div>
-                  <div
-                    className={`${styles.formGroup} ${styles.phoneFormGroup}`}
-                  >
+                  <div className={styles.formGroup}>
                     <FormField
                       label="Phone number"
                       name="phone_number"
-                      value={formData.phone_number}
-                      onChange={handleChange}
-                      required={false}
-                      inputProps={{
-                        placeholder: "+123456789",
-                        className: `global-form-field-input${
-                          errors.phone_number ? ` global-form-field-error` : ""
-                        }`,
-                        id: "phone_number",
-                        title:
-                          "Enter international format with + and 7-15 digits",
-                      }}
+                      as="custom"
+                      required={true}
                     >
+                      <div className={styles.phoneInputWrapper}>
+                        <span className={styles.phonePrefix}>+63</span>
+                        <input
+                          type="text"
+                          id="phone_number"
+                          name="phone_number"
+                          value={formData.phone_number}
+                          onChange={(e) => {
+                            let val = e.target.value
+                              .replace(/[^0-9]/g, "")
+                              .slice(0, 10);
+                            if (val.length > 3 && val.length <= 7)
+                              val = val.replace(/(\d{3})(\d+)/, "$1-$2");
+                            else if (val.length > 7)
+                              val = val.replace(
+                                /(\d{3})(\d{4})(\d+)/,
+                                "$1-$2-$3"
+                              );
+                            setFormData({ ...formData, phone_number: val });
+                            if (errors.phone_number)
+                              setErrors((prev) => ({
+                                ...prev,
+                                phone_number: "",
+                              }));
+                          }}
+                          placeholder="XXX-XXXX-XXX"
+                          className={`global-form-field-input${
+                            errors.phone_number
+                              ? " global-form-field-error"
+                              : ""
+                          } ${styles.phoneInput}`}
+                          autoComplete="tel"
+                          maxLength={12}
+                          pattern="[0-9]{3}-[0-9]{4}-[0-9]{3}"
+                          title="Enter a valid Philippine mobile number (e.g., 956-4134-958)"
+                          required
+                          style={{
+                            borderRadius:
+                              "0 var(--border-radius) var(--border-radius) 0",
+                            borderLeft: "none",
+                            flex: 1,
+                          }}
+                        />
+                      </div>
                       {errors.phone_number && (
                         <div className="global-form-field-error">
                           {errors.phone_number}
                         </div>
                       )}
-                      <div className={styles.helperText}>
-                        Format: +[country code][number] (e.g., +12345678901)
-                      </div>
                     </FormField>
                   </div>
                   <div className={styles.formGroup}>
@@ -326,9 +355,7 @@ const Register = () => {
                         placeholder: "Password",
                         className: `${
                           styles.inputWithIcon
-                        } global-form-field-input${
-                          errors.password ? ` global-form-field-error` : ""
-                        }`,
+                        } global-form-field-input${errors.password ? "" : ""}`,
                         title:
                           "Password must be at least 8 characters and include uppercase, lowercase, number and special character",
                         id: "password",
@@ -423,9 +450,7 @@ const Register = () => {
                         className: `${
                           styles.inputWithIcon
                         } global-form-field-input${
-                          errors.passwordConfirm
-                            ? ` global-form-field-error`
-                            : ""
+                          errors.passwordConfirm ? "" : ""
                         }`,
                         id: "passwordConfirm",
                         autoComplete: "new-password",
