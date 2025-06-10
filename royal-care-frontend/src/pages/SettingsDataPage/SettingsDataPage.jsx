@@ -97,59 +97,83 @@ const TAB_SINGULARS = {
   Materials: "Material",
 };
 
-// Add fetch functions for each tab
+// Add fetch functions for each tab - Updated to use proper data endpoints
 const fetchers = {
   Therapists: async () => {
-    // Use absolute URL to avoid proxy issues
-    const res = await fetch(
-      "http://localhost:8000/api/registration/register/therapist/"
-    );
+    const token = localStorage.getItem("knoxToken");
+    const res = await fetch("http://localhost:8000/api/scheduling/staff/", {
+      headers: {
+        Authorization: `Token ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
     if (!res.ok) return [];
     const data = await res.json();
-    // Map backend fields to frontend table fields
-    return data.map((item) => ({
-      Username: item.username,
-      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
-      Email: item.email,
-      Contact: item.contact || "-", // Adjust if you have a contact field
-      Specialization: item.specialization,
-      Pressure: item.pressure,
-    }));
+    // Filter for therapists only and map to frontend table fields
+    return data
+      .filter((item) => item.role === "therapist")
+      .map((item) => ({
+        Username: item.username,
+        Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
+        Email: item.email,
+        Contact: item.phone_number || "-",
+        Specialization: item.specialization || "-",
+        Pressure: item.massage_pressure || "-",
+      }));
   },
   Drivers: async () => {
-    const res = await fetch(
-      "http://localhost:8000/api/registration/register/driver/"
-    );
+    const token = localStorage.getItem("knoxToken");
+    const res = await fetch("http://localhost:8000/api/scheduling/staff/", {
+      headers: {
+        Authorization: `Token ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
     if (!res.ok) return [];
     const data = await res.json();
-    return data.map((item) => ({
-      Username: item.username,
-      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
-      Email: item.email,
-      Contact: item.contact || "-",
-      Specialization: "N/A",
-      Pressure: "N/A",
-    }));
+    // Filter for drivers only and map to frontend table fields
+    return data
+      .filter((item) => item.role === "driver")
+      .map((item) => ({
+        Username: item.username,
+        Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
+        Email: item.email,
+        Contact: item.phone_number || "-",
+        Specialization: item.motorcycle_plate || "N/A",
+        Pressure: "N/A",
+      }));
   },
   Operators: async () => {
-    const res = await fetch(
-      "http://localhost:8000/api/registration/register/operator/"
-    );
+    // Operators need to fetch from users endpoint since they're not in staff
+    const token = localStorage.getItem("knoxToken");
+    const res = await fetch("http://localhost:8000/api/auth/users/", {
+      headers: {
+        Authorization: `Token ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
     if (!res.ok) return [];
     const data = await res.json();
-    return data.map((item) => ({
-      Username: item.username,
-      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
-      Email: item.email,
-      Contact: item.contact || "-",
-      Specialization: "N/A",
-      Pressure: "N/A",
-    }));
+    // Filter for operators only
+    return data
+      .filter((item) => item.role === "operator")
+      .map((item) => ({
+        Username: item.username,
+        Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
+        Email: item.email,
+        Contact: item.phone_number || "-",
+        Specialization: "N/A",
+        Pressure: "N/A",
+      }));
   },
   Services: async () => {
-    const res = await fetch(
-      "http://localhost:8000/api/registration/register/service/"
-    );
+    const token = localStorage.getItem("knoxToken");
+    const res = await fetch("http://localhost:8000/api/scheduling/services/", {
+      headers: {
+        Authorization: `Token ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
     if (!res.ok) return [];
     const data = await res.json();
     // Map backend fields to frontend table fields
@@ -166,13 +190,22 @@ const fetchers = {
           : "-",
       Materials:
         Array.isArray(item.materials) && item.materials.length > 0
-          ? item.materials.map((mat) => mat.name).join(", ")
+          ? item.materials.map((mat) => mat.name || mat).join(", ")
           : "-",
     }));
   },
   Materials: async () => {
+    // Materials might be part of services or a separate endpoint
+    const token = localStorage.getItem("knoxToken");
+    // Try to get materials from registration endpoint first as fallback
     const res = await fetch(
-      "http://localhost:8000/api/registration/register/material/"
+      "http://localhost:8000/api/registration/register/material/",
+      {
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
     );
     if (!res.ok) return [];
     const data = await res.json();
