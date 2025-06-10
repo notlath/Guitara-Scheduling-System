@@ -62,9 +62,19 @@ const AvailabilityManager = () => {
   const { staffMembers, availabilities, loading, error } = useSelector(
     (state) => state.scheduling
   );
-
   // Ensure availabilities is always an array to prevent undefined errors
   const safeAvailabilities = availabilities || [];
+
+  // Add debug logging for availability data
+  console.log("🔍 AvailabilityManager Debug:", {
+    selectedStaff,
+    selectedDate: selectedDate.toISOString().split("T")[0],
+    selectedDateFormatted: selectedDate.toLocaleDateString(),
+    availabilities,
+    safeAvailabilities,
+    loading,
+    error
+  });
 
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
@@ -806,30 +816,34 @@ const AvailabilityManager = () => {
                 Loading availability for {selectedDate.toLocaleDateString()}...
               </span>
             </div>
-          </div>
-        ) : safeAvailabilities.length === 0 ? (
-          <div className="no-availability-message">
-            <p>
-              <strong>
-                No availability set for {selectedDate.toLocaleDateString()}.
-              </strong>
-            </p>
-            {selectedStaff && (
-              <p className="hint-text">
-                📅 Try selecting a different date above, or add new availability
-                using the form.
-                {user.role === "operator" && (
-                  <span>
-                    {" "}
-                    You can navigate through dates to view all availability for
-                    this staff member.
-                  </span>
-                )}
+          </div>        ) : safeAvailabilities.length === 0 ? (
+          <div className="availability-list">
+            <h3>Current Availability</h3>
+            <div className="no-availability-message">
+              <p>
+                <strong>
+                  No availability set for {selectedDate.toLocaleDateString()}.
+                </strong>
               </p>
-            )}
+              {selectedStaff && (
+                <p className="hint-text">
+                  📅 Try selecting a different date above, or add new availability
+                  using the form.
+                  {user.role === "operator" && (
+                    <span>
+                      {" "}
+                      You can navigate through dates to view all availability for
+                      this staff member.
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
           </div>
         ) : (
-          <table className="availability-table">
+          <div className="availability-list">
+            <h3>Current Availability</h3>
+            <table className="availability-table">
             <thead>
               <tr>
                 <th>Date</th>
@@ -906,14 +920,14 @@ const AvailabilityManager = () => {
                           handleDeleteAvailability(availability.id)
                         }
                       >
-                        Delete
-                      </button>
+                        Delete                      </button>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>
