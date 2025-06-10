@@ -846,17 +846,41 @@ export const fetchStaffMembers = createAsyncThunk(
 // Fetch availability for a specific staff member and date
 export const fetchAvailability = createAsyncThunk(
   "scheduling/fetchAvailability",
-  async ({ staffId, date }, { rejectWithValue }) => {
+  async (
+    { staffId, date, forceRefresh = false },
+    { rejectWithValue, getState }
+  ) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) {
       return rejectWithValue({ error: "Authentication required" });
     }
 
-    console.log("fetchAvailability: Starting API call", { staffId, date });
+    const cacheKey = `${staffId}-${date}`;
+    const state = getState();
+    const cachedData = state.scheduling.availabilityCache[cacheKey];
+
+    // Use cache if available and not forcing refresh
+    if (!forceRefresh && cachedData) {
+      console.log(
+        `📋 fetchAvailability: Using cached data for ${cacheKey}`,
+        cachedData
+      );
+      return {
+        data: cachedData,
+        cached: true,
+        cacheKey,
+      };
+    }
+
+    console.log("fetchAvailability: Starting API call", {
+      staffId,
+      date,
+      forceRefresh,
+    });
 
     try {
       const response = await axios.get(`${API_URL}availabilities/`, {
-        params: { staff_id: staffId, date },
+        params: { user: staffId, date },
         headers: {
           Authorization: `Token ${token}`,
         },
@@ -868,9 +892,15 @@ export const fetchAvailability = createAsyncThunk(
       console.log(
         "fetchAvailability: Success, received",
         data.length,
-        "availability records"
+        "availability records for",
+        cacheKey
       );
-      return data;
+
+      return {
+        data,
+        cached: false,
+        cacheKey,
+      };
     } catch (error) {
       console.error(
         "fetchAvailability: Error",

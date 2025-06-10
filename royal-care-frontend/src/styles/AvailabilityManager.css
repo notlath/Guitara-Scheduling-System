@@ -406,3 +406,156 @@ select option:disabled {
   font-size: 14px;
   line-height: 1.4;
 }
+
+/* Cross-day availability styling */
+.availability-table .cross-day {
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+}
+
+.cross-day-indicator {
+  color: #856404;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+.next-day-indicator {
+  color: #0c5460;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.cross-day-note {
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 3px;
+  padding: 2px 5px;
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+.cross-day-info {
+  background-color: #e7f3ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  color: #0c5460;
+}
+
+.cross-day-info small {
+  line-height: 1.4;
+}
+
+/* Enhanced availability table styling */
+
+/* No availability message styling */
+.no-availability-message {
+  text-align: center;
+  padding: 30px 20px;
+  background-color: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  color: #6c757d;
+}
+
+.no-availability-message p {
+  margin: 8px 0;
+}
+
+.hint-text {
+  font-size: 14px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Loading message styling */
+.loading-availability {
+  position: relative;
+}
+
+.loading-message {
+  text-align: center;
+  padding: 10px;
+  background-color: #e3f2fd;
+  border: 1px solid #bbdefb;
+  border-radius: 4px;
+  margin-top: 10px;
+  color: #1976d2;
+  font-style: italic;
+}
+
+/* Enhanced date picker styling */
+.current-date-display {
+  display: block;
+  font-weight: normal;
+  color: #2c3e50;
+  background-color: #ecf0f1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.date-helper-text {
+  color: #7f8c8d;
+  font-style: italic;
+  margin-top: 5px;
+  display: block;
+}
+
+/* Selected Staff Summary */
+.selected-staff-summary {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #e8f5e8;
+  border: 1px solid #c3e6c3;
+  border-radius: 6px;
+}
+
+.selected-staff-summary h4 {
+  margin: 0 0 10px 0;
+  color: #2c5530;
+  font-size: 16px;
+}
+
+.staff-info {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+
+.staff-role {
+  background-color: #3498db;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.staff-status.active {
+  background-color: #27ae60;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.staff-status.inactive {
+  background-color: #e74c3c;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.availability-instruction {
+  margin: 10px 0 0 0;
+  font-style: italic;
+  color: #5a6c57;
+  font-size: 14px;
+}
