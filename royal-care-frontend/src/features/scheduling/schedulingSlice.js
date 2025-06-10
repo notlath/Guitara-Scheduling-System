@@ -880,7 +880,7 @@ export const fetchAvailability = createAsyncThunk(
 
     try {
       const response = await axios.get(`${API_URL}availabilities/`, {
-        params: { staff_id: staffId, date },
+        params: { user: staffId, date },
         headers: {
           Authorization: `Token ${token}`,
         },
