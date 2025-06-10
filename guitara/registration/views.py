@@ -2,7 +2,7 @@ import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .supabase_client import supabase, safe_supabase_operation
+from .supabase_client import get_supabase_client, safe_supabase_operation, init_supabase
 from .serializers import (
     TherapistSerializer,
     DriverSerializer,
@@ -10,7 +10,6 @@ from .serializers import (
     ServiceSerializer,
     MaterialSerializer,
 )
-from .models import Therapist
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +18,9 @@ def insert_into_table(table_name, data):
     """
     Insert data into Supabase table with timeout handling
     """
+    supabase = get_supabase_client()
+    if not supabase:
+        return None, "Supabase client not available"
 
     def operation():
         return supabase.table(table_name).insert(data).execute()
@@ -139,6 +141,10 @@ class RegisterTherapist(APIView):
 class RegisterDriver(APIView):
     def get(self, request):
         # Fetch all drivers from Supabase with timeout handling
+        supabase = get_supabase_client()
+        if not supabase:
+            return Response({"error": "Supabase client not available"}, status=500)
+
         def operation():
             return supabase.table("registration_driver").select("*").execute()
 
@@ -291,6 +297,8 @@ class RegisterDriver(APIView):
 class RegisterOperator(APIView):
     def get(self, request):
         supabase = get_supabase_client()
+        if not supabase:
+            return Response({"error": "Supabase client not available"}, status=500)
         # Fetch all operators from Supabase
         result = supabase.table("registration_operator").select("*").execute()
         if getattr(result, "error", None):
@@ -323,6 +331,8 @@ class RegisterOperator(APIView):
 class RegisterMaterial(APIView):
     def get(self, request):
         supabase = get_supabase_client()
+        if not supabase:
+            return Response({"error": "Supabase client not available"}, status=500)
         # Fetch all materials from Supabase
         result = supabase.table("registration_material").select("*").execute()
         if getattr(result, "error", None):
@@ -350,6 +360,8 @@ class RegisterMaterial(APIView):
 class RegisterService(APIView):
     def get(self, request):
         supabase = get_supabase_client()
+        if not supabase:
+            return Response({"error": "Supabase client not available"}, status=500)
         # Fetch all services from Supabase
         result = supabase.table("registration_service").select("*").execute()
         if getattr(result, "error", None):
@@ -457,6 +469,12 @@ class RegisterService(APIView):
                 materials = [{"name": m} for m in materials]
             inserted_material_ids = []
             supabase = get_supabase_client()
+            if not supabase:
+                logger.error("Supabase client not available for material insertion")
+                return Response(
+                    {"error": "Database client not available"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
             for mat in materials:
                 material_data = {
                     "service_id": service_id,
