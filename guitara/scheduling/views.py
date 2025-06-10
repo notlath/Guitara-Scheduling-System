@@ -607,8 +607,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Create notifications for all involved parties
         self._create_notifications(
-            appointment,
-            "appointment_cancelled",
+            appointment,        "appointment_cancelled",
             f"Appointment for {appointment.client} on {appointment.date} at {appointment.start_time} has been cancelled.",
         )
         serializer = self.get_serializer(appointment)
@@ -1504,6 +1503,57 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return Response(
             {
                 "message": f"Payment verified successfully. Received {payment_amount} via {payment_method}.",
+                "appointment": serializer.data,
+            }
+        )
+
+    @action(detail=True, methods=["post"])
+    def request_pickup(self, request, pk=None):
+        """Therapist requests pickup after session completion"""
+        appointment = self.get_object()
+
+        # Only the assigned therapist(s) can request pickup
+        user = request.user
+        is_assigned_therapist = (
+            user == appointment.therapist
+            or appointment.therapists.filter(id=user.id).exists()
+        )
+
+        if not is_assigned_therapist:
+            return Response(
+                {"error": "You don't have permission to request pickup for this appointment"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Appointment must be completed to request pickup
+        if appointment.status != "completed":
+            return Response(
+                {"error": "Pickup can only be requested for completed appointments"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get pickup details from request
+        pickup_urgency = request.data.get("pickup_urgency", "normal")
+        pickup_notes = request.data.get("pickup_notes", "")
+
+        # Update appointment status
+        appointment.status = "pickup_requested"
+        appointment.pickup_urgency = pickup_urgency
+        appointment.pickup_notes = pickup_notes
+        appointment.pickup_request_time = timezone.now()
+        appointment.save()
+
+        # Create notifications for operators and drivers
+        self._create_notifications(
+            appointment,
+            "pickup_requested",
+            f"Pickup requested by therapist for appointment with {appointment.client}. Urgency: {pickup_urgency}",
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(
+            {
+                "message": "Pickup request sent successfully.",
                 "appointment": serializer.data,
             }
         )
