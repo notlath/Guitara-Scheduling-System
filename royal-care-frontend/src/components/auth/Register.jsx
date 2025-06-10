@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { MdVisibility, MdVisibilityOff } from "react-icons/md";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import rcLogo from "../../assets/images/rc_logo.jpg";
+import { FormField } from "../../globals/FormField";
 import styles from "../../pages/LoginPage/LoginPage.module.css";
 import { api } from "../../services/api";
 import { sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
-import { FormField } from "../../globals/FormField";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -56,15 +56,19 @@ const Register = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    let sanitizedValue;
-
-    // Apply appropriate sanitization based on field type
+    let sanitizedValue; // Apply appropriate sanitization based on field type
     if (name === "password" || name === "passwordConfirm") {
       sanitizedValue = value; // Skip sanitization for passwords
     } else if (name === "email") {
       // Special handling for email to preserve @ and . characters
       // Only remove HTML tags, but keep email specific characters
       sanitizedValue = value.replace(/<[^>]*>/g, "");
+    } else if (name === "username") {
+      // Special handling for username - only allow alphanumeric and underscores
+      // Remove HTML tags but preserve valid username characters including numbers
+      sanitizedValue = value
+        .replace(/<[^>]*>/g, "") // Remove HTML tags
+        .replace(/[^a-zA-Z0-9_]/g, ""); // Only allow letters, numbers, and underscores
     } else if (name === "phone_number") {
       // Format: starts with + followed by digits only
       const digitsOnly = value.replace(/[^\d+]/g, "");
