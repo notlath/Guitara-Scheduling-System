@@ -8,7 +8,7 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
   const [timeSlots, setTimeSlots] = useState([]);
   const dispatch = useDispatch();
   const { weekAppointments, loading } = useSelector(
-    (state) => state.scheduling,
+    (state) => state.scheduling
   );
 
   // Generate week days based on selectedDate
@@ -58,8 +58,8 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
   // Format date as YYYY-MM-DD string, ensuring timezone consistency
   const formatDateToString = (date) => {
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
@@ -151,7 +151,11 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
           {weekDays.map((day, dayIndex) => (
             <div key={dayIndex} className="day-column">
               <div
-                className={`day-header ${formatDateToString(day) === formatDateToString(new Date()) ? "today" : ""}`}
+                className={`day-header ${
+                  formatDateToString(day) === formatDateToString(new Date())
+                    ? "today"
+                    : ""
+                }`}
               >
                 <div className="day-name">
                   {day.toLocaleDateString("en-US", { weekday: "short" })}
@@ -165,11 +169,15 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
                 return (
                   <div
                     key={timeIndex + time}
-                    className={`time-slot ${appointment ? "has-appointment" : ""}`}
+                    className={`time-slot ${
+                      appointment ? "has-appointment" : ""
+                    }`}
                   >
                     {appointment && (
                       <div
-                        className={`appointment-item ${getAppointmentStatusClass(appointment.status)}`}
+                        className={`appointment-item ${getAppointmentStatusClass(
+                          appointment.status
+                        )}`}
                         onClick={() =>
                           onAppointmentSelect &&
                           onAppointmentSelect(appointment)
