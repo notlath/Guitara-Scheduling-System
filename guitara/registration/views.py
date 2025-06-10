@@ -2,13 +2,14 @@ import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .supabase_client import supabase
+from .supabase_client import get_supabase_client
 from .serializers import TherapistSerializer, DriverSerializer, OperatorSerializer, ServiceSerializer, MaterialSerializer
 from .models import Therapist
 
 logger = logging.getLogger(__name__)
 
 def insert_into_table(table_name, data):
+    supabase = get_supabase_client()
     result = supabase.table(table_name).insert(data).execute()
     # Use .error to check for errors (Supabase Python client)
     if getattr(result, "error", None):
@@ -19,8 +20,9 @@ def insert_into_table(table_name, data):
         return None, 'No data returned after insert'
     return result.data, None
 
-class   RegisterTherapist(APIView):
+class RegisterTherapist(APIView):
     def get(self, request):
+        supabase = get_supabase_client()
         # Fetch all therapists from Supabase
         result = supabase.table('registration_therapist').select('*').execute()
         if getattr(result, 'error', None):
@@ -73,6 +75,7 @@ class   RegisterTherapist(APIView):
 
 class RegisterDriver(APIView):
     def get(self, request):
+        supabase = get_supabase_client()
         # Fetch all drivers from Supabase
         result = supabase.table('registration_driver').select('*').execute()
         if getattr(result, 'error', None):
@@ -97,6 +100,7 @@ class RegisterDriver(APIView):
 
 class RegisterOperator(APIView):
     def get(self, request):
+        supabase = get_supabase_client()
         # Fetch all operators from Supabase
         result = supabase.table('registration_operator').select('*').execute()
         if getattr(result, 'error', None):
@@ -121,6 +125,7 @@ class RegisterOperator(APIView):
 
 class RegisterMaterial(APIView):
     def get(self, request):
+        supabase = get_supabase_client()
         # Fetch all materials from Supabase
         result = supabase.table('registration_material').select('*').execute()
         if getattr(result, 'error', None):
@@ -143,6 +148,7 @@ class RegisterMaterial(APIView):
 
 class RegisterService(APIView):
     def get(self, request):
+        supabase = get_supabase_client()
         # Fetch all services from Supabase
         result = supabase.table('registration_service').select('*').execute()
         if getattr(result, 'error', None):
@@ -218,6 +224,7 @@ class RegisterService(APIView):
             if isinstance(materials, list) and materials and isinstance(materials[0], str):
                 materials = [{'name': m} for m in materials]
             inserted_material_ids = []
+            supabase = get_supabase_client()
             for mat in materials:
                 material_data = {
                     'service_id': service_id,
