@@ -1190,7 +1190,10 @@ const AppointmentForm = ({
                 </option>
               ) : availableTherapists && availableTherapists.length > 0 ? (
                 availableTherapists.map((therapist) => (
-                  <option key={`single-therapist-${therapist.id}`} value={therapist.id}>
+                  <option
+                    key={`single-therapist-${therapist.id}`}
+                    value={therapist.id}
+                  >
                     {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
                     {therapist.specialization || "General"} -{" "}
                     {therapist.massage_pressure || "Standard"}{" "}
@@ -1269,7 +1272,10 @@ const AppointmentForm = ({
                 </option>
               ) : availableTherapists && availableTherapists.length > 0 ? (
                 availableTherapists.map((therapist) => (
-                  <option key={`multi-therapist-${therapist.id}`} value={therapist.id}>
+                  <option
+                    key={`multi-therapist-${therapist.id}`}
+                    value={therapist.id}
+                  >
                     {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
                     {therapist.specialization || "General"} -{" "}
                     {therapist.massage_pressure || "Standard"}{" "}
