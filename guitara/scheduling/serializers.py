@@ -285,13 +285,40 @@ class AppointmentSerializer(serializers.ModelSerializer):
                             {
                                 "therapist": f"Therapist is already booked during this time slot ({appointment.start_time} - {appointment.end_time})"
                             }
-                        )  # Check if therapist has marked availability
-                has_availability = Availability.objects.filter(
+                        )                # Check if therapist has marked availability (including cross-day availability)
+                from django.db.models import Q, F
+                from datetime import timedelta
+                
+                # Same-day normal availability
+                same_day_normal = Q(
                     user=therapist,
                     date=date,
                     start_time__lte=start_time,
                     end_time__gte=end_time,
                     is_available=True,
+                ) & Q(start_time__lte=F("end_time"))  # Normal (non-cross-day)
+                
+                # Same-day cross-day availability (e.g., 13:00-01:00, appointment at 14:00)
+                same_day_cross_day = Q(
+                    user=therapist,
+                    date=date,
+                    start_time__lte=start_time,
+                    start_time__gt=F("end_time"),  # Cross-day indicator
+                    is_available=True,
+                )
+                
+                # Previous day cross-day availability (e.g., appointment at 00:30 for 13:00-01:00 schedule from previous day)
+                previous_day = date - timedelta(days=1)
+                previous_day_cross_day = Q(
+                    user=therapist,
+                    date=previous_day,
+                    end_time__gte=end_time,
+                    start_time__gt=F("end_time"),  # Cross-day indicator
+                    is_available=True,
+                )
+                
+                has_availability = Availability.objects.filter(
+                    same_day_normal | same_day_cross_day | previous_day_cross_day
                 ).exists()
 
                 if not has_availability:
@@ -299,7 +326,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
                         {
                             "therapist": "Therapist is not available during this time slot"
                         }
-                    )  # Validate multiple therapists availability and conflicts (when using therapists field)
+                    )# Validate multiple therapists availability and conflicts (when using therapists field)
         # Note: This validation runs on the serializer data, but actual therapists are set in the view
         # The view should perform this validation on the request data
         therapists_ids = (
@@ -346,15 +373,40 @@ class AppointmentSerializer(serializers.ModelSerializer):
                                     {
                                         "therapists": f"Therapist {therapist.get_full_name()} is already booked during this time slot ({appointment.start_time} - {appointment.end_time})"
                                     }
-                                )
-
-                        # Check if therapist has marked availability
-                        has_availability = Availability.objects.filter(
+                                )                        # Check if therapist has marked availability (including cross-day availability)
+                        from django.db.models import Q, F
+                        from datetime import timedelta
+                        
+                        # Same-day normal availability
+                        same_day_normal = Q(
                             user=therapist,
                             date=date,
                             start_time__lte=start_time,
                             end_time__gte=end_time,
                             is_available=True,
+                        ) & Q(start_time__lte=F("end_time"))  # Normal (non-cross-day)
+                        
+                        # Same-day cross-day availability (e.g., 13:00-01:00, appointment at 14:00)
+                        same_day_cross_day = Q(
+                            user=therapist,
+                            date=date,
+                            start_time__lte=start_time,
+                            start_time__gt=F("end_time"),  # Cross-day indicator
+                            is_available=True,
+                        )
+                        
+                        # Previous day cross-day availability (e.g., appointment at 00:30 for 13:00-01:00 schedule from previous day)
+                        previous_day = date - timedelta(days=1)
+                        previous_day_cross_day = Q(
+                            user=therapist,
+                            date=previous_day,
+                            end_time__gte=end_time,
+                            start_time__gt=F("end_time"),  # Cross-day indicator
+                            is_available=True,
+                        )
+                        
+                        has_availability = Availability.objects.filter(
+                            same_day_normal | same_day_cross_day | previous_day_cross_day
                         ).exists()
 
                         if not has_availability:
@@ -406,15 +458,40 @@ class AppointmentSerializer(serializers.ModelSerializer):
                             {
                                 "driver": f"Driver is already booked during this time slot ({appointment.start_time} - {appointment.end_time})"
                             }
-                        )
-
-                # Check if driver has marked availability
-                has_availability = Availability.objects.filter(
+                        )                # Check if driver has marked availability (including cross-day availability)
+                from django.db.models import Q, F
+                from datetime import timedelta
+                
+                # Same-day normal availability
+                same_day_normal = Q(
                     user=driver,
                     date=date,
                     start_time__lte=start_time,
                     end_time__gte=end_time,
                     is_available=True,
+                ) & Q(start_time__lte=F("end_time"))  # Normal (non-cross-day)
+                
+                # Same-day cross-day availability (e.g., 13:00-01:00, appointment at 14:00)
+                same_day_cross_day = Q(
+                    user=driver,
+                    date=date,
+                    start_time__lte=start_time,
+                    start_time__gt=F("end_time"),  # Cross-day indicator
+                    is_available=True,
+                )
+                
+                # Previous day cross-day availability (e.g., appointment at 00:30 for 13:00-01:00 schedule from previous day)
+                previous_day = date - timedelta(days=1)
+                previous_day_cross_day = Q(
+                    user=driver,
+                    date=previous_day,
+                    end_time__gte=end_time,
+                    start_time__gt=F("end_time"),  # Cross-day indicator
+                    is_available=True,
+                )
+                
+                has_availability = Availability.objects.filter(
+                    same_day_normal | same_day_cross_day | previous_day_cross_day
                 ).exists()
 
                 if not has_availability:

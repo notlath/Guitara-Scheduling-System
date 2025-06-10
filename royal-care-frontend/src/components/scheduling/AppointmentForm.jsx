@@ -306,7 +306,7 @@ const AppointmentForm = ({
         console.warn("Form loading timeout reached, forcing ready state");
         setIsFormReady(true);
       }
-    }, 10000); // 10 second timeout
+    }, 5000); // Reduced from 10 seconds to 5 seconds
 
     return () => clearTimeout(timeout);
   }, [isFormReady, loading]);
@@ -1051,9 +1051,12 @@ const AppointmentForm = ({
     );
   }
 
-  // If we have services but form is still not ready after timeout, show form anyway
+  // If we have services but form is still not ready, don't show warning if services just loaded
   if (!isFormReady && services.length > 0) {
-    console.warn("Form forced to display despite not being ready");
+    // Only warn if form has been trying to load for a while and still not ready
+    if (initialDataFetchedRef.current) {
+      console.warn("Form forced to display despite not being ready");
+    }
   }
   return (
     <div className="appointment-form-container">
