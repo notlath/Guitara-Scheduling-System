@@ -48,7 +48,7 @@ const Register = () => {
       hasNumber: /[0-9]/.test(password),
       hasLower: /[a-z]/.test(password),
       hasUpper: /[A-Z]/.test(password),
-      exactLength: password.length === 8,
+      minLength: password.length >= 8,
       confirmMatch: password === confirmPassword && password.length > 0,
     };
   };
