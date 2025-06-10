@@ -562,47 +562,68 @@ const AppointmentForm = ({
     if (!formData.services) newErrors.services = "Service is required";
 
     // Check if we have availability data for the selected date/time
-    const hasAvailabilityData = availabilityParams.date && 
-                                availabilityParams.start_time && 
-                                availabilityParams.services;
+    const hasAvailabilityData =
+      availabilityParams.date &&
+      availabilityParams.start_time &&
+      availabilityParams.services;
 
     // Validate therapist selection based on mode
     if (formData.multipleTherapists) {
       if (!formData.therapists || formData.therapists.length === 0) {
         newErrors.therapists = "At least one therapist is required";
       } else if (!hasAvailabilityData) {
-        newErrors.therapists = "Please select date, time and service first to validate therapist availability";
+        newErrors.therapists =
+          "Please select date, time and service first to validate therapist availability";
       } else if (hasAvailabilityData && availableTherapists.length === 0) {
-        newErrors.therapists = "No therapists are available for the selected date and time";
+        newErrors.therapists =
+          "No therapists are available for the selected date and time";
       } else if (hasAvailabilityData && formData.therapists.length > 0) {
         // Check if all selected therapists are still available
-        const unavailableTherapists = formData.therapists.filter(therapistId => 
-          !availableTherapists.some(t => t.id.toString() === therapistId.toString())
+        const unavailableTherapists = formData.therapists.filter(
+          (therapistId) =>
+            !availableTherapists.some(
+              (t) => t.id.toString() === therapistId.toString()
+            )
         );
         if (unavailableTherapists.length > 0) {
-          newErrors.therapists = "Some selected therapists are no longer available for the chosen date and time";
+          newErrors.therapists =
+            "Some selected therapists are no longer available for the chosen date and time";
         }
       }
     } else {
       if (!formData.therapist) {
         newErrors.therapist = "Therapist is required";
       } else if (!hasAvailabilityData) {
-        newErrors.therapist = "Please select date, time and service first to validate therapist availability";
+        newErrors.therapist =
+          "Please select date, time and service first to validate therapist availability";
       } else if (hasAvailabilityData && availableTherapists.length === 0) {
-        newErrors.therapist = "No therapists are available for the selected date and time";
-      } else if (hasAvailabilityData && formData.therapist && 
-                 !availableTherapists.some(t => t.id.toString() === formData.therapist.toString())) {
-        newErrors.therapist = "Selected therapist is not available for the chosen date and time";
+        newErrors.therapist =
+          "No therapists are available for the selected date and time";
+      } else if (
+        hasAvailabilityData &&
+        formData.therapist &&
+        !availableTherapists.some(
+          (t) => t.id.toString() === formData.therapist.toString()
+        )
+      ) {
+        newErrors.therapist =
+          "Selected therapist is not available for the chosen date and time";
       }
     }
 
     // Validate driver selection if one is chosen
     if (formData.driver) {
       if (!hasAvailabilityData) {
-        newErrors.driver = "Please select date, time and service first to validate driver availability";
-      } else if (hasAvailabilityData && 
-                 !availableDrivers.some(d => d.id.toString() === formData.driver.toString())) {
-        newErrors.driver = "Selected driver is not available for the chosen date and time";
+        newErrors.driver =
+          "Please select date, time and service first to validate driver availability";
+      } else if (
+        hasAvailabilityData &&
+        !availableDrivers.some(
+          (d) => d.id.toString() === formData.driver.toString()
+        )
+      ) {
+        newErrors.driver =
+          "Selected driver is not available for the chosen date and time";
       }
     }
 
@@ -614,7 +635,13 @@ const AppointmentForm = ({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData, endTime, availabilityParams, availableTherapists, availableDrivers]);
+  }, [
+    formData,
+    endTime,
+    availabilityParams,
+    availableTherapists,
+    availableDrivers,
+  ]);
 
   // Helper function to ensure data is in the correct format for the API
   const sanitizeDataForApi = useCallback((data) => {
@@ -1130,16 +1157,27 @@ const AppointmentForm = ({
               value={formData.therapist}
               onChange={handleChange}
               className={errors.therapist ? "error" : ""}
-              disabled={availabilityParams.date && availabilityParams.start_time && availabilityParams.services && availableTherapists.length === 0}
+              disabled={
+                !availabilityParams.date ||
+                !availabilityParams.start_time ||
+                !availabilityParams.services ||
+                (availabilityParams.date &&
+                  availabilityParams.start_time &&
+                  availabilityParams.services &&
+                  availableTherapists.length === 0)
+              }
             >
               <option value="">Select a therapist</option>
               {fetchingAvailability ? (
                 <option value="" disabled>
                   Checking availability...
                 </option>
-              ) : !availabilityParams.date || !availabilityParams.start_time || !availabilityParams.services ? (
+              ) : !availabilityParams.date ||
+                !availabilityParams.start_time ||
+                !availabilityParams.services ? (
                 <option value="" disabled>
-                  Please select date, time and service first to see available therapists
+                  Please select date, time and service first to see available
+                  therapists
                 </option>
               ) : availableTherapists && availableTherapists.length > 0 ? (
                 availableTherapists.map((therapist) => (
@@ -1154,23 +1192,32 @@ const AppointmentForm = ({
                 ))
               ) : (
                 <option value="" disabled>
-                  No therapists available for selected date/time - please choose a different time
+                  No therapists available for selected date/time - please choose
+                  a different time
                 </option>
               )}
             </select>
             {/* Show warning when user needs to select prerequisites */}
-            {(!availabilityParams.date || !availabilityParams.start_time || !availabilityParams.services) && !fetchingAvailability && (
-              <small className="info-text">
-                ℹ️ Please select date, time and service first to see available therapists
-              </small>
-            )}
+            {(!availabilityParams.date ||
+              !availabilityParams.start_time ||
+              !availabilityParams.services) &&
+              !fetchingAvailability && (
+                <small className="info-text">
+                  ℹ️ Please select date, time and service first to see available
+                  therapists
+                </small>
+              )}
             {/* Show warning when no therapists are available */}
-            {availabilityParams.date && availabilityParams.start_time && availabilityParams.services && 
-             availableTherapists.length === 0 && !fetchingAvailability && (
-              <small className="warning-text">
-                ⚠️ No therapists are available for the selected date and time. Please choose a different time or date.
-              </small>
-            )}
+            {availabilityParams.date &&
+              availabilityParams.start_time &&
+              availabilityParams.services &&
+              availableTherapists.length === 0 &&
+              !fetchingAvailability && (
+                <small className="warning-text">
+                  ⚠️ No therapists are available for the selected date and time.
+                  Please choose a different time or date.
+                </small>
+              )}
             {errors.therapist && (
               <div className="error-text">{errors.therapist}</div>
             )}
@@ -1190,15 +1237,26 @@ const AppointmentForm = ({
                 errors.therapists ? "error multi-select" : "multi-select"
               }
               size="5"
-              disabled={availabilityParams.date && availabilityParams.start_time && availabilityParams.services && availableTherapists.length === 0}
+              disabled={
+                !availabilityParams.date ||
+                !availabilityParams.start_time ||
+                !availabilityParams.services ||
+                (availabilityParams.date &&
+                  availabilityParams.start_time &&
+                  availabilityParams.services &&
+                  availableTherapists.length === 0)
+              }
             >
               {fetchingAvailability ? (
                 <option value="" disabled>
                   Checking availability...
                 </option>
-              ) : !availabilityParams.date || !availabilityParams.start_time || !availabilityParams.services ? (
+              ) : !availabilityParams.date ||
+                !availabilityParams.start_time ||
+                !availabilityParams.services ? (
                 <option value="" disabled>
-                  Please select date, time and service first to see available therapists
+                  Please select date, time and service first to see available
+                  therapists
                 </option>
               ) : availableTherapists && availableTherapists.length > 0 ? (
                 availableTherapists.map((therapist) => (
@@ -1213,23 +1271,32 @@ const AppointmentForm = ({
                 ))
               ) : (
                 <option value="" disabled>
-                  No therapists available for selected date/time - please choose a different time
+                  No therapists available for selected date/time - please choose
+                  a different time
                 </option>
               )}
             </select>
             {/* Show warning when user needs to select prerequisites */}
-            {(!availabilityParams.date || !availabilityParams.start_time || !availabilityParams.services) && !fetchingAvailability && (
-              <small className="info-text">
-                ℹ️ Please select date, time and service first to see available therapists
-              </small>
-            )}
+            {(!availabilityParams.date ||
+              !availabilityParams.start_time ||
+              !availabilityParams.services) &&
+              !fetchingAvailability && (
+                <small className="info-text">
+                  ℹ️ Please select date, time and service first to see available
+                  therapists
+                </small>
+              )}
             {/* Show warning when no therapists are available */}
-            {availabilityParams.date && availabilityParams.start_time && availabilityParams.services && 
-             availableTherapists.length === 0 && !fetchingAvailability && (
-              <small className="warning-text">
-                ⚠️ No therapists are available for the selected date and time. Please choose a different time or date.
-              </small>
-            )}
+            {availabilityParams.date &&
+              availabilityParams.start_time &&
+              availabilityParams.services &&
+              availableTherapists.length === 0 &&
+              !fetchingAvailability && (
+                <small className="warning-text">
+                  ⚠️ No therapists are available for the selected date and time.
+                  Please choose a different time or date.
+                </small>
+              )}
             <small className="help-text">
               Hold Ctrl (Cmd on Mac) to select multiple therapists
             </small>
@@ -1245,15 +1312,23 @@ const AppointmentForm = ({
             name="driver"
             value={formData.driver}
             onChange={handleChange}
+            disabled={
+              !availabilityParams.date ||
+              !availabilityParams.start_time ||
+              !availabilityParams.services
+            }
           >
             <option value="">No driver needed</option>{" "}
             {fetchingAvailability ? (
               <option value="" disabled>
                 Checking availability...
               </option>
-            ) : !availabilityParams.date || !availabilityParams.start_time || !availabilityParams.services ? (
+            ) : !availabilityParams.date ||
+              !availabilityParams.start_time ||
+              !availabilityParams.services ? (
               <option value="" disabled>
-                Please select date, time and service first to see available drivers
+                Please select date, time and service first to see available
+                drivers
               </option>
             ) : availableDrivers && availableDrivers.length > 0 ? (
               availableDrivers.map((driver) => (
@@ -1267,10 +1342,19 @@ const AppointmentForm = ({
               ))
             ) : (
               <option value="" disabled>
-                No drivers available for selected date/time - please choose a different time
+                No drivers available for selected date/time - please choose a
+                different time
               </option>
             )}
           </select>
+          {/* Show info for driver selection */}
+          {(!availabilityParams.date ||
+            !availabilityParams.start_time ||
+            !availabilityParams.services) && (
+            <small className="info-text">
+              ℹ️ Select date, time and service first to see available drivers
+            </small>
+          )}
         </div>
         <div className="form-row">
           <div className="form-group">
@@ -1359,9 +1443,11 @@ const AppointmentForm = ({
             size="medium"
             className="submit-button"
             disabled={
-              isSubmitting || 
-              (availabilityParams.date && availabilityParams.start_time && availabilityParams.services && 
-               availableTherapists.length === 0)
+              isSubmitting ||
+              (availabilityParams.date &&
+                availabilityParams.start_time &&
+                availabilityParams.services &&
+                availableTherapists.length === 0)
             }
           >
             {appointment ? "Update Appointment" : "Create Appointment"}
