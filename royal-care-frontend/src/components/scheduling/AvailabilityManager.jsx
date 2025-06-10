@@ -113,8 +113,8 @@ const AvailabilityManager = () => {
   }, []); // Run once on mount
   // Fetch staff members and availabilities on component mount
   useEffect(() => {
-    dispatch(fetchStaffMembers()); 
-    
+    dispatch(fetchStaffMembers());
+
     // If user is a therapist or driver, set them as selected staff
     if (user.role === "therapist" || user.role === "driver") {
       setSelectedStaff(user.id);
@@ -127,8 +127,8 @@ const AvailabilityManager = () => {
         })
       );
     }
-  }, [dispatch, user, selectedDate]); 
-  
+  }, [dispatch, user, selectedDate]);
+
   // Load availability whenever selected staff or date changes
   useEffect(() => {
     if (selectedStaff) {
@@ -172,7 +172,7 @@ const AvailabilityManager = () => {
       ...prev,
       date: formattedDate,
     }));
-  }, [selectedDate]);      // Debug effect to track availability data changes
+  }, [selectedDate]); // Debug effect to track availability data changes
   useEffect(() => {
     const selectedDateFormatted = selectedDate
       ? selectedDate.toLocaleDateString()
@@ -318,14 +318,14 @@ const AvailabilityManager = () => {
       })
     ).then((result) => {
       if (createAvailability.fulfilled.match(result)) {
-        console.log("✅ Availability created successfully:", result.payload);        // Success - reset form to selected date (not today)
+        console.log("✅ Availability created successfully:", result.payload); // Success - reset form to selected date (not today)
         const currentFormDate = formatDateToString(selectedDate);
         setNewAvailabilityForm({
           date: currentFormDate,
           startTime: "13:00",
           endTime: "14:00", // Changed from "1:00" to "14:00" for better UX
           isAvailable: true,
-        });        // Force refresh availability to show the new data immediately
+        }); // Force refresh availability to show the new data immediately
         if (selectedStaff) {
           const formattedDate = formatDateToString(selectedDate);
           console.log("🔄 Force refreshing availability after creation...");
@@ -351,7 +351,7 @@ const AvailabilityManager = () => {
     if (window.confirm("Are you sure you want to delete this availability?")) {
       dispatch(deleteAvailability(availabilityId)).then((result) => {
         if (deleteAvailability.fulfilled.match(result)) {
-          console.log("✅ Availability deleted successfully");          // Force refresh availability to show updated data immediately
+          console.log("✅ Availability deleted successfully"); // Force refresh availability to show updated data immediately
           if (selectedStaff) {
             const formattedDate = formatDateToString(selectedDate);
             console.log("🔄 Force refreshing availability after deletion...");
@@ -379,7 +379,7 @@ const AvailabilityManager = () => {
       })
     ).then((result) => {
       if (updateAvailability.fulfilled.match(result)) {
-        console.log("✅ Availability updated successfully");        // Force refresh availability to show updated data immediately
+        console.log("✅ Availability updated successfully"); // Force refresh availability to show updated data immediately
         if (selectedStaff) {
           const formattedDate = formatDateToString(selectedDate);
           console.log("🔄 Force refreshing availability after update...");
@@ -867,7 +867,9 @@ const AvailabilityManager = () => {
                 fontSize: "12px",
                 fontFamily: "monospace",
               }}
-            >              <strong>Debug Info:</strong>
+            >
+              {" "}
+              <strong>Debug Info:</strong>
               <br />
               Selected Staff ID: {selectedStaff}
               <br />
@@ -907,7 +909,8 @@ const AvailabilityManager = () => {
               </p>
             )}
           </div>
-        ) : (          <table className="availability-table">
+        ) : (
+          <table className="availability-table">
             <thead>
               <tr>
                 <th>Date</th>
