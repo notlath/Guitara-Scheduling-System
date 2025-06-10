@@ -7,6 +7,14 @@ import { MdAdd, MdClose } from "react-icons/md";
 import LayoutRow from "../../globals/LayoutRow";
 import PageLayout from "../../globals/PageLayout";
 import { FormField } from "../../globals/FormField";
+import {
+  registerTherapist,
+  registerDriver,
+  registerOperator,
+  registerMaterial,
+  registerService,
+} from "../../services/api";
+import { sanitizeFormInput } from "../../utils/formSanitization";
 
 const TABS = ["Therapists", "Drivers", "Operators", "Services", "Materials"];
 
@@ -71,7 +79,7 @@ const SPECIALIZATION_OPTIONS = [
   "Hot Stone Service",
   "Ventosa",
 ];
-const PRESSURE_OPTIONS = ["Hard", "Moderate", "Soft"];
+const PRESSURE_OPTIONS = ["hard", "medium", "soft"];
 const MATERIAL_OPTIONS = [
   "Oil",
   "Lavender",
@@ -89,14 +97,96 @@ const TAB_SINGULARS = {
   Materials: "Material",
 };
 
+// Add fetch functions for each tab
+const fetchers = {
+  Therapists: async () => {
+    // Use absolute URL to avoid proxy issues
+    const res = await fetch("http://localhost:8000/api/registration/register/therapist/");
+    if (!res.ok) return [];
+    const data = await res.json();
+    // Map backend fields to frontend table fields
+    return data.map((item) => ({
+      Username: item.username,
+      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
+      Email: item.email,
+      Contact: item.contact || "-", // Adjust if you have a contact field
+      Specialization: item.specialization,
+      Pressure: item.pressure,
+    }));
+  },
+  Drivers: async () => {
+    const res = await fetch("http://localhost:8000/api/registration/register/driver/");
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map((item) => ({
+      Username: item.username,
+      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
+      Email: item.email,
+      Contact: item.contact || "-",
+      Specialization: "N/A",
+      Pressure: "N/A",
+    }));
+  },
+  Operators: async () => {
+    const res = await fetch("http://localhost:8000/api/registration/register/operator/");
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map((item) => ({
+      Username: item.username,
+      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
+      Email: item.email,
+      Contact: item.contact || "-",
+      Specialization: "N/A",
+      Pressure: "N/A",
+    }));
+  },
+  Services: async () => {
+    const res = await fetch("http://localhost:8000/api/registration/register/service/");
+    if (!res.ok) return [];
+    const data = await res.json();
+    // Map backend fields to frontend table fields
+    return data.map((item) => ({
+      Name: item.name,
+      Description: item.description || "-",
+      Duration: item.duration !== undefined && item.duration !== null ? `${item.duration} min` : "-",
+      Price: item.price !== undefined && item.price !== null ? `₱${item.price}` : "-",
+      Materials: Array.isArray(item.materials) && item.materials.length > 0
+        ? item.materials.map((mat) => mat.name).join(", ")
+        : "-",
+    }));
+  },
+  Materials: async () => {
+    const res = await fetch("http://localhost:8000/api/registration/register/material/");
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map((item) => ({
+      Username: "-",
+      Name: item.name,
+      Email: "-",
+      Contact: "-",
+      Specialization: item.description || "-",
+      Pressure: "-",
+    }));
+  },
+};
+
 const SettingsDataPage = () => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({});
   const [successPrompt, setSuccessPrompt] = useState("");
+  const [tableData, setTableData] = useState(TAB_PLACEHOLDERS);
 
   useEffect(() => {
     document.title = `${activeTab} | Royal Care`;
+    // Fetch data for the active tab
+    fetchers[activeTab]()
+      .then((data) => {
+        setTableData((prev) => ({ ...prev, [activeTab]: data }));
+      })
+      .catch(() => {
+        setTableData((prev) => ({ ...prev, [activeTab]: [] }));
+      });
   }, [activeTab]);
 
   const handleAddClick = () => {
@@ -112,17 +202,16 @@ const SettingsDataPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (type === "checkbox") {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: checked,
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
-    }
+    setFormData((prev) => {
+      if (type === "checkbox") {
+        return { ...prev, [name]: checked };
+      }
+      // Do not trim or sanitize on every keystroke for description
+      if (name === "firstName" || name === "lastName") {
+        return { ...prev, [name]: value };
+      }
+      return { ...prev, [name]: value };
+    });
   };
 
   const handleMultiSelectChange = (e) => {
@@ -130,10 +219,113 @@ const SettingsDataPage = () => {
     setFormData((prev) => ({ ...prev, materials: options }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setShowModal(false);
-    setSuccessPrompt("Registered successfully!");
+    // Sanitize only on submit
+    let sanitized = { ...formData };
+    if (sanitized.description) {
+      sanitized.description = sanitizeFormInput(sanitized.description);
+    }
+    // Parse duration as integer if present
+    if (sanitized.duration !== undefined && sanitized.duration !== "") {
+      sanitized.duration = parseInt(sanitized.duration, 10);
+      if (isNaN(sanitized.duration)) sanitized.duration = 0;
+    }
+    // Ensure price is a number
+    if (sanitized.price !== undefined && sanitized.price !== "") {
+      sanitized.price = Number(sanitized.price);
+    }
+    // Materials: ensure array of objects with name
+    if (sanitized.materials && Array.isArray(sanitized.materials)) {
+      sanitized.materials = sanitized.materials.map((mat) => ({ name: mat }));
+    }
+    let apiCall;
+    let payload = { ...sanitized };
+    setSuccessPrompt("");
+    try {
+      switch (activeTab) {
+        case "Therapists":
+          apiCall = registerTherapist;
+          payload = {
+            first_name: sanitized.firstName,
+            last_name: sanitized.lastName,
+            username: sanitized.username,
+            email: sanitized.email,
+            specialization: sanitized.specialization,
+            pressure: sanitized.pressure,
+          };
+          break;
+        case "Drivers":
+          apiCall = registerDriver;
+          payload = {
+            first_name: sanitized.firstName,
+            last_name: sanitized.lastName,
+            username: sanitized.username,
+            email: sanitized.email,
+          };
+          break;
+        case "Operators":
+          apiCall = registerOperator;
+          payload = {
+            first_name: sanitized.firstName,
+            last_name: sanitized.lastName,
+            username: sanitized.username,
+            email: sanitized.email,
+          };
+          break;
+        case "Materials":
+          apiCall = registerMaterial;
+          payload = {
+            name: sanitized.name,
+            description: sanitized.description,
+          };
+          break;
+        case "Services":
+          apiCall = registerService;
+          payload = {
+            name: sanitized.name,
+            description: sanitized.description,
+            duration: sanitized.duration,
+            price: sanitized.price,
+            materials: sanitized.materials || [],
+          };
+          break;
+        default:
+          return;
+      }
+      await apiCall(payload);
+      setShowModal(false);
+      setSuccessPrompt("Registered successfully!");
+    } catch (err) {
+      setSuccessPrompt(err?.errorMessage || err?.error || "Registration failed");
+      setTimeout(() => setSuccessPrompt(""), 3000);
+      console.error("[handleSubmit] Registration error:", err);
+    }
+    // Always refresh table after registration, even if there was an error
+    try {
+      fetchers[activeTab]()
+        .then((data) => {
+          console.log("[handleSubmit] Data returned by fetcher after registration:", data);
+          setTableData((prev) => ({ ...prev, [activeTab]: data }));
+        })
+        .catch((fetchErr) => {
+          setTableData((prev) => ({ ...prev, [activeTab]: [] }));
+          console.error("[handleSubmit] Fetcher error:", fetchErr);
+        });
+      setTimeout(() => {
+        fetchers[activeTab]()
+          .then((data) => {
+            console.log("[handleSubmit] Data returned by fetcher after 1s delay:", data);
+            setTableData((prev) => ({ ...prev, [activeTab]: data }));
+          })
+          .catch((fetchErr) => {
+            setTableData((prev) => ({ ...prev, [activeTab]: [] }));
+            console.error("[handleSubmit] Delayed fetcher error:", fetchErr);
+          });
+      }, 1000);
+    } catch (outerErr) {
+      console.error("[handleSubmit] Outer fetcher error:", outerErr);
+    }
     setTimeout(() => setSuccessPrompt(""), 2000);
   };
 
@@ -148,12 +340,14 @@ const SettingsDataPage = () => {
                 label="First Name"
                 value={formData.firstName || ""}
                 onChange={handleInputChange}
+                inputProps={{ autoComplete: "off", maxLength: 50 }}
               />
               <FormField
                 name="lastName"
                 label="Last Name"
                 value={formData.lastName || ""}
                 onChange={handleInputChange}
+                inputProps={{ autoComplete: "off", maxLength: 50 }}
               />
             </div>
             <FormField
@@ -193,7 +387,7 @@ const SettingsDataPage = () => {
               <option value="">Select Pressure Level</option>
               {PRESSURE_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
-                  {opt}
+                  {opt.charAt(0).toUpperCase() + opt.slice(1)}
                 </option>
               ))}
             </FormField>
@@ -209,12 +403,14 @@ const SettingsDataPage = () => {
                 label="First Name"
                 value={formData.firstName || ""}
                 onChange={handleInputChange}
+                inputProps={{ autoComplete: "off", maxLength: 50 }}
               />
               <FormField
                 name="lastName"
                 label="Last Name"
                 value={formData.lastName || ""}
                 onChange={handleInputChange}
+                inputProps={{ autoComplete: "off", maxLength: 50 }}
               />
             </div>
             <FormField
@@ -410,9 +606,9 @@ const SettingsDataPage = () => {
               </tr>
             </thead>
             <tbody>
-              {TAB_PLACEHOLDERS[activeTab] &&
-              TAB_PLACEHOLDERS[activeTab].length > 0 ? (
-                TAB_PLACEHOLDERS[activeTab].map((row, idx) => (
+              {tableData[activeTab] &&
+              tableData[activeTab].length > 0 ? (
+                tableData[activeTab].map((row, idx) => (
                   <tr key={idx}>
                     {tableConfig.columns.map((col) => (
                       <td key={col.key}>

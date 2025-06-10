@@ -72,16 +72,15 @@ def sanitize_request_data(request_data):
     Sanitizes all request data (POST, PUT, etc.)
     """
     sanitized_data = {}
-    
+    # Fields to skip sanitization for (preserve exactly as entered)
+    skip_fields = ['password', 'token', 'csrfmiddlewaretoken', 'first_name', 'last_name']
     for key, value in request_data.items():
-        # Skip sanitizing certain fields like passwords, tokens, etc.
-        if key in ['password', 'token', 'csrfmiddlewaretoken']:
+        # Skip sanitizing certain fields
+        if key in skip_fields:
             sanitized_data[key] = value
             continue
-            
         if isinstance(value, str):
             sanitized_data[key] = sanitize_string(value)
         else:
             sanitized_data[key] = value
-            
     return sanitized_data
