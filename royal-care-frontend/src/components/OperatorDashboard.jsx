@@ -9,6 +9,7 @@ import {
   fetchStaffMembers,
   reviewRejection,
   updateAppointmentStatus,
+  markAppointmentPaid, // Add this import for payment verification
 } from "../features/scheduling/schedulingSlice";
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -296,7 +297,6 @@ const OperatorDashboard = () => {
           {appointment.therapists_details.map((therapist, index) => (
             <div key={therapist.id} className="therapist-item">
               <span className="therapist-name">
-                {therapist.first_name} {therapist.last_name}
               </span>
               {index < appointment.therapists_details.length - 1 && (
                 <span className="therapist-separator">, </span>

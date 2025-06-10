@@ -1666,7 +1666,7 @@ export const requestPayment = createAsyncThunk(
 
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/request_payment/`,
+        `${API_URL}appointments/${appointmentId}/mark-awaiting-payment/`,
         {},
         {
           headers: { Authorization: `Token ${token}` },
@@ -1682,6 +1682,42 @@ export const requestPayment = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         handleApiError(error, "Could not request payment")
+      );
+    }
+  }
+);
+
+// Mark appointment as paid (by operator)
+export const markAppointmentPaid = createAsyncThunk(
+  "scheduling/markAppointmentPaid",
+  async (
+    { appointmentId, paymentMethod = "cash", paymentAmount = 0 },
+    { rejectWithValue }
+  ) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/mark_completed/`,
+        {
+          payment_method: paymentMethod,
+          payment_amount: paymentAmount,
+        },
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
+        appointment: response.data,
+        appointmentId,
+      });
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        handleApiError(error, "Could not mark appointment as paid")
       );
     }
   }
@@ -2610,6 +2646,25 @@ const schedulingSlice = createSlice({
         state.successMessage = "Driver confirmation successful.";
       })
       .addCase(driverConfirm.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // markAppointmentPaid
+      .addCase(markAppointmentPaid.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(markAppointmentPaid.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Payment marked as completed successfully.";
+      })
+      .addCase(markAppointmentPaid.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

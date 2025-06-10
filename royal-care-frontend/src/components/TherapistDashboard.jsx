@@ -556,7 +556,7 @@ const TherapistDashboard = () => {
           <div className="appointment-actions">
             <div className="payment-status">
               <span className="payment-badge">💳 Payment requested</span>
-              <p>Waiting for client payment...</p>
+              <p>Waiting for operator to verify payment...</p>
             </div>
           </div>
         );
@@ -571,7 +571,7 @@ const TherapistDashboard = () => {
               Complete Session
             </button>
             <div className="payment-info">
-              <p>✅ Payment received</p>
+              <p>✅ Payment verified by operator</p>
             </div>
           </div>
         );
