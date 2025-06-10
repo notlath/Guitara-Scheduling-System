@@ -7,9 +7,9 @@ import {
   fetchAppointments,
   fetchNotifications,
   fetchStaffMembers,
+  markAppointmentPaid,
   reviewRejection,
   updateAppointmentStatus,
-  markAppointmentPaid, // Add this import for payment verification
 } from "../features/scheduling/schedulingSlice";
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -48,6 +48,18 @@ const OperatorDashboard = () => {
   });
   const [reviewNotes, setReviewNotes] = useState("");
   const [autoCancelLoading, setAutoCancelLoading] = useState(false);
+
+  // Payment verification modal state
+  const [paymentModal, setPaymentModal] = useState({
+    isOpen: false,
+    appointmentId: null,
+    appointmentDetails: null,
+  });
+  const [paymentData, setPaymentData] = useState({
+    method: "cash",
+    amount: "",
+    notes: "",
+  });
   // Driver coordination state
   const [driverAssignment, setDriverAssignment] = useState({
     availableDrivers: [],
@@ -197,8 +209,7 @@ const OperatorDashboard = () => {
     staffMembers: _staffMembers,
     loading,
     error,
-  } = useSelector((state) => state.scheduling);
-  // Filter rejected appointments for review
+  } = useSelector((state) => state.scheduling); // Filter rejected appointments for review
   const rejectedAppointments = appointments.filter(
     (apt) => apt.status === "rejected" && !apt.review_decision
   );
@@ -206,6 +217,11 @@ const OperatorDashboard = () => {
   // Filter appointments that are pending and approaching timeout
   const pendingAppointments = appointments.filter(
     (apt) => apt.status === "pending" && apt.response_deadline
+  );
+
+  // Filter appointments awaiting payment verification
+  const awaitingPaymentAppointments = appointments.filter(
+    (apt) => apt.status === "awaiting_payment"
   );
   // Calculate which appointments are overdue
   const overdueAppointments = pendingAppointments.filter(
@@ -296,8 +312,7 @@ const OperatorDashboard = () => {
         <div className="therapists-list">
           {appointment.therapists_details.map((therapist, index) => (
             <div key={therapist.id} className="therapist-item">
-              <span className="therapist-name">
-              </span>
+              <span className="therapist-name"></span>
               {index < appointment.therapists_details.length - 1 && (
                 <span className="therapist-separator">, </span>
               )}
@@ -429,7 +444,6 @@ const OperatorDashboard = () => {
       setAutoCancelLoading(false);
     }
   };
-
   const handleStartAppointment = async (appointmentId) => {
     try {
       await dispatch(
@@ -446,6 +460,62 @@ const OperatorDashboard = () => {
       console.error("Failed to start appointment:", error);
       alert("Failed to start appointment. Please try again.");
     }
+  };
+
+  // Payment verification handler
+  const handlePaymentVerification = (appointment) => {
+    setPaymentModal({
+      isOpen: true,
+      appointmentId: appointment.id,
+      appointmentDetails: appointment,
+    });
+    setPaymentData({
+      method: "cash",
+      amount: "",
+      notes: "",
+    });
+  };
+
+  const handleMarkPaymentPaid = async () => {
+    try {
+      await dispatch(
+        markAppointmentPaid({
+          appointmentId: paymentModal.appointmentId,
+          paymentMethod: paymentData.method,
+          paymentAmount: parseFloat(paymentData.amount) || 0,
+          paymentNotes: paymentData.notes,
+        })
+      ).unwrap();
+
+      // Close modal and refresh data
+      setPaymentModal({
+        isOpen: false,
+        appointmentId: null,
+        appointmentDetails: null,
+      });
+      setPaymentData({
+        method: "cash",
+        amount: "",
+        notes: "",
+      });
+      refreshData();
+    } catch (error) {
+      console.error("Failed to mark payment as paid:", error);
+      alert("Failed to mark payment as paid. Please try again.");
+    }
+  };
+
+  const handlePaymentModalCancel = () => {
+    setPaymentModal({
+      isOpen: false,
+      appointmentId: null,
+      appointmentDetails: null,
+    });
+    setPaymentData({
+      method: "cash",
+      amount: "",
+      notes: "",
+    });
   };
 
   // Driver coordination functions
@@ -1566,7 +1636,6 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderPickupRequestsView = () => {
     // Calculate pickup requests from appointments
     const pickupRequests = appointments.filter(
@@ -1634,6 +1703,95 @@ const OperatorDashboard = () => {
               <button className="action-btn">
                 <i className="fas fa-phone"></i>
                 Contact Therapist
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Payment verification view
+  const renderPaymentVerificationView = () => {
+    if (awaitingPaymentAppointments.length === 0) {
+      return (
+        <div className="empty-state">
+          <i className="fas fa-credit-card"></i>
+          <p>No payments pending verification</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="payments-list">
+        {awaitingPaymentAppointments.map((appointment) => (
+          <div
+            key={appointment.id}
+            className="appointment-card payment-pending"
+          >
+            <div className="appointment-header">
+              <h4>
+                <i className="fas fa-credit-card"></i>
+                Payment Verification #{appointment.id}
+              </h4>
+              <span className="status awaiting-payment">Awaiting Payment</span>
+            </div>
+            <div className="appointment-details">
+              {" "}
+              <div className="detail-row">
+                <span className="label">Client:</span>
+                <span className="value">
+                  {appointment.client_details?.first_name}{" "}
+                  {appointment.client_details?.last_name || "Unknown"}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Date:</span>
+                <span className="value">
+                  {new Date(appointment.date).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Time:</span>
+                <span className="value">{appointment.start_time}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Location:</span>
+                <span className="value">{appointment.location}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Services:</span>
+                <span className="value">
+                  {appointment.services_details
+                    ?.map((s) => s.name)
+                    .join(", ") || "N/A"}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Total Amount:</span>
+                <span className="value">
+                  ₱{appointment.total_amount || "0.00"}
+                </span>
+              </div>
+              {renderTherapistInfo(appointment)}
+              <div className="detail-row">
+                <span className="label">Payment Requested:</span>
+                <span className="value">
+                  {appointment.payment_requested_at
+                    ? new Date(
+                        appointment.payment_requested_at
+                      ).toLocaleString()
+                    : "Just now"}
+                </span>
+              </div>
+            </div>
+            <div className="appointment-actions">
+              <button
+                onClick={() => handlePaymentVerification(appointment)}
+                className="verify-payment-btn"
+              >
+                <i className="fas fa-check-circle"></i>
+                Verify Payment Received
               </button>
             </div>
           </div>
@@ -1715,7 +1873,7 @@ const OperatorDashboard = () => {
             onClick={() => setView("pending")}
           >
             Pending Acceptance ({pendingAppointments.length})
-          </button>
+          </button>{" "}
           <button
             className={currentView === "timeouts" ? "active" : ""}
             onClick={() => setView("timeouts")}
@@ -1724,6 +1882,12 @@ const OperatorDashboard = () => {
             {overdueAppointments.length +
               approachingDeadlineAppointments.length}
             )
+          </button>
+          <button
+            className={currentView === "payment_verification" ? "active" : ""}
+            onClick={() => setView("payment_verification")}
+          >
+            Payment Verification ({awaitingPaymentAppointments.length})
           </button>
           <button
             className={currentView === "all" ? "active" : ""}
@@ -1780,11 +1944,17 @@ const OperatorDashboard = () => {
               <h2>Pending Acceptance Appointments</h2>
               {renderPendingAcceptanceAppointments()}
             </div>
-          )}
+          )}{" "}
           {currentView === "timeouts" && (
             <div className="timeout-monitoring">
               <h2>Timeout Monitoring</h2>
               {renderTimeoutMonitoring()}
+            </div>
+          )}
+          {currentView === "payment_verification" && (
+            <div className="payment-verification">
+              <h2>Payment Verification</h2>
+              {renderPaymentVerificationView()}
             </div>
           )}
           {currentView === "all" && (
@@ -1827,8 +1997,106 @@ const OperatorDashboard = () => {
               <h2>Therapist Pickup Requests</h2>
               {renderPickupRequestsView()}
             </div>
-          )}
+          )}{" "}
         </div>
+        {/* Payment Verification Modal */}
+        {paymentModal.isOpen && (
+          <div className="modal-overlay">
+            <div className="payment-modal">
+              <h3>Verify Payment Received</h3>
+              <div className="appointment-summary">
+                <h4>Appointment #{paymentModal.appointmentId}</h4>
+                <div className="summary-details">
+                  <p>
+                    <strong>Client:</strong>{" "}
+                    {
+                      paymentModal.appointmentDetails?.client_details
+                        ?.first_name
+                    }{" "}
+                    {paymentModal.appointmentDetails?.client_details?.last_name}
+                  </p>
+                  <p>
+                    <strong>Date:</strong>{" "}
+                    {new Date(
+                      paymentModal.appointmentDetails?.date
+                    ).toLocaleDateString()}
+                  </p>
+                  <p>
+                    <strong>Services:</strong>{" "}
+                    {paymentModal.appointmentDetails?.services_details
+                      ?.map((s) => s.name)
+                      .join(", ") || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Total Amount:</strong> ₱
+                    {paymentModal.appointmentDetails?.total_amount || "0.00"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="payment-form">
+                <div className="form-group">
+                  <label htmlFor="paymentMethod">Payment Method:</label>
+                  <select
+                    id="paymentMethod"
+                    value={paymentData.method}
+                    onChange={(e) =>
+                      setPaymentData({ ...paymentData, method: e.target.value })
+                    }
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="gcash">GCash</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="card">Credit/Debit Card</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="paymentAmount">Amount Received:</label>
+                  <input
+                    type="number"
+                    id="paymentAmount"
+                    value={paymentData.amount}
+                    onChange={(e) =>
+                      setPaymentData({ ...paymentData, amount: e.target.value })
+                    }
+                    placeholder="Enter amount received"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="paymentNotes">Notes (optional):</label>
+                  <textarea
+                    id="paymentNotes"
+                    value={paymentData.notes}
+                    onChange={(e) =>
+                      setPaymentData({ ...paymentData, notes: e.target.value })
+                    }
+                    placeholder="Add any notes about the payment..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  className="verify-button"
+                  onClick={handleMarkPaymentPaid}
+                >
+                  Mark as Paid
+                </button>
+                <button
+                  className="cancel-button"
+                  onClick={handlePaymentModalCancel}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Review Rejection Modal */}
         {reviewModal.isOpen && (
           <div className="modal-overlay">
