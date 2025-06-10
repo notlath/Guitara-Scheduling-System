@@ -94,10 +94,60 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
         if user.role == "operator":
             return Availability.objects.all()
         # Therapists and drivers can only see their own availability
-        return Availability.objects.filter(user=user) @ action(
-            detail=False, methods=["get"]
-        )
+        return Availability.objects.filter(user=user)
 
+    def list(self, request, *args, **kwargs):
+        """Override list to handle filtering by staff_id and date parameters"""
+        # Get query parameters
+        staff_id = request.query_params.get("staff_id")
+        date_str = request.query_params.get("date")
+
+        # Start with the base queryset
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Apply additional filtering if parameters are provided
+        if staff_id:
+            queryset = queryset.filter(user_id=staff_id)
+
+        if date_str:
+            try:
+                from datetime import datetime, timedelta
+
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+                # Get availabilities for the requested date
+                date_availabilities = queryset.filter(date=date_obj)
+
+                # Also get cross-day availabilities from the previous day that extend into this date
+                previous_day = date_obj - timedelta(days=1)
+                previous_day_cross_day = queryset.filter(date=previous_day).filter(
+                    # Cross-day indicator: start_time > end_time
+                    start_time__gt=models.F("end_time"),
+                    is_available=True,
+                )
+
+                # Combine both querysets
+                queryset = date_availabilities.union(previous_day_cross_day)
+
+                # Add a flag to distinguish cross-day availabilities
+                for availability in queryset:
+                    if (
+                        availability.date == previous_day
+                        and availability.start_time > availability.end_time
+                    ):
+                        availability.is_cross_day = True
+                        availability.cross_day_note = f"Continues into {date_obj}"
+                    else:
+                        availability.is_cross_day = False
+
+            except ValueError:
+                pass  # Invalid date format, continue without date filtering
+
+        # Serialize and return
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
     def available_therapists(self, request):
         """Get all available therapists for a given date and time range"""
         date_str = request.query_params.get("date")

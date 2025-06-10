@@ -60,11 +60,15 @@ const AvailabilityManager = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { staffMembers, availabilities, loading, error } = useSelector(
-    (state) => state.scheduling  );  // Ensure availabilities is always an array to prevent undefined errors
-  const safeAvailabilities = useMemo(() => availabilities || [], [availabilities]);
+    (state) => state.scheduling
+  ); // Ensure availabilities is always an array to prevent undefined errors
+  const safeAvailabilities = useMemo(
+    () => availabilities || [],
+    [availabilities]
+  );
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
-  
+
   // Initialize selectedDate to current date using the same method as getTodayString to avoid timezone issues
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
@@ -73,10 +77,9 @@ const AvailabilityManager = () => {
     const day = today.getDate();
     return new Date(year, month, day); // Create date using local timezone
   });
-    const [selectedStaff, setSelectedStaff] = useState("");
+  const [selectedStaff, setSelectedStaff] = useState("");
   const [timeSlots, setTimeSlots] = useState([]);
   const [selectedStaffData, setSelectedStaffData] = useState(null);
-
   // Helper function to get today's date in YYYY-MM-DD format without timezone issues
   const getTodayString = () => {
     const today = new Date();
@@ -84,6 +87,15 @@ const AvailabilityManager = () => {
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper function to format any date object to YYYY-MM-DD format without timezone issues
+  const formatDateToString = (date) => {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
   const [newAvailabilityForm, setNewAvailabilityForm] = useState({
@@ -99,13 +111,14 @@ const AvailabilityManager = () => {
       date: currentDate,
     }));
   }, []); // Run once on mount
-
   // Fetch staff members and availabilities on component mount
   useEffect(() => {
-    dispatch(fetchStaffMembers()); // If user is a therapist or driver, set them as selected staff
+    dispatch(fetchStaffMembers()); 
+    
+    // If user is a therapist or driver, set them as selected staff
     if (user.role === "therapist" || user.role === "driver") {
       setSelectedStaff(user.id);
-      const formattedDate = selectedDate.toISOString().split("T")[0];
+      const formattedDate = formatDateToString(selectedDate);
       dispatch(
         fetchAvailability({
           staffId: user.id,
@@ -114,15 +127,17 @@ const AvailabilityManager = () => {
         })
       );
     }
-  }, [dispatch, user, selectedDate]);  // Load availability whenever selected staff or date changes
+  }, [dispatch, user, selectedDate]); 
+  
+  // Load availability whenever selected staff or date changes
   useEffect(() => {
     if (selectedStaff) {
-      const formattedDate = selectedDate.toISOString().split("T")[0];
+      const formattedDate = formatDateToString(selectedDate);
       console.log("🔄 Loading availability for:", {
         selectedStaff: selectedStaff,
         formattedDate: formattedDate,
         selectedDate: selectedDate,
-        requestTimestamp: new Date().toISOString()
+        requestTimestamp: new Date().toISOString(),
       });
       // Force refresh to always get current data when staff/date changes
       dispatch(
@@ -156,13 +171,17 @@ const AvailabilityManager = () => {
     setNewAvailabilityForm((prev) => ({
       ...prev,
       date: formattedDate,
-    }));  }, [selectedDate]);
-
-  // Debug effect to track availability data changes
+    }));
+  }, [selectedDate]);      // Debug effect to track availability data changes
   useEffect(() => {
-    const selectedDateFormatted = selectedDate ? selectedDate.toLocaleDateString() : "undefined";
-    const selectedDateISO = selectedDate ? selectedDate.toISOString().split("T")[0] : "undefined";
-    
+    const selectedDateFormatted = selectedDate
+      ? selectedDate.toLocaleDateString()
+      : "undefined";
+    // Use consistent local date formatting instead of ISO string to avoid timezone issues
+    const selectedDateISO = selectedDate
+      ? formatDateToString(selectedDate)
+      : "undefined";
+
     console.log("🔍 AvailabilityManager Debug:", {
       selectedStaff,
       selectedDateFormatted,
@@ -172,9 +191,16 @@ const AvailabilityManager = () => {
       safeAvailabilitiesCount: safeAvailabilities.length,
       safeAvailabilities,
       loading,
-      error
+      error,
     });
-  }, [selectedStaff, selectedDate, availabilities, safeAvailabilities, loading, error]);
+  }, [
+    selectedStaff,
+    selectedDate,
+    availabilities,
+    safeAvailabilities,
+    loading,
+    error,
+  ]);
 
   // Real-time sync is handled entirely by Redux sync reducers and useSyncEventHandlers
   // No need for component-level subscriptions since Redux state updates trigger re-renders automatically
@@ -292,20 +318,16 @@ const AvailabilityManager = () => {
       })
     ).then((result) => {
       if (createAvailability.fulfilled.match(result)) {
-        console.log("✅ Availability created successfully:", result.payload);
-
-        // Success - reset form to selected date (not today)
-        const currentFormDate = selectedDate.toISOString().split("T")[0];
+        console.log("✅ Availability created successfully:", result.payload);        // Success - reset form to selected date (not today)
+        const currentFormDate = formatDateToString(selectedDate);
         setNewAvailabilityForm({
           date: currentFormDate,
           startTime: "13:00",
           endTime: "14:00", // Changed from "1:00" to "14:00" for better UX
           isAvailable: true,
-        });
-
-        // Force refresh availability to show the new data immediately
+        });        // Force refresh availability to show the new data immediately
         if (selectedStaff) {
-          const formattedDate = selectedDate.toISOString().split("T")[0];
+          const formattedDate = formatDateToString(selectedDate);
           console.log("🔄 Force refreshing availability after creation...");
           dispatch(
             fetchAvailability({
@@ -329,11 +351,9 @@ const AvailabilityManager = () => {
     if (window.confirm("Are you sure you want to delete this availability?")) {
       dispatch(deleteAvailability(availabilityId)).then((result) => {
         if (deleteAvailability.fulfilled.match(result)) {
-          console.log("✅ Availability deleted successfully");
-
-          // Force refresh availability to show updated data immediately
+          console.log("✅ Availability deleted successfully");          // Force refresh availability to show updated data immediately
           if (selectedStaff) {
-            const formattedDate = selectedDate.toISOString().split("T")[0];
+            const formattedDate = formatDateToString(selectedDate);
             console.log("🔄 Force refreshing availability after deletion...");
             dispatch(
               fetchAvailability({
@@ -359,11 +379,9 @@ const AvailabilityManager = () => {
       })
     ).then((result) => {
       if (updateAvailability.fulfilled.match(result)) {
-        console.log("✅ Availability updated successfully");
-
-        // Force refresh availability to show updated data immediately
+        console.log("✅ Availability updated successfully");        // Force refresh availability to show updated data immediately
         if (selectedStaff) {
-          const formattedDate = selectedDate.toISOString().split("T")[0];
+          const formattedDate = formatDateToString(selectedDate);
           console.log("🔄 Force refreshing availability after update...");
           dispatch(
             fetchAvailability({
@@ -830,7 +848,8 @@ const AvailabilityManager = () => {
               <span>
                 Loading availability for {selectedDate.toLocaleDateString()}...
               </span>
-            </div>          </div>
+            </div>{" "}
+          </div>
         ) : safeAvailabilities.length === 0 ? (
           <div className="no-availability-message">
             <p>
@@ -838,24 +857,38 @@ const AvailabilityManager = () => {
                 No availability set for {selectedDate.toLocaleDateString()}.
               </strong>
             </p>
-            <div style={{ 
-              marginTop: "10px", 
-              padding: "10px", 
-              backgroundColor: "#f8f9fa", 
-              border: "1px solid #dee2e6", 
-              borderRadius: "4px",
-              fontSize: "12px",
-              fontFamily: "monospace"
-            }}>
-              <strong>Debug Info:</strong><br/>
-              Selected Staff ID: {selectedStaff}<br/>
-              Selected Date: {selectedDate.toISOString().split("T")[0]}<br/>
-              Availabilities in Redux: {safeAvailabilities.length} items<br/>
-              Loading: {loading ? "Yes" : "No"}<br/>
-              Error: {error ? JSON.stringify(error) : "None"}<br/>
+            <div
+              style={{
+                marginTop: "10px",
+                padding: "10px",
+                backgroundColor: "#f8f9fa",
+                border: "1px solid #dee2e6",
+                borderRadius: "4px",
+                fontSize: "12px",
+                fontFamily: "monospace",
+              }}
+            >              <strong>Debug Info:</strong>
+              <br />
+              Selected Staff ID: {selectedStaff}
+              <br />
+              Selected Date: {formatDateToString(selectedDate)}
+              <br />
+              Formatted Date (API request): {formatDateToString(selectedDate)}
+              <br />
+              Availabilities in Redux: {safeAvailabilities.length} items
+              <br />
+              Loading: {loading ? "Yes" : "No"}
+              <br />
+              Error: {error ? JSON.stringify(error) : "None"}
+              <br />
+              User Role: {user?.role || "Unknown"}
+              <br />
+              Current Date: {formatDateToString(new Date())}
+              <br />
               {safeAvailabilities.length > 0 && (
                 <>
-                  Raw Availability Data:<br/>
+                  Raw Availability Data:
+                  <br />
                   {JSON.stringify(safeAvailabilities, null, 2)}
                 </>
               )}
@@ -874,8 +907,7 @@ const AvailabilityManager = () => {
               </p>
             )}
           </div>
-        ) : (
-          <table className="availability-table">
+        ) : (          <table className="availability-table">
             <thead>
               <tr>
                 <th>Date</th>
@@ -886,7 +918,6 @@ const AvailabilityManager = () => {
               </tr>
             </thead>
             <tbody>
-              {" "}
               {safeAvailabilities.map((availability) => {
                 // Check if this is a cross-day availability
                 const isCrossDay =
@@ -952,13 +983,15 @@ const AvailabilityManager = () => {
                           handleDeleteAvailability(availability.id)
                         }
                       >
-                        Delete                      </button>
+                        Delete{" "}
+                      </button>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
-          </table>        )}
+          </table>
+        )}
       </div>
     </div>
   );
