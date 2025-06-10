@@ -1,18 +1,29 @@
 from django.db import models
 
 class Therapist(models.Model):
-    pass
+    first_name = models.CharField(max_length=100, null=True, blank=True)
+    last_name = models.CharField(max_length=100, null=True, blank=True)
+    username = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    email = models.EmailField(unique=True, null=True, blank=True)
+    specialization = models.CharField(max_length=100, null=True, blank=True)
+    pressure = models.CharField(max_length=20, null=True, blank=True)
 
 class Driver(models.Model):
-    pass
+    first_name = models.CharField(max_length=100, null=True, blank=True)
+    last_name = models.CharField(max_length=100, null=True, blank=True)
+    username = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    email = models.EmailField(unique=True, null=True, blank=True)
 
 class Operator(models.Model):
-    pass
+    first_name = models.CharField(max_length=100, null=True, blank=True)
+    last_name = models.CharField(max_length=100, null=True, blank=True)
+    username = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    email = models.EmailField(unique=True, null=True, blank=True)
 
 class Service(models.Model):
     name = models.CharField(max_length=100, default="New Service")
     description = models.CharField(max_length=255, default="Service description")
-    duration = models.DurationField(help_text="Duration in minutes", default=60)
+    duration = models.IntegerField(help_text="Duration in minutes", default=60)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     oil = models.CharField(max_length=100, blank=True, null=True)
     is_active = models.BooleanField(default=True)
