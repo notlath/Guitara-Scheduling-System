@@ -1443,9 +1443,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         appointment.status = "awaiting_payment"
         appointment.payment_initiated_at = timezone.now()
-        appointment.save()
-
-        # Create notifications
+        appointment.save()  # Create notifications
         self._create_notifications(
             appointment,
             "payment_requested",
@@ -1462,44 +1460,47 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def mark_completed(self, request, pk=None):
-        """Therapist confirms payment received and marks appointment complete"""
+        """Operator verifies payment received and marks appointment complete"""
         appointment = self.get_object()
 
-        # Either the assigned therapist or any therapist in a group can mark complete
-        if (
-            request.user != appointment.therapist
-            and request.user not in appointment.therapists.all()
-        ):
+        # Only operators can verify payments and mark appointments as completed
+        if request.user.role != "operator":
             return Response(
-                {"error": "Only assigned therapists can mark appointment complete"},
+                {
+                    "error": "Only operators can verify payments and mark appointments complete"
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         if appointment.status != "awaiting_payment":
             return Response(
-                {"error": "Can only complete appointment when awaiting payment"},
+                {
+                    "error": "Can only verify payment when appointment is awaiting payment"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         payment_method = request.data.get("payment_method", "cash")
         payment_amount = request.data.get("payment_amount", 0)
 
-        appointment.status = "completed"
+        appointment.status = "payment_completed"
         appointment.payment_status = "paid"
+        appointment.payment_method = payment_method
         appointment.payment_amount = payment_amount
+        appointment.payment_verified_at = timezone.now()
         appointment.save()
 
         # Create notifications
         self._create_notifications(
             appointment,
-            "appointment_completed",
-            f"Appointment for {appointment.client} completed. Payment received via {payment_method}.",
+            "payment_verified",
+            f"Payment verified by operator. Received {payment_amount} via {payment_method}.",
         )
 
         serializer = self.get_serializer(appointment)
         return Response(
             {
-                "message": f"Appointment completed. Payment received via {payment_method}.",
+                "message": f"Payment verified successfully. Received {payment_amount} via {payment_method}.",
                 "appointment": serializer.data,
             }
         )
