@@ -7,6 +7,7 @@ import { api } from "../../services/api";
 import { sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
+import { FormField } from "../../globals/FormField";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -40,7 +41,7 @@ const Register = () => {
   }, [formData.username]);
 
   useEffect(() => {
-    document.title = "Royal Care - Register";
+    // document.title = "Royal Care - Register";
     // Clean up FIDO2 scripts when component unmounts
     return () => {
       cleanupFido2Script();
@@ -231,120 +232,122 @@ const Register = () => {
               >
                 <div className={styles.inputContainer}>
                   <div className={styles.formGroup}>
-                    <label htmlFor="username" className={styles.formLabel}>
-                      Username
-                    </label>
-                    <input
-                      type="text"
-                      id="username"
-                      placeholder="Username"
+                    <FormField
+                      label="Username"
                       name="username"
                       value={formData.username}
                       onChange={handleChange}
-                      className={`${styles.formInput} ${
-                        errors.username ? styles.inputError : ""
-                      }`}
-                      pattern="^[a-zA-Z0-9_]{3,30}$"
-                      title="Username must be 3-30 characters and contain only letters, numbers, and underscores"
                       required
-                    />
-                    {isCheckingUsername && (
-                      <div className={styles.statusText}>
-                        Checking availability...
-                      </div>
-                    )}
-                    {errors.username && (
-                      <div className={styles.errorText}>{errors.username}</div>
-                    )}
+                      pattern="^[a-zA-Z0-9_]{3,30}$"
+                      inputProps={{
+                        placeholder: "Username",
+                        className: `global-form-field-input${
+                          errors.username ? ` ${styles.inputError}` : ""
+                        }`,
+                        title:
+                          "Username must be 3-30 characters and contain only letters, numbers, and underscores",
+                        id: "username",
+                      }}
+                    >
+                      {isCheckingUsername && (
+                        <div className={styles.statusText}>
+                          Checking availability...
+                        </div>
+                      )}
+                      {errors.username && (
+                        <div className={styles.errorText}>
+                          {errors.username}
+                        </div>
+                      )}
+                    </FormField>
                   </div>
                   <div className={styles.formGroup}>
-                    <label htmlFor="email" className={styles.formLabel}>
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      placeholder="Email"
+                    <FormField
+                      label="Email"
                       name="email"
+                      type="email"
                       value={formData.email}
                       onChange={handleChange}
-                      className={`${styles.formInput} ${
-                        errors.email ? styles.inputError : ""
-                      }`}
-                      title="Enter a valid email address"
                       required
+                      inputProps={{
+                        placeholder: "Email",
+                        className: `global-form-field-input${
+                          errors.email ? ` ${styles.inputError}` : ""
+                        }`,
+                        title: "Enter a valid email address",
+                        id: "email",
+                      }}
                     />
                     {errors.email && (
                       <div className={styles.errorText}>{errors.email}</div>
                     )}
                   </div>
                   <div className={styles.formGroup}>
-                    <label htmlFor="password" className={styles.formLabel}>
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      id="password"
-                      placeholder="Password"
+                    <FormField
+                      label="Password"
                       name="password"
+                      type="password"
                       value={formData.password}
                       onChange={handleChange}
-                      className={`${styles.formInput} ${
-                        errors.password ? styles.inputError : ""
-                      }`}
-                      pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
-                      title="Password must be at least 8 characters and include uppercase, lowercase, number and special character"
                       required
-                      autoComplete="new-password"
+                      pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+                      inputProps={{
+                        placeholder: "Password",
+                        className: `global-form-field-input${
+                          errors.password ? ` ${styles.inputError}` : ""
+                        }`,
+                        title:
+                          "Password must be at least 8 characters and include uppercase, lowercase, number and special character",
+                        id: "password",
+                        autoComplete: "new-password",
+                      }}
                     />
                     {errors.password && (
                       <div className={styles.errorText}>{errors.password}</div>
                     )}
-                  </div>{" "}
+                  </div>
                   <div className={styles.formGroup}>
-                    <label
-                      htmlFor="passwordConfirm"
-                      className={styles.formLabel}
-                    >
-                      Confirm Password
-                    </label>
-                    <input
-                      type="password"
-                      id="passwordConfirm"
-                      placeholder="Confirm Password"
+                    <FormField
+                      label="Confirm Password"
                       name="passwordConfirm"
+                      type="password"
                       value={formData.passwordConfirm}
                       onChange={handleChange}
-                      className={`${styles.formInput} ${
-                        errors.passwordConfirm ? styles.inputError : ""
-                      }`}
                       required
-                      autoComplete="new-password"
+                      inputProps={{
+                        placeholder: "Confirm Password",
+                        className: `global-form-field-input${
+                          errors.passwordConfirm ? ` ${styles.inputError}` : ""
+                        }`,
+                        id: "passwordConfirm",
+                        autoComplete: "new-password",
+                      }}
                     />
                     {errors.passwordConfirm && (
                       <div className={styles.errorText}>
                         {errors.passwordConfirm}
                       </div>
                     )}
-                  </div>{" "}
-                  {/* Role selection field removed */}{" "}
+                  </div>
+                  {/* Role selection field removed */}
                   <div
                     className={`${styles.formGroup} ${styles.phoneFormGroup}`}
                   >
-                    <label htmlFor="phone_number" className={styles.formLabel}>
-                      Phone Number
-                    </label>
-                    <input
-                      type="text"
-                      id="phone_number"
+                    <FormField
+                      label="Phone Number"
                       name="phone_number"
                       value={formData.phone_number}
                       onChange={handleChange}
-                      className={`${styles.formInput} ${
-                        errors.phone_number ? styles.inputError : ""
-                      }`}
-                      placeholder="+123456789"
-                      title="Enter international format with + and 7-15 digits"
+                      required={false}
+                      inputProps={{
+                        placeholder: "+123456789",
+                        className: `global-form-field-input${
+                          errors.phone_number ? ` ${styles.inputError}` : ""
+                        }`,
+                        id: "phone_number",
+                        title:
+                          "Enter international format with + and 7-15 digits",
+                      }}
                     />
                     {errors.phone_number && (
                       <div className={styles.errorText}>
@@ -364,7 +367,7 @@ const Register = () => {
                 >
                   {isSubmitting ? "Processing..." : "Register"}
                 </button>
-              </form>{" "}
+              </form>
               <div className={styles.registerLink}>
                 Already have an account?{" "}
                 <a href="/dashboard" className={styles.registerLinkAnchor}>
