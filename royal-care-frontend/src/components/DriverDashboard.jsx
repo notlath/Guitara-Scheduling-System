@@ -14,7 +14,7 @@ import {
 } from "../features/scheduling/schedulingSlice";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
-import { PageLoadingState, LoadingButton } from "./common/LoadingComponents";
+import { LoadingButton, PageLoadingState } from "./common/LoadingComponents";
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -109,20 +109,21 @@ const DriverDashboard = () => {
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set("view", newView);
     setSearchParams(newSearchParams);
-  };  const [rejectionModal, setRejectionModal] = useState({
+  };
+  const [rejectionModal, setRejectionModal] = useState({
     isOpen: false,
     appointmentId: null,
   });
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
+
   // Loading states for individual button actions
   const [buttonLoading, setButtonLoading] = useState({});
 
   // Helper function to set loading state for specific action
   const setActionLoading = (actionKey, isLoading) => {
-    setButtonLoading(prev => ({
+    setButtonLoading((prev) => ({
       ...prev,
-      [actionKey]: isLoading
+      [actionKey]: isLoading,
     }));
   };
 
@@ -183,7 +184,8 @@ const DriverDashboard = () => {
     ];
 
     return visibleStatuses.includes(apt.status);
-  });  const myTodayAppointments = todayAppointments.filter((apt) => {
+  });
+  const myTodayAppointments = todayAppointments.filter((apt) => {
     if (apt.driver !== user?.id) return false;
     const visibleStatuses = [
       "pending",
@@ -200,7 +202,8 @@ const DriverDashboard = () => {
       "pickup_requested",
     ];
     return visibleStatuses.includes(apt.status);
-  });  const myUpcomingAppointments = upcomingAppointments.filter((apt) => {
+  });
+  const myUpcomingAppointments = upcomingAppointments.filter((apt) => {
     if (apt.driver !== user?.id) return false;
     const visibleStatuses = [
       "pending",
@@ -748,7 +751,8 @@ const DriverDashboard = () => {
       case "therapist_confirmed":
         return "status-therapist-confirmed";
       case "driver_confirmed":
-        return "status-driver-confirmed";      case "journey_started":
+        return "status-driver-confirmed";
+      case "journey_started":
       case "journey":
         return "status-journey-started";
       case "arrived":
@@ -774,7 +778,8 @@ const DriverDashboard = () => {
       default:
         return "";
     }
-  };  const renderActionButtons = (appointment) => {
+  };
+  const renderActionButtons = (appointment) => {
     const { status, id, both_parties_accepted, requires_car } = appointment;
     const isGroupTransport =
       appointment.therapist_group && appointment.therapist_group.length > 1;
@@ -837,7 +842,8 @@ const DriverDashboard = () => {
               )}
             </div>
           );
-        }      case "therapist_confirmed":
+        }
+      case "therapist_confirmed":
         // Driver always needs to confirm regardless of vehicle type
         return (
           <div className="appointment-actions">
@@ -858,7 +864,8 @@ const DriverDashboard = () => {
               )}
             </div>
           </div>
-        );      case "driver_confirmed":
+        );
+      case "driver_confirmed":
         // Both confirmed, operator will start appointment
         return (
           <div className="appointment-actions">
@@ -867,7 +874,8 @@ const DriverDashboard = () => {
               <p>Waiting for operator to start appointment...</p>
             </div>
           </div>
-        );      case "in_progress":
+        );
+      case "in_progress":
         // Operator started appointment, driver can start journey
         return (
           <div className="appointment-actions">

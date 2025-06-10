@@ -15,7 +15,7 @@ import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
-import { LoadingSpinner, LoadingButton } from "./common/LoadingComponents";
+import { LoadingButton, LoadingSpinner } from "./common/LoadingComponents";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
 
 import "../globals/TabSwitcher.css";
@@ -45,17 +45,18 @@ const OperatorDashboard = () => {
     isOpen: false,
     appointmentId: null,
     rejectionReason: "",
-  });  const [reviewNotes, setReviewNotes] = useState("");
+  });
+  const [reviewNotes, setReviewNotes] = useState("");
   const [autoCancelLoading, setAutoCancelLoading] = useState(false);
-  
+
   // Loading states for individual button actions
   const [buttonLoading, setButtonLoading] = useState({});
 
   // Helper function to set loading state for specific action
   const setActionLoading = (actionKey, isLoading) => {
-    setButtonLoading(prev => ({
+    setButtonLoading((prev) => ({
       ...prev,
-      [actionKey]: isLoading
+      [actionKey]: isLoading,
     }));
   };
 
@@ -456,7 +457,8 @@ const OperatorDashboard = () => {
     } finally {
       setAutoCancelLoading(false);
     }
-  };  const handleStartAppointment = async (appointmentId) => {
+  };
+  const handleStartAppointment = async (appointmentId) => {
     const actionKey = `start_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
@@ -1230,7 +1232,8 @@ const OperatorDashboard = () => {
                 </span>
               </div>
               {renderTherapistInfo(appointment)}
-            </div>            <div className="appointment-actions">
+            </div>{" "}
+            <div className="appointment-actions">
               <LoadingButton
                 onClick={() => handleReviewRejection(appointment)}
                 className="review-btn"
@@ -1332,7 +1335,8 @@ const OperatorDashboard = () => {
             <h3>
               <i className="fas fa-exclamation-triangle"></i>
               Overdue Appointments
-            </h3>            <LoadingButton
+            </h3>{" "}
+            <LoadingButton
               onClick={handleAutoCancelOverdue}
               loading={autoCancelLoading}
               loadingText="Processing..."
@@ -1474,7 +1478,8 @@ const OperatorDashboard = () => {
                     {appointment.location || "Not specified"}
                   </span>
                 </div>
-                {renderTherapistInfo(appointment)}                {/* Action buttons for driver_confirmed status */}
+                {renderTherapistInfo(appointment)}{" "}
+                {/* Action buttons for driver_confirmed status */}
                 {appointment.status === "driver_confirmed" && (
                   <div className="appointment-actions">
                     <LoadingButton
@@ -1805,7 +1810,8 @@ const OperatorDashboard = () => {
                     : "Just now"}
                 </span>
               </div>
-            </div>            <div className="appointment-actions">
+            </div>{" "}
+            <div className="appointment-actions">
               <LoadingButton
                 onClick={() => handlePaymentVerification(appointment)}
                 className="verify-payment-btn"
@@ -2055,7 +2061,6 @@ const OperatorDashboard = () => {
                   </p>
                 </div>
               </div>
-
               <div className="payment-form">
                 <div className="form-group">
                   <label htmlFor="paymentMethod">Payment Method:</label>
@@ -2100,11 +2105,14 @@ const OperatorDashboard = () => {
                     rows={3}
                   />
                 </div>
-              </div>              <div className="modal-actions">
+              </div>{" "}
+              <div className="modal-actions">
                 <LoadingButton
                   className="verify-button"
                   onClick={handleMarkPaymentPaid}
-                  loading={buttonLoading[`payment_${paymentModal.appointmentId}`]}
+                  loading={
+                    buttonLoading[`payment_${paymentModal.appointmentId}`]
+                  }
                   loadingText="Processing..."
                 >
                   Mark as Paid
@@ -2133,7 +2141,6 @@ const OperatorDashboard = () => {
                   {reviewModal.rejectionReason}
                 </p>
               </div>
-
               <div className="review-notes">
                 <label htmlFor="reviewNotes">Review Notes (optional):</label>
                 <textarea
@@ -2143,11 +2150,14 @@ const OperatorDashboard = () => {
                   placeholder="Add any additional notes about your decision..."
                   rows={3}
                 />
-              </div>              <div className="modal-actions">
+              </div>{" "}
+              <div className="modal-actions">
                 <LoadingButton
                   className="accept-button"
                   onClick={() => handleReviewSubmit("accept")}
-                  loading={buttonLoading[`review_${reviewModal.appointmentId}_accept`]}
+                  loading={
+                    buttonLoading[`review_${reviewModal.appointmentId}_accept`]
+                  }
                   loadingText="Processing..."
                 >
                   Accept Rejection
@@ -2155,13 +2165,19 @@ const OperatorDashboard = () => {
                 <LoadingButton
                   className="deny-button"
                   onClick={() => handleReviewSubmit("deny")}
-                  loading={buttonLoading[`review_${reviewModal.appointmentId}_deny`]}
+                  loading={
+                    buttonLoading[`review_${reviewModal.appointmentId}_deny`]
+                  }
                   loadingText="Processing..."
                   variant="secondary"
                 >
                   Deny Rejection
                 </LoadingButton>
-                <LoadingButton className="cancel-button" onClick={handleReviewCancel} variant="secondary">
+                <LoadingButton
+                  className="cancel-button"
+                  onClick={handleReviewCancel}
+                  variant="secondary"
+                >
                   Cancel
                 </LoadingButton>
               </div>

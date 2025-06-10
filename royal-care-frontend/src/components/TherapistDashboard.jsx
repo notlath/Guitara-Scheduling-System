@@ -15,7 +15,7 @@ import {
 } from "../features/scheduling/schedulingSlice";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
-import { PageLoadingState, LoadingButton } from "./common/LoadingComponents";
+import { LoadingButton, PageLoadingState } from "./common/LoadingComponents";
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -42,20 +42,21 @@ const TherapistDashboard = () => {
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set("view", newView);
     setSearchParams(newSearchParams);
-  };  const [rejectionModal, setRejectionModal] = useState({
+  };
+  const [rejectionModal, setRejectionModal] = useState({
     isOpen: false,
     appointmentId: null,
   });
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
+
   // Loading states for individual button actions
   const [buttonLoading, setButtonLoading] = useState({});
 
   // Helper function to set loading state for specific action
   const setActionLoading = (actionKey, isLoading) => {
-    setButtonLoading(prev => ({
+    setButtonLoading((prev) => ({
       ...prev,
-      [actionKey]: isLoading
+      [actionKey]: isLoading,
     }));
   };
 
@@ -185,7 +186,8 @@ const TherapistDashboard = () => {
     localStorage.removeItem("knoxToken");
     localStorage.removeItem("user");
     dispatch(logout());
-    navigate("/");  };
+    navigate("/");
+  };
 
   // Handle appointment status changes with optimized refresh and optimistic updates
   const handleAcceptAppointment = async (appointmentId) => {
@@ -433,7 +435,8 @@ const TherapistDashboard = () => {
       }
       // For single therapist appointments (legacy)
       return therapist_accepted;
-    };    switch (status) {
+    };
+    switch (status) {
       case "pending":
         // Show accept/reject only if current therapist hasn't accepted yet
         if (!hasCurrentTherapistAccepted()) {
@@ -554,7 +557,8 @@ const TherapistDashboard = () => {
               <p>Driver has arrived. Ready to proceed to client.</p>
             </div>
           </div>
-        );      case "dropped_off":
+        );
+      case "dropped_off":
         // Session should auto-start, but allow manual start if needed
         return (
           <div className="appointment-actions">
@@ -596,7 +600,8 @@ const TherapistDashboard = () => {
               <p>Waiting for operator to verify payment...</p>
             </div>
           </div>
-        );      case "payment_completed":
+        );
+      case "payment_completed":
         return (
           <div className="appointment-actions">
             <LoadingButton
@@ -646,7 +651,8 @@ const TherapistDashboard = () => {
                           ? "🚨 URGENT Pickup Requested"
                           : "⏰ Pickup Requested"}
                       </span>
-                      <p>Waiting for driver assignment...</p>                      {appointment.pickup_urgency !== "urgent" && (
+                      <p>Waiting for driver assignment...</p>{" "}
+                      {appointment.pickup_urgency !== "urgent" && (
                         <LoadingButton
                           className="urgent-pickup-button"
                           onClick={() => handleRequestPickupNew(id, "urgent")}
@@ -661,7 +667,8 @@ const TherapistDashboard = () => {
                     </div>
                   )}
                 </div>
-              ) : (                <div className="pickup-actions">
+              ) : (
+                <div className="pickup-actions">
                   <p className="pickup-info">Session completed. Need pickup?</p>
                   <LoadingButton
                     className="request-pickup-button"
