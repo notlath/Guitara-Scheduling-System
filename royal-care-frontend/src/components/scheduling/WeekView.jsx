@@ -29,8 +29,7 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
     // Fetch appointments for this week
     if (days.length > 0) {
       const startDate = formatDate(days[0]);
-      const endDate = formatDate(days[6]);
-      dispatch(fetchAppointmentsByWeek({ startDate, endDate }));
+      dispatch(fetchAppointmentsByWeek(startDate));
     }
   }, [selectedDate, dispatch]);
 
@@ -38,10 +37,9 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
     // Fetch appointments for the selected week
     if (weekDays.length > 0) {
       const startDate = formatDate(weekDays[0]);
-      const endDate = formatDate(weekDays[6]);
-      dispatch(fetchAppointmentsByWeek({ startDate, endDate }));
+      dispatch(fetchAppointmentsByWeek(startDate));
     }
-  }, [weekDays]);
+  }, [weekDays, dispatch]);
 
   // Generate time slots from 7 AM to 10 PM in 30-minute intervals
   useEffect(() => {
