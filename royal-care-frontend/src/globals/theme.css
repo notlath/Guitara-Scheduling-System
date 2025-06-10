@@ -64,16 +64,17 @@ small {
 :root {
   /* Main colors */
   --text: #0f0c05;
-  --muted: var(--background-500);
   --background: #ffffff;
   --primary: #4b3b06;
   --primary-hover: var(--primary-900);
   --secondary: #adbdae;
   --accent: #9ab096;
-  --error: #ff312e;
-  --border-color: var(--background-200);
 
   /* other variables */
+  --muted: var(--background-500);
+  --error: #ff312e;
+  --success: #99c21e;
+  --border-color: var(--background-200);
   --focus-color: var(--background-600);
   --border-radius: 8px;
   --input-bg: var(--background-35);

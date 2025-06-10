@@ -22,6 +22,15 @@ const Register = () => {
   const [success, setSuccess] = useState(false);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    startsWithLetter: false,
+    hasNumber: false,
+    hasLower: false,
+    hasUpper: false,
+    exactLength: false,
+    confirmMatch: false,
+  });
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const navigate = useNavigate();
 
   // Debounce function for username availability check
@@ -63,6 +72,17 @@ const Register = () => {
       setIsCheckingUsername(false);
     }
   };
+  const checkPasswordRequirements = (password, confirmPassword) => {
+    return {
+      startsWithLetter: /^[A-Za-z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasLower: /[a-z]/.test(password),
+      hasUpper: /[A-Z]/.test(password),
+      exactLength: password.length === 8,
+      confirmMatch: password === confirmPassword && password.length > 0,
+    };
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -93,6 +113,15 @@ const Register = () => {
     }
 
     setFormData({ ...formData, [name]: sanitizedValue });
+
+    // Password requirements update
+    if (name === "password" || name === "passwordConfirm") {
+      const reqs = checkPasswordRequirements(
+        name === "password" ? sanitizedValue : formData.password,
+        name === "passwordConfirm" ? sanitizedValue : formData.passwordConfirm
+      );
+      setPasswordRequirements(reqs);
+    }
 
     // Clear error when field is edited
     if (errors[name]) {
@@ -285,7 +314,7 @@ const Register = () => {
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label="Password"
+                      label="Create password"
                       name="password"
                       type="password"
                       value={formData.password}
@@ -301,6 +330,8 @@ const Register = () => {
                           "Password must be at least 8 characters and include uppercase, lowercase, number and special character",
                         id: "password",
                         autoComplete: "new-password",
+                        onFocus: () => setPasswordFocused(true),
+                        onBlur: () => setPasswordFocused(false),
                       }}
                     >
                       {errors.password && (
@@ -308,6 +339,68 @@ const Register = () => {
                           {errors.password}
                         </div>
                       )}
+                      <div className={styles.passwordPopupWrapper}>
+                        {formData.password &&
+                          // Only hide when all requirements are met and input is unfocused
+                          !(
+                            !passwordFocused &&
+                            passwordRequirements.hasLower &&
+                            passwordRequirements.hasUpper &&
+                            passwordRequirements.hasNumber &&
+                            /[@$!%*?&]/.test(formData.password) &&
+                            formData.password.length >= 8
+                          ) && (
+                            <div className={styles.passwordPopupError}>
+                              <ul className={styles.passwordRequirementsList}>
+                                <li
+                                  className={
+                                    passwordRequirements.hasLower
+                                      ? styles.requirementMet
+                                      : styles.requirementUnmet
+                                  }
+                                >
+                                  At least one lowercase letter (a-z)
+                                </li>
+                                <li
+                                  className={
+                                    passwordRequirements.hasUpper
+                                      ? styles.requirementMet
+                                      : styles.requirementUnmet
+                                  }
+                                >
+                                  At least one uppercase letter (A-Z)
+                                </li>
+                                <li
+                                  className={
+                                    passwordRequirements.hasNumber
+                                      ? styles.requirementMet
+                                      : styles.requirementUnmet
+                                  }
+                                >
+                                  At least one number (0-9)
+                                </li>
+                                <li
+                                  className={
+                                    /[@$!%*?&]/.test(formData.password)
+                                      ? styles.requirementMet
+                                      : styles.requirementUnmet
+                                  }
+                                >
+                                  At least one special character (@$!%*?&)
+                                </li>
+                                <li
+                                  className={
+                                    formData.password.length >= 8
+                                      ? styles.requirementMet
+                                      : styles.requirementUnmet
+                                  }
+                                >
+                                  At least 8 characters long
+                                </li>
+                              </ul>
+                            </div>
+                          )}
+                      </div>
                     </FormField>
                   </div>
                   <div className={styles.formGroup}>

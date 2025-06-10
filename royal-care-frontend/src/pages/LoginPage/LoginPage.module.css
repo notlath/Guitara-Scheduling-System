@@ -150,4 +150,37 @@
   white-space: nowrap;
 }
 
+.passwordPopupError {
+  position: absolute;
+  /* left: 0; */
+  top: var(--spacing-xxs);
+  /* z-index: 10; */
+  background: var(--background);
+  border: 1px solid var(--background-400);
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: var(--spacing-xm) var(--spacing-sm);
+  /* min-width: 260px; */
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.passwordRequirementsList {
+  margin: 0;
+  padding-left: var(--spacing-sm);
+  list-style: disc;
+}
+
+.requirementMet {
+  color: var(--success);
+}
+
+.requirementUnmet {
+  color: var(--muted);
+}
+
+.passwordPopupWrapper {
+  position: relative;
+}
+
 /* Keep only unique styles for LoginPage */
