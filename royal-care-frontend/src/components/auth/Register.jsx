@@ -12,7 +12,6 @@ import { FormField } from "../../globals/FormField";
 const Register = () => {
   const [formData, setFormData] = useState({
     username: "",
-    email: "",
     password: "",
     passwordConfirm: "",
     role: "Driver", // Default to Driver role - role field is not shown to users
@@ -153,11 +152,6 @@ const Register = () => {
     });
     if (usernameError) newErrors.username = usernameError;
 
-    const emailError = validateInput("email", formData.email, {
-      required: true,
-    });
-    if (emailError) newErrors.email = emailError;
-
     const passwordError = validateInput("password", formData.password, {
       required: true,
     });
@@ -192,7 +186,6 @@ const Register = () => {
     // Create a clean submission object without the confirm password field
     const submissionData = {
       username: formData.username,
-      email: formData.email,
       password: formData.password,
       role: formData.role,
       phone_number: formData.phone_number,
@@ -288,28 +281,33 @@ const Register = () => {
                       )}
                     </FormField>
                   </div>
-                  <div className={styles.formGroup}>
+                  <div
+                    className={`${styles.formGroup} ${styles.phoneFormGroup}`}
+                  >
                     <FormField
-                      label="Email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
+                      label="Phone number"
+                      name="phone_number"
+                      value={formData.phone_number}
                       onChange={handleChange}
-                      required
+                      required={false}
                       inputProps={{
-                        placeholder: "Email",
+                        placeholder: "+123456789",
                         className: `global-form-field-input${
-                          errors.email ? ` global-form-field-error` : ""
+                          errors.phone_number ? ` global-form-field-error` : ""
                         }`,
-                        title: "Enter a valid email address",
-                        id: "email",
+                        id: "phone_number",
+                        title:
+                          "Enter international format with + and 7-15 digits",
                       }}
                     >
-                      {errors.email && (
+                      {errors.phone_number && (
                         <div className="global-form-field-error">
-                          {errors.email}
+                          {errors.phone_number}
                         </div>
                       )}
+                      <div className={styles.helperText}>
+                        Format: +[country code][number] (e.g., +12345678901)
+                      </div>
                     </FormField>
                   </div>
                   <div className={styles.formGroup}>
@@ -405,7 +403,7 @@ const Register = () => {
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label="Confirm Password"
+                      label="Re-enter password"
                       name="passwordConfirm"
                       type="password"
                       value={formData.passwordConfirm}
@@ -427,36 +425,6 @@ const Register = () => {
                           {errors.passwordConfirm}
                         </div>
                       )}
-                    </FormField>
-                  </div>
-                  {/* Role selection field removed */}
-                  <div
-                    className={`${styles.formGroup} ${styles.phoneFormGroup}`}
-                  >
-                    <FormField
-                      label="Phone Number"
-                      name="phone_number"
-                      value={formData.phone_number}
-                      onChange={handleChange}
-                      required={false}
-                      inputProps={{
-                        placeholder: "+123456789",
-                        className: `global-form-field-input${
-                          errors.phone_number ? ` global-form-field-error` : ""
-                        }`,
-                        id: "phone_number",
-                        title:
-                          "Enter international format with + and 7-15 digits",
-                      }}
-                    >
-                      {errors.phone_number && (
-                        <div className="global-form-field-error">
-                          {errors.phone_number}
-                        </div>
-                      )}
-                      <div className={styles.helperText}>
-                        Format: +[country code][number] (e.g., +12345678901)
-                      </div>
                     </FormField>
                   </div>
                 </div>

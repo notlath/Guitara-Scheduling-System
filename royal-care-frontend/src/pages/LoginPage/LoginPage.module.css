@@ -135,9 +135,9 @@
 }
 
 .phoneFormGroup {
-  margin-bottom: var(
+  /* margin-bottom: var(
     --spacing-lg
-  ); /* Increased gap between phone number field and register button */
+  ); Increased gap between phone number field and register button */
 }
 
 .statusText {
