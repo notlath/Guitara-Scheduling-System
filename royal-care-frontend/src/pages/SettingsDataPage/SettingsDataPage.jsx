@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from "react";
-import styles from "./SettingsDataPage.module.css";
+import { useEffect, useState } from "react";
+import { MdAdd, MdClose } from "react-icons/md";
+import { FormField } from "../../globals/FormField";
+import LayoutRow from "../../globals/LayoutRow";
+import "../../globals/LayoutRow.css";
+import PageLayout from "../../globals/PageLayout";
+import {
+  registerDriver,
+  registerMaterial,
+  registerOperator,
+  registerService,
+  registerTherapist,
+} from "../../services/api";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
-import "../../globals/LayoutRow.css";
-import { MdAdd, MdClose } from "react-icons/md";
-import LayoutRow from "../../globals/LayoutRow";
-import PageLayout from "../../globals/PageLayout";
-import { FormField } from "../../globals/FormField";
-import {
-  registerTherapist,
-  registerDriver,
-  registerOperator,
-  registerMaterial,
-  registerService,
-} from "../../services/api";
 import { sanitizeFormInput } from "../../utils/formSanitization";
+import styles from "./SettingsDataPage.module.css";
 
 const TABS = ["Therapists", "Drivers", "Operators", "Services", "Materials"];
 
@@ -101,7 +101,9 @@ const TAB_SINGULARS = {
 const fetchers = {
   Therapists: async () => {
     // Use absolute URL to avoid proxy issues
-    const res = await fetch("http://localhost:8000/api/registration/register/therapist/");
+    const res = await fetch(
+      "http://localhost:8000/api/registration/register/therapist/"
+    );
     if (!res.ok) return [];
     const data = await res.json();
     // Map backend fields to frontend table fields
@@ -115,7 +117,9 @@ const fetchers = {
     }));
   },
   Drivers: async () => {
-    const res = await fetch("http://localhost:8000/api/registration/register/driver/");
+    const res = await fetch(
+      "http://localhost:8000/api/registration/register/driver/"
+    );
     if (!res.ok) return [];
     const data = await res.json();
     return data.map((item) => ({
@@ -128,7 +132,9 @@ const fetchers = {
     }));
   },
   Operators: async () => {
-    const res = await fetch("http://localhost:8000/api/registration/register/operator/");
+    const res = await fetch(
+      "http://localhost:8000/api/registration/register/operator/"
+    );
     if (!res.ok) return [];
     const data = await res.json();
     return data.map((item) => ({
@@ -141,22 +147,33 @@ const fetchers = {
     }));
   },
   Services: async () => {
-    const res = await fetch("http://localhost:8000/api/registration/register/service/");
+    const res = await fetch(
+      "http://localhost:8000/api/registration/register/service/"
+    );
     if (!res.ok) return [];
     const data = await res.json();
     // Map backend fields to frontend table fields
     return data.map((item) => ({
       Name: item.name,
       Description: item.description || "-",
-      Duration: item.duration !== undefined && item.duration !== null ? `${item.duration} min` : "-",
-      Price: item.price !== undefined && item.price !== null ? `₱${item.price}` : "-",
-      Materials: Array.isArray(item.materials) && item.materials.length > 0
-        ? item.materials.map((mat) => mat.name).join(", ")
-        : "-",
+      Duration:
+        item.duration !== undefined && item.duration !== null
+          ? `${item.duration} min`
+          : "-",
+      Price:
+        item.price !== undefined && item.price !== null
+          ? `₱${item.price}`
+          : "-",
+      Materials:
+        Array.isArray(item.materials) && item.materials.length > 0
+          ? item.materials.map((mat) => mat.name).join(", ")
+          : "-",
     }));
   },
   Materials: async () => {
-    const res = await fetch("http://localhost:8000/api/registration/register/material/");
+    const res = await fetch(
+      "http://localhost:8000/api/registration/register/material/"
+    );
     if (!res.ok) return [];
     const data = await res.json();
     return data.map((item) => ({
@@ -293,11 +310,21 @@ const SettingsDataPage = () => {
         default:
           return;
       }
-      await apiCall(payload);
+      const response = await apiCall(payload);
       setShowModal(false);
-      setSuccessPrompt("Registered successfully!");
+
+      // Handle different types of success responses
+      if (response?.data?.fallback) {
+        setSuccessPrompt(
+          "Registered successfully! (Note: Stored locally due to database connectivity issues)"
+        );
+      } else {
+        setSuccessPrompt("Registered successfully!");
+      }
     } catch (err) {
-      setSuccessPrompt(err?.errorMessage || err?.error || "Registration failed");
+      setSuccessPrompt(
+        err?.errorMessage || err?.error || "Registration failed"
+      );
       setTimeout(() => setSuccessPrompt(""), 3000);
       console.error("[handleSubmit] Registration error:", err);
     }
@@ -305,7 +332,10 @@ const SettingsDataPage = () => {
     try {
       fetchers[activeTab]()
         .then((data) => {
-          console.log("[handleSubmit] Data returned by fetcher after registration:", data);
+          console.log(
+            "[handleSubmit] Data returned by fetcher after registration:",
+            data
+          );
           setTableData((prev) => ({ ...prev, [activeTab]: data }));
         })
         .catch((fetchErr) => {
@@ -315,7 +345,10 @@ const SettingsDataPage = () => {
       setTimeout(() => {
         fetchers[activeTab]()
           .then((data) => {
-            console.log("[handleSubmit] Data returned by fetcher after 1s delay:", data);
+            console.log(
+              "[handleSubmit] Data returned by fetcher after 1s delay:",
+              data
+            );
             setTableData((prev) => ({ ...prev, [activeTab]: data }));
           })
           .catch((fetchErr) => {
@@ -606,8 +639,7 @@ const SettingsDataPage = () => {
               </tr>
             </thead>
             <tbody>
-              {tableData[activeTab] &&
-              tableData[activeTab].length > 0 ? (
+              {tableData[activeTab] && tableData[activeTab].length > 0 ? (
                 tableData[activeTab].map((row, idx) => (
                   <tr key={idx}>
                     {tableConfig.columns.map((col) => (
