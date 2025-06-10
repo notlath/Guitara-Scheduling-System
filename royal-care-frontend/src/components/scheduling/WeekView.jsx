@@ -28,7 +28,7 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
 
     // Fetch appointments for this week
     if (days.length > 0) {
-      const startDate = formatDate(days[0]);
+      const startDate = formatDateToString(days[0]);
       dispatch(fetchAppointmentsByWeek(startDate));
     }
   }, [selectedDate, dispatch]);
@@ -36,7 +36,7 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
   useEffect(() => {
     // Fetch appointments for the selected week
     if (weekDays.length > 0) {
-      const startDate = formatDate(weekDays[0]);
+      const startDate = formatDateToString(weekDays[0]);
       dispatch(fetchAppointmentsByWeek(startDate));
     }
   }, [weekDays, dispatch]);
@@ -55,18 +55,21 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
     setTimeSlots(slots);
   }, []);
 
-  // Format date as YYYY-MM-DD for comparison
-  const formatDate = (date) => {
-    return date.toISOString().split("T")[0];
+  // Format date as YYYY-MM-DD string, ensuring timezone consistency
+  const formatDateToString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   // Helper function to check if an appointment is at a specific day and time
   const getAppointmentAtSlot = (day, timeSlot) => {
-    const formattedDay = formatDate(day);
+    const formattedDay = formatDateToString(day);
 
     return weekAppointments.find((appointment) => {
       return (
-        formatDate(new Date(appointment.date)) === formattedDay &&
+        formatDateToString(new Date(appointment.date)) === formattedDay &&
         appointment.start_time.substring(0, 5) <= timeSlot &&
         appointment.end_time.substring(0, 5) > timeSlot
       );
@@ -148,7 +151,7 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
           {weekDays.map((day, dayIndex) => (
             <div key={dayIndex} className="day-column">
               <div
-                className={`day-header ${formatDate(day) === formatDate(new Date()) ? "today" : ""}`}
+                className={`day-header ${formatDateToString(day) === formatDateToString(new Date()) ? "today" : ""}`}
               >
                 <div className="day-name">
                   {day.toLocaleDateString("en-US", { weekday: "short" })}
