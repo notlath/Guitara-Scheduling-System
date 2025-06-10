@@ -429,7 +429,7 @@ export const deleteAppointment = createAsyncThunk(
 // Enhanced updateAppointmentStatus with optimistic updates and additional fields
 export const updateAppointmentStatus = createAsyncThunk(
   "scheduling/updateAppointmentStatus",
-  async ({ id, status, ...additionalFields }, { rejectWithValue }) => {
+  async ({ id, status, action, ...additionalFields }, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
 
@@ -450,7 +450,25 @@ export const updateAppointmentStatus = createAsyncThunk(
     try {
       let response;
 
-      if (status === "completed") {
+      if (action === "start_appointment") {
+        // Use the specific start_appointment endpoint
+        response = await axios.post(
+          `${API_URL}appointments/${id}/start_appointment/`,
+          {},
+          {
+            headers: { Authorization: `Token ${token}` },
+          }
+        );
+      } else if (action === "drop_off_therapist") {
+        // Use the specific drop_off_therapist endpoint
+        response = await axios.post(
+          `${API_URL}appointments/${id}/drop_off_therapist/`,
+          {},
+          {
+            headers: { Authorization: `Token ${token}` },
+          }
+        );
+      } else if (status === "completed") {
         // Use the specific complete endpoint - only send additional fields for completion
         const updateData = { status, ...additionalFields };
         response = await axios.post(
@@ -1594,7 +1612,7 @@ export const markArrived = createAsyncThunk(
 
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/mark_arrived/`,
+        `${API_URL}appointments/${appointmentId}/arrive_at_location/`,
         {},
         {
           headers: { Authorization: `Token ${token}` },
@@ -1648,7 +1666,7 @@ export const requestPayment = createAsyncThunk(
 
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/request_payment/`,
+        `${API_URL}appointments/${appointmentId}/mark-awaiting-payment/`,
         {},
         {
           headers: { Authorization: `Token ${token}` },
@@ -1669,6 +1687,42 @@ export const requestPayment = createAsyncThunk(
   }
 );
 
+// Mark appointment as paid (by operator)
+export const markAppointmentPaid = createAsyncThunk(
+  "scheduling/markAppointmentPaid",
+  async (
+    { appointmentId, paymentMethod = "cash", paymentAmount = 0 },
+    { rejectWithValue }
+  ) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/mark_completed/`,
+        {
+          payment_method: paymentMethod,
+          payment_amount: paymentAmount,
+        },
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
+      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
+        appointment: response.data,
+        appointmentId,
+      });
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        handleApiError(error, "Could not mark appointment as paid")
+      );
+    }
+  }
+);
+
 export const completeAppointment = createAsyncThunk(
   "scheduling/completeAppointment",
   async (appointmentId, { rejectWithValue }) => {
@@ -1677,7 +1731,7 @@ export const completeAppointment = createAsyncThunk(
 
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/complete_appointment/`,
+        `${API_URL}appointments/${appointmentId}/complete/`,
         {},
         {
           headers: { Authorization: `Token ${token}` },
@@ -2497,6 +2551,120 @@ const schedulingSlice = createSlice({
         // Unread count should remain the same
       })
       .addCase(deleteReadNotifications.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // therapistConfirm
+      .addCase(therapistConfirm.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(therapistConfirm.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Therapist confirmation successful.";
+      })
+      .addCase(therapistConfirm.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // markArrived
+      .addCase(markArrived.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(markArrived.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Marked arrival successfully.";
+      })
+      .addCase(markArrived.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // startJourney
+      .addCase(startJourney.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(startJourney.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Journey started successfully.";
+      })
+      .addCase(startJourney.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // startSession
+      .addCase(startSession.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(startSession.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Session started successfully.";
+      })
+      .addCase(startSession.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // driverConfirm
+      .addCase(driverConfirm.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(driverConfirm.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Driver confirmation successful.";
+      })
+      .addCase(driverConfirm.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // markAppointmentPaid
+      .addCase(markAppointmentPaid.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(markAppointmentPaid.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.appointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        state.successMessage = "Payment marked as completed successfully.";
+      })
+      .addCase(markAppointmentPaid.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

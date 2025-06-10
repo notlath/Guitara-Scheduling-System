@@ -386,8 +386,6 @@ const TherapistDashboard = () => {
       pending_acceptances,
       therapists_accepted,
       therapists,
-      requires_car,
-      driver_confirmed,
     } = appointment;
 
     // Helper function to check if current therapist has accepted
@@ -469,45 +467,41 @@ const TherapistDashboard = () => {
             </div>
           );
         }
-
       case "therapist_confirmed":
-        // Waiting for driver to confirm (if car required)
-        if (requires_car && !driver_confirmed) {
-          return (
-            <div className="appointment-actions">
-              <div className="waiting-status">
-                <span className="confirmed-badge">✅ You confirmed</span>
-                <p>Waiting for driver confirmation...</p>
-              </div>
+        // Always waiting for driver to confirm - driver is needed for all appointments
+        return (
+          <div className="appointment-actions">
+            <div className="waiting-status">
+              <span className="confirmed-badge">✅ You confirmed</span>
+              <p>Waiting for driver confirmation...</p>
             </div>
-          );
-        } else if (!requires_car) {
-          // No car needed, can start session
-          return (
-            <div className="appointment-actions">
-              <button
-                className="start-session-button"
-                onClick={() => handleStartSession(id)}
-              >
-                Start Session
-              </button>
-            </div>
-          );
-        }
-        return null;
-
+          </div>
+        );
       case "driver_confirmed":
-        // Both confirmed, waiting for journey or can start session if no travel
+        // Both confirmed, status will change to in_progress when operator starts
         return (
           <div className="appointment-actions">
             <div className="ready-status">
               <span className="ready-badge">🚀 Ready to start</span>
-              <p>All confirmations complete. Journey will begin shortly.</p>
+              <p>
+                Driver confirmed. Waiting for operator to start appointment.
+              </p>
             </div>
           </div>
         );
 
-      case "journey_started":
+      case "in_progress":
+        // Appointment is active, driver will handle journey
+        return (
+          <div className="appointment-actions">
+            <div className="ready-status">
+              <span className="ready-badge">✅ Appointment active</span>
+              <p>Appointment is in progress. Driver will coordinate pickup.</p>
+            </div>
+          </div>
+        );
+
+      case "journey":
         return (
           <div className="appointment-actions">
             <div className="journey-status">
@@ -527,7 +521,22 @@ const TherapistDashboard = () => {
           </div>
         );
 
-      case "session_started":
+      case "dropped_off":
+        // Session should auto-start, but allow manual start if needed
+        return (
+          <div className="appointment-actions">
+            <button
+              className="start-session-button"
+              onClick={() => handleStartSession(id)}
+            >
+              Start Session
+            </button>
+            <div className="dropped-off-info">
+              <p>📍 Dropped off at client location</p>
+            </div>
+          </div>
+        );
+      case "session_in_progress":
         return (
           <div className="appointment-actions">
             <button
@@ -542,12 +551,12 @@ const TherapistDashboard = () => {
           </div>
         );
 
-      case "payment_requested":
+      case "awaiting_payment":
         return (
           <div className="appointment-actions">
             <div className="payment-status">
               <span className="payment-badge">💳 Payment requested</span>
-              <p>Waiting for client payment...</p>
+              <p>Waiting for operator to verify payment...</p>
             </div>
           </div>
         );
@@ -562,7 +571,7 @@ const TherapistDashboard = () => {
               Complete Session
             </button>
             <div className="payment-info">
-              <p>✅ Payment received</p>
+              <p>✅ Payment verified by operator</p>
             </div>
           </div>
         );

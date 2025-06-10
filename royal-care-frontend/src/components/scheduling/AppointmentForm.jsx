@@ -743,6 +743,17 @@ const AppointmentForm = ({
         end_time: endTime,
         status: "pending",
         payment_status: "unpaid",
+        // Set requires_car and group_size for multi-therapist bookings
+        requires_car:
+          formData.multipleTherapists &&
+          formData.therapists &&
+          formData.therapists.length > 1,
+        group_size:
+          formData.multipleTherapists &&
+          formData.therapists &&
+          formData.therapists.length > 0
+            ? formData.therapists.length
+            : 1,
       };
 
       console.log("Pre-sanitized appointment data:", appointmentData);

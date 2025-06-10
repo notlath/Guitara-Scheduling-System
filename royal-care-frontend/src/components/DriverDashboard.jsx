@@ -125,15 +125,89 @@ const DriverDashboard = () => {
     error,
   } = useSelector((state) => state.scheduling);
 
-  // Filter appointments for current driver
-  const myAppointments = appointments.filter((apt) => apt.driver === user?.id);
+  // Debug: Log all appointments data
+  console.log("🔍 Driver Dashboard Debug:", {
+    user: user,
+    totalAppointments: appointments.length,
+    appointmentsWithDriver: appointments.filter(
+      (apt) => apt.driver === user?.id
+    ),
+    allAppointments: appointments,
+  }); // Filter appointments for current driver - only show those visible to driver
+  const myAppointments = appointments.filter((apt) => {
+    // Debug: Log all appointments for this driver
+    if (apt.driver === user?.id) {
+      console.log(
+        `🚗 Driver appointment ${apt.id}: status="${apt.status}", client="${
+          apt.client_details?.first_name || "Unknown"
+        }"`,
+        apt
+      );
+    }
 
-  const myTodayAppointments = todayAppointments.filter(
-    (apt) => apt.driver === user?.id
-  );
-  const myUpcomingAppointments = upcomingAppointments.filter(
-    (apt) => apt.driver === user?.id
-  );
+    // Driver assigned to this appointment
+    if (apt.driver !== user?.id) return false; // Only show appointments that should be visible to driver:
+    // - pending: Initial booking (driver needs to see to accept)
+    // - therapist_confirmed: After therapist(s) confirmed, waiting for driver
+    // - driver_confirmed: Driver confirmed, ready to start journey
+    // - in_progress: Operator started appointment, ready for journey
+    // - journey_started: Driver is traveling to client
+    // - arrived: Driver arrived at client location
+    // - dropped_off: Driver dropped off therapist
+    // - session_in_progress: Therapist(s) dropped off, session ongoing
+    // - awaiting_payment: Session complete, awaiting payment
+    // - completed: Appointment complete, may need pickup    // - pickup_requested: Therapist requested pickup
+    const visibleStatuses = [
+      "pending",
+      "therapist_confirmed",
+      "driver_confirmed",
+      "in_progress",
+      "journey_started",
+      "journey", // Backend is using this status - needs to be included
+      "arrived",
+      "dropped_off",
+      "session_in_progress",
+      "awaiting_payment",
+      "completed",
+      "pickup_requested",
+    ];
+
+    return visibleStatuses.includes(apt.status);
+  });  const myTodayAppointments = todayAppointments.filter((apt) => {
+    if (apt.driver !== user?.id) return false;
+    const visibleStatuses = [
+      "pending",
+      "therapist_confirmed",
+      "driver_confirmed",
+      "in_progress",
+      "journey_started",
+      "journey", // Added missing status that backend is using
+      "arrived",
+      "dropped_off",
+      "session_in_progress",
+      "awaiting_payment",
+      "completed",
+      "pickup_requested",
+    ];
+    return visibleStatuses.includes(apt.status);
+  });  const myUpcomingAppointments = upcomingAppointments.filter((apt) => {
+    if (apt.driver !== user?.id) return false;
+    const visibleStatuses = [
+      "pending",
+      "therapist_confirmed",
+      "driver_confirmed",
+      "in_progress",
+      "journey_started",
+      "journey", // Added missing status that backend is using
+      "arrived",
+      "dropped_off",
+      "session_in_progress",
+      "awaiting_payment",
+      "completed",
+      "pickup_requested",
+    ];
+    return visibleStatuses.includes(apt.status);
+  });
 
   // Refresh appointments data silently in background
   const refreshAppointments = useCallback(
@@ -390,6 +464,22 @@ const DriverDashboard = () => {
     }
   };
 
+  const handleDropOff = async (appointmentId) => {
+    try {
+      await dispatch(
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "dropped_off",
+          action: "drop_off_therapist",
+        })
+      ).unwrap();
+      refreshAppointments(true);
+    } catch (error) {
+      console.error("Failed to mark drop off:", error);
+      alert("Failed to mark drop off. Please try again.");
+    }
+  };
+
   // Time-based coordination helper functions
   const TRAVEL_TIME_MATRIX = {
     quezon_city_to_makati: 45,
@@ -630,8 +720,8 @@ const DriverDashboard = () => {
       case "therapist_confirmed":
         return "status-therapist-confirmed";
       case "driver_confirmed":
-        return "status-driver-confirmed";
-      case "journey_started":
+        return "status-driver-confirmed";      case "journey_started":
+      case "journey":
         return "status-journey-started";
       case "arrived":
         return "status-arrived";
@@ -718,54 +808,55 @@ const DriverDashboard = () => {
             </div>
           );
         }
-
       case "therapist_confirmed":
-        // Driver needs to confirm if car is required
-        if (requires_car) {
-          return (
-            <div className="appointment-actions">
-              <button
-                className="confirm-button"
-                onClick={() => handleDriverConfirm(id)}
-              >
-                Confirm Ready to Drive
-              </button>
-              <div className="workflow-info">
-                <p>✅ Therapist confirmed. Please confirm you're ready.</p>
-              </div>
+        // Driver always needs to confirm regardless of vehicle type
+        return (
+          <div className="appointment-actions">
+            <button
+              className="confirm-button"
+              onClick={() => handleDriverConfirm(id)}
+            >
+              Confirm Ready to Drive
+            </button>
+            <div className="workflow-info">
+              <p>✅ All therapists confirmed. Please confirm you're ready.</p>
+              {requires_car || isGroupTransport ? (
+                <p>🚗 Company car required for this appointment</p>
+              ) : (
+                <p>🏍️ Motorcycle transport for this appointment</p>
+              )}
             </div>
-          );
-        } else {
-          return (
-            <div className="appointment-actions">
-              <div className="ready-status">
-                <span className="ready-badge">✅ Ready</span>
-                <p>No transport needed for this appointment.</p>
-              </div>
-            </div>
-          );
-        }
-
+          </div>
+        );
       case "driver_confirmed":
-        // Both confirmed, can start journey
-        if (requires_car) {
-          return (
-            <div className="appointment-actions">
-              <button
-                className="start-journey-button"
-                onClick={() => handleStartJourney(id)}
-              >
-                Start Journey
-              </button>
-              <div className="ready-info">
-                <p>🚀 All confirmations complete. Ready to start!</p>
-              </div>
+        // Both confirmed, operator will start appointment
+        return (
+          <div className="appointment-actions">
+            <div className="waiting-status">
+              <span className="ready-badge">✅ Driver confirmed</span>
+              <p>Waiting for operator to start appointment...</p>
             </div>
-          );
-        }
-        return null;
+          </div>
+        );
 
-      case "journey_started":
+      case "in_progress":
+        // Operator started appointment, driver can start journey
+        return (
+          <div className="appointment-actions">
+            <button
+              className="start-journey-button"
+              onClick={() => handleStartJourney(id)}
+            >
+              Start Journey
+            </button>
+            <div className="ready-info">
+              <p>
+                🚀 Appointment started by operator. Ready to begin transport!
+              </p>
+            </div>
+          </div>
+        );      case "journey_started":
+      case "journey": // Handle both journey statuses
         return (
           <div className="appointment-actions">
             <button
@@ -780,20 +871,37 @@ const DriverDashboard = () => {
             </div>
           </div>
         );
-
       case "arrived":
         return (
           <div className="appointment-actions">
+            <button
+              className="drop-off-button"
+              onClick={() => handleDropOff(id)}
+            >
+              Drop Off Therapist
+            </button>
             <div className="arrived-status">
               <span className="arrived-badge">
                 📍 Arrived at pickup location
               </span>
-              <p>Therapist can now proceed to client location.</p>
+              <p>Ready to transport therapist to client location.</p>
             </div>
           </div>
         );
 
-      case "session_started":
+      case "dropped_off":
+        return (
+          <div className="appointment-actions">
+            <div className="dropped-off-status">
+              <span className="dropped-off-badge">
+                ✅ Therapist dropped off
+              </span>
+              <p>Therapist delivered to client. Session can begin.</p>
+            </div>
+          </div>
+        );
+
+      case "session_in_progress":
       case "payment_requested":
       case "payment_completed":
         return (

@@ -57,7 +57,11 @@ class ServiceSerializer(serializers.ModelSerializer):
     def get_duration(self, obj):
         """Convert timedelta to total seconds (as integer)"""
         if hasattr(obj, "duration") and obj.duration:
-            return int(obj.duration.total_seconds())
+            # Handle both timedelta objects and integer values
+            if hasattr(obj.duration, "total_seconds"):
+                return int(obj.duration.total_seconds())
+            elif isinstance(obj.duration, (int, float)):
+                return int(obj.duration)
         return 0
 
 
@@ -167,9 +171,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
     total_price = serializers.SerializerMethodField()
     # Add acceptance status fields
     both_parties_accepted = serializers.SerializerMethodField()
-    pending_acceptances = serializers.SerializerMethodField()
-
-    # Add explicit services field to handle ManyToManyField properly
+    pending_acceptances = serializers.SerializerMethodField()    # Add explicit services field to handle ManyToManyField properly
     services = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Service.objects.all(), required=True
     )
@@ -183,7 +185,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
         total_seconds = 0
         for service in obj.services.all():
             if service.duration:
-                total_seconds += service.duration.total_seconds()
+                # Handle both timedelta objects and integer values
+                if hasattr(service.duration, "total_seconds"):
+                    total_seconds += service.duration.total_seconds()
+                elif isinstance(service.duration, (int, float)):
+                    total_seconds += service.duration
         return int(total_seconds / 60)
 
     def get_total_price(self, obj):
