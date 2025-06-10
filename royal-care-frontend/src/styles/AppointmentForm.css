@@ -167,3 +167,22 @@ button:disabled {
   border-color: #ff6b6b;
   background-color: #fff5f5;
 }
+
+/* Info text styles for user guidance */
+.info-text {
+  font-size: 0.85rem;
+  color: #0066cc;
+  margin-top: 4px;
+  font-style: italic;
+  display: block;
+}
+
+/* Warning text styles */
+.warning-text {
+  font-size: 0.85rem;
+  color: #e67e22;
+  margin-top: 4px;
+  font-style: italic;
+  display: block;
+  font-weight: 500;
+}
