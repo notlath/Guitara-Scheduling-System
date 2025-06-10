@@ -12,7 +12,6 @@ import "../../styles/AvailabilityManager.css";
 import { LoadingButton, TableLoadingState } from "../common/LoadingComponents";
 
 // Helper function to safely evaluate is_active field
-// Fixed syntax and improved availability fetching
 const isStaffActive = (staff) => {
   if (!staff) return false;
 
@@ -104,7 +103,7 @@ const AvailabilityManager = () => {
 
   // Fetch staff members and availabilities on component mount
   useEffect(() => {
-    dispatch(fetchStaffMembers()); // If user is a therapist or driver, set them as selected staff
+    dispatch(fetchStaffMembers());    // If user is a therapist or driver, set them as selected staff
     if (user.role === "therapist" || user.role === "driver") {
       setSelectedStaff(user.id);
       const formattedDate = selectedDate.toISOString().split("T")[0];
@@ -116,7 +115,7 @@ const AvailabilityManager = () => {
         })
       );
     }
-  }, [dispatch, user, selectedDate]); // Load availability whenever selected staff or date changes
+  }, [dispatch, user, selectedDate]);  // Load availability whenever selected staff or date changes
   useEffect(() => {
     if (selectedStaff) {
       const formattedDate = selectedDate.toISOString().split("T")[0];
@@ -256,8 +255,7 @@ const AvailabilityManager = () => {
       if (!isConfirmed) {
         return;
       }
-    }
-    dispatch(
+    }    dispatch(
       createAvailability({
         user: staffId,
         date: newAvailabilityForm.date,
@@ -290,10 +288,10 @@ const AvailabilityManager = () => {
             })
           );
         }
+
         alert("Availability created successfully!");
       } else if (createAvailability.rejected.match(result)) {
-        // Error - show user-friendly message
-        const errorMsg = result.payload || "Failed to create availability";
+        // Error - show user-friendly message        const errorMsg = result.payload || "Failed to create availability";
         console.error("❌ Availability creation failed:", errorMsg);
         alert(`Error: ${errorMsg}`);
       }
@@ -305,7 +303,7 @@ const AvailabilityManager = () => {
       dispatch(deleteAvailability(availabilityId)).then((result) => {
         if (deleteAvailability.fulfilled.match(result)) {
           console.log("✅ Availability deleted successfully");
-
+          
           // Force refresh availability to show updated data immediately
           if (selectedStaff) {
             const formattedDate = selectedDate.toISOString().split("T")[0];
@@ -316,8 +314,7 @@ const AvailabilityManager = () => {
                 date: formattedDate,
                 forceRefresh: true, // Force fresh data after deletion
               })
-            );
-          }
+            );          }
         }
       });
     }
@@ -335,7 +332,7 @@ const AvailabilityManager = () => {
     ).then((result) => {
       if (updateAvailability.fulfilled.match(result)) {
         console.log("✅ Availability updated successfully");
-
+        
         // Force refresh availability to show updated data immediately
         if (selectedStaff) {
           const formattedDate = selectedDate.toISOString().split("T")[0];
@@ -455,32 +452,20 @@ const AvailabilityManager = () => {
                     {!isActive ? " [DISABLED]" : ""}
                   </option>
                 );
-              })}{" "}
-            </select>
+              })}            </select>
 
             {/* Selected Staff Summary */}
             {selectedStaffData && (
               <div className="selected-staff-summary">
-                <h4>
-                  Selected Staff: {selectedStaffData.first_name}{" "}
-                  {selectedStaffData.last_name}
-                </h4>
+                <h4>Selected Staff: {selectedStaffData.first_name} {selectedStaffData.last_name}</h4>
                 <div className="staff-info">
-                  <span className="staff-role">
-                    Role: {selectedStaffData.role}
-                  </span>
-                  <span
-                    className={`staff-status ${
-                      isStaffActive(selectedStaffData) ? "active" : "inactive"
-                    }`}
-                  >
-                    Status:{" "}
-                    {isStaffActive(selectedStaffData) ? "Active" : "Disabled"}
+                  <span className="staff-role">Role: {selectedStaffData.role}</span>
+                  <span className={`staff-status ${isStaffActive(selectedStaffData) ? 'active' : 'inactive'}`}>
+                    Status: {isStaffActive(selectedStaffData) ? 'Active' : 'Disabled'}
                   </span>
                 </div>
                 <p className="availability-instruction">
-                  📅 Use the date picker below to view availability for specific
-                  dates
+                  📅 Use the date picker below to view availability for specific dates
                 </p>
               </div>
             )}
@@ -565,16 +550,15 @@ const AvailabilityManager = () => {
               reactivate their account.
             </div>
           </div>
-        )}{" "}
-        <div className="filter-group">
+        )}        <div className="filter-group">
           <label htmlFor="date">
             Viewing Availability for Date:
             <span className="current-date-display">
-              {selectedDate.toLocaleDateString("en-US", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
+              {selectedDate.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
               })}
             </span>
           </label>
@@ -589,8 +573,7 @@ const AvailabilityManager = () => {
               String(selectedDate.getDate()).padStart(2, "0")
             }
             onChange={handleDateChange}
-          />{" "}
-          <small className="date-helper-text">
+          />          <small className="date-helper-text">
             📅 Change the date above to view availability for different days
           </small>
         </div>
@@ -776,59 +759,55 @@ const AvailabilityManager = () => {
                 Account" to reactivate.
               </div>
             )}
-          </div>
-        )}
-
+          </div>        )}{" "}
         {!selectedStaff ? (
           <div className="no-staff-selected">
+            <h3>Current Availability</h3>
             <div className="select-staff-prompt">
               <p>
-                <strong>
-                  👆 Please select a staff member above to view their
-                  availability.
-                </strong>
+                <strong>👆 Please select a staff member above to view their availability.</strong>
               </p>
               <p className="hint-text">
-                {user.role === "operator"
+                {user.role === "operator" 
                   ? "Choose any therapist or driver to manage their schedule."
-                  : "Your personal availability will be displayed here."}
+                  : "Your personal availability will be displayed here."
+                }
               </p>
             </div>
           </div>
         ) : loading ? (
-          <div className="loading-availability">
-            <TableLoadingState
-              columns={["Date", "Start Time", "End Time", "Status", "Actions"]}
-              rows={3}
-            />
-            <div className="loading-message">
-              <span>
-                Loading availability for {selectedDate.toLocaleDateString()}...
-              </span>
+          <div className="availability-list">
+            <h3>Current Availability</h3>
+            <div className="loading-availability">
+              <TableLoadingState
+                columns={["Date", "Start Time", "End Time", "Status", "Actions"]}
+                rows={3}
+              />
+              <div className="loading-message">
+                <span>Loading availability for {selectedDate.toLocaleDateString()}...</span>
+              </div>
             </div>
           </div>
         ) : safeAvailabilities.length === 0 ? (
-          <div className="no-availability-message">
-            <p>
-              <strong>
-                No availability set for {selectedDate.toLocaleDateString()}.
-              </strong>
-            </p>
-            {selectedStaff && (
-              <p className="hint-text">
-                📅 Try selecting a different date above, or add new availability
-                using the form.
-                {user.role === "operator" && (
-                  <span>
-                    {" "}
-                    You can navigate through dates to view all availability for
-                    this staff member.
-                  </span>
-                )}
+          <div className="availability-list">
+            <h3>Current Availability</h3>
+            <div className="no-availability-message">
+              <p>
+                <strong>No availability set for {selectedDate.toLocaleDateString()}.</strong>
               </p>
-            )}
+              {selectedStaff && (
+                <p className="hint-text">
+                  📅 Try selecting a different date above, or add new availability using the form.
+                  {user.role === "operator" && (
+                    <span> You can navigate through dates to view all availability for this staff member.</span>
+                  )}
+                </p>
+              )}
+            </div>
           </div>
         ) : (
+          <div className="availability-list">
+            <h3>Current Availability</h3>
           <table className="availability-table">
             <thead>
               <tr>
