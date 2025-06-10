@@ -11,3 +11,11 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
 }
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--focus-color) !important;
+  box-shadow: 0 0 4px var(--focus-color) !important;
+  border-color: var(--border-color) !important;
+}

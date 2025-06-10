@@ -47,6 +47,7 @@ def insert_into_table(table_name, data):
 
 class RegisterTherapist(APIView):
     def get(self, request):
+        supabase = get_supabase_client()
         # Fetch all therapists from Supabase
         result = supabase.table("registration_therapist").select("*").execute()
         if getattr(result, "error", None):
@@ -289,6 +290,7 @@ class RegisterDriver(APIView):
 
 class RegisterOperator(APIView):
     def get(self, request):
+        supabase = get_supabase_client()
         # Fetch all operators from Supabase
         result = supabase.table("registration_operator").select("*").execute()
         if getattr(result, "error", None):
@@ -320,6 +322,7 @@ class RegisterOperator(APIView):
 
 class RegisterMaterial(APIView):
     def get(self, request):
+        supabase = get_supabase_client()
         # Fetch all materials from Supabase
         result = supabase.table("registration_material").select("*").execute()
         if getattr(result, "error", None):
@@ -346,6 +349,7 @@ class RegisterMaterial(APIView):
 
 class RegisterService(APIView):
     def get(self, request):
+        supabase = get_supabase_client()
         # Fetch all services from Supabase
         result = supabase.table("registration_service").select("*").execute()
         if getattr(result, "error", None):
@@ -452,6 +456,7 @@ class RegisterService(APIView):
             ):
                 materials = [{"name": m} for m in materials]
             inserted_material_ids = []
+            supabase = get_supabase_client()
             for mat in materials:
                 material_data = {
                     "service_id": service_id,

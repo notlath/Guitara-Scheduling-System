@@ -9,7 +9,7 @@ export function FormField({
   onChange,
   required = true,
   inputProps = {},
-  children, // for select
+  children, // for select or helper/error/status
   as = "input",
   ...rest
 }) {
@@ -56,6 +56,8 @@ export function FormField({
           {...rest}
         />
       )}
+      {/* Render children below the input/select/textarea for helper/status/error messages */}
+      {as !== "select" && children}
     </div>
   );
 }

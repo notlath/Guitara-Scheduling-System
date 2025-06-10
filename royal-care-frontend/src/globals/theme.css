@@ -72,7 +72,8 @@ small {
   --accent: #9ab096;
   --error: #ff312e;
   --border-color: var(--background-200);
-  --border-radius: 6px;
+  --focus-color: var(--primary-500);
+  --border-radius: 8px;
 
   /* Text color shades */
   --text-50: #f9f5ec;
@@ -164,6 +165,7 @@ small {
   --spacing-xm: 0.75rem; /* 12px */
   --spacing-sm: 1rem; /* 16px */
   --spacing-mm: 1.5rem; /* 24px */
+  --spacing-mxs: 1.25rem; /* 20px */
   --spacing-mmd: 1.75rem; /* 28px */
   --spacing-md: 2rem; /* 32px */
   --spacing-ml: 2.5rem; /* 40px */
