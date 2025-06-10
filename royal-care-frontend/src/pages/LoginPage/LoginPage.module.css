@@ -288,7 +288,7 @@
   height: 40px;
   display: flex;
   align-items: center;
-  /* border-right: none; */
+  border-right: none;
   transition: border-color 0.2s;
 }
 .phoneInput:focus {
@@ -314,6 +314,14 @@
 .global-form-field-relative-wrapper {
   position: relative;
   width: 100%;
+}
+
+.requiredAsterisk {
+  color: var(--error);
+  margin-left: 1px;
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  vertical-align: middle;
 }
 
 /* Keep only unique styles for LoginPage */

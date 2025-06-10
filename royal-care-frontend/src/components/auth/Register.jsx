@@ -258,7 +258,12 @@ const Register = () => {
                 <div className={styles.inputContainer}>
                   <div className={styles.formGroup}>
                     <FormField
-                      label="Username"
+                      label={
+                        <span>
+                          Username{" "}
+                          <span className={styles.requiredAsterisk}>*</span>
+                        </span>
+                      }
                       name="username"
                       value={formData.username}
                       onChange={handleChange}
@@ -279,7 +284,9 @@ const Register = () => {
                     >
                       {errors.username && (
                         <div className="global-form-field-error">
-                          {errors.username}
+                          {errors.username === "This field is required"
+                            ? "This field is required"
+                            : errors.username}
                         </div>
                       )}
                     </FormField>
@@ -327,12 +334,6 @@ const Register = () => {
                           pattern="[0-9]{3}-[0-9]{4}-[0-9]{3}"
                           title="Enter a valid Philippine mobile number (e.g., 956-4134-958)"
                           required
-                          style={{
-                            borderRadius:
-                              "0 var(--border-radius) var(--border-radius) 0",
-                            borderLeft: "none",
-                            flex: 1,
-                          }}
                         />
                       </div>
                       {errors.phone_number && (
@@ -344,7 +345,12 @@ const Register = () => {
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label="Create password"
+                      label={
+                        <span>
+                          Create password{" "}
+                          <span className={styles.requiredAsterisk}>*</span>
+                        </span>
+                      }
                       name="password"
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
@@ -366,7 +372,9 @@ const Register = () => {
                     >
                       {errors.password && (
                         <div className="global-form-field-error">
-                          {errors.password}
+                          {errors.password === "This field is required"
+                            ? "This field is required"
+                            : errors.password}
                         </div>
                       )}
                       <button
@@ -384,7 +392,7 @@ const Register = () => {
                           <MdVisibility size={22} />
                         )}
                       </button>
-                      {formData.password && passwordFocused && (
+                      {passwordFocused && (
                         <div className={styles.passwordPopupError}>
                           <ul className={styles.passwordRequirementsList}>
                             <li
@@ -439,7 +447,12 @@ const Register = () => {
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label="Re-enter password"
+                      label={
+                        <span>
+                          Re-enter password{" "}
+                          <span className={styles.requiredAsterisk}>*</span>
+                        </span>
+                      }
                       name="passwordConfirm"
                       type={showPasswordConfirm ? "text" : "password"}
                       value={formData.passwordConfirm}
@@ -475,7 +488,9 @@ const Register = () => {
                       </button>
                       {errors.passwordConfirm && (
                         <div className="global-form-field-error">
-                          {errors.passwordConfirm}
+                          {errors.passwordConfirm === "This field is required"
+                            ? "This field is required"
+                            : errors.passwordConfirm}
                         </div>
                       )}
                     </FormField>
