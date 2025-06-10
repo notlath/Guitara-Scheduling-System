@@ -20,7 +20,6 @@ const Register = () => {
   });
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [passwordRequirements, setPasswordRequirements] = useState({
     startsWithLetter: false,
@@ -35,22 +34,6 @@ const Register = () => {
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const navigate = useNavigate();
 
-  // Debounce function for username availability check
-  useEffect(() => {
-    let timeoutId;
-
-    if (formData.username && formData.username.length >= 3) {
-      setIsCheckingUsername(true);
-      timeoutId = setTimeout(() => {
-        checkUsernameAvailability(formData.username);
-      }, 500);
-    }
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [formData.username]);
-
   useEffect(() => {
     // document.title = "Royal Care - Register";
     // Clean up FIDO2 scripts when component unmounts
@@ -59,21 +42,6 @@ const Register = () => {
     };
   }, []);
 
-  // Check if username is already taken
-  const checkUsernameAvailability = async (username) => {
-    try {
-      const response = await api.get(
-        `/auth/check-username/?username=${encodeURIComponent(username)}`
-      );
-      if (response.data.available === false) {
-        setErrors((prev) => ({ ...prev, username: "Username already taken" }));
-      }
-    } catch (err) {
-      console.error("Error checking username:", err);
-    } finally {
-      setIsCheckingUsername(false);
-    }
-  };
   const checkPasswordRequirements = (password, confirmPassword) => {
     return {
       startsWithLetter: /^[A-Za-z]/.test(password),
@@ -160,8 +128,10 @@ const Register = () => {
     });
     if (passwordError) newErrors.password = passwordError;
 
-    // Validate password confirmation
-    if (formData.password !== formData.passwordConfirm) {
+    // Validate password confirmation (required and match)
+    if (!formData.passwordConfirm) {
+      newErrors.passwordConfirm = "This field is required";
+    } else if (formData.password !== formData.passwordConfirm) {
       newErrors.passwordConfirm = "Passwords don't match";
     }
 
@@ -269,16 +239,12 @@ const Register = () => {
                       onChange={handleChange}
                       required
                       pattern="^[a-zA-Z0-9_]{3,30}$"
-                      status={
-                        isCheckingUsername ? "Checking availability..." : null
-                      }
                       inputProps={{
                         placeholder: "Username",
                         className: `global-form-field-input${
                           errors.username ? "" : ""
                         }`,
-                        title:
-                          "Username must be 3-30 characters and contain only letters, numbers, and underscores",
+                        title: "Use username given by the admin",
                         id: "username",
                       }}
                     >
@@ -332,7 +298,7 @@ const Register = () => {
                           autoComplete="tel"
                           maxLength={12}
                           pattern="[0-9]{3}-[0-9]{4}-[0-9]{3}"
-                          title="Enter a valid Philippine mobile number (e.g., 956-4134-958)"
+                          title="Enter a valid mobile number"
                           required
                         />
                       </div>
@@ -370,79 +336,84 @@ const Register = () => {
                         onBlur: () => setPasswordFocused(false),
                       }}
                     >
-                      {errors.password && (
-                        <div className="global-form-field-error">
-                          {errors.password === "This field is required"
-                            ? "This field is required"
-                            : errors.password}
+                      <div className={styles.passwordFieldWrapper}>
+                        <div className={styles.passwordInputRow}>
+                          {/* Password input is rendered by FormField */}
+                          <button
+                            type="button"
+                            aria-label={
+                              showPassword ? "Hide password" : "Show password"
+                            }
+                            onClick={() => setShowPassword((v) => !v)}
+                            className={styles.inputIconBtn}
+                            tabIndex={-1}
+                          >
+                            {showPassword ? (
+                              <MdVisibilityOff size={22} />
+                            ) : (
+                              <MdVisibility size={22} />
+                            )}
+                          </button>
                         </div>
-                      )}
-                      <button
-                        type="button"
-                        aria-label={
-                          showPassword ? "Hide password" : "Show password"
-                        }
-                        onClick={() => setShowPassword((v) => !v)}
-                        className={styles.inputIconBtn}
-                        tabIndex={-1}
-                      >
-                        {showPassword ? (
-                          <MdVisibilityOff size={22} />
-                        ) : (
-                          <MdVisibility size={22} />
+                        {errors.password && (
+                          <div className="global-form-field-error">
+                            {errors.password === "This field is required"
+                              ? "This field is required"
+                              : errors.password}
+                          </div>
                         )}
-                      </button>
-                      {passwordFocused && (
-                        <div className={styles.passwordPopupError}>
-                          <ul className={styles.passwordRequirementsList}>
-                            <li
-                              className={
-                                passwordRequirements.hasLower
-                                  ? styles.requirementMet
-                                  : styles.requirementUnmet
-                              }
-                            >
-                              At least one lowercase letter (a-z)
-                            </li>
-                            <li
-                              className={
-                                passwordRequirements.hasUpper
-                                  ? styles.requirementMet
-                                  : styles.requirementUnmet
-                              }
-                            >
-                              At least one uppercase letter (A-Z)
-                            </li>
-                            <li
-                              className={
-                                passwordRequirements.hasNumber
-                                  ? styles.requirementMet
-                                  : styles.requirementUnmet
-                              }
-                            >
-                              At least one number (0-9)
-                            </li>
-                            <li
-                              className={
-                                /[@$!%*?&]/.test(formData.password)
-                                  ? styles.requirementMet
-                                  : styles.requirementUnmet
-                              }
-                            >
-                              At least one special character (@$!%*?&)
-                            </li>
-                            <li
-                              className={
-                                formData.password.length >= 8
-                                  ? styles.requirementMet
-                                  : styles.requirementUnmet
-                              }
-                            >
-                              At least 8 characters long
-                            </li>
-                          </ul>
-                        </div>
-                      )}
+                        {passwordFocused && (
+                          <div className={styles.passwordPopupError}>
+                            <ul className={styles.passwordRequirementsList}>
+                              <li
+                                className={
+                                  passwordRequirements.hasLower
+                                    ? styles.requirementMet
+                                    : styles.requirementUnmet
+                                }
+                              >
+                                At least one lowercase letter (a-z)
+                              </li>
+                              <li
+                                className={
+                                  passwordRequirements.hasUpper
+                                    ? styles.requirementMet
+                                    : styles.requirementUnmet
+                                }
+                              >
+                                At least one uppercase letter (A-Z)
+                              </li>
+                              <li
+                                className={
+                                  passwordRequirements.hasNumber
+                                    ? styles.requirementMet
+                                    : styles.requirementUnmet
+                                }
+                              >
+                                At least one number (0-9)
+                              </li>
+                              <li
+                                className={
+                                  /[@$!%*?&]/.test(formData.password)
+                                    ? styles.requirementMet
+                                    : styles.requirementUnmet
+                                }
+                              >
+                                At least one special character (@$!%*?&)
+                              </li>
+                              <li
+                                className={
+                                  formData.password.length >= 8
+                                    ? styles.requirementMet
+                                    : styles.requirementUnmet
+                                }
+                              >
+                                At least 8 characters long
+                              </li>
+                            </ul>
+                          </div>
+                        )}
+                      </div>
                     </FormField>
                   </div>
                   <div className={styles.formGroup}>
@@ -469,30 +440,37 @@ const Register = () => {
                         autoComplete: "new-password",
                       }}
                     >
-                      <button
-                        type="button"
-                        aria-label={
-                          showPasswordConfirm
-                            ? "Hide password"
-                            : "Show password"
-                        }
-                        onClick={() => setShowPasswordConfirm((v) => !v)}
-                        className={styles.inputIconBtn}
-                        tabIndex={-1}
-                      >
-                        {showPasswordConfirm ? (
-                          <MdVisibilityOff size={22} />
-                        ) : (
-                          <MdVisibility size={22} />
-                        )}
-                      </button>
-                      {errors.passwordConfirm && (
-                        <div className="global-form-field-error">
-                          {errors.passwordConfirm === "This field is required"
-                            ? "This field is required"
-                            : errors.passwordConfirm}
+                      <div className={styles.passwordFieldWrapper}>
+                        <div className={styles.passwordInputRow}>
+                          {/* Password confirm input is rendered by FormField */}
+                          <button
+                            type="button"
+                            aria-label={
+                              showPasswordConfirm
+                                ? "Hide password"
+                                : "Show password"
+                            }
+                            onClick={() => setShowPasswordConfirm((v) => !v)}
+                            className={styles.inputIconBtn}
+                            tabIndex={-1}
+                          >
+                            {showPasswordConfirm ? (
+                              <MdVisibilityOff size={22} />
+                            ) : (
+                              <MdVisibility size={22} />
+                            )}
+                          </button>
                         </div>
-                      )}
+                        {errors.passwordConfirm && (
+                          <div className="global-form-field-error">
+                            {errors.passwordConfirm ===
+                              "This field is required" ||
+                            !formData.passwordConfirm
+                              ? "This field is required"
+                              : errors.passwordConfirm}
+                          </div>
+                        )}
+                      </div>
                     </FormField>
                   </div>
                 </div>
@@ -502,7 +480,7 @@ const Register = () => {
                   className={`action-btn${isSubmitting ? " disabled" : ""}`}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Processing..." : "Register"}
+                  {isSubmitting ? "Processing..." : "Complete Registration"}
                 </button>
               </form>
               <div className={styles.registerLink}>

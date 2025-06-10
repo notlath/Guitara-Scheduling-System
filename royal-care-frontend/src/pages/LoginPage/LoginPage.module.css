@@ -255,8 +255,8 @@
 .inputIconBtn {
   position: absolute;
   right: var(--spacing-xxs);
-  top: 50%;
-  transform: translateY(-50%);
+  /* top: 50%; */
+  transform: translateY(-61.8%);
   background: none;
   border: none;
   padding: 0;
@@ -322,6 +322,31 @@
   font-size: var(--font-size-sm);
   font-weight: 400;
   vertical-align: middle;
+}
+
+/* Fix: Make the password input and eye icon always aligned regardless of error message */
+.passwordFieldWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.passwordInputRow {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+/* Ensure error message does not affect input/icon row layout */
+.global-form-field-error {
+  color: var(--error);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xxs);
+  margin-left: 0;
+  font-weight: 400;
+  position: static;
 }
 
 /* Keep only unique styles for LoginPage */
