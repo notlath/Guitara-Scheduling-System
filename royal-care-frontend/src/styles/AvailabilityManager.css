@@ -406,3 +406,46 @@ select option:disabled {
   font-size: 14px;
   line-height: 1.4;
 }
+
+/* Cross-day availability styling */
+.availability-table .cross-day {
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+}
+
+.cross-day-indicator {
+  color: #856404;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+.next-day-indicator {
+  color: #0c5460;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.cross-day-note {
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 3px;
+  padding: 2px 5px;
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+.cross-day-info {
+  background-color: #e7f3ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  color: #0c5460;
+}
+
+.cross-day-info small {
+  line-height: 1.4;
+}
+
+/* Enhanced availability table styling */

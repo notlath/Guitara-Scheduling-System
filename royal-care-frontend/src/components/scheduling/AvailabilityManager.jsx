@@ -609,8 +609,7 @@ const AvailabilityManager = () => {
                     }
                   >
                     5-9 PM
-                  </button>
-                  <button
+                  </button>                  <button
                     type="button"
                     className="preset-button"
                     onClick={() =>
@@ -623,6 +622,13 @@ const AvailabilityManager = () => {
                   >
                     1PM-1AM (Cross-day)
                   </button>
+                </div>
+                <div className="cross-day-info">
+                  <small>
+                    ℹ️ <strong>Cross-day scheduling:</strong> When end time is earlier than start time, 
+                    the availability spans midnight (e.g., 1PM-1AM means 1PM today to 1AM tomorrow).
+                    Cross-day availability will appear on both days.
+                  </small>
                 </div>
               </div>
               <div className="form-group">
@@ -714,50 +720,72 @@ const AvailabilityManager = () => {
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {safeAvailabilities.map((availability) => (
-                <tr
-                  key={availability.id}
-                  className={
-                    availability.is_available ? "available" : "unavailable"
-                  }
-                >
-                  <td>{new Date(availability.date).toLocaleDateString()}</td>
-                  <td>{availability.start_time}</td>
-                  <td>{availability.end_time}</td>
-                  <td>
-                    {availability.is_available ? "Available" : "Unavailable"}
-                  </td>
-                  <td>
-                    <button
-                      className={`toggle-button ${
-                        availability.is_available
-                          ? "available-status"
-                          : "unavailable-status"
-                      }`}
-                      onClick={() => handleToggleAvailability(availability)}
-                      title={
-                        availability.is_available
-                          ? "Click to make unavailable"
-                          : "Click to make available"
-                      }
-                    >
-                      <span className="toggle-icon">
-                        {availability.is_available ? "🟢" : "🔴"}
-                      </span>
-                      <span className="toggle-text">
-                        {availability.is_available ? "Disable" : "Enable"}
-                      </span>
-                    </button>
-                    <button
-                      className="delete-button"
-                      onClick={() => handleDeleteAvailability(availability.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+            <tbody>              {safeAvailabilities.map((availability) => {
+                // Check if this is a cross-day availability
+                const isCrossDay = availability.start_time > availability.end_time || availability.is_cross_day;
+                
+                return (
+                  <tr
+                    key={availability.id}
+                    className={`${
+                      availability.is_available ? "available" : "unavailable"
+                    } ${isCrossDay ? "cross-day" : ""}`}
+                  >
+                    <td>
+                      {new Date(availability.date).toLocaleDateString()}
+                      {isCrossDay && (
+                        <div className="cross-day-indicator">
+                          <small>📅 Cross-day</small>
+                        </div>
+                      )}
+                    </td>
+                    <td>{availability.start_time}</td>
+                    <td>
+                      {availability.end_time}
+                      {isCrossDay && (
+                        <div className="next-day-indicator">
+                          <small>+1 day</small>
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {availability.is_available ? "Available" : "Unavailable"}
+                      {isCrossDay && availability.cross_day_note && (
+                        <div className="cross-day-note">
+                          <small>{availability.cross_day_note}</small>
+                        </div>
+                      )}                    </td>
+                    <td>
+                      <button
+                        className={`toggle-button ${
+                          availability.is_available
+                            ? "available-status"
+                            : "unavailable-status"
+                        }`}
+                        onClick={() => handleToggleAvailability(availability)}
+                        title={
+                          availability.is_available
+                            ? "Click to make unavailable"
+                            : "Click to make available"
+                        }
+                      >
+                        <span className="toggle-icon">
+                          {availability.is_available ? "🟢" : "🔴"}
+                        </span>
+                        <span className="toggle-text">
+                          {availability.is_available ? "Disable" : "Enable"}
+                        </span>
+                      </button>
+                      <button
+                        className="delete-button"
+                        onClick={() => handleDeleteAvailability(availability.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
