@@ -67,29 +67,41 @@ const AvailabilityManager = () => {
 
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
-
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // Initialize selectedDate to current date using the same method as getTodayString to avoid timezone issues
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const day = today.getDate();
+    return new Date(year, month, day); // Create date using local timezone
+  });
   const [selectedStaff, setSelectedStaff] = useState("");
   const [timeSlots, setTimeSlots] = useState([]);
   const [selectedStaffData, setSelectedStaffData] = useState(null);
-
   // Helper function to get today's date in YYYY-MM-DD format without timezone issues
   const getTodayString = () => {
     const today = new Date();
-    return (
-      today.getFullYear() +
-      "-" +
-      String(today.getMonth() + 1).padStart(2, "0") +
-      "-" +
-      String(today.getDate()).padStart(2, "0")
-    );
+    // Use local timezone to avoid date shifting issues
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
   const [newAvailabilityForm, setNewAvailabilityForm] = useState({
     date: getTodayString(),
     startTime: "13:00",
     endTime: "14:00", // Changed from "1:00" to "14:00" for better UX
     isAvailable: true,
-  }); // Fetch staff members and availabilities on component mount
+  }); // Ensure the date in newAvailabilityForm is always current on mount
+  useEffect(() => {
+    const currentDate = getTodayString();
+    setNewAvailabilityForm((prev) => ({
+      ...prev,
+      date: currentDate,
+    }));
+  }, []); // Run once on mount
+
+  // Fetch staff members and availabilities on component mount
   useEffect(() => {
     dispatch(fetchStaffMembers());
 
@@ -126,10 +138,14 @@ const AvailabilityManager = () => {
       );
     }
   }, [selectedStaff, selectedDate, dispatch]);
-
   // Update form date when selected date changes
   useEffect(() => {
-    const formattedDate = selectedDate.toISOString().split("T")[0];
+    // Use getTodayString format to ensure consistency
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+    const day = String(selectedDate.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${day}`;
+
     setNewAvailabilityForm((prev) => ({
       ...prev,
       date: formattedDate,
