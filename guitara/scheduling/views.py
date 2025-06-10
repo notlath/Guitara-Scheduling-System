@@ -585,6 +585,39 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(appointments, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"])
+    def by_week(self, request):
+        """Get all appointments for a specific week"""
+        week_start_str = request.query_params.get("week_start")
+
+        if not week_start_str:
+            return Response(
+                {"error": "week_start parameter is required (YYYY-MM-DD format)"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Parse the week start date
+            week_start = datetime.strptime(week_start_str, "%Y-%m-%d").date()
+            # Calculate week end (6 days later)
+            week_end = week_start + timedelta(days=6)
+        except ValueError:
+            return Response(
+                {"error": "Invalid date format. Use YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Filter appointments for the specified week
+        appointments = self.filter_queryset(
+            self.get_queryset().filter(
+                date__gte=week_start,
+                date__lte=week_end,
+            )
+        )
+
+        serializer = self.get_serializer(appointments, many=True)
+        return Response(serializer.data)
+
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         """Cancel an appointment"""
