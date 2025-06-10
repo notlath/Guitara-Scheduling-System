@@ -26,44 +26,46 @@ export function FormField({
           )}
         </div>
       )}
-      {as === "select" ? (
-        <select
-          className="global-form-field-select"
-          name={name}
-          id={name}
-          value={value}
-          onChange={onChange}
-          required={required}
-          {...rest}
-        >
-          {children}
-        </select>
-      ) : as === "textarea" ? (
-        <textarea
-          className={inputProps.className || "global-form-field-textarea"}
-          name={name}
-          id={name}
-          value={value}
-          onChange={onChange}
-          required={required}
-          {...inputProps}
-          {...rest}
-        />
-      ) : (
-        <input
-          className="global-form-field-input"
-          type={type}
-          name={name}
-          id={name}
-          value={value}
-          onChange={onChange}
-          required={required}
-          {...inputProps}
-          {...rest}
-        />
-      )}
-      {/* Render children below the input/select/textarea for helper/status/error messages */}
-      {as !== "select" && children}
+      <div className="global-form-field-relative-wrapper">
+        {as === "select" ? (
+          <select
+            className="global-form-field-select"
+            name={name}
+            id={name}
+            value={value}
+            onChange={onChange}
+            required={required}
+            {...rest}
+          >
+            {children}
+          </select>
+        ) : as === "textarea" ? (
+          <textarea
+            className={inputProps.className || "global-form-field-textarea"}
+            name={name}
+            id={name}
+            value={value}
+            onChange={onChange}
+            required={required}
+            {...inputProps}
+            {...rest}
+          />
+        ) : (
+          <input
+            className="global-form-field-input"
+            type={type}
+            name={name}
+            id={name}
+            value={value}
+            onChange={onChange}
+            required={required}
+            {...inputProps}
+            {...rest}
+          />
+        )}
+        {/* Render children inside the relative wrapper for icons, popups, etc. */}
+        {as !== "select" && children}
+      </div>
     </div>
   );
 }

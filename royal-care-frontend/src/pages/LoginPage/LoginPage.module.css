@@ -152,17 +152,44 @@
 
 .passwordPopupError {
   position: absolute;
-  /* left: 0; */
-  top: var(--spacing-xxs);
-  /* z-index: 10; */
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
   background: var(--background);
   border: 1px solid var(--background-400);
   border-radius: var(--border-radius);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   padding: var(--spacing-xm) var(--spacing-sm);
-  /* min-width: 260px; */
   color: var(--muted);
   font-size: var(--font-size-sm);
+  min-width: 260px;
+  /* Arrow positioning context */
+}
+
+.passwordPopupError::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 24px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid var(--background-400);
+  z-index: 11;
+}
+
+.passwordPopupError::after {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 25px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 7px solid var(--background);
+  z-index: 12;
 }
 
 .passwordRequirementsList {
@@ -181,6 +208,72 @@
 
 .passwordPopupWrapper {
   position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.passwordFieldFlex {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  gap: 0;
+}
+
+.passwordFieldInputWrapper {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* This wrapper is for future extensibility, can be empty for now */
+}
+
+.passwordToggleBtn {
+  position: static;
+  margin-left: -36px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  height: 32px;
+  width: 32px;
+  z-index: 2;
+}
+
+.global-form-field-input[type="password"],
+.global-form-field-input[type="text"] {
+  padding-right: 36px !important;
+}
+
+.inputWithIcon {
+  position: relative;
+  padding-right: 40px !important;
+}
+
+.inputIconBtn {
+  position: absolute;
+  right: var(--spacing-xxs);
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  z-index: 2;
+  height: 32px;
+  width: 32px;
+}
+
+/* Ensure the parent of the input is position: relative for absolute icon */
+.global-form-field-relative-wrapper {
+  position: relative;
+  width: 100%;
 }
 
 /* Keep only unique styles for LoginPage */

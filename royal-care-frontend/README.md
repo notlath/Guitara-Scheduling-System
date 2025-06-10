@@ -174,10 +174,11 @@ This frontend connects to the Django backend located in the `/guitara` directory
      ```
    - This applies to overlays, modals, and any feature requiring background dimming or blur.
 
-5. **CSS Location:**
+5. **CSS Location & Inline Styles:**
 
-   - Place all new CSS in the appropriate file in `src/styles/`.
-   - Do not inline styles unless absolutely necessary.
+   - Place all new CSS in the appropriate file in `src/styles/` or the relevant `.module.css` file for the component or page.
+   - **Avoid doing inline styles as much as possible! Use the corresponding CSS files instead.**
+   - Only use inline styles if absolutely necessary and there is no better alternative.
 
 6. **Component Placement:**
 
