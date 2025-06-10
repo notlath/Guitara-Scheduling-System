@@ -103,9 +103,7 @@ const AvailabilityManager = () => {
 
   // Fetch staff members and availabilities on component mount
   useEffect(() => {
-    dispatch(fetchStaffMembers());
-
-    // If user is a therapist or driver, set them as selected staff
+    dispatch(fetchStaffMembers());    // If user is a therapist or driver, set them as selected staff
     if (user.role === "therapist" || user.role === "driver") {
       setSelectedStaff(user.id);
       const formattedDate = selectedDate.toISOString().split("T")[0];
@@ -113,13 +111,11 @@ const AvailabilityManager = () => {
         fetchAvailability({
           staffId: user.id,
           date: formattedDate,
-          forceRefresh: false,
+          forceRefresh: true, // Force refresh on initial load to get current data
         })
       );
     }
-  }, [dispatch, user, selectedDate]);
-
-  // Load availability whenever selected staff or date changes
+  }, [dispatch, user, selectedDate]);  // Load availability whenever selected staff or date changes
   useEffect(() => {
     if (selectedStaff) {
       const formattedDate = selectedDate.toISOString().split("T")[0];
@@ -128,14 +124,18 @@ const AvailabilityManager = () => {
         formattedDate: formattedDate,
         selectedDate: selectedDate,
       });
-      // Use optimized fetch with caching
+      // Force refresh to always get current data when staff/date changes
       dispatch(
         fetchAvailability({
           staffId: selectedStaff,
           date: formattedDate,
-          forceRefresh: false, // Use cache if available
+          forceRefresh: true, // Always get fresh data when selection changes
         })
       );
+    } else {
+      // Clear availability when no staff is selected
+      console.log("🧹 Clearing availability data - no staff selected");
+      // We could dispatch a clear action here if needed
     }
   }, [selectedStaff, selectedDate, dispatch]);
   // Update form date when selected date changes
@@ -255,8 +255,7 @@ const AvailabilityManager = () => {
       if (!isConfirmed) {
         return;
       }
-    }
-    dispatch(
+    }    dispatch(
       createAvailability({
         user: staffId,
         date: newAvailabilityForm.date,
@@ -277,8 +276,18 @@ const AvailabilityManager = () => {
           isAvailable: true,
         });
 
-        // Redux state will be updated automatically via sync events
-        // No need for manual refresh - the useSyncEventHandlers hook handles this
+        // Force refresh availability to show the new data immediately
+        if (selectedStaff) {
+          const formattedDate = selectedDate.toISOString().split("T")[0];
+          console.log("🔄 Force refreshing availability after creation...");
+          dispatch(
+            fetchAvailability({
+              staffId: selectedStaff,
+              date: formattedDate,
+              forceRefresh: true, // Force fresh data after creation
+            })
+          );
+        }
 
         alert("Availability created successfully!");
       } else if (createAvailability.rejected.match(result)) {
@@ -288,19 +297,28 @@ const AvailabilityManager = () => {
         alert(`Error: ${errorMsg}`);
       }
     });
-  };
-  const handleDeleteAvailability = (availabilityId) => {
+  };  const handleDeleteAvailability = (availabilityId) => {
     if (window.confirm("Are you sure you want to delete this availability?")) {
       dispatch(deleteAvailability(availabilityId)).then((result) => {
         if (deleteAvailability.fulfilled.match(result)) {
           console.log("✅ Availability deleted successfully");
-          // Redux state will be updated automatically via sync events
-          // No need for manual refresh - the useSyncEventHandlers hook handles this
+          
+          // Force refresh availability to show updated data immediately
+          if (selectedStaff) {
+            const formattedDate = selectedDate.toISOString().split("T")[0];
+            console.log("🔄 Force refreshing availability after deletion...");
+            dispatch(
+              fetchAvailability({
+                staffId: selectedStaff,
+                date: formattedDate,
+                forceRefresh: true, // Force fresh data after deletion
+              })
+            );
+          }
         }
       });
     }
-  };
-  const handleToggleAvailability = (availability) => {
+  };  const handleToggleAvailability = (availability) => {
     dispatch(
       updateAvailability({
         id: availability.id,
@@ -312,8 +330,19 @@ const AvailabilityManager = () => {
     ).then((result) => {
       if (updateAvailability.fulfilled.match(result)) {
         console.log("✅ Availability updated successfully");
-        // Redux state will be updated automatically via sync events
-        // No need for manual refresh - the useSyncEventHandlers hook handles this
+        
+        // Force refresh availability to show updated data immediately
+        if (selectedStaff) {
+          const formattedDate = selectedDate.toISOString().split("T")[0];
+          console.log("🔄 Force refreshing availability after update...");
+          dispatch(
+            fetchAvailability({
+              staffId: selectedStaff,
+              date: formattedDate,
+              forceRefresh: true, // Force fresh data after update
+            })
+          );
+        }
       }
     });
   };
@@ -420,8 +449,23 @@ const AvailabilityManager = () => {
                     {!isActive ? " [DISABLED]" : ""}
                   </option>
                 );
-              })}
-            </select>
+              })}            </select>
+
+            {/* Selected Staff Summary */}
+            {selectedStaffData && (
+              <div className="selected-staff-summary">
+                <h4>Selected Staff: {selectedStaffData.first_name} {selectedStaffData.last_name}</h4>
+                <div className="staff-info">
+                  <span className="staff-role">Role: {selectedStaffData.role}</span>
+                  <span className={`staff-status ${isStaffActive(selectedStaffData) ? 'active' : 'inactive'}`}>
+                    Status: {isStaffActive(selectedStaffData) ? 'Active' : 'Disabled'}
+                  </span>
+                </div>
+                <p className="availability-instruction">
+                  📅 Use the date picker below to view availability for specific dates
+                </p>
+              </div>
+            )}
 
             {/* Debug section for operators */}
             <div
@@ -503,10 +547,18 @@ const AvailabilityManager = () => {
               reactivate their account.
             </div>
           </div>
-        )}
-
-        <div className="filter-group">
-          <label htmlFor="date">Select Date:</label>
+        )}        <div className="filter-group">
+          <label htmlFor="date">
+            Viewing Availability for Date:
+            <span className="current-date-display">
+              {selectedDate.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </span>
+          </label>
           <input
             type="date"
             id="date"
@@ -518,9 +570,11 @@ const AvailabilityManager = () => {
               String(selectedDate.getDate()).padStart(2, "0")
             }
             onChange={handleDateChange}
-          />
+          />          <small className="date-helper-text">
+            📅 Change the date above to view availability for different days
+          </small>
         </div>
-      </div>{" "}
+      </div>
       {(user.role === "operator" ||
         user.role === "therapist" ||
         user.role === "driver") &&
@@ -702,16 +756,55 @@ const AvailabilityManager = () => {
                 Account" to reactivate.
               </div>
             )}
+          </div>        )}{" "}
+        {!selectedStaff ? (
+          <div className="no-staff-selected">
+            <h3>Current Availability</h3>
+            <div className="select-staff-prompt">
+              <p>
+                <strong>👆 Please select a staff member above to view their availability.</strong>
+              </p>
+              <p className="hint-text">
+                {user.role === "operator" 
+                  ? "Choose any therapist or driver to manage their schedule."
+                  : "Your personal availability will be displayed here."
+                }
+              </p>
+            </div>
           </div>
-        )}{" "}
-        {loading ? (
-          <TableLoadingState
-            columns={["Date", "Start Time", "End Time", "Status", "Actions"]}
-            rows={3}
-          />
+        ) : loading ? (
+          <div className="availability-list">
+            <h3>Current Availability</h3>
+            <div className="loading-availability">
+              <TableLoadingState
+                columns={["Date", "Start Time", "End Time", "Status", "Actions"]}
+                rows={3}
+              />
+              <div className="loading-message">
+                <span>Loading availability for {selectedDate.toLocaleDateString()}...</span>
+              </div>
+            </div>
+          </div>
         ) : safeAvailabilities.length === 0 ? (
-          <p>No availability set for this date.</p>
+          <div className="availability-list">
+            <h3>Current Availability</h3>
+            <div className="no-availability-message">
+              <p>
+                <strong>No availability set for {selectedDate.toLocaleDateString()}.</strong>
+              </p>
+              {selectedStaff && (
+                <p className="hint-text">
+                  📅 Try selecting a different date above, or add new availability using the form.
+                  {user.role === "operator" && (
+                    <span> You can navigate through dates to view all availability for this staff member.</span>
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
         ) : (
+          <div className="availability-list">
+            <h3>Current Availability</h3>
           <table className="availability-table">
             <thead>
               <tr>
