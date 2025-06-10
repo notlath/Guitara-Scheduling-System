@@ -67,8 +67,9 @@ button {
   cursor: pointer;
   font-size: var(--font-size-base);
   padding: var(--spacing-xm); /* 16px horizontal padding */
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   margin-top: var(--spacing-xm);
+  transition: background-color 0.2s;
 }
 
 .action-btn:disabled,

@@ -118,7 +118,7 @@
   width: 100%;
   max-width: none;
   display: block;
-  margin-top: var(--spacing-lg);
+  margin-top: var(--spacing-ml);
 }
 
 .registerLinkAnchor {
@@ -145,13 +145,14 @@
   color: var(--error);
   font-size: var(--font-size-base);
   margin: 0 auto;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-mm);
   background: var(--background);
-  border: 1px solid var(--background-100);
-  border-radius: 6px;
-  padding: var(--spacing-xm) var(--spacing-md);
-  text-align: center;
-  font-weight: 400;
+  border: 1px solid var(--error);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xs) var(--spacing-mxs);
+  /* font-weight: 400; */
+  word-break: break-word;
+  white-space: pre-line;
 }
 
 .fieldError {
