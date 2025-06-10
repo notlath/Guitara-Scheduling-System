@@ -602,8 +602,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Update appointment status
-        appointment.status = "cancelled"
+        # Update appointment status        appointment.status = "cancelled"
         appointment.save()
 
         # Create notifications for all involved parties
@@ -612,7 +611,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             "appointment_cancelled",
             f"Appointment for {appointment.client} on {appointment.date} at {appointment.start_time} has been cancelled.",
         )
-
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
@@ -621,11 +619,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         """Mark an appointment as completed"""
         appointment = self.get_object()
 
-        # Only the assigned therapist, driver or operators can complete appointments
+        # Only the assigned therapist(s), driver or operators can complete appointments
         user = request.user
+        is_assigned_therapist = (
+            user == appointment.therapist
+            or appointment.therapists.filter(id=user.id).exists()
+        )
+
         if (
             user.role != "operator"
-            and user != appointment.therapist
+            and not is_assigned_therapist
             and user != appointment.driver
         ):
             return Response(
