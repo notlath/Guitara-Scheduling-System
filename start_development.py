@@ -40,6 +40,7 @@ def kill_existing_cmd_windows(window_title):
         return
     try:
         import subprocess
+
         result = subprocess.check_output(
             'tasklist /v /fi "IMAGENAME eq cmd.exe"',
             shell=True,
@@ -53,7 +54,7 @@ def kill_existing_cmd_windows(window_title):
                 columns = re.split(r"\s{2,}", line.strip())
                 if len(columns) > 2 and columns[1].isdigit():
                     pid = int(columns[1])
-                    subprocess.run(f'taskkill /PID {pid} /F', shell=True)
+                    subprocess.run(f"taskkill /PID {pid} /F", shell=True)
     except Exception as e:
         print(f"⚠️ Could not close existing '{window_title}' windows: {e}")
 
@@ -64,9 +65,10 @@ def kill_by_command_snippet(snippet):
         return
     try:
         import subprocess
+
         # Use wmic to find processes with the command line containing the snippet
         result = subprocess.check_output(
-            f'wmic process where "CommandLine like \'%{snippet}%\'" get ProcessId,CommandLine /FORMAT:LIST',
+            f"wmic process where \"CommandLine like '%{snippet}%'\" get ProcessId,CommandLine /FORMAT:LIST",
             shell=True,
             encoding="utf-8",
             errors="ignore",
@@ -75,7 +77,7 @@ def kill_by_command_snippet(snippet):
             if line.startswith("ProcessId="):
                 pid = line.split("=")[-1].strip()
                 if pid.isdigit():
-                    subprocess.run(f'taskkill /PID {pid} /F', shell=True)
+                    subprocess.run(f"taskkill /PID {pid} /F", shell=True)
     except Exception as e:
         print(f"⚠️ Could not close processes with command snippet '{snippet}': {e}")
 
@@ -249,8 +251,9 @@ def is_process_running(snippet):
         return False
     try:
         import subprocess
+
         result = subprocess.check_output(
-            f'wmic process where "CommandLine like \'%{snippet}%\'" get ProcessId,CommandLine /FORMAT:LIST',
+            f"wmic process where \"CommandLine like '%{snippet}%'\" get ProcessId,CommandLine /FORMAT:LIST",
             shell=True,
             encoding="utf-8",
             errors="ignore",
@@ -262,7 +265,9 @@ def is_process_running(snippet):
                 if pid.isdigit() and int(pid) != 0:
                     # Exclude our own process
                     if int(pid) != os.getpid():
-                        print(f"[DEBUG is_process_running] Found process with PID {pid} for snippet '{snippet}'")
+                        logger.debug(
+                            f"Found process with PID {pid} for snippet '{snippet}'"
+                        )
                         found = True
         return found
     except Exception as e:
@@ -299,9 +304,13 @@ def main():
                 # Now check if servers are running (after kill/start)
                 backend_running = is_process_running("manage.py runserver")
                 frontend_running = (
-                    is_process_running("npm run dev") or is_process_running("vite") or is_process_running("node dev")
+                    is_process_running("npm run dev")
+                    or is_process_running("vite")
+                    or is_process_running("node dev")
                 )
-                print(f"[DEBUG] (post-start) backend_running: {backend_running}, frontend_running: {frontend_running}")
+                print(
+                    f"[DEBUG] (post-start) backend_running: {backend_running}, frontend_running: {frontend_running}"
+                )
                 if backend_running or frontend_running:
                     print("[DEBUG] Opening browser...")
                     open_browser()
