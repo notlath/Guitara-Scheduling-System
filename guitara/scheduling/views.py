@@ -94,7 +94,10 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
         if user.role == "operator":
             return Availability.objects.all()
         # Therapists and drivers can only see their own availability
-        return Availability.objects.filter(user=user)    @action(detail=False, methods=["get"])
+        return Availability.objects.filter(user=user) @ action(
+            detail=False, methods=["get"]
+        )
+
     def available_therapists(self, request):
         """Get all available therapists for a given date and time range"""
         date_str = request.query_params.get("date")
@@ -119,46 +122,53 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                     "error": "Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
-            )        # Start with therapists who have availability at this time
+            )  # Start with therapists who have availability at this time
         # Handle both same-day and cross-day availability
         from django.db.models import Q, F
         from datetime import timedelta
-        
+
         # Query logic for availability:
         # 1. Same day: Normal case where start_time <= requested_time <= end_time
         # 2. Cross-day: end_time < start_time (spans midnight)
         #    - For times after start_time on same day
         #    - For times before end_time on next day
-        
+
         # Build availability queries
         same_day_normal = Q(
             availabilities__date=date_obj,
             availabilities__start_time__lte=start_time,
             availabilities__end_time__gte=end_time,
-            availabilities__is_available=True
+            availabilities__is_available=True,
         ) & Q(
-            availabilities__start_time__lte=F('availabilities__end_time')  # Normal (non-cross-day)
+            availabilities__start_time__lte=F(
+                "availabilities__end_time"
+            )  # Normal (non-cross-day)
         )
-        
+
         same_day_cross_day = Q(
             availabilities__date=date_obj,
             availabilities__start_time__lte=start_time,
-            availabilities__start_time__gt=F('availabilities__end_time'),  # Cross-day indicator
-            availabilities__is_available=True
+            availabilities__start_time__gt=F(
+                "availabilities__end_time"
+            ),  # Cross-day indicator
+            availabilities__is_available=True,
         )
-        
+
         # For cross-day availability from previous day (when requesting early morning times)
         previous_day = date_obj - timedelta(days=1)
         previous_day_cross_day = Q(
             availabilities__date=previous_day,
             availabilities__end_time__gte=end_time,
-            availabilities__start_time__gt=F('availabilities__end_time'),  # Cross-day indicator
-            availabilities__is_available=True
+            availabilities__start_time__gt=F(
+                "availabilities__end_time"
+            ),  # Cross-day indicator
+            availabilities__is_available=True,
         )
-        
+
         available_therapists_query = (
             CustomUser.objects.filter(
-                Q(role="therapist") & (same_day_normal | same_day_cross_day | previous_day_cross_day)
+                Q(role="therapist")
+                & (same_day_normal | same_day_cross_day | previous_day_cross_day)
             )
             .select_related()
             .prefetch_related("availabilities")
@@ -175,7 +185,7 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
         if massage_pressure:
             available_therapists_query = available_therapists_query.filter(
                 massage_pressure__icontains=massage_pressure
-            )        # Exclude therapists who have conflicting appointments (including cross-day conflicts)
+            )  # Exclude therapists who have conflicting appointments (including cross-day conflicts)
         # Normal same-day conflicts
         same_day_conflicts = Q(
             therapist_appointments__date=date_obj,
@@ -184,40 +194,42 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
             Q(therapist_appointments__start_time__lte=end_time)
             & Q(therapist_appointments__end_time__gte=start_time)
         )
-        
+
         # Cross-day conflicts (appointments that span midnight)
         cross_day_conflicts = Q(
             therapist_appointments__date=date_obj,
             therapist_appointments__status__in=["pending", "confirmed", "in_progress"],
-            therapist_appointments__start_time__gt=F('therapist_appointments__end_time'),  # Cross-day appointment
+            therapist_appointments__start_time__gt=F(
+                "therapist_appointments__end_time"
+            ),  # Cross-day appointment
         ) & Q(therapist_appointments__start_time__lte=start_time)
-        
+
         # Previous day cross-day conflicts
         previous_day_conflicts = Q(
             therapist_appointments__date=previous_day,
             therapist_appointments__status__in=["pending", "confirmed", "in_progress"],
-            therapist_appointments__start_time__gt=F('therapist_appointments__end_time'),  # Cross-day appointment
+            therapist_appointments__start_time__gt=F(
+                "therapist_appointments__end_time"
+            ),  # Cross-day appointment
         ) & Q(therapist_appointments__end_time__gte=end_time)
-        
-        conflicting_therapists = (
-            CustomUser.objects.filter(same_day_conflicts | cross_day_conflicts | previous_day_conflicts)
-            .distinct()
-        )
+
+        conflicting_therapists = CustomUser.objects.filter(
+            same_day_conflicts | cross_day_conflicts | previous_day_conflicts
+        ).distinct()
 
         available_therapists = available_therapists_query.exclude(
             pk__in=conflicting_therapists
-        )        # Build custom response with availability data
+        )  # Build custom response with availability data
         therapists_data = []
         for therapist in available_therapists:
             # Get the specific availability for this date (current day first, then previous day for cross-day)
             availability = therapist.availabilities.filter(date=date_obj).first()
-            
+
             # If not found on current day, check previous day for cross-day availability
             if not availability:
                 previous_day = date_obj - timedelta(days=1)
                 cross_day_availabilities = therapist.availabilities.filter(
-                    date=previous_day,
-                    is_available=True
+                    date=previous_day, is_available=True
                 )
                 # Check for cross-day manually since we can't use F() in filter here
                 for avail in cross_day_availabilities:
@@ -246,8 +258,10 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                 ),
                 # Add cross-day indicator
                 "is_cross_day": (
-                    availability and availability.end_time < availability.start_time
-                ) if availability else False,
+                    (availability and availability.end_time < availability.start_time)
+                    if availability
+                    else False
+                ),
             }
             therapists_data.append(therapist_data)
 
@@ -276,50 +290,57 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                     "error": "Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
-            )        # Start with drivers who have availability at this time
+            )  # Start with drivers who have availability at this time
         # Handle both same-day and cross-day availability
         from django.db.models import Q, F
         from datetime import timedelta
-        
+
         # Query logic for availability:
         # 1. Same day: Normal case where start_time <= requested_time <= end_time
         # 2. Cross-day: end_time < start_time (spans midnight)
         #    - For times after start_time on same day
         #    - For times before end_time on next day
-          # Build availability queries
+        # Build availability queries
         same_day_normal = Q(
             availabilities__date=date_obj,
             availabilities__start_time__lte=start_time,
             availabilities__end_time__gte=end_time,
-            availabilities__is_available=True
+            availabilities__is_available=True,
         ) & Q(
-            availabilities__start_time__lte=F('availabilities__end_time')  # Normal (non-cross-day)
+            availabilities__start_time__lte=F(
+                "availabilities__end_time"
+            )  # Normal (non-cross-day)
         )
-        
+
         same_day_cross_day = Q(
             availabilities__date=date_obj,
             availabilities__start_time__lte=start_time,
-            availabilities__start_time__gt=F('availabilities__end_time'),  # Cross-day indicator
-            availabilities__is_available=True
+            availabilities__start_time__gt=F(
+                "availabilities__end_time"
+            ),  # Cross-day indicator
+            availabilities__is_available=True,
         )
-        
+
         # For cross-day availability from previous day (when requesting early morning times)
         previous_day = date_obj - timedelta(days=1)
         previous_day_cross_day = Q(
             availabilities__date=previous_day,
             availabilities__end_time__gte=end_time,
-            availabilities__start_time__gt=F('availabilities__end_time'),  # Cross-day indicator
-            availabilities__is_available=True
+            availabilities__start_time__gt=F(
+                "availabilities__end_time"
+            ),  # Cross-day indicator
+            availabilities__is_available=True,
         )
-        
+
         available_drivers_query = (
             CustomUser.objects.filter(
-                Q(role="driver") & (same_day_normal | same_day_cross_day | previous_day_cross_day)
+                Q(role="driver")
+                & (same_day_normal | same_day_cross_day | previous_day_cross_day)
             )
             .select_related()
             .prefetch_related("availabilities")
             .distinct()
-        )        # Exclude drivers who have conflicting appointments (including cross-day conflicts)
+        )  # Exclude drivers who have conflicting appointments (including cross-day conflicts)
         # Normal same-day conflicts
         same_day_conflicts = Q(
             driver_appointments__date=date_obj,
@@ -328,38 +349,42 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
             Q(driver_appointments__start_time__lte=end_time)
             & Q(driver_appointments__end_time__gte=start_time)
         )
-        
+
         # Cross-day conflicts (appointments that span midnight)
         cross_day_conflicts = Q(
             driver_appointments__date=date_obj,
             driver_appointments__status__in=["pending", "confirmed", "in_progress"],
-            driver_appointments__start_time__gt=F('driver_appointments__end_time'),  # Cross-day appointment
+            driver_appointments__start_time__gt=F(
+                "driver_appointments__end_time"
+            ),  # Cross-day appointment
         ) & Q(driver_appointments__start_time__lte=start_time)
-        
+
         # Previous day cross-day conflicts
         previous_day_conflicts = Q(
             driver_appointments__date=previous_day,
             driver_appointments__status__in=["pending", "confirmed", "in_progress"],
-            driver_appointments__start_time__gt=F('driver_appointments__end_time'),  # Cross-day appointment
+            driver_appointments__start_time__gt=F(
+                "driver_appointments__end_time"
+            ),  # Cross-day appointment
         ) & Q(driver_appointments__end_time__gte=end_time)
-        
-        conflicting_drivers = (
-            CustomUser.objects.filter(same_day_conflicts | cross_day_conflicts | previous_day_conflicts)
-            .distinct()
-        )
 
-        available_drivers = available_drivers_query.exclude(pk__in=conflicting_drivers)        # Build custom response with availability data
+        conflicting_drivers = CustomUser.objects.filter(
+            same_day_conflicts | cross_day_conflicts | previous_day_conflicts
+        ).distinct()
+
+        available_drivers = available_drivers_query.exclude(
+            pk__in=conflicting_drivers
+        )  # Build custom response with availability data
         drivers_data = []
         for driver in available_drivers:
             # Get the specific availability for this date (current day first, then previous day for cross-day)
             availability = driver.availabilities.filter(date=date_obj).first()
-            
+
             # If not found on current day, check previous day for cross-day availability
             if not availability:
                 previous_day = date_obj - timedelta(days=1)
                 cross_day_availabilities = driver.availabilities.filter(
-                    date=previous_day,
-                    is_available=True
+                    date=previous_day, is_available=True
                 )
                 # Check for cross-day manually since we can't use F() in filter here
                 for avail in cross_day_availabilities:
@@ -387,8 +412,10 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                 ),
                 # Add cross-day indicator
                 "is_cross_day": (
-                    availability and availability.end_time < availability.start_time
-                ) if availability else False,
+                    (availability and availability.end_time < availability.start_time)
+                    if availability
+                    else False
+                ),
             }
             drivers_data.append(driver_data)
 
@@ -1808,56 +1835,54 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         """Override list to handle cross-day availability properly"""
         from datetime import timedelta
-        
+
         # Get the base queryset
         queryset = self.filter_queryset(self.get_queryset())
-        
+
         # Check if we're filtering by date (staff_id and date parameters)
-        staff_id = request.query_params.get('staff_id')
-        date_str = request.query_params.get('date')
-        
+        staff_id = request.query_params.get("staff_id")
+        date_str = request.query_params.get("date")
+
         if staff_id and date_str:
             try:
                 date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
-                
+
                 # Get availabilities for the requested date
-                date_availabilities = queryset.filter(
-                    user_id=staff_id,
-                    date=date_obj
-                )
-                
+                date_availabilities = queryset.filter(user_id=staff_id, date=date_obj)
+
                 # Also get cross-day availabilities from the previous day that extend into this date
                 previous_day = date_obj - timedelta(days=1)
                 previous_day_cross_day = queryset.filter(
-                    user_id=staff_id,
-                    date=previous_day
+                    user_id=staff_id, date=previous_day
                 ).filter(
                     # Cross-day indicator: start_time > end_time
-                    start_time__gt=models.F('end_time')
+                    start_time__gt=models.F("end_time")
                 )
-                
+
                 # Combine both querysets
                 combined_queryset = date_availabilities.union(previous_day_cross_day)
-                
+
                 # Convert to list and serialize
                 availabilities_list = list(combined_queryset)
                 serializer = self.get_serializer(availabilities_list, many=True)
-                
+
                 # Add cross-day indicators to the response
                 for i, availability in enumerate(availabilities_list):
                     if availability.start_time > availability.end_time:
                         # This is a cross-day availability
-                        serializer.data[i]['is_cross_day'] = True
-                        serializer.data[i]['cross_day_note'] = f"Starts {availability.date} at {availability.start_time}, ends {availability.date + timedelta(days=1)} at {availability.end_time}"
+                        serializer.data[i]["is_cross_day"] = True
+                        serializer.data[i][
+                            "cross_day_note"
+                        ] = f"Starts {availability.date} at {availability.start_time}, ends {availability.date + timedelta(days=1)} at {availability.end_time}"
                     else:
-                        serializer.data[i]['is_cross_day'] = False
-                
+                        serializer.data[i]["is_cross_day"] = False
+
                 return Response(serializer.data)
-                
+
             except ValueError:
                 # Invalid date format, fall back to default behavior
                 pass
-        
+
         # Default behavior for other cases
         return super().list(request, *args, **kwargs)
 

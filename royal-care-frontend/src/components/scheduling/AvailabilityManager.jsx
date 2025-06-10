@@ -609,7 +609,8 @@ const AvailabilityManager = () => {
                     }
                   >
                     5-9 PM
-                  </button>                  <button
+                  </button>{" "}
+                  <button
                     type="button"
                     className="preset-button"
                     onClick={() =>
@@ -625,9 +626,10 @@ const AvailabilityManager = () => {
                 </div>
                 <div className="cross-day-info">
                   <small>
-                    ℹ️ <strong>Cross-day scheduling:</strong> When end time is earlier than start time, 
-                    the availability spans midnight (e.g., 1PM-1AM means 1PM today to 1AM tomorrow).
-                    Cross-day availability will appear on both days.
+                    ℹ️ <strong>Cross-day scheduling:</strong> When end time is
+                    earlier than start time, the availability spans midnight
+                    (e.g., 1PM-1AM means 1PM today to 1AM tomorrow). Cross-day
+                    availability will appear on both days.
                   </small>
                 </div>
               </div>
@@ -720,10 +722,14 @@ const AvailabilityManager = () => {
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody>              {safeAvailabilities.map((availability) => {
+            <tbody>
+              {" "}
+              {safeAvailabilities.map((availability) => {
                 // Check if this is a cross-day availability
-                const isCrossDay = availability.start_time > availability.end_time || availability.is_cross_day;
-                
+                const isCrossDay =
+                  availability.start_time > availability.end_time ||
+                  availability.is_cross_day;
+
                 return (
                   <tr
                     key={availability.id}
@@ -754,7 +760,8 @@ const AvailabilityManager = () => {
                         <div className="cross-day-note">
                           <small>{availability.cross_day_note}</small>
                         </div>
-                      )}                    </td>
+                      )}{" "}
+                    </td>
                     <td>
                       <button
                         className={`toggle-button ${
@@ -778,7 +785,9 @@ const AvailabilityManager = () => {
                       </button>
                       <button
                         className="delete-button"
-                        onClick={() => handleDeleteAvailability(availability.id)}
+                        onClick={() =>
+                          handleDeleteAvailability(availability.id)
+                        }
                       >
                         Delete
                       </button>
