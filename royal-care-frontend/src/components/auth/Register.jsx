@@ -214,7 +214,7 @@ const Register = () => {
           <div className={styles.logo}>
             <img src={rcLogo} alt="Royal Care Logo" />
           </div>
-          <h2 className={styles.welcomeHeading}>Create Your Account</h2>
+          <h2 className={styles.welcomeHeading}>Complete your Account</h2>
 
           {success ? (
             <div className={styles.successMessage}>
@@ -239,23 +239,21 @@ const Register = () => {
                       onChange={handleChange}
                       required
                       pattern="^[a-zA-Z0-9_]{3,30}$"
+                      status={
+                        isCheckingUsername ? "Checking availability..." : null
+                      }
                       inputProps={{
                         placeholder: "Username",
                         className: `global-form-field-input${
-                          errors.username ? ` ${styles.inputError}` : ""
+                          errors.username ? ` global-form-field-error` : ""
                         }`,
                         title:
                           "Username must be 3-30 characters and contain only letters, numbers, and underscores",
                         id: "username",
                       }}
                     >
-                      {isCheckingUsername && (
-                        <div className={styles.statusText}>
-                          Checking availability...
-                        </div>
-                      )}
                       {errors.username && (
-                        <div className={styles.errorText}>
+                        <div className="global-form-field-error">
                           {errors.username}
                         </div>
                       )}
@@ -272,15 +270,18 @@ const Register = () => {
                       inputProps={{
                         placeholder: "Email",
                         className: `global-form-field-input${
-                          errors.email ? ` ${styles.inputError}` : ""
+                          errors.email ? ` global-form-field-error` : ""
                         }`,
                         title: "Enter a valid email address",
                         id: "email",
                       }}
-                    />
-                    {errors.email && (
-                      <div className={styles.errorText}>{errors.email}</div>
-                    )}
+                    >
+                      {errors.email && (
+                        <div className="global-form-field-error">
+                          {errors.email}
+                        </div>
+                      )}
+                    </FormField>
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
@@ -294,17 +295,20 @@ const Register = () => {
                       inputProps={{
                         placeholder: "Password",
                         className: `global-form-field-input${
-                          errors.password ? ` ${styles.inputError}` : ""
+                          errors.password ? ` global-form-field-error` : ""
                         }`,
                         title:
                           "Password must be at least 8 characters and include uppercase, lowercase, number and special character",
                         id: "password",
                         autoComplete: "new-password",
                       }}
-                    />
-                    {errors.password && (
-                      <div className={styles.errorText}>{errors.password}</div>
-                    )}
+                    >
+                      {errors.password && (
+                        <div className="global-form-field-error">
+                          {errors.password}
+                        </div>
+                      )}
+                    </FormField>
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
@@ -317,17 +321,20 @@ const Register = () => {
                       inputProps={{
                         placeholder: "Confirm Password",
                         className: `global-form-field-input${
-                          errors.passwordConfirm ? ` ${styles.inputError}` : ""
+                          errors.passwordConfirm
+                            ? ` global-form-field-error`
+                            : ""
                         }`,
                         id: "passwordConfirm",
                         autoComplete: "new-password",
                       }}
-                    />
-                    {errors.passwordConfirm && (
-                      <div className={styles.errorText}>
-                        {errors.passwordConfirm}
-                      </div>
-                    )}
+                    >
+                      {errors.passwordConfirm && (
+                        <div className="global-form-field-error">
+                          {errors.passwordConfirm}
+                        </div>
+                      )}
+                    </FormField>
                   </div>
                   {/* Role selection field removed */}
                   <div
@@ -342,21 +349,22 @@ const Register = () => {
                       inputProps={{
                         placeholder: "+123456789",
                         className: `global-form-field-input${
-                          errors.phone_number ? ` ${styles.inputError}` : ""
+                          errors.phone_number ? ` global-form-field-error` : ""
                         }`,
                         id: "phone_number",
                         title:
                           "Enter international format with + and 7-15 digits",
                       }}
-                    />
-                    {errors.phone_number && (
-                      <div className={styles.errorText}>
-                        {errors.phone_number}
+                    >
+                      {errors.phone_number && (
+                        <div className="global-form-field-error">
+                          {errors.phone_number}
+                        </div>
+                      )}
+                      <div className={styles.helperText}>
+                        Format: +[country code][number] (e.g., +12345678901)
                       </div>
-                    )}
-                    <div className={styles.helperText}>
-                      Format: +[country code][number] (e.g., +12345678901)
-                    </div>
+                    </FormField>
                   </div>
                 </div>
 
