@@ -74,7 +74,11 @@
 .global-form-field-error {
   color: var(--error);
   font-size: var(--font-size-sm);
-  /* margin-top: var(--spacing-xxs); */
+  margin-top: var(--spacing-xxs);
   margin-left: 0;
   font-weight: 400;
+}
+.global-form-field-relative-wrapper {
+  position: relative;
+  width: 100%;
 }

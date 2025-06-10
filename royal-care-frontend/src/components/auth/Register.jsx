@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { MdVisibility, MdVisibilityOff } from "react-icons/md";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import rcLogo from "../../assets/images/rc_logo.jpg";
 import styles from "../../pages/LoginPage/LoginPage.module.css";
@@ -12,7 +13,6 @@ import { FormField } from "../../globals/FormField";
 const Register = () => {
   const [formData, setFormData] = useState({
     username: "",
-    email: "",
     password: "",
     passwordConfirm: "",
     role: "Driver", // Default to Driver role - role field is not shown to users
@@ -20,25 +20,19 @@ const Register = () => {
   });
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    startsWithLetter: false,
+    hasNumber: false,
+    hasLower: false,
+    hasUpper: false,
+    exactLength: false,
+    confirmMatch: false,
+  });
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const navigate = useNavigate();
-
-  // Debounce function for username availability check
-  useEffect(() => {
-    let timeoutId;
-
-    if (formData.username && formData.username.length >= 3) {
-      setIsCheckingUsername(true);
-      timeoutId = setTimeout(() => {
-        checkUsernameAvailability(formData.username);
-      }, 500);
-    }
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [formData.username]);
 
   useEffect(() => {
     // document.title = "Royal Care - Register";
@@ -48,21 +42,17 @@ const Register = () => {
     };
   }, []);
 
-  // Check if username is already taken
-  const checkUsernameAvailability = async (username) => {
-    try {
-      const response = await api.get(
-        `/auth/check-username/?username=${encodeURIComponent(username)}`
-      );
-      if (response.data.available === false) {
-        setErrors((prev) => ({ ...prev, username: "Username already taken" }));
-      }
-    } catch (err) {
-      console.error("Error checking username:", err);
-    } finally {
-      setIsCheckingUsername(false);
-    }
+  const checkPasswordRequirements = (password, confirmPassword) => {
+    return {
+      startsWithLetter: /^[A-Za-z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasLower: /[a-z]/.test(password),
+      hasUpper: /[A-Z]/.test(password),
+      minLength: password.length >= 8,
+      confirmMatch: password === confirmPassword && password.length > 0,
+    };
   };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -94,6 +84,15 @@ const Register = () => {
 
     setFormData({ ...formData, [name]: sanitizedValue });
 
+    // Password requirements update
+    if (name === "password" || name === "passwordConfirm") {
+      const reqs = checkPasswordRequirements(
+        name === "password" ? sanitizedValue : formData.password,
+        name === "passwordConfirm" ? sanitizedValue : formData.passwordConfirm
+      );
+      setPasswordRequirements(reqs);
+    }
+
     // Clear error when field is edited
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -124,18 +123,15 @@ const Register = () => {
     });
     if (usernameError) newErrors.username = usernameError;
 
-    const emailError = validateInput("email", formData.email, {
-      required: true,
-    });
-    if (emailError) newErrors.email = emailError;
-
     const passwordError = validateInput("password", formData.password, {
       required: true,
     });
     if (passwordError) newErrors.password = passwordError;
 
-    // Validate password confirmation
-    if (formData.password !== formData.passwordConfirm) {
+    // Validate password confirmation (required and match)
+    if (!formData.passwordConfirm) {
+      newErrors.passwordConfirm = "This field is required";
+    } else if (formData.password !== formData.passwordConfirm) {
       newErrors.passwordConfirm = "Passwords don't match";
     }
 
@@ -163,7 +159,6 @@ const Register = () => {
     // Create a clean submission object without the confirm password field
     const submissionData = {
       username: formData.username,
-      email: formData.email,
       password: formData.password,
       role: formData.role,
       phone_number: formData.phone_number,
@@ -233,136 +228,248 @@ const Register = () => {
                 <div className={styles.inputContainer}>
                   <div className={styles.formGroup}>
                     <FormField
-                      label="Username"
+                      label={
+                        <span>
+                          Username{" "}
+                          <span className={styles.requiredAsterisk}>*</span>
+                        </span>
+                      }
                       name="username"
                       value={formData.username}
                       onChange={handleChange}
                       required
                       pattern="^[a-zA-Z0-9_]{3,30}$"
-                      status={
-                        isCheckingUsername ? "Checking availability..." : null
-                      }
                       inputProps={{
                         placeholder: "Username",
                         className: `global-form-field-input${
-                          errors.username ? ` global-form-field-error` : ""
+                          errors.username ? "" : ""
                         }`,
-                        title:
-                          "Username must be 3-30 characters and contain only letters, numbers, and underscores",
+                        title: "Use username given by the admin",
                         id: "username",
                       }}
                     >
                       {errors.username && (
                         <div className="global-form-field-error">
-                          {errors.username}
+                          {errors.username === "This field is required"
+                            ? "This field is required"
+                            : errors.username}
                         </div>
                       )}
                     </FormField>
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label="Email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      inputProps={{
-                        placeholder: "Email",
-                        className: `global-form-field-input${
-                          errors.email ? ` global-form-field-error` : ""
-                        }`,
-                        title: "Enter a valid email address",
-                        id: "email",
-                      }}
+                      label="Phone number"
+                      name="phone_number"
+                      as="custom"
+                      required={true}
                     >
-                      {errors.email && (
+                      <div className={styles.phoneInputWrapper}>
+                        <span className={styles.phonePrefix}>+63</span>
+                        <input
+                          type="text"
+                          id="phone_number"
+                          name="phone_number"
+                          value={formData.phone_number}
+                          onChange={(e) => {
+                            let val = e.target.value
+                              .replace(/[^0-9]/g, "")
+                              .slice(0, 10);
+                            if (val.length > 3 && val.length <= 7)
+                              val = val.replace(/(\d{3})(\d+)/, "$1-$2");
+                            else if (val.length > 7)
+                              val = val.replace(
+                                /(\d{3})(\d{4})(\d+)/,
+                                "$1-$2-$3"
+                              );
+                            setFormData({ ...formData, phone_number: val });
+                            if (errors.phone_number)
+                              setErrors((prev) => ({
+                                ...prev,
+                                phone_number: "",
+                              }));
+                          }}
+                          placeholder="XXX-XXXX-XXX"
+                          className={`global-form-field-input${
+                            errors.phone_number
+                              ? " global-form-field-error"
+                              : ""
+                          } ${styles.phoneInput}`}
+                          autoComplete="tel"
+                          maxLength={12}
+                          pattern="[0-9]{3}-[0-9]{4}-[0-9]{3}"
+                          title="Enter a valid mobile number"
+                          required
+                        />
+                      </div>
+                      {errors.phone_number && (
                         <div className="global-form-field-error">
-                          {errors.email}
+                          {errors.phone_number}
                         </div>
                       )}
                     </FormField>
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label="Password"
+                      label={
+                        <span>
+                          Create password{" "}
+                          <span className={styles.requiredAsterisk}>*</span>
+                        </span>
+                      }
                       name="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={handleChange}
                       required
                       pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
                       inputProps={{
                         placeholder: "Password",
-                        className: `global-form-field-input${
-                          errors.password ? ` global-form-field-error` : ""
-                        }`,
+                        className: `${
+                          styles.inputWithIcon
+                        } global-form-field-input${errors.password ? "" : ""}`,
                         title:
                           "Password must be at least 8 characters and include uppercase, lowercase, number and special character",
                         id: "password",
                         autoComplete: "new-password",
+                        onFocus: () => setPasswordFocused(true),
+                        onBlur: () => setPasswordFocused(false),
                       }}
                     >
-                      {errors.password && (
-                        <div className="global-form-field-error">
-                          {errors.password}
+                      <div className={styles.passwordFieldWrapper}>
+                        <div className={styles.passwordInputRow}>
+                          {/* Password input is rendered by FormField */}
+                          <button
+                            type="button"
+                            aria-label={
+                              showPassword ? "Hide password" : "Show password"
+                            }
+                            onClick={() => setShowPassword((v) => !v)}
+                            className={styles.inputIconBtn}
+                            tabIndex={-1}
+                          >
+                            {showPassword ? (
+                              <MdVisibilityOff size={22} />
+                            ) : (
+                              <MdVisibility size={22} />
+                            )}
+                          </button>
                         </div>
-                      )}
+                        {errors.password && (
+                          <div className="global-form-field-error">
+                            {errors.password === "This field is required"
+                              ? "This field is required"
+                              : errors.password}
+                          </div>
+                        )}
+                        {passwordFocused && (
+                          <div className={styles.passwordPopupError}>
+                            <ul className={styles.passwordRequirementsList}>
+                              <li
+                                className={
+                                  passwordRequirements.hasLower
+                                    ? styles.requirementMet
+                                    : styles.requirementUnmet
+                                }
+                              >
+                                At least one lowercase letter (a-z)
+                              </li>
+                              <li
+                                className={
+                                  passwordRequirements.hasUpper
+                                    ? styles.requirementMet
+                                    : styles.requirementUnmet
+                                }
+                              >
+                                At least one uppercase letter (A-Z)
+                              </li>
+                              <li
+                                className={
+                                  passwordRequirements.hasNumber
+                                    ? styles.requirementMet
+                                    : styles.requirementUnmet
+                                }
+                              >
+                                At least one number (0-9)
+                              </li>
+                              <li
+                                className={
+                                  /[@$!%*?&]/.test(formData.password)
+                                    ? styles.requirementMet
+                                    : styles.requirementUnmet
+                                }
+                              >
+                                At least one special character (@$!%*?&)
+                              </li>
+                              <li
+                                className={
+                                  formData.password.length >= 8
+                                    ? styles.requirementMet
+                                    : styles.requirementUnmet
+                                }
+                              >
+                                At least 8 characters long
+                              </li>
+                            </ul>
+                          </div>
+                        )}
+                      </div>
                     </FormField>
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label="Confirm Password"
+                      label={
+                        <span>
+                          Re-enter password{" "}
+                          <span className={styles.requiredAsterisk}>*</span>
+                        </span>
+                      }
                       name="passwordConfirm"
-                      type="password"
+                      type={showPasswordConfirm ? "text" : "password"}
                       value={formData.passwordConfirm}
                       onChange={handleChange}
                       required
                       inputProps={{
                         placeholder: "Confirm Password",
-                        className: `global-form-field-input${
-                          errors.passwordConfirm
-                            ? ` global-form-field-error`
-                            : ""
+                        className: `${
+                          styles.inputWithIcon
+                        } global-form-field-input${
+                          errors.passwordConfirm ? "" : ""
                         }`,
                         id: "passwordConfirm",
                         autoComplete: "new-password",
                       }}
                     >
-                      {errors.passwordConfirm && (
-                        <div className="global-form-field-error">
-                          {errors.passwordConfirm}
+                      <div className={styles.passwordFieldWrapper}>
+                        <div className={styles.passwordInputRow}>
+                          {/* Password confirm input is rendered by FormField */}
+                          <button
+                            type="button"
+                            aria-label={
+                              showPasswordConfirm
+                                ? "Hide password"
+                                : "Show password"
+                            }
+                            onClick={() => setShowPasswordConfirm((v) => !v)}
+                            className={styles.inputIconBtn}
+                            tabIndex={-1}
+                          >
+                            {showPasswordConfirm ? (
+                              <MdVisibilityOff size={22} />
+                            ) : (
+                              <MdVisibility size={22} />
+                            )}
+                          </button>
                         </div>
-                      )}
-                    </FormField>
-                  </div>
-                  {/* Role selection field removed */}
-                  <div
-                    className={`${styles.formGroup} ${styles.phoneFormGroup}`}
-                  >
-                    <FormField
-                      label="Phone Number"
-                      name="phone_number"
-                      value={formData.phone_number}
-                      onChange={handleChange}
-                      required={false}
-                      inputProps={{
-                        placeholder: "+123456789",
-                        className: `global-form-field-input${
-                          errors.phone_number ? ` global-form-field-error` : ""
-                        }`,
-                        id: "phone_number",
-                        title:
-                          "Enter international format with + and 7-15 digits",
-                      }}
-                    >
-                      {errors.phone_number && (
-                        <div className="global-form-field-error">
-                          {errors.phone_number}
-                        </div>
-                      )}
-                      <div className={styles.helperText}>
-                        Format: +[country code][number] (e.g., +12345678901)
+                        {errors.passwordConfirm && (
+                          <div className="global-form-field-error">
+                            {errors.passwordConfirm ===
+                              "This field is required" ||
+                            !formData.passwordConfirm
+                              ? "This field is required"
+                              : errors.passwordConfirm}
+                          </div>
+                        )}
                       </div>
                     </FormField>
                   </div>
@@ -373,7 +480,7 @@ const Register = () => {
                   className={`action-btn${isSubmitting ? " disabled" : ""}`}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Processing..." : "Register"}
+                  {isSubmitting ? "Processing..." : "Complete Registration"}
                 </button>
               </form>
               <div className={styles.registerLink}>

@@ -9,9 +9,9 @@ export function FormField({
   onChange,
   required = true,
   inputProps = {},
-  children, // for select or helper/error/status
+  children, // for select or helper/error/status or custom input
   as = "input",
-  status = null, // new prop for status text (e.g., checking availability)
+  status = null,
   ...rest
 }) {
   return (
@@ -26,44 +26,49 @@ export function FormField({
           )}
         </div>
       )}
-      {as === "select" ? (
-        <select
-          className="global-form-field-select"
-          name={name}
-          id={name}
-          value={value}
-          onChange={onChange}
-          required={required}
-          {...rest}
-        >
-          {children}
-        </select>
-      ) : as === "textarea" ? (
-        <textarea
-          className={inputProps.className || "global-form-field-textarea"}
-          name={name}
-          id={name}
-          value={value}
-          onChange={onChange}
-          required={required}
-          {...inputProps}
-          {...rest}
-        />
-      ) : (
-        <input
-          className="global-form-field-input"
-          type={type}
-          name={name}
-          id={name}
-          value={value}
-          onChange={onChange}
-          required={required}
-          {...inputProps}
-          {...rest}
-        />
-      )}
-      {/* Render children below the input/select/textarea for helper/status/error messages */}
-      {as !== "select" && children}
+      <div className="global-form-field-relative-wrapper">
+        {/* If children is a custom input (like phone), render it directly. Otherwise, render the default input/select/textarea. */}
+        {children && as === "custom" ? (
+          children
+        ) : as === "select" ? (
+          <select
+            className="global-form-field-select"
+            name={name}
+            id={name}
+            value={value}
+            onChange={onChange}
+            required={required}
+            {...rest}
+          >
+            {children}
+          </select>
+        ) : as === "textarea" ? (
+          <textarea
+            className={inputProps.className || "global-form-field-textarea"}
+            name={name}
+            id={name}
+            value={value}
+            onChange={onChange}
+            required={required}
+            {...inputProps}
+            {...rest}
+          />
+        ) : (
+          <input
+            className={inputProps.className || "global-form-field-input"}
+            type={type}
+            name={name}
+            id={name}
+            value={value}
+            onChange={onChange}
+            required={required}
+            {...inputProps}
+            {...rest}
+          />
+        )}
+        {/* Render children inside the relative wrapper for icons, popups, etc. */}
+        {children && as !== "custom" && as !== "select" && children}
+      </div>
     </div>
   );
 }

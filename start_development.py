@@ -265,8 +265,8 @@ def is_process_running(snippet):
                 if pid.isdigit() and int(pid) != 0:
                     # Exclude our own process
                     if int(pid) != os.getpid():
-                        logger.debug(
-                            f"Found process with PID {pid} for snippet '{snippet}'"
+                        print(
+                            f"[DEBUG] Found process with PID {pid} for snippet '{snippet}'"
                         )
                         found = True
         return found
