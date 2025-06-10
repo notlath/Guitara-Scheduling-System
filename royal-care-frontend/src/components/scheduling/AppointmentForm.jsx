@@ -295,15 +295,20 @@ const AppointmentForm = ({
   // Mark form as ready when we have essential data
   useEffect(() => {
     if (services.length > 0 && !loading) {
+      if (!isFormReady) {
+        console.log("Form is now ready - services loaded successfully");
+      }
       setIsFormReady(true);
     }
-  }, [services.length, loading]);
+  }, [services.length, loading, isFormReady]);
 
-  // Add loading timeout to prevent infinite loading
+  // Add loading timeout to prevent infinite loading, but track if we've warned already
+  const hasWarnedRef = useRef(false);
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (!isFormReady && !loading) {
+      if (!isFormReady && !loading && !hasWarnedRef.current) {
         console.warn("Form loading timeout reached, forcing ready state");
+        hasWarnedRef.current = true;
         setIsFormReady(true);
       }
     }, 5000); // Reduced from 10 seconds to 5 seconds
@@ -1051,13 +1056,7 @@ const AppointmentForm = ({
     );
   }
 
-  // If we have services but form is still not ready, don't show warning if services just loaded
-  if (!isFormReady && services.length > 0) {
-    // Only warn if form has been trying to load for a while and still not ready
-    if (initialDataFetchedRef.current) {
-      console.warn("Form forced to display despite not being ready");
-    }
-  }
+  // Return the form once we have essential data
   return (
     <div className="appointment-form-container">
       <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
@@ -1096,7 +1095,7 @@ const AppointmentForm = ({
             <option value="">Select a client</option>
             {clients && clients.length > 0 ? (
               clients.map((client) => (
-                <option key={client.id} value={client.id}>
+                <option key={`client-${client.id}`} value={client.id}>
                   {client.first_name || ""} {client.last_name || ""} -{" "}
                   {client.phone_number || "No phone"}
                 </option>
@@ -1184,7 +1183,7 @@ const AppointmentForm = ({
                 </option>
               ) : availableTherapists && availableTherapists.length > 0 ? (
                 availableTherapists.map((therapist) => (
-                  <option key={therapist.id} value={therapist.id}>
+                  <option key={`single-therapist-${therapist.id}`} value={therapist.id}>
                     {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
                     {therapist.specialization || "General"} -{" "}
                     {therapist.massage_pressure || "Standard"}{" "}
@@ -1263,7 +1262,7 @@ const AppointmentForm = ({
                 </option>
               ) : availableTherapists && availableTherapists.length > 0 ? (
                 availableTherapists.map((therapist) => (
-                  <option key={therapist.id} value={therapist.id}>
+                  <option key={`multi-therapist-${therapist.id}`} value={therapist.id}>
                     {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
                     {therapist.specialization || "General"} -{" "}
                     {therapist.massage_pressure || "Standard"}{" "}
@@ -1335,7 +1334,7 @@ const AppointmentForm = ({
               </option>
             ) : availableDrivers && availableDrivers.length > 0 ? (
               availableDrivers.map((driver) => (
-                <option key={driver.id} value={driver.id}>
+                <option key={`driver-${driver.id}`} value={driver.id}>
                   {driver.first_name || ""} {driver.last_name || ""} -
                   {driver.motorcycle_plate || "No plate"}{" "}
                   {driver.start_time && driver.end_time
