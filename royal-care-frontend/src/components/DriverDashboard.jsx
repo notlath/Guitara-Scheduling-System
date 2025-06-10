@@ -14,7 +14,7 @@ import {
 } from "../features/scheduling/schedulingSlice";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
-import { PageLoadingState } from "./common/LoadingComponents";
+import { PageLoadingState, LoadingButton } from "./common/LoadingComponents";
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -109,12 +109,22 @@ const DriverDashboard = () => {
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set("view", newView);
     setSearchParams(newSearchParams);
-  };
-  const [rejectionModal, setRejectionModal] = useState({
+  };  const [rejectionModal, setRejectionModal] = useState({
     isOpen: false,
     appointmentId: null,
   });
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  // Loading states for individual button actions
+  const [buttonLoading, setButtonLoading] = useState({});
+
+  // Helper function to set loading state for specific action
+  const setActionLoading = (actionKey, isLoading) => {
+    setButtonLoading(prev => ({
+      ...prev,
+      [actionKey]: isLoading
+    }));
+  };
 
   const { user } = useSelector((state) => state.auth);
   const {
@@ -314,10 +324,11 @@ const DriverDashboard = () => {
     dispatch(logout());
     navigate("/");
   };
-
   // Handle appointment status changes with optimized refresh and optimistic updates
   const handleAcceptAppointment = async (appointmentId) => {
+    const actionKey = `accept_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
       await dispatch(driverConfirm(appointmentId)).unwrap();
       // Only refresh current view data to minimize API calls
       refreshAppointments(true);
@@ -331,36 +342,50 @@ const DriverDashboard = () => {
       } else {
         alert("Failed to accept appointment. Please try again.");
       }
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
   const handleDriverConfirm = async (appointmentId) => {
+    const actionKey = `confirm_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
       await dispatch(driverConfirm(appointmentId)).unwrap();
       refreshAppointments(true);
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
   const handleStartJourney = async (appointmentId) => {
+    const actionKey = `journey_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
       await dispatch(startJourney(appointmentId)).unwrap();
       refreshAppointments(true);
     } catch (error) {
       console.error("Failed to start journey:", error);
       alert("Failed to start journey. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
   const handleMarkArrived = async (appointmentId) => {
+    const actionKey = `arrived_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
       await dispatch(markArrived(appointmentId)).unwrap();
       refreshAppointments(true);
     } catch (error) {
       console.error("Failed to mark arrived:", error);
       alert("Failed to mark arrived. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
@@ -463,9 +488,10 @@ const DriverDashboard = () => {
       }
     }
   };
-
   const handleDropOff = async (appointmentId) => {
+    const actionKey = `dropoff_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
       await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
@@ -477,6 +503,8 @@ const DriverDashboard = () => {
     } catch (error) {
       console.error("Failed to mark drop off:", error);
       alert("Failed to mark drop off. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
@@ -746,8 +774,7 @@ const DriverDashboard = () => {
       default:
         return "";
     }
-  };
-  const renderActionButtons = (appointment) => {
+  };  const renderActionButtons = (appointment) => {
     const { status, id, both_parties_accepted, requires_car } = appointment;
     const isGroupTransport =
       appointment.therapist_group && appointment.therapist_group.length > 1;
@@ -757,18 +784,21 @@ const DriverDashboard = () => {
       case "pending":
         return (
           <div className="appointment-actions">
-            <button
+            <LoadingButton
               className="accept-button"
               onClick={() => handleAcceptAppointment(id)}
+              loading={buttonLoading[`accept_${id}`]}
+              loadingText="Accepting..."
             >
               Accept {isGroupTransport ? "Group Transport" : "Transport"}
-            </button>
-            <button
+            </LoadingButton>
+            <LoadingButton
               className="reject-button"
               onClick={() => handleRejectAppointment(id)}
+              variant="secondary"
             >
               Reject
-            </button>
+            </LoadingButton>
             {requiresCompanyCar && (
               <div className="transport-info">
                 <span className="vehicle-required">
@@ -807,17 +837,18 @@ const DriverDashboard = () => {
               )}
             </div>
           );
-        }
-      case "therapist_confirmed":
+        }      case "therapist_confirmed":
         // Driver always needs to confirm regardless of vehicle type
         return (
           <div className="appointment-actions">
-            <button
+            <LoadingButton
               className="confirm-button"
               onClick={() => handleDriverConfirm(id)}
+              loading={buttonLoading[`confirm_${id}`]}
+              loadingText="Confirming..."
             >
               Confirm Ready to Drive
-            </button>
+            </LoadingButton>
             <div className="workflow-info">
               <p>✅ All therapists confirmed. Please confirm you're ready.</p>
               {requires_car || isGroupTransport ? (
@@ -827,8 +858,7 @@ const DriverDashboard = () => {
               )}
             </div>
           </div>
-        );
-      case "driver_confirmed":
+        );      case "driver_confirmed":
         // Both confirmed, operator will start appointment
         return (
           <div className="appointment-actions">
@@ -837,34 +867,38 @@ const DriverDashboard = () => {
               <p>Waiting for operator to start appointment...</p>
             </div>
           </div>
-        );
-
-      case "in_progress":
+        );      case "in_progress":
         // Operator started appointment, driver can start journey
         return (
           <div className="appointment-actions">
-            <button
+            <LoadingButton
               className="start-journey-button"
               onClick={() => handleStartJourney(id)}
+              loading={buttonLoading[`journey_${id}`]}
+              loadingText="Starting..."
             >
               Start Journey
-            </button>
+            </LoadingButton>
             <div className="ready-info">
               <p>
                 🚀 Appointment started by operator. Ready to begin transport!
               </p>
             </div>
           </div>
-        );      case "journey_started":
+        );
+
+      case "journey_started":
       case "journey": // Handle both journey statuses
         return (
           <div className="appointment-actions">
-            <button
+            <LoadingButton
               className="arrive-button"
               onClick={() => handleMarkArrived(id)}
+              loading={buttonLoading[`arrived_${id}`]}
+              loadingText="Marking..."
             >
               Mark Arrived at Pickup
-            </button>
+            </LoadingButton>
             <div className="journey-status">
               <span className="journey-badge">🚗 Journey in progress</span>
               <p>Driving to pick up therapist...</p>
