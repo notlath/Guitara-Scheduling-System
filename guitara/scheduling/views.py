@@ -607,7 +607,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Create notifications for all involved parties
         self._create_notifications(
-            appointment,        "appointment_cancelled",
+            appointment,
+            "appointment_cancelled",
             f"Appointment for {appointment.client} on {appointment.date} at {appointment.start_time} has been cancelled.",
         )
         serializer = self.get_serializer(appointment)
@@ -1521,7 +1522,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         if not is_assigned_therapist:
             return Response(
-                {"error": "You don't have permission to request pickup for this appointment"},
+                {
+                    "error": "You don't have permission to request pickup for this appointment"
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 

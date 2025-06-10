@@ -15,7 +15,7 @@ import {
 } from "../features/scheduling/schedulingSlice";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
-import { PageLoadingState } from "./common/LoadingComponents";
+import { LoadingButton, PageLoadingState } from "./common/LoadingComponents";
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -48,6 +48,17 @@ const TherapistDashboard = () => {
     appointmentId: null,
   });
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Loading states for individual button actions
+  const [buttonLoading, setButtonLoading] = useState({});
+
+  // Helper function to set loading state for specific action
+  const setActionLoading = (actionKey, isLoading) => {
+    setButtonLoading((prev) => ({
+      ...prev,
+      [actionKey]: isLoading,
+    }));
+  };
 
   const { user } = useSelector((state) => state.auth);
   const {
@@ -180,7 +191,9 @@ const TherapistDashboard = () => {
 
   // Handle appointment status changes with optimized refresh and optimistic updates
   const handleAcceptAppointment = async (appointmentId) => {
+    const actionKey = `accept_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
       await dispatch(therapistConfirm(appointmentId)).unwrap();
       // Only refresh current view data to minimize API calls
       refreshAppointments(true);
@@ -194,6 +207,8 @@ const TherapistDashboard = () => {
       } else {
         alert("Failed to accept appointment. Please try again.");
       }
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
@@ -248,35 +263,46 @@ const TherapistDashboard = () => {
       setRejectionModal({ isOpen: false, appointmentId: null });
     }
   };
-
   // Enhanced workflow handlers for new service flow
   const handleTherapistConfirm = async (appointmentId) => {
+    const actionKey = `confirm_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
       await dispatch(therapistConfirm(appointmentId)).unwrap();
       refreshAppointments(true);
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
   const handleStartSession = async (appointmentId) => {
+    const actionKey = `start_session_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
       await dispatch(startSession(appointmentId)).unwrap();
       refreshAppointments(true);
     } catch (error) {
       console.error("Failed to start session:", error);
       alert("Failed to start session. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
   const handleRequestPayment = async (appointmentId) => {
+    const actionKey = `request_payment_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
       await dispatch(requestPayment(appointmentId)).unwrap();
       refreshAppointments(true);
     } catch (error) {
       console.error("Failed to request payment:", error);
       alert("Failed to request payment. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
@@ -284,18 +310,24 @@ const TherapistDashboard = () => {
     if (
       window.confirm("Complete this session? This action cannot be undone.")
     ) {
+      const actionKey = `complete_session_${appointmentId}`;
       try {
+        setActionLoading(actionKey, true);
         await dispatch(completeAppointment(appointmentId)).unwrap();
         refreshAppointments(true);
       } catch (error) {
         console.error("Failed to complete session:", error);
         alert("Failed to complete session. Please try again.");
+      } finally {
+        setActionLoading(actionKey, false);
       }
     }
   };
 
   const handleRequestPickupNew = async (appointmentId, urgency = "normal") => {
+    const actionKey = `request_pickup_${appointmentId}_${urgency}`;
     try {
+      setActionLoading(actionKey, true);
       await dispatch(
         requestPickup({
           appointmentId,
@@ -315,6 +347,8 @@ const TherapistDashboard = () => {
     } catch (error) {
       console.error("Failed to request pickup:", error);
       alert("Failed to request pickup. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
@@ -402,25 +436,27 @@ const TherapistDashboard = () => {
       // For single therapist appointments (legacy)
       return therapist_accepted;
     };
-
     switch (status) {
       case "pending":
         // Show accept/reject only if current therapist hasn't accepted yet
         if (!hasCurrentTherapistAccepted()) {
           return (
             <div className="appointment-actions">
-              <button
+              <LoadingButton
                 className="accept-button"
                 onClick={() => handleAcceptAppointment(id)}
+                loading={buttonLoading[`accept_${id}`]}
+                loadingText="Accepting..."
               >
                 Accept
-              </button>
-              <button
+              </LoadingButton>
+              <LoadingButton
                 className="reject-button"
                 onClick={() => handleRejectAppointment(id)}
+                variant="secondary"
               >
                 Reject
-              </button>
+              </LoadingButton>
             </div>
           );
         } else {
@@ -444,12 +480,14 @@ const TherapistDashboard = () => {
         if (both_parties_accepted) {
           return (
             <div className="appointment-actions">
-              <button
+              <LoadingButton
                 className="confirm-button"
                 onClick={() => handleTherapistConfirm(id)}
+                loading={buttonLoading[`confirm_${id}`]}
+                loadingText="Confirming..."
               >
                 Confirm Ready
-              </button>
+              </LoadingButton>
               <div className="workflow-info">
                 <p>
                   ✅ All parties accepted. Please confirm you're ready to
@@ -520,17 +558,18 @@ const TherapistDashboard = () => {
             </div>
           </div>
         );
-
       case "dropped_off":
         // Session should auto-start, but allow manual start if needed
         return (
           <div className="appointment-actions">
-            <button
+            <LoadingButton
               className="start-session-button"
               onClick={() => handleStartSession(id)}
+              loading={buttonLoading[`start_session_${id}`]}
+              loadingText="Starting..."
             >
               Start Session
-            </button>
+            </LoadingButton>
             <div className="dropped-off-info">
               <p>📍 Dropped off at client location</p>
             </div>
@@ -539,12 +578,14 @@ const TherapistDashboard = () => {
       case "session_in_progress":
         return (
           <div className="appointment-actions">
-            <button
+            <LoadingButton
               className="payment-button"
               onClick={() => handleRequestPayment(id)}
+              loading={buttonLoading[`request_payment_${id}`]}
+              loadingText="Requesting..."
             >
               Request Payment
-            </button>
+            </LoadingButton>
             <div className="session-info">
               <p>💆 Session in progress</p>
             </div>
@@ -560,16 +601,17 @@ const TherapistDashboard = () => {
             </div>
           </div>
         );
-
       case "payment_completed":
         return (
           <div className="appointment-actions">
-            <button
+            <LoadingButton
               className="complete-session-button"
               onClick={() => handleCompleteSession(id)}
+              loading={buttonLoading[`complete_session_${id}`]}
+              loadingText="Completing..."
             >
               Complete Session
-            </button>
+            </LoadingButton>
             <div className="payment-info">
               <p>✅ Payment verified by operator</p>
             </div>
@@ -609,14 +651,18 @@ const TherapistDashboard = () => {
                           ? "🚨 URGENT Pickup Requested"
                           : "⏰ Pickup Requested"}
                       </span>
-                      <p>Waiting for driver assignment...</p>
+                      <p>Waiting for driver assignment...</p>{" "}
                       {appointment.pickup_urgency !== "urgent" && (
-                        <button
+                        <LoadingButton
                           className="urgent-pickup-button"
                           onClick={() => handleRequestPickupNew(id, "urgent")}
+                          loading={buttonLoading[`request_pickup_${id}_urgent`]}
+                          loadingText="Requesting..."
+                          variant="warning"
+                          size="small"
                         >
                           Request Urgent Pickup
-                        </button>
+                        </LoadingButton>
                       )}
                     </div>
                   )}
@@ -624,18 +670,23 @@ const TherapistDashboard = () => {
               ) : (
                 <div className="pickup-actions">
                   <p className="pickup-info">Session completed. Need pickup?</p>
-                  <button
+                  <LoadingButton
                     className="request-pickup-button"
                     onClick={() => handleRequestPickupNew(id, "normal")}
+                    loading={buttonLoading[`request_pickup_${id}_normal`]}
+                    loadingText="Requesting..."
                   >
                     Request Pickup
-                  </button>
-                  <button
+                  </LoadingButton>
+                  <LoadingButton
                     className="urgent-pickup-button"
                     onClick={() => handleRequestPickupNew(id, "urgent")}
+                    loading={buttonLoading[`request_pickup_${id}_urgent`]}
+                    loadingText="Requesting..."
+                    variant="warning"
                   >
                     Request Urgent Pickup
-                  </button>
+                  </LoadingButton>
                 </div>
               )}
             </div>

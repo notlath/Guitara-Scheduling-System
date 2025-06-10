@@ -1,8 +1,12 @@
 import os
+import asyncio
 from supabase import create_client, Client
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()  # Loads .env automatically
+
+logger = logging.getLogger(__name__)
 
 # Try to get from environment variables with various naming conventions
 def get_supabase_client():
