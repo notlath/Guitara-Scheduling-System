@@ -12,6 +12,8 @@ import time
 import webbrowser
 import urllib.request
 from pathlib import Path
+import signal
+import re
 
 
 def is_windows():
@@ -32,11 +34,58 @@ def open_browser():
         return False
 
 
+def kill_existing_cmd_windows(window_title):
+    """Kill all cmd.exe windows whose title contains the given string (Windows only)"""
+    if not is_windows():
+        return
+    try:
+        import subprocess
+        result = subprocess.check_output(
+            'tasklist /v /fi "IMAGENAME eq cmd.exe"',
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+        lines = result.splitlines()
+        for line in lines:
+            if window_title.lower() in line.lower() and "cmd.exe" in line.lower():
+                # Split by 2 or more spaces to get columns
+                columns = re.split(r"\s{2,}", line.strip())
+                if len(columns) > 2 and columns[1].isdigit():
+                    pid = int(columns[1])
+                    subprocess.run(f'taskkill /PID {pid} /F', shell=True)
+    except Exception as e:
+        print(f"⚠️ Could not close existing '{window_title}' windows: {e}")
+
+
+def kill_by_command_snippet(snippet):
+    """Kill all processes whose command line contains the given snippet (Windows only)"""
+    if not is_windows():
+        return
+    try:
+        import subprocess
+        # Use wmic to find processes with the command line containing the snippet
+        result = subprocess.check_output(
+            f'wmic process where "CommandLine like \'%{snippet}%\'" get ProcessId,CommandLine /FORMAT:LIST',
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+        for line in result.splitlines():
+            if line.startswith("ProcessId="):
+                pid = line.split("=")[-1].strip()
+                if pid.isdigit():
+                    subprocess.run(f'taskkill /PID {pid} /F', shell=True)
+    except Exception as e:
+        print(f"⚠️ Could not close processes with command snippet '{snippet}': {e}")
+
+
 def start_backend():
     """Start Django backend server in new terminal"""
     print("� Starting Django backend...")
 
     if is_windows():
+        kill_by_command_snippet("manage.py runserver")
         # Windows: activate venv, cd to guitara, run server
         cmd = 'start cmd /k "title Django Backend && venv\\Scripts\\activate && cd guitara && python manage.py runserver"'
         subprocess.run(cmd, shell=True, cwd=Path(__file__).parent)
@@ -95,6 +144,10 @@ def start_frontend():
     print("🌐 Starting React frontend...")
 
     if is_windows():
+        # Try to kill all possible frontend dev processes
+        kill_by_command_snippet("npm run dev")
+        kill_by_command_snippet("vite")
+        kill_by_command_snippet("node dev")
         # Windows: cd to frontend, run dev server
         cmd = 'start cmd /k "title React Frontend && cd royal-care-frontend && npm run dev"'
         subprocess.run(cmd, shell=True, cwd=Path(__file__).parent)
@@ -190,6 +243,34 @@ def wait_for_server(url, timeout=60, interval=1):
     return False
 
 
+def is_process_running(snippet):
+    """Return True if any process with the given command line snippet is running (Windows only)"""
+    if not is_windows():
+        return False
+    try:
+        import subprocess
+        result = subprocess.check_output(
+            f'wmic process where "CommandLine like \'%{snippet}%\'" get ProcessId,CommandLine /FORMAT:LIST',
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+        found = False
+        for line in result.splitlines():
+            if line.startswith("ProcessId="):
+                pid = line.split("=")[-1].strip()
+                if pid.isdigit() and int(pid) != 0:
+                    # Exclude our own process
+                    if int(pid) != os.getpid():
+                        print(f"[DEBUG is_process_running] Found process with PID {pid} for snippet '{snippet}'")
+                        found = True
+        return found
+    except Exception as e:
+        print(f"[DEBUG is_process_running] Exception: {e}")
+        pass
+    return False
+
+
 def main():
     print("🎯 Guitara Development Server Starter")
     print("=" * 40)
@@ -202,24 +283,30 @@ def main():
             input()
         return
 
-    # Start servers
+    # Start servers (kill old ones inside start_backend/start_frontend)
     backend_ok = start_backend()
     if backend_ok:
-        # Wait for backend to be up
         backend_ready = wait_for_server("http://127.0.0.1:8000/", timeout=60)
         if not backend_ready:
             print("\n⚠️ Backend did not start in time")
             return
-        time.sleep(2)  # Wait a bit before starting frontend
+        time.sleep(2)
         frontend_ok = start_frontend()
 
         if frontend_ok:
-            # Wait for frontend to be up
             frontend_ready = wait_for_server("http://localhost:5173/", timeout=60)
             if frontend_ready:
-                # Open browser automatically
-                open_browser()
-
+                # Now check if servers are running (after kill/start)
+                backend_running = is_process_running("manage.py runserver")
+                frontend_running = (
+                    is_process_running("npm run dev") or is_process_running("vite") or is_process_running("node dev")
+                )
+                print(f"[DEBUG] (post-start) backend_running: {backend_running}, frontend_running: {frontend_running}")
+                if backend_running or frontend_running:
+                    print("[DEBUG] Opening browser...")
+                    open_browser()
+                else:
+                    print("[DEBUG] Not opening browser (servers not running)")
                 print("\n🎉 Both servers started!")
                 print("📋 Running on:")
                 print("   🖥️  Django Backend: http://127.0.0.1:8000/")

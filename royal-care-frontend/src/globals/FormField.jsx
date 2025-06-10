@@ -11,14 +11,20 @@ export function FormField({
   inputProps = {},
   children, // for select or helper/error/status
   as = "input",
+  status = null, // new prop for status text (e.g., checking availability)
   ...rest
 }) {
   return (
     <div className="global-form-field-group">
       {label && (
-        <label className="global-form-field-label" htmlFor={name}>
-          {label}
-        </label>
+        <div className="global-form-field-label-row">
+          <label className="global-form-field-label" htmlFor={name}>
+            {label}
+          </label>
+          {status && (
+            <span className="global-form-field-status-text">{status}</span>
+          )}
+        </div>
       )}
       {as === "select" ? (
         <select

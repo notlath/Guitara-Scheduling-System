@@ -5,11 +5,26 @@
   flex-direction: column;
   align-items: stretch;
 }
+.global-form-field-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 2px;
+}
 .global-form-field-label {
   font-size: var(--font-size-sm);
   color: var(--muted);
   font-weight: 400;
-  align-self: flex-start;
+}
+.global-form-field-status-text {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+  letter-spacing: 0.01em;
+  margin-top: 0;
+  margin-left: 12px;
+  white-space: nowrap;
 }
 .global-form-field-input,
 .global-form-field-select {
@@ -17,7 +32,7 @@
   font-size: var(--font-size-base);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
-  /* background: var(--input-bg); */
+  background: var(--input-bg);
   color: var(--text);
   outline: none;
   transition: border-color 0.2s;
@@ -31,7 +46,7 @@
   font-size: var(--font-size-base);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
-  /* background: var(--input-bg); */
+  background: var(--input-bg);
   color: var(--text);
   outline: none;
   transition: border-color 0.2s;
@@ -55,4 +70,11 @@
 .flex-row-fields > * {
   flex: 1;
   min-width: 0;
+}
+.global-form-field-error {
+  color: var(--error);
+  font-size: var(--font-size-sm);
+  /* margin-top: var(--spacing-xxs); */
+  margin-left: 0;
+  font-weight: 400;
 }

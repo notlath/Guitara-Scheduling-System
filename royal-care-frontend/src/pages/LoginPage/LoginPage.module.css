@@ -55,7 +55,7 @@
   color: var(--text);
   font-size: var(--font-size-xxl);
   margin: 0;
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-ml);
 }
 
 .loginForm {
@@ -89,27 +89,6 @@
   text-decoration: underline;
 }
 
-.loginButton {
-  width: 100%;
-  background-color: var(--primary);
-  color: var(--background);
-  border: none;
-  cursor: pointer;
-  font-size: var(--font-size-base);
-  padding: var(--spacing-xm); /* 16px horizontal padding */
-  border-radius: 6px; /* Match the border radius of the inputs */
-}
-
-.loginButtonDisabled {
-  pointer-events: none;
-  cursor: not-allowed;
-  background-color: var(--background-400);
-}
-
-.loginButton:hover {
-  background-color: var(--primary-hover);
-}
-
 .registerLink {
   text-align: center;
   font-size: var(--font-size-sm);
@@ -118,7 +97,7 @@
   width: 100%;
   max-width: none;
   display: block;
-  margin-top: var(--spacing-ml);
+  margin-top: var(--spacing-md);
 }
 
 .registerLinkAnchor {
@@ -149,24 +128,10 @@
   background: var(--background);
   border: 1px solid var(--error);
   border-radius: var(--border-radius);
-  padding: var(--spacing-xs) var(--spacing-mxs);
+  padding: var(--spacing-xs) var(--spacing-sm);
   /* font-weight: 400; */
   word-break: break-word;
   white-space: pre-line;
-}
-
-.fieldError {
-  color: var(--error);
-  font-size: var(--font-size-sm);
-  margin-top: var(--spacing-xxs);
-  margin-left: 0;
-  font-weight: 400;
-}
-
-.inputError {
-  border-color: var(--error) !important;
-  background-color: var(--error-bg, #fef2f2) !important;
-  /* border-radius removed to allow FormField.css to control it */
 }
 
 .phoneFormGroup {
@@ -178,10 +143,11 @@
 .statusText {
   color: var(--muted);
   font-size: var(--font-size-sm);
-  margin-top: var(--spacing-xxs);
-  margin-left: 0;
   font-style: italic;
   letter-spacing: 0.01em;
+  margin-top: 0;
+  margin-left: 12px;
+  white-space: nowrap;
 }
 
 /* Keep only unique styles for LoginPage */
