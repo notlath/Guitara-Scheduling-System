@@ -1731,7 +1731,7 @@ export const completeAppointment = createAsyncThunk(
 
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/complete_appointment/`,
+        `${API_URL}appointments/${appointmentId}/complete/`,
         {},
         {
           headers: { Authorization: `Token ${token}` },
