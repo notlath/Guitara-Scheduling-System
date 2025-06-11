@@ -1924,7 +1924,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def _get_driver_fifo_position(self, driver):
         """Get the position of a driver in the FIFO queue"""
         available_drivers = (
-            User.objects.filter(
+            CustomUser.objects.filter(
                 role="driver",
                 is_active=True,
                 last_available_at__isnull=False,  # Only drivers that are marked available
@@ -2080,3 +2080,51 @@ class ServiceViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Return all services"""
         return Service.objects.all()
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing notifications
+    """
+
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
+    search_fields = ["message", "notification_type"]
+    filterset_fields = ["is_read", "notification_type"]
+
+    def get_queryset(self):
+        """Return notifications for the current user"""
+        return Notification.objects.filter(user=self.request.user).order_by(
+            "-created_at"
+        )
+
+    @action(detail=True, methods=["post"])
+    def mark_as_read(self, request, pk=None):
+        """Mark notification as read"""
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save()
+        return Response({"status": "marked as read"})
+
+    @action(detail=True, methods=["post"])
+    def mark_as_unread(self, request, pk=None):
+        """Mark notification as unread"""
+        notification = self.get_object()
+        notification.is_read = False
+        notification.save()
+        return Response({"status": "marked as unread"})
+
+    @action(detail=False, methods=["post"])
+    def mark_all_as_read(self, request):
+        """Mark all notifications as read for the current user"""
+        updated_count = Notification.objects.filter(
+            user=request.user, is_read=False
+        ).update(is_read=True)
+        return Response({"status": f"{updated_count} notifications marked as read"})
+
+    @action(detail=False, methods=["get"])
+    def unread_count(self, request):
+        """Get count of unread notifications for the current user"""
+        count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({"unread_count": count})
