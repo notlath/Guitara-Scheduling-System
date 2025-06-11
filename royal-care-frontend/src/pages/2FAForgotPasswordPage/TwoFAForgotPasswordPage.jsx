@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./TwoFAForgotPasswordPage.module.css";
 
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
@@ -10,8 +10,26 @@ function TwoFAForgotPasswordPage() {
   }, []);
 
   const navigate = useNavigate();
-  const handleButtonClick = () => {
-    navigate("/enter-new-password");
+  const location = useLocation();
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+
+  // Get email from location.state
+  const email = location.state?.email;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError("");
+    if (!code) {
+      setError("Please enter the verification code.");
+      return;
+    }
+    if (!email) {
+      setError("Missing email. Please restart the reset process.");
+      return;
+    }
+    // Optionally, you could verify the code with the backend here before proceeding
+    navigate("/enter-new-password", { state: { email, code } });
   };
 
   return (
@@ -21,12 +39,12 @@ function TwoFAForgotPasswordPage() {
       </div>
 
       <div className={styles.formSide}>
-        <form className={styles.loginForm}>
+        <form className={styles.loginForm} onSubmit={handleSubmit}>
           <div className={styles.formGroup}>
             <h2 className={styles.formHeading}>
               Check your email for a verification code
             </h2>
-            <label htmlFor="username" className={styles.formLabel}>
+            <label htmlFor="verificationCode" className={styles.formLabel}>
               Code
             </label>
             <input
@@ -34,14 +52,13 @@ function TwoFAForgotPasswordPage() {
               id="verificationCode"
               placeholder="Enter verification code"
               className={styles.formInput}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
             />
+            {error && <div className={styles.errorText}>{error}</div>}
           </div>
 
-          <button
-            type="submit"
-            onClick={handleButtonClick}
-            className={styles.formButton}
-          >
+          <button type="submit" className={styles.formButton}>
             Verify
           </button>
         </form>

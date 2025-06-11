@@ -10,6 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
+print("[SETTINGS IMPORT] DJANGO_SETTINGS_MODULE:", os.environ.get("DJANGO_SETTINGS_MODULE"))
+print("[SETTINGS IMPORT] settings.py __file__:", __file__)
+
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 
@@ -195,6 +199,15 @@ CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
 CSP_IMG_SRC = ("'self'", "data:")
 CSP_CONNECT_SRC = ("'self'",)
 CSP_FONT_SRC = ("'self'", "data:")
+
+# Email configuration for Gmail SMTP
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="your_gmail_address@gmail.com")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="your_app_password")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Your Name <your_gmail_address@gmail.com>")
 
 # Enhanced logging for debugging authentication issues
 LOGGING = {
