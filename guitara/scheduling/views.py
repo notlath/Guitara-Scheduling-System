@@ -1933,7 +1933,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 # Exclude drivers that are currently assigned to active appointments
                 assigned_appointments__status__in=[
                     "pending",
-                    "confirmed", 
+                    "confirmed",
                     "therapist_confirmed",
                     "driver_confirmed",
                     "in_progress",
@@ -1944,12 +1944,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
             .order_by("last_available_at")
         )
-        
+
         # Get the position (1-indexed)
         for position, available_driver in enumerate(available_drivers, 1):
             if available_driver.id == driver.id:
                 return position
-        
+
         return None  # Driver not in FIFO queue
 
     def _get_driver_detailed_info(self, driver):
@@ -1957,21 +1957,33 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         last_completed_appointment = (
             Appointment.objects.filter(
                 assigned_driver=driver,
-                status__in=["completed", "dropped_off", "therapist_dropped_off"]
+                status__in=["completed", "dropped_off", "therapist_dropped_off"],
             )
-            .order_by('-updated_at')
+            .order_by("-updated_at")
             .first()
         )
-        
+
         return {
             "id": driver.id,
             "first_name": driver.first_name,
             "last_name": driver.last_name,
             "vehicle_type": getattr(driver, "vehicle_type", "Motorcycle"),
             "current_location": getattr(driver, "current_location", "Available"),
-            "last_available_at": driver.last_available_at.isoformat() if driver.last_available_at else None,
-            "last_drop_off_time": last_completed_appointment.updated_at.isoformat() if last_completed_appointment else None,
-            "last_vehicle_used": getattr(driver, "last_vehicle_used", getattr(driver, "vehicle_type", "Motorcycle")),
+            "last_available_at": (
+                driver.last_available_at.isoformat()
+                if driver.last_available_at
+                else None
+            ),
+            "last_drop_off_time": (
+                last_completed_appointment.updated_at.isoformat()
+                if last_completed_appointment
+                else None
+            ),
+            "last_vehicle_used": getattr(
+                driver,
+                "last_vehicle_used",
+                getattr(driver, "vehicle_type", "Motorcycle"),
+            ),
             "fifo_position": self._get_driver_fifo_position(driver),
         }
 
