@@ -221,7 +221,6 @@ const DriverDashboard = () => {
     ];
     return visibleStatuses.includes(apt.status);
   });
-
   // Separate filter for "All My Transports" view - includes completed transports
   const myAllTransports = appointments
     .filter((apt) => {
@@ -239,9 +238,9 @@ const DriverDashboard = () => {
         "dropped_off",
         "session_in_progress",
         "awaiting_payment",
-        "completed",
+        "completed", // This shows completed transports in "All My Transports"
         "pickup_requested",
-        "therapist_dropped_off", // This is when driver's work is complete
+        "therapist_dropped_off", // Legacy status support
         "payment_completed", // Session fully finished
         "driver_assigned_pickup", // Driver assigned for pickup
       ];
@@ -569,13 +568,55 @@ const DriverDashboard = () => {
     const actionKey = `dropoff_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
+
+      // Complete the appointment (therapist dropped off, transport finished)
       await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
-          status: "dropped_off",
-          action: "drop_off_therapist",
+          status: "completed",
+          action: "complete_appointment",
+          notes: `Transport completed - therapist dropped off successfully at ${new Date().toISOString()}`,
         })
       ).unwrap();
+
+      // Update driver availability status in FIFO queue
+      try {
+        const response = await fetch(
+          "http://localhost:8000/api/appointments/update_driver_availability/",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${localStorage.getItem("knoxToken")}`,
+            },
+            body: JSON.stringify({
+              status: "available",
+              current_location: "Available for new assignments",
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("✅ Driver marked as available in FIFO queue:", data);
+
+          // Broadcast driver availability for real-time updates
+          syncService.broadcast("driver_available", {
+            driver_id: user.id,
+            available_at: data.available_since,
+            assignment_method: "FIFO",
+            fifo_position: data.fifo_position,
+          });
+        } else {
+          console.error(
+            "Failed to update driver availability:",
+            response.status
+          );
+        }
+      } catch (availabilityError) {
+        console.error("Error updating driver availability:", availabilityError);
+      }
+
       refreshAppointments(true);
     } catch (error) {
       console.error("Failed to mark drop off:", error);
@@ -1040,13 +1081,15 @@ const DriverDashboard = () => {
             </div>
           </div>
         );
-
       case "completed":
         return (
           <div className="appointment-actions">
             <div className="completed-status">
               <span className="success-badge">✅ Transport completed</span>
-              <p>All services completed successfully.</p>
+              <p>
+                Therapist successfully dropped off. Available for new
+                assignments.
+              </p>
             </div>
           </div>
         );

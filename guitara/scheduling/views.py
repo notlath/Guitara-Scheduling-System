@@ -2000,7 +2000,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Return notifications for the current user"""
         return Notification.objects.filter(user=self.request.user).order_by(
-            "-timestamp"
+            "-created_at"
         )
 
     @action(detail=True, methods=["post"])

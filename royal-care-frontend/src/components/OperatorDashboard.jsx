@@ -665,50 +665,13 @@ const OperatorDashboard = () => {
     if (!requestTime) return "normal";
     const waitTime = (new Date() - new Date(requestTime)) / (1000 * 60); // minutes
     return waitTime > 20 ? "urgent" : "normal"; // Reduced to 20 minutes for Pasig City
+  }; // Helper functions for FIFO coordination
+  const getDriverFIFOPosition = (driver) => {
+    const sorted = driverAssignment.availableDrivers.sort(
+      (a, b) => new Date(a.available_since) - new Date(b.available_since)
+    );
+    return sorted.findIndex((d) => d.id === driver.id) + 1;
   };
-  // Helper functions for Pasig City coordination
-  const getPasigZone = (location) => {
-    if (!location) return "Unknown Zone";
-
-    const PASIG_ZONE_MAP = {
-      north_pasig: ["Ugong Norte", "Bagong Ilog", "Bambang", "Dela Paz"],
-      south_pasig: [
-        "Pineda",
-        "San Joaquin",
-        "Sto. Tomas",
-        "Sagad",
-        "San Nicolas",
-      ],
-      east_pasig: ["Malinao", "Santolan", "San Antonio", "Rosario", "Sumilang"],
-      west_pasig: [
-        "Kapitolyo",
-        "Oranbo",
-        "San Miguel",
-        "Manggahan",
-        "Maybunga",
-      ],
-      central_pasig: [
-        "Caniogan",
-        "Pasig Proper",
-        "Bagong Katipunan",
-        "Kalawaan",
-      ],
-      ortigas_cbd: ["Ortigas Center", "Ugong Sur", "Wack Wack", "San Antonio"],
-    };
-
-    for (const [zone, areas] of Object.entries(PASIG_ZONE_MAP)) {
-      if (
-        areas.some((area) =>
-          location.toLowerCase().includes(area.toLowerCase())
-        )
-      ) {
-        return zone.replace("_", " ").toUpperCase();
-      }
-    }
-
-    return "Central Pasig"; // Default zone
-  };
-
   // Main render function for driver coordination panel
   const renderDriverCoordinationPanel = () => {
     // Get current pending pickup requests from appointments
@@ -730,7 +693,7 @@ const OperatorDashboard = () => {
         <div className="driver-coord-header">
           <h3>
             <i className="fas fa-car"></i>
-            Driver Coordination - Pasig City
+            Driver Coordination - FIFO System
           </h3>
           <div className="coord-stats">
             <span className="stat available">
@@ -770,15 +733,15 @@ const OperatorDashboard = () => {
                       <div className="driver-name">
                         <i className="fas fa-user"></i>
                         {driver.first_name} {driver.last_name}
-                      </div>
+                      </div>{" "}
                       <div className="driver-details">
                         <span className="location">
                           <i className="fas fa-map-marker-alt"></i>
                           {driver.current_location || "Location not set"}
                         </span>
-                        <span className="zone">
-                          <i className="fas fa-globe"></i>
-                          {getPasigZone(driver.current_location)}
+                        <span className="fifo-position">
+                          <i className="fas fa-sort-numeric-up"></i>
+                          FIFO Position #{getDriverFIFOPosition(driver)}
                         </span>
                       </div>
                       <div className="driver-status available">
@@ -886,15 +849,11 @@ const OperatorDashboard = () => {
                       <div className="therapist-name">
                         <i className="fas fa-user-md"></i>
                         {pickup.name}
-                      </div>
+                      </div>{" "}
                       <div className="pickup-details">
                         <span className="location">
                           <i className="fas fa-map-marker-alt"></i>
                           {pickup.location}
-                        </span>
-                        <span className="zone">
-                          <i className="fas fa-globe"></i>
-                          {getPasigZone(pickup.location)}
                         </span>
                         <span className="time-elapsed">
                           <i className="fas fa-stopwatch"></i>
@@ -989,55 +948,46 @@ const OperatorDashboard = () => {
             >
               <i className="fas fa-robot"></i>
               Auto-Assign All FIFO ({currentPendingPickups.length})
-            </button>
+            </button>{" "}
           </div>
-          <div className="tool-section zone-overview">
+          <div className="tool-section fifo-queue-overview">
             <h5>
-              <i className="fas fa-map"></i>
-              Zone Coverage
+              <i className="fas fa-list-ol"></i>
+              FIFO Queue Status
             </h5>
-            <div className="zone-coverage-grid">
-              {[
-                "north_pasig",
-                "south_pasig",
-                "east_pasig",
-                "west_pasig",
-                "central_pasig",
-              ].map((zone) => {
-                const driversInZone = driverAssignment.availableDrivers.filter(
-                  (driver) =>
-                    getPasigZone(driver.current_location) ===
-                    zone
-                      .replace("_", " ")
-                      .replace(/\b\w/g, (l) => l.toUpperCase())
-                );
-                const pickupsInZone = currentPendingPickups.filter(
-                  (pickup) =>
-                    getPasigZone(pickup.location) ===
-                    zone
-                      .replace("_", " ")
-                      .replace(/\b\w/g, (l) => l.toUpperCase())
-                );
-
-                return (
-                  <div key={zone} className="zone-card">
-                    <div className="zone-name">
-                      {zone
-                        .replace("_", " ")
-                        .replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </div>
-                    <div className="zone-stats">
-                      <span className="drivers">
-                        <i className="fas fa-car"></i> {driversInZone.length}
-                      </span>
-                      <span className="pickups">
-                        <i className="fas fa-hand-paper"></i>{" "}
-                        {pickupsInZone.length}
-                      </span>
-                    </div>
+            <div className="fifo-queue-info">
+              <div className="queue-stats">
+                <div className="stat-item">
+                  <span className="stat-number">
+                    {driverAssignment.availableDrivers.length}
+                  </span>
+                  <span className="stat-label">Drivers in Queue</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-number">
+                    {currentPendingPickups.length}
+                  </span>
+                  <span className="stat-label">Pending Assignments</span>
+                </div>
+              </div>
+              <div className="next-assignment">
+                {driverAssignment.availableDrivers.length > 0 &&
+                currentPendingPickups.length > 0 ? (
+                  <div className="auto-assignment-preview">
+                    <p>
+                      <strong>Next Assignment:</strong>
+                    </p>
+                    <p>
+                      Driver: {driverAssignment.availableDrivers[0]?.first_name}{" "}
+                      {driverAssignment.availableDrivers[0]?.last_name}
+                    </p>
+                    <p>Pickup: {currentPendingPickups[0]?.name}</p>
+                    <p>ETA: ~20 minutes</p>
                   </div>
-                );
-              })}
+                ) : (
+                  <p className="no-assignments">No pending assignments</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
