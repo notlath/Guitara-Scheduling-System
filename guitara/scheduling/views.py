@@ -1466,9 +1466,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )  # Driver confirms
         appointment.driver_confirmed_at = timezone.now()
-        appointment.status = (
-            "driver_confirmed"  # Driver has confirmed, ready for operator to start
-        )
+        appointment.status = "driver_confirmed"  # Driver has confirmed, ready to start
         appointment.save()
 
         # Create notifications
@@ -1892,6 +1890,101 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             }
         )
 
+    def _get_next_available_driver_fifo(self, appointment=None):
+        """
+        Get the next available driver using First-In-First-Out (FIFO) logic.
+        Returns the driver who became available earliest.
+        """
+        # Get drivers who are currently active and available
+        available_drivers = (
+            CustomUser.objects.filter(
+                role="driver", is_active=True, last_available_at__isnull=False
+            )
+            .exclude(
+                # Exclude drivers who have pending/active appointments
+                driver_appointments__status__in=[
+                    "pending",
+                    "therapist_confirmed",
+                    "driver_confirmed",
+                    "in_progress",
+                    "journey",
+                    "arrived",
+                    "driver_assigned_pickup",
+                ]
+            )
+            .distinct()
+        )
+
+        if not available_drivers.exists():
+            return None
+
+        # Order by last_available_at (FIFO - earliest first)
+        fifo_driver = available_drivers.order_by("last_available_at").first()
+
+        # Update driver's availability status (mark as assigned)
+        if fifo_driver:
+            fifo_driver.last_available_at = None  # Clear availability timestamp
+            fifo_driver.save()
+
+        return fifo_driver
+
+    @action(detail=False, methods=["post"])
+    def update_driver_availability(self, request):
+        """
+        Endpoint for drivers to update their availability status for FIFO assignment.
+        Called when driver completes a task and becomes available.
+        """
+        if request.user.role != "driver":
+            return Response(
+                {"error": "Only drivers can update availability status"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        status_value = request.data.get("status")
+        current_location = request.data.get("current_location", "")
+
+        if status_value == "available":
+            # Mark driver as available in FIFO queue
+            request.user.last_available_at = timezone.now()
+            request.user.save()
+
+            return Response(
+                {
+                    "message": "Driver marked as available in FIFO queue",
+                    "available_since": request.user.last_available_at.isoformat(),
+                    "fifo_position": self._get_driver_fifo_position(request.user),
+                }
+            )
+        elif status_value == "busy":
+            # Remove driver from FIFO queue
+            request.user.last_available_at = None
+            request.user.save()
+
+            return Response({"message": "Driver removed from FIFO queue"})
+        else:
+            return Response(
+                {"error": "Status must be 'available' or 'busy'"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    def _get_driver_fifo_position(self, driver):
+        """Get the driver's position in the FIFO queue"""
+        if not driver.last_available_at:
+            return None
+
+        # Count drivers who became available before this driver
+        position = (
+            CustomUser.objects.filter(
+                role="driver",
+                is_active=True,
+                last_available_at__isnull=False,
+                last_available_at__lt=driver.last_available_at,
+            ).count()
+            + 1
+        )
+
+        return position
+
 
 class NotificationViewSet(viewsets.ModelViewSet):
     """
@@ -1900,143 +1993,55 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["user", "is_read", "notification_type"]
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
+    search_fields = ["message", "notification_type"]
+    filterset_fields = ["is_read", "notification_type"]
 
     def get_queryset(self):
-        """Users can only see their own notifications"""
-        try:
-            queryset = Notification.objects.filter(user=self.request.user)
-            return queryset
-        except Exception as e:
-            return Notification.objects.none()
-
-    def list(self, request, *args, **kwargs):
-        """Override list to handle cross-day availability properly"""
-        from datetime import timedelta
-
-        # Get the base queryset
-        queryset = self.filter_queryset(self.get_queryset())
-
-        # Check if we're filtering by date (staff_id and date parameters)
-        staff_id = request.query_params.get("staff_id")
-        date_str = request.query_params.get("date")
-
-        if staff_id and date_str:
-            try:
-                date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
-
-                # Get availabilities for the requested date
-                date_availabilities = queryset.filter(user_id=staff_id, date=date_obj)
-
-                # Also get cross-day availabilities from the previous day that extend into this date
-                previous_day = date_obj - timedelta(days=1)
-                previous_day_cross_day = queryset.filter(
-                    user_id=staff_id, date=previous_day
-                ).filter(
-                    # Cross-day indicator: start_time > end_time
-                    start_time__gt=models.F("end_time")
-                )
-
-                # Combine both querysets
-                combined_queryset = date_availabilities.union(previous_day_cross_day)
-
-                # Convert to list and serialize
-                availabilities_list = list(combined_queryset)
-                serializer = self.get_serializer(availabilities_list, many=True)
-
-                # Add cross-day indicators to the response
-                for i, availability in enumerate(availabilities_list):
-                    if availability.start_time > availability.end_time:
-                        # This is a cross-day availability
-                        serializer.data[i]["is_cross_day"] = True
-                        serializer.data[i][
-                            "cross_day_note"
-                        ] = f"Starts {availability.date} at {availability.start_time}, ends {availability.date + timedelta(days=1)} at {availability.end_time}"
-                    else:
-                        serializer.data[i]["is_cross_day"] = False
-
-                return Response(serializer.data)
-
-            except ValueError:
-                # Invalid date format, fall back to default behavior
-                pass
-
-        # Default behavior for other cases
-        return super().list(request, *args, **kwargs)
-
-    @action(detail=False, methods=["post"])
-    def mark_all_as_read(self, request):
-        """Mark all notifications as read"""
-        Notification.objects.filter(user=request.user).update(is_read=True)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        """Return notifications for the current user"""
+        return Notification.objects.filter(user=self.request.user).order_by(
+            "-timestamp"
+        )
 
     @action(detail=True, methods=["post"])
     def mark_as_read(self, request, pk=None):
-        """Mark a notification as read"""
+        """Mark notification as read"""
         notification = self.get_object()
         notification.is_read = True
         notification.save()
-        serializer = self.get_serializer(notification)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=["get"])
-    def unread_count(self, request):
-        """Get the number of unread notifications"""
-        count = Notification.objects.filter(user=request.user, is_read=False).count()
-        return Response({"count": count})
+        return Response({"status": "marked as read"})
 
     @action(detail=True, methods=["post"])
     def mark_as_unread(self, request, pk=None):
-        """Mark a notification as unread"""
+        """Mark notification as unread"""
         notification = self.get_object()
         notification.is_read = False
         notification.save()
-        serializer = self.get_serializer(notification)
-        return Response(serializer.data)
+        return Response({"status": "marked as unread"})
 
-    @action(detail=False, methods=["delete"])
-    def delete_all(self, request):
-        """Delete all notifications for the current user"""
-        deleted_count = Notification.objects.filter(user=request.user).count()
-        Notification.objects.filter(user=request.user).delete()
-        return Response(
-            {
-                "message": f"Deleted {deleted_count} notifications",
-                "deleted_count": deleted_count,
-            },
-            status=status.HTTP_200_OK,
+    @action(detail=False, methods=["post"])
+    def mark_all_read(self, request):
+        """Mark all notifications as read for current user"""
+        count = Notification.objects.filter(user=request.user, is_read=False).update(
+            is_read=True
         )
-
-    @action(detail=False, methods=["delete"])
-    def delete_read(self, request):
-        """Delete all read notifications for the current user"""
-        deleted_count = Notification.objects.filter(
-            user=request.user, is_read=True
-        ).count()
-        Notification.objects.filter(user=request.user, is_read=True).delete()
-        return Response(
-            {
-                "message": f"Deleted {deleted_count} read notifications",
-                "deleted_count": deleted_count,
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response({"status": f"marked {count} notifications as read"})
 
 
-class StaffViewSet(viewsets.ReadOnlyModelViewSet):
+class StaffViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for retrieving staff members (therapists and drivers)
+    ViewSet for managing staff members (therapists, drivers, operators)
     """
 
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsOperator]
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
+    search_fields = ["first_name", "last_name", "email", "role"]
+    filterset_fields = ["role", "is_active"]
 
     def get_queryset(self):
-        # Return only therapists and drivers
-        return CustomUser.objects.filter(role__in=["therapist", "driver"]).order_by(
-            "first_name"
-        )
+        """Return all staff members"""
+        return CustomUser.objects.filter(role__in=["therapist", "driver", "operator"])
 
 
 class ServiceViewSet(viewsets.ModelViewSet):
@@ -2044,131 +2049,11 @@ class ServiceViewSet(viewsets.ModelViewSet):
     ViewSet for managing services
     """
 
-    try:
-        queryset = Service.objects.all()
-    except Exception as e:
-        import logging
-
-        logger = logging.getLogger(__name__)
-        logger.warning(f"Could not get Service queryset: {e}")
-        queryset = []
-
     serializer_class = ServiceSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ["name"]
+    filter_backends = [filters.SearchFilter]
     search_fields = ["name", "description"]
 
     def get_queryset(self):
-        """
-        Override get_queryset to safely handle Service model issues
-        """
-        try:
-            return Service.objects.all()
-        except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Error getting Service queryset: {e}")
-            return []
-
-    # Hardcoded service data to use when the API is not available
-    FALLBACK_SERVICES = [
-        {
-            "id": 1,
-            "name": "Shiatsu Massage",
-            "description": "A Japanese technique involving pressure points.",
-            "duration": 60,
-            "price": 500.00,
-            "oil": None,
-            "is_active": True,
-        },
-        {
-            "id": 2,
-            "name": "Combi Massage",
-            "description": "A combination of multiple massage techniques.",
-            "duration": 60,
-            "price": 400.00,
-            "oil": None,
-            "is_active": True,
-        },
-        {
-            "id": 3,
-            "name": "Dry Massage",
-            "description": "Performed without oils or lotions.",
-            "duration": 60,
-            "price": 500.00,
-            "oil": None,
-            "is_active": True,
-        },
-        {
-            "id": 4,
-            "name": "Foot Massage",
-            "description": "Focused on the feet and lower legs.",
-            "duration": 60,
-            "price": 500.00,
-            "oil": None,
-            "is_active": True,
-        },
-        {
-            "id": 5,
-            "name": "Hot Stone Service",
-            "description": "Uses heated stones for deep muscle relaxation.",
-            "duration": 90,
-            "price": 675.00,
-            "oil": None,
-            "is_active": True,
-        },
-        {
-            "id": 6,
-            "name": "Ventosa",
-            "description": "Traditional cupping therapy to relieve muscle tension.",
-            "duration": 90,
-            "price": 675.00,
-            "oil": None,
-            "is_active": True,
-        },
-        {
-            "id": 7,
-            "name": "Hand Massage",
-            "description": "Focused on hands and arms.",
-            "duration": 60,
-            "price": 400.00,
-            "oil": None,
-            "is_active": True,
-        },
-    ]
-
-    def list(self, request, *args, **kwargs):
-        """
-        Override the default list method to return hardcoded services if DB fails
-        """
-        try:
-            # Try to use the normal list method with database
-            return super().list(request, *args, **kwargs)
-        except Exception as e:
-            # If database is not available, use hardcoded services
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error fetching services from database: {e}")
-            services = self.FALLBACK_SERVICES
-            return Response(services)
-
-    @action(detail=False, methods=["get"])
-    def active(self, request):
-        """Get only active services"""
-        try:
-            services = Service.objects.filter(is_active=True)
-            serializer = self.get_serializer(services, many=True)
-            return Response(serializer.data)
-        except Exception as e:
-            # Return only active services from the hardcoded list
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error fetching active services: {e}")
-            active_services = [
-                s for s in self.FALLBACK_SERVICES if s.get("is_active", True)
-            ]
-            return Response(active_services)
+        """Return all services"""
+        return Service.objects.all()
