@@ -1392,13 +1392,32 @@ export const requestPayment = createAsyncThunk(
 // Thunk to request pickup for therapist
 export const requestPickup = createAsyncThunk(
   "scheduling/requestPickup",
-  async (appointmentId, { rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
+
+    // Handle both old format (appointmentId) and new format (object with params)
+    let appointmentId, pickup_urgency, pickup_notes;
+    if (typeof params === "object" && params.appointmentId) {
+      ({
+        appointmentId,
+        pickup_urgency = "normal",
+        pickup_notes = "",
+      } = params);
+    } else {
+      // Backward compatibility for direct appointmentId calls
+      appointmentId = params;
+      pickup_urgency = "normal";
+      pickup_notes = "";
+    }
+
     try {
       const response = await axios.post(
         `${API_URL}appointments/${appointmentId}/request_pickup/`,
-        {},
+        {
+          pickup_urgency,
+          pickup_notes,
+        },
         { headers: { Authorization: `Token ${token}` } }
       );
       return response.data;
