@@ -222,6 +222,32 @@ const DriverDashboard = () => {
     return visibleStatuses.includes(apt.status);
   });
 
+  // Separate filter for "All My Transports" view - includes completed transports
+  const myAllTransports = appointments.filter((apt) => {
+    if (apt.driver !== user?.id) return false;
+
+    // For "All" view, show everything including completed/dropped-off transports
+    const allStatuses = [
+      "pending",
+      "therapist_confirmed",
+      "driver_confirmed",
+      "in_progress",
+      "journey_started",
+      "journey",
+      "arrived",
+      "dropped_off",
+      "session_in_progress",
+      "awaiting_payment",
+      "completed",
+      "pickup_requested",
+      "therapist_dropped_off", // This is when driver's work is complete
+      "payment_completed", // Session fully finished
+      "driver_assigned_pickup", // Driver assigned for pickup
+    ];
+
+    return allStatuses.includes(apt.status);
+  }).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date, newest first
+
   // Refresh appointments data silently in background
   const refreshAppointments = useCallback(
     async (isBackground = false, targetView = null) => {
@@ -454,29 +480,32 @@ const DriverDashboard = () => {
         }
       }
     }
-  };
-  // Enhanced drop-off handler for dynamic coordination
+  };  // Enhanced drop-off handler for FIFO coordination 
   const handleDropOffComplete = async (appointmentId) => {
     const appointment = myAppointments.find((apt) => apt.id === appointmentId);
     if (!appointment) return;
 
+    const actionKey = `dropoff_complete_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
+      
       await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
           status: "therapist_dropped_off",
-          notes: `Dropped off at ${
+          notes: `Transport completed - dropped off at ${
             appointment.location
           } at ${new Date().toISOString()}`,
         })
       ).unwrap();
 
-      // Notify system that driver is available for reassignment
+      // Notify system that driver is available for reassignment (FIFO queue)
       syncService.broadcast("driver_available", {
         driver_id: user.id,
         last_location: appointment.location,
         vehicle_type: appointment.transport_mode || "motorcycle",
         available_at: new Date().toISOString(),
+        assignment_method: "FIFO", // Indicate this driver is ready for FIFO assignment
       });
 
       refreshAppointments(true);
@@ -489,6 +518,8 @@ const DriverDashboard = () => {
       } else {
         alert("Failed to mark drop-off complete. Please try again.");
       }
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
   const handleDropOff = async (appointmentId) => {
@@ -1156,6 +1187,35 @@ const DriverDashboard = () => {
                       )}
                     </p>
                   )
+                }
+
+                {/* Enhanced info for completed transports in "All My Transports" view */}
+                {(appointment.status === "therapist_dropped_off" || 
+                  appointment.status === "payment_completed" ||
+                  appointment.status === "completed") && currentView === "all" && (
+                  <div className="completed-transport-info">
+                    <p className="completion-status">
+                      <strong>✅ Transport Complete</strong>
+                    </p>
+                    <p className="completion-details">
+                      <strong>Dropped off at:</strong> {appointment.location}
+                    </p>
+                    {appointment.started_at && (
+                      <p>
+                        <strong>Started:</strong> {new Date(appointment.started_at).toLocaleString()}
+                      </p>
+                    )}
+                    {appointment.updated_at && (
+                      <p>
+                        <strong>Completed:</strong> {new Date(appointment.updated_at).toLocaleString()}
+                      </p>
+                    )}
+                    {appointment.total_amount && (
+                      <p>
+                        <strong>Session Value:</strong> ₱{appointment.total_amount}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {/* Driver Status Information */}
@@ -1295,7 +1355,7 @@ const DriverDashboard = () => {
           {currentView === "all" && (
             <div className="all-appointments">
               <h2>All My Transports</h2>
-              {renderAppointmentsList(myAppointments)}
+              {renderAppointmentsList(myAllTransports)}
             </div>
           )}
         </div>

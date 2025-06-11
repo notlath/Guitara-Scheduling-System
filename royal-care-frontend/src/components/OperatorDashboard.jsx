@@ -531,10 +531,8 @@ const OperatorDashboard = () => {
       amount: "",
       notes: "",
     });
-  };
-
-  // Driver coordination functions
-  const handleAssignDriverPickup = async (therapistId, driverId) => {
+  };  // Driver coordination functions - Pure FIFO system (no proximity filtering)
+  const handleAssignDriverPickup = async (therapistId, driverId = null) => {
     try {
       // Get current pending pickup requests from appointments
       const currentPendingPickups = appointments
@@ -552,35 +550,77 @@ const OperatorDashboard = () => {
         }));
 
       const therapist = currentPendingPickups.find((t) => t.id === therapistId);
-      const driver = driverAssignment.availableDrivers.find(
-        (d) => d.id === driverId
-      );
-
-      if (!therapist || !driver) {
-        alert("Invalid therapist or driver selection");
+      
+      if (!therapist) {
+        alert("Invalid therapist selection");
         return;
       }
 
-      const estimatedTime = calculatePasigEstimatedTime(
-        driver.last_location,
-        therapist.location
-      );
+      // Pure FIFO driver selection - get the driver who became available first
+      let driver;
+      if (driverId) {
+        // Manual assignment: use specific driver
+        driver = driverAssignment.availableDrivers.find((d) => d.id === driverId);
+      } else {
+        // Auto-assignment: Pure FIFO - first available driver based on availability time
+        const availableDriversSorted = driverAssignment.availableDrivers
+          .sort((a, b) => new Date(a.available_since) - new Date(b.available_since));
+        driver = availableDriversSorted[0];
+      }
 
+      if (!driver) {
+        alert("No drivers available for assignment");
+        return;
+      }
+
+      // Fixed estimated arrival time - no proximity calculations
+      const estimatedTime = 20; // Standard 20 minutes for all assignments
       const estimatedArrival = new Date();
-      estimatedArrival.setMinutes(
-        estimatedArrival.getMinutes() + estimatedTime
-      );
-
-      await dispatch(
-        updateAppointmentStatus({
+      estimatedArrival.setMinutes(estimatedArrival.getMinutes() + estimatedTime);      // Update appointment status
+      await dispatch(        updateAppointmentStatus({
           id: therapist.appointment_id,
           status: "driver_assigned_pickup",
-          driver: driverId,
-          notes: `Driver assigned for pickup in ${getPasigZone(
-            therapist.location
-          )} - ETA: ${estimatedTime} minutes`,
+          driver: driver.id,
+          notes: `Driver assigned for pickup (FIFO) - ETA: ${estimatedTime} minutes`,
         })
       ).unwrap();
+
+      // Move driver from available to busy
+      setDriverAssignment((prev) => ({
+        ...prev,
+        availableDrivers: prev.availableDrivers.filter(
+          (d) => d.id !== driver.id
+        ),
+        busyDrivers: [
+          ...prev.busyDrivers.filter((d) => d.id !== driver.id),
+          {
+            ...driver,
+            current_task: `Picking up ${therapist.name}`,
+            current_location: `En route to ${therapist.location}`,
+          },
+        ],
+        pendingPickups: prev.pendingPickups.filter((t) => t.id !== therapistId),
+      }));
+
+      // Broadcast assignment with FIFO indicator
+      syncService.broadcast("driver_assigned_pickup", {
+        driver_id: driver.id,
+        therapist_id: therapistId,
+        appointment_id: therapist.appointment_id,
+        estimated_arrival: estimatedArrival.toISOString(),
+        driver_name: `${driver.first_name} ${driver.last_name}`,
+        therapist_name: therapist.name,
+        pickup_location: therapist.location,
+        estimated_time: estimatedTime,
+        assignment_method: "FIFO",
+      });
+
+      refreshData();
+    } catch (error) {
+      console.error("Failed to assign driver:", error);
+      alert("Failed to assign driver. Please try again.");
+    }
+  };
 
       // Update local state
       setDriverAssignment((prev) => ({
@@ -620,25 +660,9 @@ const OperatorDashboard = () => {
       alert("Failed to assign driver. Please try again.");
     }
   };
-
   const handleUrgentPickupRequest = async (therapistId) => {
     try {
-      // Get current pending pickup requests from appointments
-      const currentPendingPickups = appointments
-        .filter((apt) => apt.status === "pickup_requested")
-        .map((apt) => ({
-          id: apt.therapist,
-          name: apt.therapist_details
-            ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
-            : "Unknown Therapist",
-          location: apt.location,
-          appointment_id: apt.id,
-          urgency: getUrgencyLevel(apt.pickup_request_time),
-          session_end_time: apt.session_end_time,
-          requested_at: apt.pickup_request_time,
-        }));
-
-      const therapist = currentPendingPickups.find((t) => t.id === therapistId);
+      // For urgent requests, still use FIFO but assign immediately
       const availableDrivers = driverAssignment.availableDrivers;
 
       if (availableDrivers.length === 0) {
@@ -646,20 +670,11 @@ const OperatorDashboard = () => {
         return;
       }
 
-      // Find nearest driver in Pasig
-      const bestDriver = availableDrivers.reduce((nearest, driver) => {
-        const currentScore = calculatePasigProximityScore(
-          driver.last_location,
-          therapist.location
-        );
-        const nearestScore = calculatePasigProximityScore(
-          nearest.last_location,
-          therapist.location
-        );
-        return currentScore.score > nearestScore.score ? driver : nearest;
-      });
+      // Pure FIFO - use first available driver regardless of location
+      const firstAvailableDriver = availableDrivers
+        .sort((a, b) => new Date(a.available_since) - new Date(b.available_since))[0];
 
-      await handleAssignDriverPickup(therapistId, bestDriver.id);
+      await handleAssignDriverPickup(therapistId, firstAvailableDriver.id);
     } catch (error) {
       console.error("Failed to process urgent pickup request:", error);
       alert("Failed to process urgent pickup request");
@@ -1053,21 +1068,13 @@ const OperatorDashboard = () => {
                           }
                         }}
                         className="driver-selector"
-                      >
-                        <option value="">Assign Driver...</option>
-                        {driverAssignment.availableDrivers.map((driver) => {
-                          const proximityScore = calculatePasigProximityScore(
-                            driver.current_location,
-                            pickup.location
-                          );
-                          const estimatedTime = calculatePasigEstimatedTime(
-                            driver.current_location,
-                            pickup.location
-                          );
+                      >                        <option value="">Assign Driver...</option>
+                        {driverAssignment.availableDrivers.map((driver, index) => {
+                          // Show FIFO order instead of proximity
+                          const fifoOrder = index + 1;
                           return (
                             <option key={driver.id} value={driver.id}>
-                              {driver.first_name} {driver.last_name} -{" "}
-                              {proximityScore.label} (~{estimatedTime}min)
+                              {driver.first_name} {driver.last_name} - FIFO #{fifoOrder} (ETA: ~20min)
                             </option>
                           );
                         })}
@@ -1090,29 +1097,18 @@ const OperatorDashboard = () => {
         </div>
 
         {/* Quick Assignment Tools */}
-        <div className="quick-assignment-tools">
-          <div className="tool-section auto-assignment">
+        <div className="quick-assignment-tools">          <div className="tool-section auto-assignment">
             <h5>
               <i className="fas fa-magic"></i>
-              Smart Assignment
+              Auto Assignment (FIFO)
             </h5>
-            <p>Automatically assign based on proximity and zone optimization</p>
+            <p>Automatically assign all pending pickups using First-In-First-Out method</p>
             <button
               onClick={() => {
+                // Pure FIFO auto-assignment - no proximity calculations
                 currentPendingPickups.forEach((pickup) => {
-                  const bestDriver = driverAssignment.availableDrivers
-                    .map((driver) => ({
-                      ...driver,
-                      score: calculatePasigProximityScore(
-                        driver.current_location,
-                        pickup.location
-                      ).score,
-                    }))
-                    .sort((a, b) => b.score - a.score)[0];
-
-                  if (bestDriver) {
-                    handleAssignDriverPickup(pickup.id, bestDriver.id);
-                  }
+                  // Simply assign to next available driver (FIFO)
+                  handleAssignDriverPickup(pickup.id); // No driverId = auto FIFO selection
                 });
               }}
               disabled={
@@ -1122,7 +1118,7 @@ const OperatorDashboard = () => {
               className="auto-assign-btn"
             >
               <i className="fas fa-robot"></i>
-              Auto-Assign All ({currentPendingPickups.length})
+              Auto-Assign All FIFO ({currentPendingPickups.length})
             </button>
           </div>
 
