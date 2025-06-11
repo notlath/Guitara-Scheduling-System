@@ -23,7 +23,6 @@ import "../styles/DriverCoordination.css";
 import "../styles/OperatorDashboard.css";
 
 const OperatorDashboard = () => {
-  ;
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -221,7 +220,9 @@ const OperatorDashboard = () => {
     staffMembers: _staffMembers,
     loading,
     error,
-  } = useSelector((state) => state.scheduling); // Filter rejected appointments for review
+  } = useSelector((state) => state.scheduling);
+
+  // Filter rejected appointments for review
   const rejectedAppointments = appointments.filter(
     (apt) => apt.status === "rejected" && !apt.review_decision
   );
@@ -533,102 +534,122 @@ const OperatorDashboard = () => {
       notes: "",
     });
   }; // Driver coordination functions - Pure FIFO system (no proximity filtering)
-  const handleAssignDriverPickup = async (therapistId, driverId = null) => {
-    try {
-      // Get current pending pickup requests from appointments
-      const currentPendingPickups = appointments
-        .filter((apt) => apt.status === "pickup_requested")
-        .map((apt) => ({
-          id: apt.therapist,
-          name: apt.therapist_details
-            ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
-            : "Unknown Therapist",
-          location: apt.location,
-          appointment_id: apt.id,
-          urgency: getUrgencyLevel(apt.pickup_request_time),
-          session_end_time: apt.session_end_time,
-          requested_at: apt.pickup_request_time,
+  const handleAssignDriverPickup = useCallback(
+    async (therapistId, driverId = null) => {
+      // Helper function to get urgency level based on request time
+      const getUrgencyLevel = (requestTime) => {
+        if (!requestTime) return "normal";
+        const waitTime = (new Date() - new Date(requestTime)) / (1000 * 60); // minutes
+        return waitTime > 20 ? "urgent" : "normal"; // Reduced to 20 minutes for Pasig City
+      };
+
+      try {
+        // Get current pending pickup requests from appointments
+        const currentPendingPickups = appointments
+          .filter((apt) => apt.status === "pickup_requested")
+          .map((apt) => ({
+            id: apt.therapist,
+            name: apt.therapist_details
+              ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
+              : "Unknown Therapist",
+            location: apt.location,
+            appointment_id: apt.id,
+            urgency: getUrgencyLevel(apt.pickup_request_time),
+            session_end_time: apt.session_end_time,
+            requested_at: apt.pickup_request_time,
+          }));
+
+        const therapist = currentPendingPickups.find(
+          (t) => t.id === therapistId
+        );
+
+        if (!therapist) {
+          alert("Invalid therapist selection");
+          return;
+        }
+
+        // Pure FIFO driver selection - get the driver who became available first
+        let driver;
+        if (driverId) {
+          // Manual assignment: use specific driver
+          driver = driverAssignment.availableDrivers.find(
+            (d) => d.id === driverId
+          );
+        } else {
+          // Auto-assignment: Pure FIFO - first available driver based on availability time
+          const availableDriversSorted = driverAssignment.availableDrivers.sort(
+            (a, b) => new Date(a.available_since) - new Date(b.available_since)
+          );
+          driver = availableDriversSorted[0];
+        }
+
+        if (!driver) {
+          alert("No drivers available for assignment");
+          return;
+        } // Fixed estimated arrival time - no proximity calculations
+        const estimatedTime = 20; // Standard 20 minutes for all assignments
+        const estimatedArrival = new Date();
+        estimatedArrival.setMinutes(
+          estimatedArrival.getMinutes() + estimatedTime
+        );
+
+        // Update appointment status
+        await dispatch(
+          updateAppointmentStatus({
+            id: therapist.appointment_id,
+            status: "driver_assigned_pickup",
+            driver: driver.id,
+            notes: `Driver assigned for pickup (FIFO) - ETA: ${estimatedTime} minutes`,
+          })
+        ).unwrap();
+
+        // Move driver from available to busy
+        setDriverAssignment((prev) => ({
+          ...prev,
+          availableDrivers: prev.availableDrivers.filter(
+            (d) => d.id !== driver.id
+          ),
+          busyDrivers: [
+            ...prev.busyDrivers.filter((d) => d.id !== driver.id),
+            {
+              ...driver,
+              current_task: `Picking up ${therapist.name}`,
+              current_location: `En route to ${therapist.location}`,
+            },
+          ],
+          pendingPickups: prev.pendingPickups.filter(
+            (t) => t.id !== therapistId
+          ),
         }));
 
-      const therapist = currentPendingPickups.find((t) => t.id === therapistId);
+        // Broadcast assignment with FIFO indicator
+        syncService.broadcast("driver_assigned_pickup", {
+          driver_id: driver.id,
+          therapist_id: therapistId,
+          appointment_id: therapist.appointment_id,
+          estimated_arrival: estimatedArrival.toISOString(),
+          driver_name: `${driver.first_name} ${driver.last_name}`,
+          therapist_name: therapist.name,
+          pickup_location: therapist.location,
+          estimated_time: estimatedTime,
+          assignment_method: "FIFO",
+        });
 
-      if (!therapist) {
-        alert("Invalid therapist selection");
-        return;
+        refreshData();
+      } catch (error) {
+        console.error("Failed to assign driver:", error);
+        alert("Failed to assign driver. Please try again.");
       }
-
-      // Pure FIFO driver selection - get the driver who became available first
-      let driver;
-      if (driverId) {
-        // Manual assignment: use specific driver
-        driver = driverAssignment.availableDrivers.find(
-          (d) => d.id === driverId
-        );
-      } else {
-        // Auto-assignment: Pure FIFO - first available driver based on availability time
-        const availableDriversSorted = driverAssignment.availableDrivers.sort(
-          (a, b) => new Date(a.available_since) - new Date(b.available_since)
-        );
-        driver = availableDriversSorted[0];
-      }
-
-      if (!driver) {
-        alert("No drivers available for assignment");
-        return;
-      } // Fixed estimated arrival time - no proximity calculations
-      const estimatedTime = 20; // Standard 20 minutes for all assignments
-      const estimatedArrival = new Date();
-      estimatedArrival.setMinutes(
-        estimatedArrival.getMinutes() + estimatedTime
-      );
-
-      // Update appointment status
-      await dispatch(
-        updateAppointmentStatus({
-          id: therapist.appointment_id,
-          status: "driver_assigned_pickup",
-          driver: driver.id,
-          notes: `Driver assigned for pickup (FIFO) - ETA: ${estimatedTime} minutes`,
-        })
-      ).unwrap();
-
-      // Move driver from available to busy
-      setDriverAssignment((prev) => ({
-        ...prev,
-        availableDrivers: prev.availableDrivers.filter(
-          (d) => d.id !== driver.id
-        ),
-        busyDrivers: [
-          ...prev.busyDrivers.filter((d) => d.id !== driver.id),
-          {
-            ...driver,
-            current_task: `Picking up ${therapist.name}`,
-            current_location: `En route to ${therapist.location}`,
-          },
-        ],
-        pendingPickups: prev.pendingPickups.filter((t) => t.id !== therapistId),
-      }));
-
-      // Broadcast assignment with FIFO indicator
-      syncService.broadcast("driver_assigned_pickup", {
-        driver_id: driver.id,
-        therapist_id: therapistId,
-        appointment_id: therapist.appointment_id,
-        estimated_arrival: estimatedArrival.toISOString(),
-        driver_name: `${driver.first_name} ${driver.last_name}`,
-        therapist_name: therapist.name,
-        pickup_location: therapist.location,
-        estimated_time: estimatedTime,
-        assignment_method: "FIFO",
-      });
-
-      refreshData();
-    } catch (error) {
-      console.error("Failed to assign driver:", error);
-      alert("Failed to assign driver. Please try again.");
-    }
-  };
-  const handleUrgentPickupRequest = async (therapistId) => {
+    },
+    [
+      appointments,
+      driverAssignment.availableDrivers,
+      dispatch,
+      refreshData,
+      setDriverAssignment,
+    ]
+  );
+  const _handleUrgentPickupRequest = async (therapistId) => {
     try {
       // For urgent requests, still use FIFO but assign immediately
       const availableDrivers = driverAssignment.availableDrivers;
@@ -650,7 +671,7 @@ const OperatorDashboard = () => {
     }
   };
 
-  const getTimeElapsed = (timestamp) => {
+  const _getTimeElapsed = (timestamp) => {
     const now = new Date();
     const past = new Date(timestamp);
     const diffMs = now - past;
@@ -661,43 +682,41 @@ const OperatorDashboard = () => {
     const diffHours = Math.floor(diffMins / 60);
     return `${diffHours}h ${diffMins % 60}m ago`;
   };
-
-  const getUrgencyLevel = (requestTime) => {
-    if (!requestTime) return "normal";
-    const waitTime = (new Date() - new Date(requestTime)) / (1000 * 60); // minutes
-    return waitTime > 20 ? "urgent" : "normal"; // Reduced to 20 minutes for Pasig City
-  }; // Helper functions for FIFO coordination
-  const getDriverFIFOPosition = (driver) => {
+  // Helper functions for FIFO coordination
+  const _getDriverFIFOPosition = (driver) => {
     const sorted = driverAssignment.availableDrivers.sort(
       (a, b) => new Date(a.available_since) - new Date(b.available_since)
     );
     return sorted.findIndex((d) => d.id === driver.id) + 1;
   };
   // Automatic driver assignment for pickup requests
-  const handleAutoAssignPickupRequest = useCallback(async (therapistId) => {
-    try {
-      const availableDrivers = driverAssignment.availableDrivers;
+  const handleAutoAssignPickupRequest = useCallback(
+    async (therapistId) => {
+      try {
+        const availableDrivers = driverAssignment.availableDrivers;
 
-      if (availableDrivers.length === 0) {
-        console.log("No drivers available for auto-assignment");
+        if (availableDrivers.length === 0) {
+          console.log("No drivers available for auto-assignment");
+          return false;
+        }
+
+        // Auto-assign using FIFO - first available driver
+        const firstAvailableDriver = availableDrivers.sort(
+          (a, b) => new Date(a.available_since) - new Date(b.available_since)
+        )[0];
+
+        await handleAssignDriverPickup(therapistId, firstAvailableDriver.id);
+        console.log(
+          `✅ Auto-assigned driver ${firstAvailableDriver.first_name} ${firstAvailableDriver.last_name} to therapist pickup`
+        );
+        return true;
+      } catch (error) {
+        console.error("Failed to auto-assign driver:", error);
         return false;
       }
-
-      // Auto-assign using FIFO - first available driver
-      const firstAvailableDriver = availableDrivers.sort(
-        (a, b) => new Date(a.available_since) - new Date(b.available_since)
-      )[0];
-
-      await handleAssignDriverPickup(therapistId, firstAvailableDriver.id);
-      console.log(
-        `✅ Auto-assigned driver ${firstAvailableDriver.first_name} ${firstAvailableDriver.last_name} to therapist pickup`
-      );
-      return true;
-    } catch (error) {
-      console.error("Failed to auto-assign driver:", error);
-      return false;
-    }
-  }, [driverAssignment.availableDrivers, handleAssignDriverPickup]);
+    },
+    [driverAssignment.availableDrivers, handleAssignDriverPickup]
+  );
 
   // Listen for pickup requests and auto-assign drivers
   useEffect(() => {
@@ -722,7 +741,8 @@ const OperatorDashboard = () => {
     // Subscribe to pickup request events
     const unsubscribePickup = syncService.subscribe(
       "pickup_requested",
-      handlePickupRequest);
+      handlePickupRequest
+    );
 
     return () => {
       unsubscribePickup();
@@ -1013,302 +1033,214 @@ const OperatorDashboard = () => {
     );
   };
 
-  // Listen for pickup requests and auto-assign drivers
-  useEffect(() => {
-    const handlePickupRequest = async (data) => {
-      console.log("🚖 Pickup request received:", data);
-
-      // Auto-assign driver if available
-      if (data.therapist_id) {
-        const assigned = await handleAutoAssignPickupRequest(data.therapist_id);
-        if (assigned) {
-          // Notify therapist that driver has been assigned
-          syncService.broadcast("pickup_auto_assigned", {
-            therapist_id: data.therapist_id,
-            appointment_id: data.appointment_id,
-            assignment_method: "auto_fifo",
-            message: "Driver automatically assigned for pickup",
-          });
-        }
-      }
-    };
-
-    // Subscribe to pickup request events
-    const unsubscribePickup = syncService.subscribe(
-      "pickup_requested",
-      handlePickupRequest
-    );
-    // Missing render functions
-    const renderRejectedAppointments = () => {
-      if (rejectedAppointments.length === 0) {
-        return (
-          <div className="empty-state">
-            <i className="fas fa-check-circle"></i>
-            <p>No rejected appointments need review</p>
-          </div>
-        );
-      }
-
+  // Render functions
+  const renderRejectedAppointments = () => {
+    if (rejectedAppointments.length === 0) {
       return (
-        <div className="appointments-list">
-          {rejectedAppointments.map((appointment) => (
-            <div key={appointment.id} className="appointment-card rejected">
-              <div className="appointment-header">
-                <h4>
-                  <i className="fas fa-times-circle"></i>
-                  Appointment #{appointment.id}
-                </h4>{" "}
-                <span className="status rejected">Rejected</span>
-              </div>{" "}
-              <div className="appointment-details">
-                <div className="detail-row">
-                  <span className="label">Client:</span>
-                  <span className="value">
-                    {appointment.client_details?.first_name
-                      ? `${appointment.client_details.first_name} ${appointment.client_details.last_name || ""
-                        }`.trim()
-                      : appointment.client || "Unknown Client"}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Date:</span>
-                  <span className="value">
-                    {new Date(appointment.date).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Time:</span>
-                  <span className="value">{appointment.start_time}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Rejection Reason:</span>
-                  <span className="value rejection-reason">
-                    {appointment.rejection_reason || "No reason provided"}
-                  </span>
-                </div>
-                {renderTherapistInfo(appointment)}
-              </div>{" "}
-              <div className="appointment-actions">
-                <LoadingButton
-                  onClick={() => handleReviewRejection(appointment)}
-                  className="review-btn"
-                  loading={buttonLoading[`review_open_${appointment.id}`]}
-                  loadingText="Loading..."
-                >
-                  <i className="fas fa-eye"></i>
-                  Review Rejection
-                </LoadingButton>
-              </div>
-            </div>
-          ))}
+        <div className="empty-state">
+          <i className="fas fa-check-circle"></i>
+          <p>No rejected appointments need review</p>
         </div>
       );
-    };
+    }
 
-    const renderPendingAcceptanceAppointments = () => {
-      if (pendingAppointments.length === 0) {
-        return (
-          <div className="empty-state">
-            <i className="fas fa-clock"></i>
-            <p>No appointments pending acceptance</p>
-          </div>
-        );
-      }
-
-      return (
-        <div className="appointments-list">
-          {pendingAppointments.map((appointment) => (
-            <div key={appointment.id} className="appointment-card pending">
-              <div className="appointment-header">
-                <h4>
-                  <i className="fas fa-hourglass-half"></i>
-                  Appointment #{appointment.id}
-                </h4>{" "}
-                <span className="status pending">Pending</span>
-              </div>{" "}
-              <div className="appointment-details">
-                <div className="detail-row">
-                  <span className="label">Client:</span>
-                  <span className="value">
-                    {appointment.client_details?.first_name
-                      ? `${appointment.client_details.first_name} ${appointment.client_details.last_name || ""
-                        }`.trim()
-                      : appointment.client || "Unknown Client"}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Date:</span>
-                  <span className="value">
-                    {new Date(appointment.date).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Time:</span>
-                  <span className="value">{appointment.start_time}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Deadline:</span>
-                  <span className="value deadline">
-                    {new Date(appointment.response_deadline).toLocaleString()}
-                  </span>
-                </div>
-                {renderTherapistInfo(appointment)}
-                {getTherapistAcceptanceStatus(appointment)}
+    return (
+      <div className="appointments-list">
+        {rejectedAppointments.map((appointment) => (
+          <div key={appointment.id} className="appointment-card rejected">
+            <div className="appointment-header">
+              <h4>
+                <i className="fas fa-times-circle"></i>
+                Appointment #{appointment.id}
+              </h4>{" "}
+              <span className="status rejected">Rejected</span>
+            </div>{" "}
+            <div className="appointment-details">
+              <div className="detail-row">
+                <span className="label">Client:</span>
+                <span className="value">
+                  {appointment.client_details?.first_name
+                    ? `${appointment.client_details.first_name} ${
+                        appointment.client_details.last_name || ""
+                      }`.trim()
+                    : appointment.client || "Unknown Client"}
+                </span>
               </div>
-            </div>
-          ))}
-        </div>
-      );
-    };
-
-    const renderTimeoutMonitoring = () => {
-      const urgentAppointments = [
-        ...overdueAppointments,
-        ...approachingDeadlineAppointments,
-      ];
-
-      return (
-        <div className="timeout-monitoring">
-          <div className="monitoring-stats">
-            <div className="stat-card overdue">
-              <h4>
-                <i className="fas fa-exclamation-triangle"></i>
-                Overdue
-              </h4>
-              <span className="count">{overdueAppointments.length}</span>
-            </div>
-            <div className="stat-card approaching">
-              <h4>
-                <i className="fas fa-clock"></i>
-                Approaching Deadline
-              </h4>
-              <span className="count">
-                {approachingDeadlineAppointments.length}
-              </span>
-            </div>
-          </div>
-
-          {overdueAppointments.length > 0 && (
-            <div className="overdue-section">
-              <h3>
-                <i className="fas fa-exclamation-triangle"></i>
-                Overdue Appointments
-              </h3>{" "}
+              <div className="detail-row">
+                <span className="label">Date:</span>
+                <span className="value">
+                  {new Date(appointment.date).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Time:</span>
+                <span className="value">{appointment.start_time}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Rejection Reason:</span>
+                <span className="value rejection-reason">
+                  {appointment.rejection_reason || "No reason provided"}
+                </span>
+              </div>
+              {renderTherapistInfo(appointment)}
+            </div>{" "}
+            <div className="appointment-actions">
               <LoadingButton
-                onClick={handleAutoCancelOverdue}
-                loading={autoCancelLoading}
-                loadingText="Processing..."
-                className="auto-cancel-btn"
-                variant="warning"
+                onClick={() => handleReviewRejection(appointment)}
+                className="review-btn"
+                loading={buttonLoading[`review_open_${appointment.id}`]}
+                loadingText="Loading..."
               >
-                <i className="fas fa-times"></i>
-                Auto-Cancel All Overdue ({overdueAppointments.length})
+                <i className="fas fa-eye"></i>
+                Review Rejection
               </LoadingButton>
             </div>
-          )}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
-          {urgentAppointments.length === 0 ? (
-            <div className="empty-state">
-              <i className="fas fa-check-circle"></i>
-              <p>All appointments are within acceptable timeframes</p>
-            </div>
-          ) : (
-            <div className="appointments-list">
-              {urgentAppointments.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className={`appointment-card ${overdueAppointments.includes(appointment)
-                    ? "overdue"
-                    : "approaching"
-                    }`}
-                >
-                  <div className="appointment-header">
-                    <h4>
-                      <i
-                        className={`fas ${overdueAppointments.includes(appointment)
-                          ? "fa-exclamation-triangle"
-                          : "fa-clock"
-                          }`}
-                      ></i>
-                      Appointment #{appointment.id}
-                    </h4>
-                    <span
-                      className={`status ${overdueAppointments.includes(appointment)
-                        ? "overdue"
-                        : "approaching"
-                        }`}
-                    >
-                      {overdueAppointments.includes(appointment)
-                        ? "Overdue"
-                        : "Approaching Deadline"}
-                    </span>{" "}
-                  </div>{" "}
-                  <div className="appointment-details">
-                    <div className="detail-row">
-                      <span className="label">Client:</span>
-                      <span className="value">
-                        {appointment.client_details?.first_name
-                          ? `${appointment.client_details.first_name} ${appointment.client_details.last_name || ""
-                            }`.trim()
-                          : appointment.client || "Unknown Client"}
-                      </span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="label">Deadline:</span>
-                      <span className="value deadline">
-                        {new Date(appointment.response_deadline).toLocaleString()}
-                      </span>
-                    </div>
-                    {renderTherapistInfo(appointment)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+  const renderPendingAcceptanceAppointments = () => {
+    if (pendingAppointments.length === 0) {
+      return (
+        <div className="empty-state">
+          <i className="fas fa-clock"></i>
+          <p>No appointments pending acceptance</p>
         </div>
       );
-    };
+    }
 
-    const renderAllAppointments = () => {
-      if (appointments.length === 0) {
-        return (
+    return (
+      <div className="appointments-list">
+        {pendingAppointments.map((appointment) => (
+          <div key={appointment.id} className="appointment-card pending">
+            <div className="appointment-header">
+              <h4>
+                <i className="fas fa-hourglass-half"></i>
+                Appointment #{appointment.id}
+              </h4>{" "}
+              <span className="status pending">Pending</span>
+            </div>{" "}
+            <div className="appointment-details">
+              <div className="detail-row">
+                <span className="label">Client:</span>
+                <span className="value">
+                  {appointment.client_details?.first_name
+                    ? `${appointment.client_details.first_name} ${
+                        appointment.client_details.last_name || ""
+                      }`.trim()
+                    : appointment.client || "Unknown Client"}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Date:</span>
+                <span className="value">
+                  {new Date(appointment.date).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Time:</span>
+                <span className="value">{appointment.start_time}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Deadline:</span>
+                <span className="value deadline">
+                  {new Date(appointment.response_deadline).toLocaleString()}
+                </span>
+              </div>
+              {renderTherapistInfo(appointment)}
+              {getTherapistAcceptanceStatus(appointment)}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderTimeoutMonitoring = () => {
+    const urgentAppointments = [
+      ...overdueAppointments,
+      ...approachingDeadlineAppointments,
+    ];
+
+    return (
+      <div className="timeout-monitoring">
+        <div className="monitoring-stats">
+          <div className="stat-card overdue">
+            <h4>
+              <i className="fas fa-exclamation-triangle"></i>
+              Overdue
+            </h4>
+            <span className="count">{overdueAppointments.length}</span>
+          </div>
+          <div className="stat-card approaching">
+            <h4>
+              <i className="fas fa-clock"></i>
+              Approaching Deadline
+            </h4>
+            <span className="count">
+              {approachingDeadlineAppointments.length}
+            </span>
+          </div>
+        </div>
+
+        {overdueAppointments.length > 0 && (
+          <div className="overdue-section">
+            <h3>
+              <i className="fas fa-exclamation-triangle"></i>
+              Overdue Appointments
+            </h3>{" "}
+            <LoadingButton
+              onClick={handleAutoCancelOverdue}
+              loading={autoCancelLoading}
+              loadingText="Processing..."
+              className="auto-cancel-btn"
+              variant="warning"
+            >
+              <i className="fas fa-times"></i>
+              Auto-Cancel All Overdue ({overdueAppointments.length})
+            </LoadingButton>
+          </div>
+        )}
+
+        {urgentAppointments.length === 0 ? (
           <div className="empty-state">
-            <i className="fas fa-calendar"></i>
-            <p>No appointments found</p>
+            <i className="fas fa-check-circle"></i>
+            <p>All appointments are within acceptable timeframes</p>
           </div>
-        );
-      }
-
-      return (
-        <div className="all-appointments">
-          <div className="appointments-stats">
-            <div className="stat-card">
-              <h4>Total Appointments</h4>
-              <span className="count">{appointments.length}</span>
-            </div>
-            <div className="stat-card">
-              <h4>Today's Appointments</h4>
-              <span className="count">{todayAppointments.length}</span>
-            </div>
-            <div className="stat-card">
-              <h4>Upcoming</h4>
-              <span className="count">{upcomingAppointments.length}</span>
-            </div>
-          </div>
-
+        ) : (
           <div className="appointments-list">
-            {appointments.map((appointment) => (
+            {urgentAppointments.map((appointment) => (
               <div
                 key={appointment.id}
-                className={`appointment-card ${appointment.status}`}
+                className={`appointment-card ${
+                  overdueAppointments.includes(appointment)
+                    ? "overdue"
+                    : "approaching"
+                }`}
               >
                 <div className="appointment-header">
                   <h4>
-                    <i className="fas fa-calendar"></i>
+                    <i
+                      className={`fas ${
+                        overdueAppointments.includes(appointment)
+                          ? "fa-exclamation-triangle"
+                          : "fa-clock"
+                      }`}
+                    ></i>
                     Appointment #{appointment.id}
                   </h4>
-                  <span className={`status ${appointment.status}`}>
-                    {appointment.status}
+                  <span
+                    className={`status ${
+                      overdueAppointments.includes(appointment)
+                        ? "overdue"
+                        : "approaching"
+                    }`}
+                  >
+                    {overdueAppointments.includes(appointment)
+                      ? "Overdue"
+                      : "Approaching Deadline"}
                   </span>{" "}
                 </div>{" "}
                 <div className="appointment-details">
@@ -1316,312 +1248,77 @@ const OperatorDashboard = () => {
                     <span className="label">Client:</span>
                     <span className="value">
                       {appointment.client_details?.first_name
-                        ? `${appointment.client_details.first_name} ${appointment.client_details.last_name || ""
+                        ? `${appointment.client_details.first_name} ${
+                            appointment.client_details.last_name || ""
                           }`.trim()
                         : appointment.client || "Unknown Client"}
                     </span>
                   </div>
                   <div className="detail-row">
-                    <span className="label">Date:</span>
-                    <span className="value">
-                      {new Date(appointment.date).toLocaleDateString()}
+                    <span className="label">Deadline:</span>
+                    <span className="value deadline">
+                      {new Date(appointment.response_deadline).toLocaleString()}
                     </span>
                   </div>
-                  <div className="detail-row">
-                    <span className="label">Time:</span>
-                    <span className="value">
-                      {appointment.start_time} - {appointment.end_time}
-                    </span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Location:</span>
-                    <span className="value">
-                      {appointment.location || "Not specified"}
-                    </span>
-                  </div>
-                  {renderTherapistInfo(appointment)}{" "}
-                  {/* Action buttons for driver_confirmed status */}
-                  {appointment.status === "driver_confirmed" && (
-                    <div className="appointment-actions">
-                      <LoadingButton
-                        className="action-btn start-appointment"
-                        onClick={() => handleStartAppointment(appointment.id)}
-                        loading={buttonLoading[`start_${appointment.id}`]}
-                        loadingText="Starting..."
-                      >
-                        <i className="fas fa-play"></i>
-                        Start Appointment
-                      </LoadingButton>
-                    </div>
-                  )}
+                  {renderTherapistInfo(appointment)}
                 </div>
               </div>
             ))}
           </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderAllAppointments = () => {
+    if (appointments.length === 0) {
+      return (
+        <div className="empty-state">
+          <i className="fas fa-calendar"></i>
+          <p>No appointments found</p>
         </div>
       );
-    };
+    }
 
-    const renderNotifications = () => {
-      if (!notifications || notifications.length === 0) {
-        return (
-          <div className="empty-state">
-            <i className="fas fa-bell"></i>
-            <p>No notifications</p>
+    return (
+      <div className="all-appointments">
+        <div className="appointments-stats">
+          <div className="stat-card">
+            <h4>Total Appointments</h4>
+            <span className="count">{appointments.length}</span>
           </div>
-        );
-      }
+          <div className="stat-card">
+            <h4>Today's Appointments</h4>
+            <span className="count">{todayAppointments.length}</span>
+          </div>
+          <div className="stat-card">
+            <h4>Upcoming</h4>
+            <span className="count">{upcomingAppointments.length}</span>
+          </div>
+        </div>
 
-      return (
-        <div className="notifications-list">
-          {notifications.map((notification) => (
+        <div className="appointments-list">
+          {appointments.map((appointment) => (
             <div
-              key={notification.id}
-              className={`notification-card ${notification.type || "info"}`}
+              key={appointment.id}
+              className={`appointment-card ${appointment.status}`}
             >
-              <div className="notification-header">
-                <h4>
-                  <i
-                    className={`fas ${notification.type === "urgent"
-                      ? "fa-exclamation-triangle"
-                      : notification.type === "warning"
-                        ? "fa-exclamation-circle"
-                        : notification.type === "success"
-                          ? "fa-check-circle"
-                          : "fa-info-circle"
-                      }`}
-                  ></i>
-                  {notification.title || "Notification"}
-                </h4>
-                <span className="timestamp">
-                  {new Date(notification.created_at).toLocaleString()}
-                </span>
-              </div>
-              <div className="notification-content">
-                <p>{notification.message || notification.content}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    };
-
-    const renderServiceWorkflowView = () => {
-      const workflowSteps = [
-        { id: 1, name: "Appointment Created", status: "completed" },
-        { id: 2, name: "Therapist Assignment", status: "in_progress" },
-        { id: 3, name: "Driver Coordination", status: "pending" },
-        { id: 4, name: "Service Delivery", status: "pending" },
-        { id: 5, name: "Session Complete", status: "pending" },
-      ];
-
-      return (
-        <div className="service-workflow">
-          <div className="workflow-overview">
-            <h3>Service Workflow Management</h3>
-            <p>
-              Monitor the complete service delivery process from appointment
-              creation to completion.
-            </p>
-          </div>
-
-          <div className="workflow-steps">
-            {workflowSteps.map((step) => (
-              <div key={step.id} className={`workflow-step ${step.status}`}>
-                <div className="step-indicator">
-                  <span className="step-number">{step.id}</span>
-                </div>
-                <div className="step-content">
-                  <h4>{step.name}</h4>
-                  <span className={`step-status ${step.status}`}>
-                    {step.status.replace("_", " ").toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="workflow-actions">
-            <button className="action-btn">
-              <i className="fas fa-play"></i>
-              Start New Workflow
-            </button>
-            <button className="action-btn">
-              <i className="fas fa-pause"></i>
-              Pause All Workflows
-            </button>
-            <button className="action-btn">
-              <i className="fas fa-sync"></i>
-              Refresh Status
-            </button>
-          </div>
-        </div>
-      );
-    };
-
-    const renderActiveSessionsView = () => {
-      // Calculate active sessions from appointments
-      const activeSessions = appointments.filter(
-        (apt) => apt.status === "in_progress" || apt.status === "therapist_en_route"
-      );
-
-      if (activeSessions.length === 0) {
-        return (
-          <div className="empty-state">
-            <i className="fas fa-bed"></i>
-            <p>No active therapy sessions</p>
-          </div>
-        );
-      }
-
-      return (
-        <div className="active-sessions-list">
-          {activeSessions.map((session) => (
-            <div key={session.id} className="session-card active">
-              <div className="session-header">
-                <h4>
-                  <i className="fas fa-play-circle"></i>
-                  Session #{session.id}
-                </h4>
-                <span className={`status ${session.status}`}>{session.status}</span>
-              </div>{" "}
-              <div className="session-details">
-                <div className="detail-row">
-                  <span className="label">Client:</span>
-                  <span className="value">
-                    {session.client_details?.first_name}{" "}
-                    {session.client_details?.last_name || "Unknown"}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Location:</span>
-                  <span className="value">{session.location}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Started:</span>
-                  <span className="value">
-                    {new Date(session.start_time).toLocaleString()}
-                  </span>
-                </div>
-                {renderTherapistInfo(session)}
-              </div>
-              <div className="session-actions">
-                <button className="action-btn">
-                  <i className="fas fa-phone"></i>
-                  Contact Therapist
-                </button>
-                <button className="action-btn">
-                  <i className="fas fa-map-marker-alt"></i>
-                  Track Location
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    };
-    const renderPickupRequestsView = () => {
-      // Calculate pickup requests from appointments
-      const pickupRequests = appointments.filter(
-        (apt) =>
-          apt.status === "pickup_requested" ||
-          apt.status === "driver_assigned_pickup"
-      );
-
-      if (pickupRequests.length === 0) {
-        return (
-          <div className="empty-state">
-            <i className="fas fa-car"></i>
-            <p>No pending pickup requests</p>
-          </div>
-        );
-      }
-
-      return (
-        <div className="pickup-requests-list">
-          {pickupRequests.map((request) => (
-            <div key={request.id} className="pickup-card">
-              <div className="pickup-header">
-                <h4>
-                  <i className="fas fa-hand-paper"></i>
-                  Pickup Request #{request.id}
-                </h4>
-                <span className={`status ${request.status}`}>{request.status}</span>
-              </div>
-              <div className="pickup-details">
-                <div className="detail-row">
-                  <span className="label">Therapist:</span>
-                  <span className="value">
-                    {request.therapist_details
-                      ? `${request.therapist_details.first_name} ${request.therapist_details.last_name}`
-                      : "Unknown"}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Pickup Location:</span>
-                  <span className="value">{request.location}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Requested:</span>
-                  <span className="value">
-                    {new Date(request.created_at).toLocaleString()}
-                  </span>
-                </div>
-                {request.driver_details && (
-                  <div className="detail-row">
-                    <span className="label">Assigned Driver:</span>
-                    <span className="value">
-                      {request.driver_details.first_name}{" "}
-                      {request.driver_details.last_name}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="pickup-actions">
-                <button className="action-btn">
-                  <i className="fas fa-car"></i>
-                  Assign Driver
-                </button>
-                <button className="action-btn">
-                  <i className="fas fa-phone"></i>
-                  Contact Therapist
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    };
-
-    // Payment verification view
-    const renderPaymentVerificationView = () => {
-      if (awaitingPaymentAppointments.length === 0) {
-        return (
-          <div className="empty-state">
-            <i className="fas fa-credit-card"></i>
-            <p>No payments pending verification</p>
-          </div>
-        );
-      }
-
-      return (
-        <div className="payments-list">
-          {awaitingPaymentAppointments.map((appointment) => (
-            <div key={appointment.id} className="appointment-card payment-pending">
               <div className="appointment-header">
                 <h4>
-                  <i className="fas fa-credit-card"></i>
-                  Payment Verification #{appointment.id}
+                  <i className="fas fa-calendar"></i>
+                  Appointment #{appointment.id}
                 </h4>
-                <span className="status awaiting-payment">Awaiting Payment</span>
-              </div>
+                <span className={`status ${appointment.status}`}>
+                  {appointment.status}
+                </span>{" "}
+              </div>{" "}
               <div className="appointment-details">
-                {" "}
                 <div className="detail-row">
                   <span className="label">Client:</span>
                   <span className="value">
                     {appointment.client_details?.first_name
-                      ? `${appointment.client_details.first_name} ${appointment.client_details.last_name || ""
+                      ? `${appointment.client_details.first_name} ${
+                          appointment.client_details.last_name || ""
                         }`.trim()
                       : appointment.client || "Unknown Client"}
                   </span>
@@ -1634,410 +1331,733 @@ const OperatorDashboard = () => {
                 </div>
                 <div className="detail-row">
                   <span className="label">Time:</span>
-                  <span className="value">{appointment.start_time}</span>
+                  <span className="value">
+                    {appointment.start_time} - {appointment.end_time}
+                  </span>
                 </div>
                 <div className="detail-row">
                   <span className="label">Location:</span>
-                  <span className="value">{appointment.location}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Services:</span>
                   <span className="value">
-                    {appointment.services_details?.map((s) => s.name).join(", ") ||
-                      "N/A"}
+                    {appointment.location || "Not specified"}
                   </span>
                 </div>
-                <div className="detail-row">
-                  <span className="label">Total Amount:</span>
-                  <span className="value">
-                    ₱{appointment.total_amount || "0.00"}
-                  </span>
-                </div>
-                {renderTherapistInfo(appointment)}
-                <div className="detail-row">
-                  <span className="label">Payment Requested:</span>
-                  <span className="value">
-                    {appointment.payment_requested_at
-                      ? new Date(appointment.payment_requested_at).toLocaleString()
-                      : "Just now"}
-                  </span>
-                </div>
-              </div>{" "}
-              <div className="appointment-actions">
-                <LoadingButton
-                  onClick={() => handlePaymentVerification(appointment)}
-                  className="verify-payment-btn"
-                  loading={buttonLoading[`payment_open_${appointment.id}`]}
-                  loadingText="Loading..."
-                >
-                  <i className="fas fa-check-circle"></i>
-                  Verify Payment Received
-                </LoadingButton>
+                {renderTherapistInfo(appointment)}{" "}
+                {/* Action buttons for driver_confirmed status */}
+                {appointment.status === "driver_confirmed" && (
+                  <div className="appointment-actions">
+                    <LoadingButton
+                      className="action-btn start-appointment"
+                      onClick={() => handleStartAppointment(appointment.id)}
+                      loading={buttonLoading[`start_${appointment.id}`]}
+                      loadingText="Starting..."
+                    >
+                      <i className="fas fa-play"></i>
+                      Start Appointment
+                    </LoadingButton>
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
-      );
-    };
+      </div>
+    );
+  };
 
-    // Calculate counts for tab buttons
+  const renderNotifications = () => {
+    if (!notifications || notifications.length === 0) {
+      return (
+        <div className="empty-state">
+          <i className="fas fa-bell"></i>
+          <p>No notifications</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="notifications-list">
+        {notifications.map((notification) => (
+          <div
+            key={notification.id}
+            className={`notification-card ${notification.type || "info"}`}
+          >
+            <div className="notification-header">
+              <h4>
+                <i
+                  className={`fas ${
+                    notification.type === "urgent"
+                      ? "fa-exclamation-triangle"
+                      : notification.type === "warning"
+                      ? "fa-exclamation-circle"
+                      : notification.type === "success"
+                      ? "fa-check-circle"
+                      : "fa-info-circle"
+                  }`}
+                ></i>
+                {notification.title || "Notification"}
+              </h4>
+              <span className="timestamp">
+                {new Date(notification.created_at).toLocaleString()}
+              </span>
+            </div>
+            <div className="notification-content">
+              <p>{notification.message || notification.content}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderServiceWorkflowView = () => {
+    const workflowSteps = [
+      { id: 1, name: "Appointment Created", status: "completed" },
+      { id: 2, name: "Therapist Assignment", status: "in_progress" },
+      { id: 3, name: "Driver Coordination", status: "pending" },
+      { id: 4, name: "Service Delivery", status: "pending" },
+      { id: 5, name: "Session Complete", status: "pending" },
+    ];
+
+    return (
+      <div className="service-workflow">
+        <div className="workflow-overview">
+          <h3>Service Workflow Management</h3>
+          <p>
+            Monitor the complete service delivery process from appointment
+            creation to completion.
+          </p>
+        </div>
+
+        <div className="workflow-steps">
+          {workflowSteps.map((step) => (
+            <div key={step.id} className={`workflow-step ${step.status}`}>
+              <div className="step-indicator">
+                <span className="step-number">{step.id}</span>
+              </div>
+              <div className="step-content">
+                <h4>{step.name}</h4>
+                <span className={`step-status ${step.status}`}>
+                  {step.status.replace("_", " ").toUpperCase()}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="workflow-actions">
+          <button className="action-btn">
+            <i className="fas fa-play"></i>
+            Start New Workflow
+          </button>
+          <button className="action-btn">
+            <i className="fas fa-pause"></i>
+            Pause All Workflows
+          </button>
+          <button className="action-btn">
+            <i className="fas fa-sync"></i>
+            Refresh Status
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderActiveSessionsView = () => {
+    // Calculate active sessions from appointments
     const activeSessions = appointments.filter(
-      (apt) => apt.status === "in_progress" || apt.status === "therapist_en_route"
+      (apt) =>
+        apt.status === "in_progress" || apt.status === "therapist_en_route"
     );
 
+    if (activeSessions.length === 0) {
+      return (
+        <div className="empty-state">
+          <i className="fas fa-bed"></i>
+          <p>No active therapy sessions</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="active-sessions-list">
+        {activeSessions.map((session) => (
+          <div key={session.id} className="session-card active">
+            <div className="session-header">
+              <h4>
+                <i className="fas fa-play-circle"></i>
+                Session #{session.id}
+              </h4>
+              <span className={`status ${session.status}`}>
+                {session.status}
+              </span>
+            </div>{" "}
+            <div className="session-details">
+              <div className="detail-row">
+                <span className="label">Client:</span>
+                <span className="value">
+                  {session.client_details?.first_name}{" "}
+                  {session.client_details?.last_name || "Unknown"}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Location:</span>
+                <span className="value">{session.location}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Started:</span>
+                <span className="value">
+                  {new Date(session.start_time).toLocaleString()}
+                </span>
+              </div>
+              {renderTherapistInfo(session)}
+            </div>
+            <div className="session-actions">
+              <button className="action-btn">
+                <i className="fas fa-phone"></i>
+                Contact Therapist
+              </button>
+              <button className="action-btn">
+                <i className="fas fa-map-marker-alt"></i>
+                Track Location
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+  const renderPickupRequestsView = () => {
+    // Calculate pickup requests from appointments
     const pickupRequests = appointments.filter(
       (apt) =>
-        apt.status === "pickup_requested" || apt.status === "driver_assigned_pickup"
+        apt.status === "pickup_requested" ||
+        apt.status === "driver_assigned_pickup"
     );
+
+    if (pickupRequests.length === 0) {
+      return (
+        <div className="empty-state">
+          <i className="fas fa-car"></i>
+          <p>No pending pickup requests</p>
+        </div>
+      );
+    }
+
     return (
-      <PageLayout>
-        <div className="operator-dashboard">
-          <LayoutRow title="Operator Dashboard">
-            <div className="action-buttons">
-              <button onClick={handleLogout} className="logout-button">
-                Logout
+      <div className="pickup-requests-list">
+        {pickupRequests.map((request) => (
+          <div key={request.id} className="pickup-card">
+            <div className="pickup-header">
+              <h4>
+                <i className="fas fa-hand-paper"></i>
+                Pickup Request #{request.id}
+              </h4>
+              <span className={`status ${request.status}`}>
+                {request.status}
+              </span>
+            </div>
+            <div className="pickup-details">
+              <div className="detail-row">
+                <span className="label">Therapist:</span>
+                <span className="value">
+                  {request.therapist_details
+                    ? `${request.therapist_details.first_name} ${request.therapist_details.last_name}`
+                    : "Unknown"}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Pickup Location:</span>
+                <span className="value">{request.location}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Requested:</span>
+                <span className="value">
+                  {new Date(request.created_at).toLocaleString()}
+                </span>
+              </div>
+              {request.driver_details && (
+                <div className="detail-row">
+                  <span className="label">Assigned Driver:</span>
+                  <span className="value">
+                    {request.driver_details.first_name}{" "}
+                    {request.driver_details.last_name}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="pickup-actions">
+              <button className="action-btn">
+                <i className="fas fa-car"></i>
+                Assign Driver
               </button>
+              <button className="action-btn">
+                <i className="fas fa-phone"></i>
+                Contact Therapist
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Payment verification view
+  const renderPaymentVerificationView = () => {
+    if (awaitingPaymentAppointments.length === 0) {
+      return (
+        <div className="empty-state">
+          <i className="fas fa-credit-card"></i>
+          <p>No payments pending verification</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="payments-list">
+        {awaitingPaymentAppointments.map((appointment) => (
+          <div
+            key={appointment.id}
+            className="appointment-card payment-pending"
+          >
+            <div className="appointment-header">
+              <h4>
+                <i className="fas fa-credit-card"></i>
+                Payment Verification #{appointment.id}
+              </h4>
+              <span className="status awaiting-payment">Awaiting Payment</span>
+            </div>
+            <div className="appointment-details">
+              {" "}
+              <div className="detail-row">
+                <span className="label">Client:</span>
+                <span className="value">
+                  {appointment.client_details?.first_name
+                    ? `${appointment.client_details.first_name} ${
+                        appointment.client_details.last_name || ""
+                      }`.trim()
+                    : appointment.client || "Unknown Client"}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Date:</span>
+                <span className="value">
+                  {new Date(appointment.date).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Time:</span>
+                <span className="value">{appointment.start_time}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Location:</span>
+                <span className="value">{appointment.location}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Services:</span>
+                <span className="value">
+                  {appointment.services_details
+                    ?.map((s) => s.name)
+                    .join(", ") || "N/A"}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Total Amount:</span>
+                <span className="value">
+                  ₱{appointment.total_amount || "0.00"}
+                </span>
+              </div>
+              {renderTherapistInfo(appointment)}
+              <div className="detail-row">
+                <span className="label">Payment Requested:</span>
+                <span className="value">
+                  {appointment.payment_requested_at
+                    ? new Date(
+                        appointment.payment_requested_at
+                      ).toLocaleString()
+                    : "Just now"}
+                </span>
+              </div>
             </div>{" "}
-          </LayoutRow>
-          {loading && (
-            <LoadingSpinner
-              size="large"
-              variant="primary"
-              text="Loading dashboard data..."
-              overlay={false}
-              className="operator-dashboard-loader"
-            />
+            <div className="appointment-actions">
+              <LoadingButton
+                onClick={() => handlePaymentVerification(appointment)}
+                className="verify-payment-btn"
+                loading={buttonLoading[`payment_open_${appointment.id}`]}
+                loadingText="Loading..."
+              >
+                <i className="fas fa-check-circle"></i>
+                Verify Payment Received
+              </LoadingButton>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Calculate counts for tab buttons
+  const activeSessions = appointments.filter(
+    (apt) => apt.status === "in_progress" || apt.status === "therapist_en_route"
+  );
+
+  const pickupRequests = appointments.filter(
+    (apt) =>
+      apt.status === "pickup_requested" ||
+      apt.status === "driver_assigned_pickup"
+  );
+  return (
+    <PageLayout>
+      <div className="operator-dashboard">
+        <LayoutRow title="Operator Dashboard">
+          <div className="action-buttons">
+            <button onClick={handleLogout} className="logout-button">
+              Logout
+            </button>
+          </div>{" "}
+        </LayoutRow>
+        {loading && (
+          <LoadingSpinner
+            size="large"
+            variant="primary"
+            text="Loading dashboard data..."
+            overlay={false}
+            className="operator-dashboard-loader"
+          />
+        )}
+        {error && (
+          <div className="error-message">
+            {typeof error === "object"
+              ? error.message || error.error || JSON.stringify(error)
+              : error}
+          </div>
+        )}{" "}
+        {/* Statistics Dashboard */}
+        <div className="stats-dashboard">
+          <div className="stats-card">
+            <h4>Rejection Overview</h4>
+            <div className="stats-grid">
+              <div className="stat-item">
+                <span className="stat-number">{rejectionStats.total}</span>
+                <span className="stat-label">Total Rejections</span>
+              </div>
+              <div className="stat-item therapist-stat">
+                <span className="stat-number">{rejectionStats.therapist}</span>
+                <span className="stat-label">Therapist Rejections</span>
+              </div>
+              <div className="stat-item driver-stat">
+                <span className="stat-number">{rejectionStats.driver}</span>
+                <span className="stat-label">Driver Rejections</span>
+              </div>
+              <div className="stat-item pending-stat">
+                <span className="stat-number">{rejectionStats.pending}</span>
+                <span className="stat-label">Pending Reviews</span>
+              </div>
+            </div>
+          </div>
+        </div>{" "}
+        <div className="view-selector">
+          <button
+            className={currentView === "rejected" ? "active" : ""}
+            onClick={() => setView("rejected")}
+          >
+            Pending Reviews ({rejectedAppointments.length})
+          </button>
+          <button
+            className={currentView === "pending" ? "active" : ""}
+            onClick={() => setView("pending")}
+          >
+            Pending Acceptance ({pendingAppointments.length})
+          </button>{" "}
+          <button
+            className={currentView === "timeouts" ? "active" : ""}
+            onClick={() => setView("timeouts")}
+          >
+            Timeouts (
+            {overdueAppointments.length +
+              approachingDeadlineAppointments.length}
+            )
+          </button>
+          <button
+            className={currentView === "payment_verification" ? "active" : ""}
+            onClick={() => setView("payment_verification")}
+          >
+            Payment Verification ({awaitingPaymentAppointments.length})
+          </button>
+          <button
+            className={currentView === "all" ? "active" : ""}
+            onClick={() => setView("all")}
+          >
+            All Appointments
+          </button>{" "}
+          <button
+            className={currentView === "notifications" ? "active" : ""}
+            onClick={() => setView("notifications")}
+          >
+            Notifications
+          </button>{" "}
+          <button
+            className={currentView === "availability" ? "active" : ""}
+            onClick={() => setView("availability")}
+          >
+            Manage Availability
+          </button>
+          <button
+            className={currentView === "drivers" ? "active" : ""}
+            onClick={() => setView("drivers")}
+          >
+            Driver Coordination
+          </button>
+          <button
+            className={currentView === "workflow" ? "active" : ""}
+            onClick={() => setView("workflow")}
+          >
+            Service Workflow
+          </button>
+          <button
+            className={currentView === "active_sessions" ? "active" : ""}
+            onClick={() => setView("active_sessions")}
+          >
+            Active Sessions ({activeSessions.length})
+          </button>
+          <button
+            className={currentView === "pickup_requests" ? "active" : ""}
+            onClick={() => setView("pickup_requests")}
+          >
+            Pickup Requests ({pickupRequests.length})
+          </button>
+        </div>{" "}
+        <div className="dashboard-content">
+          {currentView === "rejected" && (
+            <div className="rejected-appointments">
+              <h2>Rejection Reviews</h2>
+              {renderRejectedAppointments()}
+            </div>
           )}
-          {error && (
-            <div className="error-message">
-              {typeof error === "object"
-                ? error.message || error.error || JSON.stringify(error)
-                : error}
+          {currentView === "pending" && (
+            <div className="pending-appointments">
+              <h2>Pending Acceptance Appointments</h2>
+              {renderPendingAcceptanceAppointments()}
             </div>
           )}{" "}
-          {/* Statistics Dashboard */}
-          <div className="stats-dashboard">
-            <div className="stats-card">
-              <h4>Rejection Overview</h4>
-              <div className="stats-grid">
-                <div className="stat-item">
-                  <span className="stat-number">{rejectionStats.total}</span>
-                  <span className="stat-label">Total Rejections</span>
-                </div>
-                <div className="stat-item therapist-stat">
-                  <span className="stat-number">{rejectionStats.therapist}</span>
-                  <span className="stat-label">Therapist Rejections</span>
-                </div>
-                <div className="stat-item driver-stat">
-                  <span className="stat-number">{rejectionStats.driver}</span>
-                  <span className="stat-label">Driver Rejections</span>
-                </div>
-                <div className="stat-item pending-stat">
-                  <span className="stat-number">{rejectionStats.pending}</span>
-                  <span className="stat-label">Pending Reviews</span>
-                </div>
-              </div>
-            </div>
-          </div>{" "}
-          <div className="view-selector">
-            <button
-              className={currentView === "rejected" ? "active" : ""}
-              onClick={() => setView("rejected")}
-            >
-              Pending Reviews ({rejectedAppointments.length})
-            </button>
-            <button
-              className={currentView === "pending" ? "active" : ""}
-              onClick={() => setView("pending")}
-            >
-              Pending Acceptance ({pendingAppointments.length})
-            </button>{" "}
-            <button
-              className={currentView === "timeouts" ? "active" : ""}
-              onClick={() => setView("timeouts")}
-            >
-              Timeouts (
-              {overdueAppointments.length + approachingDeadlineAppointments.length})
-            </button>
-            <button
-              className={currentView === "payment_verification" ? "active" : ""}
-              onClick={() => setView("payment_verification")}
-            >
-              Payment Verification ({awaitingPaymentAppointments.length})
-            </button>
-            <button
-              className={currentView === "all" ? "active" : ""}
-              onClick={() => setView("all")}
-            >
-              All Appointments
-            </button>{" "}
-            <button
-              className={currentView === "notifications" ? "active" : ""}
-              onClick={() => setView("notifications")}
-            >
-              Notifications
-            </button>{" "}
-            <button
-              className={currentView === "availability" ? "active" : ""}
-              onClick={() => setView("availability")}
-            >
-              Manage Availability
-            </button>
-            <button
-              className={currentView === "drivers" ? "active" : ""}
-              onClick={() => setView("drivers")}
-            >
-              Driver Coordination
-            </button>
-            <button
-              className={currentView === "workflow" ? "active" : ""}
-              onClick={() => setView("workflow")}
-            >
-              Service Workflow
-            </button>
-            <button
-              className={currentView === "active_sessions" ? "active" : ""}
-              onClick={() => setView("active_sessions")}
-            >
-              Active Sessions ({activeSessions.length})
-            </button>
-            <button
-              className={currentView === "pickup_requests" ? "active" : ""}
-              onClick={() => setView("pickup_requests")}
-            >
-              Pickup Requests ({pickupRequests.length})
-            </button>
-          </div>{" "}
-          <div className="dashboard-content">
-            {currentView === "rejected" && (
-              <div className="rejected-appointments">
-                <h2>Rejection Reviews</h2>
-                {renderRejectedAppointments()}
-              </div>
-            )}
-            {currentView === "pending" && (
-              <div className="pending-appointments">
-                <h2>Pending Acceptance Appointments</h2>
-                {renderPendingAcceptanceAppointments()}
-              </div>
-            )}{" "}
-            {currentView === "timeouts" && (
-              <div className="timeout-monitoring">
-                <h2>Timeout Monitoring</h2>
-                {renderTimeoutMonitoring()}
-              </div>
-            )}
-            {currentView === "payment_verification" && (
-              <div className="payment-verification">
-                <h2>Payment Verification</h2>
-                {renderPaymentVerificationView()}
-              </div>
-            )}
-            {currentView === "all" && (
-              <div className="all-appointments">
-                <h2>All Appointments</h2>
-                {renderAllAppointments()}
-              </div>
-            )}{" "}
-            {currentView === "notifications" && (
-              <div className="notifications">
-                <h2>Notifications</h2>
-                {renderNotifications()}
-              </div>
-            )}{" "}
-            {currentView === "availability" && (
-              <div className="availability-management">
-                <AvailabilityManager />
-              </div>
-            )}
-            {currentView === "drivers" && (
-              <div className="driver-coordination">
-                <h2>Driver Coordination Center</h2>
-                {renderDriverCoordinationPanel()}
-              </div>
-            )}
-            {currentView === "workflow" && (
-              <div className="service-workflow">
-                <h2>Service Workflow Overview</h2>
-                {renderServiceWorkflowView()}
-              </div>
-            )}
-            {currentView === "active_sessions" && (
-              <div className="active-sessions">
-                <h2>Active Therapy Sessions</h2>
-                {renderActiveSessionsView()}
-              </div>
-            )}
-            {currentView === "pickup_requests" && (
-              <div className="pickup-requests">
-                <h2>Therapist Pickup Requests</h2>
-                {renderPickupRequestsView()}
-              </div>
-            )}{" "}
-          </div>
-          {/* Payment Verification Modal */}
-          {paymentModal.isOpen && (
-            <div className="modal-overlay">
-              <div className="payment-modal">
-                <h3>Verify Payment Received</h3>
-                <div className="appointment-summary">
-                  <h4>Appointment #{paymentModal.appointmentId}</h4>{" "}
-                  <div className="summary-details">
-                    <p>
-                      <strong>Client:</strong>{" "}
-                      {paymentModal.appointmentDetails?.client_details?.first_name
-                        ? `${paymentModal.appointmentDetails.client_details
-                          .first_name
-                          } ${paymentModal.appointmentDetails.client_details
-                            .last_name || ""
-                          }`.trim()
-                        : paymentModal.appointmentDetails?.client ||
-                        "Unknown Client"}
-                    </p>
-                    <p>
-                      <strong>Date:</strong>{" "}
-                      {new Date(
-                        paymentModal.appointmentDetails?.date
-                      ).toLocaleDateString()}
-                    </p>
-                    <p>
-                      <strong>Services:</strong>{" "}
-                      {paymentModal.appointmentDetails?.services_details
-                        ?.map((s) => s.name)
-                        .join(", ") || "N/A"}
-                    </p>
-                    <p>
-                      <strong>Total Amount:</strong> ₱
-                      {paymentModal.appointmentDetails?.total_amount || "0.00"}
-                    </p>
-                  </div>
-                </div>
-                <div className="payment-form">
-                  <div className="form-group">
-                    <label htmlFor="paymentMethod">Payment Method:</label>
-                    <select
-                      id="paymentMethod"
-                      value={paymentData.method}
-                      onChange={(e) =>
-                        setPaymentData({ ...paymentData, method: e.target.value })
-                      }
-                    >
-                      <option value="cash">Cash</option>
-                      <option value="gcash">GCash</option>
-                      <option value="bank_transfer">Bank Transfer</option>
-                      <option value="card">Credit/Debit Card</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="paymentAmount">Amount Received:</label>
-                    <input
-                      type="number"
-                      id="paymentAmount"
-                      value={paymentData.amount}
-                      onChange={(e) =>
-                        setPaymentData({ ...paymentData, amount: e.target.value })
-                      }
-                      placeholder="Enter amount received"
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="paymentNotes">Notes (optional):</label>
-                    <textarea
-                      id="paymentNotes"
-                      value={paymentData.notes}
-                      onChange={(e) =>
-                        setPaymentData({ ...paymentData, notes: e.target.value })
-                      }
-                      placeholder="Add any notes about the payment..."
-                      rows={3}
-                    />
-                  </div>
-                </div>{" "}
-                <div className="modal-actions">
-                  <LoadingButton
-                    className="verify-button"
-                    onClick={handleMarkPaymentPaid}
-                    loading={buttonLoading[`payment_${paymentModal.appointmentId}`]}
-                    loadingText="Processing..."
-                  >
-                    Mark as Paid
-                  </LoadingButton>
-                  <LoadingButton
-                    className="cancel-button"
-                    onClick={handlePaymentModalCancel}
-                    variant="secondary"
-                  >
-                    Cancel
-                  </LoadingButton>
-                </div>
-              </div>
+          {currentView === "timeouts" && (
+            <div className="timeout-monitoring">
+              <h2>Timeout Monitoring</h2>
+              {renderTimeoutMonitoring()}
             </div>
           )}
-          {/* Review Rejection Modal */}
-          {reviewModal.isOpen && (
-            <div className="modal-overlay">
-              <div className="review-modal">
-                <h3>Review Appointment Rejection</h3>
-                <div className="rejection-details">
+          {currentView === "payment_verification" && (
+            <div className="payment-verification">
+              <h2>Payment Verification</h2>
+              {renderPaymentVerificationView()}
+            </div>
+          )}
+          {currentView === "all" && (
+            <div className="all-appointments">
+              <h2>All Appointments</h2>
+              {renderAllAppointments()}
+            </div>
+          )}{" "}
+          {currentView === "notifications" && (
+            <div className="notifications">
+              <h2>Notifications</h2>
+              {renderNotifications()}
+            </div>
+          )}{" "}
+          {currentView === "availability" && (
+            <div className="availability-management">
+              <AvailabilityManager />
+            </div>
+          )}
+          {currentView === "drivers" && (
+            <div className="driver-coordination">
+              <h2>Driver Coordination Center</h2>
+              {renderDriverCoordinationPanel()}
+            </div>
+          )}
+          {currentView === "workflow" && (
+            <div className="service-workflow">
+              <h2>Service Workflow Overview</h2>
+              {renderServiceWorkflowView()}
+            </div>
+          )}
+          {currentView === "active_sessions" && (
+            <div className="active-sessions">
+              <h2>Active Therapy Sessions</h2>
+              {renderActiveSessionsView()}
+            </div>
+          )}
+          {currentView === "pickup_requests" && (
+            <div className="pickup-requests">
+              <h2>Therapist Pickup Requests</h2>
+              {renderPickupRequestsView()}
+            </div>
+          )}{" "}
+        </div>
+        {/* Payment Verification Modal */}
+        {paymentModal.isOpen && (
+          <div className="modal-overlay">
+            <div className="payment-modal">
+              <h3>Verify Payment Received</h3>
+              <div className="appointment-summary">
+                <h4>Appointment #{paymentModal.appointmentId}</h4>{" "}
+                <div className="summary-details">
                   <p>
-                    <strong>Rejection Reason:</strong>
+                    <strong>Client:</strong>{" "}
+                    {paymentModal.appointmentDetails?.client_details?.first_name
+                      ? `${
+                          paymentModal.appointmentDetails.client_details
+                            .first_name
+                        } ${
+                          paymentModal.appointmentDetails.client_details
+                            .last_name || ""
+                        }`.trim()
+                      : paymentModal.appointmentDetails?.client ||
+                        "Unknown Client"}
                   </p>
-                  <p className="rejection-reason-text">
-                    {reviewModal.rejectionReason}
+                  <p>
+                    <strong>Date:</strong>{" "}
+                    {new Date(
+                      paymentModal.appointmentDetails?.date
+                    ).toLocaleDateString()}
+                  </p>
+                  <p>
+                    <strong>Services:</strong>{" "}
+                    {paymentModal.appointmentDetails?.services_details
+                      ?.map((s) => s.name)
+                      .join(", ") || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Total Amount:</strong> ₱
+                    {paymentModal.appointmentDetails?.total_amount || "0.00"}
                   </p>
                 </div>
-                <div className="review-notes">
-                  <label htmlFor="reviewNotes">Review Notes (optional):</label>
+              </div>
+              <div className="payment-form">
+                <div className="form-group">
+                  <label htmlFor="paymentMethod">Payment Method:</label>
+                  <select
+                    id="paymentMethod"
+                    value={paymentData.method}
+                    onChange={(e) =>
+                      setPaymentData({ ...paymentData, method: e.target.value })
+                    }
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="gcash">GCash</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="card">Credit/Debit Card</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="paymentAmount">Amount Received:</label>
+                  <input
+                    type="number"
+                    id="paymentAmount"
+                    value={paymentData.amount}
+                    onChange={(e) =>
+                      setPaymentData({ ...paymentData, amount: e.target.value })
+                    }
+                    placeholder="Enter amount received"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="paymentNotes">Notes (optional):</label>
                   <textarea
-                    id="reviewNotes"
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    placeholder="Add any additional notes about your decision..."
+                    id="paymentNotes"
+                    value={paymentData.notes}
+                    onChange={(e) =>
+                      setPaymentData({ ...paymentData, notes: e.target.value })
+                    }
+                    placeholder="Add any notes about the payment..."
                     rows={3}
                   />
-                </div>{" "}
-                <div className="modal-actions">
-                  <LoadingButton
-                    className="accept-button"
-                    onClick={() => handleReviewSubmit("accept")}
-                    loading={
-                      buttonLoading[`review_${reviewModal.appointmentId}_accept`]
-                    }
-                    loadingText="Processing..."
-                  >
-                    Accept Rejection
-                  </LoadingButton>
-                  <LoadingButton
-                    className="deny-button"
-                    onClick={() => handleReviewSubmit("deny")}
-                    loading={
-                      buttonLoading[`review_${reviewModal.appointmentId}_deny`]
-                    }
-                    loadingText="Processing..."
-                    variant="secondary"
-                  >
-                    Deny Rejection
-                  </LoadingButton>
-                  <LoadingButton
-                    className="cancel-button"
-                    onClick={handleReviewCancel}
-                    variant="secondary"
-                  >
-                    Cancel
-                  </LoadingButton>
                 </div>
+              </div>{" "}
+              <div className="modal-actions">
+                <LoadingButton
+                  className="verify-button"
+                  onClick={handleMarkPaymentPaid}
+                  loading={
+                    buttonLoading[`payment_${paymentModal.appointmentId}`]
+                  }
+                  loadingText="Processing..."
+                >
+                  Mark as Paid
+                </LoadingButton>
+                <LoadingButton
+                  className="cancel-button"
+                  onClick={handlePaymentModalCancel}
+                  variant="secondary"
+                >
+                  Cancel
+                </LoadingButton>
               </div>
             </div>
-          )}
-        </div>
-      </PageLayout>
-    )
-  })
-}
-  
+          </div>
+        )}
+        {/* Review Rejection Modal */}
+        {reviewModal.isOpen && (
+          <div className="modal-overlay">
+            <div className="review-modal">
+              <h3>Review Appointment Rejection</h3>
+              <div className="rejection-details">
+                <p>
+                  <strong>Rejection Reason:</strong>
+                </p>
+                <p className="rejection-reason-text">
+                  {reviewModal.rejectionReason}
+                </p>
+              </div>
+              <div className="review-notes">
+                <label htmlFor="reviewNotes">Review Notes (optional):</label>
+                <textarea
+                  id="reviewNotes"
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
+                  placeholder="Add any additional notes about your decision..."
+                  rows={3}
+                />
+              </div>{" "}
+              <div className="modal-actions">
+                <LoadingButton
+                  className="accept-button"
+                  onClick={() => handleReviewSubmit("accept")}
+                  loading={
+                    buttonLoading[`review_${reviewModal.appointmentId}_accept`]
+                  }
+                  loadingText="Processing..."
+                >
+                  Accept Rejection
+                </LoadingButton>
+                <LoadingButton
+                  className="deny-button"
+                  onClick={() => handleReviewSubmit("deny")}
+                  loading={
+                    buttonLoading[`review_${reviewModal.appointmentId}_deny`]
+                  }
+                  loadingText="Processing..."
+                  variant="secondary"
+                >
+                  Deny Rejection
+                </LoadingButton>
+                <LoadingButton
+                  className="cancel-button"
+                  onClick={handleReviewCancel}
+                  variant="secondary"
+                >
+                  Cancel
+                </LoadingButton>{" "}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </PageLayout>
+  );
+};
 
 export default OperatorDashboard;

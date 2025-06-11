@@ -1557,9 +1557,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         appointment.status = "arrived"
         appointment.arrived_at = timezone.now()
-        appointment.save()
-
-        # Create notifications
+        appointment.save()  # Create notifications
         self._create_notifications(
             appointment,
             "arrived_at_location",
@@ -1569,8 +1567,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(appointment)
         return Response(
             {"message": "Arrived at client location.", "appointment": serializer.data}
-        ) @ action(detail=True, methods=["post"])
+        )
 
+    @action(detail=True, methods=["post"])
     def drop_off_therapist(self, request, pk=None):
         """Driver marks therapist(s) as dropped off"""
         appointment = self.get_object()

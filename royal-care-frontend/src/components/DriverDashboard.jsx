@@ -532,12 +532,10 @@ const DriverDashboard = () => {
             appointment.location
           } at ${new Date().toISOString()}`,
         })
-      ).unwrap();
-
-      // Update driver availability status in FIFO queue
+      ).unwrap(); // Update driver availability status in FIFO queue
       try {
         const response = await fetch(
-          "http://localhost:8000/api/appointments/update_driver_availability/",
+          "http://localhost:8000/api/scheduling/appointments/update_driver_availability/",
           {
             method: "POST",
             headers: {
@@ -607,12 +605,10 @@ const DriverDashboard = () => {
           action: "drop_off_therapist",
           notes: `Therapist dropped off at client location at ${new Date().toISOString()}`,
         })
-      ).unwrap();
-
-      // Update driver availability status in FIFO queue
+      ).unwrap(); // Update driver availability status in FIFO queue
       try {
         const response = await fetch(
-          "http://localhost:8000/api/appointments/update_driver_availability/",
+          "http://localhost:8000/api/scheduling/appointments/update_driver_availability/",
           {
             method: "POST",
             headers: {
