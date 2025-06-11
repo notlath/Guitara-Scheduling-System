@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from knox.models import AuthToken
@@ -10,6 +10,11 @@ from .serializers import LoginSerializer
 from core.models import CustomUser
 from core.serializers import UserSerializer  # Ensure this is imported
 from knox.views import LoginView as KnoxLoginView
+from .models import TwoFactorCode, PasswordResetCode
+from datetime import timedelta
+from registration.views import insert_into_table  # Use direct import for sibling app
+import logging
+import django.conf
 
 class CheckUsernameAPI(APIView):
     permission_classes = [permissions.AllowAny]
@@ -41,80 +46,168 @@ class LoginAPI(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        # Validate username existence
-        username = request.data.get('username')
-        if not username:
-            return Response({"error": "Username is required"}, status=400)
-
+        logger = logging.getLogger(__name__)
         try:
-            user = CustomUser.objects.get(username=username)
-        except CustomUser.DoesNotExist:
-            return Response({"error": "Invalid credentials"}, status=401)
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.validated_data  # This is the authenticated user (by username or email)
+            logger.debug(f"[LOGIN] Authenticated user: {user} (username={user.username}, email={user.email})")
 
-        # Check if account is disabled/inactive FIRST
-        if not user.is_active:
-            account_type = getattr(user, 'role', 'account').lower()
-            error_messages = {
-                'therapist': 'Your therapist account is currently disabled. Please contact your supervisor for assistance.',
-                'driver': 'Your driver account is currently disabled. Please contact your supervisor for assistance.', 
-                'operator': 'Your operator account is currently disabled. Please contact the administrator for assistance.',
-            }
-            error_msg = error_messages.get(account_type, 'Your account has been disabled. Please contact support for assistance.')
-            return Response({"error": error_msg, "error_code": f"{account_type.upper()}_DISABLED"}, status=403)
+            if not user.is_active:
+                account_type = getattr(user, 'role', 'account').lower()
+                error_messages = {
+                    'therapist': 'Your therapist account is currently disabled. Please contact your supervisor for assistance.',
+                    'driver': 'Your driver account is currently disabled. Please contact your supervisor for assistance.',
+                    'operator': 'Your operator account is currently disabled. Please contact the administrator for assistance.',
+                }
+                error_msg = error_messages.get(account_type, 'Your account has been disabled. Please contact support for assistance.')
+                return Response({"error": error_msg, "error_code": f"{account_type.upper()}_DISABLED"}, status=403)
 
-        # Validate password
-        if not user.check_password(request.data['password']):
-            user.failed_login_attempts += 1
-            if user.failed_login_attempts >= 3:
-                user.locked_until = timezone.now() + timezone.timedelta(minutes=5)
-            user.save()
-            return Response({"error": "Invalid credentials"}, status=401)
-
-        # Check account lock
-        if user.locked_until and timezone.now() < user.locked_until:
-            return Response({"error": "Account locked for 5 minutes"}, status=403)
-
-        # Reset failed attempts
-        user.failed_login_attempts = 0
-        user.save()
-
-        # Generate and send 2FA code
-        if user.two_factor_enabled:
-            code = str(random.randint(100000, 999999))
-            user.verification_code = code
+            # Reset failed login attempts on successful login
+            user.failed_login_attempts = 0
             user.save()
 
-            send_mail(
-                'Your Verification Code',
-                f'Your verification code is: {code}',
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
-            )
-            return Response({"message": "2FA code sent"}, status=200)
+            # Generate and send 2FA code using TwoFactorCode model
+            if user.two_factor_enabled:
+                code = str(random.randint(100000, 999999))
+                expires_at = timezone.now() + timedelta(minutes=10)
+                supabase_data = {
+                    'user_id': user.id,
+                    'code': code,
+                    'created_at': timezone.now().isoformat(),
+                    'expires_at': expires_at.isoformat(),
+                    'is_used': False
+                }
+                try:
+                    insert_into_table('authentication_twofactorcode', supabase_data)
+                except Exception as e:
+                    logger.error(f"Supabase insert failed: {e}")
+                print(f"EMAIL_BACKEND: {django.conf.settings.EMAIL_BACKEND} | Sending code {code} to {user.email}")
+                send_mail(
+                    'Your Verification Code',
+                    f'Your verification code is: {code}',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                    fail_silently=False,
+                )
+                return Response({"message": "2FA code sent"}, status=200)
 
-        # Return token if 2FA disabled
-        return Response({
-            "user": UserSerializer(user).data,  # Includes role and other user details
-            "token": AuthToken.objects.create(user)[1]
-        })
+            return Response({
+                "user": UserSerializer(user).data,
+                "token": AuthToken.objects.create(user)[1]
+            })
+        except serializers.ValidationError as ve:
+            logger.warning(f"[LOGIN] Validation error: {ve}")
+            return Response({"error": "Invalid credentials"}, status=401)
+        except Exception as exc:
+            logger.exception(f"LoginAPI 500 error: {exc}")
+            return Response({"error": f"Internal server error: {exc}"}, status=500)
 
 class TwoFactorVerifyAPI(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        user = CustomUser.objects.get(email=request.data['email'])
+        identifier = request.data.get('email')  # Could be email or username
+        code = request.data.get('code')
+        user = None
+        # Try to get user by email first, then by username
+        try:
+            user = CustomUser.objects.get(email=identifier)
+        except CustomUser.DoesNotExist:
+            try:
+                user = CustomUser.objects.get(username=identifier)
+            except CustomUser.DoesNotExist:
+                return Response({"error": "Invalid user"}, status=400)
 
-        if user.verification_code != request.data['code']:
-            return Response({"error": "Invalid verification code"}, status=400)
+        # Get the latest unused, unexpired code
+        tf_code = TwoFactorCode.objects.filter(user=user, code=code, is_used=False, expires_at__gt=timezone.now()).order_by('-created_at').first()
+        if not tf_code:
+            return Response({"error": "Invalid or expired verification code"}, status=400)
 
-        user.verification_code = None
-        user.save()
+        tf_code.is_used = True
+        tf_code.save()
 
         return Response({
             "user": UserSerializer(user).data,
             "token": AuthToken.objects.create(user)[1]
         })
+
+class RequestPasswordResetAPI(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        print(f"[DEBUG] Password reset requested for email: {email}")
+        if not email:
+            print("[DEBUG] No email provided.")
+            return Response({'error': 'Email is required'}, status=400)
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            print("[DEBUG] User with this email does not exist.")
+            return Response({'error': 'User with this email does not exist'}, status=400)
+        try:
+            code = str(random.randint(100000, 999999))
+            expires_at = timezone.now() + timedelta(minutes=10)
+            PasswordResetCode.objects.create(user=user, code=code, expires_at=expires_at)
+            print(f"[DEBUG] Password reset code generated: {code}")
+            send_mail(
+                'Your Password Reset Code',
+                f'Your password reset code is: {code}',
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+            print(f"[DEBUG] Password reset email sent to: {user.email}")
+            return Response({'message': 'Password reset code sent'}, status=200)
+        except Exception as e:
+            print(f"[ERROR] Exception in password reset: {e}")
+            return Response({'error': f'Internal server error: {e}'}, status=500)
+
+class VerifyPasswordResetCodeAPI(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        code = request.data.get('code')
+        if not email or not code:
+            return Response({'error': 'Email and code are required'}, status=400)
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'Invalid user'}, status=400)
+        reset_code = PasswordResetCode.objects.filter(user=user, code=code, is_used=False, expires_at__gt=timezone.now()).order_by('-created_at').first()
+        if not reset_code:
+            return Response({'error': 'Invalid or expired code'}, status=400)
+        return Response({'message': 'Code verified'}, status=200)
+
+class SetNewPasswordAPI(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        code = request.data.get('code')
+        new_password = request.data.get('new_password')
+        print(f"[DEBUG] SetNewPasswordAPI called for email: {email}, code: {code}, new_password: {new_password}")
+        if not email or not code or not new_password:
+            print("[DEBUG] Missing required fields.")
+            return Response({'error': 'Email, code, and new password are required'}, status=400)
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            print("[DEBUG] Invalid user.")
+            return Response({'error': 'Invalid user'}, status=400)
+        reset_code = PasswordResetCode.objects.filter(user=user, code=code, is_used=False, expires_at__gt=timezone.now()).order_by('-created_at').first()
+        if not reset_code:
+            print("[DEBUG] Invalid or expired code.")
+            return Response({'error': 'Invalid or expired code'}, status=400)
+        # Prevent using the same password
+        if user.check_password(new_password):
+            print("[DEBUG] New password matches the old password.")
+            return Response({'error': 'New password must be different from the old password.'}, status=400)
+        user.set_password(new_password)
+        user.save()
+        print(f"[DEBUG] Password updated for user: {user.username} | email: {user.email} | password hash: {user.password}")
+        reset_code.is_used = True
+        reset_code.save()
+        return Response({'message': 'Password reset successful'}, status=200)
