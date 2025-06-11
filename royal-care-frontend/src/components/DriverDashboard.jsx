@@ -490,12 +490,10 @@ const DriverDashboard = () => {
 
     const actionKey = `dropoff_complete_${appointmentId}`;
     try {
-      setActionLoading(actionKey, true);
-
-      await dispatch(
+      setActionLoading(actionKey, true);      await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
-          status: "therapist_dropped_off",
+          status: "dropped_off",
           notes: `Transport completed - dropped off at ${
             appointment.location
           } at ${new Date().toISOString()}`,
@@ -567,15 +565,13 @@ const DriverDashboard = () => {
   const handleDropOff = async (appointmentId) => {
     const actionKey = `dropoff_${appointmentId}`;
     try {
-      setActionLoading(actionKey, true);
-
-      // Complete the appointment (therapist dropped off, transport finished)
+      setActionLoading(actionKey, true);      // Drop off therapist - session should start
       await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
-          status: "completed",
-          action: "complete_appointment",
-          notes: `Transport completed - therapist dropped off successfully at ${new Date().toISOString()}`,
+          status: "dropped_off",
+          action: "drop_off_therapist",
+          notes: `Therapist dropped off at client location at ${new Date().toISOString()}`,
         })
       ).unwrap();
 

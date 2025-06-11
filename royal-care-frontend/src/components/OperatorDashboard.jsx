@@ -995,6 +995,58 @@ const OperatorDashboard = () => {
     );
   };
 
+  // Automatic driver assignment for pickup requests
+  const handleAutoAssignPickupRequest = async (therapistId) => {
+    try {
+      const availableDrivers = driverAssignment.availableDrivers;
+      
+      if (availableDrivers.length === 0) {
+        console.log("No drivers available for auto-assignment");
+        return false;
+      }
+
+      // Auto-assign using FIFO - first available driver
+      const firstAvailableDriver = availableDrivers.sort(
+        (a, b) => new Date(a.available_since) - new Date(b.available_since)
+      )[0];
+
+      await handleAssignDriverPickup(therapistId, firstAvailableDriver.id);
+      console.log(`✅ Auto-assigned driver ${firstAvailableDriver.first_name} ${firstAvailableDriver.last_name} to therapist pickup`);
+      return true;
+    } catch (error) {
+      console.error("Failed to auto-assign driver:", error);
+      return false;
+    }
+  };
+
+  // Listen for pickup requests and auto-assign drivers
+  useEffect(() => {
+    const handlePickupRequest = async (data) => {
+      console.log("🚖 Pickup request received:", data);
+      
+      // Auto-assign driver if available
+      if (data.therapist_id) {
+        const assigned = await handleAutoAssignPickupRequest(data.therapist_id);
+        if (assigned) {
+          // Notify therapist that driver has been assigned
+          syncService.broadcast("pickup_auto_assigned", {
+            therapist_id: data.therapist_id,
+            appointment_id: data.appointment_id,
+            assignment_method: "auto_fifo",
+            message: "Driver automatically assigned for pickup",
+          });
+        }
+      }
+    };
+
+    // Subscribe to pickup request events
+    const unsubscribePickup = syncService.subscribe("pickup_requested", handlePickupRequest);
+    
+    return () => {
+      unsubscribePickup();
+    };
+  }, [driverAssignment.availableDrivers]); // Re-subscribe when driver availability changes
+
   // Missing render functions
   const renderRejectedAppointments = () => {
     if (rejectedAppointments.length === 0) {
@@ -1016,12 +1068,11 @@ const OperatorDashboard = () => {
                 Appointment #{appointment.id}
               </h4>
               <span className="status rejected">Rejected</span>
-            </div>
-            <div className="appointment-details">
+            </div>            <div className="appointment-details">
               <div className="detail-row">
                 <span className="label">Client:</span>
                 <span className="value">
-                  {appointment.client_name || "Unknown"}
+                  {appointment.client_details?.first_name} {appointment.client_details?.last_name || "Unknown"}
                 </span>
               </div>
               <div className="detail-row">
@@ -1079,12 +1130,11 @@ const OperatorDashboard = () => {
                 Appointment #{appointment.id}
               </h4>
               <span className="status pending">Pending</span>
-            </div>
-            <div className="appointment-details">
+            </div>            <div className="appointment-details">
               <div className="detail-row">
                 <span className="label">Client:</span>
                 <span className="value">
-                  {appointment.client_name || "Unknown"}
+                  {appointment.client_details?.first_name} {appointment.client_details?.last_name || "Unknown"}
                 </span>
               </div>
               <div className="detail-row">
@@ -1196,12 +1246,11 @@ const OperatorDashboard = () => {
                       ? "Overdue"
                       : "Approaching Deadline"}
                   </span>
-                </div>
-                <div className="appointment-details">
+                </div>                <div className="appointment-details">
                   <div className="detail-row">
                     <span className="label">Client:</span>
                     <span className="value">
-                      {appointment.client_name || "Unknown"}
+                      {appointment.client_details?.first_name} {appointment.client_details?.last_name || "Unknown"}
                     </span>
                   </div>
                   <div className="detail-row">
@@ -1261,12 +1310,11 @@ const OperatorDashboard = () => {
                 <span className={`status ${appointment.status}`}>
                   {appointment.status}
                 </span>
-              </div>{" "}
-              <div className="appointment-details">
+              </div>{" "}              <div className="appointment-details">
                 <div className="detail-row">
                   <span className="label">Client:</span>
                   <span className="value">
-                    {appointment.client_name || "Unknown"}
+                    {appointment.client_details?.first_name} {appointment.client_details?.last_name || "Unknown"}
                   </span>
                 </div>
                 <div className="detail-row">
@@ -1436,12 +1484,11 @@ const OperatorDashboard = () => {
               <span className={`status ${session.status}`}>
                 {session.status}
               </span>
-            </div>
-            <div className="session-details">
+            </div>            <div className="session-details">
               <div className="detail-row">
                 <span className="label">Client:</span>
                 <span className="value">
-                  {session.client_name || "Unknown"}
+                  {session.client_details?.first_name} {session.client_details?.last_name || "Unknown"}
                 </span>
               </div>
               <div className="detail-row">
