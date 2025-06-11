@@ -76,8 +76,7 @@ const OperatorDashboard = () => {
     availableDrivers: [],
     busyDrivers: [],
     pendingPickups: [],
-  });
-  // Load driver data on component mount and refresh
+  });  // Load driver data on component mount and refresh
   useEffect(() => {
     const loadDriverData = async () => {
       try {
@@ -87,28 +86,56 @@ const OperatorDashboard = () => {
         // Filter drivers and categorize by availability status
         const drivers = staffResponse.filter(
           (staff) => staff.role === "driver"
-        ); // For now, we'll assume all drivers are available unless they have active appointments
-        // In a real implementation, this would check against current availability/status
-        const availableDrivers = drivers.map((driver) => ({
-          id: driver.id,
-          first_name: driver.first_name,
-          last_name: driver.last_name,
-          role: driver.role,
-          specialization: driver.specialization,
-          vehicle_type: driver.vehicle_type || "Motorcycle", // Default if not set
-          current_location: driver.current_location || "Available",
-          last_available_at: driver.last_available_at,
-          last_drop_off_time: driver.last_drop_off_time,
-          last_vehicle_used:
-            driver.last_vehicle_used || driver.vehicle_type || "Motorcycle",
-          last_location: "Available", // In real implementation, get from GPS/last known location
-          available_since: new Date().toISOString(),
-          status: "available",
-        }));
+        );
+
+        // Get current appointments to determine driver status
+        const activeAppointmentStatuses = [
+          "driver_confirmed",
+          "in_progress", 
+          "journey_started",
+          "journey",
+          "arrived",
+          "session_in_progress",
+          "pickup_requested",
+          "driver_assigned_pickup"
+        ];
+        
+        // Find drivers with active appointments (busy)
+        const busyDriverIds = appointments
+          .filter(apt => activeAppointmentStatuses.includes(apt.status) && apt.driver)
+          .map(apt => apt.driver);
+
+        // Categorize drivers
+        const availableDrivers = [];
+        const busyDrivers = [];
+
+        drivers.forEach(driver => {
+          const driverData = {
+            id: driver.id,
+            first_name: driver.first_name,
+            last_name: driver.last_name,
+            role: driver.role,
+            specialization: driver.specialization,
+            vehicle_type: driver.vehicle_type || "Motorcycle",
+            current_location: driver.current_location || "Available",
+            last_available_at: driver.last_available_at,
+            last_drop_off_time: driver.last_drop_off_time,
+            last_vehicle_used: driver.last_vehicle_used || driver.vehicle_type || "Motorcycle",
+            last_location: driver.current_location || "Available",
+            available_since: driver.last_available_at || new Date().toISOString(),
+            status: busyDriverIds.includes(driver.id) ? "busy" : "available",
+          };
+
+          if (busyDriverIds.includes(driver.id)) {
+            busyDrivers.push(driverData);
+          } else {
+            availableDrivers.push(driverData);
+          }
+        });
 
         setDriverAssignment({
           availableDrivers,
-          busyDrivers: [], // Would be populated based on active assignments
+          busyDrivers,
           pendingPickups: [],
         });
       } catch (error) {
@@ -906,24 +933,37 @@ const OperatorDashboard = () => {
                         {new Date(pickup.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
-                  </div>
-                  <div className="pickup-actions">
-                    <select
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          handleAssignDriverPickup(pickup.id, e.target.value);
-                          e.target.value = "";
-                        }
-                      }}
-                      className="driver-selector urgent"
-                    >
-                      <option value="">Assign Driver...</option>
-                      {driverAssignment.availableDrivers.map((driver) => (
-                        <option key={driver.id} value={driver.id}>
-                          {driver.first_name} {driver.last_name} - Available Now
-                        </option>
-                      ))}
-                    </select>
+                  </div>                  <div className="pickup-actions">
+                    {/* Auto-assignment happens first, manual only if no available drivers */}
+                    {driverAssignment.availableDrivers.length > 0 ? (
+                      <div className="auto-assignment-status">
+                        <i className="fas fa-robot"></i>
+                        Auto-assigning available driver...
+                      </div>
+                    ) : (
+                      <div className="manual-assignment">
+                        <div className="no-available-notice">
+                          <i className="fas fa-exclamation-triangle"></i>
+                          No available drivers - Manual assignment required
+                        </div>
+                        <select
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleAssignDriverPickup(pickup.id, e.target.value);
+                              e.target.value = "";
+                            }
+                          }}
+                          className="driver-selector urgent"
+                        >
+                          <option value="">Select busy driver for urgent pickup...</option>
+                          {driverAssignment.busyDrivers.map((driver) => (
+                            <option key={driver.id} value={driver.id}>
+                              {driver.first_name} {driver.last_name} - Currently Busy
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -936,21 +976,10 @@ const OperatorDashboard = () => {
           {/* Available Drivers Section with Enhanced FIFO Display */}
           {driverAssignment.availableDrivers.length > 0 && (
             <div className="coord-section available-drivers">
-              <div className="section-header">
-                <h4>
+              <div className="section-header">                <h4>
                   <i className="fas fa-users"></i>
                   Available Drivers ({driverAssignment.availableDrivers.length})
                 </h4>
-                <div className="fifo-assignment-indicator">
-                  <i className="fas fa-sort-numeric-down"></i>
-                  <div>
-                    <strong>FIFO Auto-Assignment Active</strong>
-                    <div className="fifo-assignment-details">
-                      Drivers are assigned based on earliest availability (First
-                      In, First Out)
-                    </div>
-                  </div>
-                </div>
               </div>
               <div className="appointments-list">
                 {driverAssignment.availableDrivers
@@ -969,14 +998,10 @@ const OperatorDashboard = () => {
                     return timeA - timeB;
                   })
                   .map((driver, index) => (
-                    <div key={driver.id} className="driver-card">
-                      <div className="driver-card-header">
+                    <div key={driver.id} className="driver-card">                      <div className="driver-card-header">
                         <h5>
                           <i className="fas fa-user"></i>
                           {driver.first_name} {driver.last_name}
-                          <span className="fifo-position">
-                            #{index + 1} in Queue
-                          </span>
                         </h5>
                         <div className="driver-availability-status available">
                           <i className="fas fa-circle"></i>
@@ -1126,24 +1151,37 @@ const OperatorDashboard = () => {
                         <strong>Requested:</strong>{" "}
                         {new Date(pickup.timestamp).toLocaleTimeString()}
                       </p>
-                    </div>
-                    <div className="appointment-actions">
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleAssignDriverPickup(pickup.id, e.target.value);
-                            e.target.value = "";
-                          }
-                        }}
-                        className="driver-selector"
-                      >
-                        <option value="">Assign Driver...</option>
-                        {driverAssignment.availableDrivers.map((driver) => (
-                          <option key={driver.id} value={driver.id}>
-                            {driver.first_name} {driver.last_name} - Available
-                          </option>
-                        ))}
-                      </select>
+                    </div>                    <div className="appointment-actions">
+                      {/* Auto-assignment happens first, manual only if no available drivers */}
+                      {driverAssignment.availableDrivers.length > 0 ? (
+                        <div className="auto-assignment-status">
+                          <i className="fas fa-robot"></i>
+                          Auto-assigning available driver...
+                        </div>
+                      ) : (
+                        <div className="manual-assignment">
+                          <div className="no-available-notice">
+                            <i className="fas fa-exclamation-triangle"></i>
+                            No available drivers - Manual assignment required
+                          </div>
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleAssignDriverPickup(pickup.id, e.target.value);
+                                e.target.value = "";
+                              }
+                            }}
+                            className="driver-selector"
+                          >
+                            <option value="">Select busy driver...</option>
+                            {driverAssignment.busyDrivers.map((driver) => (
+                              <option key={driver.id} value={driver.id}>
+                                {driver.first_name} {driver.last_name} - Currently Busy
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -2129,6 +2167,9 @@ const OperatorDashboard = () => {
                 </LoadingButton>
               </div>
             </div>
+          </div>
+        )}
+        {/* Review Rejection Modal */}
           </div>
         )}
         {/* Review Rejection Modal */}

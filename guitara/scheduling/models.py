@@ -154,6 +154,11 @@ class Appointment(models.Model):
     pickup_request_time = models.DateTimeField(
         null=True, blank=True, help_text="When pickup was requested"
     )
+    pickup_confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the pickup assignment was confirmed by driver",
+    )
     pickup_urgency = models.CharField(
         max_length=10,
         choices=PICKUP_URGENCY_CHOICES,

@@ -1724,11 +1724,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 "message": f"Payment verified successfully. Received {payment_amount} via {payment_method}.",
                 "appointment": serializer.data,
             }
-        )
+        ) @ action(detail=True, methods=["post"])
 
-    @action(detail=True, methods=["post"])
     def request_pickup(self, request, pk=None):
-        """Therapist requests pickup after session completion"""
+        """Therapist requests pickup after session completion with automatic driver assignment"""
         appointment = self.get_object()
 
         # Only the assigned therapist(s) can request pickup
@@ -1755,13 +1754,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Get pickup details from request
         pickup_urgency = request.data.get("pickup_urgency", "normal")
-        pickup_notes = request.data.get(
-            "pickup_notes", ""
-        )  # Auto-assign pickup driver using FIFO logic
-        available_driver = self._get_next_available_driver_fifo(appointment)
+        pickup_notes = request.data.get("pickup_notes", "")
+
+        # Step 1: Try to auto-assign an available driver using enhanced FIFO logic
+        available_driver = self._get_next_available_driver_for_pickup(appointment)
 
         if available_driver:
-            # Auto-assign the driver
+            # Auto-assign the driver and require confirmation
             appointment.status = "driver_assigned_pickup"
             appointment.pickup_urgency = pickup_urgency
             appointment.pickup_notes = pickup_notes
@@ -1769,42 +1768,98 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment.pickup_driver = available_driver
             appointment.assigned_driver = available_driver
 
-            # Set estimated pickup time (standard 20 minutes)
+            # Set estimated pickup time based on urgency
             from datetime import timedelta
 
-            appointment.estimated_pickup_time = timezone.now() + timedelta(minutes=20)
+            if pickup_urgency == "urgent":
+                appointment.estimated_pickup_time = timezone.now() + timedelta(
+                    minutes=15
+                )
+            else:
+                appointment.estimated_pickup_time = timezone.now() + timedelta(
+                    minutes=20
+                )
+
             appointment.save()
 
-            # Create notifications for auto-assignment
+            # Create notifications for driver confirmation requirement
             self._create_notifications(
                 appointment,
                 "driver_assigned_pickup",
-                f"Driver {available_driver.get_full_name()} auto-assigned for pickup (FIFO). Urgency: {pickup_urgency}",
+                f"🚖 PICKUP ASSIGNMENT: Driver {available_driver.get_full_name()} automatically assigned for pickup. "
+                f"Client: {appointment.client}, Location: {appointment.location}. "
+                f"Urgency: {pickup_urgency.upper()}. Driver must CONFIRM to proceed.",
             )
 
-            message = f"Pickup request sent and driver {available_driver.get_full_name()} auto-assigned using FIFO."
+            # Send WebSocket notification to driver
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                "appointments",
+                {
+                    "type": "appointment_message",
+                    "message": {
+                        "type": "pickup_assignment",
+                        "appointment_id": appointment.id,
+                        "driver_id": available_driver.id,
+                        "urgency": pickup_urgency,
+                        "message": "You have been assigned for pickup. Please confirm to proceed.",
+                        "status": appointment.status,
+                    },
+                },
+            )
+
+            message = f"✅ Pickup request processed! Driver {available_driver.get_full_name()} automatically assigned and notified. Driver must confirm pickup to proceed."
         else:
-            # No drivers available - manual assignment required
-            appointment.status = "pickup_requested"
-            appointment.pickup_urgency = pickup_urgency
-            appointment.pickup_notes = pickup_notes
-            appointment.pickup_request_time = timezone.now()
-            appointment.save()
-
-            # Create notifications for manual assignment
-            self._create_notifications(
-                appointment,
-                "pickup_requested",
-                f"Pickup requested by therapist for appointment with {appointment.client}. Urgency: {pickup_urgency}. No drivers available - manual assignment required.",
+            # Step 2: No available drivers - check if there are busy drivers with today's availability
+            busy_available_drivers = self._get_busy_drivers_with_availability(
+                appointment.date
             )
 
-            message = "Pickup request sent. No drivers currently available - operator assignment required."
+            if busy_available_drivers:
+                # Set status for manual operator assignment from busy drivers
+                appointment.status = "pickup_requested"
+                appointment.pickup_urgency = pickup_urgency
+                appointment.pickup_notes = pickup_notes
+                appointment.pickup_request_time = timezone.now()
+                appointment.save()
+
+                # Create notifications for operator manual assignment
+                self._create_notifications(
+                    appointment,
+                    "pickup_requested",
+                    f"🔄 MANUAL ASSIGNMENT REQUIRED: Pickup requested by therapist for {appointment.client}. "
+                    f"Urgency: {pickup_urgency.upper()}. All drivers busy but {len(busy_available_drivers)} drivers available today. "
+                    f"Operator must manually assign from Driver Selector.",
+                )
+
+                message = f"⚠️ Pickup request sent. All drivers currently busy, but {len(busy_available_drivers)} drivers are available today. Operator will manually assign from Driver Selector."
+            else:
+                # No drivers available at all for today
+                appointment.status = "pickup_requested"
+                appointment.pickup_urgency = pickup_urgency
+                appointment.pickup_notes = pickup_notes
+                appointment.pickup_request_time = timezone.now()
+                appointment.save()
+
+                # Create notifications for no drivers available
+                self._create_notifications(
+                    appointment,
+                    "pickup_requested",
+                    f"❌ NO DRIVERS AVAILABLE: Pickup requested by therapist for {appointment.client}. "
+                    f"Urgency: {pickup_urgency.upper()}. No drivers available today. Operator intervention required.",
+                )
+
+                message = "❌ Pickup request sent. No drivers available today. Operator intervention required."
 
         serializer = self.get_serializer(appointment)
         return Response(
             {
                 "message": message,
                 "appointment": serializer.data,
+                "auto_assigned": available_driver is not None,
+                "driver_assigned": (
+                    available_driver.get_full_name() if available_driver else None
+                ),
             }
         )
 
@@ -2050,6 +2105,224 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
         return Response({"status": f"marked {count} notifications as read"})
 
+    def _get_next_available_driver_for_pickup(self, appointment=None):
+        """
+        Enhanced method to get the next available driver for pickup using improved FIFO logic.
+        Prioritizes drivers who are truly available (no active appointments) and have availability for today.
+        """
+        today = appointment.date if appointment else timezone.now().date()
+
+        # Get drivers who are:
+        # 1. Active and have driver role
+        # 2. Have availability scheduled for today
+        # 3. Are not currently assigned to active appointments
+        # 4. Have been marked as available (last_available_at is set)
+        available_drivers = (
+            CustomUser.objects.filter(
+                role="driver",
+                is_active=True,
+                # Check if driver has availability for today
+                availabilities__date=today,
+                availabilities__is_available=True,
+                # Must have been marked as available
+                last_available_at__isnull=False,
+            )
+            .exclude(
+                # Exclude drivers with active appointments (truly busy)
+                driver_appointments__status__in=[
+                    "pending",
+                    "therapist_confirmed",
+                    "driver_confirmed",
+                    "in_progress",
+                    "journey",
+                    "arrived",
+                    "session_in_progress",
+                    "driver_assigned_pickup",
+                    "return_journey",
+                ]
+            )
+            .distinct()
+        )
+
+        if not available_drivers.exists():
+            return None
+
+        # Order by last_available_at (FIFO - earliest available first)
+        fifo_driver = available_drivers.order_by("last_available_at").first()
+
+        # Mark driver as assigned (remove from available pool temporarily)
+        if fifo_driver:
+            fifo_driver.current_location = f"Assigned for pickup - {appointment.location if appointment else 'Unknown'}"
+            fifo_driver.save()
+
+        return fifo_driver
+
+    def _get_busy_drivers_with_availability(self, date):
+        """
+        Get drivers who are currently busy but have availability scheduled for the given date.
+        These drivers can be manually assigned by operators.
+        """
+        busy_available_drivers = (
+            CustomUser.objects.filter(
+                role="driver",
+                is_active=True,
+                # Have availability for the date
+                availabilities__date=date,
+                availabilities__is_available=True,
+            )
+            .filter(
+                # Are currently busy with active appointments
+                driver_appointments__status__in=[
+                    "pending",
+                    "therapist_confirmed",
+                    "driver_confirmed",
+                    "in_progress",
+                    "journey",
+                    "arrived",
+                    "session_in_progress",
+                    "driver_assigned_pickup",
+                    "return_journey",
+                ]
+            )
+            .distinct()
+        )
+
+        return busy_available_drivers
+
+    @action(detail=True, methods=["post"])
+    def confirm_pickup(self, request, pk=None):
+        """Driver confirms pickup assignment - required after automatic assignment"""
+        appointment = self.get_object()
+
+        # Only the assigned pickup driver can confirm
+        if request.user != appointment.pickup_driver:
+            return Response(
+                {"error": "You can only confirm pickup assignments assigned to you"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Can only confirm pickup assignments
+        if appointment.status != "driver_assigned_pickup":
+            return Response(
+                {
+                    "error": f"Cannot confirm pickup for appointment in {appointment.status} status"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Confirm the pickup assignment
+        appointment.status = (
+            "return_journey"  # Driver confirmed, starting pickup journey
+        )
+        appointment.pickup_confirmed_at = timezone.now()
+        appointment.save()
+
+        # Update driver status
+        request.user.current_location = f"En route for pickup - {appointment.location}"
+        request.user.last_available_at = None  # Remove from available pool
+        request.user.save()
+
+        # Create notifications
+        self._create_notifications(
+            appointment,
+            "pickup_confirmed",
+            f"✅ Driver {request.user.get_full_name()} confirmed pickup assignment for {appointment.client}. "
+            f"Driver is now en route to pickup location: {appointment.location}",
+        )
+
+        # Send WebSocket notification
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": "pickup_confirmed",
+                    "appointment_id": appointment.id,
+                    "driver_id": request.user.id,
+                    "message": f"Driver {request.user.get_full_name()} confirmed pickup and is en route.",
+                    "status": appointment.status,
+                },
+            },
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(
+            {
+                "message": f"Pickup confirmed! You are now en route to pickup {appointment.client} at {appointment.location}.",
+                "appointment": serializer.data,
+            }
+        )
+
+    @action(detail=True, methods=["post"])
+    def reject_pickup(self, request, pk=None):
+        """Driver rejects pickup assignment - returns to pool for manual assignment"""
+        appointment = self.get_object()
+
+        # Only the assigned pickup driver can reject
+        if request.user != appointment.pickup_driver:
+            return Response(
+                {"error": "You can only reject pickup assignments assigned to you"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Can only reject pickup assignments
+        if appointment.status != "driver_assigned_pickup":
+            return Response(
+                {
+                    "error": f"Cannot reject pickup for appointment in {appointment.status} status"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        rejection_reason = request.data.get("rejection_reason", "Driver unavailable")
+
+        # Reset pickup assignment
+        appointment.status = "pickup_requested"  # Back to manual assignment
+        appointment.pickup_driver = None
+        appointment.assigned_driver = None
+        appointment.estimated_pickup_time = None
+        appointment.save()
+
+        # Mark driver as available again
+        request.user.last_available_at = timezone.now()
+        request.user.current_location = "Available"
+        request.user.save()
+
+        # Create notifications for operator manual assignment
+        self._create_notifications(
+            appointment,
+            "pickup_rejected",
+            f"❌ Driver {request.user.get_full_name()} rejected pickup assignment for {appointment.client}. "
+            f"Reason: {rejection_reason}. Operator must manually assign from Driver Selector.",
+        )
+
+        # Send WebSocket notification
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": "pickup_rejected",
+                    "appointment_id": appointment.id,
+                    "driver_id": request.user.id,
+                    "message": f"Pickup assignment rejected. Manual assignment required.",
+                    "status": appointment.status,
+                },
+            },
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(
+            {
+                "message": "Pickup assignment rejected. You have been returned to the available pool.",
+                "appointment": serializer.data,
+            }
+        )
+
+    # ...existing helper methods...
+
 
 class StaffViewSet(viewsets.ModelViewSet):
     """
@@ -2118,13 +2391,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"])
     def mark_all_as_read(self, request):
         """Mark all notifications as read for the current user"""
-        updated_count = Notification.objects.filter(
-            user=request.user, is_read=False
-        ).update(is_read=True)
-        return Response({"status": f"{updated_count} notifications marked as read"})
-
-    @action(detail=False, methods=["get"])
-    def unread_count(self, request):
-        """Get count of unread notifications for the current user"""
-        count = Notification.objects.filter(user=request.user, is_read=False).count()
-        return Response({"unread_count": count})
+        count = Notification.objects.filter(user=request.user, is_read=False).update(
+            is_read=True
+        )
+        return Response({"status": f"marked {count} notifications as read"})
