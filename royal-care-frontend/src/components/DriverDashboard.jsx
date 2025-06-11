@@ -132,12 +132,15 @@ const DriverDashboard = () => {
     const actionKey = `confirm-pickup-${appointmentId}`;
     setActionLoading(actionKey, true);
     try {
-      await dispatch(confirmPickup({ appointmentId })).unwrap();
+      await dispatch(confirmPickup(appointmentId)).unwrap(); // Corrected: pass appointmentId directly
       // Optionally, add success notification or UI update here
       console.log(`Pickup confirmed for appointment ${appointmentId}`);
+      // Consider a targeted refresh or rely on WebSocket/syncService updates
+      refreshAppointments(true, currentView);
     } catch (error) {
       console.error("Failed to confirm pickup:", error);
       // Optionally, add error notification here
+      alert(`Failed to confirm pickup: ${error.message || "Unknown error"}`);
     } finally {
       setActionLoading(actionKey, false);
     }
