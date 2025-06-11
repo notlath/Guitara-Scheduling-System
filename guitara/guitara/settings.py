@@ -11,7 +11,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 import os
-print("[SETTINGS IMPORT] DJANGO_SETTINGS_MODULE:", os.environ.get("DJANGO_SETTINGS_MODULE"))
+
+print(
+    "[SETTINGS IMPORT] DJANGO_SETTINGS_MODULE:",
+    os.environ.get("DJANGO_SETTINGS_MODULE"),
+)
 print("[SETTINGS IMPORT] settings.py __file__:", __file__)
 
 from pathlib import Path
@@ -25,7 +29,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ic&egssnr$r%4-xjaq*0g-^8&m@&vbf2l+!0^2)1t(pdka3%5o'
+SECRET_KEY = "django-insecure-ic&egssnr$r%4-xjaq*0g-^8&m@&vbf2l+!0^2)1t(pdka3%5o"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -36,63 +40,63 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'rest_framework',
-    'knox',
-    'corsheaders',
-    'django_filters',
-    'channels',
-    'core',
-    'authentication',
-    'registration',
-    'scheduling',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework",
+    "knox",
+    "corsheaders",
+    "django_filters",
+    "channels",
+    "core",
+    "authentication",
+    "registration",
+    "scheduling",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'core.middleware.sanitization_middleware.SanitizationMiddleware',
-    'scheduling.services_middleware.ServicesMiddleware',  # Add our services middleware
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.sanitization_middleware.SanitizationMiddleware",
+    "scheduling.services_middleware.ServicesMiddleware",  # Add our services middleware
 ]
 
-ROOT_URLCONF = 'guitara.urls'
+ROOT_URLCONF = "guitara.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'guitara.wsgi.application'
-ASGI_APPLICATION = 'guitara.asgi.application'
+WSGI_APPLICATION = "guitara.wsgi.application"
+ASGI_APPLICATION = "guitara.asgi.application"
 
 # Channels layer configuration
 CHANNEL_LAYERS = {
-    'default': {
+    "default": {
         # Use in-memory channel layer for development/testing
         # For production, you should install Redis and use channels_redis
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
 
@@ -105,20 +109,20 @@ import environ
 env = environ.Env()
 
 # Explicitly specify the path to the .env file
-env_file = BASE_DIR / '.env'
+env_file = BASE_DIR / ".env"
 if env_file.exists():
     environ.Env.read_env(env_file)
 else:
     raise ImproperlyConfigured(f"Environment file not found at {env_file}")
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('SUPABASE_DB_NAME', default=None),
-        'USER': env('SUPABASE_DB_USER', default=None),
-        'PASSWORD': env('SUPABASE_DB_PASSWORD', default=None),
-        'HOST': env('SUPABASE_DB_HOST', default=None),
-        'PORT': '5432',
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("SUPABASE_DB_NAME", default=None),
+        "USER": env("SUPABASE_DB_USER", default=None),
+        "PASSWORD": env("SUPABASE_DB_PASSWORD", default=None),
+        "HOST": env("SUPABASE_DB_HOST", default=None),
+        "PORT": "5432",
     }
 }
 
@@ -128,16 +132,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -145,9 +149,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -157,25 +161,25 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': ('knox.auth.TokenAuthentication',),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("knox.auth.TokenAuthentication",),
 }
 
-AUTH_USER_MODEL = 'core.CustomUser'
+AUTH_USER_MODEL = "core.CustomUser"
 
 STATICFILES_DIRS = [
     # BASE_DIR / 'frontend/dist',  # Remove this line if the directory does not exist
 ]
 
 PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
 ]
 
 # CORS configuration
@@ -186,11 +190,11 @@ CORS_ALLOWED_ORIGINS = [
 # Security settings
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
-X_FRAME_OPTIONS = 'DENY'
+X_FRAME_OPTIONS = "DENY"
 SESSION_COOKIE_SECURE = True  # Use only in HTTPS environments
-CSRF_COOKIE_SECURE = True     # Use only in HTTPS environments
+CSRF_COOKIE_SECURE = True  # Use only in HTTPS environments
 CSRF_COOKIE_HTTPONLY = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Content Security Policy
 CSP_DEFAULT_SRC = ("'self'",)
@@ -207,25 +211,27 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="your_gmail_address@gmail.com")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="your_app_password")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Your Name <your_gmail_address@gmail.com>")
+DEFAULT_FROM_EMAIL = env(
+    "DEFAULT_FROM_EMAIL", default="Your Name <your_gmail_address@gmail.com>"
+)
 
 # Enhanced logging for debugging authentication issues
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
         },
     },
-    'loggers': {
-        'django.db.backends': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
+    "loggers": {
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "DEBUG",
         },
-        'django.contrib.auth': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
+        "django.contrib.auth": {
+            "handlers": ["console"],
+            "level": "DEBUG",
         },
     },
 }

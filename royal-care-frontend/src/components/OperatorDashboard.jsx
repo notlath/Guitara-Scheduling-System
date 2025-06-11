@@ -76,8 +76,7 @@ const OperatorDashboard = () => {
     availableDrivers: [],
     busyDrivers: [],
     pendingPickups: [],
-  });
-  // Load driver data on component mount and refresh
+  }); // Load driver data on component mount and refresh
   useEffect(() => {
     const loadDriverData = async () => {
       try {
@@ -89,23 +88,59 @@ const OperatorDashboard = () => {
           (staff) => staff.role === "driver"
         );
 
-        // For now, we'll assume all drivers are available unless they have active appointments
-        // In a real implementation, this would check against current availability/status
-        const availableDrivers = drivers.map((driver) => ({
-          id: driver.id,
-          first_name: driver.first_name,
-          last_name: driver.last_name,
-          role: driver.role,
-          specialization: driver.specialization,
-          vehicle_type: driver.vehicle_type || "Motorcycle", // Default if not set
-          last_location: "Available", // In real implementation, get from GPS/last known location
-          available_since: new Date().toISOString(),
-          status: "available",
-        }));
+        // Get current appointments to determine driver status
+        const activeAppointmentStatuses = [
+          "driver_confirmed",
+          "in_progress",
+          "journey_started",
+          "journey",
+          "arrived",
+          "session_in_progress",
+          "pickup_requested",
+          "driver_assigned_pickup",
+        ];
+
+        // Find drivers with active appointments (busy)
+        const busyDriverIds = appointments
+          .filter(
+            (apt) =>
+              activeAppointmentStatuses.includes(apt.status) && apt.driver
+          )
+          .map((apt) => apt.driver);
+
+        // Categorize drivers
+        const availableDrivers = [];
+        const busyDrivers = [];
+
+        drivers.forEach((driver) => {
+          const driverData = {
+            id: driver.id,
+            first_name: driver.first_name,
+            last_name: driver.last_name,
+            role: driver.role,
+            specialization: driver.specialization,
+            vehicle_type: driver.vehicle_type || "Motorcycle",
+            current_location: driver.current_location || "Available",
+            last_available_at: driver.last_available_at,
+            last_drop_off_time: driver.last_drop_off_time,
+            last_vehicle_used:
+              driver.last_vehicle_used || driver.vehicle_type || "Motorcycle",
+            last_location: driver.current_location || "Available",
+            available_since:
+              driver.last_available_at || new Date().toISOString(),
+            status: busyDriverIds.includes(driver.id) ? "busy" : "available",
+          };
+
+          if (busyDriverIds.includes(driver.id)) {
+            busyDrivers.push(driverData);
+          } else {
+            availableDrivers.push(driverData);
+          }
+        });
 
         setDriverAssignment({
           availableDrivers,
-          busyDrivers: [], // Would be populated based on active assignments
+          busyDrivers,
           pendingPickups: [],
         });
       } catch (error) {
@@ -220,7 +255,9 @@ const OperatorDashboard = () => {
     staffMembers: _staffMembers,
     loading,
     error,
-  } = useSelector((state) => state.scheduling); // Filter rejected appointments for review
+  } = useSelector((state) => state.scheduling);
+
+  // Filter rejected appointments for review
   const rejectedAppointments = appointments.filter(
     (apt) => apt.status === "rejected" && !apt.review_decision
   );
@@ -532,102 +569,156 @@ const OperatorDashboard = () => {
       notes: "",
     });
   }; // Driver coordination functions - Pure FIFO system (no proximity filtering)
-  const handleAssignDriverPickup = async (therapistId, driverId = null) => {
-    try {
-      // Get current pending pickup requests from appointments
-      const currentPendingPickups = appointments
-        .filter((apt) => apt.status === "pickup_requested")
-        .map((apt) => ({
-          id: apt.therapist,
-          name: apt.therapist_details
-            ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
-            : "Unknown Therapist",
-          location: apt.location,
-          appointment_id: apt.id,
-          urgency: getUrgencyLevel(apt.pickup_request_time),
-          session_end_time: apt.session_end_time,
-          requested_at: apt.pickup_request_time,
+  const handleAssignDriverPickup = useCallback(
+    async (therapistId, driverId = null) => {
+      // Helper function to get urgency level based on request time
+      const getUrgencyLevel = (requestTime) => {
+        if (!requestTime) return "normal";
+        const waitTime = (new Date() - new Date(requestTime)) / (1000 * 60); // minutes
+        return waitTime > 20 ? "urgent" : "normal"; // Reduced to 20 minutes for Pasig City
+      };
+
+      try {
+        // Get current pending pickup requests from appointments
+        const currentPendingPickups = appointments
+          .filter((apt) => apt.status === "pickup_requested")
+          .map((apt) => ({
+            id: apt.therapist,
+            name: apt.therapist_details
+              ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
+              : "Unknown Therapist",
+            location: apt.location,
+            appointment_id: apt.id,
+            urgency: getUrgencyLevel(apt.pickup_request_time),
+            session_end_time: apt.session_end_time,
+            requested_at: apt.pickup_request_time,
+          }));
+
+        const therapist = currentPendingPickups.find(
+          (t) => t.id === therapistId
+        );
+
+        if (!therapist) {
+          alert("Invalid therapist selection");
+          return;
+        }
+
+        // Pure FIFO driver selection - get the driver who became available first
+        let driver;
+        if (driverId) {
+          // Manual assignment: use specific driver
+          driver = driverAssignment.availableDrivers.find(
+            (d) => d.id === driverId
+          );
+        } else {
+          // Auto-assignment: Pure FIFO - first available driver based on last drop-off or availability time
+          const availableDriversSorted = driverAssignment.availableDrivers.sort(
+            (a, b) => {
+              // Use last_drop_off_time if available, otherwise use available_since
+              const timeA = new Date(
+                a.last_drop_off_time || a.last_available_at || a.available_since
+              );
+              const timeB = new Date(
+                b.last_drop_off_time || b.last_available_at || b.available_since
+              );
+              return timeA - timeB;
+            }
+          );
+          driver = availableDriversSorted[0];
+
+          // Show FIFO selection details
+          const queuePosition =
+            availableDriversSorted.findIndex((d) => d.id === driver.id) + 1;
+          console.log(
+            `🎯 FIFO Assignment: Selected driver ${driver.first_name} ${driver.last_name} (Position #${queuePosition} in queue)`
+          );
+        }
+        if (!driver) {
+          alert("No drivers available for assignment");
+          return;
+        }
+
+        // Fixed estimated arrival time - no proximity calculations
+        const estimatedTime = 20; // Standard 20 minutes for all assignments
+        const estimatedArrival = new Date();
+        estimatedArrival.setMinutes(
+          estimatedArrival.getMinutes() + estimatedTime
+        );
+
+        // Calculate queue position for detailed FIFO information
+        const sortedDrivers = driverAssignment.availableDrivers.sort((a, b) => {
+          const timeA = new Date(
+            a.last_drop_off_time || a.last_available_at || a.available_since
+          );
+          const timeB = new Date(
+            b.last_drop_off_time || b.last_available_at || b.available_since
+          );
+          return timeA - timeB;
+        });
+        const queuePosition =
+          sortedDrivers.findIndex((d) => d.id === driver.id) + 1;
+
+        // Update appointment status with detailed FIFO information
+        await dispatch(
+          updateAppointmentStatus({
+            id: therapist.appointment_id,
+            status: "driver_assigned_pickup",
+            driver: driver.id,
+            notes: `Driver assigned for pickup via FIFO Algorithm (Queue Position: #${queuePosition}) - ETA: ${estimatedTime} minutes`,
+          })
+        ).unwrap();
+
+        // Move driver from available to busy
+        setDriverAssignment((prev) => ({
+          ...prev,
+          availableDrivers: prev.availableDrivers.filter(
+            (d) => d.id !== driver.id
+          ),
+          busyDrivers: [
+            ...prev.busyDrivers.filter((d) => d.id !== driver.id),
+            {
+              ...driver,
+              current_task: `Picking up ${therapist.name}`,
+              current_location: `En route to ${therapist.location}`,
+            },
+          ],
+          pendingPickups: prev.pendingPickups.filter(
+            (t) => t.id !== therapistId
+          ),
         }));
 
-      const therapist = currentPendingPickups.find((t) => t.id === therapistId);
+        // Broadcast assignment with FIFO indicator
+        syncService.broadcast("driver_assigned_pickup", {
+          driver_id: driver.id,
+          therapist_id: therapistId,
+          appointment_id: therapist.appointment_id,
+          estimated_arrival: estimatedArrival.toISOString(),
+          driver_name: `${driver.first_name} ${driver.last_name}`,
+          therapist_name: therapist.name,
+          pickup_location: therapist.location,
+          estimated_time: estimatedTime,
+          assignment_method: "FIFO",
+        });
+        refreshData();
 
-      if (!therapist) {
-        alert("Invalid therapist selection");
-        return;
-      }
-
-      // Pure FIFO driver selection - get the driver who became available first
-      let driver;
-      if (driverId) {
-        // Manual assignment: use specific driver
-        driver = driverAssignment.availableDrivers.find(
-          (d) => d.id === driverId
+        // Show success notification with FIFO details
+        alert(
+          `✅ FIFO Assignment Successful!\n\nDriver: ${driver.first_name} ${driver.last_name}\nQueue Position: #${queuePosition}\nTherapist: ${therapist.name}\nLocation: ${therapist.location}\nETA: ${estimatedTime} minutes`
         );
-      } else {
-        // Auto-assignment: Pure FIFO - first available driver based on availability time
-        const availableDriversSorted = driverAssignment.availableDrivers.sort(
-          (a, b) => new Date(a.available_since) - new Date(b.available_since)
-        );
-        driver = availableDriversSorted[0];
+      } catch (error) {
+        console.error("Failed to assign driver:", error);
+        alert("Failed to assign driver. Please try again.");
       }
-
-      if (!driver) {
-        alert("No drivers available for assignment");
-        return;
-      } // Fixed estimated arrival time - no proximity calculations
-      const estimatedTime = 20; // Standard 20 minutes for all assignments
-      const estimatedArrival = new Date();
-      estimatedArrival.setMinutes(
-        estimatedArrival.getMinutes() + estimatedTime
-      );
-
-      // Update appointment status
-      await dispatch(
-        updateAppointmentStatus({
-          id: therapist.appointment_id,
-          status: "driver_assigned_pickup",
-          driver: driver.id,
-          notes: `Driver assigned for pickup (FIFO) - ETA: ${estimatedTime} minutes`,
-        })
-      ).unwrap();
-
-      // Move driver from available to busy
-      setDriverAssignment((prev) => ({
-        ...prev,
-        availableDrivers: prev.availableDrivers.filter(
-          (d) => d.id !== driver.id
-        ),
-        busyDrivers: [
-          ...prev.busyDrivers.filter((d) => d.id !== driver.id),
-          {
-            ...driver,
-            current_task: `Picking up ${therapist.name}`,
-            current_location: `En route to ${therapist.location}`,
-          },
-        ],
-        pendingPickups: prev.pendingPickups.filter((t) => t.id !== therapistId),
-      }));
-
-      // Broadcast assignment with FIFO indicator
-      syncService.broadcast("driver_assigned_pickup", {
-        driver_id: driver.id,
-        therapist_id: therapistId,
-        appointment_id: therapist.appointment_id,
-        estimated_arrival: estimatedArrival.toISOString(),
-        driver_name: `${driver.first_name} ${driver.last_name}`,
-        therapist_name: therapist.name,
-        pickup_location: therapist.location,
-        estimated_time: estimatedTime,
-        assignment_method: "FIFO",
-      });
-
-      refreshData();
-    } catch (error) {
-      console.error("Failed to assign driver:", error);
-      alert("Failed to assign driver. Please try again.");
-    }
-  };
-  const handleUrgentPickupRequest = async (therapistId) => {
+    },
+    [
+      appointments,
+      driverAssignment.availableDrivers,
+      dispatch,
+      refreshData,
+      setDriverAssignment,
+    ]
+  );
+  const _handleUrgentPickupRequest = async (therapistId) => {
     try {
       // For urgent requests, still use FIFO but assign immediately
       const availableDrivers = driverAssignment.availableDrivers;
@@ -649,7 +740,7 @@ const OperatorDashboard = () => {
     }
   };
 
-  const getTimeElapsed = (timestamp) => {
+  const _getTimeElapsed = (timestamp) => {
     const now = new Date();
     const past = new Date(timestamp);
     const diffMs = now - past;
@@ -660,18 +751,104 @@ const OperatorDashboard = () => {
     const diffHours = Math.floor(diffMins / 60);
     return `${diffHours}h ${diffMins % 60}m ago`;
   };
-
-  const getUrgencyLevel = (requestTime) => {
-    if (!requestTime) return "normal";
-    const waitTime = (new Date() - new Date(requestTime)) / (1000 * 60); // minutes
-    return waitTime > 20 ? "urgent" : "normal"; // Reduced to 20 minutes for Pasig City
-  }; // Helper functions for FIFO coordination
-  const getDriverFIFOPosition = (driver) => {
+  // Helper functions for FIFO coordination
+  const _getDriverFIFOPosition = (driver) => {
     const sorted = driverAssignment.availableDrivers.sort(
       (a, b) => new Date(a.available_since) - new Date(b.available_since)
     );
     return sorted.findIndex((d) => d.id === driver.id) + 1;
   };
+  // Smart FIFO auto-assignment function
+  const handleAutoAssignPickupRequest = useCallback(
+    async (pickupRequest) => {
+      try {
+        console.log(
+          "🤖 Auto-assigning pickup request using FIFO:",
+          pickupRequest
+        );
+
+        // Get available drivers sorted by FIFO (earliest available first)
+        const availableDrivers = driverAssignment.availableDrivers
+          .filter((driver) => driver.status === "available")
+          .sort((a, b) => {
+            const timeA = new Date(a.last_available_at || a.available_since);
+            const timeB = new Date(b.last_available_at || b.available_since);
+            return timeA - timeB; // Earliest first (FIFO)
+          });
+
+        if (availableDrivers.length === 0) {
+          console.log("❌ No drivers available for auto-assignment");
+          return false;
+        }
+
+        // Get the first available driver (FIFO)
+        const nextDriver = availableDrivers[0];
+
+        console.log(
+          `✅ Auto-assigning driver ${nextDriver.first_name} ${nextDriver.last_name} (FIFO position: 1)`
+        );
+
+        // Auto-assign the driver
+        await handleAssignDriverPickup(
+          pickupRequest.therapist_id,
+          nextDriver.id
+        );
+
+        // Broadcast auto-assignment notification
+        syncService.broadcast("auto_assignment_completed", {
+          pickup_request: pickupRequest,
+          assigned_driver: nextDriver,
+          assignment_method: "FIFO",
+          assignment_time: new Date().toISOString(),
+          message: `Driver ${nextDriver.first_name} ${nextDriver.last_name} auto-assigned via FIFO`,
+        });
+
+        return true;
+      } catch (error) {
+        console.error("Failed to auto-assign pickup request:", error);
+        return false;
+      }
+    },
+    [driverAssignment.availableDrivers, handleAssignDriverPickup]
+  );
+  // Listen for pickup requests and auto-assign drivers
+  useEffect(() => {
+    const handlePickupRequest = async (data) => {
+      console.log("🚖 Pickup request received:", data);
+
+      // Auto-assign driver if available
+      if (data.therapist_id) {
+        const assigned = await handleAutoAssignPickupRequest({
+          therapist_id: data.therapist_id,
+          appointment_id: data.appointment_id,
+          location: data.location,
+          urgency: data.pickup_urgency || "normal",
+          timestamp: data.timestamp,
+        });
+
+        if (assigned) {
+          // Notify therapist that driver has been assigned
+          syncService.broadcast("pickup_auto_assigned", {
+            therapist_id: data.therapist_id,
+            appointment_id: data.appointment_id,
+            assignment_method: "auto_fifo",
+            message: "Driver automatically assigned for pickup",
+          });
+        }
+      }
+    };
+
+    // Subscribe to pickup request events
+    const unsubscribePickup = syncService.subscribe(
+      "pickup_requested",
+      handlePickupRequest
+    );
+
+    return () => {
+      unsubscribePickup();
+    };
+  }, [handleAutoAssignPickupRequest]); // Re-subscribe when auto-assignment function changes
+
   // Main render function for driver coordination panel
   const renderDriverCoordinationPanel = () => {
     // Get current pending pickup requests from appointments
@@ -685,317 +862,369 @@ const OperatorDashboard = () => {
         location: apt.location,
         appointment_id: apt.id,
         timestamp: apt.created_at || apt.updated_at,
-        urgency: apt.urgency || "normal",
+        urgency: apt.pickup_urgency || "normal",
       }));
 
+    // Filter urgent requests for priority display
+    const urgentPickups = currentPendingPickups.filter(
+      (pickup) => pickup.urgency === "urgent"
+    );
+    const normalPickups = currentPendingPickups.filter(
+      (pickup) => pickup.urgency !== "urgent"
+    );
     return (
       <div className="driver-coordination-panel">
-        <div className="driver-coord-header">
+        <div className="coord-header">
           <h3>
-            <i className="fas fa-car"></i>
-            Driver Coordination - FIFO System
+            <i className="fas fa-route"></i>
+            Driver Coordination Center
           </h3>
-          <div className="coord-stats">
-            <span className="stat available">
-              <i className="fas fa-user-check"></i>
-              {driverAssignment.availableDrivers.length} Available
-            </span>
-            <span className="stat busy">
-              <i className="fas fa-user-clock"></i>
-              {driverAssignment.busyDrivers.length} Busy
-            </span>
-            <span className="stat pending">
-              <i className="fas fa-hourglass-half"></i>
-              {currentPendingPickups.length} Pending Pickups
-            </span>
-          </div>
         </div>
 
-        <div className="driver-coord-grid">
-          {/* Available Drivers Section */}
-          <div className="coord-section available-drivers">
-            <div className="section-header">
+        {/* Urgent Backup Requests Section - Always visible when there are urgent requests */}
+        {urgentPickups.length > 0 && (
+          <div className="coord-section urgent-requests">
+            <div className="section-header urgent">
               <h4>
-                <i className="fas fa-users"></i>
-                Available Drivers ({driverAssignment.availableDrivers.length})
+                <i className="fas fa-exclamation-triangle"></i>
+                🚨 URGENT BACKUP REQUESTS ({urgentPickups.length})
               </h4>
+              <div className="urgent-actions">
+                <button
+                  onClick={() => {
+                    // Notify all available drivers about urgent requests
+                    driverAssignment.availableDrivers.forEach((driver) => {
+                      syncService.broadcast("urgent_backup_request", {
+                        driver_id: driver.id,
+                        urgent_requests: urgentPickups,
+                        message: `URGENT: ${urgentPickups.length} backup request(s) need immediate attention`,
+                        timestamp: new Date().toISOString(),
+                      });
+                    });
+                    alert(
+                      `Urgent notifications sent to ${driverAssignment.availableDrivers.length} available drivers`
+                    );
+                  }}
+                  className="notify-all-btn urgent"
+                  disabled={driverAssignment.availableDrivers.length === 0}
+                >
+                  <i className="fas fa-bullhorn"></i>
+                  Notify All Drivers
+                </button>
+              </div>
             </div>
-            <div className="driver-list">
-              {driverAssignment.availableDrivers.length === 0 ? (
-                <div className="empty-state">
-                  <i className="fas fa-user-slash"></i>
-                  <p>No drivers currently available</p>
-                </div>
-              ) : (
-                driverAssignment.availableDrivers.map((driver) => (
-                  <div key={driver.id} className="driver-card available">
-                    <div className="driver-info">
-                      <div className="driver-name">
-                        <i className="fas fa-user"></i>
-                        {driver.first_name} {driver.last_name}
-                      </div>{" "}
-                      <div className="driver-details">
-                        <span className="location">
-                          <i className="fas fa-map-marker-alt"></i>
-                          {driver.current_location || "Location not set"}
-                        </span>
-                        <span className="fifo-position">
-                          <i className="fas fa-sort-numeric-up"></i>
-                          FIFO Position #{getDriverFIFOPosition(driver)}
-                        </span>
-                      </div>
-                      <div className="driver-status available">
-                        <i className="fas fa-circle"></i>
-                        Ready for Assignment
-                      </div>
+            <div className="urgent-pickup-list">
+              {urgentPickups.map((pickup) => (
+                <div key={pickup.id} className="pickup-card urgent-priority">
+                  <div className="pickup-info">
+                    <div className="pickup-header">
+                      <span className="therapist-name">
+                        <i className="fas fa-user-md"></i>
+                        {pickup.name}
+                      </span>
+                      <span className="urgent-badge pulsing">
+                        <i className="fas fa-bolt"></i>
+                        URGENT BACKUP
+                      </span>
                     </div>
-                    <div className="driver-actions">
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleAssignDriverPickup(e.target.value, driver.id);
-                            e.target.value = "";
-                          }
-                        }}
-                        className="pickup-selector"
-                      >
-                        <option value="">Assign Pickup...</option>
-                        {currentPendingPickups.map((pickup) => (
-                          <option key={pickup.id} value={pickup.id}>
-                            {pickup.name} - {pickup.location}
+                    <div className="pickup-details">
+                      <span className="location">
+                        <i className="fas fa-map-marker-alt"></i>
+                        {pickup.location}
+                      </span>
+                      <span className="timestamp">
+                        <i className="fas fa-clock"></i>
+                        Requested:{" "}
+                        {new Date(pickup.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </div>{" "}
+                  <div className="pickup-actions">
+                    {/* Auto-assignment happens first, manual only if no available drivers */}
+                    {driverAssignment.availableDrivers.length > 0 ? (
+                      <div className="auto-assignment-status">
+                        <i className="fas fa-robot"></i>
+                        Auto-assigning available driver...
+                      </div>
+                    ) : (
+                      <div className="manual-assignment">
+                        <div className="no-available-notice">
+                          <i className="fas fa-exclamation-triangle"></i>
+                          No available drivers - Manual assignment required
+                        </div>
+                        <select
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleAssignDriverPickup(
+                                pickup.id,
+                                e.target.value
+                              );
+                              e.target.value = "";
+                            }
+                          }}
+                          className="driver-selector urgent"
+                        >
+                          <option value="">
+                            Select busy driver for urgent pickup...
                           </option>
-                        ))}
-                      </select>
-                    </div>
+                          {driverAssignment.busyDrivers.map((driver) => (
+                            <option key={driver.id} value={driver.id}>
+                              {driver.first_name} {driver.last_name} - Currently
+                              Busy
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
           </div>
+        )}
 
-          {/* Busy Drivers Section */}
-          <div className="coord-section busy-drivers">
-            <div className="section-header">
-              <h4>
-                <i className="fas fa-car"></i>
-                Active Assignments ({driverAssignment.busyDrivers.length})
-              </h4>
+        <div className="coord-sections">
+          {" "}
+          {/* Available Drivers Section with Enhanced FIFO Display */}
+          {driverAssignment.availableDrivers.length > 0 && (
+            <div className="coord-section available-drivers">
+              <div className="section-header">
+                {" "}
+                <h4>
+                  <i className="fas fa-users"></i>
+                  Available Drivers ({driverAssignment.availableDrivers.length})
+                </h4>
+              </div>
+              <div className="appointments-list">
+                {driverAssignment.availableDrivers
+                  .sort((a, b) => {
+                    // Sort by FIFO order (earliest available first)
+                    const timeA = new Date(
+                      a.last_drop_off_time ||
+                        a.last_available_at ||
+                        a.available_since
+                    );
+                    const timeB = new Date(
+                      b.last_drop_off_time ||
+                        b.last_available_at ||
+                        b.available_since
+                    );
+                    return timeA - timeB;
+                  })
+                  .map((driver, index) => (
+                    <div key={driver.id} className="driver-card">
+                      {" "}
+                      <div className="driver-card-header">
+                        <h5>
+                          <i className="fas fa-user"></i>
+                          {driver.first_name} {driver.last_name}
+                        </h5>
+                        <div className="driver-availability-status available">
+                          <i className="fas fa-circle"></i>
+                          Available
+                        </div>
+                      </div>
+                      <div className="driver-card-body">
+                        <div className="driver-info-row">
+                          <i className="fas fa-car"></i>
+                          <span>
+                            Vehicle:{" "}
+                            {driver.last_vehicle_used ||
+                              driver.vehicle_type ||
+                              "Motorcycle"}
+                          </span>
+                        </div>
+                        <div className="driver-info-row">
+                          <i className="fas fa-map-marker-alt"></i>
+                          <span>
+                            Location: {driver.current_location || "Available"}
+                          </span>
+                        </div>
+                        {driver.last_drop_off_time ? (
+                          <div className="driver-last-activity">
+                            <i className="fas fa-clock"></i>
+                            Last drop-off:{" "}
+                            {new Date(
+                              driver.last_drop_off_time
+                            ).toLocaleString()}
+                          </div>
+                        ) : (
+                          <div className="driver-last-activity no-last-activity">
+                            <i className="fas fa-info-circle"></i>
+                            No recent activity recorded
+                          </div>
+                        )}
+                      </div>
+                      <div className="appointment-actions">
+                        <select
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleAssignDriverPickup(
+                                e.target.value,
+                                driver.id
+                              );
+                              e.target.value = "";
+                            }
+                          }}
+                          className="pickup-selector"
+                        >
+                          <option value="">Assign Pickup...</option>
+                          {currentPendingPickups.map((pickup) => (
+                            <option key={pickup.id} value={pickup.id}>
+                              {pickup.name} - {pickup.location}
+                              {pickup.urgency === "urgent" ? " (URGENT)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+              </div>
             </div>
-            <div className="driver-list">
-              {driverAssignment.busyDrivers.length === 0 ? (
-                <div className="empty-state">
-                  <i className="fas fa-bed"></i>
-                  <p>No drivers currently on assignment</p>
-                </div>
-              ) : (
-                driverAssignment.busyDrivers.map((driver) => (
-                  <div key={driver.id} className="driver-card busy">
-                    <div className="driver-info">
-                      <div className="driver-name">
+          )}{" "}
+          {/* In Progress Section with Enhanced Driver Info */}
+          {driverAssignment.busyDrivers.length > 0 && (
+            <div className="coord-section busy-drivers">
+              <div className="section-header">
+                <h4>
+                  <i className="fas fa-car"></i>
+                  In Progress ({driverAssignment.busyDrivers.length})
+                </h4>
+              </div>
+              <div className="appointments-list">
+                {driverAssignment.busyDrivers.map((driver) => (
+                  <div key={driver.id} className="driver-card">
+                    <div className="driver-card-header">
+                      <h5>
                         <i className="fas fa-user"></i>
                         {driver.first_name} {driver.last_name}
+                      </h5>
+                      <div className="driver-availability-status busy">
+                        <i className="fas fa-circle"></i>
+                        On Assignment
                       </div>
-                      <div className="driver-details">
-                        <span className="current-task">
-                          <i className="fas fa-tasks"></i>
-                          {driver.current_task || "On assignment"}
+                    </div>
+                    <div className="driver-card-body">
+                      <div className="driver-info-row">
+                        <i className="fas fa-tasks"></i>
+                        <span>
+                          Task: {driver.current_task || "On assignment"}
                         </span>
-                        <span className="location">
-                          <i className="fas fa-route"></i>
-                          {driver.current_location || "En route"}
+                      </div>
+                      <div className="driver-info-row">
+                        <i className="fas fa-map-marker-alt"></i>
+                        <span>
+                          Location: {driver.current_location || "En route"}
                         </span>
-                        <span className="eta">
+                      </div>
+                      <div className="driver-info-row">
+                        <i className="fas fa-car"></i>
+                        <span>
+                          Vehicle: {driver.vehicle_type || "Motorcycle"}
+                        </span>
+                      </div>
+                      {driver.estimated_completion && (
+                        <div className="driver-last-activity">
                           <i className="fas fa-clock"></i>
                           ETA:{" "}
                           {new Date(
                             driver.estimated_completion
                           ).toLocaleTimeString()}
-                        </span>
-                      </div>
-                      <div className="driver-status busy">
-                        <i className="fas fa-circle"></i>
-                        On Assignment
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Pending Pickups Section */}
-          <div className="coord-section pending-pickups">
-            <div className="section-header">
-              <h4>
-                <i className="fas fa-hourglass-half"></i>
-                Pending Pickups ({currentPendingPickups.length})
-              </h4>
-            </div>
-            <div className="pickup-list">
-              {currentPendingPickups.length === 0 ? (
-                <div className="empty-state">
-                  <i className="fas fa-check-circle"></i>
-                  <p>No pending pickup requests</p>
-                </div>
-              ) : (
-                currentPendingPickups.map((pickup) => (
-                  <div
-                    key={pickup.id}
-                    className={`pickup-card ${getUrgencyLevel(
-                      pickup.timestamp
-                    )}`}
-                  >
-                    <div className="pickup-info">
-                      <div className="therapist-name">
-                        <i className="fas fa-user-md"></i>
-                        {pickup.name}
-                      </div>{" "}
-                      <div className="pickup-details">
-                        <span className="location">
-                          <i className="fas fa-map-marker-alt"></i>
-                          {pickup.location}
-                        </span>
-                        <span className="time-elapsed">
-                          <i className="fas fa-stopwatch"></i>
-                          {getTimeElapsed(pickup.timestamp)}
-                        </span>
-                      </div>
-                      <div
-                        className={`urgency-indicator ${getUrgencyLevel(
-                          pickup.timestamp
-                        )}`}
-                      >
-                        <i
-                          className={`fas ${
-                            getUrgencyLevel(pickup.timestamp) === "urgent"
-                              ? "fa-exclamation-triangle"
-                              : "fa-clock"
-                          }`}
-                        ></i>
-                        {getUrgencyLevel(pickup.timestamp)
-                          .charAt(0)
-                          .toUpperCase() +
-                          getUrgencyLevel(pickup.timestamp).slice(1)}
-                      </div>
-                    </div>
-                    <div className="pickup-actions">
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleAssignDriverPickup(pickup.id, e.target.value);
-                            e.target.value = "";
-                          }
-                        }}
-                        className="driver-selector"
-                      >
-                        {" "}
-                        <option value="">Assign Driver...</option>
-                        {driverAssignment.availableDrivers.map(
-                          (driver, index) => {
-                            // Show FIFO order instead of proximity
-                            const fifoOrder = index + 1;
-                            return (
-                              <option key={driver.id} value={driver.id}>
-                                {driver.first_name} {driver.last_name} - FIFO #
-                                {fifoOrder} (ETA: ~20min)
-                              </option>
-                            );
-                          }
-                        )}
-                      </select>
-                      {getUrgencyLevel(pickup.timestamp) === "urgent" && (
-                        <button
-                          onClick={() => handleUrgentPickupRequest(pickup.id)}
-                          className="urgent-action-btn"
-                        >
-                          <i className="fas fa-bolt"></i>
-                          Urgent
-                        </button>
+                        </div>
                       )}
                     </div>
                   </div>
-                ))
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+          {/* Pending Pickups Section - Only show if there are normal pending pickups */}
+          {normalPickups.length > 0 && (
+            <div className="coord-section pending-pickups">
+              <div className="section-header">
+                <h4>
+                  <i className="fas fa-hand-paper"></i>
+                  Pending Pickups ({normalPickups.length})
+                </h4>
+              </div>
+              <div className="appointments-list">
+                {normalPickups.map((pickup) => (
+                  <div key={pickup.id} className="appointment-card pending">
+                    <div className="appointment-header">
+                      <h4>
+                        <i className="fas fa-user-md"></i>
+                        {pickup.name}
+                      </h4>
+                      <span className="status-badge status-pending">
+                        Pickup Requested
+                      </span>
+                    </div>
+                    <div className="appointment-details">
+                      <p>
+                        <strong>Location:</strong> {pickup.location}
+                      </p>
+                      <p>
+                        <strong>Requested:</strong>{" "}
+                        {new Date(pickup.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>{" "}
+                    <div className="appointment-actions">
+                      {/* Auto-assignment happens first, manual only if no available drivers */}
+                      {driverAssignment.availableDrivers.length > 0 ? (
+                        <div className="auto-assignment-status">
+                          <i className="fas fa-robot"></i>
+                          Auto-assigning available driver...
+                        </div>
+                      ) : (
+                        <div className="manual-assignment">
+                          <div className="no-available-notice">
+                            <i className="fas fa-exclamation-triangle"></i>
+                            No available drivers - Manual assignment required
+                          </div>
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleAssignDriverPickup(
+                                  pickup.id,
+                                  e.target.value
+                                );
+                                e.target.value = "";
+                              }
+                            }}
+                            className="driver-selector"
+                          >
+                            <option value="">Select busy driver...</option>
+                            {driverAssignment.busyDrivers.map((driver) => (
+                              <option key={driver.id} value={driver.id}>
+                                {driver.first_name} {driver.last_name} -
+                                Currently Busy
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Quick Assignment Tools */}
-        <div className="quick-assignment-tools">
-          {" "}
-          <div className="tool-section auto-assignment">
-            <h5>
-              <i className="fas fa-magic"></i>
-              Auto Assignment (FIFO)
-            </h5>
-            <p>
-              Automatically assign all pending pickups using First-In-First-Out
-              method
-            </p>
-            <button
-              onClick={() => {
-                // Pure FIFO auto-assignment - no proximity calculations
-                currentPendingPickups.forEach((pickup) => {
-                  // Simply assign to next available driver (FIFO)
-                  handleAssignDriverPickup(pickup.id); // No driverId = auto FIFO selection
-                });
-              }}
-              disabled={
-                currentPendingPickups.length === 0 ||
-                driverAssignment.availableDrivers.length === 0
-              }
-              className="auto-assign-btn"
-            >
-              <i className="fas fa-robot"></i>
-              Auto-Assign All FIFO ({currentPendingPickups.length})
-            </button>{" "}
-          </div>
-          <div className="tool-section fifo-queue-overview">
-            <h5>
-              <i className="fas fa-list-ol"></i>
-              FIFO Queue Status
-            </h5>
-            <div className="fifo-queue-info">
-              <div className="queue-stats">
-                <div className="stat-item">
-                  <span className="stat-number">
-                    {driverAssignment.availableDrivers.length}
-                  </span>
-                  <span className="stat-label">Drivers in Queue</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-number">
-                    {currentPendingPickups.length}
-                  </span>
-                  <span className="stat-label">Pending Assignments</span>
-                </div>
-              </div>
-              <div className="next-assignment">
-                {driverAssignment.availableDrivers.length > 0 &&
-                currentPendingPickups.length > 0 ? (
-                  <div className="auto-assignment-preview">
-                    <p>
-                      <strong>Next Assignment:</strong>
-                    </p>
-                    <p>
-                      Driver: {driverAssignment.availableDrivers[0]?.first_name}{" "}
-                      {driverAssignment.availableDrivers[0]?.last_name}
-                    </p>
-                    <p>Pickup: {currentPendingPickups[0]?.name}</p>
-                    <p>ETA: ~20 minutes</p>
-                  </div>
-                ) : (
-                  <p className="no-assignments">No pending assignments</p>
-                )}
-              </div>
+        {/* Empty state when no activity */}
+        {driverAssignment.availableDrivers.length === 0 &&
+          driverAssignment.busyDrivers.length === 0 &&
+          currentPendingPickups.length === 0 && (
+            <div className="empty-state">
+              <i className="fas fa-route"></i>
+              <p>No driver activity at the moment</p>
             </div>
-          </div>
-        </div>
+          )}
       </div>
     );
   };
 
-  // Missing render functions
+  // Render functions
   const renderRejectedAppointments = () => {
     if (rejectedAppointments.length === 0) {
       return (
@@ -1014,14 +1243,18 @@ const OperatorDashboard = () => {
               <h4>
                 <i className="fas fa-times-circle"></i>
                 Appointment #{appointment.id}
-              </h4>
+              </h4>{" "}
               <span className="status rejected">Rejected</span>
-            </div>
+            </div>{" "}
             <div className="appointment-details">
               <div className="detail-row">
                 <span className="label">Client:</span>
                 <span className="value">
-                  {appointment.client_name || "Unknown"}
+                  {appointment.client_details?.first_name
+                    ? `${appointment.client_details.first_name} ${
+                        appointment.client_details.last_name || ""
+                      }`.trim()
+                    : appointment.client || "Unknown Client"}
                 </span>
               </div>
               <div className="detail-row">
@@ -1077,14 +1310,18 @@ const OperatorDashboard = () => {
               <h4>
                 <i className="fas fa-hourglass-half"></i>
                 Appointment #{appointment.id}
-              </h4>
+              </h4>{" "}
               <span className="status pending">Pending</span>
-            </div>
+            </div>{" "}
             <div className="appointment-details">
               <div className="detail-row">
                 <span className="label">Client:</span>
                 <span className="value">
-                  {appointment.client_name || "Unknown"}
+                  {appointment.client_details?.first_name
+                    ? `${appointment.client_details.first_name} ${
+                        appointment.client_details.last_name || ""
+                      }`.trim()
+                    : appointment.client || "Unknown Client"}
                 </span>
               </div>
               <div className="detail-row">
@@ -1195,13 +1432,17 @@ const OperatorDashboard = () => {
                     {overdueAppointments.includes(appointment)
                       ? "Overdue"
                       : "Approaching Deadline"}
-                  </span>
-                </div>
+                  </span>{" "}
+                </div>{" "}
                 <div className="appointment-details">
                   <div className="detail-row">
                     <span className="label">Client:</span>
                     <span className="value">
-                      {appointment.client_name || "Unknown"}
+                      {appointment.client_details?.first_name
+                        ? `${appointment.client_details.first_name} ${
+                            appointment.client_details.last_name || ""
+                          }`.trim()
+                        : appointment.client || "Unknown Client"}
                     </span>
                   </div>
                   <div className="detail-row">
@@ -1260,13 +1501,17 @@ const OperatorDashboard = () => {
                 </h4>
                 <span className={`status ${appointment.status}`}>
                   {appointment.status}
-                </span>
+                </span>{" "}
               </div>{" "}
               <div className="appointment-details">
                 <div className="detail-row">
                   <span className="label">Client:</span>
                   <span className="value">
-                    {appointment.client_name || "Unknown"}
+                    {appointment.client_details?.first_name
+                      ? `${appointment.client_details.first_name} ${
+                          appointment.client_details.last_name || ""
+                        }`.trim()
+                      : appointment.client || "Unknown Client"}
                   </span>
                 </div>
                 <div className="detail-row">
@@ -1436,12 +1681,13 @@ const OperatorDashboard = () => {
               <span className={`status ${session.status}`}>
                 {session.status}
               </span>
-            </div>
+            </div>{" "}
             <div className="session-details">
               <div className="detail-row">
                 <span className="label">Client:</span>
                 <span className="value">
-                  {session.client_name || "Unknown"}
+                  {session.client_details?.first_name}{" "}
+                  {session.client_details?.last_name || "Unknown"}
                 </span>
               </div>
               <div className="detail-row">
@@ -1576,8 +1822,11 @@ const OperatorDashboard = () => {
               <div className="detail-row">
                 <span className="label">Client:</span>
                 <span className="value">
-                  {appointment.client_details?.first_name}{" "}
-                  {appointment.client_details?.last_name || "Unknown"}
+                  {appointment.client_details?.first_name
+                    ? `${appointment.client_details.first_name} ${
+                        appointment.client_details.last_name || ""
+                      }`.trim()
+                    : appointment.client || "Unknown Client"}
                 </span>
               </div>
               <div className="detail-row">
@@ -1647,7 +1896,6 @@ const OperatorDashboard = () => {
       apt.status === "pickup_requested" ||
       apt.status === "driver_assigned_pickup"
   );
-
   return (
     <PageLayout>
       <div className="operator-dashboard">
@@ -1842,15 +2090,20 @@ const OperatorDashboard = () => {
             <div className="payment-modal">
               <h3>Verify Payment Received</h3>
               <div className="appointment-summary">
-                <h4>Appointment #{paymentModal.appointmentId}</h4>
+                <h4>Appointment #{paymentModal.appointmentId}</h4>{" "}
                 <div className="summary-details">
                   <p>
                     <strong>Client:</strong>{" "}
-                    {
-                      paymentModal.appointmentDetails?.client_details
-                        ?.first_name
-                    }{" "}
-                    {paymentModal.appointmentDetails?.client_details?.last_name}
+                    {paymentModal.appointmentDetails?.client_details?.first_name
+                      ? `${
+                          paymentModal.appointmentDetails.client_details
+                            .first_name
+                        } ${
+                          paymentModal.appointmentDetails.client_details
+                            .last_name || ""
+                        }`.trim()
+                      : paymentModal.appointmentDetails?.client ||
+                        "Unknown Client"}
                   </p>
                   <p>
                     <strong>Date:</strong>{" "}
@@ -1924,7 +2177,7 @@ const OperatorDashboard = () => {
                   }
                   loadingText="Processing..."
                 >
-                  Mark as Paid
+                  Mark as Paid{" "}
                 </LoadingButton>
                 <LoadingButton
                   className="cancel-button"
@@ -1981,12 +2234,13 @@ const OperatorDashboard = () => {
                   variant="secondary"
                 >
                   Deny Rejection
-                </LoadingButton>
+                </LoadingButton>{" "}
                 <LoadingButton
                   className="cancel-button"
                   onClick={handleReviewCancel}
                   variant="secondary"
                 >
+                  {" "}
                   Cancel
                 </LoadingButton>
               </div>

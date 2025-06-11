@@ -3,14 +3,15 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
-  driverConfirm,
+  confirmPickup, // Added for pickup rejection
   fetchAppointments,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
   markArrived,
-  rejectAppointment,
+  rejectAppointment, // Added for pickup confirmation
+  rejectPickup, // General appointment rejection
   startJourney,
-  updateAppointmentStatus,
+  updateAppointmentStatus, // Used for general status updates, including confirmations
 } from "../features/scheduling/schedulingSlice";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
@@ -125,6 +126,39 @@ const DriverDashboard = () => {
       ...prev,
       [actionKey]: isLoading,
     }));
+  };
+
+  const handleConfirmPickup = async (appointmentId) => {
+    const actionKey = `confirm-pickup-${appointmentId}`;
+    setActionLoading(actionKey, true);
+    try {
+      await dispatch(confirmPickup(appointmentId)).unwrap(); // Corrected: pass appointmentId directly
+      // Optionally, add success notification or UI update here
+      console.log(`Pickup confirmed for appointment ${appointmentId}`);
+      // Consider a targeted refresh or rely on WebSocket/syncService updates
+      refreshAppointments(true, currentView);
+    } catch (error) {
+      console.error("Failed to confirm pickup:", error);
+      // Optionally, add error notification here
+      alert(`Failed to confirm pickup: ${error.message || "Unknown error"}`);
+    } finally {
+      setActionLoading(actionKey, false);
+    }
+  };
+
+  const handleRejectPickup = async (appointmentId, reason) => {
+    const actionKey = `reject-pickup-${appointmentId}`;
+    setActionLoading(actionKey, true);
+    try {
+      await dispatch(rejectPickup({ appointmentId, reason })).unwrap();
+      // Optionally, add success notification or UI update here
+      console.log(`Pickup rejected for appointment ${appointmentId}`);
+    } catch (error) {
+      console.error("Failed to reject pickup:", error);
+      // Optionally, add error notification here
+    } finally {
+      setActionLoading(actionKey, false);
+    }
   };
 
   const { user } = useSelector((state) => state.auth);
@@ -337,7 +371,6 @@ const DriverDashboard = () => {
       mounted = false;
     };
   }, [dispatch]);
-
   // Refresh specific view data when view changes (silent background update)
   useEffect(() => {
     if (!isInitialLoad) {
@@ -347,6 +380,40 @@ const DriverDashboard = () => {
       dispatch(fetchUpcomingAppointments());
     }
   }, [currentView, dispatch, isInitialLoad]);
+
+  // Listen for urgent backup requests
+  useEffect(() => {
+    const handleUrgentBackupRequest = (data) => {
+      // Show urgent notification to driver
+      if (data.driver_id === user?.id || !data.driver_id) {
+        // Show toast notification for urgent backup
+        const urgentCount = data.urgent_requests?.length || 1;
+        const message = `🚨 URGENT: ${urgentCount} backup request(s) need immediate attention!`;
+
+        // You could use a toast library here, for now we'll use alert
+        if (
+          window.confirm(
+            `${message}\n\nWould you like to check the operator dashboard?`
+          )
+        ) {
+          // In a real app, you might navigate to a specific urgent requests page
+          // For now, we'll just refresh the appointments to show any new assignments
+          dispatch(fetchAppointments());
+          dispatch(fetchTodayAppointments());
+        }
+      }
+    };
+
+    // Subscribe to urgent backup requests
+    const unsubscribe = syncService.subscribe(
+      "urgent_backup_request",
+      handleUrgentBackupRequest
+    );
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user, dispatch]);
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");
@@ -359,8 +426,13 @@ const DriverDashboard = () => {
     const actionKey = `accept_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(driverConfirm(appointmentId)).unwrap();
-      // Only refresh current view data to minimize API calls
+      // Assuming 'driver_confirmed' is the status after driver accepts initial assignment
+      await dispatch(
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "driver_confirmed",
+        })
+      ).unwrap();
       refreshAppointments(true);
     } catch (error) {
       // More user-friendly error message
@@ -378,10 +450,21 @@ const DriverDashboard = () => {
   };
 
   const handleDriverConfirm = async (appointmentId) => {
+    // This seems to be the same as accept? Or a later confirmation.
+    // If it's for confirming readiness before operator starts,
+    // this might also be an updateAppointmentStatus call.
+    // For now, let's assume it's similar to accept for initial flow.
     const actionKey = `confirm_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(driverConfirm(appointmentId)).unwrap();
+      // This status might be 'driver_ready' or similar, depending on backend states
+      // Using 'driver_confirmed' as a placeholder if it's the main confirmation step by driver
+      await dispatch(
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "driver_confirmed",
+        })
+      ).unwrap();
       refreshAppointments(true);
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
@@ -491,21 +574,18 @@ const DriverDashboard = () => {
     const actionKey = `dropoff_complete_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-
       await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
-          status: "therapist_dropped_off",
+          status: "dropped_off",
           notes: `Transport completed - dropped off at ${
             appointment.location
           } at ${new Date().toISOString()}`,
         })
-      ).unwrap();
-
-      // Update driver availability status in FIFO queue
+      ).unwrap(); // Update driver availability status in FIFO queue
       try {
         const response = await fetch(
-          "http://localhost:8000/api/appointments/update_driver_availability/",
+          "http://localhost:8000/api/scheduling/appointments/update_driver_availability/",
           {
             method: "POST",
             headers: {
@@ -567,22 +647,18 @@ const DriverDashboard = () => {
   const handleDropOff = async (appointmentId) => {
     const actionKey = `dropoff_${appointmentId}`;
     try {
-      setActionLoading(actionKey, true);
-
-      // Complete the appointment (therapist dropped off, transport finished)
+      setActionLoading(actionKey, true); // Drop off therapist - session should start
       await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
-          status: "completed",
-          action: "complete_appointment",
-          notes: `Transport completed - therapist dropped off successfully at ${new Date().toISOString()}`,
+          status: "dropped_off",
+          action: "drop_off_therapist",
+          notes: `Therapist dropped off at client location at ${new Date().toISOString()}`,
         })
-      ).unwrap();
-
-      // Update driver availability status in FIFO queue
+      ).unwrap(); // Update driver availability status in FIFO queue
       try {
         const response = await fetch(
-          "http://localhost:8000/api/appointments/update_driver_availability/",
+          "http://localhost:8000/api/scheduling/appointments/update_driver_availability/",
           {
             method: "POST",
             headers: {
@@ -816,18 +892,28 @@ const DriverDashboard = () => {
       return;
     }
 
+    // Check if this rejection is for a pickup or a general appointment
+    const appointment = myAppointments.find((apt) => apt.id === appointmentId);
+    const isPickupRejection =
+      appointment && appointment.status === "driver_assigned_pickup";
+
     try {
-      await dispatch(
-        rejectAppointment({
-          id: appointmentId,
-          rejectionReason: cleanReason,
-        })
-      ).unwrap();
+      if (isPickupRejection) {
+        await handleRejectPickup(appointmentId, cleanReason); // Use the new pickup-specific handler
+      } else {
+        await dispatch(
+          rejectAppointment({
+            // General appointment rejection
+            id: appointmentId,
+            rejectionReason: cleanReason,
+          })
+        ).unwrap();
+      }
       refreshAppointments(true); // Silent background refresh after action
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
       // Better error message handling with authentication awareness
-      let errorMessage = "Failed to reject appointment. Please try again.";
+      let errorMessage = "Failed to reject. Please try again.";
 
       if (
         error?.message?.includes("401") ||
@@ -849,7 +935,7 @@ const DriverDashboard = () => {
           "Rejection reason is required. Please provide a valid reason.";
       }
 
-      alert(`Failed to reject appointment: ${errorMessage}`);
+      alert(`Failed to reject: ${errorMessage}`);
       setRejectionModal({ isOpen: false, appointmentId: null });
     }
   };
@@ -914,7 +1000,7 @@ const DriverDashboard = () => {
             </LoadingButton>
             <LoadingButton
               className="reject-button"
-              onClick={() => handleRejectAppointment(id)}
+              onClick={() => handleRejectAppointment(id)} // This will open the modal
               variant="secondary"
             >
               Reject
@@ -1069,7 +1155,6 @@ const DriverDashboard = () => {
             </div>
           </div>
         );
-
       case "pickup_requested":
         return (
           <div className="appointment-actions">
@@ -1081,6 +1166,65 @@ const DriverDashboard = () => {
             </div>
           </div>
         );
+      case "driver_assigned_pickup":
+        return (
+          <div className="appointment-actions">
+            <div className="pickup-assignment-buttons">
+              <LoadingButton
+                className="confirm-pickup-button"
+                onClick={() => handleConfirmPickup(id)}
+                loading={buttonLoading[`confirm-pickup-${id}`]} // Ensure key matches
+                loadingText="Confirming..."
+              >
+                ✅ Confirm Pickup
+              </LoadingButton>
+              <LoadingButton
+                className="reject-pickup-button"
+                onClick={() => handleRejectAppointment(id)} // Opens modal for reason
+                loading={buttonLoading[`reject-pickup-${id}`]} // Ensure key matches
+                loadingText="Rejecting..."
+                variant="secondary"
+              >
+                ❌ Reject Pickup
+              </LoadingButton>
+            </div>
+            <div className="pickup-assignment-status">
+              <span className="assigned-badge">🚗 Pickup Assignment</span>
+              <p>
+                <strong>Auto-assigned for pickup:</strong>{" "}
+                {appointment.client?.first_name || "Client"}{" "}
+                {appointment.client?.last_name || ""}
+              </p>
+              <p>
+                <strong>Location:</strong> {appointment.location}
+              </p>
+              <p>
+                <strong>Urgency:</strong>{" "}
+                <span
+                  className={`urgency-${
+                    appointment.pickup_urgency || "normal"
+                  }`}
+                >
+                  {(appointment.pickup_urgency || "normal").toUpperCase()}
+                </span>
+              </p>
+              {appointment.estimated_pickup_time && (
+                <p>
+                  <strong>Estimated Arrival:</strong>{" "}
+                  {new Date(
+                    appointment.estimated_pickup_time
+                  ).toLocaleTimeString()}
+                </p>
+              )}
+              <div className="pickup-confirmation-note">
+                <small>
+                  ⚠️ You must confirm or reject this pickup assignment
+                </small>
+              </div>
+            </div>
+          </div>
+        );
+
       case "completed":
         return (
           <div className="appointment-actions">
