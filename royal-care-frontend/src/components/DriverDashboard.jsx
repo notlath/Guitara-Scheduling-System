@@ -221,6 +221,33 @@ const DriverDashboard = () => {
     ];
     return visibleStatuses.includes(apt.status);
   });
+  // Separate filter for "All My Transports" view - includes completed transports
+  const myAllTransports = appointments
+    .filter((apt) => {
+      if (apt.driver !== user?.id) return false;
+
+      // For "All" view, show everything including completed/dropped-off transports
+      const allStatuses = [
+        "pending",
+        "therapist_confirmed",
+        "driver_confirmed",
+        "in_progress",
+        "journey_started",
+        "journey",
+        "arrived",
+        "dropped_off",
+        "session_in_progress",
+        "awaiting_payment",
+        "completed", // This shows completed transports in "All My Transports"
+        "pickup_requested",
+        "therapist_dropped_off", // Legacy status support
+        "payment_completed", // Session fully finished
+        "driver_assigned_pickup", // Driver assigned for pickup
+      ];
+
+      return allStatuses.includes(apt.status);
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date, newest first
 
   // Refresh appointments data silently in background
   const refreshAppointments = useCallback(
@@ -455,29 +482,73 @@ const DriverDashboard = () => {
       }
     }
   };
-  // Enhanced drop-off handler for dynamic coordination
+
+  // Enhanced drop-off handler for FIFO coordination
   const handleDropOffComplete = async (appointmentId) => {
     const appointment = myAppointments.find((apt) => apt.id === appointmentId);
     if (!appointment) return;
 
+    const actionKey = `dropoff_complete_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
+
       await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
           status: "therapist_dropped_off",
-          notes: `Dropped off at ${
+          notes: `Transport completed - dropped off at ${
             appointment.location
           } at ${new Date().toISOString()}`,
         })
       ).unwrap();
 
-      // Notify system that driver is available for reassignment
-      syncService.broadcast("driver_available", {
-        driver_id: user.id,
-        last_location: appointment.location,
-        vehicle_type: appointment.transport_mode || "motorcycle",
-        available_at: new Date().toISOString(),
-      });
+      // Update driver availability status in FIFO queue
+      try {
+        const response = await fetch(
+          "http://localhost:8000/api/appointments/update_driver_availability/",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${localStorage.getItem("knoxToken")}`,
+            },
+            body: JSON.stringify({
+              status: "available",
+              current_location: appointment.location,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("✅ Driver marked as available in FIFO queue:", data);
+
+          // Also broadcast to frontend for real-time updates
+          syncService.broadcast("driver_available", {
+            driver_id: user.id,
+            last_location: appointment.location,
+            vehicle_type: appointment.transport_mode || "motorcycle",
+            available_at: data.available_since,
+            assignment_method: "FIFO",
+            fifo_position: data.fifo_position,
+          });
+        } else {
+          console.error(
+            "Failed to update driver availability:",
+            response.status
+          );
+        }
+      } catch (availabilityError) {
+        console.error("Error updating driver availability:", availabilityError);
+        // Fallback to old broadcast method if new endpoint fails
+        syncService.broadcast("driver_available", {
+          driver_id: user.id,
+          last_location: appointment.location,
+          vehicle_type: appointment.transport_mode || "motorcycle",
+          available_at: new Date().toISOString(),
+          assignment_method: "FIFO",
+        });
+      }
 
       refreshAppointments(true);
     } catch (error) {
@@ -489,19 +560,63 @@ const DriverDashboard = () => {
       } else {
         alert("Failed to mark drop-off complete. Please try again.");
       }
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
   const handleDropOff = async (appointmentId) => {
     const actionKey = `dropoff_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
+
+      // Complete the appointment (therapist dropped off, transport finished)
       await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
-          status: "dropped_off",
-          action: "drop_off_therapist",
+          status: "completed",
+          action: "complete_appointment",
+          notes: `Transport completed - therapist dropped off successfully at ${new Date().toISOString()}`,
         })
       ).unwrap();
+
+      // Update driver availability status in FIFO queue
+      try {
+        const response = await fetch(
+          "http://localhost:8000/api/appointments/update_driver_availability/",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${localStorage.getItem("knoxToken")}`,
+            },
+            body: JSON.stringify({
+              status: "available",
+              current_location: "Available for new assignments",
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("✅ Driver marked as available in FIFO queue:", data);
+
+          // Broadcast driver availability for real-time updates
+          syncService.broadcast("driver_available", {
+            driver_id: user.id,
+            available_at: data.available_since,
+            assignment_method: "FIFO",
+            fifo_position: data.fifo_position,
+          });
+        } else {
+          console.error(
+            "Failed to update driver availability:",
+            response.status
+          );
+        }
+      } catch (availabilityError) {
+        console.error("Error updating driver availability:", availabilityError);
+      }
+
       refreshAppointments(true);
     } catch (error) {
       console.error("Failed to mark drop off:", error);
@@ -966,13 +1081,15 @@ const DriverDashboard = () => {
             </div>
           </div>
         );
-
       case "completed":
         return (
           <div className="appointment-actions">
             <div className="completed-status">
               <span className="success-badge">✅ Transport completed</span>
-              <p>All services completed successfully.</p>
+              <p>
+                Therapist successfully dropped off. Available for new
+                assignments.
+              </p>
             </div>
           </div>
         );
@@ -1158,6 +1275,39 @@ const DriverDashboard = () => {
                   )
                 )}
 
+                {/* Enhanced info for completed transports in "All My Transports" view */}
+                {(appointment.status === "therapist_dropped_off" ||
+                  appointment.status === "payment_completed" ||
+                  appointment.status === "completed") &&
+                  currentView === "all" && (
+                    <div className="completed-transport-info">
+                      <p className="completion-status">
+                        <strong>✅ Transport Complete</strong>
+                      </p>
+                      <p className="completion-details">
+                        <strong>Dropped off at:</strong> {appointment.location}
+                      </p>
+                      {appointment.started_at && (
+                        <p>
+                          <strong>Started:</strong>{" "}
+                          {new Date(appointment.started_at).toLocaleString()}
+                        </p>
+                      )}
+                      {appointment.updated_at && (
+                        <p>
+                          <strong>Completed:</strong>{" "}
+                          {new Date(appointment.updated_at).toLocaleString()}
+                        </p>
+                      )}
+                      {appointment.total_amount && (
+                        <p>
+                          <strong>Session Value:</strong> ₱
+                          {appointment.total_amount}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                 {/* Driver Status Information */}
                 {appointment.status === "therapist_dropped_off" && (
                   <div className="driver-status-info">
@@ -1295,7 +1445,62 @@ const DriverDashboard = () => {
           {currentView === "all" && (
             <div className="all-appointments">
               <h2>All My Transports</h2>
-              {renderAppointmentsList(myAppointments)}
+
+              {/* Transport Statistics Summary */}
+              <div className="transport-stats-summary">
+                <div className="stats-grid">
+                  <div className="stat-card completed">
+                    <span className="stat-number">
+                      {
+                        myAllTransports.filter((apt) =>
+                          [
+                            "therapist_dropped_off",
+                            "payment_completed",
+                            "completed",
+                          ].includes(apt.status)
+                        ).length
+                      }
+                    </span>
+                    <span className="stat-label">Completed Transports</span>
+                  </div>
+                  <div className="stat-card pending">
+                    <span className="stat-number">
+                      {
+                        myAllTransports.filter((apt) =>
+                          [
+                            "pending",
+                            "therapist_confirmed",
+                            "driver_confirmed",
+                            "in_progress",
+                          ].includes(apt.status)
+                        ).length
+                      }
+                    </span>
+                    <span className="stat-label">Active/Pending</span>
+                  </div>
+                  <div className="stat-card pickup">
+                    <span className="stat-number">
+                      {
+                        myAllTransports.filter((apt) =>
+                          [
+                            "pickup_requested",
+                            "driver_assigned_pickup",
+                          ].includes(apt.status)
+                        ).length
+                      }
+                    </span>
+                    <span className="stat-label">Pickup Assignments</span>
+                  </div>
+                  <div className="stat-card total">
+                    <span className="stat-number">
+                      {myAllTransports.length}
+                    </span>
+                    <span className="stat-label">Total Transports</span>
+                  </div>
+                </div>
+              </div>
+
+              {renderAppointmentsList(myAllTransports)}
             </div>
           )}
         </div>

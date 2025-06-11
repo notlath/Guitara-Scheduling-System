@@ -531,10 +531,8 @@ const OperatorDashboard = () => {
       amount: "",
       notes: "",
     });
-  };
-
-  // Driver coordination functions
-  const handleAssignDriverPickup = async (therapistId, driverId) => {
+  }; // Driver coordination functions - Pure FIFO system (no proximity filtering)
+  const handleAssignDriverPickup = async (therapistId, driverId = null) => {
     try {
       // Get current pending pickup requests from appointments
       const currentPendingPickups = appointments
@@ -552,66 +550,75 @@ const OperatorDashboard = () => {
         }));
 
       const therapist = currentPendingPickups.find((t) => t.id === therapistId);
-      const driver = driverAssignment.availableDrivers.find(
-        (d) => d.id === driverId
-      );
 
-      if (!therapist || !driver) {
-        alert("Invalid therapist or driver selection");
+      if (!therapist) {
+        alert("Invalid therapist selection");
         return;
       }
 
-      const estimatedTime = calculatePasigEstimatedTime(
-        driver.last_location,
-        therapist.location
-      );
+      // Pure FIFO driver selection - get the driver who became available first
+      let driver;
+      if (driverId) {
+        // Manual assignment: use specific driver
+        driver = driverAssignment.availableDrivers.find(
+          (d) => d.id === driverId
+        );
+      } else {
+        // Auto-assignment: Pure FIFO - first available driver based on availability time
+        const availableDriversSorted = driverAssignment.availableDrivers.sort(
+          (a, b) => new Date(a.available_since) - new Date(b.available_since)
+        );
+        driver = availableDriversSorted[0];
+      }
 
+      if (!driver) {
+        alert("No drivers available for assignment");
+        return;
+      } // Fixed estimated arrival time - no proximity calculations
+      const estimatedTime = 20; // Standard 20 minutes for all assignments
       const estimatedArrival = new Date();
       estimatedArrival.setMinutes(
         estimatedArrival.getMinutes() + estimatedTime
       );
 
+      // Update appointment status
       await dispatch(
         updateAppointmentStatus({
           id: therapist.appointment_id,
           status: "driver_assigned_pickup",
-          driver: driverId,
-          notes: `Driver assigned for pickup in ${getPasigZone(
-            therapist.location
-          )} - ETA: ${estimatedTime} minutes`,
+          driver: driver.id,
+          notes: `Driver assigned for pickup (FIFO) - ETA: ${estimatedTime} minutes`,
         })
       ).unwrap();
 
-      // Update local state
+      // Move driver from available to busy
       setDriverAssignment((prev) => ({
         ...prev,
         availableDrivers: prev.availableDrivers.filter(
-          (d) => d.id !== driverId
+          (d) => d.id !== driver.id
         ),
         busyDrivers: [
-          ...prev.busyDrivers,
+          ...prev.busyDrivers.filter((d) => d.id !== driver.id),
           {
             ...driver,
             current_task: `Picking up ${therapist.name}`,
-            current_appointment: therapist.appointment_id,
-            estimated_completion: estimatedArrival.toISOString(),
             current_location: `En route to ${therapist.location}`,
           },
         ],
         pendingPickups: prev.pendingPickups.filter((t) => t.id !== therapistId),
       }));
 
-      // Broadcast assignment
+      // Broadcast assignment with FIFO indicator
       syncService.broadcast("driver_assigned_pickup", {
-        driver_id: driverId,
+        driver_id: driver.id,
         therapist_id: therapistId,
         appointment_id: therapist.appointment_id,
         estimated_arrival: estimatedArrival.toISOString(),
         driver_name: `${driver.first_name} ${driver.last_name}`,
         therapist_name: therapist.name,
         pickup_location: therapist.location,
-        pickup_zone: getPasigZone(therapist.location),
         estimated_time: estimatedTime,
+        assignment_method: "FIFO",
       });
 
       refreshData();
@@ -620,25 +627,9 @@ const OperatorDashboard = () => {
       alert("Failed to assign driver. Please try again.");
     }
   };
-
   const handleUrgentPickupRequest = async (therapistId) => {
     try {
-      // Get current pending pickup requests from appointments
-      const currentPendingPickups = appointments
-        .filter((apt) => apt.status === "pickup_requested")
-        .map((apt) => ({
-          id: apt.therapist,
-          name: apt.therapist_details
-            ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
-            : "Unknown Therapist",
-          location: apt.location,
-          appointment_id: apt.id,
-          urgency: getUrgencyLevel(apt.pickup_request_time),
-          session_end_time: apt.session_end_time,
-          requested_at: apt.pickup_request_time,
-        }));
-
-      const therapist = currentPendingPickups.find((t) => t.id === therapistId);
+      // For urgent requests, still use FIFO but assign immediately
       const availableDrivers = driverAssignment.availableDrivers;
 
       if (availableDrivers.length === 0) {
@@ -646,20 +637,12 @@ const OperatorDashboard = () => {
         return;
       }
 
-      // Find nearest driver in Pasig
-      const bestDriver = availableDrivers.reduce((nearest, driver) => {
-        const currentScore = calculatePasigProximityScore(
-          driver.last_location,
-          therapist.location
-        );
-        const nearestScore = calculatePasigProximityScore(
-          nearest.last_location,
-          therapist.location
-        );
-        return currentScore.score > nearestScore.score ? driver : nearest;
-      });
+      // Pure FIFO - use first available driver regardless of location
+      const firstAvailableDriver = availableDrivers.sort(
+        (a, b) => new Date(a.available_since) - new Date(b.available_since)
+      )[0];
 
-      await handleAssignDriverPickup(therapistId, bestDriver.id);
+      await handleAssignDriverPickup(therapistId, firstAvailableDriver.id);
     } catch (error) {
       console.error("Failed to process urgent pickup request:", error);
       alert("Failed to process urgent pickup request");
@@ -682,158 +665,13 @@ const OperatorDashboard = () => {
     if (!requestTime) return "normal";
     const waitTime = (new Date() - new Date(requestTime)) / (1000 * 60); // minutes
     return waitTime > 20 ? "urgent" : "normal"; // Reduced to 20 minutes for Pasig City
-  };
-
-  // Helper functions for Pasig City coordination
-  const getPasigZone = (location) => {
-    if (!location) return "Unknown Zone";
-
-    const PASIG_ZONE_MAP = {
-      north_pasig: ["Ugong Norte", "Bagong Ilog", "Bambang", "Dela Paz"],
-      south_pasig: [
-        "Pineda",
-        "San Joaquin",
-        "Sto. Tomas",
-        "Sagad",
-        "San Nicolas",
-      ],
-      east_pasig: ["Malinao", "Santolan", "San Antonio", "Rosario", "Sumilang"],
-      west_pasig: [
-        "Kapitolyo",
-        "Oranbo",
-        "San Miguel",
-        "Manggahan",
-        "Maybunga",
-      ],
-      central_pasig: [
-        "Caniogan",
-        "Pasig Proper",
-        "Bagong Katipunan",
-        "Kalawaan",
-      ],
-      ortigas_cbd: ["Ortigas Center", "Ugong Sur", "Wack Wack", "San Antonio"],
-    };
-
-    for (const [zone, areas] of Object.entries(PASIG_ZONE_MAP)) {
-      if (
-        areas.some((area) =>
-          location.toLowerCase().includes(area.toLowerCase())
-        )
-      ) {
-        return zone.replace("_", " ").toUpperCase();
-      }
-    }
-
-    return "Central Pasig"; // Default zone
-  };
-
-  const calculatePasigProximityScore = (location1, location2) => {
-    const PASIG_ZONE_MAP = {
-      north_pasig: ["Ugong Norte", "Bagong Ilog", "Bambang", "Dela Paz"],
-      south_pasig: [
-        "Pineda",
-        "San Joaquin",
-        "Sto. Tomas",
-        "Sagad",
-        "San Nicolas",
-      ],
-      east_pasig: ["Malinao", "Santolan", "San Antonio", "Rosario", "Sumilang"],
-      west_pasig: [
-        "Kapitolyo",
-        "Oranbo",
-        "San Miguel",
-        "Manggahan",
-        "Maybunga",
-      ],
-      central_pasig: [
-        "Caniogan",
-        "Pasig Proper",
-        "Bagong Katipunan",
-        "Kalawaan",
-      ],
-      ortigas_cbd: ["Ortigas Center", "Ugong Sur", "Wack Wack", "San Antonio"],
-    };
-
-    // Adjacent zones in Pasig City
-    const ADJACENT_ZONES = {
-      north_pasig: ["central_pasig", "east_pasig"],
-      south_pasig: ["central_pasig", "west_pasig"],
-      east_pasig: ["north_pasig", "central_pasig", "ortigas_cbd"],
-      west_pasig: ["south_pasig", "central_pasig"],
-      central_pasig: [
-        "north_pasig",
-        "south_pasig",
-        "east_pasig",
-        "west_pasig",
-        "ortigas_cbd",
-      ],
-      ortigas_cbd: ["central_pasig", "east_pasig"],
-    };
-
-    const getZone = (location) => {
-      if (!location) return "central_pasig";
-
-      for (const [zone, areas] of Object.entries(PASIG_ZONE_MAP)) {
-        if (
-          areas.some((area) =>
-            location.toLowerCase().includes(area.toLowerCase())
-          )
-        ) {
-          return zone;
-        }
-      }
-      return "central_pasig";
-    };
-
-    const zone1 = getZone(location1);
-    const zone2 = getZone(location2);
-
-    if (zone1 === zone2) {
-      return { score: 10, label: "Same Zone" };
-    } else if (ADJACENT_ZONES[zone1]?.includes(zone2)) {
-      return { score: 7, label: "Adjacent Zone" };
-    } else {
-      return { score: 4, label: "Cross-City" };
-    }
-  };
-
-  const calculatePasigEstimatedTime = (driverLocation, therapistLocation) => {
-    const proximity = calculatePasigProximityScore(
-      driverLocation,
-      therapistLocation
+  }; // Helper functions for FIFO coordination
+  const getDriverFIFOPosition = (driver) => {
+    const sorted = driverAssignment.availableDrivers.sort(
+      (a, b) => new Date(a.available_since) - new Date(b.available_since)
     );
-    const currentHour = new Date().getHours();
-
-    // Base time calculation
-    let baseTime;
-    if (proximity.score >= 10) baseTime = 8; // Same zone: 8 minutes
-    else if (proximity.score >= 7) baseTime = 15; // Adjacent zone: 15 minutes
-    else baseTime = 25; // Cross-city: 25 minutes
-
-    // Traffic adjustments for Pasig City
-    let trafficMultiplier = 1;
-
-    // Rush hour adjustments (7-9 AM, 5-7 PM)
-    if (
-      (currentHour >= 7 && currentHour <= 9) ||
-      (currentHour >= 17 && currentHour <= 19)
-    ) {
-      trafficMultiplier = 1.5;
-    }
-
-    // Ortigas CBD adjustments during business hours
-    if (
-      (driverLocation?.includes("Ortigas") ||
-        therapistLocation?.includes("Ortigas")) &&
-      currentHour >= 8 &&
-      currentHour <= 18
-    ) {
-      trafficMultiplier *= 1.3;
-    }
-
-    return Math.round(baseTime * trafficMultiplier);
+    return sorted.findIndex((d) => d.id === driver.id) + 1;
   };
-
   // Main render function for driver coordination panel
   const renderDriverCoordinationPanel = () => {
     // Get current pending pickup requests from appointments
@@ -855,7 +693,7 @@ const OperatorDashboard = () => {
         <div className="driver-coord-header">
           <h3>
             <i className="fas fa-car"></i>
-            Driver Coordination - Pasig City
+            Driver Coordination - FIFO System
           </h3>
           <div className="coord-stats">
             <span className="stat available">
@@ -895,15 +733,15 @@ const OperatorDashboard = () => {
                       <div className="driver-name">
                         <i className="fas fa-user"></i>
                         {driver.first_name} {driver.last_name}
-                      </div>
+                      </div>{" "}
                       <div className="driver-details">
                         <span className="location">
                           <i className="fas fa-map-marker-alt"></i>
                           {driver.current_location || "Location not set"}
                         </span>
-                        <span className="zone">
-                          <i className="fas fa-globe"></i>
-                          {getPasigZone(driver.current_location)}
+                        <span className="fifo-position">
+                          <i className="fas fa-sort-numeric-up"></i>
+                          FIFO Position #{getDriverFIFOPosition(driver)}
                         </span>
                       </div>
                       <div className="driver-status available">
@@ -1011,15 +849,11 @@ const OperatorDashboard = () => {
                       <div className="therapist-name">
                         <i className="fas fa-user-md"></i>
                         {pickup.name}
-                      </div>
+                      </div>{" "}
                       <div className="pickup-details">
                         <span className="location">
                           <i className="fas fa-map-marker-alt"></i>
                           {pickup.location}
-                        </span>
-                        <span className="zone">
-                          <i className="fas fa-globe"></i>
-                          {getPasigZone(pickup.location)}
                         </span>
                         <span className="time-elapsed">
                           <i className="fas fa-stopwatch"></i>
@@ -1054,23 +888,20 @@ const OperatorDashboard = () => {
                         }}
                         className="driver-selector"
                       >
+                        {" "}
                         <option value="">Assign Driver...</option>
-                        {driverAssignment.availableDrivers.map((driver) => {
-                          const proximityScore = calculatePasigProximityScore(
-                            driver.current_location,
-                            pickup.location
-                          );
-                          const estimatedTime = calculatePasigEstimatedTime(
-                            driver.current_location,
-                            pickup.location
-                          );
-                          return (
-                            <option key={driver.id} value={driver.id}>
-                              {driver.first_name} {driver.last_name} -{" "}
-                              {proximityScore.label} (~{estimatedTime}min)
-                            </option>
-                          );
-                        })}
+                        {driverAssignment.availableDrivers.map(
+                          (driver, index) => {
+                            // Show FIFO order instead of proximity
+                            const fifoOrder = index + 1;
+                            return (
+                              <option key={driver.id} value={driver.id}>
+                                {driver.first_name} {driver.last_name} - FIFO #
+                                {fifoOrder} (ETA: ~20min)
+                              </option>
+                            );
+                          }
+                        )}
                       </select>
                       {getUrgencyLevel(pickup.timestamp) === "urgent" && (
                         <button
@@ -1091,28 +922,22 @@ const OperatorDashboard = () => {
 
         {/* Quick Assignment Tools */}
         <div className="quick-assignment-tools">
+          {" "}
           <div className="tool-section auto-assignment">
             <h5>
               <i className="fas fa-magic"></i>
-              Smart Assignment
+              Auto Assignment (FIFO)
             </h5>
-            <p>Automatically assign based on proximity and zone optimization</p>
+            <p>
+              Automatically assign all pending pickups using First-In-First-Out
+              method
+            </p>
             <button
               onClick={() => {
+                // Pure FIFO auto-assignment - no proximity calculations
                 currentPendingPickups.forEach((pickup) => {
-                  const bestDriver = driverAssignment.availableDrivers
-                    .map((driver) => ({
-                      ...driver,
-                      score: calculatePasigProximityScore(
-                        driver.current_location,
-                        pickup.location
-                      ).score,
-                    }))
-                    .sort((a, b) => b.score - a.score)[0];
-
-                  if (bestDriver) {
-                    handleAssignDriverPickup(pickup.id, bestDriver.id);
-                  }
+                  // Simply assign to next available driver (FIFO)
+                  handleAssignDriverPickup(pickup.id); // No driverId = auto FIFO selection
                 });
               }}
               disabled={
@@ -1122,57 +947,47 @@ const OperatorDashboard = () => {
               className="auto-assign-btn"
             >
               <i className="fas fa-robot"></i>
-              Auto-Assign All ({currentPendingPickups.length})
-            </button>
+              Auto-Assign All FIFO ({currentPendingPickups.length})
+            </button>{" "}
           </div>
-
-          <div className="tool-section zone-overview">
+          <div className="tool-section fifo-queue-overview">
             <h5>
-              <i className="fas fa-map"></i>
-              Zone Coverage
+              <i className="fas fa-list-ol"></i>
+              FIFO Queue Status
             </h5>
-            <div className="zone-coverage-grid">
-              {[
-                "north_pasig",
-                "south_pasig",
-                "east_pasig",
-                "west_pasig",
-                "central_pasig",
-              ].map((zone) => {
-                const driversInZone = driverAssignment.availableDrivers.filter(
-                  (driver) =>
-                    getPasigZone(driver.current_location) ===
-                    zone
-                      .replace("_", " ")
-                      .replace(/\b\w/g, (l) => l.toUpperCase())
-                );
-                const pickupsInZone = currentPendingPickups.filter(
-                  (pickup) =>
-                    getPasigZone(pickup.location) ===
-                    zone
-                      .replace("_", " ")
-                      .replace(/\b\w/g, (l) => l.toUpperCase())
-                );
-
-                return (
-                  <div key={zone} className="zone-card">
-                    <div className="zone-name">
-                      {zone
-                        .replace("_", " ")
-                        .replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </div>
-                    <div className="zone-stats">
-                      <span className="drivers">
-                        <i className="fas fa-car"></i> {driversInZone.length}
-                      </span>
-                      <span className="pickups">
-                        <i className="fas fa-hand-paper"></i>{" "}
-                        {pickupsInZone.length}
-                      </span>
-                    </div>
+            <div className="fifo-queue-info">
+              <div className="queue-stats">
+                <div className="stat-item">
+                  <span className="stat-number">
+                    {driverAssignment.availableDrivers.length}
+                  </span>
+                  <span className="stat-label">Drivers in Queue</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-number">
+                    {currentPendingPickups.length}
+                  </span>
+                  <span className="stat-label">Pending Assignments</span>
+                </div>
+              </div>
+              <div className="next-assignment">
+                {driverAssignment.availableDrivers.length > 0 &&
+                currentPendingPickups.length > 0 ? (
+                  <div className="auto-assignment-preview">
+                    <p>
+                      <strong>Next Assignment:</strong>
+                    </p>
+                    <p>
+                      Driver: {driverAssignment.availableDrivers[0]?.first_name}{" "}
+                      {driverAssignment.availableDrivers[0]?.last_name}
+                    </p>
+                    <p>Pickup: {currentPendingPickups[0]?.name}</p>
+                    <p>ETA: ~20 minutes</p>
                   </div>
-                );
-              })}
+                ) : (
+                  <p className="no-assignments">No pending assignments</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

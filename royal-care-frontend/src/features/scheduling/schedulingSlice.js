@@ -468,9 +468,9 @@ export const updateAppointmentStatus = createAsyncThunk(
             headers: { Authorization: `Token ${token}` },
           }
         );
-      } else if (status === "completed") {
-        // Use the specific complete endpoint - only send additional fields for completion
-        const updateData = { status, ...additionalFields };
+      } else if (action === "complete_appointment" || status === "completed") {
+        // Use the specific complete endpoint for appointment completion
+        const updateData = { ...additionalFields };
         response = await axios.post(
           `${API_URL}appointments/${id}/complete/`,
           updateData,
