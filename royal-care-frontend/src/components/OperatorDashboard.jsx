@@ -308,7 +308,6 @@ const OperatorDashboard = () => {
         setReviewNotes((prev) => prev); // Dummy state update to trigger re-render
       }
     }, 1000);
-
     return () => clearInterval(timer);
   }, [currentView, pendingAppointments.length]);
 
@@ -323,7 +322,9 @@ const OperatorDashboard = () => {
         <div className="therapists-list">
           {appointment.therapists_details.map((therapist, index) => (
             <div key={therapist.id} className="therapist-item">
-              <span className="therapist-name"></span>
+              <span className="therapist-name">
+                {therapist.first_name} {therapist.last_name}
+              </span>
               {index < appointment.therapists_details.length - 1 && (
                 <span className="therapist-separator">, </span>
               )}
@@ -345,7 +346,6 @@ const OperatorDashboard = () => {
 
     return <span className="no-therapist">No therapist assigned</span>;
   };
-
   // Helper function to get therapist acceptance status
   const getTherapistAcceptanceStatus = (appointment) => {
     // Handle multiple therapists
@@ -361,38 +361,32 @@ const OperatorDashboard = () => {
       const totalCount = appointment.therapists_details.length;
 
       if (acceptedCount === totalCount) {
-        return {
-          status: "all-accepted",
-          display: "All accepted ✓",
-          class: "accepted",
-        };
+        return (
+          <span className="acceptance-indicator accepted">All accepted ✓</span>
+        );
       } else if (acceptedCount > 0) {
-        return {
-          status: "partial-accepted",
-          display: `${acceptedCount}/${totalCount} accepted ⏳`,
-          class: "partial",
-        };
+        return (
+          <span className="acceptance-indicator partial">
+            {acceptedCount}/{totalCount} accepted ⏳
+          </span>
+        );
       } else {
-        return {
-          status: "none-accepted",
-          display: "Pending ⏳",
-          class: "pending",
-        };
+        return <span className="acceptance-indicator pending">Pending ⏳</span>;
       }
     }
 
     // Handle single therapist (legacy support)
     if (appointment.therapist_details) {
-      return appointment.therapist_accepted
-        ? { status: "accepted", display: "Accepted ✓", class: "accepted" }
-        : { status: "pending", display: "Pending ⏳", class: "pending" };
+      return appointment.therapist_accepted ? (
+        <span className="acceptance-indicator accepted">Accepted ✓</span>
+      ) : (
+        <span className="acceptance-indicator pending">Pending ⏳</span>
+      );
     }
 
-    return {
-      status: "no-therapist",
-      display: "No therapist",
-      class: "no-therapist",
-    };
+    return (
+      <span className="acceptance-indicator no-therapist">No therapist</span>
+    );
   };
 
   const handleLogout = () => {
