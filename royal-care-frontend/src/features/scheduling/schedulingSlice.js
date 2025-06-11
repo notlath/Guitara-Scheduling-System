@@ -1005,8 +1005,8 @@ export const deleteAvailability = createAsyncThunk(
           Authorization: `Token ${token}`,
         },
       });
-      console.log("deleteAvailability: Success");
-      return id;
+      console.log("deleteAvailability: Success, ID:", id);
+      return id; // Return the ID of the deleted availability
     } catch (error) {
       console.error(
         "deleteAvailability: Error",
@@ -1019,36 +1019,83 @@ export const deleteAvailability = createAsyncThunk(
   }
 );
 
-// Fetch notifications for the current user
+// Fetch clients
+export const fetchClients = createAsyncThunk(
+  "scheduling/fetchClients",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+    try {
+      const response = await axios.get(`${API_URL}clients/`, {
+        headers: { Authorization: `Token ${token}` },
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(handleApiError(error, "Could not fetch clients"));
+    }
+  }
+);
+
+// Fetch services
+export const fetchServices = createAsyncThunk(
+  "scheduling/fetchServices",
+  async () => {
+    const token = localStorage.getItem("knoxToken");
+    // No token check here, services can be public or fetched with fallback
+    try {
+      const response = await axios.get(`${API_URL}services/`, {
+        headers: token ? { Authorization: `Token ${token}` } : {},
+      });
+      return response.data;
+    } catch (error) {
+      console.warn("API fetchServices failed, using fallback:", error.message);
+      return FALLBACK_SERVICES; // Use fallback data on error
+    }
+  }
+);
+
+// Fetch appointments by week
+export const fetchAppointmentsByWeek = createAsyncThunk(
+  "scheduling/fetchAppointmentsByWeek",
+  async (weekNumber, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+    try {
+      const response = await axios.get(
+        `${API_URL}appointments/by_week/${weekNumber}/`,
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        handleApiError(error, "Could not fetch appointments for this week")
+      );
+    }
+  }
+);
+
+// Fetch notifications
 export const fetchNotifications = createAsyncThunk(
   "scheduling/fetchNotifications",
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
-    if (!token) {
-      return rejectWithValue({ error: "Authentication required" });
-    }
-
-    console.log("fetchNotifications: Starting API call");
-
+    if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.get(`${API_URL}notifications/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
+        headers: { Authorization: `Token ${token}` },
       });
-      console.log(
-        "fetchNotifications: Success, received",
-        response.data.length,
-        "notifications"
-      );
-      return response.data;
+      // Ensure the response has the expected structure
+      const notifications = response.data.results || response.data; // Adapt to potential pagination
+      const unreadCount =
+        response.data.unread_count !== undefined
+          ? response.data.unread_count
+          : notifications.filter((n) => !n.is_read).length;
+      return { notifications, unreadCount };
     } catch (error) {
-      console.error(
-        "fetchNotifications: Error",
-        error.response?.data || error.message
-      );
       return rejectWithValue(
-        error.response?.data || { error: "Could not fetch notifications" }
+        handleApiError(error, "Could not fetch notifications")
       );
     }
   }
@@ -1059,34 +1106,17 @@ export const markNotificationAsRead = createAsyncThunk(
   "scheduling/markNotificationAsRead",
   async (notificationId, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
-    if (!token) {
-      return rejectWithValue({ error: "Authentication required" });
-    }
-
-    console.log("markNotificationAsRead: Starting API call", {
-      notificationId,
-    });
-
+    if (!token) return rejectWithValue("Authentication required");
     try {
-      const response = await axios.patch(
-        `${API_URL}notifications/${notificationId}/`,
-        { is_read: true },
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await axios.post(
+        `${API_URL}notifications/${notificationId}/mark_as_read/`,
+        {},
+        { headers: { Authorization: `Token ${token}` } }
       );
-      console.log("markNotificationAsRead: Success", response.data);
       return response.data;
     } catch (error) {
-      console.error(
-        "markNotificationAsRead: Error",
-        error.response?.data || error.message
-      );
       return rejectWithValue(
-        error.response?.data || { error: "Could not mark notification as read" }
+        handleApiError(error, "Could not mark notification as read")
       );
     }
   }
@@ -1097,34 +1127,17 @@ export const markAllNotificationsAsRead = createAsyncThunk(
   "scheduling/markAllNotificationsAsRead",
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
-    if (!token) {
-      return rejectWithValue({ error: "Authentication required" });
-    }
-
-    console.log("markAllNotificationsAsRead: Starting API call");
-
+    if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.post(
-        `${API_URL}notifications/mark_all_read/`,
+        `${API_URL}notifications/mark_all_as_read/`,
         {},
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+        { headers: { Authorization: `Token ${token}` } }
       );
-      console.log("markAllNotificationsAsRead: Success");
       return response.data;
     } catch (error) {
-      console.error(
-        "markAllNotificationsAsRead: Error",
-        error.response?.data || error.message
-      );
       return rejectWithValue(
-        error.response?.data || {
-          error: "Could not mark all notifications as read",
-        }
+        handleApiError(error, "Could not mark all notifications as read")
       );
     }
   }
@@ -1135,207 +1148,36 @@ export const markNotificationAsUnread = createAsyncThunk(
   "scheduling/markNotificationAsUnread",
   async (notificationId, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
-    if (!token) {
-      return rejectWithValue({ error: "Authentication required" });
-    }
-
-    console.log("markNotificationAsUnread: Starting API call", {
-      notificationId,
-    });
-
+    if (!token) return rejectWithValue("Authentication required");
     try {
-      const response = await axios.patch(
-        `${API_URL}notifications/${notificationId}/`,
-        { is_read: false },
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      console.log("markNotificationAsUnread: Success", response.data);
-      return response.data;
-    } catch (error) {
-      console.error(
-        "markNotificationAsUnread: Error",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(
-        error.response?.data || {
-          error: "Could not mark notification as unread",
-        }
-      );
-    }
-  }
-);
-
-// Delete read notifications
-export const deleteReadNotifications = createAsyncThunk(
-  "scheduling/deleteReadNotifications",
-  async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) {
-      return rejectWithValue({ error: "Authentication required" });
-    }
-
-    console.log("deleteReadNotifications: Starting API call");
-
-    try {
-      const response = await axios.delete(
-        `${API_URL}notifications/delete_read/`,
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        }
-      );
-      console.log("deleteReadNotifications: Success");
-      return response.data; // Ensure this returns what the reducer expects
-    } catch (error) {
-      console.error(
-        "deleteReadNotifications: Error",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(
-        error.response?.data || { error: "Could not delete read notifications" }
-      );
-    }
-  }
-);
-
-// Fetch clients for appointments
-export const fetchClients = createAsyncThunk(
-  "scheduling/fetchClients",
-  async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) {
-      return rejectWithValue({ error: "Authentication required" });
-    }
-
-    console.log("fetchClients: Starting API call");
-
-    try {
-      const response = await axios.get(`${API_URL}clients/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
-      console.log(
-        "fetchClients: Success, received",
-        response.data.length,
-        "clients"
+      const response = await axios.post(
+        `${API_URL}notifications/${notificationId}/mark_as_unread/`,
+        {},
+        { headers: { Authorization: `Token ${token}` } }
       );
       return response.data;
     } catch (error) {
-      console.error(
-        "fetchClients: Error",
-        error.response?.data || error.message
-      );
       return rejectWithValue(
-        error.response?.data || { error: "Could not fetch clients" }
+        handleApiError(error, "Could not mark notification as unread")
       );
     }
   }
 );
 
-// Fetch services for appointments
-export const fetchServices = createAsyncThunk(
-  "scheduling/fetchServices",
-  async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) {
-      return rejectWithValue({ error: "Authentication required" });
-    }
-
-    console.log("fetchServices: Starting API call");
-
-    try {
-      const response = await axios.get(`${API_URL}services/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
-      console.log(
-        "fetchServices: Success, received",
-        response.data.length,
-        "services"
-      );
-      return response.data.length > 0 ? response.data : FALLBACK_SERVICES;
-    } catch (error) {
-      console.error(
-        "fetchServices: Error, using fallback services",
-        error.response?.data || error.message
-      );
-      return FALLBACK_SERVICES; // Return fallback on error
-    }
-  }
-);
-
-// Fetch appointments by week
-export const fetchAppointmentsByWeek = createAsyncThunk(
-  "scheduling/fetchAppointmentsByWeek",
-  async (weekStart, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) {
-      return rejectWithValue({ error: "Authentication required" });
-    }
-
-    console.log("fetchAppointmentsByWeek: Starting API call", { weekStart });
-
-    try {
-      const response = await axios.get(`${API_URL}appointments/by_week/`, {
-        params: { week_start: weekStart }, // Ensure backend expects week_start
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
-      console.log(
-        "fetchAppointmentsByWeek: Success, received",
-        response.data.length,
-        "appointments"
-      );
-      return response.data;
-    } catch (error) {
-      console.error(
-        "fetchAppointmentsByWeek: Error",
-        error.response?.data || error.message
-      );
-      return rejectWithValue(
-        error.response?.data || {
-          error: "Could not fetch appointments by week",
-        }
-      );
-    }
-  }
-);
-
-// Delete a specific notification
+// Delete notification
 export const deleteNotification = createAsyncThunk(
   "scheduling/deleteNotification",
   async (notificationId, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
-    if (!token) {
-      return rejectWithValue({ error: "Authentication required" });
-    }
-
-    console.log("deleteNotification: Starting API call", { notificationId });
-
+    if (!token) return rejectWithValue("Authentication required");
     try {
       await axios.delete(`${API_URL}notifications/${notificationId}/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
+        headers: { Authorization: `Token ${token}` },
       });
-      console.log("deleteNotification: Success");
-      return notificationId; // Return ID for reducer
+      return notificationId; // Return the ID of the deleted notification
     } catch (error) {
-      console.error(
-        "deleteNotification: Error",
-        error.response?.data || error.message
-      );
       return rejectWithValue(
-        error.response?.data || { error: "Could not delete notification" }
+        handleApiError(error, "Could not delete notification")
       );
     }
   }
@@ -1346,288 +1188,96 @@ export const deleteAllNotifications = createAsyncThunk(
   "scheduling/deleteAllNotifications",
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
-    if (!token) {
-      return rejectWithValue({ error: "Authentication required" });
-    }
-
-    console.log("deleteAllNotifications: Starting API call");
-
+    if (!token) return rejectWithValue("Authentication required");
     try {
-      const response = await axios.delete(
-        `${API_URL}notifications/delete_all/`,
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        }
-      );
-      console.log("deleteAllNotifications: Success");
-      return response.data; // Or an empty array / success status
+      await axios.delete(`${API_URL}notifications/delete_all/`, {
+        headers: { Authorization: `Token ${token}` },
+      });
+      return; // No specific data needed on success
     } catch (error) {
-      console.error(
-        "deleteAllNotifications: Error",
-        error.response?.data || error.message
-      );
       return rejectWithValue(
-        error.response?.data || { error: "Could not delete all notifications" }
+        handleApiError(error, "Could not delete all notifications")
       );
     }
   }
 );
 
-// Assign driver to pickup request
-export const assignDriverToPickup = createAsyncThunk(
-  "scheduling/assignDriverToPickup",
-  async (
-    { appointmentId, driverId, estimatedPickupTime },
-    { rejectWithValue }
-  ) => {
+// Delete read notifications
+export const deleteReadNotifications = createAsyncThunk(
+  "scheduling/deleteReadNotifications",
+  async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
-
     try {
-      const response = await axios.patch(
-        `${API_URL}appointments/${appointmentId}/`,
-        {
-          pickup_driver: driverId,
-          assigned_driver: driverId,
-          estimated_pickup_time: estimatedPickupTime,
-          status: "driver_assigned_pickup",
-          assignment_type: "manual",
-        },
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
-      );
-
-      // Broadcast assignment to all relevant parties
-      syncService.broadcastWithImmediate("driver_assigned_pickup", {
-        appointment: response.data,
-        driverId,
-        appointmentId,
-        estimatedPickupTime,
+      await axios.delete(`${API_URL}notifications/delete_read/`, {
+        headers: { Authorization: `Token ${token}` },
       });
-
-      return response.data;
+      return; // No specific data needed on success
     } catch (error) {
-      console.error("Driver assignment error:", error);
       return rejectWithValue(
-        handleApiError(error, "Could not assign driver to pickup")
+        handleApiError(error, "Could not delete read notifications")
       );
     }
   }
 );
 
-// Update driver status with photo verification
-export const updateDriverStatusWithPhoto = createAsyncThunk(
-  "scheduling/updateDriverStatusWithPhoto",
-  async (
-    { appointmentId, status, photo, location, notes },
-    { rejectWithValue }
-  ) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) return rejectWithValue("Authentication required");
-
-    try {
-      const formData = new FormData();
-      formData.append("status", status);
-      if (photo) formData.append("verification_photo", photo);
-      if (location) formData.append("location_note", location);
-      if (notes) formData.append("driver_notes", notes);
-
-      const response = await axios.patch(
-        `${API_URL}appointments/${appointmentId}/driver-status/`,
-        formData,
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      // Broadcast status update with photo verification
-      syncService.broadcastWithImmediate("driver_status_update", {
-        appointment: response.data,
-        appointmentId,
-        status,
-        hasPhoto: !!photo,
-        location,
-        notes,
-      });
-
-      return response.data;
-    } catch (error) {
-      console.error("Driver status update error:", error);
-      return rejectWithValue(
-        handleApiError(error, "Could not update driver status")
-      );
-    }
-  }
-);
-
-// Broadcast driver availability after drop-off
-export const broadcastDriverAvailability = createAsyncThunk(
-  "scheduling/broadcastDriverAvailability",
-  async (
-    { driverId, currentLocation, vehicleType, zone },
-    { rejectWithValue }
-  ) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) return rejectWithValue("Authentication required");
-
-    try {
-      const response = await axios.post(
-        `${API_URL}drivers/${driverId}/broadcast-availability/`,
-        {
-          status: "available_for_pickup",
-          current_location: currentLocation,
-          vehicle_type: vehicleType,
-          preferred_zone: zone,
-          timestamp: new Date().toISOString(),
-        },
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
-      );
-
-      // Broadcast driver availability to operators
-      syncService.broadcastWithImmediate("driver_available_for_pickup", {
-        driverId,
-        currentLocation,
-        vehicleType,
-        zone,
-        timestamp: new Date().toISOString(),
-      });
-
-      return response.data;
-    } catch (error) {
-      console.error("Broadcast driver availability error:", error);
-      return rejectWithValue(
-        handleApiError(error, "Could not broadcast driver availability")
-      );
-    }
-  }
-);
-
-// Request pickup assignment
-export const requestPickupAssignment = createAsyncThunk(
-  "scheduling/requestPickupAssignment",
-  async ({ appointmentId, requestDetails }, { rejectWithValue }) => {
-    const token = localStorage.getItem("knoxToken");
-    if (!token) return rejectWithValue("Authentication required");
-
-    try {
-      const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/request-pickup/`,
-        {
-          ...requestDetails,
-          status: "pickup_requested",
-          timestamp: new Date().toISOString(),
-        },
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
-      );
-
-      // Broadcast pickup request to operators
-      syncService.broadcastWithImmediate("pickup_requested", {
-        appointment: response.data,
-        appointmentId,
-        therapist_id: response.data.therapist, // Add therapist_id for auto-assignment
-        requestDetails,
-        timestamp: new Date().toISOString(),
-      });
-
-      return response.data;
-    } catch (error) {
-      console.error("Request pickup assignment error:", error);
-      return rejectWithValue(
-        handleApiError(error, "Could not request pickup assignment")
-      );
-    }
-  }
-);
-
-// Enhanced workflow action functions
+// Therapist confirm appointment
 export const therapistConfirm = createAsyncThunk(
   "scheduling/therapistConfirm",
   async (appointmentId, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
-
     try {
       const response = await axios.post(
         `${API_URL}appointments/${appointmentId}/therapist_confirm/`,
         {},
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
+        { headers: { Authorization: `Token ${token}` } }
       );
-
-      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
-        appointment: response.data,
-        appointmentId,
-      });
-
+      sendAppointmentUpdate(response.data.id);
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        handleApiError(error, "Could not confirm appointment")
+        handleApiError(error, "Could not confirm appointment (therapist)")
       );
     }
   }
 );
 
+// Driver confirm appointment (general driver confirmation)
 export const driverConfirm = createAsyncThunk(
   "scheduling/driverConfirm",
   async (appointmentId, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
-
     try {
       const response = await axios.post(
         `${API_URL}appointments/${appointmentId}/driver_confirm/`,
         {},
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
+        { headers: { Authorization: `Token ${token}` } }
       );
-
-      syncService.broadcastWithImmediate("appointment_updated_confirmed", {
-        appointment: response.data,
-        appointmentId,
-      });
-
+      sendAppointmentUpdate(response.data.id);
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        handleApiError(error, "Could not confirm appointment")
+        handleApiError(error, "Could not confirm appointment (driver)")
       );
     }
   }
 );
 
+// Confirm pickup (driver action)
 export const confirmPickup = createAsyncThunk(
   "scheduling/confirmPickup",
   async (appointmentId, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
-
     try {
       const response = await axios.post(
         `${API_URL}appointments/${appointmentId}/confirm_pickup/`,
         {},
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
+        { headers: { Authorization: `Token ${token}` } }
       );
-
-      syncService.broadcastWithImmediate("pickup_confirmed", {
-        appointment: response.data,
-        appointmentId,
-      });
-
+      sendAppointmentUpdate(response.data.id);
       return response.data;
     } catch (error) {
       return rejectWithValue(handleApiError(error, "Could not confirm pickup"));
@@ -1635,33 +1285,168 @@ export const confirmPickup = createAsyncThunk(
   }
 );
 
+// Reject pickup (driver action)
 export const rejectPickup = createAsyncThunk(
   "scheduling/rejectPickup",
-  async (
-    { appointmentId, rejectionReason = "Driver unavailable" },
-    { rejectWithValue }
-  ) => {
+  async ({ appointmentId, reason }, { rejectWithValue }) => {
+    // Destructure appointmentId and reason
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
-
     try {
       const response = await axios.post(
         `${API_URL}appointments/${appointmentId}/reject_pickup/`,
-        { rejection_reason: rejectionReason },
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
+        { reason }, // Send reason in the request body
+        { headers: { Authorization: `Token ${token}` } }
       );
-
-      syncService.broadcastWithImmediate("pickup_rejected", {
-        appointment: response.data,
-        appointmentId,
-        rejectionReason,
-      });
-
+      sendAppointmentUpdate(response.data.id);
       return response.data;
     } catch (error) {
       return rejectWithValue(handleApiError(error, "Could not reject pickup"));
+    }
+  }
+);
+
+// Thunk to mark therapist as arrived
+export const markArrived = createAsyncThunk(
+  "scheduling/markArrived",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/mark_arrived/`,
+        {},
+        { headers: { Authorization: `Token ${token}` } }
+      );
+      sendAppointmentUpdate(response.data.id);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        handleApiError(error, "Could not mark as arrived")
+      );
+    }
+  }
+);
+
+// Thunk to start journey for an appointment
+export const startJourney = createAsyncThunk(
+  "scheduling/startJourney",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/start_journey/`,
+        {},
+        { headers: { Authorization: `Token ${token}` } }
+      );
+      sendAppointmentUpdate(response.data.id);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(handleApiError(error, "Could not start journey"));
+    }
+  }
+);
+
+// Thunk to start session for an appointment
+export const startSession = createAsyncThunk(
+  "scheduling/startSession",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/start_session/`,
+        {},
+        { headers: { Authorization: `Token ${token}` } }
+      );
+      sendAppointmentUpdate(response.data.id);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(handleApiError(error, "Could not start session"));
+    }
+  }
+);
+
+// Thunk to request payment for an appointment
+export const requestPayment = createAsyncThunk(
+  "scheduling/requestPayment",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/request_payment/`,
+        {},
+        { headers: { Authorization: `Token ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        handleApiError(error, "Could not request payment")
+      );
+    }
+  }
+);
+
+// Thunk to request pickup for therapist
+export const requestPickup = createAsyncThunk(
+  "scheduling/requestPickup",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/request_pickup/`,
+        {},
+        { headers: { Authorization: `Token ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(handleApiError(error, "Could not request pickup"));
+    }
+  }
+);
+
+// Thunk to complete an appointment
+export const completeAppointment = createAsyncThunk(
+  "scheduling/completeAppointment",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/complete/`,
+        {},
+        { headers: { Authorization: `Token ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        handleApiError(error, "Could not complete appointment")
+      );
+    }
+  }
+);
+
+// Thunk to mark an appointment as paid
+export const markAppointmentPaid = createAsyncThunk(
+  "scheduling/markAppointmentPaid",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/mark_paid/`,
+        {},
+        { headers: { Authorization: `Token ${token}` } }
+      );
+      sendAppointmentUpdate(response.data.id);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        handleApiError(error, "Could not mark appointment as paid")
+      );
     }
   }
 );
@@ -2461,7 +2246,6 @@ const schedulingSlice = createSlice({
       // markArrived
       .addCase(markArrived.pending, (state) => {
         state.loading = true;
-        state.error = null;
       })
       .addCase(markArrived.fulfilled, (state, action) => {
         state.loading = false;
@@ -2471,7 +2255,19 @@ const schedulingSlice = createSlice({
         if (index !== -1) {
           state.appointments[index] = action.payload;
         }
-        state.successMessage = "Marked arrival successfully.";
+        // Also update todayAppointments and upcomingAppointments if the appointment exists there
+        const todayIndex = state.todayAppointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (todayIndex !== -1) {
+          state.todayAppointments[todayIndex] = action.payload;
+        }
+        const upcomingIndex = state.upcomingAppointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (upcomingIndex !== -1) {
+          state.upcomingAppointments[upcomingIndex] = action.payload;
+        }
       })
       .addCase(markArrived.rejected, (state, action) => {
         state.loading = false;
@@ -2480,7 +2276,6 @@ const schedulingSlice = createSlice({
       // startJourney
       .addCase(startJourney.pending, (state) => {
         state.loading = true;
-        state.error = null;
       })
       .addCase(startJourney.fulfilled, (state, action) => {
         state.loading = false;
@@ -2490,7 +2285,18 @@ const schedulingSlice = createSlice({
         if (index !== -1) {
           state.appointments[index] = action.payload;
         }
-        state.successMessage = "Journey started successfully.";
+        const todayIndex = state.todayAppointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (todayIndex !== -1) {
+          state.todayAppointments[todayIndex] = action.payload;
+        }
+        const upcomingIndex = state.upcomingAppointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (upcomingIndex !== -1) {
+          state.upcomingAppointments[upcomingIndex] = action.payload;
+        }
       })
       .addCase(startJourney.rejected, (state, action) => {
         state.loading = false;
@@ -2499,7 +2305,6 @@ const schedulingSlice = createSlice({
       // startSession
       .addCase(startSession.pending, (state) => {
         state.loading = true;
-        state.error = null;
       })
       .addCase(startSession.fulfilled, (state, action) => {
         state.loading = false;
@@ -2509,7 +2314,18 @@ const schedulingSlice = createSlice({
         if (index !== -1) {
           state.appointments[index] = action.payload;
         }
-        state.successMessage = "Session started successfully.";
+        const todayIndex = state.todayAppointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (todayIndex !== -1) {
+          state.todayAppointments[todayIndex] = action.payload;
+        }
+        const upcomingIndex = state.upcomingAppointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (upcomingIndex !== -1) {
+          state.upcomingAppointments[upcomingIndex] = action.payload;
+        }
       })
       .addCase(startSession.rejected, (state, action) => {
         state.loading = false;
@@ -2575,7 +2391,6 @@ const schedulingSlice = createSlice({
       // markAppointmentPaid
       .addCase(markAppointmentPaid.pending, (state) => {
         state.loading = true;
-        state.error = null;
       })
       .addCase(markAppointmentPaid.fulfilled, (state, action) => {
         state.loading = false;
@@ -2585,7 +2400,18 @@ const schedulingSlice = createSlice({
         if (index !== -1) {
           state.appointments[index] = action.payload;
         }
-        state.successMessage = "Payment marked as completed successfully.";
+        const todayIndex = state.todayAppointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (todayIndex !== -1) {
+          state.todayAppointments[todayIndex] = action.payload;
+        }
+        const upcomingIndex = state.upcomingAppointments.findIndex(
+          (appt) => appt.id === action.payload.id
+        );
+        if (upcomingIndex !== -1) {
+          state.upcomingAppointments[upcomingIndex] = action.payload;
+        }
       })
       .addCase(markAppointmentPaid.rejected, (state, action) => {
         state.loading = false;
@@ -2612,4 +2438,5 @@ export const {
   syncAppointmentDeletedConfirmed,
   syncAppointmentDeletedFailed,
 } = schedulingSlice.actions;
+
 export default schedulingSlice.reducer;

@@ -76,7 +76,7 @@ const OperatorDashboard = () => {
     availableDrivers: [],
     busyDrivers: [],
     pendingPickups: [],
-  });  // Load driver data on component mount and refresh
+  }); // Load driver data on component mount and refresh
   useEffect(() => {
     const loadDriverData = async () => {
       try {
@@ -91,25 +91,28 @@ const OperatorDashboard = () => {
         // Get current appointments to determine driver status
         const activeAppointmentStatuses = [
           "driver_confirmed",
-          "in_progress", 
+          "in_progress",
           "journey_started",
           "journey",
           "arrived",
           "session_in_progress",
           "pickup_requested",
-          "driver_assigned_pickup"
+          "driver_assigned_pickup",
         ];
-        
+
         // Find drivers with active appointments (busy)
         const busyDriverIds = appointments
-          .filter(apt => activeAppointmentStatuses.includes(apt.status) && apt.driver)
-          .map(apt => apt.driver);
+          .filter(
+            (apt) =>
+              activeAppointmentStatuses.includes(apt.status) && apt.driver
+          )
+          .map((apt) => apt.driver);
 
         // Categorize drivers
         const availableDrivers = [];
         const busyDrivers = [];
 
-        drivers.forEach(driver => {
+        drivers.forEach((driver) => {
           const driverData = {
             id: driver.id,
             first_name: driver.first_name,
@@ -120,9 +123,11 @@ const OperatorDashboard = () => {
             current_location: driver.current_location || "Available",
             last_available_at: driver.last_available_at,
             last_drop_off_time: driver.last_drop_off_time,
-            last_vehicle_used: driver.last_vehicle_used || driver.vehicle_type || "Motorcycle",
+            last_vehicle_used:
+              driver.last_vehicle_used || driver.vehicle_type || "Motorcycle",
             last_location: driver.current_location || "Available",
-            available_since: driver.last_available_at || new Date().toISOString(),
+            available_since:
+              driver.last_available_at || new Date().toISOString(),
             status: busyDriverIds.includes(driver.id) ? "busy" : "available",
           };
 
@@ -933,7 +938,8 @@ const OperatorDashboard = () => {
                         {new Date(pickup.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
-                  </div>                  <div className="pickup-actions">
+                  </div>{" "}
+                  <div className="pickup-actions">
                     {/* Auto-assignment happens first, manual only if no available drivers */}
                     {driverAssignment.availableDrivers.length > 0 ? (
                       <div className="auto-assignment-status">
@@ -949,16 +955,22 @@ const OperatorDashboard = () => {
                         <select
                           onChange={(e) => {
                             if (e.target.value) {
-                              handleAssignDriverPickup(pickup.id, e.target.value);
+                              handleAssignDriverPickup(
+                                pickup.id,
+                                e.target.value
+                              );
                               e.target.value = "";
                             }
                           }}
                           className="driver-selector urgent"
                         >
-                          <option value="">Select busy driver for urgent pickup...</option>
+                          <option value="">
+                            Select busy driver for urgent pickup...
+                          </option>
                           {driverAssignment.busyDrivers.map((driver) => (
                             <option key={driver.id} value={driver.id}>
-                              {driver.first_name} {driver.last_name} - Currently Busy
+                              {driver.first_name} {driver.last_name} - Currently
+                              Busy
                             </option>
                           ))}
                         </select>
@@ -976,7 +988,9 @@ const OperatorDashboard = () => {
           {/* Available Drivers Section with Enhanced FIFO Display */}
           {driverAssignment.availableDrivers.length > 0 && (
             <div className="coord-section available-drivers">
-              <div className="section-header">                <h4>
+              <div className="section-header">
+                {" "}
+                <h4>
                   <i className="fas fa-users"></i>
                   Available Drivers ({driverAssignment.availableDrivers.length})
                 </h4>
@@ -998,7 +1012,9 @@ const OperatorDashboard = () => {
                     return timeA - timeB;
                   })
                   .map((driver, index) => (
-                    <div key={driver.id} className="driver-card">                      <div className="driver-card-header">
+                    <div key={driver.id} className="driver-card">
+                      {" "}
+                      <div className="driver-card-header">
                         <h5>
                           <i className="fas fa-user"></i>
                           {driver.first_name} {driver.last_name}
@@ -1151,7 +1167,8 @@ const OperatorDashboard = () => {
                         <strong>Requested:</strong>{" "}
                         {new Date(pickup.timestamp).toLocaleTimeString()}
                       </p>
-                    </div>                    <div className="appointment-actions">
+                    </div>{" "}
+                    <div className="appointment-actions">
                       {/* Auto-assignment happens first, manual only if no available drivers */}
                       {driverAssignment.availableDrivers.length > 0 ? (
                         <div className="auto-assignment-status">
@@ -1167,7 +1184,10 @@ const OperatorDashboard = () => {
                           <select
                             onChange={(e) => {
                               if (e.target.value) {
-                                handleAssignDriverPickup(pickup.id, e.target.value);
+                                handleAssignDriverPickup(
+                                  pickup.id,
+                                  e.target.value
+                                );
                                 e.target.value = "";
                               }
                             }}
@@ -1176,7 +1196,8 @@ const OperatorDashboard = () => {
                             <option value="">Select busy driver...</option>
                             {driverAssignment.busyDrivers.map((driver) => (
                               <option key={driver.id} value={driver.id}>
-                                {driver.first_name} {driver.last_name} - Currently Busy
+                                {driver.first_name} {driver.last_name} -
+                                Currently Busy
                               </option>
                             ))}
                           </select>
@@ -2156,7 +2177,7 @@ const OperatorDashboard = () => {
                   }
                   loadingText="Processing..."
                 >
-                  Mark as Paid
+                  Mark as Paid{" "}
                 </LoadingButton>
                 <LoadingButton
                   className="cancel-button"
@@ -2167,9 +2188,6 @@ const OperatorDashboard = () => {
                 </LoadingButton>
               </div>
             </div>
-          </div>
-        )}
-        {/* Review Rejection Modal */}
           </div>
         )}
         {/* Review Rejection Modal */}
@@ -2216,14 +2234,15 @@ const OperatorDashboard = () => {
                   variant="secondary"
                 >
                   Deny Rejection
-                </LoadingButton>
+                </LoadingButton>{" "}
                 <LoadingButton
                   className="cancel-button"
                   onClick={handleReviewCancel}
                   variant="secondary"
                 >
+                  {" "}
                   Cancel
-                </LoadingButton>{" "}
+                </LoadingButton>
               </div>
             </div>
           </div>
