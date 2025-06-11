@@ -1764,26 +1764,55 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Get pickup details from request
         pickup_urgency = request.data.get("pickup_urgency", "normal")
-        pickup_notes = request.data.get("pickup_notes", "")
+        pickup_notes = request.data.get(
+            "pickup_notes", ""
+        )  # Auto-assign pickup driver using FIFO logic
+        available_driver = self._get_next_available_driver_fifo(appointment)
 
-        # Update appointment status
-        appointment.status = "pickup_requested"
-        appointment.pickup_urgency = pickup_urgency
-        appointment.pickup_notes = pickup_notes
-        appointment.pickup_request_time = timezone.now()
-        appointment.save()
+        if available_driver:
+            # Auto-assign the driver
+            appointment.status = "driver_assigned_pickup"
+            appointment.pickup_urgency = pickup_urgency
+            appointment.pickup_notes = pickup_notes
+            appointment.pickup_request_time = timezone.now()
+            appointment.pickup_driver = available_driver
+            appointment.assigned_driver = available_driver
 
-        # Create notifications for operators and drivers
-        self._create_notifications(
-            appointment,
-            "pickup_requested",
-            f"Pickup requested by therapist for appointment with {appointment.client}. Urgency: {pickup_urgency}",
-        )
+            # Set estimated pickup time (standard 20 minutes)
+            from datetime import timedelta
+
+            appointment.estimated_pickup_time = timezone.now() + timedelta(minutes=20)
+            appointment.save()
+
+            # Create notifications for auto-assignment
+            self._create_notifications(
+                appointment,
+                "driver_assigned_pickup",
+                f"Driver {available_driver.get_full_name()} auto-assigned for pickup (FIFO). Urgency: {pickup_urgency}",
+            )
+
+            message = f"Pickup request sent and driver {available_driver.get_full_name()} auto-assigned using FIFO."
+        else:
+            # No drivers available - manual assignment required
+            appointment.status = "pickup_requested"
+            appointment.pickup_urgency = pickup_urgency
+            appointment.pickup_notes = pickup_notes
+            appointment.pickup_request_time = timezone.now()
+            appointment.save()
+
+            # Create notifications for manual assignment
+            self._create_notifications(
+                appointment,
+                "pickup_requested",
+                f"Pickup requested by therapist for appointment with {appointment.client}. Urgency: {pickup_urgency}. No drivers available - manual assignment required.",
+            )
+
+            message = "Pickup request sent. No drivers currently available - operator assignment required."
 
         serializer = self.get_serializer(appointment)
         return Response(
             {
-                "message": "Pickup request sent successfully.",
+                "message": message,
                 "appointment": serializer.data,
             }
         )

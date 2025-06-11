@@ -571,13 +571,14 @@ const OperatorDashboard = () => {
       if (!driver) {
         alert("No drivers available for assignment");
         return;
-      }
-
-      // Fixed estimated arrival time - no proximity calculations
+      }      // Fixed estimated arrival time - no proximity calculations
       const estimatedTime = 20; // Standard 20 minutes for all assignments
       const estimatedArrival = new Date();
-      estimatedArrival.setMinutes(estimatedArrival.getMinutes() + estimatedTime);      // Update appointment status
-      await dispatch(        updateAppointmentStatus({
+      estimatedArrival.setMinutes(estimatedArrival.getMinutes() + estimatedTime);
+      
+      // Update appointment status
+      await dispatch(
+        updateAppointmentStatus({
           id: therapist.appointment_id,
           status: "driver_assigned_pickup",
           driver: driver.id,

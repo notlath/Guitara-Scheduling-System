@@ -1355,6 +1355,41 @@ const DriverDashboard = () => {
           {currentView === "all" && (
             <div className="all-appointments">
               <h2>All My Transports</h2>
+              
+              {/* Transport Statistics Summary */}
+              <div className="transport-stats-summary">
+                <div className="stats-grid">
+                  <div className="stat-card completed">
+                    <span className="stat-number">
+                      {myAllTransports.filter(apt => 
+                        ["therapist_dropped_off", "payment_completed", "completed"].includes(apt.status)
+                      ).length}
+                    </span>
+                    <span className="stat-label">Completed Transports</span>
+                  </div>
+                  <div className="stat-card pending">
+                    <span className="stat-number">
+                      {myAllTransports.filter(apt => 
+                        ["pending", "therapist_confirmed", "driver_confirmed", "in_progress"].includes(apt.status)
+                      ).length}
+                    </span>
+                    <span className="stat-label">Active/Pending</span>
+                  </div>
+                  <div className="stat-card pickup">
+                    <span className="stat-number">
+                      {myAllTransports.filter(apt => 
+                        ["pickup_requested", "driver_assigned_pickup"].includes(apt.status)
+                      ).length}
+                    </span>
+                    <span className="stat-label">Pickup Assignments</span>
+                  </div>
+                  <div className="stat-card total">
+                    <span className="stat-number">{myAllTransports.length}</span>
+                    <span className="stat-label">Total Transports</span>
+                  </div>
+                </div>
+              </div>
+
               {renderAppointmentsList(myAllTransports)}
             </div>
           )}
