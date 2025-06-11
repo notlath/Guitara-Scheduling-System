@@ -1569,9 +1569,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(appointment)
         return Response(
             {"message": "Arrived at client location.", "appointment": serializer.data}
-        )
+        ) @ action(detail=True, methods=["post"])
 
-    @action(detail=True, methods=["post"])
     def drop_off_therapist(self, request, pk=None):
         """Driver marks therapist(s) as dropped off"""
         appointment = self.get_object()
@@ -1588,25 +1587,20 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Update status and automatically start session
-        if appointment.group_size > 1:
-            appointment.status = "session_in_progress"
-            message = "Therapists dropped off. Group session automatically started."
-        else:
-            appointment.status = "session_in_progress"
-            message = "Therapist dropped off. Session automatically started."
-
-        appointment.session_started_at = timezone.now()
+        # Update status to dropped_off - therapist will manually start session
+        appointment.status = "dropped_off"
+        appointment.dropped_off_at = timezone.now()
         appointment.save()
 
         # Create notifications
         self._create_notifications(
             appointment,
-            "session_started",
-            f"Therapy session for {appointment.client} has started automatically after drop-off.",
+            "therapist_dropped_off",
+            f"Therapist(s) dropped off at {appointment.client}. Ready to start session.",
         )
 
         serializer = self.get_serializer(appointment)
+        message = "Therapist(s) dropped off successfully. Therapist can now start the session."
         return Response({"message": message, "appointment": serializer.data})
 
     @action(detail=True, methods=["post"])

@@ -337,7 +337,6 @@ const DriverDashboard = () => {
       mounted = false;
     };
   }, [dispatch]);
-
   // Refresh specific view data when view changes (silent background update)
   useEffect(() => {
     if (!isInitialLoad) {
@@ -347,6 +346,40 @@ const DriverDashboard = () => {
       dispatch(fetchUpcomingAppointments());
     }
   }, [currentView, dispatch, isInitialLoad]);
+
+  // Listen for urgent backup requests
+  useEffect(() => {
+    const handleUrgentBackupRequest = (data) => {
+      // Show urgent notification to driver
+      if (data.driver_id === user?.id || !data.driver_id) {
+        // Show toast notification for urgent backup
+        const urgentCount = data.urgent_requests?.length || 1;
+        const message = `🚨 URGENT: ${urgentCount} backup request(s) need immediate attention!`;
+
+        // You could use a toast library here, for now we'll use alert
+        if (
+          window.confirm(
+            `${message}\n\nWould you like to check the operator dashboard?`
+          )
+        ) {
+          // In a real app, you might navigate to a specific urgent requests page
+          // For now, we'll just refresh the appointments to show any new assignments
+          dispatch(fetchAppointments());
+          dispatch(fetchTodayAppointments());
+        }
+      }
+    };
+
+    // Subscribe to urgent backup requests
+    const unsubscribe = syncService.subscribe(
+      "urgent_backup_request",
+      handleUrgentBackupRequest
+    );
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user, dispatch]);
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");
@@ -490,7 +523,8 @@ const DriverDashboard = () => {
 
     const actionKey = `dropoff_complete_${appointmentId}`;
     try {
-      setActionLoading(actionKey, true);      await dispatch(
+      setActionLoading(actionKey, true);
+      await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
           status: "dropped_off",
@@ -565,7 +599,7 @@ const DriverDashboard = () => {
   const handleDropOff = async (appointmentId) => {
     const actionKey = `dropoff_${appointmentId}`;
     try {
-      setActionLoading(actionKey, true);      // Drop off therapist - session should start
+      setActionLoading(actionKey, true); // Drop off therapist - session should start
       await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
@@ -1065,7 +1099,6 @@ const DriverDashboard = () => {
             </div>
           </div>
         );
-
       case "pickup_requested":
         return (
           <div className="appointment-actions">
@@ -1077,6 +1110,33 @@ const DriverDashboard = () => {
             </div>
           </div>
         );
+
+      case "driver_assigned_pickup":
+        return (
+          <div className="appointment-actions">
+            <LoadingButton
+              className="start-pickup-button"
+              onClick={() => handleStartJourney(id)}
+              loading={buttonLoading[`journey_${id}`]}
+              loadingText="Starting..."
+            >
+              Start Pickup Journey
+            </LoadingButton>
+            <div className="pickup-assignment-status">
+              <span className="assigned-badge">🚗 Pickup Assignment</span>
+              <p>You've been assigned to pick up the therapist</p>
+              {appointment.estimated_pickup_time && (
+                <p>
+                  <strong>ETA:</strong>{" "}
+                  {new Date(
+                    appointment.estimated_pickup_time
+                  ).toLocaleTimeString()}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+
       case "completed":
         return (
           <div className="appointment-actions">

@@ -1534,6 +1534,7 @@ export const requestPickupAssignment = createAsyncThunk(
       syncService.broadcastWithImmediate("pickup_requested", {
         appointment: response.data,
         appointmentId,
+        therapist_id: response.data.therapist, // Add therapist_id for auto-assignment
         requestDetails,
         timestamp: new Date().toISOString(),
       });
@@ -1800,6 +1801,17 @@ export const requestPickup = createAsyncThunk(
         }
       );
 
+      // Broadcast pickup request for auto-assignment
+      syncService.broadcastWithImmediate("pickup_requested", {
+        appointment: response.data,
+        appointmentId,
+        therapist_id: response.data.therapist, // Add therapist_id for auto-assignment
+        pickup_urgency,
+        pickup_notes,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Also broadcast general appointment update
       syncService.broadcastWithImmediate("appointment_updated_confirmed", {
         appointment: response.data,
         appointmentId,
