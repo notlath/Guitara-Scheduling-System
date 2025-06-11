@@ -670,23 +670,25 @@ const TherapistDashboard = () => {
               ) : (
                 <div className="pickup-actions">
                   <p className="pickup-info">Session completed. Need pickup?</p>
-                  <LoadingButton
-                    className="request-pickup-button"
-                    onClick={() => handleRequestPickupNew(id, "normal")}
-                    loading={buttonLoading[`request_pickup_${id}_normal`]}
-                    loadingText="Requesting..."
-                  >
-                    Request Pickup
-                  </LoadingButton>
-                  <LoadingButton
-                    className="urgent-pickup-button"
-                    onClick={() => handleRequestPickupNew(id, "urgent")}
-                    loading={buttonLoading[`request_pickup_${id}_urgent`]}
-                    loadingText="Requesting..."
-                    variant="warning"
-                  >
-                    Request Urgent Pickup
-                  </LoadingButton>
+                  <div className="pickup-buttons">
+                    <LoadingButton
+                      className="request-pickup-button"
+                      onClick={() => handleRequestPickupNew(id, "normal")}
+                      loading={buttonLoading[`request_pickup_${id}_normal`]}
+                      loadingText="Requesting..."
+                    >
+                      Request Pickup
+                    </LoadingButton>
+                    <LoadingButton
+                      className="urgent-pickup-button"
+                      onClick={() => handleRequestPickupNew(id, "urgent")}
+                      loading={buttonLoading[`request_pickup_${id}_urgent`]}
+                      loadingText="Requesting..."
+                      variant="warning"
+                    >
+                      Request Urgent Pickup
+                    </LoadingButton>
+                  </div>
                 </div>
               )}
             </div>

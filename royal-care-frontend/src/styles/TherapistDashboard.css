@@ -216,6 +216,42 @@
   color: #343a40;
 }
 
+/* Pickup button styles */
+.pickup-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.request-pickup-button {
+  background-color: var(--primary);
+  color: var(--background);
+}
+
+.request-pickup-button:hover {
+  background-color: var(--primary-700);
+}
+
+.urgent-pickup-button {
+  background-color: #ff6b35;
+  color: var(--background);
+}
+
+.urgent-pickup-button:hover {
+  background-color: #e55529;
+}
+
+.pickup-actions {
+  display: flex;
+  flex-direction: column;
+}
+
+.pickup-info {
+  margin: 0 0 8px 0;
+  font-size: var(--font-size-sm);
+  color: var(--background-600);
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .dashboard-header {

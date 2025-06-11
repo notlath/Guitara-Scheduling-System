@@ -1921,6 +1921,60 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return fifo_driver
 
+    def _get_driver_fifo_position(self, driver):
+        """Get the position of a driver in the FIFO queue"""
+        available_drivers = (
+            User.objects.filter(
+                role="driver",
+                is_active=True,
+                last_available_at__isnull=False,  # Only drivers that are marked available
+            )
+            .exclude(
+                # Exclude drivers that are currently assigned to active appointments
+                assigned_appointments__status__in=[
+                    "pending",
+                    "confirmed", 
+                    "therapist_confirmed",
+                    "driver_confirmed",
+                    "in_progress",
+                    "journey",
+                    "arrived",
+                    "driver_assigned_pickup",
+                ]
+            )
+            .order_by("last_available_at")
+        )
+        
+        # Get the position (1-indexed)
+        for position, available_driver in enumerate(available_drivers, 1):
+            if available_driver.id == driver.id:
+                return position
+        
+        return None  # Driver not in FIFO queue
+
+    def _get_driver_detailed_info(self, driver):
+        """Get detailed information about a driver for frontend display"""
+        last_completed_appointment = (
+            Appointment.objects.filter(
+                assigned_driver=driver,
+                status__in=["completed", "dropped_off", "therapist_dropped_off"]
+            )
+            .order_by('-updated_at')
+            .first()
+        )
+        
+        return {
+            "id": driver.id,
+            "first_name": driver.first_name,
+            "last_name": driver.last_name,
+            "vehicle_type": getattr(driver, "vehicle_type", "Motorcycle"),
+            "current_location": getattr(driver, "current_location", "Available"),
+            "last_available_at": driver.last_available_at.isoformat() if driver.last_available_at else None,
+            "last_drop_off_time": last_completed_appointment.updated_at.isoformat() if last_completed_appointment else None,
+            "last_vehicle_used": getattr(driver, "last_vehicle_used", getattr(driver, "vehicle_type", "Motorcycle")),
+            "fifo_position": self._get_driver_fifo_position(driver),
+        }
+
     @action(detail=False, methods=["post"])
     def update_driver_availability(self, request):
         """
@@ -1960,43 +2014,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    def _get_driver_fifo_position(self, driver):
-        """Get the driver's position in the FIFO queue"""
-        if not driver.last_available_at:
-            return None
-
-        # Count drivers who became available before this driver
-        position = (
-            CustomUser.objects.filter(
-                role="driver",
-                is_active=True,
-                last_available_at__isnull=False,
-                last_available_at__lt=driver.last_available_at,
-            ).count()
-            + 1
-        )
-
-        return position
-
-
-class NotificationViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing notifications
-    """
-
-    serializer_class = NotificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
-    search_fields = ["message", "notification_type"]
-    filterset_fields = ["is_read", "notification_type"]
-
-    def get_queryset(self):
-        """Return notifications for the current user"""
-        return Notification.objects.filter(user=self.request.user).order_by(
-            "-created_at"
-        )
-
-    @action(detail=True, methods=["post"])
+    @action(detail=False, methods=["post"])
     def mark_as_read(self, request, pk=None):
         """Mark notification as read"""
         notification = self.get_object()
@@ -2004,7 +2022,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
         notification.save()
         return Response({"status": "marked as read"})
 
-    @action(detail=True, methods=["post"])
+    @action(detail=False, methods=["post"])
     def mark_as_unread(self, request, pk=None):
         """Mark notification as unread"""
         notification = self.get_object()
