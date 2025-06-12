@@ -67,8 +67,7 @@ const TherapistDashboard = () => {
     upcomingAppointments,
     loading,
     error,
-  } = useSelector((state) => state.scheduling);
-  // Filter appointments for current therapist (both single and multi-therapist)
+  } = useSelector((state) => state.scheduling); // Filter appointments for current therapist (both single and multi-therapist)
   const myAppointments = appointments.filter(
     (apt) =>
       apt.therapist === user?.id ||
@@ -77,13 +76,15 @@ const TherapistDashboard = () => {
 
   const myTodayAppointments = todayAppointments.filter(
     (apt) =>
-      apt.therapist === user?.id ||
-      (apt.therapists && apt.therapists.includes(user?.id))
+      (apt.therapist === user?.id ||
+        (apt.therapists && apt.therapists.includes(user?.id))) &&
+      apt.status !== "transport_completed" // Exclude completed transport from today view
   );
   const myUpcomingAppointments = upcomingAppointments.filter(
     (apt) =>
-      apt.therapist === user?.id ||
-      (apt.therapists && apt.therapists.includes(user?.id))
+      (apt.therapist === user?.id ||
+        (apt.therapists && apt.therapists.includes(user?.id))) &&
+      apt.status !== "transport_completed" // Exclude completed transport from upcoming view
   );
 
   // Refresh appointments data silently in background
@@ -411,6 +412,92 @@ const TherapistDashboard = () => {
     }
     return null;
   };
+
+  // Special render function for completed transport appointments
+  const renderCompletedTransportCard = (appointment) => {
+    return (
+      <div
+        key={appointment.id}
+        className="appointment-card completed-transport-card"
+      >
+        <div className="appointment-header">
+          <h3>
+            {appointment.client_details?.first_name}{" "}
+            {appointment.client_details?.last_name}
+          </h3>
+          <span className="status-badge status-transport-completed">
+            ✅ Transport Completed
+          </span>
+        </div>
+
+        <div className="appointment-details">
+          <p>
+            <strong>Date:</strong>{" "}
+            {new Date(appointment.date).toLocaleDateString()}
+          </p>
+
+          {/* Session Start and End Times */}
+          {appointment.session_started_at && (
+            <p>
+              <strong>Session Started:</strong>{" "}
+              {new Date(appointment.session_started_at).toLocaleString()}
+            </p>
+          )}
+          {appointment.session_end_time && (
+            <p>
+              <strong>Session Ended:</strong>{" "}
+              {new Date(appointment.session_end_time).toLocaleString()}
+            </p>
+          )}
+
+          {/* Client Address */}
+          <p>
+            <strong>Client Address:</strong> {appointment.location}
+          </p>
+
+          {/* Services */}
+          <p>
+            <strong>Services:</strong>{" "}
+            {appointment.services_details?.map((s) => s.name).join(", ") ||
+              "N/A"}
+          </p>
+
+          {/* Payment Amount */}
+          <p>
+            <strong>Amount Paid:</strong> ₱
+            {appointment.payment_amount
+              ? parseFloat(appointment.payment_amount).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              : appointment.total_price?.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }) || "0.00"}
+          </p>
+
+          {/* Return Journey Completion Time */}
+          {appointment.return_journey_completed_at && (
+            <p>
+              <strong>Transport Completed:</strong>{" "}
+              {new Date(
+                appointment.return_journey_completed_at
+              ).toLocaleString()}
+            </p>
+          )}
+
+          {/* Driver Information */}
+          {appointment.driver_details && (
+            <p>
+              <strong>Driver:</strong> {appointment.driver_details.first_name}{" "}
+              {appointment.driver_details.last_name}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderActionButtons = (appointment) => {
     const {
       status,
@@ -642,6 +729,16 @@ const TherapistDashboard = () => {
                     </div>
                   ) : (
                     <div className="pickup-pending">
+                      <div className="session-completion-info">
+                        {appointment.session_end_time && (
+                          <p className="completion-timestamp">
+                            <strong>Session completed:</strong>{" "}
+                            {new Date(
+                              appointment.session_end_time
+                            ).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
                       <span
                         className={`pickup-badge ${
                           appointment.pickup_urgency || "normal"
@@ -669,7 +766,22 @@ const TherapistDashboard = () => {
                 </div>
               ) : (
                 <div className="pickup-actions">
-                  <p className="pickup-info">Session completed. Need pickup?</p>
+                  <div className="session-completion-info">
+                    <p className="pickup-info">
+                      <span className="success-badge">
+                        ✅ Session completed
+                      </span>
+                      {appointment.session_end_time && (
+                        <span className="completion-timestamp">
+                          Completed at:{" "}
+                          {new Date(
+                            appointment.session_end_time
+                          ).toLocaleString()}
+                        </span>
+                      )}
+                    </p>
+                    <p>Need pickup to return?</p>
+                  </div>
                   <div className="pickup-buttons">
                     <LoadingButton
                       className="request-pickup-button"
@@ -703,13 +815,90 @@ const TherapistDashboard = () => {
             </div>
           );
         }
-
       case "pickup_requested":
         return (
           <div className="appointment-actions">
             <div className="pickup-requested-status">
+              {appointment.session_end_time && (
+                <div className="session-completion-info">
+                  <p className="completion-timestamp">
+                    <strong>Session completed:</strong>{" "}
+                    {new Date(appointment.session_end_time).toLocaleString()}
+                  </p>
+                </div>
+              )}
               <span className="pickup-badge">🚖 Pickup requested</span>
               <p>Waiting for pickup assignment...</p>
+            </div>
+          </div>
+        );
+
+      case "driver_assigned_pickup":
+        return (
+          <div className="appointment-actions">
+            <div className="pickup-assigned-status">
+              {appointment.session_end_time && (
+                <div className="session-completion-info">
+                  <p className="completion-timestamp">
+                    <strong>Session completed:</strong>{" "}
+                    {new Date(appointment.session_end_time).toLocaleString()}
+                  </p>
+                </div>
+              )}
+              <span className="success-badge">
+                ✅ Driver Assigned for Pickup
+              </span>
+              <p>
+                Driver{" "}
+                <strong>
+                  {appointment.driver_details?.first_name}{" "}
+                  {appointment.driver_details?.last_name}
+                </strong>{" "}
+                has been assigned for your pickup.
+              </p>
+              {appointment.estimated_pickup_time && (
+                <p>
+                  <strong>Estimated arrival:</strong>{" "}
+                  {new Date(appointment.estimated_pickup_time).toLocaleString()}
+                </p>
+              )}
+              <p className="waiting-confirmation">
+                Waiting for driver to confirm pickup...
+              </p>
+            </div>
+          </div>
+        );
+
+      case "return_journey":
+        return (
+          <div className="appointment-actions">
+            <div className="return-journey-status">
+              {appointment.session_end_time && (
+                <div className="session-completion-info">
+                  <p className="completion-timestamp">
+                    <strong>Session completed:</strong>{" "}
+                    {new Date(appointment.session_end_time).toLocaleString()}
+                  </p>
+                </div>
+              )}
+              <span className="journey-badge">
+                🔄 Driver En Route for Pickup
+              </span>
+              <p>
+                Driver{" "}
+                <strong>
+                  {appointment.driver_details?.first_name}{" "}
+                  {appointment.driver_details?.last_name}
+                </strong>{" "}
+                confirmed pickup and is on the way.
+              </p>
+              {appointment.pickup_confirmed_at && (
+                <p>
+                  <strong>Pickup confirmed at:</strong>{" "}
+                  {new Date(appointment.pickup_confirmed_at).toLocaleString()}
+                </p>
+              )}
+              <p>Please wait at the pickup location.</p>
             </div>
           </div>
         );
@@ -718,7 +907,6 @@ const TherapistDashboard = () => {
         return null;
     }
   };
-
   const renderAppointmentsList = (appointmentsList) => {
     if (appointmentsList.length === 0) {
       return <p className="no-appointments">No appointments found.</p>;
@@ -726,57 +914,81 @@ const TherapistDashboard = () => {
 
     return (
       <div className="appointments-list">
-        {appointmentsList.map((appointment) => (
-          <div key={appointment.id} className="appointment-card">
-            <div className="appointment-header">
-              <h3>
-                {appointment.client_details?.first_name}{" "}
-                {appointment.client_details?.last_name}
-              </h3>
-              <span
-                className={`status-badge ${getStatusBadgeClass(
-                  appointment.status
-                )}`}
-              >
-                {appointment.status.charAt(0).toUpperCase() +
-                  appointment.status.slice(1)}
-              </span>
-            </div>
+        {appointmentsList.map((appointment) => {
+          // Use special rendering for completed transport appointments
+          if (appointment.status === "transport_completed") {
+            return renderCompletedTransportCard(appointment);
+          }
 
-            <div className="appointment-details">
-              <p>
-                <strong>Date:</strong>{" "}
-                {new Date(appointment.date).toLocaleDateString()}
-              </p>
-              <p>
-                <strong>Time:</strong> {appointment.start_time} -{" "}
-                {appointment.end_time}
-              </p>
-              <p>
-                <strong>Location:</strong> {appointment.location}
-              </p>
-              <p>
-                <strong>Services:</strong>{" "}
-                {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>
-              {renderTherapistTeam(appointment)}
-              {appointment.driver_details && (
-                <p>
-                  <strong>Driver:</strong>{" "}
-                  {appointment.driver_details.first_name}{" "}
-                  {appointment.driver_details.last_name}
-                </p>
-              )}
-              {appointment.notes && (
-                <p>
-                  <strong>Notes:</strong> {appointment.notes}
-                </p>
-              )}
-            </div>
+          // Regular appointment card for all other statuses
+          return (
+            <div key={appointment.id} className="appointment-card">
+              <div className="appointment-header">
+                <h3>
+                  {appointment.client_details?.first_name}{" "}
+                  {appointment.client_details?.last_name}
+                </h3>
+                <span
+                  className={`status-badge ${getStatusBadgeClass(
+                    appointment.status
+                  )}`}
+                >
+                  {appointment.status.charAt(0).toUpperCase() +
+                    appointment.status.slice(1)}
+                </span>
+              </div>
 
-            {renderActionButtons(appointment)}
-          </div>
-        ))}
+              <div className="appointment-details">
+                <p>
+                  <strong>Date:</strong>{" "}
+                  {new Date(appointment.date).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>Time:</strong> {appointment.start_time} -{" "}
+                  {appointment.end_time}
+                </p>
+                <p>
+                  <strong>Location:</strong> {appointment.location}
+                </p>
+                <p>
+                  <strong>Services:</strong>{" "}
+                  {appointment.services_details?.map((s) => s.name).join(", ")}
+                </p>
+                {renderTherapistTeam(appointment)}
+                {appointment.driver_details && (
+                  <p>
+                    <strong>Driver:</strong>{" "}
+                    {appointment.driver_details.first_name}{" "}
+                    {appointment.driver_details.last_name}
+                  </p>
+                )}
+                {appointment.notes && (
+                  <p>
+                    <strong>Notes:</strong> {appointment.notes}
+                  </p>
+                )}
+
+                {/* Show session completion timestamp for pickup-related statuses */}
+                {(appointment.status === "pickup_requested" ||
+                  appointment.status === "driver_assigned_pickup" ||
+                  appointment.status === "return_journey") &&
+                  appointment.session_end_time && (
+                    <div className="session-completion-info">
+                      <h4>📋 Session Completed</h4>
+                      <p className="completion-time">
+                        <strong>Session completed at:</strong>{" "}
+                        {new Date(
+                          appointment.session_end_time
+                        ).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+              </div>
+
+              {renderActionButtons(appointment)}
+            </div>
+          );
+        })}
       </div>
     );
   };

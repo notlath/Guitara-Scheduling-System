@@ -252,6 +252,46 @@
   color: var(--background-600);
 }
 
+/* Completed transport card styling */
+.completed-transport-card {
+  border-left: 4px solid #22c55e !important; /* Green left border */
+  background: linear-gradient(
+    135deg,
+    #f0fdf4 0%,
+    #ecfdf5 100%
+  ); /* Light green gradient background */
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15); /* Green tinted shadow */
+}
+
+.completed-transport-card:hover {
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25); /* Enhanced green shadow on hover */
+}
+
+.completed-transport-card .appointment-header {
+  background-color: #f0fdf4; /* Light green header background */
+  border-bottom: 1px solid #bbf7d0; /* Light green border */
+}
+
+.status-transport-completed {
+  background-color: #22c55e; /* Green background */
+  color: white; /* White text */
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.completed-transport-card .appointment-details p {
+  color: #15803d; /* Darker green text for details */
+}
+
+.completed-transport-card .appointment-details p strong {
+  color: #166534; /* Even darker green for labels */
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .dashboard-header {

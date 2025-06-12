@@ -65,12 +65,17 @@ class Appointment(models.Model):
         ("journey", "Journey"),
         ("arrived", "Arrived"),
         ("dropped_off", "Dropped Off"),
+        (
+            "driver_transport_completed",
+            "Driver Transport Completed",
+        ),  # Driver's job done after drop-off
         ("session_in_progress", "Session In Progress"),
         ("awaiting_payment", "Awaiting Payment"),
         ("completed", "Completed"),
         ("pickup_requested", "Pickup Requested"),
         ("driver_assigned_pickup", "Driver Assigned for Pickup"),
         ("return_journey", "Return Journey"),
+        ("transport_completed", "Transport Completed"),
         ("cancelled", "Cancelled"),
         ("rejected", "Rejected"),
         ("auto_cancelled", "Auto Cancelled"),
@@ -81,7 +86,6 @@ class Appointment(models.Model):
         ("driving_to_location", "Driver En Route"),
         ("at_location", "Driver at Location"),
         ("therapist_dropped_off", "Therapist Dropped Off"),
-        ("transport_completed", "Transport Completed"),
         ("picking_up_therapists", "Picking Up Therapists"),
         ("transporting_group", "Transporting Group"),
         ("driver_assigned", "Driver Assigned"),
@@ -177,6 +181,11 @@ class Appointment(models.Model):
         null=True,
         blank=True,
         help_text="When the therapy session actually ended",
+    )
+    return_journey_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the return journey (therapist pickup) was completed",
     )
 
     # New fields for rejection system

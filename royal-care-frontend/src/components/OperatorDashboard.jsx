@@ -14,6 +14,7 @@ import {
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
+import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import syncService from "../services/syncService";
 import { LoadingButton, LoadingSpinner } from "./common/LoadingComponents";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
@@ -70,13 +71,25 @@ const OperatorDashboard = () => {
     method: "cash",
     amount: "",
     notes: "",
-  });
-  // Driver coordination state
+  }); // Driver coordination state
   const [driverAssignment, setDriverAssignment] = useState({
     availableDrivers: [],
     busyDrivers: [],
     pendingPickups: [],
-  }); // Load driver data on component mount and refresh
+  });
+
+  // Get state from Redux store
+  const {
+    appointments,
+    todayAppointments,
+    upcomingAppointments,
+    notifications,
+    staffMembers: _staffMembers,
+    loading,
+    error,
+  } = useSelector((state) => state.scheduling);
+
+  // Load driver data on component mount and refresh
   useEffect(() => {
     const loadDriverData = async () => {
       try {
@@ -98,10 +111,8 @@ const OperatorDashboard = () => {
           "session_in_progress",
           "pickup_requested",
           "driver_assigned_pickup",
-        ];
-
-        // Find drivers with active appointments (busy)
-        const busyDriverIds = appointments
+        ]; // Find drivers with active appointments (busy)
+        const busyDriverIds = (appointments || [])
           .filter(
             (apt) =>
               activeAppointmentStatuses.includes(apt.status) && apt.driver
@@ -183,17 +194,16 @@ const OperatorDashboard = () => {
           pendingPickups: [],
         });
       }
-    };
-
-    // Load initial data
-    const loadInitialData = async () => {
-      await loadDriverData();
-      // Also fetch notifications on initial load
-      dispatch(fetchNotifications());
-    };
-
-    loadInitialData();
-  }, [dispatch]);
+    }; // Only load data if appointments is available (not undefined)
+    if (appointments !== undefined) {
+      const loadInitialData = async () => {
+        await loadDriverData();
+        // Also fetch notifications on initial load
+        dispatch(fetchNotifications());
+      };
+      loadInitialData();
+    }
+  }, [dispatch, appointments]);
   // Listen for real-time driver updates via sync service
   useEffect(() => {
     const handleDriverUpdate = (data) => {
@@ -246,48 +256,47 @@ const OperatorDashboard = () => {
     return () => {
       unsubscribe();
     };
-  }, []);
-  const {
-    appointments,
-    todayAppointments,
-    upcomingAppointments,
-    notifications,
-    staffMembers: _staffMembers,
-    loading,
-    error,
-  } = useSelector((state) => state.scheduling);
-
-  // Filter rejected appointments for review
-  const rejectedAppointments = appointments.filter(
-    (apt) => apt.status === "rejected" && !apt.review_decision
-  );
+  }, []); // Filter rejected appointments for review (ensure appointments is an array)
+  const rejectedAppointments = useMemo(() => {
+    return (appointments || []).filter(
+      (apt) => apt.status === "rejected" && !apt.review_decision
+    );
+  }, [appointments]);
 
   // Filter appointments that are pending and approaching timeout
-  const pendingAppointments = appointments.filter(
-    (apt) => apt.status === "pending" && apt.response_deadline
-  );
+  const pendingAppointments = useMemo(() => {
+    return (appointments || []).filter(
+      (apt) => apt.status === "pending" && apt.response_deadline
+    );
+  }, [appointments]);
 
   // Filter appointments awaiting payment verification
-  const awaitingPaymentAppointments = appointments.filter(
-    (apt) => apt.status === "awaiting_payment"
-  );
-  // Calculate which appointments are overdue
-  const overdueAppointments = pendingAppointments.filter(
-    (apt) => new Date(apt.response_deadline) < new Date()
-  );
+  const awaitingPaymentAppointments = useMemo(() => {
+    return (appointments || []).filter(
+      (apt) => apt.status === "awaiting_payment"
+    );
+  }, [appointments]); // Calculate which appointments are overdue
+  const overdueAppointments = useMemo(() => {
+    return pendingAppointments.filter(
+      (apt) => new Date(apt.response_deadline) < new Date()
+    );
+  }, [pendingAppointments]);
 
   // Calculate which appointments are approaching deadline (within 10 minutes)
-  const approachingDeadlineAppointments = pendingAppointments.filter((apt) => {
-    const deadline = new Date(apt.response_deadline);
-    const now = new Date();
-    const timeDiff = deadline.getTime() - now.getTime();
-    const minutesDiff = timeDiff / (1000 * 60);
-    return minutesDiff > 0 && minutesDiff <= 10;
-  });
-
+  const approachingDeadlineAppointments = useMemo(() => {
+    return pendingAppointments.filter((apt) => {
+      const deadline = new Date(apt.response_deadline);
+      const now = new Date();
+      const timeDiff = deadline.getTime() - now.getTime();
+      const minutesDiff = timeDiff / (1000 * 60);
+      return minutesDiff > 0 && minutesDiff <= 10;
+    });
+  }, [pendingAppointments]);
   // Calculate rejection statistics
   const rejectionStats = useMemo(() => {
-    const rejected = appointments.filter((apt) => apt.status === "rejected");
+    const rejected = (appointments || []).filter(
+      (apt) => apt.status === "rejected"
+    );
     const therapistRejections = rejected.filter(
       (apt) => apt.rejected_by_details?.role?.toLowerCase() === "therapist"
     );
@@ -509,10 +518,15 @@ const OperatorDashboard = () => {
     } finally {
       setActionLoading(actionKey, false);
     }
-  };
-
-  // Payment verification handler
+  }; // Payment verification handler
   const handlePaymentVerification = (appointment) => {
+    // Calculate total amount from services with proper number handling
+    const totalAmount =
+      appointment?.services_details?.reduce((total, service) => {
+        const price = Number(service.price) || 0;
+        return total + price;
+      }, 0) || 0;
+
     setPaymentModal({
       isOpen: true,
       appointmentId: appointment.id,
@@ -520,20 +534,30 @@ const OperatorDashboard = () => {
     });
     setPaymentData({
       method: "cash",
-      amount: "",
+      amount: totalAmount.toFixed(2), // totalAmount is guaranteed to be a number
       notes: "",
     });
   };
   const handleMarkPaymentPaid = async () => {
     const actionKey = `payment_${paymentModal.appointmentId}`;
+
+    // Validate payment data
+    if (!paymentData.amount || parseFloat(paymentData.amount) <= 0) {
+      alert("Please enter a valid payment amount.");
+      return;
+    }
+
     try {
       setActionLoading(actionKey, true);
+
+      // Pass the appointment ID as a number, not an object
+      const appointmentId = parseInt(paymentModal.appointmentId, 10);
+      console.log("Marking payment as paid for appointment ID:", appointmentId);
+
       await dispatch(
         markAppointmentPaid({
-          appointmentId: paymentModal.appointmentId,
-          paymentMethod: paymentData.method,
-          paymentAmount: parseFloat(paymentData.amount) || 0,
-          paymentNotes: paymentData.notes,
+          appointmentId,
+          paymentData,
         })
       ).unwrap();
 
@@ -549,6 +573,8 @@ const OperatorDashboard = () => {
         notes: "",
       });
       refreshData();
+
+      alert("Payment marked as received successfully!");
     } catch (error) {
       console.error("Failed to mark payment as paid:", error);
       alert("Failed to mark payment as paid. Please try again.");
@@ -1011,7 +1037,7 @@ const OperatorDashboard = () => {
                     );
                     return timeA - timeB;
                   })
-                  .map((driver, index) => (
+                  .map((driver) => (
                     <div key={driver.id} className="driver-card">
                       {" "}
                       <div className="driver-card-header">
@@ -1652,10 +1678,9 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderActiveSessionsView = () => {
     // Calculate active sessions from appointments
-    const activeSessions = appointments.filter(
+    const activeSessions = (appointments || []).filter(
       (apt) =>
         apt.status === "in_progress" || apt.status === "therapist_en_route"
     );
@@ -1719,7 +1744,7 @@ const OperatorDashboard = () => {
   };
   const renderPickupRequestsView = () => {
     // Calculate pickup requests from appointments
-    const pickupRequests = appointments.filter(
+    const pickupRequests = (appointments || []).filter(
       (apt) =>
         apt.status === "pickup_requested" ||
         apt.status === "driver_assigned_pickup"
@@ -1885,20 +1910,19 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   // Calculate counts for tab buttons
-  const activeSessions = appointments.filter(
+  const activeSessions = (appointments || []).filter(
     (apt) => apt.status === "in_progress" || apt.status === "therapist_en_route"
   );
 
-  const pickupRequests = appointments.filter(
+  const pickupRequests = (appointments || []).filter(
     (apt) =>
       apt.status === "pickup_requested" ||
       apt.status === "driver_assigned_pickup"
   );
   return (
     <PageLayout>
-      <div className="operator-dashboard">
+      <div className={`operator-dashboard`}>
         <LayoutRow title="Operator Dashboard">
           <div className="action-buttons">
             <button onClick={handleLogout} className="logout-button">
@@ -2017,7 +2041,11 @@ const OperatorDashboard = () => {
             Pickup Requests ({pickupRequests.length})
           </button>
         </div>{" "}
-        <div className="dashboard-content">
+        <div
+          className={`dashboard-content ${
+            paymentModal.isOpen || reviewModal.isOpen ? "faded" : ""
+          }`}
+        >
           {currentView === "rejected" && (
             <div className="rejected-appointments">
               <h2>Rejection Reviews</h2>
@@ -2084,90 +2112,110 @@ const OperatorDashboard = () => {
             </div>
           )}{" "}
         </div>
-        {/* Payment Verification Modal */}
-        {paymentModal.isOpen && (
-          <div className="modal-overlay">
-            <div className="payment-modal">
+      </div>
+      {/* End of operator-dashboard */}
+
+      {/* Payment Verification Modal */}
+      {paymentModal.isOpen && (
+        <div className={styles["modal-overlay"]}>
+          <div className={styles.modal}>
+            <div className={styles["modal-header"]}>
               <h3>Verify Payment Received</h3>
-              <div className="appointment-summary">
-                <h4>Appointment #{paymentModal.appointmentId}</h4>{" "}
-                <div className="summary-details">
-                  <p>
-                    <strong>Client:</strong>{" "}
-                    {paymentModal.appointmentDetails?.client_details?.first_name
-                      ? `${
-                          paymentModal.appointmentDetails.client_details
-                            .first_name
-                        } ${
-                          paymentModal.appointmentDetails.client_details
-                            .last_name || ""
-                        }`.trim()
-                      : paymentModal.appointmentDetails?.client ||
-                        "Unknown Client"}
-                  </p>
-                  <p>
-                    <strong>Date:</strong>{" "}
-                    {new Date(
-                      paymentModal.appointmentDetails?.date
-                    ).toLocaleDateString()}
-                  </p>
-                  <p>
-                    <strong>Services:</strong>{" "}
-                    {paymentModal.appointmentDetails?.services_details
-                      ?.map((s) => s.name)
-                      .join(", ") || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Total Amount:</strong> ₱
-                    {paymentModal.appointmentDetails?.total_amount || "0.00"}
-                  </p>
-                </div>
+              <button
+                className={styles["close-btn"]}
+                onClick={handlePaymentModalCancel}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="appointment-summary">
+              <h4>Appointment #{paymentModal.appointmentId}</h4>
+              <div className="summary-details">
+                <p>
+                  <strong>Client:</strong>{" "}
+                  {paymentModal.appointmentDetails?.client_details?.first_name
+                    ? `${
+                        paymentModal.appointmentDetails.client_details
+                          .first_name
+                      } ${
+                        paymentModal.appointmentDetails.client_details
+                          .last_name || ""
+                      }`.trim()
+                    : paymentModal.appointmentDetails?.client ||
+                      "Unknown Client"}
+                </p>
+                <p>
+                  <strong>Date:</strong>{" "}
+                  {new Date(
+                    paymentModal.appointmentDetails?.date
+                  ).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>Services:</strong>{" "}
+                  {paymentModal.appointmentDetails?.services_details
+                    ?.map((s) => s.name)
+                    .join(", ") || "N/A"}
+                </p>{" "}
+                <p>
+                  <strong>Total Amount:</strong> ₱
+                  {(() => {
+                    const total =
+                      paymentModal.appointmentDetails?.services_details?.reduce(
+                        (total, service) => {
+                          const price = Number(service.price) || 0;
+                          return total + price;
+                        },
+                        0
+                      ) || 0;
+                    return total.toFixed(2);
+                  })()}
+                </p>
               </div>
-              <div className="payment-form">
-                <div className="form-group">
-                  <label htmlFor="paymentMethod">Payment Method:</label>
-                  <select
-                    id="paymentMethod"
-                    value={paymentData.method}
-                    onChange={(e) =>
-                      setPaymentData({ ...paymentData, method: e.target.value })
-                    }
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="gcash">GCash</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="card">Credit/Debit Card</option>
-                  </select>
-                </div>
+            </div>
+            <div className={styles["modal-form"]}>
+              <div className="form-group">
+                <label htmlFor="paymentMethod">Payment Method:</label>
+                <select
+                  id="paymentMethod"
+                  value={paymentData.method}
+                  onChange={(e) =>
+                    setPaymentData({ ...paymentData, method: e.target.value })
+                  }
+                >
+                  <option value="cash">Cash</option>
+                  <option value="gcash">GCash</option>
+                </select>
+              </div>
 
-                <div className="form-group">
-                  <label htmlFor="paymentAmount">Amount Received:</label>
-                  <input
-                    type="number"
-                    id="paymentAmount"
-                    value={paymentData.amount}
-                    onChange={(e) =>
-                      setPaymentData({ ...paymentData, amount: e.target.value })
-                    }
-                    placeholder="Enter amount received"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
+              <div className="form-group">
+                <label htmlFor="paymentAmount">Amount Received:</label>
+                <input
+                  type="number"
+                  id="paymentAmount"
+                  value={paymentData.amount}
+                  onChange={(e) =>
+                    setPaymentData({ ...paymentData, amount: e.target.value })
+                  }
+                  placeholder="Enter amount received"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
 
-                <div className="form-group">
-                  <label htmlFor="paymentNotes">Notes (optional):</label>
-                  <textarea
-                    id="paymentNotes"
-                    value={paymentData.notes}
-                    onChange={(e) =>
-                      setPaymentData({ ...paymentData, notes: e.target.value })
-                    }
-                    placeholder="Add any notes about the payment..."
-                    rows={3}
-                  />
-                </div>
-              </div>{" "}
+              <div className="form-group">
+                <label htmlFor="paymentNotes">Notes (optional):</label>
+                <textarea
+                  id="paymentNotes"
+                  value={paymentData.notes}
+                  onChange={(e) =>
+                    setPaymentData({ ...paymentData, notes: e.target.value })
+                  }
+                  placeholder="Add any notes about the payment..."
+                  rows={3}
+                />
+              </div>
+
               <div className="modal-actions">
                 <LoadingButton
                   className="verify-button"
@@ -2177,7 +2225,7 @@ const OperatorDashboard = () => {
                   }
                   loadingText="Processing..."
                 >
-                  Mark as Paid{" "}
+                  Mark as Paid
                 </LoadingButton>
                 <LoadingButton
                   className="cancel-button"
@@ -2189,65 +2237,66 @@ const OperatorDashboard = () => {
               </div>
             </div>
           </div>
-        )}
-        {/* Review Rejection Modal */}
-        {reviewModal.isOpen && (
-          <div className="modal-overlay">
-            <div className="review-modal">
-              <h3>Review Appointment Rejection</h3>
-              <div className="rejection-details">
-                <p>
-                  <strong>Rejection Reason:</strong>
-                </p>
-                <p className="rejection-reason-text">
-                  {reviewModal.rejectionReason}
-                </p>
-              </div>
-              <div className="review-notes">
-                <label htmlFor="reviewNotes">Review Notes (optional):</label>
-                <textarea
-                  id="reviewNotes"
-                  value={reviewNotes}
-                  onChange={(e) => setReviewNotes(e.target.value)}
-                  placeholder="Add any additional notes about your decision..."
-                  rows={3}
-                />
-              </div>{" "}
-              <div className="modal-actions">
-                <LoadingButton
-                  className="accept-button"
-                  onClick={() => handleReviewSubmit("accept")}
-                  loading={
-                    buttonLoading[`review_${reviewModal.appointmentId}_accept`]
-                  }
-                  loadingText="Processing..."
-                >
-                  Accept Rejection
-                </LoadingButton>
-                <LoadingButton
-                  className="deny-button"
-                  onClick={() => handleReviewSubmit("deny")}
-                  loading={
-                    buttonLoading[`review_${reviewModal.appointmentId}_deny`]
-                  }
-                  loadingText="Processing..."
-                  variant="secondary"
-                >
-                  Deny Rejection
-                </LoadingButton>{" "}
-                <LoadingButton
-                  className="cancel-button"
-                  onClick={handleReviewCancel}
-                  variant="secondary"
-                >
-                  {" "}
-                  Cancel
-                </LoadingButton>
-              </div>
+        </div>
+      )}
+      {/* Review Rejection Modal */}
+      {reviewModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="review-modal">
+            <h3>Review Appointment Rejection</h3>
+            <div className="rejection-details">
+              <p>
+                <strong>Rejection Reason:</strong>
+              </p>
+              <p className="rejection-reason-text">
+                {reviewModal.rejectionReason}
+              </p>
+            </div>
+            <div className="review-notes">
+              <label htmlFor="reviewNotes">Review Notes (optional):</label>
+              <textarea
+                id="reviewNotes"
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                placeholder="Add any additional notes about your decision..."
+                rows={3}
+              />
+            </div>{" "}
+            <div className="modal-actions">
+              <LoadingButton
+                className="accept-button"
+                onClick={() => handleReviewSubmit("accept")}
+                loading={
+                  buttonLoading[`review_${reviewModal.appointmentId}_accept`]
+                }
+                loadingText="Processing..."
+              >
+                Accept Rejection
+              </LoadingButton>
+              <LoadingButton
+                className="deny-button"
+                onClick={() => handleReviewSubmit("deny")}
+                loading={
+                  buttonLoading[`review_${reviewModal.appointmentId}_deny`]
+                }
+                loadingText="Processing..."
+                variant="secondary"
+              >
+                Deny Rejection{" "}
+              </LoadingButton>{" "}
+              <LoadingButton
+                className="cancel-button"
+                onClick={handleReviewCancel}
+                variant="secondary"
+              >
+                {" "}
+                Cancel
+              </LoadingButton>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+      {/* End of global-content wrapper closing div is above after modals */}
     </PageLayout>
   );
 };
