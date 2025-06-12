@@ -1647,9 +1647,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": "Can only drop off when driver has arrived"},
                 status=status.HTTP_400_BAD_REQUEST,
-            )
-        # Update status to driver_transport_completed - driver's job is done
-        appointment.status = "driver_transport_completed"
+            )  # Update status to dropped_off - therapist can now start session
+        appointment.status = "dropped_off"
         appointment.dropped_off_at = timezone.now()
         appointment.save()
 

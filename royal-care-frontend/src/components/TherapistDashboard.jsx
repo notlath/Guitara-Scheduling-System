@@ -371,6 +371,8 @@ const TherapistDashboard = () => {
         return "status-journey-started";
       case "arrived":
         return "status-arrived";
+      case "dropped_off":
+        return "status-dropped-off";
       case "session_started":
         return "status-session-started";
       case "payment_requested":
@@ -387,6 +389,44 @@ const TherapistDashboard = () => {
         return "status-cancelled";
       default:
         return "";
+    }
+  };
+
+  // Helper function to display user-friendly status text
+  const getStatusDisplayText = (status) => {
+    switch (status) {
+      case "pending":
+        return "Pending";
+      case "confirmed":
+        return "Confirmed";
+      case "therapist_confirmed":
+        return "Confirmed by Therapist";
+      case "driver_confirmed":
+        return "Driver Assigned";
+      case "journey_started":
+        return "En Route";
+      case "arrived":
+        return "Driver Arrived";
+      case "dropped_off":
+        return "Ready to Start";
+      case "session_in_progress":
+        return "Session in Progress";
+      case "awaiting_payment":
+        return "Awaiting Payment";
+      case "payment_completed":
+        return "Payment Completed";
+      case "pickup_requested":
+        return "Pickup Requested";
+      case "transport_completed":
+        return "Transport Completed";
+      case "completed":
+        return "Completed";
+      case "cancelled":
+        return "Cancelled";
+      default:
+        return (
+          status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ")
+        );
     }
   };
 
@@ -927,14 +967,13 @@ const TherapistDashboard = () => {
                 <h3>
                   {appointment.client_details?.first_name}{" "}
                   {appointment.client_details?.last_name}
-                </h3>
+                </h3>{" "}
                 <span
                   className={`status-badge ${getStatusBadgeClass(
                     appointment.status
                   )}`}
                 >
-                  {appointment.status.charAt(0).toUpperCase() +
-                    appointment.status.slice(1)}
+                  {getStatusDisplayText(appointment.status)}
                 </span>
               </div>
 
