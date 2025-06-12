@@ -146,8 +146,9 @@
 
 .passwordPopupError {
   position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
+  top: -40px;
+  right: 103%;
+  left: auto;
   z-index: 10;
   background: var(--background);
   border: 1px solid var(--background-400);
@@ -157,33 +158,39 @@
   color: var(--muted);
   font-size: var(--font-size-sm);
   min-width: 260px;
-  /* Arrow positioning context */
 }
 
 .passwordPopupError::before {
   content: "";
   position: absolute;
-  top: -8px;
-  left: 24px;
-  width: 0;
-  height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 8px solid var(--background-400);
-  z-index: 11;
+  top: 13px;
+  right: -10px;
+  border-width: 8px 0 8px 10px;
+  border-style: solid;
+  border-color: transparent transparent transparent var(--background-400);
 }
 
 .passwordPopupError::after {
   content: "";
   position: absolute;
-  top: -7px;
-  left: 25px;
-  width: 0;
-  height: 0;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-bottom: 7px solid var(--background);
-  z-index: 12;
+  top: 14px;
+  right: -8px;
+  border-width: 7px 0 7px 9px;
+  border-style: solid;
+  border-color: transparent transparent transparent var(--background);
+}
+
+@media (max-width: 600px) {
+  .passwordPopupError {
+    right: auto;
+    left: 0;
+    top: 110%;
+    min-width: 220px;
+  }
+  .passwordPopupError::before,
+  .passwordPopupError::after {
+    display: none;
+  }
 }
 
 .passwordRequirementsList {
