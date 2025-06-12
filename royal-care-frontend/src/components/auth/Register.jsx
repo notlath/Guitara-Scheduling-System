@@ -314,7 +314,7 @@ const Register = () => {
                       )}
                     </FormField>
                   </div>
-                  <div className={styles.formGroup}>
+                  <div className={styles.formGroup} style={{ position: 'relative' }}>
                     <FormField
                       label="Create password"
                       name="password"
@@ -334,59 +334,58 @@ const Register = () => {
                         onFocus: () => setPasswordFocused(true),
                         onBlur: () => setPasswordFocused(false),
                       }}
-                    >
-                      {passwordFocused && (
-                        <div className={styles.passwordPopupError}>
-                          <ul className={styles.passwordRequirementsList}>
-                            <li
-                              className={
-                                passwordRequirements.hasLower
-                                  ? styles.requirementMet
-                                  : styles.requirementUnmet
-                              }
-                            >
-                              At least one lowercase letter (a-z)
-                            </li>
-                            <li
-                              className={
-                                passwordRequirements.hasUpper
-                                  ? styles.requirementMet
-                                  : styles.requirementUnmet
-                              }
-                            >
-                              At least one uppercase letter (A-Z)
-                            </li>
-                            <li
-                              className={
-                                passwordRequirements.hasNumber
-                                  ? styles.requirementMet
-                                  : styles.requirementUnmet
-                              }
-                            >
-                              At least one number (0-9)
-                            </li>
-                            <li
-                              className={
-                                /[@$!%*?&]/.test(formData.password)
-                                  ? styles.requirementMet
-                                  : styles.requirementUnmet
-                              }
-                            >
-                              At least one special character (@$!%*?&)
-                            </li>
-                            <li
-                              className={
-                                formData.password.length >= 8
-                                  ? styles.requirementMet
-                                  : styles.requirementUnmet
-                              }
-                            >
-                              At least 8 characters long
-                            </li>
-                          </ul>
-                        </div>
-                      )}
-                    </FormField>
+                    />
+                    {passwordFocused && (
+                      <div className={styles.passwordPopupError}>
+                        <ul className={styles.passwordRequirementsList}>
+                          <li
+                            className={
+                              passwordRequirements.hasLower
+                                ? styles.requirementMet
+                                : styles.requirementUnmet
+                            }
+                          >
+                            At least one lowercase letter (a-z)
+                          </li>
+                          <li
+                            className={
+                              passwordRequirements.hasUpper
+                                ? styles.requirementMet
+                                : styles.requirementUnmet
+                            }
+                          >
+                            At least one uppercase letter (A-Z)
+                          </li>
+                          <li
+                            className={
+                              passwordRequirements.hasNumber
+                                ? styles.requirementMet
+                                : styles.requirementUnmet
+                            }
+                          >
+                            At least one number (0-9)
+                          </li>
+                          <li
+                            className={
+                              /[@$!%*?&]/.test(formData.password)
+                                ? styles.requirementMet
+                                : styles.requirementUnmet
+                            }
+                          >
+                            At least one special character (@$!%*?&)
+                          </li>
+                          <li
+                            className={
+                              formData.password.length >= 8
+                                ? styles.requirementMet
+                                : styles.requirementUnmet
+                            }
+                          >
+                            At least 8 characters long
+                          </li>
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
