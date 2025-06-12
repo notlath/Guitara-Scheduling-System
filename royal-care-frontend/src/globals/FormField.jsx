@@ -15,7 +15,6 @@ export function PasswordVisibilityToggle({
       aria-label={visible ? "Hide password" : "Show password"}
       onClick={onToggle}
       className={className}
-      tabIndex={-1}
       {...props}
     >
       {visible ? <MdVisibilityOff size={22} /> : <MdVisibility size={22} />}

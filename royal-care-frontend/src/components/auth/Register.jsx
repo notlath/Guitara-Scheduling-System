@@ -136,7 +136,7 @@ const Register = () => {
     // Validate each field
     const emailError = validateInput("email", formData.email, {
       required: true,
-      pattern: "^[^s@]+@[^s@]+.[^s@]+$",
+      pattern: "^[^s@]+@[^s@]+\\.[^s@]+$",
     });
     if (emailError) newErrors.email = emailError;
 
