@@ -154,14 +154,14 @@ small {
   --error-text: #d93025;
 
   /* Font sizes */
-  --font-size-xs: 0.7rem;
-  --font-size-sm: 0.8rem;
-  --font-size-base: 1rem;
-  --font-size-md: 1.25rem;
-  --font-size-lg: 1.563rem;
-  --font-size-xl: 1.954rem;
-  --font-size-xxl: 2.442rem;
-  --font-size-xxxl: 3.053rem;
+  --font-size-xs: 0.7rem; /* 11px */
+  --font-size-sm: 0.8rem; /* 13px */
+  --font-size-base: 1rem; /* 16px */
+  --font-size-md: 1.25rem; /* 20px */
+  --font-size-lg: 1.563rem; /* 25px */
+  --font-size-xl: 1.954rem; /* 31px */
+  --font-size-xxl: 2.442rem; /* 39px */
+  --font-size-xxxl: 3.053rem; /* 49px */
 
   /* Spacing variables */
   --spacing-xxs: 0.25rem; /* 4px */

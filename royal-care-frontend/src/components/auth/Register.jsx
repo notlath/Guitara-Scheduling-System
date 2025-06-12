@@ -254,7 +254,7 @@ const Register = () => {
                       validate={fieldValidators.email}
                       onErrorChange={handleFieldError}
                       inputProps={{
-                        placeholder: "Email",
+                        placeholder: "e.g. johndoe@email.com",
                         className: `global-form-field-input`,
                         title: "Enter your email address",
                         id: "email",
@@ -294,7 +294,7 @@ const Register = () => {
                                 phone_number: "",
                               }));
                           }}
-                          placeholder="XXX-XXXX-XXX"
+                          placeholder="9XX-XXXX-XXX"
                           className={`global-form-field-input${
                             errors.phone_number
                               ? " global-form-field-error"
@@ -328,7 +328,7 @@ const Register = () => {
                       validate={fieldValidators.password}
                       onErrorChange={handleFieldError}
                       inputProps={{
-                        placeholder: "Password",
+                        placeholder: "Choose a strong password",
                         className: `${styles.inputWithIcon} global-form-field-input`,
                         title:
                           "Password must be at least 8 characters and include uppercase, lowercase, number and special character",
@@ -401,7 +401,7 @@ const Register = () => {
                       validate={fieldValidators.passwordConfirm}
                       onErrorChange={handleFieldError}
                       inputProps={{
-                        placeholder: "Confirm Password",
+                        placeholder: "Repeat your password",
                         className: `${styles.inputWithIcon} global-form-field-input`,
                         id: "passwordConfirm",
                         autoComplete: "new-password",
