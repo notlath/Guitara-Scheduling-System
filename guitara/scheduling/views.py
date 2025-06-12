@@ -1312,6 +1312,70 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             },
         )
 
+    def _get_next_available_driver_for_pickup(self, appointment):
+        """Get the next available driver for pickup using FIFO system"""
+        from datetime import date
+        from django.db.models import Q
+
+        # Get drivers who are available today and not currently busy
+        today = date.today()
+
+        # Find drivers with availability today who are not currently assigned to active appointments
+        available_drivers = (
+            CustomUser.objects.filter(
+                role="driver",
+                is_active=True,
+                # Have availability today
+                availabilities__date=today,
+                availabilities__is_available=True,
+            )
+            .exclude(
+                # Exclude drivers who are currently busy with active appointments
+                Q(
+                    driver_appointments__status__in=[
+                        "in_progress",
+                        "journey",
+                        "arrived",
+                        "driver_assigned_pickup",
+                        "return_journey",
+                    ]
+                )
+                & Q(driver_appointments__date=today)
+            )
+            .distinct()
+        )
+
+        # Apply FIFO logic - get driver who became available earliest
+        if available_drivers.exists():
+            # Sort by last_available_at (earliest first) for FIFO
+            return available_drivers.order_by("last_available_at").first()
+
+        return None
+
+    def _get_busy_drivers_with_availability(self, appointment_date):
+        """Get drivers who are busy but have availability for the given date"""
+        from django.db.models import Q
+
+        # Find drivers who have availability for the date but are currently busy
+        busy_drivers = CustomUser.objects.filter(
+            role="driver",
+            is_active=True,
+            # Have availability for the date
+            availabilities__date=appointment_date,
+            availabilities__is_available=True,
+            # But are currently assigned to active appointments
+            driver_appointments__status__in=[
+                "in_progress",
+                "journey",
+                "arrived",
+                "driver_assigned_pickup",
+                "return_journey",
+            ],
+            driver_appointments__date=appointment_date,
+        ).distinct()
+
+        return busy_drivers
+
     @action(detail=True, methods=["post"])
     def therapist_confirm(self, request, pk=None):
         """Therapist confirms appointment - first step in confirmation process"""
@@ -1866,6 +1930,137 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 "driver_assigned": (
                     available_driver.get_full_name() if available_driver else None
                 ),
+            }
+        )
+
+    @action(detail=True, methods=["post"])
+    def confirm_pickup(self, request, pk=None):
+        """Driver confirms pickup assignment"""
+        appointment = self.get_object()
+
+        # Only the assigned driver can confirm pickup
+        if request.user != appointment.driver:
+            return Response(
+                {"error": "You can only confirm pickup assignments assigned to you"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Can only confirm pickup when status is driver_assigned_pickup
+        if appointment.status != "driver_assigned_pickup":
+            return Response(
+                {
+                    "error": f"Cannot confirm pickup for appointment in {appointment.status} status. Only driver_assigned_pickup appointments can be confirmed."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Update status to return_journey (driver confirmed and is en route for pickup)
+        appointment.status = "return_journey"
+        appointment.pickup_confirmed_at = timezone.now()
+        appointment.save()
+
+        # Create notifications
+        self._create_notifications(
+            appointment,
+            "pickup_confirmed",
+            f"✅ Pickup confirmed by driver {request.user.get_full_name()}. "
+            f"Driver is now en route to pick up therapist from {appointment.location}.",
+        )
+
+        # Send WebSocket notification
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": "pickup_confirmed",
+                    "appointment_id": appointment.id,
+                    "driver_id": request.user.id,
+                    "therapist_id": (
+                        appointment.therapist.id if appointment.therapist else None
+                    ),
+                    "message": f"Pickup confirmed. Driver en route for pickup.",
+                    "status": appointment.status,
+                },
+            },
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(
+            {
+                "message": "Pickup confirmed successfully! En route to pick up therapist.",
+                "appointment": serializer.data,
+            }
+        )
+
+    @action(detail=True, methods=["post"])
+    def reject_pickup(self, request, pk=None):
+        """Driver rejects pickup assignment"""
+        appointment = self.get_object()
+
+        # Only the assigned driver can reject pickup
+        if request.user != appointment.driver:
+            return Response(
+                {"error": "You can only reject pickup assignments assigned to you"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Can only reject pickup when status is driver_assigned_pickup
+        if appointment.status != "driver_assigned_pickup":
+            return Response(
+                {
+                    "error": f"Cannot reject pickup for appointment in {appointment.status} status"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get rejection reason
+        reason = request.data.get("reason", "").strip()
+        if not reason:
+            return Response(
+                {"error": "Rejection reason is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )  # Reset to pickup_requested status for operator reassignment
+        appointment.status = "pickup_requested"
+        appointment.driver = None  # Remove driver assignment
+        # Use notes field for rejection reason since pickup_rejection_reason might not exist
+        appointment.pickup_notes = f"REJECTED: {reason}"
+        appointment.save()
+
+        # Create notifications
+        self._create_notifications(
+            appointment,
+            "pickup_rejected",
+            f"❌ Pickup rejected by driver {request.user.get_full_name()}. "
+            f"Reason: {reason}. Reassignment required by operator.",
+        )
+
+        # Send WebSocket notification
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "appointments",
+            {
+                "type": "appointment_message",
+                "message": {
+                    "type": "pickup_rejected",
+                    "appointment_id": appointment.id,
+                    "driver_id": request.user.id,
+                    "therapist_id": (
+                        appointment.therapist.id if appointment.therapist else None
+                    ),
+                    "message": f"Pickup rejected. Reassignment required.",
+                    "reason": reason,
+                    "status": appointment.status,
+                },
+            },
+        )
+
+        serializer = self.get_serializer(appointment)
+        return Response(
+            {
+                "message": "Pickup rejected. The appointment will be reassigned to another driver.",
+                "appointment": serializer.data,
             }
         )
 
