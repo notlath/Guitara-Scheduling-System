@@ -12,7 +12,7 @@ import { cleanupFido2Script } from "../../utils/webAuthnHelper";
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    username: "",
+    email: "",
     password: "",
     passwordConfirm: "",
     role: "Driver", // Default to Driver role - role field is not shown to users
@@ -118,14 +118,30 @@ const Register = () => {
     }
   };
 
+  const fieldValidators = {
+    email: (val) => validateInput("email", val, { required: true }),
+    password: (val) => validateInput("password", val, { required: true }),
+    passwordConfirm: (val) => {
+      if (!val) return "This field is required";
+      if (val !== formData.password) return "Passwords don't match";
+      return "";
+    },
+    phone_number: (val) => validateInput("phone", val, { required: true }),
+  };
+
+  const handleFieldError = (name, error) => {
+    setErrors((prev) => ({ ...prev, [name]: error }));
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
     // Validate each field
-    const usernameError = validateInput("username", formData.username, {
+    const emailError = validateInput("email", formData.email, {
       required: true,
+      pattern: "^[^s@]+@[^s@]+.[^s@]+$",
     });
-    if (usernameError) newErrors.username = usernameError;
+    if (emailError) newErrors.email = emailError;
 
     const passwordError = validateInput("password", formData.password, {
       required: true,
@@ -162,7 +178,7 @@ const Register = () => {
 
     // Create a clean submission object without the confirm password field
     const submissionData = {
-      username: formData.username,
+      email: formData.email,
       password: formData.password,
       role: formData.role,
       phone_number: formData.phone_number,
@@ -232,34 +248,22 @@ const Register = () => {
                 <div className={styles.inputContainer}>
                   <div className={styles.formGroup}>
                     <FormField
-                      label={
-                        <span>
-                          Username{" "}
-                          <span className={styles.requiredAsterisk}>*</span>
-                        </span>
-                      }
-                      name="username"
-                      value={formData.username}
+                      label="Email"
+                      name="email"
+                      type="email"
+                      value={formData.email || ""}
                       onChange={handleChange}
                       required
-                      pattern="^[a-zA-Z0-9_]{3,30}$"
+                      validate={fieldValidators.email}
+                      onErrorChange={handleFieldError}
                       inputProps={{
-                        placeholder: "Username",
-                        className: `global-form-field-input${
-                          errors.username ? "" : ""
-                        }`,
-                        title: "Use username given by the admin",
-                        id: "username",
+                        placeholder: "Email",
+                        className: `global-form-field-input`,
+                        title: "Enter your email address",
+                        id: "email",
+                        autoComplete: "email",
                       }}
-                    >
-                      {errors.username && (
-                        <div className="global-form-field-error">
-                          {errors.username === "This field is required"
-                            ? "This field is required"
-                            : errors.username}
-                        </div>
-                      )}
-                    </FormField>
+                    />
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
@@ -315,23 +319,17 @@ const Register = () => {
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label={
-                        <span>
-                          Create password{" "}
-                          <span className={styles.requiredAsterisk}>*</span>
-                        </span>
-                      }
+                      label="Create password"
                       name="password"
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={handleChange}
                       required
-                      pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+                      validate={fieldValidators.password}
+                      onErrorChange={handleFieldError}
                       inputProps={{
                         placeholder: "Password",
-                        className: `${
-                          styles.inputWithIcon
-                        } global-form-field-input${errors.password ? "" : ""}`,
+                        className: `${styles.inputWithIcon} global-form-field-input`,
                         title:
                           "Password must be at least 8 characters and include uppercase, lowercase, number and special character",
                         id: "password",
@@ -342,7 +340,6 @@ const Register = () => {
                     >
                       <div className={styles.passwordFieldWrapper}>
                         <div className={styles.passwordInputRow}>
-                          {/* Password input is rendered by FormField */}
                           <button
                             type="button"
                             aria-label={
@@ -359,13 +356,6 @@ const Register = () => {
                             )}
                           </button>
                         </div>
-                        {errors.password && (
-                          <div className="global-form-field-error">
-                            {errors.password === "This field is required"
-                              ? "This field is required"
-                              : errors.password}
-                          </div>
-                        )}
                         {passwordFocused && (
                           <div className={styles.passwordPopupError}>
                             <ul className={styles.passwordRequirementsList}>
@@ -422,31 +412,23 @@ const Register = () => {
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label={
-                        <span>
-                          Re-enter password{" "}
-                          <span className={styles.requiredAsterisk}>*</span>
-                        </span>
-                      }
+                      label="Re-enter password"
                       name="passwordConfirm"
                       type={showPasswordConfirm ? "text" : "password"}
                       value={formData.passwordConfirm}
                       onChange={handleChange}
                       required
+                      validate={fieldValidators.passwordConfirm}
+                      onErrorChange={handleFieldError}
                       inputProps={{
                         placeholder: "Confirm Password",
-                        className: `${
-                          styles.inputWithIcon
-                        } global-form-field-input${
-                          errors.passwordConfirm ? "" : ""
-                        }`,
+                        className: `${styles.inputWithIcon} global-form-field-input`,
                         id: "passwordConfirm",
                         autoComplete: "new-password",
                       }}
                     >
                       <div className={styles.passwordFieldWrapper}>
                         <div className={styles.passwordInputRow}>
-                          {/* Password confirm input is rendered by FormField */}
                           <button
                             type="button"
                             aria-label={
@@ -465,15 +447,6 @@ const Register = () => {
                             )}
                           </button>
                         </div>
-                        {errors.passwordConfirm && (
-                          <div className="global-form-field-error">
-                            {errors.passwordConfirm ===
-                              "This field is required" ||
-                            !formData.passwordConfirm
-                              ? "This field is required"
-                              : errors.passwordConfirm}
-                          </div>
-                        )}
                       </div>
                     </FormField>
                   </div>

@@ -17,7 +17,7 @@
   color: var(--muted);
   font-weight: 400;
 }
-.global-form-field-status-text {
+/* .global-form-field-status-text {
   color: var(--muted);
   font-size: var(--font-size-sm);
   font-style: italic;
@@ -25,7 +25,7 @@
   margin-top: 0;
   margin-left: 12px;
   white-space: nowrap;
-}
+} */
 .global-form-field-input,
 .global-form-field-select {
   width: 100%;

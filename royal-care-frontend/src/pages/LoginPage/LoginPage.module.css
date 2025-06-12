@@ -163,7 +163,7 @@
 .passwordPopupError::before {
   content: "";
   position: absolute;
-  top: 13px;
+  top: 11px;
   right: -10px;
   border-width: 8px 0 8px 10px;
   border-style: solid;
@@ -173,7 +173,7 @@
 .passwordPopupError::after {
   content: "";
   position: absolute;
-  top: 14px;
+  top: 12px;
   right: -8px;
   border-width: 7px 0 7px 9px;
   border-style: solid;
@@ -317,13 +317,13 @@
   width: 100%;
 }
 
-.requiredAsterisk {
+/* .requiredAsterisk {
   color: var(--error);
   margin-left: 1px;
   font-size: var(--font-size-sm);
   font-weight: 400;
   vertical-align: middle;
-}
+} */
 
 /* Fix: Make the password input and eye icon always aligned regardless of error message */
 .passwordFieldWrapper {
