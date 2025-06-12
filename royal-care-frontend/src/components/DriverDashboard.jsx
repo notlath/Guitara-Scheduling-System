@@ -118,9 +118,8 @@ const DriverDashboard = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   // Loading states for individual button actions
   const [buttonLoading, setButtonLoading] = useState({});
-
   // Pickup assignment timer state
-  const [pickupTimers, setPickupTimers] = useState({});
+  const [_pickupTimers, setPickupTimers] = useState({});
 
   // Helper function to set loading state for specific action
   const setActionLoading = (actionKey, isLoading) => {
@@ -1255,47 +1254,124 @@ const DriverDashboard = () => {
           (timeRemaining % (60 * 1000)) / 1000
         );
 
+        // Determine urgency level for styling
+        const isUrgent = minutesRemaining < 5;
+        const isCritical = minutesRemaining < 2;
+
         return (
           <div className="appointment-actions">
-            <div className="pickup-assignment-info">
-              <span className="pickup-assignment-badge">
-                🚖 Pickup Assignment - {therapistName}
-              </span>
-              <p>
-                <strong>Session completed:</strong>{" "}
-                {sessionEndTime
-                  ? new Date(sessionEndTime).toLocaleString()
-                  : "Recently"}
-              </p>
-              <p>
-                <strong>Date:</strong>{" "}
-                {new Date(appointment.date).toLocaleDateString()}
-              </p>
-              <p>
-                <strong>Pickup location:</strong> {appointment.location}
-              </p>
-              {therapistPhone && (
-                <p>
-                  <strong>Therapist phone:</strong>{" "}
-                  <a href={`tel:${therapistPhone}`} className="phone-link">
-                    {therapistPhone}
-                  </a>
-                </p>
-              )}
-              <p className="confirmation-timer">
-                <strong>Confirm within:</strong> {minutesRemaining}m{" "}
-                {secondsRemaining}s
-              </p>
-            </div>
-            <div className="pickup-assignment-buttons">
-              <LoadingButton
-                className="confirm-pickup-button"
-                onClick={() => handleConfirmPickup(id)}
-                loading={buttonLoading[`confirm-pickup-${id}`]}
-                loadingText="Confirming..."
-              >
-                Confirm Pickup
-              </LoadingButton>
+            <div
+              className={`pickup-assignment-urgent ${
+                isCritical ? "critical" : isUrgent ? "urgent" : "normal"
+              }`}
+            >
+              {/* Therapist Priority Information */}
+              <div className="therapist-priority-info">
+                <div className="pickup-assignment-header">
+                  <h3 className="therapist-pickup-title">
+                    <i className="fas fa-user-md"></i>
+                    Pick up {therapistName}
+                  </h3>
+                  <div
+                    className={`countdown-timer ${
+                      isCritical ? "critical" : isUrgent ? "urgent" : "normal"
+                    }`}
+                  >
+                    <i className="fas fa-clock"></i>
+                    <span className="timer-text">
+                      {minutesRemaining}m {secondsRemaining}s
+                    </span>
+                  </div>
+                </div>
+
+                {/* Therapist Contact Information */}
+                <div className="therapist-contact-priority">
+                  <div className="contact-item">
+                    <i className="fas fa-phone"></i>
+                    {therapistPhone ? (
+                      <a
+                        href={`tel:${therapistPhone}`}
+                        className="phone-link-priority"
+                      >
+                        {therapistPhone}
+                      </a>
+                    ) : (
+                      <span className="no-phone">Phone not available</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Session Completion Information */}
+              <div className="session-completion-info">
+                <h4 className="section-title">
+                  <i className="fas fa-check-circle"></i>
+                  Session Completed
+                </h4>
+                <div className="completion-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Completed:</span>
+                    <span className="detail-value">
+                      {sessionEndTime
+                        ? new Date(sessionEndTime).toLocaleString()
+                        : "Recently"}
+                    </span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Date:</span>
+                    <span className="detail-value">
+                      {new Date(appointment.date).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pickup Location Priority */}
+              <div className="pickup-location-priority">
+                <h4 className="section-title">
+                  <i className="fas fa-map-marker-alt"></i>
+                  Pickup Location
+                </h4>
+                <div className="location-details">
+                  <p className="location-address">{appointment.location}</p>
+                  <p className="client-context">
+                    Client: {appointment.client_details?.first_name}{" "}
+                    {appointment.client_details?.last_name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Auto-disable Warning */}
+              <div className="auto-disable-warning">
+                <div className="warning-content">
+                  <i className="fas fa-exclamation-triangle"></i>
+                  <div className="warning-text">
+                    <strong>
+                      Auto-disable in {minutesRemaining}m {secondsRemaining}s
+                    </strong>
+                    <p>
+                      If not confirmed, your account will be temporarily
+                      disabled and this pickup will be reassigned to the next
+                      available driver.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Confirmation Action */}
+              <div className="pickup-confirmation-action">
+                <LoadingButton
+                  className={`confirm-pickup-button-priority ${
+                    isCritical ? "critical" : isUrgent ? "urgent" : "normal"
+                  }`}
+                  onClick={() => handleConfirmPickup(id)}
+                  loading={buttonLoading[`confirm-pickup-${id}`]}
+                  loadingText="Confirming..."
+                >
+                  <i className="fas fa-check"></i>
+                  CONFIRM PICKUP
+                </LoadingButton>
+              </div>
             </div>
           </div>
         );
@@ -1694,15 +1770,44 @@ const DriverDashboard = () => {
             </button>
           </div>
         )}{" "}
-        {/* Active Pickup Assignment Banner */}
+        {/* Enhanced Active Pickup Assignment Banner */}
         {hasActivePickupAssignment && activePickupAssignment && (
-          <div className="pickup-notice">
-            <p>
-              <strong>Active pickup assignment:</strong>{" "}
-              {activePickupAssignment.therapist?.first_name}{" "}
-              {activePickupAssignment.therapist?.last_name} at{" "}
-              {activePickupAssignment.location}
-            </p>
+          <div className="active-pickup-banner">
+            <div className="banner-content">
+              <div className="pickup-urgency-indicator">
+                <i className="fas fa-exclamation-triangle"></i>
+                <span className="urgency-text">URGENT PICKUP ASSIGNMENT</span>
+              </div>
+              <div className="pickup-banner-details">
+                <h3 className="therapist-name-emphasis">
+                  Pick up {activePickupAssignment.therapist?.first_name}{" "}
+                  {activePickupAssignment.therapist?.last_name}
+                </h3>
+                <p className="pickup-location-emphasis">
+                  📍 {activePickupAssignment.location}
+                </p>
+                <div className="banner-timer">
+                  <i className="fas fa-clock"></i>
+                  <span>
+                    Confirm within 15 minutes or account will be disabled
+                  </span>
+                </div>
+              </div>
+              <div className="banner-actions">
+                <button
+                  className="view-pickup-btn"
+                  onClick={() => setView("today")}
+                >
+                  VIEW PICKUP →
+                </button>
+              </div>
+            </div>
+            <div className="banner-warning">
+              <i className="fas fa-warning"></i>
+              <span>
+                All other actions are disabled until this pickup is confirmed
+              </span>
+            </div>
           </div>
         )}
         <div className="view-selector">
