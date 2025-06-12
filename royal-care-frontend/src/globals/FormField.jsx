@@ -1,5 +1,26 @@
 import React, { useState, useEffect } from "react";
 import "./FormField.css";
+import { MdVisibility, MdVisibilityOff } from "react-icons/md";
+
+export function PasswordVisibilityToggle({
+  visible,
+  onToggle,
+  className = "",
+  ...props
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={visible ? "Hide password" : "Show password"}
+      onClick={onToggle}
+      className={className}
+      tabIndex={-1}
+      {...props}
+    >
+      {visible ? <MdVisibilityOff size={22} /> : <MdVisibility size={22} />}
+    </button>
+  );
+}
 
 export function FormField({
   label,
@@ -17,6 +38,7 @@ export function FormField({
 }) {
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Run validation whenever value or touched changes
   useEffect(() => {
@@ -75,7 +97,27 @@ export function FormField({
         </div>
       )}
       <div className="global-form-field-relative-wrapper">
-        {children && as === "custom" ? (
+        {as === "input" && type === "password" ? (
+          <div style={{ position: "relative", width: "100%" }}>
+            <input
+              className={inputClassName}
+              type={showPassword ? "text" : "password"}
+              name={name}
+              id={name}
+              value={value}
+              onChange={onChange}
+              required={required}
+              onBlur={handleBlur}
+              {...inputProps}
+              {...rest}
+            />
+            <PasswordVisibilityToggle
+              visible={showPassword}
+              onToggle={() => setShowPassword((v) => !v)}
+              className="inputIconBtn"
+            />
+          </div>
+        ) : children && as === "custom" ? (
           children
         ) : as === "select" ? (
           <select
@@ -117,7 +159,11 @@ export function FormField({
           />
         )}
         {/* Render children inside the relative wrapper for icons, popups, etc. */}
-        {children && as !== "custom" && as !== "select" && children}
+        {children &&
+          as !== "custom" &&
+          as !== "select" &&
+          as !== "input" &&
+          children}
         {error && <div className="global-form-field-error">{error}</div>}
       </div>
     </div>
