@@ -366,94 +366,6 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     );
   };
 
-  // Render bookings for the selected day
-  const renderDayBookings = () => {
-    // Ensure appointmentsByDate is always an array - handle null, undefined, or non-array values
-    let bookings = [];
-    if (appointmentsByDate && Array.isArray(appointmentsByDate)) {
-      bookings = appointmentsByDate;
-    } else if (appointmentsByDate && typeof appointmentsByDate === "object") {
-      // Handle case where it might be an object with array inside
-      bookings =
-        appointmentsByDate.appointments || appointmentsByDate.data || [];
-    }
-
-    if (!Array.isArray(bookings)) {
-      bookings = [];
-    }
-
-    if (bookings.length === 0) {
-      return (
-        <div className="day-bookings">
-          <h3>Bookings for {selectedDate.toLocaleDateString()}</h3>
-          <p className="no-bookings">No bookings found for this date.</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="day-bookings">
-        <h3>Bookings for {selectedDate.toLocaleDateString()}</h3>
-        <div className="bookings-list">
-          {bookings.map((appointment, index) => (
-            <div key={appointment.id || index} className="booking-card">
-              <div className="booking-header">
-                <h4>
-                  {appointment.client_details?.first_name || "N/A"}{" "}
-                  {appointment.client_details?.last_name || ""}
-                </h4>
-                <span
-                  className={`status-badge status-${
-                    appointment.status || "pending"
-                  }`}
-                >
-                  {appointment.status
-                    ? appointment.status.charAt(0).toUpperCase() +
-                      appointment.status.slice(1)
-                    : "Pending"}
-                </span>
-              </div>
-              <div className="booking-details">
-                <p>
-                  <strong>Time:</strong> {appointment.start_time || "N/A"} -{" "}
-                  {appointment.end_time || "N/A"}
-                </p>
-                <p>
-                  <strong>Services:</strong>{" "}
-                  {appointment.services_details
-                    ?.map((s) => s.name)
-                    .join(", ") || "N/A"}
-                </p>
-                {appointment.therapist_details && (
-                  <p>
-                    <strong>Therapist:</strong>{" "}
-                    {appointment.therapist_details.first_name}{" "}
-                    {appointment.therapist_details.last_name}
-                  </p>
-                )}
-                {appointment.driver_details && (
-                  <p>
-                    <strong>Driver:</strong>{" "}
-                    {appointment.driver_details.first_name}{" "}
-                    {appointment.driver_details.last_name}
-                  </p>
-                )}
-                <p>
-                  <strong>Location:</strong> {appointment.location || "N/A"}
-                </p>
-                {appointment.notes && (
-                  <p>
-                    <strong>Notes:</strong> {appointment.notes}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   // Generate calendar UI for day view
   const renderDayCalendar = () => {
     const timeSlots = generateTimeSlots();
@@ -637,7 +549,106 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
           </div>
 
           {/* Display bookings for the selected day */}
-          {renderDayBookings()}
+          <div className="day-bookings">
+            {(() => {
+              // Ensure appointmentsByDate is always an array - handle null, undefined, or non-array values
+              let bookings = [];
+              if (appointmentsByDate && Array.isArray(appointmentsByDate)) {
+                bookings = appointmentsByDate;
+              } else if (
+                appointmentsByDate &&
+                typeof appointmentsByDate === "object"
+              ) {
+                // Handle case where it might be an object with array inside
+                bookings =
+                  appointmentsByDate.appointments ||
+                  appointmentsByDate.data ||
+                  [];
+              }
+
+              if (!Array.isArray(bookings)) {
+                bookings = [];
+              }
+
+              if (bookings.length === 0) {
+                return (
+                  <>
+                    <h3>Bookings for {selectedDate.toLocaleDateString()}</h3>
+                    <p className="no-bookings">
+                      No bookings found for this date.
+                    </p>
+                  </>
+                );
+              }
+
+              return (
+                <>
+                  <h3>Bookings for {selectedDate.toLocaleDateString()}</h3>
+                  <div className="bookings-list">
+                    {bookings.map((appointment, index) => (
+                      <div
+                        key={appointment.id || index}
+                        className="booking-card"
+                      >
+                        <div className="booking-header">
+                          <h4>
+                            {appointment.client_details?.first_name || "N/A"}{" "}
+                            {appointment.client_details?.last_name || ""}
+                          </h4>
+                          <span
+                            className={`status-badge status-${
+                              appointment.status || "pending"
+                            }`}
+                          >
+                            {appointment.status
+                              ? appointment.status.charAt(0).toUpperCase() +
+                                appointment.status.slice(1)
+                              : "Pending"}
+                          </span>
+                        </div>
+                        <div className="booking-details">
+                          <p>
+                            <strong>Time:</strong>{" "}
+                            {appointment.start_time || "N/A"} -{" "}
+                            {appointment.end_time || "N/A"}
+                          </p>
+                          <p>
+                            <strong>Services:</strong>{" "}
+                            {appointment.services_details
+                              ?.map((s) => s.name)
+                              .join(", ") || "N/A"}
+                          </p>
+                          {appointment.therapist_details && (
+                            <p>
+                              <strong>Therapist:</strong>{" "}
+                              {appointment.therapist_details.first_name}{" "}
+                              {appointment.therapist_details.last_name}
+                            </p>
+                          )}
+                          {appointment.driver_details && (
+                            <p>
+                              <strong>Driver:</strong>{" "}
+                              {appointment.driver_details.first_name}{" "}
+                              {appointment.driver_details.last_name}
+                            </p>
+                          )}
+                          <p>
+                            <strong>Location:</strong>{" "}
+                            {appointment.location || "N/A"}
+                          </p>
+                          {appointment.notes && (
+                            <p>
+                              <strong>Notes:</strong> {appointment.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
         </div>
       )}
     </div>
