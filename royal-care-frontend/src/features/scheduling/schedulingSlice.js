@@ -1473,6 +1473,28 @@ export const markAppointmentPaid = createAsyncThunk(
   }
 );
 
+// Complete return journey (driver action)
+export const completeReturnJourney = createAsyncThunk(
+  "scheduling/completeReturnJourney",
+  async (appointmentId, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) return rejectWithValue("Authentication required");
+    try {
+      const response = await axios.post(
+        `${API_URL}appointments/${appointmentId}/complete_return_journey/`,
+        {},
+        { headers: { Authorization: `Token ${token}` } }
+      );
+      sendAppointmentUpdate(response.data.id);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        handleApiError(error, "Could not complete return journey")
+      );
+    }
+  }
+);
+
 // Initial state
 const initialState = {
   appointments: [],

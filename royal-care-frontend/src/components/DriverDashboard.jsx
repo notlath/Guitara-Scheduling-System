@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
-  confirmPickup, // Added for pickup rejection
+  completeReturnJourney,
+  confirmPickup, // Added for completing return journey
   fetchAppointments,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
@@ -225,6 +226,7 @@ const DriverDashboard = () => {
       "pickup_requested",
       "driver_assigned_pickup", // Show pickup assignments to driver
       "return_journey", // Show return journey status
+      "transport_completed", // Show completed transport cycles
     ];
 
     return visibleStatuses.includes(apt.status);
@@ -248,6 +250,7 @@ const DriverDashboard = () => {
       "pickup_requested",
       "driver_assigned_pickup", // Show pickup assignments to driver
       "return_journey", // Show return journey status
+      "transport_completed", // Show completed transport cycles
     ];
     return visibleStatuses.includes(apt.status);
   });
@@ -270,6 +273,7 @@ const DriverDashboard = () => {
       "pickup_requested",
       "driver_assigned_pickup", // Show pickup assignments to driver
       "return_journey", // Show return journey status
+      "transport_completed", // Show completed transport cycles
     ];
     return visibleStatuses.includes(apt.status);
   }); // Separate filter for "All My Transports" view - includes completed transports
@@ -293,9 +297,9 @@ const DriverDashboard = () => {
         "completed", // This shows completed transports in "All My Transports"
         "pickup_requested",
         "therapist_dropped_off", // Legacy status support
-        "payment_completed", // Session fully finished
-        "driver_assigned_pickup", // Driver assigned for pickup
+        "payment_completed", // Session fully finished        "driver_assigned_pickup", // Driver assigned for pickup
         "return_journey", // Return journey status
+        "transport_completed", // Transport cycle completed
       ];
 
       return allStatuses.includes(apt.status);
@@ -716,6 +720,23 @@ const DriverDashboard = () => {
     } catch (error) {
       console.error("Failed to mark drop off:", error);
       alert("Failed to mark drop off. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
+    }
+  };
+
+  const handleCompleteReturnJourney = async (appointmentId) => {
+    const actionKey = `complete_return_journey_${appointmentId}`;
+    try {
+      setActionLoading(actionKey, true);
+      await dispatch(completeReturnJourney(appointmentId)).unwrap();
+      refreshAppointments(true);
+      alert(
+        "Return journey completed successfully! You are now available for new assignments."
+      );
+    } catch (error) {
+      console.error("Failed to complete return journey:", error);
+      alert("Failed to complete return journey. Please try again.");
     } finally {
       setActionLoading(actionKey, false);
     }
@@ -1244,6 +1265,71 @@ const DriverDashboard = () => {
           </div>
         );
 
+      case "return_journey":
+        return (
+          <div className="appointment-actions">
+            <div className="return-journey-buttons">
+              <LoadingButton
+                className="complete-return-journey-button"
+                onClick={() => handleCompleteReturnJourney(id)}
+                loading={buttonLoading[`complete_return_journey_${id}`]}
+                loadingText="Completing..."
+              >
+                ✅ Complete Return Journey
+              </LoadingButton>
+            </div>
+            <div className="return-journey-status">
+              <span className="journey-badge">🔄 Return Journey</span>
+              <p>
+                <strong>Returning therapist from:</strong>{" "}
+                {appointment.location}
+              </p>
+              <p>
+                Therapist pickup completed. Mark as finished when you have
+                safely returned the therapist to the pickup location.
+              </p>
+              {appointment.pickup_confirmed_at && (
+                <p className="pickup-time">
+                  <strong>Pickup confirmed at:</strong>{" "}
+                  {new Date(appointment.pickup_confirmed_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+
+      case "transport_completed":
+        return (
+          <div className="appointment-actions">
+            <div className="transport-completed-status">
+              <span className="success-badge">
+                ✅ Transport Cycle Completed
+              </span>
+              <p>
+                Return journey completed successfully! Therapist has been safely
+                returned to pickup location.
+              </p>
+              {appointment.return_journey_completed_at && (
+                <p className="completion-time">
+                  <strong>Return journey completed at:</strong>{" "}
+                  {new Date(
+                    appointment.return_journey_completed_at
+                  ).toLocaleString()}
+                </p>
+              )}
+              <div className="pickup-assignment-success">
+                <span className="pickup-success-badge">
+                  🎯 Pickup Assignment Completed
+                </span>
+                <p>
+                  This successful pickup assignment has been added to your
+                  stats.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
       case "completed":
         return (
           <div className="appointment-actions">
@@ -1306,16 +1392,6 @@ const DriverDashboard = () => {
             <div className="location-status">
               <span className="location-badge">📍 At location</span>
               <p>Ready for drop-off</p>
-            </div>
-          </div>
-        );
-
-      case "transport_completed":
-        return (
-          <div className="appointment-actions">
-            <div className="completed-status">
-              <span className="success-badge">✅ Transport Complete</span>
-              <p>Available for new assignments</p>
             </div>
           </div>
         );
@@ -1640,7 +1716,7 @@ const DriverDashboard = () => {
                       }
                     </span>
                     <span className="stat-label">Active/Pending</span>
-                  </div>
+                  </div>{" "}
                   <div className="stat-card pickup">
                     <span className="stat-number">
                       {
@@ -1648,11 +1724,23 @@ const DriverDashboard = () => {
                           [
                             "pickup_requested",
                             "driver_assigned_pickup",
+                            "return_journey",
+                            "transport_completed",
                           ].includes(apt.status)
                         ).length
                       }
                     </span>
                     <span className="stat-label">Pickup Assignments</span>
+                  </div>
+                  <div className="stat-card completed-pickups">
+                    <span className="stat-number">
+                      {
+                        myAllTransports.filter(
+                          (apt) => apt.status === "transport_completed"
+                        ).length
+                      }
+                    </span>
+                    <span className="stat-label">Completed Pickups</span>
                   </div>
                   <div className="stat-card total">
                     <span className="stat-number">

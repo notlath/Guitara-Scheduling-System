@@ -1,7 +1,10 @@
 import os
-print("[SETTINGS IMPORT] DJANGO_SETTINGS_MODULE:", os.environ.get("DJANGO_SETTINGS_MODULE"))
+
+print(
+    "[SETTINGS IMPORT] DJANGO_SETTINGS_MODULE:",
+    os.environ.get("DJANGO_SETTINGS_MODULE"),
+)
 print("[SETTINGS IMPORT] settings.py __file__:", __file__)
-raise Exception("TEST SETTINGS IMPORT - If you see this, settings.py is being executed!")
 os.environ["EMAIL_BACKEND"] = "django.core.mail.backends.console.EmailBackend"
 
 import environ

@@ -642,6 +642,16 @@ const TherapistDashboard = () => {
                     </div>
                   ) : (
                     <div className="pickup-pending">
+                      <div className="session-completion-info">
+                        {appointment.session_end_time && (
+                          <p className="completion-timestamp">
+                            <strong>Session completed:</strong>{" "}
+                            {new Date(
+                              appointment.session_end_time
+                            ).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
                       <span
                         className={`pickup-badge ${
                           appointment.pickup_urgency || "normal"
@@ -669,7 +679,22 @@ const TherapistDashboard = () => {
                 </div>
               ) : (
                 <div className="pickup-actions">
-                  <p className="pickup-info">Session completed. Need pickup?</p>
+                  <div className="session-completion-info">
+                    <p className="pickup-info">
+                      <span className="success-badge">
+                        ✅ Session completed
+                      </span>
+                      {appointment.session_end_time && (
+                        <span className="completion-timestamp">
+                          Completed at:{" "}
+                          {new Date(
+                            appointment.session_end_time
+                          ).toLocaleString()}
+                        </span>
+                      )}
+                    </p>
+                    <p>Need pickup to return?</p>
+                  </div>
                   <div className="pickup-buttons">
                     <LoadingButton
                       className="request-pickup-button"
@@ -703,13 +728,90 @@ const TherapistDashboard = () => {
             </div>
           );
         }
-
       case "pickup_requested":
         return (
           <div className="appointment-actions">
             <div className="pickup-requested-status">
+              {appointment.session_end_time && (
+                <div className="session-completion-info">
+                  <p className="completion-timestamp">
+                    <strong>Session completed:</strong>{" "}
+                    {new Date(appointment.session_end_time).toLocaleString()}
+                  </p>
+                </div>
+              )}
               <span className="pickup-badge">🚖 Pickup requested</span>
               <p>Waiting for pickup assignment...</p>
+            </div>
+          </div>
+        );
+
+      case "driver_assigned_pickup":
+        return (
+          <div className="appointment-actions">
+            <div className="pickup-assigned-status">
+              {appointment.session_end_time && (
+                <div className="session-completion-info">
+                  <p className="completion-timestamp">
+                    <strong>Session completed:</strong>{" "}
+                    {new Date(appointment.session_end_time).toLocaleString()}
+                  </p>
+                </div>
+              )}
+              <span className="success-badge">
+                ✅ Driver Assigned for Pickup
+              </span>
+              <p>
+                Driver{" "}
+                <strong>
+                  {appointment.driver_details?.first_name}{" "}
+                  {appointment.driver_details?.last_name}
+                </strong>{" "}
+                has been assigned for your pickup.
+              </p>
+              {appointment.estimated_pickup_time && (
+                <p>
+                  <strong>Estimated arrival:</strong>{" "}
+                  {new Date(appointment.estimated_pickup_time).toLocaleString()}
+                </p>
+              )}
+              <p className="waiting-confirmation">
+                Waiting for driver to confirm pickup...
+              </p>
+            </div>
+          </div>
+        );
+
+      case "return_journey":
+        return (
+          <div className="appointment-actions">
+            <div className="return-journey-status">
+              {appointment.session_end_time && (
+                <div className="session-completion-info">
+                  <p className="completion-timestamp">
+                    <strong>Session completed:</strong>{" "}
+                    {new Date(appointment.session_end_time).toLocaleString()}
+                  </p>
+                </div>
+              )}
+              <span className="journey-badge">
+                🔄 Driver En Route for Pickup
+              </span>
+              <p>
+                Driver{" "}
+                <strong>
+                  {appointment.driver_details?.first_name}{" "}
+                  {appointment.driver_details?.last_name}
+                </strong>{" "}
+                confirmed pickup and is on the way.
+              </p>
+              {appointment.pickup_confirmed_at && (
+                <p>
+                  <strong>Pickup confirmed at:</strong>{" "}
+                  {new Date(appointment.pickup_confirmed_at).toLocaleString()}
+                </p>
+              )}
+              <p>Please wait at the pickup location.</p>
             </div>
           </div>
         );
