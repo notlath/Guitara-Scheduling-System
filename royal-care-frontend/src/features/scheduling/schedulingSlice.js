@@ -1061,13 +1061,10 @@ export const fetchAppointmentsByWeek = createAsyncThunk(
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
     try {
-      const response = await axios.get(
-        `${API_URL}appointments/by_week/`,
-        {
-          headers: { Authorization: `Token ${token}` },
-          params: { week_start: weekStartDate }
-        }
-      );
+      const response = await axios.get(`${API_URL}appointments/by_week/`, {
+        headers: { Authorization: `Token ${token}` },
+        params: { week_start: weekStartDate },
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue(
