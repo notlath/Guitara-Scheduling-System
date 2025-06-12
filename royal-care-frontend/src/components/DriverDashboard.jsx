@@ -1573,13 +1573,23 @@ const DriverDashboard = () => {
                           <strong>Completed:</strong>{" "}
                           {new Date(appointment.updated_at).toLocaleString()}
                         </p>
-                      )}
-                      {appointment.total_amount && (
-                        <p>
-                          <strong>Session Value:</strong> ₱
-                          {appointment.total_amount}
-                        </p>
-                      )}
+                      )}{" "}
+                      {appointment.services_details &&
+                        appointment.services_details.length > 0 && (
+                          <p>
+                            <strong>Session Value:</strong> ₱
+                            {(() => {
+                              const total = appointment.services_details.reduce(
+                                (sum, service) => {
+                                  const price = parseFloat(service.price) || 0;
+                                  return sum + price;
+                                },
+                                0
+                              );
+                              return total.toFixed(2);
+                            })()}
+                          </p>
+                        )}
                     </div>
                   )}
 
