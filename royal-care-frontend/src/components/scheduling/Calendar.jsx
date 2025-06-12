@@ -35,6 +35,65 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     }
   };
 
+  // Check if a time slot is in the past
+  const isPastTimeSlot = (timeSlot, date) => {
+    const now = new Date();
+    const [hours, minutes] = timeSlot.split(":").map(Number);
+    const slotDateTime = new Date(date);
+    slotDateTime.setHours(hours, minutes, 0, 0);
+    return slotDateTime < now;
+  };
+
+  // Get availability status for a time slot
+  const getTimeSlotStatus = (timeSlot, date) => {
+    if (isPastTimeSlot(timeSlot, date)) {
+      return { status: "past", color: "#6b7280", emoji: "⚫" }; // Gray
+    }
+
+    // Check if there are appointments at this time
+    let bookedTherapists = [];
+
+    if (appointmentsByDate && Array.isArray(appointmentsByDate)) {
+      appointmentsByDate.forEach((appointment) => {
+        if (
+          appointment.start_time <= timeSlot &&
+          appointment.end_time > timeSlot
+        ) {
+          if (appointment.therapist_details?.id) {
+            bookedTherapists.push(appointment.therapist_details.id);
+          }
+        }
+      });
+    }
+
+    // Filter available therapists to exclude those currently in session
+    const actuallyAvailableTherapists =
+      availableTherapists?.filter(
+        (therapist) => !bookedTherapists.includes(therapist.id)
+      ) || [];
+
+    const totalTherapists = availableTherapists?.length || 0;
+    const availableCount = actuallyAvailableTherapists.length;
+
+    // If no therapists have set availability for this time
+    if (totalTherapists === 0) {
+      return { status: "no-availability", color: "#4b3b06", emoji: "🟡" }; // Orange-brown
+    }
+
+    // All slots are booked
+    if (availableCount === 0) {
+      return { status: "fully-booked", color: "#dc2626", emoji: "🔴" }; // Red
+    }
+
+    // Some availability remaining
+    if (availableCount < totalTherapists) {
+      return { status: "limited", color: "#f59e0b", emoji: "🟡" }; // Orange
+    }
+
+    // Full availability
+    return { status: "available", color: "#16a34a", emoji: "🟢" }; // Green
+  };
+
   // Check if a date is in the past (before today)
   const isPastDate = (date) => {
     const today = new Date();
@@ -412,28 +471,65 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
           )}
         </div>
 
-        {/* Always show bookings first */}
-        {renderDayBookings()}
-
-        {/* Only show time slots and availability for current/future dates */}
+        {/* Only show time slots for current/future dates */}
         {!isDateInPast && (
           <div className="time-slots">
             <h3>Available Time Slots</h3>
             <div className="time-slots-grid">
-              {timeSlots.map((time, index) => (
-                <div
-                  key={index}
-                  className={`time-slot ${
-                    selectedTime === time ? "selected-time" : ""
-                  }`}
-                  onClick={() => handleTimeClick(time)}
-                >
-                  {time}
-                </div>
-              ))}
+              {timeSlots.map((time, index) => {
+                const slotStatus = getTimeSlotStatus(time, selectedDate);
+                return (
+                  <div
+                    key={index}
+                    className={`time-slot ${
+                      selectedTime === time ? "selected-time" : ""
+                    } ${slotStatus.status}`}
+                    onClick={() =>
+                      slotStatus.status !== "past" && handleTimeClick(time)
+                    }
+                    style={{
+                      backgroundColor:
+                        selectedTime === time
+                          ? slotStatus.color
+                          : "transparent",
+                      borderColor: slotStatus.color,
+                      color: selectedTime === time ? "white" : slotStatus.color,
+                      cursor:
+                        slotStatus.status === "past"
+                          ? "not-allowed"
+                          : "pointer",
+                      opacity: slotStatus.status === "past" ? 0.5 : 1,
+                    }}
+                  >
+                    <span className="time-slot-emoji">{slotStatus.emoji}</span>
+                    <span className="time-slot-time">{time}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Legend for time slot colors */}
+            <div className="time-slot-legend">
+              <div className="legend-item">
+                <span>🟢</span> Available
+              </div>
+              <div className="legend-item">
+                <span>🟡</span> Limited availability
+              </div>
+              <div className="legend-item">
+                <span>🔴</span> Fully booked
+              </div>
+              <div className="legend-item">
+                <span style={{ color: "#4b3b06" }}>🟡</span> No availability set
+              </div>
+              <div className="legend-item">
+                <span>⚫</span> Past time
+              </div>
             </div>
           </div>
         )}
+
+        {/* Show bookings after time slots selection but before availability info */}
+        {renderDayBookings()}
       </div>
     );
   };
@@ -442,33 +538,60 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     <div className="calendar-wrapper">
       {view === "month" ? renderMonthCalendar() : renderDayCalendar()}
 
-      {/* Only show availability info for current/future dates */}
+      {/* Only show availability info for current/future dates - moved below bookings */}
       {view === "day" && !isPastDate(selectedDate) && (
         <div className="availability-info">
           <div className="therapists-section">
             <h3>Available Therapists</h3>
-            {availableTherapists && availableTherapists.length > 0 ? (
-              <ul>
-                {availableTherapists.map((therapist) => (
-                  <li key={therapist.id || Math.random()}>
-                    <b>
-                      {therapist.first_name || ""} {therapist.last_name || ""}
-                    </b>{" "}
-                    {therapist.specialization
-                      ? `- Specialization: ${therapist.specialization}`
-                      : ""}{" "}
-                    {therapist.start_time && therapist.end_time
-                      ? ` - Available: ${therapist.start_time} to ${therapist.end_time}`
-                      : ""}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>
-                No therapists available for selected time. Try selecting a
-                different time slot.
-              </p>
-            )}
+            {(() => {
+              // Filter out therapists who are currently in session during the selected time
+              let filteredTherapists = availableTherapists || [];
+
+              if (
+                selectedTime &&
+                appointmentsByDate &&
+                Array.isArray(appointmentsByDate)
+              ) {
+                const bookedTherapistIds = [];
+                appointmentsByDate.forEach((appointment) => {
+                  if (
+                    appointment.start_time <= selectedTime &&
+                    appointment.end_time > selectedTime
+                  ) {
+                    if (appointment.therapist_details?.id) {
+                      bookedTherapistIds.push(appointment.therapist_details.id);
+                    }
+                  }
+                });
+
+                filteredTherapists = availableTherapists.filter(
+                  (therapist) => !bookedTherapistIds.includes(therapist.id)
+                );
+              }
+
+              return filteredTherapists && filteredTherapists.length > 0 ? (
+                <ul>
+                  {filteredTherapists.map((therapist) => (
+                    <li key={therapist.id || Math.random()}>
+                      <b>
+                        {therapist.first_name || ""} {therapist.last_name || ""}
+                      </b>{" "}
+                      {therapist.specialization
+                        ? `- Specialization: ${therapist.specialization}`
+                        : ""}{" "}
+                      {therapist.start_time && therapist.end_time
+                        ? ` - Available: ${therapist.start_time} to ${therapist.end_time}`
+                        : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>
+                  No therapists available for selected time. Try selecting a
+                  different time slot.
+                </p>
+              );
+            })()}
           </div>
 
           <div className="drivers-section">
