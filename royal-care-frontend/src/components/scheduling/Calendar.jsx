@@ -47,7 +47,7 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   // Get availability status for a time slot
   const getTimeSlotStatus = (timeSlot, date) => {
     if (isPastTimeSlot(timeSlot, date)) {
-      return { status: "past", color: "#6b7280", emoji: "⚫" }; // Gray
+      return { status: "past", color: "#6b7280" }; // Gray
     }
 
     // Check if there are appointments at this time
@@ -77,21 +77,21 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
 
     // If no therapists have set availability for this time
     if (totalTherapists === 0) {
-      return { status: "no-availability", color: "#4b3b06", emoji: "🟡" }; // Orange-brown
+      return { status: "no-availability", color: "#4b3b06" }; // Orange-brown
     }
 
     // All slots are booked
     if (availableCount === 0) {
-      return { status: "fully-booked", color: "#dc2626", emoji: "🔴" }; // Red
+      return { status: "fully-booked", color: "#dc2626" }; // Red
     }
 
     // Some availability remaining
     if (availableCount < totalTherapists) {
-      return { status: "limited", color: "#f59e0b", emoji: "🟡" }; // Orange
+      return { status: "limited", color: "#f59e0b" }; // Orange
     }
 
     // Full availability
-    return { status: "available", color: "#16a34a", emoji: "🟢" }; // Green
+    return { status: "available", color: "#16a34a" }; // Green
   };
 
   // Check if a date is in the past (before today)
@@ -501,7 +501,6 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
                       opacity: slotStatus.status === "past" ? 0.5 : 1,
                     }}
                   >
-                    <span className="time-slot-emoji">{slotStatus.emoji}</span>
                     <span className="time-slot-time">{time}</span>
                   </div>
                 );
@@ -510,19 +509,39 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
             {/* Legend for time slot colors */}
             <div className="time-slot-legend">
               <div className="legend-item">
-                <span>🟢</span> Available
+                <span
+                  className="legend-circle"
+                  style={{ backgroundColor: "#16a34a" }}
+                ></span>{" "}
+                Available
               </div>
               <div className="legend-item">
-                <span>🟡</span> Limited availability
+                <span
+                  className="legend-circle"
+                  style={{ backgroundColor: "#f59e0b" }}
+                ></span>{" "}
+                Limited availability
               </div>
               <div className="legend-item">
-                <span>🔴</span> Fully booked
+                <span
+                  className="legend-circle"
+                  style={{ backgroundColor: "#dc2626" }}
+                ></span>{" "}
+                Fully booked
               </div>
               <div className="legend-item">
-                <span style={{ color: "#4b3b06" }}>🟡</span> No availability set
+                <span
+                  className="legend-circle"
+                  style={{ backgroundColor: "#4b3b06" }}
+                ></span>{" "}
+                No availability set
               </div>
               <div className="legend-item">
-                <span>⚫</span> Past time
+                <span
+                  className="legend-circle"
+                  style={{ backgroundColor: "#6b7280" }}
+                ></span>{" "}
+                Past time
               </div>
             </div>
           </div>

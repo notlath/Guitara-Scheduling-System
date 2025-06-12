@@ -325,11 +325,6 @@
   font-weight: 500;
 }
 
-.time-slot-emoji {
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
 .time-slot-time {
   font-size: var(--font-size-sm);
 }
@@ -372,6 +367,15 @@
 .legend-item span:first-child {
   font-size: 12px;
   flex-shrink: 0;
+}
+
+.legend-circle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 /* Availability info section */
