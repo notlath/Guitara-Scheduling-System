@@ -1,73 +1,183 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import "./FormField.css";
+import { MdVisibility, MdVisibilityOff } from "react-icons/md";
 
-export function FormField({
-  label,
-  name,
-  type = "text",
-  value = "",
-  onChange,
-  required = true,
-  inputProps = {},
-  children, // for select or helper/error/status or custom input
-  as = "input",
-  status = null,
-  ...rest
+// Button for toggling password visibility (eye icon)
+export function PasswordVisibilityToggle({
+  visible,
+  onToggle,
+  className = "",
+  ...props
 }) {
   return (
+    <button
+      type="button"
+      aria-label={visible ? "Hide password" : "Show password"}
+      onClick={onToggle}
+      className={className}
+      {...props}
+    >
+      {visible ? <MdVisibilityOff size={22} /> : <MdVisibility size={22} />}
+    </button>
+  );
+}
+
+// Generic, reusable form field component
+export function FormField({
+  label, // Label for the field
+  name, // Field name (for form state)
+  type = "text", // Input type (text, password, etc)
+  value = "", // Current value
+  onChange, // Change handler
+  required = false, // Is field required?
+  inputProps = {}, // Extra props for the input
+  children, // For custom content (e.g. select, helper text, icons)
+  as = "input", // What kind of field: input, select, textarea, or custom
+  validate = null, // Optional validation function
+  onErrorChange, // Callback to inform parent of error state
+  ...rest
+}) {
+  // Track if user has interacted with the field
+  const [touched, setTouched] = useState(false);
+  // Store error message for this field
+  const [error, setError] = useState("");
+  // For password fields: show/hide password
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Run validation when value or touched changes
+  useEffect(() => {
+    let err = "";
+    if (touched) {
+      if (validate) {
+        err = validate(value); // Use custom validator if provided
+      } else if (
+        required &&
+        (typeof value === "string" ? value.trim() === "" : !value)
+      ) {
+        err = "This field is required";
+      }
+    }
+    setError(err);
+    if (onErrorChange) onErrorChange(name, err);
+    // eslint-disable-next-line
+  }, [value, touched]);
+
+  // Render label with asterisk if required
+  const labelContent = (
+    <>
+      {label}
+      {required && (
+        <span className="global-form-field-required-asterisk">*</span>
+      )}
+    </>
+  );
+
+  // Compose input className, add error border if invalid
+  const inputClassName = [
+    inputProps.className ||
+      (as === "select"
+        ? "global-form-field-select"
+        : as === "textarea"
+        ? "global-form-field-textarea"
+        : "global-form-field-input"),
+    error ? "global-form-field-error-border" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  // When input loses focus, mark as touched (for validation)
+  const handleBlur = (e) => {
+    setTouched(true);
+    if (inputProps.onBlur) inputProps.onBlur(e);
+  };
+
+  // Main render logic
+  return (
     <div className="global-form-field-group">
+      {/* Render label if provided */}
       {label && (
         <div className="global-form-field-label-row">
           <label className="global-form-field-label" htmlFor={name}>
-            {label}
+            {labelContent}
           </label>
-          {status && (
-            <span className="global-form-field-status-text">{status}</span>
-          )}
         </div>
       )}
       <div className="global-form-field-relative-wrapper">
-        {/* If children is a custom input (like phone), render it directly. Otherwise, render the default input/select/textarea. */}
-        {children && as === "custom" ? (
+        {/* Password field: show input and eye icon */}
+        {as === "input" && type === "password" ? (
+          <div style={{ position: "relative", width: "100%" }}>
+            <input
+              className={inputClassName}
+              type={showPassword ? "text" : "password"}
+              name={name}
+              id={name}
+              value={value}
+              onChange={onChange}
+              required={required}
+              onBlur={handleBlur}
+              {...inputProps}
+              {...rest}
+            />
+            {/* Eye icon for toggling password visibility */}
+            <PasswordVisibilityToggle
+              visible={showPassword}
+              onToggle={() => setShowPassword((v) => !v)}
+              className="inputIconBtn"
+            />
+          </div>
+        ) : children && as === "custom" ? (
+          // Custom field (e.g. phone input with prefix)
           children
         ) : as === "select" ? (
+          // Select dropdown
           <select
-            className="global-form-field-select"
+            className={inputClassName}
             name={name}
             id={name}
             value={value}
             onChange={onChange}
             required={required}
+            onBlur={handleBlur}
             {...rest}
           >
             {children}
           </select>
         ) : as === "textarea" ? (
+          // Textarea field
           <textarea
-            className={inputProps.className || "global-form-field-textarea"}
+            className={inputClassName}
             name={name}
             id={name}
             value={value}
             onChange={onChange}
             required={required}
+            onBlur={handleBlur}
             {...inputProps}
             {...rest}
           />
         ) : (
+          // Default input (text, email, etc)
           <input
-            className={inputProps.className || "global-form-field-input"}
+            className={inputClassName}
             type={type}
             name={name}
             id={name}
             value={value}
             onChange={onChange}
             required={required}
+            onBlur={handleBlur}
             {...inputProps}
             {...rest}
           />
         )}
-        {/* Render children inside the relative wrapper for icons, popups, etc. */}
-        {children && as !== "custom" && as !== "select" && children}
+        {/* Render children for extra content (e.g. helper text, icons) */}
+        {children &&
+          as !== "custom" &&
+          as !== "select" &&
+          as !== "input" &&
+          children}
+        {/* Show error message if present */}
+        {error && <div className="global-form-field-error">{error}</div>}
       </div>
     </div>
   );

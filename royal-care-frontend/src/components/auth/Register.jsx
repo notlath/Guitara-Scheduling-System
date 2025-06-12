@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdVisibility, MdVisibilityOff } from "react-icons/md";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import rcLogo from "../../assets/images/rc_logo.jpg";
 import { FormField } from "../../globals/FormField";
@@ -12,7 +11,7 @@ import { cleanupFido2Script } from "../../utils/webAuthnHelper";
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    username: "",
+    email: "",
     password: "",
     passwordConfirm: "",
     role: "Driver", // Default to Driver role - role field is not shown to users
@@ -30,8 +29,6 @@ const Register = () => {
     confirmMatch: false,
   });
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -118,14 +115,30 @@ const Register = () => {
     }
   };
 
+  const fieldValidators = {
+    email: (val) => validateInput("email", val, { required: true }),
+    password: (val) => validateInput("password", val, { required: true }),
+    passwordConfirm: (val) => {
+      if (!val) return "This field is required";
+      if (val !== formData.password) return "Passwords don't match";
+      return "";
+    },
+    phone_number: (val) => validateInput("phone", val, { required: true }),
+  };
+
+  const handleFieldError = (name, error) => {
+    setErrors((prev) => ({ ...prev, [name]: error }));
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
     // Validate each field
-    const usernameError = validateInput("username", formData.username, {
+    const emailError = validateInput("email", formData.email, {
       required: true,
+      pattern: "^[^s@]+@[^s@]+\\.[^s@]+$",
     });
-    if (usernameError) newErrors.username = usernameError;
+    if (emailError) newErrors.email = emailError;
 
     const passwordError = validateInput("password", formData.password, {
       required: true,
@@ -162,7 +175,7 @@ const Register = () => {
 
     // Create a clean submission object without the confirm password field
     const submissionData = {
-      username: formData.username,
+      email: formData.email,
       password: formData.password,
       role: formData.role,
       phone_number: formData.phone_number,
@@ -232,34 +245,22 @@ const Register = () => {
                 <div className={styles.inputContainer}>
                   <div className={styles.formGroup}>
                     <FormField
-                      label={
-                        <span>
-                          Username{" "}
-                          <span className={styles.requiredAsterisk}>*</span>
-                        </span>
-                      }
-                      name="username"
-                      value={formData.username}
+                      label="Email"
+                      name="email"
+                      type="email"
+                      value={formData.email || ""}
                       onChange={handleChange}
                       required
-                      pattern="^[a-zA-Z0-9_]{3,30}$"
+                      validate={fieldValidators.email}
+                      onErrorChange={handleFieldError}
                       inputProps={{
-                        placeholder: "Username",
-                        className: `global-form-field-input${
-                          errors.username ? "" : ""
-                        }`,
-                        title: "Use username given by the admin",
-                        id: "username",
+                        placeholder: "e.g. johndoe@email.com",
+                        className: `global-form-field-input`,
+                        title: "Enter your email address",
+                        id: "email",
+                        autoComplete: "email",
                       }}
-                    >
-                      {errors.username && (
-                        <div className="global-form-field-error">
-                          {errors.username === "This field is required"
-                            ? "This field is required"
-                            : errors.username}
-                        </div>
-                      )}
-                    </FormField>
+                    />
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
@@ -293,7 +294,7 @@ const Register = () => {
                                 phone_number: "",
                               }));
                           }}
-                          placeholder="XXX-XXXX-XXX"
+                          placeholder="9XX-XXXX-XXX"
                           className={`global-form-field-input${
                             errors.phone_number
                               ? " global-form-field-error"
@@ -313,25 +314,22 @@ const Register = () => {
                       )}
                     </FormField>
                   </div>
-                  <div className={styles.formGroup}>
+                  <div
+                    className={styles.formGroup}
+                    style={{ position: "relative" }}
+                  >
                     <FormField
-                      label={
-                        <span>
-                          Create password{" "}
-                          <span className={styles.requiredAsterisk}>*</span>
-                        </span>
-                      }
+                      label="Create password"
                       name="password"
-                      type={showPassword ? "text" : "password"}
+                      type="password"
                       value={formData.password}
                       onChange={handleChange}
                       required
-                      pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+                      validate={fieldValidators.password}
+                      onErrorChange={handleFieldError}
                       inputProps={{
-                        placeholder: "Password",
-                        className: `${
-                          styles.inputWithIcon
-                        } global-form-field-input${errors.password ? "" : ""}`,
+                        placeholder: "Choose a strong password",
+                        className: `${styles.inputWithIcon} global-form-field-input`,
                         title:
                           "Password must be at least 8 characters and include uppercase, lowercase, number and special character",
                         id: "password",
@@ -339,143 +337,76 @@ const Register = () => {
                         onFocus: () => setPasswordFocused(true),
                         onBlur: () => setPasswordFocused(false),
                       }}
-                    >
-                      <div className={styles.passwordFieldWrapper}>
-                        <div className={styles.passwordInputRow}>
-                          {/* Password input is rendered by FormField */}
-                          <button
-                            type="button"
-                            aria-label={
-                              showPassword ? "Hide password" : "Show password"
+                    />
+                    {passwordFocused && (
+                      <div className={styles.passwordPopupError}>
+                        <ul className={styles.passwordRequirementsList}>
+                          <li
+                            className={
+                              passwordRequirements.hasLower
+                                ? styles.requirementMet
+                                : styles.requirementUnmet
                             }
-                            onClick={() => setShowPassword((v) => !v)}
-                            className={styles.inputIconBtn}
-                            tabIndex={-1}
                           >
-                            {showPassword ? (
-                              <MdVisibilityOff size={22} />
-                            ) : (
-                              <MdVisibility size={22} />
-                            )}
-                          </button>
-                        </div>
-                        {errors.password && (
-                          <div className="global-form-field-error">
-                            {errors.password === "This field is required"
-                              ? "This field is required"
-                              : errors.password}
-                          </div>
-                        )}
-                        {passwordFocused && (
-                          <div className={styles.passwordPopupError}>
-                            <ul className={styles.passwordRequirementsList}>
-                              <li
-                                className={
-                                  passwordRequirements.hasLower
-                                    ? styles.requirementMet
-                                    : styles.requirementUnmet
-                                }
-                              >
-                                At least one lowercase letter (a-z)
-                              </li>
-                              <li
-                                className={
-                                  passwordRequirements.hasUpper
-                                    ? styles.requirementMet
-                                    : styles.requirementUnmet
-                                }
-                              >
-                                At least one uppercase letter (A-Z)
-                              </li>
-                              <li
-                                className={
-                                  passwordRequirements.hasNumber
-                                    ? styles.requirementMet
-                                    : styles.requirementUnmet
-                                }
-                              >
-                                At least one number (0-9)
-                              </li>
-                              <li
-                                className={
-                                  /[@$!%*?&]/.test(formData.password)
-                                    ? styles.requirementMet
-                                    : styles.requirementUnmet
-                                }
-                              >
-                                At least one special character (@$!%*?&)
-                              </li>
-                              <li
-                                className={
-                                  formData.password.length >= 8
-                                    ? styles.requirementMet
-                                    : styles.requirementUnmet
-                                }
-                              >
-                                At least 8 characters long
-                              </li>
-                            </ul>
-                          </div>
-                        )}
+                            At least one lowercase letter (a-z)
+                          </li>
+                          <li
+                            className={
+                              passwordRequirements.hasUpper
+                                ? styles.requirementMet
+                                : styles.requirementUnmet
+                            }
+                          >
+                            At least one uppercase letter (A-Z)
+                          </li>
+                          <li
+                            className={
+                              passwordRequirements.hasNumber
+                                ? styles.requirementMet
+                                : styles.requirementUnmet
+                            }
+                          >
+                            At least one number (0-9)
+                          </li>
+                          <li
+                            className={
+                              /[@$!%*?&]/.test(formData.password)
+                                ? styles.requirementMet
+                                : styles.requirementUnmet
+                            }
+                          >
+                            At least one special character (@$!%*?&)
+                          </li>
+                          <li
+                            className={
+                              formData.password.length >= 8
+                                ? styles.requirementMet
+                                : styles.requirementUnmet
+                            }
+                          >
+                            At least 8 characters long
+                          </li>
+                        </ul>
                       </div>
-                    </FormField>
+                    )}
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label={
-                        <span>
-                          Re-enter password{" "}
-                          <span className={styles.requiredAsterisk}>*</span>
-                        </span>
-                      }
+                      label="Re-enter password"
                       name="passwordConfirm"
-                      type={showPasswordConfirm ? "text" : "password"}
+                      type="password"
                       value={formData.passwordConfirm}
                       onChange={handleChange}
                       required
+                      validate={fieldValidators.passwordConfirm}
+                      onErrorChange={handleFieldError}
                       inputProps={{
-                        placeholder: "Confirm Password",
-                        className: `${
-                          styles.inputWithIcon
-                        } global-form-field-input${
-                          errors.passwordConfirm ? "" : ""
-                        }`,
+                        placeholder: "Repeat your password",
+                        className: `${styles.inputWithIcon} global-form-field-input`,
                         id: "passwordConfirm",
                         autoComplete: "new-password",
                       }}
-                    >
-                      <div className={styles.passwordFieldWrapper}>
-                        <div className={styles.passwordInputRow}>
-                          {/* Password confirm input is rendered by FormField */}
-                          <button
-                            type="button"
-                            aria-label={
-                              showPasswordConfirm
-                                ? "Hide password"
-                                : "Show password"
-                            }
-                            onClick={() => setShowPasswordConfirm((v) => !v)}
-                            className={styles.inputIconBtn}
-                            tabIndex={-1}
-                          >
-                            {showPasswordConfirm ? (
-                              <MdVisibilityOff size={22} />
-                            ) : (
-                              <MdVisibility size={22} />
-                            )}
-                          </button>
-                        </div>
-                        {errors.passwordConfirm && (
-                          <div className="global-form-field-error">
-                            {errors.passwordConfirm ===
-                              "This field is required" ||
-                            !formData.passwordConfirm
-                              ? "This field is required"
-                              : errors.passwordConfirm}
-                          </div>
-                        )}
-                      </div>
-                    </FormField>
+                    ></FormField>
                   </div>
                 </div>
 
@@ -484,7 +415,7 @@ const Register = () => {
                   className={`action-btn${isSubmitting ? " disabled" : ""}`}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Processing..." : "Complete Registration"}
+                  {isSubmitting ? "Please Wait..." : "Complete Registration"}
                 </button>
               </form>
               <div className={styles.registerLink}>

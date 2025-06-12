@@ -146,8 +146,9 @@
 
 .passwordPopupError {
   position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
+  top: 22px;
+  right: 103%;
+  left: auto;
   z-index: 10;
   background: var(--background);
   border: 1px solid var(--background-400);
@@ -157,33 +158,39 @@
   color: var(--muted);
   font-size: var(--font-size-sm);
   min-width: 260px;
-  /* Arrow positioning context */
 }
 
 .passwordPopupError::before {
   content: "";
   position: absolute;
-  top: -8px;
-  left: 24px;
-  width: 0;
-  height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 8px solid var(--background-400);
-  z-index: 11;
+  top: 11px;
+  right: -10px;
+  border-width: 8px 0 8px 10px;
+  border-style: solid;
+  border-color: transparent transparent transparent var(--background-400);
 }
 
 .passwordPopupError::after {
   content: "";
   position: absolute;
-  top: -7px;
-  left: 25px;
-  width: 0;
-  height: 0;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-bottom: 7px solid var(--background);
-  z-index: 12;
+  top: 12px;
+  right: -8px;
+  border-width: 7px 0 7px 9px;
+  border-style: solid;
+  border-color: transparent transparent transparent var(--background);
+}
+
+@media (max-width: 600px) {
+  .passwordPopupError {
+    right: auto;
+    left: 0;
+    top: 110%;
+    min-width: 220px;
+  }
+  .passwordPopupError::before,
+  .passwordPopupError::after {
+    display: none;
+  }
 }
 
 .passwordRequirementsList {
@@ -236,34 +243,6 @@
   z-index: 2;
 }
 
-.global-form-field-input[type="password"],
-.global-form-field-input[type="text"] {
-  padding-right: 36px !important;
-}
-
-.inputWithIcon {
-  position: relative;
-  padding-right: 40px !important;
-}
-
-.inputIconBtn {
-  position: absolute;
-  right: var(--spacing-xxs);
-  /* top: 50%; */
-  transform: translateY(-61.8%);
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  z-index: 2;
-  height: 32px;
-  width: 32px;
-}
-
 .phoneInputWrapper {
   display: flex;
   align-items: center;
@@ -308,14 +287,6 @@
 .global-form-field-relative-wrapper {
   position: relative;
   width: 100%;
-}
-
-.requiredAsterisk {
-  color: var(--error);
-  margin-left: 1px;
-  font-size: var(--font-size-sm);
-  font-weight: 400;
-  vertical-align: middle;
 }
 
 /* Fix: Make the password input and eye icon always aligned regardless of error message */
