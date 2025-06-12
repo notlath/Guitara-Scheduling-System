@@ -88,6 +88,32 @@ const OperatorDashboard = () => {
     loading,
     error,
   } = useSelector((state) => state.scheduling);
+  // Helper function to get driver task description based on appointment status
+  const getDriverTaskDescription = (appointment) => {
+    if (!appointment) return "On assignment";
+
+    const therapistName = appointment.therapist_details
+      ? `${appointment.therapist_details.first_name} ${appointment.therapist_details.last_name}`
+      : appointment.therapist_name || "therapist";
+
+    switch (appointment.status) {
+      case "driver_confirmed":
+        return `Ready to transport ${therapistName}`;
+      case "in_progress":
+        return `Starting journey - picking up ${therapistName}`;
+      case "journey_started":
+      case "journey":
+        return `Transporting ${therapistName} to client location`;
+      case "arrived":
+        return `Arrived - dropping off ${therapistName}`;
+      case "return_journey":
+        return `Return journey - picking up ${therapistName}`;
+      case "driver_assigned_pickup":
+        return `Assigned pickup for ${therapistName}`;
+      default:
+        return `Active with ${therapistName}`;
+    }
+  };
 
   // Load driver data on component mount and refresh
   useEffect(() => {
@@ -99,18 +125,16 @@ const OperatorDashboard = () => {
         // Filter drivers and categorize by availability status
         const drivers = staffResponse.filter(
           (staff) => staff.role === "driver"
-        );
-
-        // Get current appointments to determine driver status
+        ); // Get current appointments to determine driver status
+        // Note: "dropped_off" is NOT included here, so drivers who dropped off therapists will be available
         const activeAppointmentStatuses = [
           "driver_confirmed",
           "in_progress",
           "journey_started",
           "journey",
           "arrived",
-          "session_in_progress",
-          "pickup_requested",
-          "driver_assigned_pickup",
+          "return_journey", // Driver is en route to pick up therapist after session
+          "driver_assigned_pickup", // Driver assigned for pickup but hasn't confirmed yet
         ]; // Find drivers with active appointments (busy)
         const busyDriverIds = (appointments || [])
           .filter(
@@ -122,8 +146,14 @@ const OperatorDashboard = () => {
         // Categorize drivers
         const availableDrivers = [];
         const busyDrivers = [];
-
         drivers.forEach((driver) => {
+          // Find the current appointment for this driver
+          const currentAppointment = (appointments || []).find(
+            (apt) =>
+              activeAppointmentStatuses.includes(apt.status) &&
+              apt.driver === driver.id
+          );
+
           const driverData = {
             id: driver.id,
             first_name: driver.first_name,
@@ -139,7 +169,20 @@ const OperatorDashboard = () => {
             last_location: driver.current_location || "Available",
             available_since:
               driver.last_available_at || new Date().toISOString(),
-            status: busyDriverIds.includes(driver.id) ? "busy" : "available",
+            status: busyDriverIds.includes(driver.id) ? "busy" : "available", // Enhanced appointment details for busy drivers
+            currentAppointment: currentAppointment,
+            current_task: currentAppointment
+              ? getDriverTaskDescription(currentAppointment)
+              : null,
+            therapist_name: currentAppointment?.therapist_details
+              ? `${currentAppointment.therapist_details.first_name} ${currentAppointment.therapist_details.last_name}`
+              : currentAppointment?.therapist_name || "Unknown Therapist",
+            client_name:
+              currentAppointment?.client_details?.name ||
+              currentAppointment?.client_name ||
+              "Unknown Client",
+            appointment_status: currentAppointment?.status,
+            appointment_location: currentAppointment?.location,
           };
 
           if (busyDriverIds.includes(driver.id)) {
@@ -1129,7 +1172,7 @@ const OperatorDashboard = () => {
                         <i className="fas fa-circle"></i>
                         On Assignment
                       </div>
-                    </div>
+                    </div>{" "}
                     <div className="driver-card-body">
                       <div className="driver-info-row">
                         <i className="fas fa-tasks"></i>
@@ -1138,9 +1181,9 @@ const OperatorDashboard = () => {
                         </span>
                       </div>
                       <div className="driver-info-row">
-                        <i className="fas fa-map-marker-alt"></i>
+                        <i className="fas fa-user-md"></i>
                         <span>
-                          Location: {driver.current_location || "En route"}
+                          Therapist: {driver.therapist_name || "Unknown"}
                         </span>
                       </div>
                       <div className="driver-info-row">
@@ -1149,6 +1192,24 @@ const OperatorDashboard = () => {
                           Vehicle: {driver.vehicle_type || "Motorcycle"}
                         </span>
                       </div>
+                      <div className="driver-info-row">
+                        <i className="fas fa-map-marker-alt"></i>
+                        <span>
+                          Location:{" "}
+                          {driver.appointment_location ||
+                            driver.current_location ||
+                            "En route"}
+                        </span>
+                      </div>
+                      {driver.currentAppointment?.status && (
+                        <div className="driver-last-activity">
+                          <i className="fas fa-info-circle"></i>
+                          Status:{" "}
+                          {driver.currentAppointment.status
+                            .replace(/_/g, " ")
+                            .replace(/\b\w/g, (l) => l.toUpperCase())}
+                        </div>
+                      )}
                       {driver.estimated_completion && (
                         <div className="driver-last-activity">
                           <i className="fas fa-clock"></i>

@@ -299,6 +299,48 @@ const AvailabilityManager = () => {
       return;
     }
 
+    // Check for overlapping or duplicate availability before creating
+    const existingOverlaps = safeAvailabilities.filter((availability) => {
+      if (availability.date !== newAvailabilityForm.date) return false;
+
+      const existingStart = timeToMinutes(availability.start_time);
+      const existingEnd = timeToMinutes(availability.end_time);
+      const newStart = timeToMinutes(startTime);
+      const newEnd = timeToMinutes(endTime);
+
+      // Check for exact match
+      if (existingStart === newStart && existingEnd === newEnd) {
+        return true;
+      }
+
+      // Check for overlap (simplified - doesn't handle complex cross-day scenarios)
+      if (newStart < existingEnd && newEnd > existingStart) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (existingOverlaps.length > 0) {
+      const overlapDetails = existingOverlaps
+        .map(
+          (overlap) =>
+            `${overlap.start_time}-${overlap.end_time} (${
+              overlap.is_available ? "Available" : "Unavailable"
+            })`
+        )
+        .join(", ");
+
+      const action = window.confirm(
+        `This time slot overlaps with existing availability:\n${overlapDetails}\n\n` +
+          "Click OK to proceed anyway (may result in an error), or Cancel to modify the times."
+      );
+
+      if (!action) {
+        return;
+      }
+    }
+
     // Warn user about cross-day availability
     if (timeToMinutes(endTime) < timeToMinutes(startTime)) {
       const isConfirmed = window.confirm(
@@ -339,8 +381,42 @@ const AvailabilityManager = () => {
         }
         alert("Availability created successfully!");
       } else if (createAvailability.rejected.match(result)) {
-        // Error - show user-friendly message
-        const errorMsg = result.payload || "Failed to create availability";
+        // Enhanced error handling with specific messages
+        let errorMsg = "Failed to create availability";
+        const errorData = result.payload;
+
+        if (errorData) {
+          if (errorData.non_field_errors) {
+            // Handle unique constraint violations
+            if (
+              errorData.non_field_errors.some((err) => err.includes("unique"))
+            ) {
+              errorMsg =
+                "This exact time slot already exists. Please choose different times or modify the existing slot.";
+            } else {
+              errorMsg = errorData.non_field_errors.join(", ");
+            }
+          } else if (typeof errorData === "string") {
+            errorMsg = errorData;
+          } else if (errorData.error) {
+            errorMsg = errorData.error;
+          } else if (errorData.detail) {
+            errorMsg = errorData.detail;
+          } else {
+            // Format validation errors
+            const errors = Object.entries(errorData)
+              .map(([field, msgs]) => {
+                const messages = Array.isArray(msgs) ? msgs : [msgs];
+                return `${field}: ${messages.join(", ")}`;
+              })
+              .join("\n");
+
+            if (errors) {
+              errorMsg = `Validation errors:\n${errors}`;
+            }
+          }
+        }
+
         console.error("❌ Availability creation failed:", errorMsg);
         alert(`Error: ${errorMsg}`);
       }
@@ -644,6 +720,42 @@ const AvailabilityManager = () => {
         !(selectedStaffData && !isStaffActive(selectedStaffData)) && (
           <div className="add-availability-form">
             <h3>Add New Availability</h3>
+
+            {/* Info section about availability constraints */}
+            <div
+              className="availability-info"
+              style={{
+                backgroundColor: "#f8f9fa",
+                border: "1px solid #dee2e6",
+                borderRadius: "4px",
+                padding: "12px",
+                marginBottom: "15px",
+                fontSize: "14px",
+              }}
+            >
+              <div style={{ marginBottom: "8px" }}>
+                <strong>ℹ️ Important Notes:</strong>
+              </div>
+              <ul style={{ margin: "0", paddingLeft: "20px" }}>
+                <li>
+                  You cannot create duplicate time slots (same start and end
+                  time) for the same date
+                </li>
+                <li>
+                  Overlapping time slots may cause conflicts during appointment
+                  booking
+                </li>
+                <li>
+                  To modify existing availability, use the toggle/delete buttons
+                  in the table below
+                </li>
+                <li>
+                  Cross-day availability (e.g., 11PM-2AM) will appear on both
+                  days
+                </li>
+              </ul>
+            </div>
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="new-date">Date:</label>
