@@ -88,7 +88,6 @@ const OperatorDashboard = () => {
     loading,
     error,
   } = useSelector((state) => state.scheduling);
-
   // Helper function to get driver task description based on appointment status
   const getDriverTaskDescription = (appointment) => {
     if (!appointment) return "On assignment";
@@ -99,20 +98,20 @@ const OperatorDashboard = () => {
 
     switch (appointment.status) {
       case "driver_confirmed":
-        return `Confirmed for ${therapistName}`;
+        return `Ready to transport ${therapistName}`;
       case "in_progress":
-        return `Starting journey with ${therapistName}`;
+        return `Starting journey - picking up ${therapistName}`;
       case "journey_started":
       case "journey":
-        return `Transporting ${therapistName} to client`;
+        return `Transporting ${therapistName} to client location`;
       case "arrived":
-        return `Arrived at client location with ${therapistName}`;
+        return `Arrived - dropping off ${therapistName}`;
       case "return_journey":
-        return `Returning to pick up ${therapistName}`;
+        return `Return journey - picking up ${therapistName}`;
       case "driver_assigned_pickup":
-        return `Assigned to pick up ${therapistName}`;
+        return `Assigned pickup for ${therapistName}`;
       default:
-        return `Working with ${therapistName}`;
+        return `Active with ${therapistName}`;
     }
   };
 

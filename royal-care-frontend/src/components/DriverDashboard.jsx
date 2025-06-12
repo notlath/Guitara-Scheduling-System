@@ -8,7 +8,6 @@ import {
   fetchAppointments,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
-  markArrived,
   rejectAppointment, // Added for pickup confirmation
   rejectPickup, // General appointment rejection
   startJourney,
@@ -117,9 +116,11 @@ const DriverDashboard = () => {
     appointmentId: null,
   });
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-
   // Loading states for individual button actions
   const [buttonLoading, setButtonLoading] = useState({});
+
+  // Pickup assignment timer state
+  const [pickupTimers, setPickupTimers] = useState({});
 
   // Helper function to set loading state for specific action
   const setActionLoading = (actionKey, isLoading) => {
@@ -268,7 +269,9 @@ const DriverDashboard = () => {
       "return_journey", // Show return journey status
     ];
     return visibleStatuses.includes(apt.status);
-  }); // Separate filter for "All My Transports" view - includes completed transports
+  });
+
+  // Separate filter for "All My Transports" view - includes completed transports
   const myAllTransports = appointments
     .filter((apt) => {
       const isAssignedDriver = apt.driver === user?.id;
@@ -296,6 +299,16 @@ const DriverDashboard = () => {
       return allStatuses.includes(apt.status);
     })
     .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date, newest first
+
+  // Check if driver has an active pickup assignment - this disables other actions
+  const hasActivePickupAssignment = myAppointments.some(
+    (apt) => apt.status === "driver_assigned_pickup"
+  );
+
+  // Get the active pickup assignment details
+  const activePickupAssignment = myAppointments.find(
+    (apt) => apt.status === "driver_assigned_pickup"
+  );
 
   // Refresh appointments data silently in background
   const refreshAppointments = useCallback(
@@ -394,6 +407,27 @@ const DriverDashboard = () => {
       dispatch(fetchUpcomingAppointments());
     }
   }, [currentView, dispatch, isInitialLoad]);
+
+  // Setup timer for pickup assignments countdown
+  useEffect(() => {
+    const activePickups = myAppointments.filter(
+      (apt) => apt.status === "driver_assigned_pickup"
+    );
+
+    if (activePickups.length === 0) {
+      return; // No active pickups, no timer needed
+    }
+
+    const timer = setInterval(() => {
+      // This will trigger a re-render to update the countdown display
+      // The countdown calculation is done in the render method
+      setPickupTimers((prev) => ({ ...prev, update: Date.now() }));
+    }, 1000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [myAppointments]);
 
   // Listen for urgent backup requests
   useEffect(() => {
@@ -501,12 +535,17 @@ const DriverDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-
   const handleMarkArrived = async (appointmentId) => {
     const actionKey = `arrived_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(markArrived(appointmentId)).unwrap();
+      // Use updateAppointmentStatus instead of markArrived to avoid endpoint issues
+      await dispatch(
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "arrived",
+        })
+      ).unwrap();
       refreshAppointments(true);
     } catch (error) {
       console.error("Failed to mark arrived:", error);
@@ -579,7 +618,6 @@ const DriverDashboard = () => {
       }
     }
   };
-
   // Enhanced drop-off handler for FIFO coordination
   const handleDropOffComplete = async (appointmentId) => {
     const appointment = myAppointments.find((apt) => apt.id === appointmentId);
@@ -596,53 +634,7 @@ const DriverDashboard = () => {
             appointment.location
           } at ${new Date().toISOString()}`,
         })
-      ).unwrap(); // Update driver availability status in FIFO queue
-      try {
-        const response = await fetch(
-          "http://localhost:8000/api/scheduling/appointments/update_driver_availability/",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Token ${localStorage.getItem("knoxToken")}`,
-            },
-            body: JSON.stringify({
-              status: "available",
-              current_location: appointment.location,
-            }),
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log("✅ Driver marked as available in FIFO queue:", data);
-
-          // Also broadcast to frontend for real-time updates
-          syncService.broadcast("driver_available", {
-            driver_id: user.id,
-            last_location: appointment.location,
-            vehicle_type: appointment.transport_mode || "motorcycle",
-            available_at: data.available_since,
-            assignment_method: "FIFO",
-            fifo_position: data.fifo_position,
-          });
-        } else {
-          console.error(
-            "Failed to update driver availability:",
-            response.status
-          );
-        }
-      } catch (availabilityError) {
-        console.error("Error updating driver availability:", availabilityError);
-        // Fallback to old broadcast method if new endpoint fails
-        syncService.broadcast("driver_available", {
-          driver_id: user.id,
-          last_location: appointment.location,
-          vehicle_type: appointment.transport_mode || "motorcycle",
-          available_at: new Date().toISOString(),
-          assignment_method: "FIFO",
-        });
-      }
+      ).unwrap();
 
       refreshAppointments(true);
     } catch (error) {
@@ -663,53 +655,14 @@ const DriverDashboard = () => {
     try {
       setActionLoading(actionKey, true);
 
-      // Drop off therapist - this completes the transport for the driver
+      // Drop off therapist - use the standard status update
       await dispatch(
         updateAppointmentStatus({
           id: appointmentId,
-          status: "driver_transport_completed",
-          action: "drop_off_therapist",
+          status: "dropped_off",
           notes: `Therapist dropped off at client location at ${new Date().toISOString()}. Transport completed for driver.`,
         })
       ).unwrap();
-
-      // Update driver availability status in FIFO queue
-      try {
-        const response = await fetch(
-          "http://localhost:8000/api/scheduling/appointments/update_driver_availability/",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Token ${localStorage.getItem("knoxToken")}`,
-            },
-            body: JSON.stringify({
-              status: "available",
-              current_location: "Available for new assignments",
-            }),
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log("✅ Driver marked as available in FIFO queue:", data);
-
-          // Broadcast driver availability for real-time updates
-          syncService.broadcast("driver_available", {
-            driver_id: user.id,
-            available_at: data.available_since,
-            assignment_method: "FIFO",
-            fifo_position: data.fifo_position,
-          });
-        } else {
-          console.error(
-            "Failed to update driver availability:",
-            response.status
-          );
-        }
-      } catch (availabilityError) {
-        console.error("Error updating driver availability:", availabilityError);
-      }
 
       // Show success message indicating transport is complete
       alert(
@@ -1030,22 +983,42 @@ const DriverDashboard = () => {
       appointment.therapist_group && appointment.therapist_group.length > 1;
     const requiresCompanyCar = isGroupTransport;
 
+    // Disable all actions if driver has an active pickup assignment (except the pickup itself)
+    const isDisabledDueToPickup =
+      hasActivePickupAssignment && status !== "driver_assigned_pickup";
+
     switch (status) {
       case "pending":
         return (
           <div className="appointment-actions">
+            {isDisabledDueToPickup && (
+              <div className="pickup-priority-notice">
+                ⚠️ <strong>Pickup Assignment Priority:</strong> You must handle
+                your active pickup assignment before accepting new transports.
+              </div>
+            )}
             <LoadingButton
-              className="accept-button"
-              onClick={() => handleAcceptAppointment(id)}
+              className={`accept-button ${
+                isDisabledDueToPickup ? "disabled-due-pickup" : ""
+              }`}
+              onClick={() =>
+                !isDisabledDueToPickup && handleAcceptAppointment(id)
+              }
               loading={buttonLoading[`accept_${id}`]}
               loadingText="Accepting..."
+              disabled={isDisabledDueToPickup}
             >
               Accept {isGroupTransport ? "Group Transport" : "Transport"}
             </LoadingButton>
             <LoadingButton
-              className="reject-button"
-              onClick={() => handleRejectAppointment(id)} // This will open the modal
+              className={`reject-button ${
+                isDisabledDueToPickup ? "disabled-due-pickup" : ""
+              }`}
+              onClick={() =>
+                !isDisabledDueToPickup && handleRejectAppointment(id)
+              }
               variant="secondary"
+              disabled={isDisabledDueToPickup}
             >
               Reject
             </LoadingButton>
@@ -1092,11 +1065,20 @@ const DriverDashboard = () => {
         // Driver always needs to confirm regardless of vehicle type
         return (
           <div className="appointment-actions">
+            {isDisabledDueToPickup && (
+              <div className="pickup-priority-notice">
+                ⚠️ <strong>Pickup Assignment Priority:</strong> Complete your
+                active pickup assignment first.
+              </div>
+            )}
             <LoadingButton
-              className="confirm-button"
-              onClick={() => handleDriverConfirm(id)}
+              className={`confirm-button ${
+                isDisabledDueToPickup ? "disabled-due-pickup" : ""
+              }`}
+              onClick={() => !isDisabledDueToPickup && handleDriverConfirm(id)}
               loading={buttonLoading[`confirm_${id}`]}
               loadingText="Confirming..."
+              disabled={isDisabledDueToPickup}
             >
               Confirm Ready to Drive
             </LoadingButton>
@@ -1124,11 +1106,20 @@ const DriverDashboard = () => {
         // Operator started appointment, driver can start journey
         return (
           <div className="appointment-actions">
+            {isDisabledDueToPickup && (
+              <div className="pickup-priority-notice">
+                ⚠️ <strong>Pickup Assignment Priority:</strong> Complete your
+                active pickup assignment first.
+              </div>
+            )}
             <LoadingButton
-              className="start-journey-button"
-              onClick={() => handleStartJourney(id)}
+              className={`start-journey-button ${
+                isDisabledDueToPickup ? "disabled-due-pickup" : ""
+              }`}
+              onClick={() => !isDisabledDueToPickup && handleStartJourney(id)}
               loading={buttonLoading[`journey_${id}`]}
               loadingText="Starting..."
+              disabled={isDisabledDueToPickup}
             >
               Start Journey
             </LoadingButton>
@@ -1144,11 +1135,20 @@ const DriverDashboard = () => {
       case "journey": // Handle both journey statuses
         return (
           <div className="appointment-actions">
+            {isDisabledDueToPickup && (
+              <div className="pickup-priority-notice">
+                ⚠️ <strong>Pickup Assignment Priority:</strong> Complete your
+                active pickup assignment first.
+              </div>
+            )}
             <LoadingButton
-              className="arrive-button"
-              onClick={() => handleMarkArrived(id)}
+              className={`arrive-button ${
+                isDisabledDueToPickup ? "disabled-due-pickup" : ""
+              }`}
+              onClick={() => !isDisabledDueToPickup && handleMarkArrived(id)}
               loading={buttonLoading[`arrived_${id}`]}
               loadingText="Marking..."
+              disabled={isDisabledDueToPickup}
             >
               Mark Arrived at Pickup
             </LoadingButton>
@@ -1161,9 +1161,18 @@ const DriverDashboard = () => {
       case "arrived":
         return (
           <div className="appointment-actions">
+            {isDisabledDueToPickup && (
+              <div className="pickup-priority-notice">
+                ⚠️ <strong>Pickup Assignment Priority:</strong> Complete your
+                active pickup assignment first.
+              </div>
+            )}
             <button
-              className="drop-off-button"
-              onClick={() => handleDropOff(id)}
+              className={`drop-off-button ${
+                isDisabledDueToPickup ? "disabled-due-pickup" : ""
+              }`}
+              onClick={() => !isDisabledDueToPickup && handleDropOff(id)}
+              disabled={isDisabledDueToPickup}
             >
               Drop Off Therapist
             </button>
@@ -1223,64 +1232,74 @@ const DriverDashboard = () => {
             </div>
           </div>
         );
-      case "driver_assigned_pickup":
+      case "driver_assigned_pickup": {
+        const sessionEndTime =
+          appointment.session_end_time || appointment.updated_at;
+        const therapistName = appointment.therapist
+          ? `${appointment.therapist.first_name} ${appointment.therapist.last_name}`
+          : "Therapist";
+        const therapistPhone = appointment.therapist?.phone_number;
+
+        // Calculate time remaining for confirmation (15 minutes from assignment)
+        const assignmentTime =
+          appointment.driver_assigned_at || appointment.updated_at;
+        const timeLimit = 15 * 60 * 1000; // 15 minutes in milliseconds
+        const timeRemaining = assignmentTime
+          ? Math.max(
+              0,
+              timeLimit - (Date.now() - new Date(assignmentTime).getTime())
+            )
+          : timeLimit;
+        const minutesRemaining = Math.floor(timeRemaining / (60 * 1000));
+        const secondsRemaining = Math.floor(
+          (timeRemaining % (60 * 1000)) / 1000
+        );
+
         return (
           <div className="appointment-actions">
+            <div className="pickup-assignment-info">
+              <span className="pickup-assignment-badge">
+                🚖 Pickup Assignment - {therapistName}
+              </span>
+              <p>
+                <strong>Session completed:</strong>{" "}
+                {sessionEndTime
+                  ? new Date(sessionEndTime).toLocaleString()
+                  : "Recently"}
+              </p>
+              <p>
+                <strong>Date:</strong>{" "}
+                {new Date(appointment.date).toLocaleDateString()}
+              </p>
+              <p>
+                <strong>Pickup location:</strong> {appointment.location}
+              </p>
+              {therapistPhone && (
+                <p>
+                  <strong>Therapist phone:</strong>{" "}
+                  <a href={`tel:${therapistPhone}`} className="phone-link">
+                    {therapistPhone}
+                  </a>
+                </p>
+              )}
+              <p className="confirmation-timer">
+                <strong>Confirm within:</strong> {minutesRemaining}m{" "}
+                {secondsRemaining}s
+              </p>
+            </div>
             <div className="pickup-assignment-buttons">
               <LoadingButton
                 className="confirm-pickup-button"
                 onClick={() => handleConfirmPickup(id)}
-                loading={buttonLoading[`confirm-pickup-${id}`]} // Ensure key matches
+                loading={buttonLoading[`confirm-pickup-${id}`]}
                 loadingText="Confirming..."
               >
-                ✅ Confirm Pickup
+                Confirm Pickup
               </LoadingButton>
-              <LoadingButton
-                className="reject-pickup-button"
-                onClick={() => handleRejectAppointment(id)} // Opens modal for reason
-                loading={buttonLoading[`reject-pickup-${id}`]} // Ensure key matches
-                loadingText="Rejecting..."
-                variant="secondary"
-              >
-                ❌ Reject Pickup
-              </LoadingButton>
-            </div>
-            <div className="pickup-assignment-status">
-              <span className="assigned-badge">🚗 Pickup Assignment</span>
-              <p>
-                <strong>Auto-assigned for pickup:</strong>{" "}
-                {appointment.client?.first_name || "Client"}{" "}
-                {appointment.client?.last_name || ""}
-              </p>
-              <p>
-                <strong>Location:</strong> {appointment.location}
-              </p>
-              <p>
-                <strong>Urgency:</strong>{" "}
-                <span
-                  className={`urgency-${
-                    appointment.pickup_urgency || "normal"
-                  }`}
-                >
-                  {(appointment.pickup_urgency || "normal").toUpperCase()}
-                </span>
-              </p>
-              {appointment.estimated_pickup_time && (
-                <p>
-                  <strong>Estimated Arrival:</strong>{" "}
-                  {new Date(
-                    appointment.estimated_pickup_time
-                  ).toLocaleTimeString()}
-                </p>
-              )}
-              <div className="pickup-confirmation-note">
-                <small>
-                  ⚠️ You must confirm or reject this pickup assignment
-                </small>
-              </div>
             </div>
           </div>
         );
+      }
 
       case "return_journey":
         return (
@@ -1663,6 +1682,17 @@ const DriverDashboard = () => {
             >
               Retry
             </button>
+          </div>
+        )}{" "}
+        {/* Active Pickup Assignment Banner */}
+        {hasActivePickupAssignment && activePickupAssignment && (
+          <div className="pickup-notice">
+            <p>
+              <strong>Active pickup assignment:</strong>{" "}
+              {activePickupAssignment.therapist?.first_name}{" "}
+              {activePickupAssignment.therapist?.last_name} at{" "}
+              {activePickupAssignment.location}
+            </p>
           </div>
         )}
         <div className="view-selector">

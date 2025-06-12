@@ -502,31 +502,107 @@
   color: #adb5bd;
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .pasig-zone-map {
-    grid-template-columns: 1fr;
-  }
-
-  .zone-grid {
-    grid-template-columns: 1fr;
-  }
+/* Simple pickup assignment styles */
+.pickup-assignment-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+  margin-bottom: 15px;
 }
 
-@media (max-width: 768px) {
-  .drivers-grid {
-    grid-template-columns: 1fr;
-  }
+.pickup-assignment-badge {
+  display: inline-block;
+  background: #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
 
-  .zone-grid {
-    grid-template-columns: 1fr;
-  }
+.pickup-assignment-info p {
+  margin: 8px 0;
+  color: #495057;
+}
 
-  .request-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
+.pickup-assignment-info .phone-link {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.pickup-assignment-info .phone-link:hover {
+  text-decoration: underline;
+}
+
+.confirmation-timer {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.pickup-assignment-buttons {
+  text-align: center;
+  margin-top: 15px;
+}
+
+.confirm-pickup-button {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.confirm-pickup-button:hover:not(:disabled) {
+  background: #218838;
+}
+
+.confirm-pickup-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Simple pickup notice */
+.pickup-notice {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 20px;
+  color: #856404;
+}
+
+.pickup-notice p {
+  margin: 0;
+}
+
+/* Keep existing pickup priority notice for disabled actions */
+.pickup-priority-notice {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  padding: 10px;
+  margin: 8px 0;
+  color: #856404;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.disabled-due-pickup {
+  background: #e9ecef !important;
+  color: #6c757d !important;
+  border-color: #ced4da !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+
+.disabled-due-pickup:hover {
+  background: #e9ecef !important;
 }
 
 /* Zone-specific styling for better identification */
