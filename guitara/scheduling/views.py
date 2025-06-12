@@ -735,7 +735,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 "pickup_started_at",
                 "all_therapists_picked_up_at",
                 "estimated_pickup_time",
-                "pickup_driver",
+                "driver",  # Use main driver field instead of pickup_driver
                 "assignment_type",
             ]
             update_data = {
@@ -1682,9 +1682,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def mark_completed(self, request, pk=None):
         """Operator verifies payment received and marks appointment complete"""
-        appointment = self.get_object()
-
-        # Only operators can verify payments and mark appointments as completed
+        appointment = (
+            self.get_object()
+        )  # Only operators can verify payments and mark appointments as completed
         if request.user.role != "operator":
             return Response(
                 {
@@ -1724,8 +1724,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 "message": f"Payment verified successfully. Received {payment_amount} via {payment_method}.",
                 "appointment": serializer.data,
             }
-        ) @ action(detail=True, methods=["post"])
+        )
 
+    @action(detail=True, methods=["post"])
     def request_pickup(self, request, pk=None):
         """Therapist requests pickup after session completion with automatic driver assignment"""
         appointment = self.get_object()
@@ -1754,9 +1755,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Get pickup details from request
         pickup_urgency = request.data.get("pickup_urgency", "normal")
-        pickup_notes = request.data.get("pickup_notes", "")
-
-        # Step 1: Try to auto-assign an available driver using enhanced FIFO logic
+        pickup_notes = request.data.get(
+            "pickup_notes", ""
+        )  # Step 1: Try to auto-assign an available driver using enhanced FIFO logic
         available_driver = self._get_next_available_driver_for_pickup(appointment)
 
         if available_driver:
@@ -1765,8 +1766,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment.pickup_urgency = pickup_urgency
             appointment.pickup_notes = pickup_notes
             appointment.pickup_request_time = timezone.now()
-            appointment.pickup_driver = available_driver
-            appointment.assigned_driver = available_driver
+            appointment.driver = (
+                available_driver  # Use the main driver field for pickup assignment
+            )
 
             # Set estimated pickup time based on urgency
             from datetime import timedelta
@@ -2011,7 +2013,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         """Get detailed information about a driver for frontend display"""
         last_completed_appointment = (
             Appointment.objects.filter(
-                assigned_driver=driver,
+                driver=driver,  # Use main driver field
                 status__in=["completed", "dropped_off", "therapist_dropped_off"],
             )
             .order_by("-updated_at")
@@ -2192,10 +2194,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def confirm_pickup(self, request, pk=None):
         """Driver confirms pickup assignment - required after automatic assignment"""
-        appointment = self.get_object()
-
-        # Only the assigned pickup driver can confirm
-        if request.user != appointment.pickup_driver:
+        appointment = self.get_object()  # Only the assigned pickup driver can confirm
+        if request.user != appointment.driver:
             return Response(
                 {"error": "You can only confirm pickup assignments assigned to you"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -2257,10 +2257,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def reject_pickup(self, request, pk=None):
         """Driver rejects pickup assignment - returns to pool for manual assignment"""
-        appointment = self.get_object()
-
-        # Only the assigned pickup driver can reject
-        if request.user != appointment.pickup_driver:
+        appointment = self.get_object()  # Only the assigned pickup driver can reject
+        if request.user != appointment.driver:
             return Response(
                 {"error": "You can only reject pickup assignments assigned to you"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -2277,10 +2275,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         rejection_reason = request.data.get("rejection_reason", "Driver unavailable")
 
-        # Reset pickup assignment
-        appointment.status = "pickup_requested"  # Back to manual assignment
-        appointment.pickup_driver = None
-        appointment.assigned_driver = None
+        # Reset pickup assignment        appointment.status = "pickup_requested"  # Back to manual assignment
+        appointment.driver = None  # Clear driver assignment
         appointment.estimated_pickup_time = None
         appointment.save()
 

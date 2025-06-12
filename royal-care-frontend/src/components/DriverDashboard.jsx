@@ -180,8 +180,11 @@ const DriverDashboard = () => {
     allAppointments: appointments,
   }); // Filter appointments for current driver - only show those visible to driver
   const myAppointments = appointments.filter((apt) => {
+    // Driver assigned to this appointment (main driver field)
+    const isAssignedDriver = apt.driver === user?.id;
+
     // Debug: Log all appointments for this driver
-    if (apt.driver === user?.id) {
+    if (isAssignedDriver) {
       console.log(
         `🚗 Driver appointment ${apt.id}: status="${apt.status}", client="${
           apt.client_details?.first_name || "Unknown"
@@ -190,8 +193,10 @@ const DriverDashboard = () => {
       );
     }
 
-    // Driver assigned to this appointment
-    if (apt.driver !== user?.id) return false; // Only show appointments that should be visible to driver:
+    // Only show appointments assigned to this driver
+    if (!isAssignedDriver) return false;
+
+    // Only show appointments that should be visible to driver:
     // - pending: Initial booking (driver needs to see to accept)
     // - therapist_confirmed: After therapist(s) confirmed, waiting for driver
     // - driver_confirmed: Driver confirmed, ready to start journey
@@ -201,7 +206,10 @@ const DriverDashboard = () => {
     // - dropped_off: Driver dropped off therapist
     // - session_in_progress: Therapist(s) dropped off, session ongoing
     // - awaiting_payment: Session complete, awaiting payment
-    // - completed: Appointment complete, may need pickup    // - pickup_requested: Therapist requested pickup
+    // - completed: Appointment complete, may need pickup
+    // - pickup_requested: Therapist requested pickup
+    // - driver_assigned_pickup: Driver assigned for pickup (needs confirmation)
+    // - return_journey: Driver confirmed pickup and traveling back
     const visibleStatuses = [
       "pending",
       "therapist_confirmed",
@@ -215,12 +223,16 @@ const DriverDashboard = () => {
       "awaiting_payment",
       "completed",
       "pickup_requested",
+      "driver_assigned_pickup", // Show pickup assignments to driver
+      "return_journey", // Show return journey status
     ];
 
     return visibleStatuses.includes(apt.status);
   });
   const myTodayAppointments = todayAppointments.filter((apt) => {
-    if (apt.driver !== user?.id) return false;
+    const isAssignedDriver = apt.driver === user?.id;
+    if (!isAssignedDriver) return false;
+
     const visibleStatuses = [
       "pending",
       "therapist_confirmed",
@@ -234,11 +246,15 @@ const DriverDashboard = () => {
       "awaiting_payment",
       "completed",
       "pickup_requested",
+      "driver_assigned_pickup", // Show pickup assignments to driver
+      "return_journey", // Show return journey status
     ];
     return visibleStatuses.includes(apt.status);
   });
   const myUpcomingAppointments = upcomingAppointments.filter((apt) => {
-    if (apt.driver !== user?.id) return false;
+    const isAssignedDriver = apt.driver === user?.id;
+    if (!isAssignedDriver) return false;
+
     const visibleStatuses = [
       "pending",
       "therapist_confirmed",
@@ -252,13 +268,15 @@ const DriverDashboard = () => {
       "awaiting_payment",
       "completed",
       "pickup_requested",
+      "driver_assigned_pickup", // Show pickup assignments to driver
+      "return_journey", // Show return journey status
     ];
     return visibleStatuses.includes(apt.status);
-  });
-  // Separate filter for "All My Transports" view - includes completed transports
+  }); // Separate filter for "All My Transports" view - includes completed transports
   const myAllTransports = appointments
     .filter((apt) => {
-      if (apt.driver !== user?.id) return false;
+      const isAssignedDriver = apt.driver === user?.id;
+      if (!isAssignedDriver) return false;
 
       // For "All" view, show everything including completed/dropped-off transports
       const allStatuses = [
@@ -277,6 +295,7 @@ const DriverDashboard = () => {
         "therapist_dropped_off", // Legacy status support
         "payment_completed", // Session fully finished
         "driver_assigned_pickup", // Driver assigned for pickup
+        "return_journey", // Return journey status
       ];
 
       return allStatuses.includes(apt.status);

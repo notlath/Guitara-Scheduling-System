@@ -256,39 +256,47 @@ const OperatorDashboard = () => {
     return () => {
       unsubscribe();
     };
-  }, []);
-
-  // Filter rejected appointments for review
-  const rejectedAppointments = appointments.filter(
-    (apt) => apt.status === "rejected" && !apt.review_decision
-  );
+  }, []); // Filter rejected appointments for review (ensure appointments is an array)
+  const rejectedAppointments = useMemo(() => {
+    return (appointments || []).filter(
+      (apt) => apt.status === "rejected" && !apt.review_decision
+    );
+  }, [appointments]);
 
   // Filter appointments that are pending and approaching timeout
-  const pendingAppointments = appointments.filter(
-    (apt) => apt.status === "pending" && apt.response_deadline
-  );
+  const pendingAppointments = useMemo(() => {
+    return (appointments || []).filter(
+      (apt) => apt.status === "pending" && apt.response_deadline
+    );
+  }, [appointments]);
 
   // Filter appointments awaiting payment verification
-  const awaitingPaymentAppointments = appointments.filter(
-    (apt) => apt.status === "awaiting_payment"
-  );
-  // Calculate which appointments are overdue
-  const overdueAppointments = pendingAppointments.filter(
-    (apt) => new Date(apt.response_deadline) < new Date()
-  );
+  const awaitingPaymentAppointments = useMemo(() => {
+    return (appointments || []).filter(
+      (apt) => apt.status === "awaiting_payment"
+    );
+  }, [appointments]); // Calculate which appointments are overdue
+  const overdueAppointments = useMemo(() => {
+    return pendingAppointments.filter(
+      (apt) => new Date(apt.response_deadline) < new Date()
+    );
+  }, [pendingAppointments]);
 
   // Calculate which appointments are approaching deadline (within 10 minutes)
-  const approachingDeadlineAppointments = pendingAppointments.filter((apt) => {
-    const deadline = new Date(apt.response_deadline);
-    const now = new Date();
-    const timeDiff = deadline.getTime() - now.getTime();
-    const minutesDiff = timeDiff / (1000 * 60);
-    return minutesDiff > 0 && minutesDiff <= 10;
-  });
-
+  const approachingDeadlineAppointments = useMemo(() => {
+    return pendingAppointments.filter((apt) => {
+      const deadline = new Date(apt.response_deadline);
+      const now = new Date();
+      const timeDiff = deadline.getTime() - now.getTime();
+      const minutesDiff = timeDiff / (1000 * 60);
+      return minutesDiff > 0 && minutesDiff <= 10;
+    });
+  }, [pendingAppointments]);
   // Calculate rejection statistics
   const rejectionStats = useMemo(() => {
-    const rejected = appointments.filter((apt) => apt.status === "rejected");
+    const rejected = (appointments || []).filter(
+      (apt) => apt.status === "rejected"
+    );
     const therapistRejections = rejected.filter(
       (apt) => apt.rejected_by_details?.role?.toLowerCase() === "therapist"
     );
@@ -512,13 +520,12 @@ const OperatorDashboard = () => {
     }
   }; // Payment verification handler
   const handlePaymentVerification = (appointment) => {
-    // Calculate total amount from services
-    const totalAmount = Number(
-      appointment?.services_details?.reduce(
-        (total, service) => total + (Number(service.price) || 0),
-        0
-      ) || 0
-    );
+    // Calculate total amount from services with proper number handling
+    const totalAmount =
+      appointment?.services_details?.reduce((total, service) => {
+        const price = Number(service.price) || 0;
+        return total + price;
+      }, 0) || 0;
 
     setPaymentModal({
       isOpen: true,
@@ -527,7 +534,7 @@ const OperatorDashboard = () => {
     });
     setPaymentData({
       method: "cash",
-      amount: totalAmount.toFixed(2), // Pre-fill with calculated total
+      amount: totalAmount.toFixed(2), // totalAmount is guaranteed to be a number
       notes: "",
     });
   };
@@ -547,7 +554,12 @@ const OperatorDashboard = () => {
       const appointmentId = parseInt(paymentModal.appointmentId, 10);
       console.log("Marking payment as paid for appointment ID:", appointmentId);
 
-      await dispatch(markAppointmentPaid(appointmentId)).unwrap();
+      await dispatch(
+        markAppointmentPaid({
+          appointmentId,
+          paymentData,
+        })
+      ).unwrap();
 
       // Close modal and refresh data
       setPaymentModal({
@@ -1666,10 +1678,9 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderActiveSessionsView = () => {
     // Calculate active sessions from appointments
-    const activeSessions = appointments.filter(
+    const activeSessions = (appointments || []).filter(
       (apt) =>
         apt.status === "in_progress" || apt.status === "therapist_en_route"
     );
@@ -1733,7 +1744,7 @@ const OperatorDashboard = () => {
   };
   const renderPickupRequestsView = () => {
     // Calculate pickup requests from appointments
-    const pickupRequests = appointments.filter(
+    const pickupRequests = (appointments || []).filter(
       (apt) =>
         apt.status === "pickup_requested" ||
         apt.status === "driver_assigned_pickup"
@@ -1899,13 +1910,12 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   // Calculate counts for tab buttons
-  const activeSessions = appointments.filter(
+  const activeSessions = (appointments || []).filter(
     (apt) => apt.status === "in_progress" || apt.status === "therapist_en_route"
   );
 
-  const pickupRequests = appointments.filter(
+  const pickupRequests = (appointments || []).filter(
     (apt) =>
       apt.status === "pickup_requested" ||
       apt.status === "driver_assigned_pickup"
@@ -2149,12 +2159,17 @@ const OperatorDashboard = () => {
                 </p>{" "}
                 <p>
                   <strong>Total Amount:</strong> ₱
-                  {Number(
-                    paymentModal.appointmentDetails?.services_details?.reduce(
-                      (total, service) => total + (Number(service.price) || 0),
-                      0
-                    ) || 0
-                  ).toFixed(2)}
+                  {(() => {
+                    const total =
+                      paymentModal.appointmentDetails?.services_details?.reduce(
+                        (total, service) => {
+                          const price = Number(service.price) || 0;
+                          return total + price;
+                        },
+                        0
+                      ) || 0;
+                    return total.toFixed(2);
+                  })()}
                 </p>
               </div>
             </div>

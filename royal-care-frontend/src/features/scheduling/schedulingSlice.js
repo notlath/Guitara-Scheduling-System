@@ -1451,13 +1451,16 @@ export const completeAppointment = createAsyncThunk(
 // Thunk to mark an appointment as paid
 export const markAppointmentPaid = createAsyncThunk(
   "scheduling/markAppointmentPaid",
-  async (appointmentId, { rejectWithValue }) => {
+  async ({ appointmentId, paymentData }, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.post(
         `${API_URL}appointments/${appointmentId}/mark_completed/`,
-        {},
+        {
+          payment_method: paymentData?.method || "cash",
+          payment_amount: paymentData?.amount || 0,
+        },
         { headers: { Authorization: `Token ${token}` } }
       );
       sendAppointmentUpdate(response.data.id);
