@@ -546,9 +546,6 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
             </div>
           </div>
         )}
-
-        {/* Show bookings after time slots selection but before availability info */}
-        {renderDayBookings()}
       </div>
     );
   };
@@ -557,7 +554,7 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     <div className="calendar-wrapper">
       {view === "month" ? renderMonthCalendar() : renderDayCalendar()}
 
-      {/* Only show availability info for current/future dates - moved below bookings */}
+      {/* Only show availability info for current/future dates */}
       {view === "day" && !isPastDate(selectedDate) && (
         <div className="availability-info">
           <div className="therapists-section">
@@ -638,6 +635,9 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
               </p>
             )}
           </div>
+
+          {/* Display bookings for the selected day */}
+          {renderDayBookings()}
         </div>
       )}
     </div>
