@@ -1314,7 +1314,7 @@ export const markArrived = createAsyncThunk(
     if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/mark_arrived/`,
+        `${API_URL}appointments/${appointmentId}/arrive_at_location/`,
         {},
         { headers: { Authorization: `Token ${token}` } }
       );
@@ -1376,7 +1376,7 @@ export const requestPayment = createAsyncThunk(
     if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/request_payment/`,
+        `${API_URL}appointments/${appointmentId}/mark_awaiting_payment/`,
         {},
         { headers: { Authorization: `Token ${token}` } }
       );
@@ -1456,7 +1456,7 @@ export const markAppointmentPaid = createAsyncThunk(
     if (!token) return rejectWithValue("Authentication required");
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/mark_paid/`,
+        `${API_URL}appointments/${appointmentId}/mark_completed/`,
         {},
         { headers: { Authorization: `Token ${token}` } }
       );
