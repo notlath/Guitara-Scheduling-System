@@ -599,7 +599,7 @@
   padding: var(--spacing-md);
   border: 1px solid var(--background-200);
   border-radius: 8px;
-  background-color: var(--background-50);
+  background-color: var(--background);
   transition: all 0.2s ease;
 }
 
