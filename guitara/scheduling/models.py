@@ -65,6 +65,10 @@ class Appointment(models.Model):
         ("journey", "Journey"),
         ("arrived", "Arrived"),
         ("dropped_off", "Dropped Off"),
+        (
+            "driver_transport_completed",
+            "Driver Transport Completed",
+        ),  # Driver's job done after drop-off
         ("session_in_progress", "Session In Progress"),
         ("awaiting_payment", "Awaiting Payment"),
         ("completed", "Completed"),

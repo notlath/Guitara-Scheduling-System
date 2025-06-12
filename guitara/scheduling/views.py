@@ -1567,11 +1567,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(appointment)
         return Response(
             {"message": "Arrived at client location.", "appointment": serializer.data}
-        )
+        ) @ action(detail=True, methods=["post"])
 
-    @action(detail=True, methods=["post"])
     def drop_off_therapist(self, request, pk=None):
-        """Driver marks therapist(s) as dropped off"""
+        """Driver marks therapist(s) as dropped off and completes their transport"""
         appointment = self.get_object()
 
         if request.user != appointment.driver:
@@ -1585,21 +1584,25 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 {"error": "Can only drop off when driver has arrived"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # Update status to dropped_off - therapist will manually start session
-        appointment.status = "dropped_off"
+        # Update status to driver_transport_completed - driver's job is done
+        appointment.status = "driver_transport_completed"
         appointment.dropped_off_at = timezone.now()
         appointment.save()
+
+        # Mark driver as available for new assignments
+        if appointment.driver:
+            appointment.driver.last_available_at = timezone.now()
+            appointment.driver.save()
 
         # Create notifications
         self._create_notifications(
             appointment,
             "therapist_dropped_off",
-            f"Therapist(s) dropped off at {appointment.client}. Ready to start session.",
+            f"Therapist(s) dropped off at {appointment.client}. Transport completed for driver. Therapist can start session.",
         )
 
         serializer = self.get_serializer(appointment)
-        message = "Therapist(s) dropped off successfully. Therapist can now start the session."
+        message = "Therapist(s) dropped off successfully. Transport completed! You are now available for new assignments."
         return Response({"message": message, "appointment": serializer.data})
 
     @action(detail=True, methods=["post"])
