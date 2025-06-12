@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./FormField.css";
 import { MdVisibility, MdVisibilityOff } from "react-icons/md";
 
+// Button for toggling password visibility (eye icon)
 export function PasswordVisibilityToggle({
   visible,
   onToggle,
@@ -22,30 +23,34 @@ export function PasswordVisibilityToggle({
   );
 }
 
+// Generic, reusable form field component
 export function FormField({
-  label,
-  name,
-  type = "text",
-  value = "",
-  onChange,
-  required = false,
-  inputProps = {},
-  children, // for select or helper/error/status or custom input
-  as = "input",
-  validate = null, // optional validation function for custom logic
-  onErrorChange, // optional callback to inform parent of error state
+  label, // Label for the field
+  name, // Field name (for form state)
+  type = "text", // Input type (text, password, etc)
+  value = "", // Current value
+  onChange, // Change handler
+  required = false, // Is field required?
+  inputProps = {}, // Extra props for the input
+  children, // For custom content (e.g. select, helper text, icons)
+  as = "input", // What kind of field: input, select, textarea, or custom
+  validate = null, // Optional validation function
+  onErrorChange, // Callback to inform parent of error state
   ...rest
 }) {
+  // Track if user has interacted with the field
   const [touched, setTouched] = useState(false);
+  // Store error message for this field
   const [error, setError] = useState("");
+  // For password fields: show/hide password
   const [showPassword, setShowPassword] = useState(false);
 
-  // Run validation whenever value or touched changes
+  // Run validation when value or touched changes
   useEffect(() => {
     let err = "";
     if (touched) {
       if (validate) {
-        err = validate(value);
+        err = validate(value); // Use custom validator if provided
       } else if (
         required &&
         (typeof value === "string" ? value.trim() === "" : !value)
@@ -58,7 +63,7 @@ export function FormField({
     // eslint-disable-next-line
   }, [value, touched]);
 
-  // Show asterisk for required fields
+  // Render label with asterisk if required
   const labelContent = (
     <>
       {label}
@@ -68,7 +73,7 @@ export function FormField({
     </>
   );
 
-  // Compose input className with error border if invalid
+  // Compose input className, add error border if invalid
   const inputClassName = [
     inputProps.className ||
       (as === "select"
@@ -81,14 +86,16 @@ export function FormField({
     .filter(Boolean)
     .join(" ");
 
-  // Blur handler to trigger validation
+  // When input loses focus, mark as touched (for validation)
   const handleBlur = (e) => {
     setTouched(true);
     if (inputProps.onBlur) inputProps.onBlur(e);
   };
 
+  // Main render logic
   return (
     <div className="global-form-field-group">
+      {/* Render label if provided */}
       {label && (
         <div className="global-form-field-label-row">
           <label className="global-form-field-label" htmlFor={name}>
@@ -97,6 +104,7 @@ export function FormField({
         </div>
       )}
       <div className="global-form-field-relative-wrapper">
+        {/* Password field: show input and eye icon */}
         {as === "input" && type === "password" ? (
           <div style={{ position: "relative", width: "100%" }}>
             <input
@@ -111,6 +119,7 @@ export function FormField({
               {...inputProps}
               {...rest}
             />
+            {/* Eye icon for toggling password visibility */}
             <PasswordVisibilityToggle
               visible={showPassword}
               onToggle={() => setShowPassword((v) => !v)}
@@ -118,8 +127,10 @@ export function FormField({
             />
           </div>
         ) : children && as === "custom" ? (
+          // Custom field (e.g. phone input with prefix)
           children
         ) : as === "select" ? (
+          // Select dropdown
           <select
             className={inputClassName}
             name={name}
@@ -133,6 +144,7 @@ export function FormField({
             {children}
           </select>
         ) : as === "textarea" ? (
+          // Textarea field
           <textarea
             className={inputClassName}
             name={name}
@@ -145,6 +157,7 @@ export function FormField({
             {...rest}
           />
         ) : (
+          // Default input (text, email, etc)
           <input
             className={inputClassName}
             type={type}
@@ -158,12 +171,13 @@ export function FormField({
             {...rest}
           />
         )}
-        {/* Render children inside the relative wrapper for icons, popups, etc. */}
+        {/* Render children for extra content (e.g. helper text, icons) */}
         {children &&
           as !== "custom" &&
           as !== "select" &&
           as !== "input" &&
           children}
+        {/* Show error message if present */}
         {error && <div className="global-form-field-error">{error}</div>}
       </div>
     </div>

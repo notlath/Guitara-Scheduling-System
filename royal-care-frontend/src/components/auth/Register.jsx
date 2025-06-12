@@ -314,7 +314,10 @@ const Register = () => {
                       )}
                     </FormField>
                   </div>
-                  <div className={styles.formGroup} style={{ position: 'relative' }}>
+                  <div
+                    className={styles.formGroup}
+                    style={{ position: "relative" }}
+                  >
                     <FormField
                       label="Create password"
                       name="password"
