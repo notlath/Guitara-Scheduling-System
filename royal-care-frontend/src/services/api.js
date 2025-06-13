@@ -171,3 +171,7 @@ export const registerDriver = (data) => api.post("/registration/register/driver/
 export const registerOperator = (data) => api.post("/registration/register/operator/", data);
 export const registerMaterial = (data) => api.post("/registration/register/material/", data);
 export const registerService = (data) => api.post("/registration/register/service/", data);
+export const completeRegistration = (data) => api.post("/registration/complete-registration/", data);
+// Check if an email is registered and eligible for completion
+export const checkEmailExists = (email) =>
+  api.post("/registration/check-email/", { email });

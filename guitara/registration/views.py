@@ -9,7 +9,11 @@ from .serializers import (
     OperatorSerializer,
     ServiceSerializer,
     MaterialSerializer,
+    CompleteRegistrationSerializer,
 )
+from core.models import CustomUser
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 
 logger = logging.getLogger(__name__)
 
@@ -93,9 +97,21 @@ class RegisterTherapist(APIView):
                 inserted_data, error = insert_into_table(
                     "registration_therapist", payload
                 )
+                # Always create or update CustomUser after Supabase insert
+                user, created = CustomUser.objects.update_or_create(
+                    username=data["username"],
+                    defaults={
+                        "email": data["email"],
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "role": "therapist",
+                        "specialization": data.get("specialization"),
+                        "massage_pressure": data.get("pressure"),
+                        "is_active": True,
+                    },
+                )
                 if error:
                     error_str = str(error).lower()
-
                     # Handle row-level security policy errors
                     if (
                         "row-level security" in error_str
@@ -105,62 +121,15 @@ class RegisterTherapist(APIView):
                         logger.warning(
                             f"Supabase RLS policy error, attempting local storage: {error}"
                         )
-
-                        # Fallback: Store in local Django database
-                        try:
-                            from core.models import CustomUser
-
-                            # Check if user already exists
-                            if CustomUser.objects.filter(
-                                username=data["username"]
-                            ).exists():
-                                return Response(
-                                    {
-                                        "error": "A therapist with this username already exists."
-                                    },
-                                    status=status.HTTP_400_BAD_REQUEST,
-                                )
-                            if CustomUser.objects.filter(email=data["email"]).exists():
-                                return Response(
-                                    {
-                                        "error": "A therapist with this email already exists."
-                                    },
-                                    status=status.HTTP_400_BAD_REQUEST,
-                                )
-
-                            # Create user in local database
-                            user = CustomUser.objects.create(
-                                username=data["username"],
-                                email=data["email"],
-                                first_name=data["first_name"],
-                                last_name=data["last_name"],
-                                role="therapist",
-                                specialization=data.get("specialization"),
-                                massage_pressure=data.get("pressure"),
-                                is_active=True,
-                            )
-
-                            logger.info(
-                                f"Therapist stored locally due to Supabase RLS issues: {user.username}"
-                            )
-                            return Response(
-                                {
-                                    "message": "Therapist registered successfully (stored locally due to database connectivity issues)",
-                                    "fallback": True,
-                                    "user_id": user.id,
-                                },
-                                status=status.HTTP_201_CREATED,
-                            )
-
-                        except Exception as local_error:
-                            logger.error(f"Local storage also failed: {local_error}")
-                            return Response(
-                                {
-                                    "error": f"Registration failed: Database access denied and local storage failed: {str(local_error)}"
-                                },
-                                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            )
-
+                        # Fallback: Store in local Django database (already done above)
+                        return Response(
+                            {
+                                "message": "Therapist registered successfully (stored locally due to database connectivity issues)",
+                                "fallback": True,
+                                "user_id": user.id,
+                            },
+                            status=status.HTTP_201_CREATED,
+                        )
                     # Handle duplicate key errors
                     if (
                         "duplicate key" in error_str
@@ -191,7 +160,7 @@ class RegisterTherapist(APIView):
                         {"error": error}, status=status.HTTP_400_BAD_REQUEST
                     )
                 return Response(
-                    {"message": "Therapist registered successfully"},
+                    {"message": "Therapist registered successfully", "user_id": user.id},
                     status=status.HTTP_201_CREATED,
                 )
             except Exception as exc:
@@ -251,7 +220,17 @@ class RegisterDriver(APIView):
             try:
                 # Try Supabase first
                 inserted_data, error = insert_into_table("registration_driver", payload)
-
+                # Always create or update CustomUser after Supabase insert
+                user, created = CustomUser.objects.update_or_create(
+                    username=data["username"],
+                    defaults={
+                        "email": data["email"],
+                        "first_name": data["first_name"],
+                        "last_name": data["last_name"],
+                        "role": "driver",
+                        "is_active": True,
+                    },
+                )
                 if error:
                     # Check if it's a timeout/connection error or RLS policy error
                     if (
@@ -268,8 +247,6 @@ class RegisterDriver(APIView):
 
                         # Fallback: Store in local Django database
                         try:
-                            from core.models import CustomUser
-
                             # Check if user already exists
                             if CustomUser.objects.filter(
                                 username=data["username"]
@@ -348,7 +325,7 @@ class RegisterDriver(APIView):
 
                 # Success case
                 return Response(
-                    {"message": "Driver registered successfully"},
+                    {"message": "Driver registered successfully", "user_id": user.id},
                     status=status.HTTP_201_CREATED,
                 )
 
@@ -397,6 +374,33 @@ class RegisterOperator(APIView):
                 inserted_data, error = insert_into_table(
                     "registration_operator", payload
                 )
+                # Always create or update CustomUser after Supabase insert
+                try:
+                    logger.warning(f"Attempting to create/update CustomUser for operator: username={data['username']}, email={data['email']}, first_name={data['first_name']}, last_name={data['last_name']}, role=operator")
+                    user, created = CustomUser.objects.update_or_create(
+                        username=data["username"],
+                        defaults={
+                            "email": data["email"],
+                            "first_name": data["first_name"],
+                            "last_name": data["last_name"],
+                            "role": "operator",
+                            "is_active": True,
+                        },
+                    )
+                except Exception as cu_error:
+                    import traceback
+                    logger.error(f"CustomUser creation failed for operator: {cu_error}\nTraceback: {traceback.format_exc()}")
+                    # Check for unique constraint errors
+                    cu_error_str = str(cu_error).lower()
+                    if "unique constraint" in cu_error_str or "unique violation" in cu_error_str or "already exists" in cu_error_str:
+                        if "email" in cu_error_str:
+                            return Response({"error": "An operator with this email already exists (CustomUser)."}, status=400)
+                        if "username" in cu_error_str:
+                            return Response({"error": "An operator with this username already exists (CustomUser)."}, status=400)
+                        return Response({"error": "An operator with this information already exists (CustomUser)."}, status=400)
+                    if "role" in cu_error_str or "null" in cu_error_str:
+                        return Response({"error": "Operator registration failed: missing required field (role or other)."}, status=400)
+                    return Response({"error": f"CustomUser creation failed: {cu_error}"}, status=500)
 
                 if error:
                     error_str = str(error).lower()
@@ -416,8 +420,6 @@ class RegisterOperator(APIView):
 
                         # Fallback: Store in local Django database
                         try:
-                            from core.models import CustomUser
-
                             # Check if user already exists
                             if CustomUser.objects.filter(
                                 username=data["username"]
@@ -499,7 +501,7 @@ class RegisterOperator(APIView):
 
                 # Success case
                 return Response(
-                    {"message": "Operator registered successfully"},
+                    {"message": "Operator registered successfully", "user_id": user.id},
                     status=status.HTTP_201_CREATED,
                 )
 
@@ -696,3 +698,62 @@ class RegisterService(APIView):
             )
         logger.warning(f"Service serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CompleteRegistrationAPIView(APIView):
+    """
+    API endpoint for therapists/drivers to complete their registration by providing email, phone number, and password.
+    """
+
+    def post(self, request):
+        from django.contrib.auth.hashers import make_password
+
+        serializer = CompleteRegistrationSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        email = serializer.validated_data["email"]
+        phone_number = serializer.validated_data["phone_number"]
+        password = serializer.validated_data["password"]
+        try:
+            user = CustomUser.objects.get(email=email)
+            user.phone_number = phone_number
+            user.set_password(password)
+            user.save()
+            return Response(
+                {"message": "Registration completed successfully."},
+                status=status.HTTP_200_OK,
+            )
+        except CustomUser.DoesNotExist:
+            return Response(
+                {"error": "No user found with this email."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as exc:
+            return Response(
+                {"error": f"Failed to complete registration: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def check_email_exists(request):
+    """
+    Check if an email is registered and eligible for registration completion.
+    Returns {exists: true/false, eligible: true/false, role: ...}
+    """
+    email = request.data.get("email", "").strip().lower()
+    if not email:
+        return Response({"exists": False, "eligible": False, "error": "No email provided."}, status=400)
+    user = CustomUser.objects.filter(email__iexact=email).first()
+    if user:
+        # Eligible if user has no password set (i.e., not completed registration)
+        eligible = not user.has_usable_password() or user.password in (None, "", "!")
+        return Response({
+            "exists": True,
+            "eligible": eligible,
+            "role": user.role,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+        })
+    return Response({"exists": False, "eligible": False})
