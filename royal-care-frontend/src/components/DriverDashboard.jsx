@@ -978,9 +978,15 @@ const DriverDashboard = () => {
   };
   const renderActionButtons = (appointment) => {
     const { status, id, both_parties_accepted, requires_car } = appointment;
+    // Enhanced multi-therapist detection logic
     const isGroupTransport =
-      appointment.therapist_group && appointment.therapist_group.length > 1;
-    const requiresCompanyCar = isGroupTransport;
+      (appointment.therapists_details &&
+        appointment.therapists_details.length > 1) ||
+      (appointment.therapists &&
+        Array.isArray(appointment.therapists) &&
+        appointment.therapists.length > 1) ||
+      (appointment.group_size && appointment.group_size > 1);
+    const requiresCompanyCar = isGroupTransport || requires_car;
 
     // Disable all actions if driver has an active pickup assignment (except the pickup itself)
     const isDisabledDueToPickup =
@@ -1519,11 +1525,56 @@ const DriverDashboard = () => {
 
     return (
       <div className="appointments-list">
+        {" "}
         {appointmentsList.map((appointment) => {
+          // Enhanced multi-therapist detection logic
           const isGroupTransport =
-            appointment.therapist_group &&
-            appointment.therapist_group.length > 1;
-          const requiresCompanyCar = isGroupTransport;
+            (appointment.therapists_details &&
+              appointment.therapists_details.length > 1) ||
+            (appointment.therapists &&
+              Array.isArray(appointment.therapists) &&
+              appointment.therapists.length > 1) ||
+            (appointment.group_size && appointment.group_size > 1);
+
+          const requiresCompanyCar =
+            isGroupTransport || appointment.requires_car;
+
+          // Debug logging for vehicle type determination
+          if (
+            appointment.therapists_details &&
+            appointment.therapists_details.length > 1
+          ) {
+            console.log(
+              `🚗 Appointment ${appointment.id}: Multi-therapist detected via therapists_details (${appointment.therapists_details.length} therapists) -> Company Car`
+            );
+          } else if (
+            appointment.therapists &&
+            Array.isArray(appointment.therapists) &&
+            appointment.therapists.length > 1
+          ) {
+            console.log(
+              `🚗 Appointment ${appointment.id}: Multi-therapist detected via therapists array (${appointment.therapists.length} therapists) -> Company Car`
+            );
+          } else if (appointment.group_size && appointment.group_size > 1) {
+            console.log(
+              `🚗 Appointment ${appointment.id}: Multi-therapist detected via group_size (${appointment.group_size}) -> Company Car`
+            );
+          } else if (appointment.requires_car) {
+            console.log(
+              `🚗 Appointment ${appointment.id}: Company car required via requires_car flag -> Company Car`
+            );
+          } else {
+            console.log(
+              `🏍️ Appointment ${appointment.id}: Single therapist booking -> Motorcycle`,
+              {
+                therapists_details_length:
+                  appointment.therapists_details?.length || 0,
+                therapists_length: appointment.therapists?.length || 0,
+                group_size: appointment.group_size,
+                requires_car: appointment.requires_car,
+              }
+            );
+          }
 
           return (
             <div
@@ -1576,38 +1627,40 @@ const DriverDashboard = () => {
                   <strong>Services:</strong>{" "}
                   {appointment.services_details?.map((s) => s.name).join(", ")}
                 </p>
-
-                {/* Therapist Information */}
+                {/* Therapist Information */}{" "}
                 {isGroupTransport ? (
                   <div className="therapist-group-info">
                     <strong>
-                      Therapists ({appointment.therapist_group?.length || 0}):
+                      Therapists ({appointment.therapists_details?.length || 0}
+                      ):
                     </strong>
                     <div className="therapist-list">
-                      {appointment.therapist_group?.map((therapist, index) => (
-                        <div
-                          key={therapist.id || index}
-                          className="therapist-item"
-                        >
-                          <span className="therapist-name">
-                            {therapist.first_name} {therapist.last_name}
-                          </span>
-                          <span className="therapist-specialization">
-                            {therapist.specialization}
-                          </span>
-                          {appointment.status === "picking_up_therapists" && (
-                            <span
-                              className={`pickup-status ${
-                                therapist.pickup_status || "waiting"
-                              }`}
-                            >
-                              {therapist.pickup_status === "picked_up"
-                                ? "✓ In Vehicle"
-                                : "⏳ Waiting"}
+                      {appointment.therapists_details?.map(
+                        (therapist, index) => (
+                          <div
+                            key={therapist.id || index}
+                            className="therapist-item"
+                          >
+                            <span className="therapist-name">
+                              {therapist.first_name} {therapist.last_name}
                             </span>
-                          )}
-                        </div>
-                      ))}
+                            <span className="therapist-specialization">
+                              {therapist.specialization}
+                            </span>
+                            {appointment.status === "picking_up_therapists" && (
+                              <span
+                                className={`pickup-status ${
+                                  therapist.pickup_status || "waiting"
+                                }`}
+                              >
+                                {therapist.pickup_status === "picked_up"
+                                  ? "✓ In Vehicle"
+                                  : "⏳ Waiting"}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -1625,7 +1678,6 @@ const DriverDashboard = () => {
                     </p>
                   )
                 )}
-
                 {/* Enhanced info for completed transports in "All My Transports" view */}
                 {(appointment.status === "therapist_dropped_off" ||
                   appointment.status === "payment_completed" ||
@@ -1668,7 +1720,6 @@ const DriverDashboard = () => {
                         )}
                     </div>
                   )}
-
                 {/* Driver Status Information */}
                 {appointment.status === "therapist_dropped_off" && (
                   <div className="driver-status-info">
@@ -1680,7 +1731,6 @@ const DriverDashboard = () => {
                     </p>
                   </div>
                 )}
-
                 {/* Pickup Assignment Information */}
                 {appointment.status === "driver_assigned_pickup" && (
                   <div className="pickup-assignment-info">
@@ -1697,7 +1747,6 @@ const DriverDashboard = () => {
                     )}
                   </div>
                 )}
-
                 {/* Session Progress for Completed Transport */}
                 {appointment.status === "transport_completed" &&
                   appointment.session_details && (
@@ -1712,7 +1761,6 @@ const DriverDashboard = () => {
                       </p>
                     </div>
                   )}
-
                 {appointment.notes && (
                   <p>
                     <strong>Notes:</strong> {appointment.notes}
