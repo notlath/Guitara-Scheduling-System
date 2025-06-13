@@ -501,15 +501,24 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
                 <ul>
                   {filteredTherapists.map((therapist) => (
                     <li key={therapist.id || Math.random()}>
-                      <b>
-                        {therapist.first_name || ""} {therapist.last_name || ""}
-                      </b>{" "}
-                      {therapist.specialization
-                        ? `- Specialization: ${therapist.specialization}`
-                        : ""}{" "}
-                      {therapist.start_time && therapist.end_time
-                        ? ` - Available: ${therapist.start_time} to ${therapist.end_time}`
-                        : ""}
+                      <div className="therapist-name">
+                        <b>
+                          {therapist.first_name || ""}{" "}
+                          {therapist.last_name || ""}
+                        </b>
+                        {therapist.specialization && (
+                          <span className="therapist-specialization">
+                            {" "}
+                            ({therapist.specialization})
+                          </span>
+                        )}
+                      </div>
+                      {therapist.start_time && therapist.end_time && (
+                        <span className="availability-time">
+                          Available: {therapist.start_time} to{" "}
+                          {therapist.end_time}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>

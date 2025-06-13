@@ -253,13 +253,32 @@
   border: 1px solid #e9ecef;
   border-radius: 6px;
   padding: 8px 12px;
-  margin: 8px 0;
+  margin: 10px 0;
   font-size: 0.9rem;
   color: #495057;
 }
 
 .therapist-team strong {
   color: #343a40;
+}
+
+/* Therapist List Display Styles */
+.therapist-team .therapist-list {
+  margin-top: 4px;
+}
+
+.therapist-team .therapist-name {
+  display: block;
+  font-weight: 500;
+  color: #2c3e50;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.therapist-team .therapist-specialization {
+  color: #6c757d;
+  font-style: italic;
+  font-weight: normal;
 }
 
 /* Pickup button styles */

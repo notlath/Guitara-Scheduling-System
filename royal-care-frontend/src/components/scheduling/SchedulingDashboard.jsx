@@ -13,6 +13,7 @@ import { PageLoadingState, SkeletonLoader } from "../common/LoadingComponents";
 
 import { MdAdd, MdNotifications } from "react-icons/md";
 import LayoutRow from "../../globals/LayoutRow";
+import PageLayout from "../../globals/PageLayout";
 import "../../globals/TabSwitcher.css";
 import "../../styles/SchedulingDashboard.css";
 import ErrorBoundary from "../common/ErrorBoundary";
@@ -22,7 +23,6 @@ import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
 import WebSocketStatus from "./WebSocketStatus";
 import WeekView from "./WeekView";
-import PageLayout from "../../globals/PageLayout";
 
 const SchedulingDashboard = () => {
   // Set up sync event handlers to update Redux state
@@ -242,11 +242,43 @@ const SchedulingDashboard = () => {
                 <strong>Services:</strong>{" "}
                 {appointment.services_details.map((s) => s.name).join(", ")}
               </p>
-              <p>
-                <strong>Therapist:</strong>{" "}
-                {appointment.therapist_details?.first_name}{" "}
-                {appointment.therapist_details?.last_name}
-              </p>
+              {appointment.therapists_details &&
+              appointment.therapists_details.length > 0 ? (
+                <div>
+                  <strong>Therapists:</strong>
+                  <div className="therapist-list">
+                    {appointment.therapists_details.map((therapist) => (
+                      <div key={therapist.id} className="therapist-name">
+                        {therapist.first_name} {therapist.last_name}
+                        {therapist.specialization && (
+                          <span className="therapist-specialization">
+                            {" "}
+                            ({therapist.specialization})
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : appointment.therapist_details ? (
+                <div>
+                  <strong>Therapist:</strong>
+                  <div className="therapist-name">
+                    {appointment.therapist_details.first_name}{" "}
+                    {appointment.therapist_details.last_name}
+                    {appointment.therapist_details.specialization && (
+                      <span className="therapist-specialization">
+                        {" "}
+                        ({appointment.therapist_details.specialization})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p>
+                  <strong>Therapist:</strong> Not assigned
+                </p>
+              )}
               {appointment.driver_details && (
                 <p>
                   <strong>Driver:</strong>{" "}

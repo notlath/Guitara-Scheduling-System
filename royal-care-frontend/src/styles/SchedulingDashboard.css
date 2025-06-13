@@ -187,6 +187,26 @@ todays-appointments h2,
   gap: var(--spacing-xs);
 }
 
+/* Therapist Display Styles */
+.therapist-list {
+  margin-top: 4px;
+}
+
+.therapist-name {
+  display: block;
+  font-weight: 500;
+  color: #2c3e50;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.therapist-specialization {
+  color: #6c757d;
+  font-style: italic;
+  font-weight: normal;
+}
+
+/* Mobile responsiveness */
 @media (max-width: 768px) {
   .dashboard-header {
     flex-direction: column;
