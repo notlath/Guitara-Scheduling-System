@@ -848,7 +848,6 @@
 /* Session Completion Section */
 .session-completion-info {
   background: white;
-  padding: 20px;
   border-bottom: 1px solid #e9ecef;
 }
 
@@ -1063,118 +1062,8 @@
   gap: 8px;
 }
 
-/* Therapist Display Styles */
-.therapist-group-info {
-  margin: 10px 0;
-}
-
-.therapist-list {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* Additional specific targeting for therapist group display */
-.therapist-group-info .therapist-list {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.therapist-group-info .therapist-item {
-  display: block !important;
-  width: 100%;
-  margin-bottom: 8px;
-  padding: 4px 0;
-}
-
-.therapist-group-info .therapist-name {
-  display: block !important;
-  width: 100%;
-  font-weight: 500;
-  color: #2c3e50;
-  line-height: 1.4;
-  margin-bottom: 2px;
-}
-
-.therapist-group-info .therapist-specialization {
-  color: #6c757d;
-  font-style: italic;
-  font-weight: normal;
-  display: inline;
-}
-
-/* Pickup status alignment for group therapists */
-.therapist-group-info .pickup-status {
-  display: inline-block;
-  margin-left: 8px;
-  margin-top: 4px;
-  vertical-align: top;
-}
-
-/* Ensure specificity for driver dashboard */
-.driver-dashboard .therapist-list,
-.appointment-card .therapist-list {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 4px;
-  margin-top: 8px;
-}
-
-.therapist-item {
-  margin-bottom: 8px;
-  display: block !important;
-  width: 100%;
-}
-
-/* Ensure specificity for driver dashboard */
-.driver-dashboard .therapist-item,
-.appointment-card .therapist-item {
-  display: block !important;
-  width: 100%;
-  margin-bottom: 8px;
-}
-
-/* When pickup status is present, use flex layout */
-.therapist-item .pickup-status {
-  display: inline-block;
-  margin-left: 8px;
-  vertical-align: middle;
-}
-
+/* Simple Therapist Display - Each name on its own line */
 .therapist-name {
-  display: block !important;
-  font-weight: 500;
-  color: #2c3e50;
-  line-height: 1.4;
-  margin-bottom: 4px;
-  width: 100%;
-}
-
-/* Ensure specificity for driver dashboard */
-.driver-dashboard .therapist-name,
-.appointment-card .therapist-name {
-  display: block !important;
-  width: 100%;
-  margin-bottom: 4px;
-}
-
-.therapist-specialization {
-  color: #6c757d;
-  font-style: italic;
-  font-weight: normal;
-}
-
-/* Single therapist display */
-.appointment-details > div:has(> .therapist-name) {
-  margin: 10px 0;
-}
-
-.appointment-details .therapist-name {
-  margin-left: 0;
-  margin-top: 4px;
   display: block;
 }
 
@@ -1313,46 +1202,4 @@
 .zone-badge.ortigas-cbd {
   background: #fd7e14;
   color: white;
-}
-
-/* Ultra-specific targeting for group transport appointment cards */
-.appointment-card.group-transport .therapist-group-info .therapist-list {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
-  margin-top: 12px !important;
-}
-
-.appointment-card.group-transport .therapist-group-info .therapist-item {
-  display: block !important;
-  width: 100% !important;
-  margin: 0 0 10px 0 !important;
-  padding: 6px 0 !important;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.appointment-card.group-transport .therapist-group-info .therapist-name {
-  display: block !important;
-  width: 100% !important;
-  font-weight: 500 !important;
-  color: #2c3e50 !important;
-  line-height: 1.5 !important;
-  margin-bottom: 4px !important;
-  clear: both !important;
-}
-
-.appointment-card.group-transport
-  .therapist-group-info
-  .therapist-specialization {
-  color: #6c757d !important;
-  font-style: italic !important;
-  font-weight: normal !important;
-  display: inline !important;
-}
-
-/* Regular appointment card therapist display */
-.appointment-card .therapist-name {
-  display: block !important;
-  width: 100% !important;
-  margin: 8px 0 4px 0 !important;
 }
