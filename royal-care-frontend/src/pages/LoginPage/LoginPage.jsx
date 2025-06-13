@@ -26,6 +26,7 @@ function LoginPage() {
     message: "",
     contactInfo: null,
   });
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -90,11 +91,11 @@ function LoginPage() {
     if (!needs2FA) {
       // Validate login form
       if (!formData.username || formData.username.trim() === "") {
-        newFieldErrors.username = "Username is required";
+        newFieldErrors.username = "This field is required";
       }
 
       if (!formData.password || formData.password.trim() === "") {
-        newFieldErrors.password = "Password is required";
+        newFieldErrors.password = "This field is required";
       }
     } else {
       // Validate 2FA form
@@ -120,6 +121,7 @@ function LoginPage() {
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setShowFieldErrors(true); // Show all required field errors on submit
 
     // Validate form inputs
     if (!validateForm()) {
@@ -221,24 +223,17 @@ function LoginPage() {
 
   const header = "Good to See You!";
   const errorMessage = error ? (
-    <p className={styles.errorMessage}>
-      {error === "Login failed. Please try again."
-        ? "Login failed. Please check your credentials and try again."
-        : error === "An unexpected error occurred"
-        ? "An unexpected error occurred. Please try again later."
-        : error === "Invalid verification code"
-        ? "Invalid verification code. Please try again."
-        : error}
-    </p>
+    <p className={"global-form-field-error"}>{error}</p>
   ) : null;
   const formFields = !needs2FA ? (
     <div className={styles.inputContainer}>
       <div className={styles.formGroup}>
         <FormField
-          name="username"
           label="Email or Username"
+          name="username"
           value={formData.username}
           onChange={handleChange}
+          required
           inputProps={{
             placeholder: "Enter your email or username",
             className:
@@ -246,17 +241,18 @@ function LoginPage() {
               (fieldErrors.username ? styles.inputError : ""),
           }}
         />
-        {fieldErrors.username && (
-          <div className={styles.fieldError}>Please enter your username.</div>
+        {showFieldErrors && fieldErrors.username && (
+          <div className="global-form-field-error">{fieldErrors.username}</div>
         )}
       </div>
       <div className={styles.formGroup}>
         <FormField
-          name="password"
           label="Password"
+          name="password"
           type="password"
           value={formData.password}
           onChange={handleChange}
+          required
           inputProps={{
             placeholder: "Enter your password",
             className:
@@ -264,34 +260,30 @@ function LoginPage() {
               (fieldErrors.password ? styles.inputError : ""),
           }}
         />
-        {fieldErrors.password && (
-          <div className={styles.fieldError}>Please enter your password.</div>
+        {showFieldErrors && fieldErrors.password && (
+          <div className="global-form-field-error">{fieldErrors.password}</div>
         )}
       </div>
     </div>
   ) : (
     <div className={styles.formGroup}>
       <FormField
+        label="2FA Code"
         name="verificationCode"
-        label="Two-Factor Authentication Code"
         value={verificationCode}
         onChange={handleChange}
+        required
         inputProps={{
-          placeholder: "Enter the 6-digit code",
+          placeholder: "Enter 6-digit code",
           maxLength: 6,
           className:
             "global-form-field-input " +
             (fieldErrors.verificationCode ? styles.inputError : ""),
         }}
       />
-      {fieldErrors.verificationCode && (
-        <div className={styles.fieldError}>
-          {fieldErrors.verificationCode === "Verification code is required"
-            ? "Please enter the 6-digit verification code."
-            : fieldErrors.verificationCode ===
-              "Verification code must be 6 digits"
-            ? "Verification code must be exactly 6 digits."
-            : fieldErrors.verificationCode}
+      {showFieldErrors && fieldErrors.verificationCode && (
+        <div className="global-form-field-error">
+          {fieldErrors.verificationCode}
         </div>
       )}
     </div>
