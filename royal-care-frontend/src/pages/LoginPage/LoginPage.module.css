@@ -38,25 +38,7 @@
   max-width: 350px;
 }
 
-.logo {
-  max-width: 100%;
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: var(--spacing-ml);
-}
-
-.logo img {
-  max-width: 90px; /* Adjust logo size as needed */
-  height: auto;
-  border-radius: 12px; /* Add the rounded corners */
-}
-
-.welcomeHeading {
-  color: var(--text);
-  font-size: var(--font-size-xxl);
-  margin: 0;
-  margin-bottom: var(--spacing-ml);
-}
+/* .logo styles moved to FormBlueprint.css */
 
 .loginForm {
   width: 100%;
@@ -89,25 +71,7 @@
   text-decoration: underline;
 }
 
-.registerLink {
-  text-align: center;
-  font-size: var(--font-size-sm);
-  color: var(--muted);
-  margin: 0 auto;
-  width: 100%;
-  max-width: none;
-  display: block;
-  margin-top: var(--spacing-md);
-}
-
-.registerLinkAnchor {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.registerLinkAnchor:hover {
-  text-decoration: underline;
-}
+/* .registerLink and .registerLinkAnchor styles moved to FormBlueprint.css */
 
 @media screen and (min-width: 1024px) {
   .loginContainer {

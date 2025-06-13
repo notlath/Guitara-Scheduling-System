@@ -1,0 +1,46 @@
+.form-blueprint-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 350px;
+}
+.form-blueprint-logo {
+  max-width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: var(--spacing-ml);
+}
+.form-blueprint-logo img {
+  max-width: 90px;
+  height: auto;
+  border-radius: 12px;
+}
+.form-blueprint-header {
+  color: var(--text);
+  font-size: var(--font-size-xxl);
+  margin: 0;
+  margin-bottom: var(--spacing-ml);
+}
+.form-blueprint-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.form-blueprint-links {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  display: block;
+  margin-top: var(--spacing-md);
+}
+.form-blueprint-link-anchor {
+  color: var(--primary);
+  text-decoration: none;
+}
+.form-blueprint-link-anchor:hover {
+  text-decoration: underline;
+}
