@@ -1641,12 +1641,15 @@ const DriverDashboard = () => {
                             key={therapist.id || index}
                             className="therapist-item"
                           >
-                            <span className="therapist-name">
+                            <div className="therapist-name">
                               {therapist.first_name} {therapist.last_name}
-                            </span>
-                            <span className="therapist-specialization">
-                              {therapist.specialization}
-                            </span>
+                              {therapist.specialization && (
+                                <span className="therapist-specialization">
+                                  {" "}
+                                  ({therapist.specialization})
+                                </span>
+                              )}
+                            </div>
                             {appointment.status === "picking_up_therapists" && (
                               <span
                                 className={`pickup-status ${
@@ -1665,17 +1668,19 @@ const DriverDashboard = () => {
                   </div>
                 ) : (
                   appointment.therapist_details && (
-                    <p>
-                      <strong>Therapist:</strong>{" "}
-                      {appointment.therapist_details.first_name}{" "}
-                      {appointment.therapist_details.last_name}
-                      {appointment.therapist_details.specialization && (
-                        <span className="specialization">
-                          {" "}
-                          - {appointment.therapist_details.specialization}
-                        </span>
-                      )}
-                    </p>
+                    <div>
+                      <strong>Therapist:</strong>
+                      <div className="therapist-name">
+                        {appointment.therapist_details.first_name}{" "}
+                        {appointment.therapist_details.last_name}
+                        {appointment.therapist_details.specialization && (
+                          <span className="therapist-specialization">
+                            {" "}
+                            ({appointment.therapist_details.specialization})
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   )
                 )}
                 {/* Enhanced info for completed transports in "All My Transports" view */}

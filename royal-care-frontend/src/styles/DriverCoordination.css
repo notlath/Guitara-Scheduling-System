@@ -1063,6 +1063,67 @@
   gap: 8px;
 }
 
+/* Therapist Display Styles */
+.therapist-group-info {
+  margin: 10px 0;
+}
+
+.therapist-list {
+  margin-top: 8px;
+}
+
+.therapist-item {
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.therapist-name {
+  display: block;
+  font-weight: 500;
+  color: #2c3e50;
+  line-height: 1.4;
+}
+
+.therapist-specialization {
+  color: #6c757d;
+  font-style: italic;
+  font-weight: normal;
+}
+
+/* Single therapist display */
+.appointment-details > div:has(> .therapist-name) {
+  margin: 10px 0;
+}
+
+.appointment-details .therapist-name {
+  margin-left: 0;
+  margin-top: 4px;
+  display: block;
+}
+
+/* Pickup status styling */
+.pickup-status {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pickup-status.picked_up {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.pickup-status.waiting {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .banner-content {
