@@ -229,13 +229,37 @@ const BookingsPage = () => {
                   </div>
                   <div className="detail-row">
                     <span className="label">Therapist:</span>
-                    <span className="value">
-                      {appointment.therapist_details
-                        ? `${appointment.therapist_details.first_name} ${appointment.therapist_details.last_name}`
-                        : appointment.therapists_details
-                            ?.map((t) => `${t.first_name} ${t.last_name}`)
-                            .join(", ") || "Not assigned"}
-                    </span>
+                    <div className="value">
+                      {appointment.therapists_details &&
+                      appointment.therapists_details.length > 0 ? (
+                        <div className="therapist-list">
+                          {appointment.therapists_details.map((therapist) => (
+                            <div key={therapist.id} className="therapist-name">
+                              {therapist.first_name} {therapist.last_name}
+                              {therapist.specialization && (
+                                <span className="therapist-specialization">
+                                  {" "}
+                                  ({therapist.specialization})
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : appointment.therapist_details ? (
+                        <div className="therapist-name">
+                          {appointment.therapist_details.first_name}{" "}
+                          {appointment.therapist_details.last_name}
+                          {appointment.therapist_details.specialization && (
+                            <span className="therapist-specialization">
+                              {" "}
+                              ({appointment.therapist_details.specialization})
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        "Not assigned"
+                      )}
+                    </div>
                   </div>
                   {appointment.driver_details && (
                     <div className="detail-row">

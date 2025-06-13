@@ -737,6 +737,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+  margin-top: 4px;
 }
 
 .therapist-item {
@@ -745,15 +746,46 @@
 }
 
 .therapist-name {
+  display: block;
   font-weight: 500;
+  color: #2c3e50;
+  line-height: 1.4;
+  margin-bottom: 4px;
 }
 
-.therapist-separator {
-  color: #666;
+.therapist-specialization {
+  color: #6c757d;
+  font-style: italic;
+  font-weight: normal;
 }
 
 .no-therapist {
-  color: #999;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Therapist Display Styles */
+.therapists-list,
+.therapist-list {
+  margin-top: 4px;
+}
+
+.therapist-name {
+  display: block;
+  font-weight: 500;
+  color: #2c3e50;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.therapist-specialization {
+  color: #6c757d;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.no-therapist {
+  color: #6c757d;
   font-style: italic;
 }
 

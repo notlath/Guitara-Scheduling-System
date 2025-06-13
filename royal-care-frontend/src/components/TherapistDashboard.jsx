@@ -429,7 +429,6 @@ const TherapistDashboard = () => {
         );
     }
   };
-
   // Helper function to display therapist team information
   const renderTherapistTeam = (appointment) => {
     if (
@@ -442,10 +441,20 @@ const TherapistDashboard = () => {
       if (otherTherapists.length > 0) {
         return (
           <div className="therapist-team">
-            <strong>Team members:</strong>{" "}
-            {otherTherapists
-              .map((t) => `${t.first_name} ${t.last_name}`)
-              .join(", ")}
+            <strong>Team members:</strong>
+            <div className="therapist-list">
+              {otherTherapists.map((therapist, index) => (
+                <div key={therapist.id || index} className="therapist-name">
+                  {therapist.first_name} {therapist.last_name}
+                  {therapist.specialization && (
+                    <span className="therapist-specialization">
+                      {" "}
+                      ({therapist.specialization})
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         );
       }

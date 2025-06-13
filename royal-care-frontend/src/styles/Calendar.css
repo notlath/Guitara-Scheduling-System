@@ -670,3 +670,24 @@
   color: var(--text-primary);
   font-weight: 600;
 }
+
+/* Therapist Display Styles */
+.therapist-name {
+  display: block;
+  font-weight: 500;
+  color: #2c3e50;
+  line-height: 1.4;
+}
+
+.therapist-specialization {
+  color: #6c757d;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.availability-time {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}

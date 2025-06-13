@@ -848,7 +848,6 @@
 /* Session Completion Section */
 .session-completion-info {
   background: white;
-  padding: 20px;
   border-bottom: 1px solid #e9ecef;
 }
 
@@ -1061,6 +1060,32 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Simple Therapist Display - Each name on its own line */
+.therapist-name {
+  display: block;
+}
+
+/* Pickup status styling */
+.pickup-status {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pickup-status.picked_up {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.pickup-status.waiting {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
 }
 
 /* Responsive Design */

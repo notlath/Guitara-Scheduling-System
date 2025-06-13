@@ -155,10 +155,19 @@ const App = () => {
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="sales-reports" element={<SalesReportsPage />} />
           <Route path="inventory" element={<InventoryPage />} />
-          <Route path="profile" element={<ProfilePage />} />
+          <Route path="profile" element={<ProfilePage />} />{" "}
           <Route path="settings" element={<SettingsPage />} />
           <Route path="settings/account" element={<SettingsAccountPage />} />
-          <Route path="settings/data" element={<SettingsDataPage />} />
+          <Route
+            path="settings/data"
+            element={
+              user?.role === "therapist" || user?.role === "driver" ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <SettingsDataPage />
+              )
+            }
+          />
           {/* Help Pages */}
           <Route path="help">
             <Route path="user-guide" element={<UserGuidePage />} />
