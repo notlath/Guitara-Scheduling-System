@@ -86,16 +86,16 @@ Added route-level protection in App.jsx to prevent direct URL access to the rest
 // Before
 <Route path="settings/data" element={<SettingsDataPage />} />
 
-// After  
-<Route 
-  path="settings/data" 
+// After
+<Route
+  path="settings/data"
   element={
     user?.role === "therapist" || user?.role === "driver" ? (
       <Navigate to="/dashboard" replace />
     ) : (
       <SettingsDataPage />
     )
-  } 
+  }
 />
 ```
 
@@ -107,7 +107,7 @@ Added route-level protection in App.jsx to prevent direct URL access to the rest
 ### Security Benefits
 
 - **Prevents URL Manipulation**: Even if users try to access `/dashboard/settings/data` directly, they are redirected
-- **Clean UX**: Uses `replace` navigation to prevent back-button access to restricted route  
+- **Clean UX**: Uses `replace` navigation to prevent back-button access to restricted route
 - **Consistent Logic**: Uses the same role-based checking pattern as the sidebar
 
 ## Status: ✅ COMPLETE
