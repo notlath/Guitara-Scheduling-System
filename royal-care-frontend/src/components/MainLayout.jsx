@@ -205,7 +205,7 @@ const MainLayout = () => {
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
               <MdPerson style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
-              Account (WAIT PLANO KO TO BAGUHIN)
+              Account
             </NavLink>
             {!isTherapistOrDriver && (
               <NavLink
