@@ -2,10 +2,11 @@ import { useEffect } from "react";
 
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
+import pageTitles from "../../constants/pageTitles";
 
 const SettingsAccountPage = () => {
   useEffect(() => {
-    document.title = "Account Settings | Royal Care";
+    document.title = pageTitles.accountSettings;
   }, []);
 
   return (

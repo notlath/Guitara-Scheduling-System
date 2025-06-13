@@ -8,6 +8,7 @@ import {
   fetchUpcomingAppointments,
 } from "../../features/scheduling/schedulingSlice";
 import "./BookingsPage.css";
+import pageTitles from "../../constants/pageTitles";
 
 const BookingsPage = () => {
   const dispatch = useDispatch();
@@ -18,7 +19,7 @@ const BookingsPage = () => {
     useSelector((state) => state.scheduling);
 
   useEffect(() => {
-    document.title = "Bookings | Royal Care";
+    document.title = pageTitles.bookings;
     // Load appointment data
     dispatch(fetchAppointments());
     dispatch(fetchTodayAppointments());

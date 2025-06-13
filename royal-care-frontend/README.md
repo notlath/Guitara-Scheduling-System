@@ -197,6 +197,8 @@ This frontend connects to the Django backend located in the `/guitara` directory
   - Place the main component (e.g., `MyNewPage.jsx`) and its CSS module (e.g., `MyNewPage.module.css`) inside that folder.
   - This keeps code organized and makes it easy to manage page-specific logic and styles.
 
+**When setting the page title for a new page, always use the centralized `pageTitles.js` in `src/constants/` for consistency and branding.**
+
 ## Global Components and Styles
 
 - If you are creating a new global file (such as a layout component, tab switcher, or shared theme/styles), place it in the `src/globals/` directory.
@@ -207,6 +209,121 @@ This frontend connects to the Django backend located in the `/guitara` directory
   - `src/globals/TabSwitcher.css`
   - `src/globals/theme.css`
 - This keeps all shared/global components and styles organized and easy to find.
+
+## Copywriting Tone, Style & Consistency Guidelines
+
+> **Note:** The primary users of this system are therapists and drivers who are not highly tech-proficient and are typically in the 23–35 age range. Always prioritize clarity, simplicity, and approachability in all UI text to ensure accessibility and ease of use for this audience.
+
+To ensure a consistent, user-friendly, and professional experience across the app, all visible text (labels, placeholders, error messages, buttons, etc.) should follow these guidelines:
+
+### 1. Tone & Voice
+- **Clear and Friendly:** Use language that is welcoming and easy to understand.
+- **Professional but Approachable:** Avoid jargon, but maintain a professional, respectful tone.
+- **Action-Oriented:** Button and link texts should clearly state the action.
+- **Helpful Error Messages:** Guide the user to resolve issues, not just state the problem.
+- **Empathetic:** Acknowledge user frustration in error/success messages when appropriate.
+
+### 2. Capitalization & Formatting
+- **Title Case:**
+  - Use Title Case (capitalize major words) for:
+    - Page headers (e.g., `Forgot Your Password?`)
+    - Section headers
+    - Field labels (e.g., `Email Address`, `Create Password`)
+    - Button text (e.g., `Send Reset Code`, `Complete Registration`)
+- **Sentence case:**
+  - Use sentence case (only first word and proper nouns capitalized) for:
+    - Placeholders (e.g., `e.g. johndoe@email.com`, `Enter your password`)
+    - Link text (e.g., `Back to login`, `Forgot your password?`)
+    - Error and success messages (e.g., `Please enter your password.`, `Registration successful! Redirecting you to your dashboard...`)
+- **Avoid Redundancy:**
+  - Do not repeat the label in the placeholder (e.g., label: `Email Address`, placeholder: `e.g. johndoe@email.com`)
+- **Consistent Punctuation:**
+  - End error and success messages with a period.
+  - Do not use periods in labels, buttons, or placeholders.
+
+### 3. UI Element Guidelines
+- **Headers:**
+  - Use Title Case.
+  - Be concise and welcoming (e.g., `Welcome Back!`, `Complete Your Account Registration`).
+- **Labels:**
+  - Use Title Case.
+  - Be specific (e.g., `Email Address`, `Mobile Number`).
+- **Placeholders:**
+  - Use sentence case.
+  - Give an example or clarify expected input (e.g., `e.g. johndoe@email.com`, `Enter your password`).
+- **Buttons:**
+  - Use Title Case.
+  - Be action-oriented (e.g., `Send Reset Code`, `Log In`, `Complete Registration`).
+- **Links:**
+  - Use sentence case.
+  - Be clear and direct (e.g., `Back to login`, `Forgot your password?`, `First time here? Complete your registration.`)
+- **Error/Success Messages:**
+  - Use sentence case.
+  - Be specific and helpful (e.g., `Please enter your password.`, `We couldn't send a reset code to that email. Please check your email address and try again.`)
+  - If possible, suggest a next step.
+- **Password Requirements:**
+  - Use sentence case and be explicit (e.g., `Contains at least one lowercase letter (a-z)`).
+
+### 4. Examples for Consistency
+
+#### Registration Page
+- **Header:** `Complete Your Account Registration`
+- **Email Field:**
+  - Label: `Email Address`
+  - Placeholder: `e.g. johndoe@email.com`
+- **Password Field:**
+  - Label: `Create Password`
+  - Placeholder: `Choose a strong password`
+  - Password requirements (popup):
+    - `Contains at least one lowercase letter (a-z)`
+    - `Contains at least one uppercase letter (A-Z)`
+    - `Contains at least one number (0-9)`
+    - `Contains at least one special character (@$!%*?&)`
+    - `Is at least 8 characters long`
+- **Submit Button:** `Complete Registration`
+- **Success Message:** `Registration successful! Redirecting you to your dashboard...`
+- **Error Example:** `Please enter a valid 10-digit Philippine mobile number (e.g., 9123456789).`
+
+#### Login Page
+- **Header:** `Welcome Back!`
+- **Username Field:**
+  - Label: `Email or Username`
+  - Placeholder: `Enter your email or username`
+  - Error: `Please enter your email or username.`
+- **Password Field:**
+  - Label: `Password`
+  - Placeholder: `Enter your password`
+  - Error: `Please enter your password.`
+- **2FA Field:**
+  - Label: `Two-Factor Authentication Code`
+  - Placeholder: `Enter the 6-digit code`
+  - Error: `Please enter the 6-digit verification code.`
+- **Forgot Password Link:** `Forgot your password?`
+- **Submit Button:** `Log In` / `Verify Code`
+- **Registration Link:** `First time here? Complete your registration.`
+- **Error Example:** `Login failed. Please check your credentials and try again.`
+
+#### Forgot Password Page
+- **Header:** `Forgot Your Password?`
+- **Email Field:**
+  - Label: `Email Address`
+  - Placeholder: `e.g. johndoe@email.com`
+- **Submit Button:** `Send Reset Code`
+- **Error Example:** `We couldn't send a reset code to that email. Please check your email address and try again.`
+- **Back Link:** `Back to login`
+
+### 5. Additional Details
+- **Accessibility:**
+  - Use `aria-label` or `aria-describedby` for additional context if needed.
+  - Ensure all buttons and links are keyboard accessible.
+- **Internationalization:**
+  - Avoid idioms or slang that may not translate well.
+- **Consistency:**
+  - Always review new UI text against these guidelines and examples before merging or releasing.
+
+---
+
+**Always review new UI text against these guidelines and examples for consistency, clarity, and the best possible user experience.**
 
 ---
 

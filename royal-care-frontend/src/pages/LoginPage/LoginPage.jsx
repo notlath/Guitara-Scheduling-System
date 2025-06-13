@@ -5,13 +5,14 @@ import styles from "./LoginPage.module.css";
 
 import { useDispatch } from "react-redux";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
-import rcLogo from "../../assets/images/rc_logo.jpg";
 import DisabledAccountAlert from "../../components/auth/DisabledAccountAlert";
 import { login } from "../../features/auth/authSlice";
 import { api } from "../../services/api";
 import { handleAuthError } from "../../utils/authErrorHandler";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
 import { FormField } from "../../globals/FormField";
+import FormBlueprint from "../../globals/FormBlueprint";
+import pageTitles from "../../constants/pageTitles";
 
 function LoginPage() {
   const [formData, setFormData] = useState({ username: "", password: "" });
@@ -26,6 +27,7 @@ function LoginPage() {
     message: "",
     contactInfo: null,
   });
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,7 +52,7 @@ function LoginPage() {
   };
 
   useEffect(() => {
-    document.title = "Royal Care";
+    document.title = pageTitles.login;
 
     // Clean up FIDO2 scripts when component unmounts
     return () => {
@@ -90,11 +92,11 @@ function LoginPage() {
     if (!needs2FA) {
       // Validate login form
       if (!formData.username || formData.username.trim() === "") {
-        newFieldErrors.username = "Username is required";
+        newFieldErrors.username = "This field is required";
       }
 
       if (!formData.password || formData.password.trim() === "") {
-        newFieldErrors.password = "Password is required";
+        newFieldErrors.password = "This field is required";
       }
     } else {
       // Validate 2FA form
@@ -120,6 +122,7 @@ function LoginPage() {
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setShowFieldErrors(true); // Show all required field errors on submit
 
     // Validate form inputs
     if (!validateForm()) {
@@ -218,9 +221,114 @@ function LoginPage() {
     // Navigate to login page (which is home for non-authenticated users)
     navigate("/", { replace: true });
   };
+
+  const header = "Good to See You!";
+  const errorMessage = error ? (
+    <p className={"global-form-field-error"}>
+      {error === "Login failed. Please try again."
+        ? "Login failed. Please check your credentials and try again."
+        : error === "An unexpected error occurred"
+        ? "An unexpected error occurred. Please try again later."
+        : error === "Invalid verification code"
+        ? "Invalid verification code. Please try again."
+        : error}
+    </p>
+  ) : null;
+  const formFields = !needs2FA ? (
+    <div className={styles.inputContainer}>
+      <div className={styles.formGroup}>
+        <FormField
+          label="Email or Username"
+          name="username"
+          value={formData.username}
+          onChange={handleChange}
+          required
+          inputProps={{
+            placeholder: "Enter your email or username",
+            className:
+              "global-form-field-input " +
+              (fieldErrors.username ? styles.inputError : ""),
+          }}
+        />
+        {showFieldErrors && fieldErrors.username && (
+          <div className="global-form-field-error">
+            Please enter your email or username.
+          </div>
+        )}
+      </div>
+      <div className={styles.formGroup}>
+        <FormField
+          label="Password"
+          name="password"
+          type="password"
+          value={formData.password}
+          onChange={handleChange}
+          required
+          inputProps={{
+            placeholder: "Enter your password",
+            className:
+              "global-form-field-input " +
+              (fieldErrors.password ? styles.inputError : ""),
+          }}
+        />
+        {showFieldErrors && fieldErrors.password && (
+          <div className="global-form-field-error">
+            Please enter your password.
+          </div>
+        )}
+      </div>
+    </div>
+  ) : (
+    <div className={styles.formGroup}>
+      <FormField
+        label="Two-Factor Authentication Code"
+        name="verificationCode"
+        value={verificationCode}
+        onChange={handleChange}
+        required
+        inputProps={{
+          placeholder: "Enter the 6-digit code",
+          maxLength: 6,
+          className:
+            "global-form-field-input " +
+            (fieldErrors.verificationCode ? styles.inputError : ""),
+        }}
+      />
+      {showFieldErrors && fieldErrors.verificationCode && (
+        <div className="global-form-field-error">
+          {verificationCode.length === 0
+            ? "Please enter the 6-digit verification code."
+            : "Verification code must be exactly 6 digits."}
+        </div>
+      )}
+    </div>
+  );
+
+  const button = (
+    <>
+      <div className={styles.forgotPassword}>
+        <a href="/forgot-password" className={styles.forgotPasswordLink}>
+          Forgot your password?
+        </a>
+      </div>
+      <button
+        type="submit"
+        className={`action-btn${isLoading ? " disabled" : ""}`}
+        disabled={isLoading}
+      >
+        {needs2FA ? "Verify Code" : "Log In"}
+      </button>
+    </>
+  );
+
+  const links = (
+    <>
+      First time here? <a href="/register">Complete your registration.</a>
+    </>
+  );
+
   return (
     <div className={styles.loginContainer}>
-      {" "}
       {showDisabledAlert && (
         <DisabledAccountAlert
           accountType={disabledAccountInfo.type}
@@ -237,96 +345,16 @@ function LoginPage() {
       </div>
       <div className={`${styles.formSide} global-form-field-container`}>
         <div className={styles.formContainer}>
-          <div className={styles.logo}>
-            <img src={rcLogo} alt="Royal Care Logo" />
-          </div>
-          <h2 className={styles.welcomeHeading}>Good to See You!</h2>
-          {error && <p className={styles.errorMessage}>{error}</p>}
-          <form onSubmit={handleSubmit} className={styles.loginForm}>
-            {" "}
-            {!needs2FA ? (
-              <div className={styles.inputContainer}>
-                <div className={styles.formGroup}>
-                  <FormField
-                    name="username"
-                    label="Username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    inputProps={{
-                      placeholder: "Username",
-                      className:
-                        "global-form-field-input " +
-                        (fieldErrors.username ? styles.inputError : ""),
-                    }}
-                  />
-                  {fieldErrors.username && (
-                    <div className={styles.fieldError}>
-                      {fieldErrors.username}
-                    </div>
-                  )}
-                </div>
-                <div className={styles.formGroup}>
-                  <FormField
-                    name="password"
-                    label="Password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    inputProps={{
-                      placeholder: "Password",
-                      className:
-                        "global-form-field-input " +
-                        (fieldErrors.password ? styles.inputError : ""),
-                    }}
-                  />
-                  {fieldErrors.password && (
-                    <div className={styles.fieldError}>
-                      {fieldErrors.password}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className={styles.formGroup}>
-                <FormField
-                  name="verificationCode"
-                  label="2FA Code"
-                  value={verificationCode}
-                  onChange={handleChange}
-                  inputProps={{
-                    placeholder: "Enter 6-digit code",
-                    maxLength: 6,
-                    className:
-                      "global-form-field-input " +
-                      (fieldErrors.verificationCode ? styles.inputError : ""),
-                  }}
-                />
-                {fieldErrors.verificationCode && (
-                  <div className={styles.fieldError}>
-                    {fieldErrors.verificationCode}
-                  </div>
-                )}
-              </div>
-            )}
-            <div className={styles.forgotPassword}>
-              <a href="/forgot-password" className={styles.forgotPasswordLink}>
-                Forgot password?
-              </a>
-            </div>
-            <button
-              type="submit"
-              className={`action-btn${isLoading ? " disabled" : ""}`}
-              disabled={isLoading}
-            >
-              {needs2FA ? "Verify Code" : "Login"}
-            </button>
-          </form>
-          <div className={styles.registerLink}>
-            Is this your first login?{" "}
-            <a href="/register" className={styles.registerLinkAnchor}>
-              Complete your registration
-            </a>
-          </div>
+          <FormBlueprint
+            header={header}
+            errorMessage={errorMessage}
+            onSubmit={handleSubmit}
+            button={button}
+            links={links}
+            formClass={styles.loginForm}
+          >
+            {formFields}
+          </FormBlueprint>
         </div>
       </div>
     </div>

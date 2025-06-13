@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import "../../styles/Placeholders.css";
+import pageTitles from "../../constants/pageTitles";
 
 const UserGuidePage = () => {
   useEffect(() => {
-    document.title = "User Guide | Royal Care";
+    document.title = pageTitles.userGuide;
   }, []);
 
   return (

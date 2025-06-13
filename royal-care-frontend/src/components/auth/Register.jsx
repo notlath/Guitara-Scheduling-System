@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
-import rcLogo from "../../assets/images/rc_logo.jpg";
 import { FormField } from "../../globals/FormField";
 import styles from "../../pages/LoginPage/LoginPage.module.css";
 import {
@@ -14,6 +13,7 @@ import { sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
 import { login } from "../../features/auth/authSlice";
+import FormBlueprint from "../../globals/FormBlueprint";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -41,6 +41,7 @@ const Register = () => {
     eligible: false,
     error: "",
   });
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();
@@ -240,12 +241,11 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form data before validation:", formData);
+    setShowFieldErrors(true); // Show all required field errors on submit
 
     // Validate form before submission
     const isValid = validateForm();
     if (!isValid) {
-      console.log("Form validation failed with errors:", errors);
       return;
     }
 
@@ -352,6 +352,191 @@ const Register = () => {
     }
   }, [success, user, navigate, getRedirectPath, dispatch]);
 
+  // --- Blueprint props ---
+  const header = "Complete Your Account Registration";
+  const formFields = (
+    <div className={styles.inputContainer}>
+      <div className={styles.formGroup}>
+        <FormField
+          label="Email"
+          name="email"
+          type="email"
+          value={formData.email || ""}
+          onChange={handleChange}
+          required
+          validate={fieldValidators.email}
+          onErrorChange={handleFieldError}
+          showError={showFieldErrors}
+          inputProps={{
+            placeholder: "e.g. johndoe@email.com",
+            className: `global-form-field-input`,
+            title: "Enter your email address",
+            id: "email",
+            autoComplete: "email",
+          }}
+        />
+        {emailCheck.error && (
+          <div className={styles.errorMessage}>
+            {emailCheck.error ===
+            "No registration found for this email. Please contact your operator."
+              ? "No registration found for this email. Please contact support."
+              : emailCheck.error}
+          </div>
+        )}
+      </div>
+      <div className={styles.formGroup}>
+        <FormField
+          label="Mobile Number"
+          name="phone_number"
+          as="custom"
+          required={true}
+          validate={fieldValidators.phone_number}
+          onErrorChange={handleFieldError}
+          showError={showFieldErrors}
+        >
+          <div className={styles.phoneInputWrapper}>
+            <span className={styles.phonePrefix}>+63</span>
+            <input
+              type="text"
+              id="phone_number"
+              name="phone_number"
+              value={formData.phone_number}
+              onChange={(e) => {
+                let val = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
+                setFormData({ ...formData, phone_number: val });
+                if (errors.phone_number)
+                  setErrors((prev) => ({ ...prev, phone_number: "" }));
+              }}
+              placeholder="9XXXXXXXXX"
+              className={`global-form-field-input ${styles.phoneInput}`}
+              autoComplete="tel"
+              maxLength={10}
+              title="Enter your 10-digit Philippine mobile number"
+              required
+            />
+          </div>
+          {errors.phone_number && (
+            <div className="global-form-field-error">
+              {errors.phone_number.replace(
+                "10-digit PH mobile number (e.g., 9123456789)",
+                "10-digit Philippine mobile number (e.g., 9123456789)"
+              )}
+            </div>
+          )}
+        </FormField>
+      </div>
+      <div className={styles.formGroup} style={{ position: "relative" }}>
+        <FormField
+          label="Create Password"
+          name="password"
+          type="password"
+          value={formData.password}
+          onChange={handleChange}
+          required
+          validate={fieldValidators.password}
+          onErrorChange={handleFieldError}
+          showError={showFieldErrors}
+          inputProps={{
+            placeholder: "Choose a strong password",
+            className: `${styles.inputWithIcon} global-form-field-input`,
+            title:
+              "Password must be at least 8 characters and include uppercase, lowercase, number and special character",
+            id: "password",
+            autoComplete: "new-password",
+            onFocus: () => setPasswordFocused(true),
+            onBlur: () => setPasswordFocused(false),
+          }}
+        />
+        {passwordFocused && (
+          <div className={styles.passwordPopupError}>
+            <ul className={styles.passwordRequirementsList}>
+              <li
+                className={
+                  passwordRequirements.hasLower
+                    ? styles.requirementMet
+                    : styles.requirementUnmet
+                }
+              >
+                Contains at least one lowercase letter (a-z)
+              </li>
+              <li
+                className={
+                  passwordRequirements.hasUpper
+                    ? styles.requirementMet
+                    : styles.requirementUnmet
+                }
+              >
+                Contains at least one uppercase letter (A-Z)
+              </li>
+              <li
+                className={
+                  passwordRequirements.hasNumber
+                    ? styles.requirementMet
+                    : styles.requirementUnmet
+                }
+              >
+                Contains at least one number (0-9)
+              </li>
+              <li
+                className={
+                  /[@$!%*?&]/.test(formData.password)
+                    ? styles.requirementMet
+                    : styles.requirementUnmet
+                }
+              >
+                Contains at least one special character (@$!%*?&)
+              </li>
+              <li
+                className={
+                  formData.password.length >= 8
+                    ? styles.requirementMet
+                    : styles.requirementUnmet
+                }
+              >
+                Is at least 8 characters long
+              </li>
+            </ul>
+          </div>
+        )}
+      </div>
+      <div className={styles.formGroup}>
+        <FormField
+          label="Confirm Password"
+          name="passwordConfirm"
+          type="password"
+          value={formData.passwordConfirm}
+          onChange={handleChange}
+          required
+          validate={fieldValidators.passwordConfirm}
+          onErrorChange={handleFieldError}
+          showError={showFieldErrors}
+          inputProps={{
+            placeholder: "Re-enter your password",
+            className: `${styles.inputWithIcon} global-form-field-input`,
+            id: "passwordConfirm",
+            autoComplete: "new-password",
+          }}
+        ></FormField>
+      </div>
+    </div>
+  );
+
+  const button = (
+    <button
+      type="submit"
+      className={`action-btn${isSubmitting ? " disabled" : ""}`}
+      disabled={isSubmitting}
+    >
+      {isSubmitting ? "Registering..." : "Complete Registration"}
+    </button>
+  );
+
+  const links = (
+    <>
+      Already have an account? <a href="/dashboard">Log in here.</a>
+    </>
+  );
+
   return (
     <div className={styles.loginContainer}>
       <div className={styles.imageSide}>
@@ -359,207 +544,27 @@ const Register = () => {
       </div>
       <div className={styles.formSide}>
         <div className={styles.formContainer}>
-          <div className={styles.logo}>
-            <img src={rcLogo} alt="Royal Care Logo" />
-          </div>
-          <h2 className={styles.welcomeHeading}>Complete Your Account Registration</h2>
-
           {success ? (
             <div className={styles.successMessage}>
-              <p>Registration successful! Redirecting you to your dashboard...</p>
+              <p>
+                Registration successful! Redirecting you to your dashboard...
+              </p>
             </div>
           ) : (
             <>
               {errors.form && (
                 <div className={styles.errorMessage}>{errors.form}</div>
               )}
-              <form
+              <FormBlueprint
+                header={header}
                 onSubmit={handleSubmit}
-                className={styles.loginForm}
-                noValidate
+                button={button}
+                links={links}
+                containerClass=""
+                formClass={styles.loginForm}
               >
-                <div className={styles.inputContainer}>
-                  <div className={styles.formGroup}>
-                    <FormField
-                      label="Email"
-                      name="email"
-                      type="email"
-                      value={formData.email || ""}
-                      onChange={handleChange}
-                      required
-                      validate={fieldValidators.email}
-                      onErrorChange={handleFieldError}
-                      inputProps={{
-                        placeholder: "e.g. johndoe@email.com",
-                        className: `global-form-field-input`,
-                        title: "Enter your email address",
-                        id: "email",
-                        autoComplete: "email",
-                      }}
-                    />
-                    {emailCheck.error && (
-                      <div className={styles.errorMessage}>
-                        {emailCheck.error === "No registration found for this email. Please contact your operator."
-                          ? "No registration found for this email. Please contact support."
-                          : emailCheck.error}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles.formGroup}>
-                    <FormField
-                      label="Mobile Number"
-                      name="phone_number"
-                      as="custom"
-                      required={true}
-                    >
-                      <div className={styles.phoneInputWrapper}>
-                        <span className={styles.phonePrefix}>+63</span>
-                        <input
-                          type="text"
-                          id="phone_number"
-                          name="phone_number"
-                          value={formData.phone_number}
-                          onChange={(e) => {
-                            // Only allow digits, max 10 digits (PH mobile)
-                            let val = e.target.value
-                              .replace(/[^0-9]/g, "")
-                              .slice(0, 10);
-                            setFormData({ ...formData, phone_number: val });
-                            if (errors.phone_number)
-                              setErrors((prev) => ({
-                                ...prev,
-                                phone_number: "",
-                              }));
-                          }}
-                          placeholder="9XXXXXXXXX"
-                          className={`global-form-field-input ${styles.phoneInput}`}
-                          autoComplete="tel"
-                          maxLength={10}
-                          pattern="[0-9]{10}"
-                          title="Enter your 10-digit Philippine mobile number"
-                          required
-                        />
-                      </div>
-                      {errors.phone_number && (
-                        <div className="global-form-field-error">
-                          {errors.phone_number.replace(
-                            "10-digit PH mobile number (e.g., 9123456789)",
-                            "10-digit Philippine mobile number (e.g., 9123456789)"
-                          )}
-                        </div>
-                      )}
-                    </FormField>
-                  </div>
-                  <div
-                    className={styles.formGroup}
-                    style={{ position: "relative" }}
-                  >
-                    <FormField
-                      label="Create Password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                      validate={fieldValidators.password}
-                      onErrorChange={handleFieldError}
-                      inputProps={{
-                        placeholder: "Choose a strong password",
-                        className: `${styles.inputWithIcon} global-form-field-input`,
-                        title:
-                          "Password must be at least 8 characters and include uppercase, lowercase, number and special character",
-                        id: "password",
-                        autoComplete: "new-password",
-                        onFocus: () => setPasswordFocused(true),
-                        onBlur: () => setPasswordFocused(false),
-                      }}
-                    />
-                    {passwordFocused && (
-                      <div className={styles.passwordPopupError}>
-                        <ul className={styles.passwordRequirementsList}>
-                          <li
-                            className={
-                              passwordRequirements.hasLower
-                                ? styles.requirementMet
-                                : styles.requirementUnmet
-                            }
-                          >
-                            Contains at least one lowercase letter (a-z)
-                          </li>
-                          <li
-                            className={
-                              passwordRequirements.hasUpper
-                                ? styles.requirementMet
-                                : styles.requirementUnmet
-                            }
-                          >
-                            Contains at least one uppercase letter (A-Z)
-                          </li>
-                          <li
-                            className={
-                              passwordRequirements.hasNumber
-                                ? styles.requirementMet
-                                : styles.requirementUnmet
-                            }
-                          >
-                            Contains at least one number (0-9)
-                          </li>
-                          <li
-                            className={
-                              /[@$!%*?&]/.test(formData.password)
-                                ? styles.requirementMet
-                                : styles.requirementUnmet
-                            }
-                          >
-                            Contains at least one special character (@$!%*?&)
-                          </li>
-                          <li
-                            className={
-                              formData.password.length >= 8
-                                ? styles.requirementMet
-                                : styles.requirementUnmet
-                            }
-                          >
-                            Is at least 8 characters long
-                          </li>
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles.formGroup}>
-                    <FormField
-                      label="Confirm Password"
-                      name="passwordConfirm"
-                      type="password"
-                      value={formData.passwordConfirm}
-                      onChange={handleChange}
-                      required
-                      validate={fieldValidators.passwordConfirm}
-                      onErrorChange={handleFieldError}
-                      inputProps={{
-                        placeholder: "Re-enter your password",
-                        className: `${styles.inputWithIcon} global-form-field-input`,
-                        id: "passwordConfirm",
-                        autoComplete: "new-password",
-                      }}
-                    ></FormField>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className={`action-btn${isSubmitting ? " disabled" : ""}`}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Registering..." : "Complete Registration"}
-                </button>
-              </form>
-              <div className={styles.registerLink}>
-                Already have an account?{" "}
-                <a href="/dashboard" className={styles.registerLinkAnchor}>
-                  Log in here.
-                </a>
-              </div>
+                {formFields}
+              </FormBlueprint>
             </>
           )}
         </div>

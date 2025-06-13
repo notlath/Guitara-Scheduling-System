@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import "../../../src/styles/Placeholders.css";
 import { fetchStaffMembers } from "../../features/scheduling/schedulingSlice";
 import "./AttendancePage.css";
+import pageTitles from "../../constants/pageTitles";
 
 const AttendancePage = () => {
   const dispatch = useDispatch();
@@ -14,7 +15,7 @@ const AttendancePage = () => {
   const { staffMembers, loading } = useSelector((state) => state.scheduling);
 
   useEffect(() => {
-    document.title = "Attendance | Royal Care";
+    document.title = pageTitles.attendance;
     dispatch(fetchStaffMembers());
   }, [dispatch]);
 
