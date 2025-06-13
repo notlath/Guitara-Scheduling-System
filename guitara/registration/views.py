@@ -529,6 +529,7 @@ class RegisterClient(APIView):
             data.append(
                 {
                     "Name": f"{client.first_name} {client.last_name}".strip(),
+                    "Email": client.email or "-",
                     "Address": client.address,
                     "Contact": client.phone_number,
                     "Notes": client.notes or "-",
@@ -545,12 +546,12 @@ class RegisterClient(APIView):
 
             try:
                 # Store in local Django database (scheduling app)
-                from scheduling.models import Client
+                from scheduling.models import Client  # Create client in local database
 
-                # Create client in local database
                 client = Client.objects.create(
                     first_name=data["first_name"],
                     last_name=data["last_name"],
+                    email=data.get("email", ""),
                     phone_number=data["phone_number"],
                     address=data["address"],
                     notes=data.get("notes", ""),

@@ -60,6 +60,7 @@ const TAB_PLACEHOLDERS = {
   Clients: [
     {
       Name: "John Smith",
+      Email: "john.smith@example.com",
       Address: "123 Main St, City",
       Contact: "09123456789",
       Notes: "Regular client",
@@ -200,6 +201,7 @@ const fetchers = {
     // Map backend fields to frontend table fields
     return data.map((item) => ({
       Name: item.Name || "-",
+      Email: item.Email || "-",
       Address: item.Address || "-",
       Contact: item.Contact || "-",
       Notes: item.Notes || "-",
@@ -367,6 +369,7 @@ const SettingsDataPage = () => {
           payload = {
             first_name: sanitized.firstName,
             last_name: sanitized.lastName,
+            email: sanitized.email,
             phone_number: sanitized.phoneNumber,
             address: sanitized.address,
             notes: sanitized.notes || "",
@@ -543,6 +546,62 @@ const SettingsDataPage = () => {
             />
           </>
         );
+      case "Clients":
+        return (
+          <>
+            <div className={styles["flex-row-fields"]}>
+              <FormField
+                name="firstName"
+                label="First Name"
+                value={formData.firstName || ""}
+                onChange={handleInputChange}
+                inputProps={{ autoComplete: "off", maxLength: 50 }}
+              />
+              <FormField
+                name="lastName"
+                label="Last Name"
+                value={formData.lastName || ""}
+                onChange={handleInputChange}
+                inputProps={{ autoComplete: "off", maxLength: 50 }}
+              />
+            </div>
+            <FormField
+              name="email"
+              label="Email"
+              type="email"
+              value={formData.email || ""}
+              onChange={handleInputChange}
+              inputProps={{ maxLength: 100 }}
+            />
+            <FormField
+              name="address"
+              label="Address"
+              value={formData.address || ""}
+              onChange={handleInputChange}
+              inputProps={{ maxLength: 200 }}
+            />
+            <FormField
+              name="phoneNumber"
+              label="Contact Number"
+              value={formData.phoneNumber || ""}
+              onChange={handleInputChange}
+              inputProps={{ maxLength: 20 }}
+            />
+            <FormField
+              name="notes"
+              label="Notes"
+              as="textarea"
+              value={formData.notes || ""}
+              onChange={handleInputChange}
+              inputProps={{
+                className: "global-form-field-textarea",
+                maxLength: 500,
+                rows: 3,
+              }}
+              required={false}
+            />
+          </>
+        );
       case "Services":
         return (
           <>
@@ -630,6 +689,7 @@ const SettingsDataPage = () => {
         return {
           columns: [
             { key: "Name", label: "Name" },
+            { key: "Email", label: "Email" },
             { key: "Address", label: "Address" },
             { key: "Contact", label: "Contact Number" },
             { key: "Notes", label: "Notes" },

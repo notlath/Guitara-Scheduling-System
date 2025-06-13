@@ -38,6 +38,7 @@ class OperatorSerializer(serializers.Serializer):
 class ClientSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=100)
     last_name = serializers.CharField(max_length=100)
+    email = serializers.EmailField(required=False, allow_blank=True)
     phone_number = serializers.CharField(max_length=20)
     address = serializers.CharField()
     notes = serializers.CharField(required=False, allow_blank=True)
