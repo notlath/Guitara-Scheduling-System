@@ -41,6 +41,7 @@ const Register = () => {
     eligible: false,
     error: "",
   });
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();
@@ -240,12 +241,11 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form data before validation:", formData);
+    setShowFieldErrors(true); // Show all required field errors on submit
 
     // Validate form before submission
     const isValid = validateForm();
     if (!isValid) {
-      console.log("Form validation failed with errors:", errors);
       return;
     }
 
@@ -366,6 +366,7 @@ const Register = () => {
           required
           validate={fieldValidators.email}
           onErrorChange={handleFieldError}
+          showError={showFieldErrors}
           inputProps={{
             placeholder: "e.g. johndoe@email.com",
             className: `global-form-field-input`,
@@ -389,6 +390,9 @@ const Register = () => {
           name="phone_number"
           as="custom"
           required={true}
+          validate={fieldValidators.phone_number}
+          onErrorChange={handleFieldError}
+          showError={showFieldErrors}
         >
           <div className={styles.phoneInputWrapper}>
             <span className={styles.phonePrefix}>+63</span>
@@ -431,6 +435,7 @@ const Register = () => {
           required
           validate={fieldValidators.password}
           onErrorChange={handleFieldError}
+          showError={showFieldErrors}
           inputProps={{
             placeholder: "Choose a strong password",
             className: `${styles.inputWithIcon} global-form-field-input`,
@@ -504,6 +509,7 @@ const Register = () => {
           required
           validate={fieldValidators.passwordConfirm}
           onErrorChange={handleFieldError}
+          showError={showFieldErrors}
           inputProps={{
             placeholder: "Re-enter your password",
             className: `${styles.inputWithIcon} global-form-field-input`,

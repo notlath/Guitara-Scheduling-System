@@ -44,10 +44,10 @@ export function FormField({
   // For password fields: show/hide password
   const [showPassword, setShowPassword] = useState(false);
 
-  // Run validation when value or touched changes
+  // Run validation when value, touched, or showError changes
   useEffect(() => {
     let err = "";
-    if (touched) {
+    if (touched || rest.showError) {
       if (validate) {
         err = validate(value); // Use custom validator if provided
       } else if (
@@ -60,7 +60,7 @@ export function FormField({
     setError(err);
     if (onErrorChange) onErrorChange(name, err);
     // eslint-disable-next-line
-  }, [value, touched]);
+  }, [value, touched, rest.showError]);
 
   // Render label with asterisk if required
   const labelContent = (
