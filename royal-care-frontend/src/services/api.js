@@ -51,7 +51,9 @@ api.interceptors.request.use(
 
       // Only aggressively sanitize the 'description' field
       if (sanitizedData.description) {
-        sanitizedData.description = sanitizeFormInput(sanitizedData.description);
+        sanitizedData.description = sanitizeFormInput(
+          sanitizedData.description
+        );
       }
 
       // For all other fields, preserve case and normal characters
@@ -166,8 +168,15 @@ api.interceptors.response.use(
 );
 
 // Registration API functions
-export const registerTherapist = (data) => api.post("/registration/register/therapist/", data);
-export const registerDriver = (data) => api.post("/registration/register/driver/", data);
-export const registerOperator = (data) => api.post("/registration/register/operator/", data);
-export const registerMaterial = (data) => api.post("/registration/register/material/", data);
-export const registerService = (data) => api.post("/registration/register/service/", data);
+export const registerTherapist = (data) =>
+  api.post("/registration/register/therapist/", data);
+export const registerDriver = (data) =>
+  api.post("/registration/register/driver/", data);
+export const registerOperator = (data) =>
+  api.post("/registration/register/operator/", data);
+export const registerClient = (data) =>
+  api.post("/registration/register/client/", data);
+export const registerMaterial = (data) =>
+  api.post("/registration/register/material/", data);
+export const registerService = (data) =>
+  api.post("/registration/register/service/", data);

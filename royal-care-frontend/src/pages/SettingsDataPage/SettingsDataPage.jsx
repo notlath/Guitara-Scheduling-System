@@ -5,6 +5,7 @@ import LayoutRow from "../../globals/LayoutRow";
 import "../../globals/LayoutRow.css";
 import PageLayout from "../../globals/PageLayout";
 import {
+  registerClient,
   registerDriver,
   registerMaterial,
   registerOperator,
@@ -16,7 +17,14 @@ import "../../styles/Settings.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import styles from "./SettingsDataPage.module.css";
 
-const TABS = ["Therapists", "Drivers", "Operators", "Services", "Materials"];
+const TABS = [
+  "Therapists",
+  "Drivers",
+  "Operators",
+  "Clients",
+  "Services",
+  "Materials",
+];
 
 const TAB_PLACEHOLDERS = {
   Therapists: [
@@ -47,6 +55,14 @@ const TAB_PLACEHOLDERS = {
       Contact: "09112223333",
       Specialization: "N/A",
       Pressure: "N/A",
+    },
+  ],
+  Clients: [
+    {
+      Name: "John Smith",
+      Address: "123 Main St, City",
+      Contact: "09123456789",
+      Notes: "Regular client",
     },
   ],
   Services: [
@@ -93,6 +109,7 @@ const TAB_SINGULARS = {
   Therapists: "Therapist",
   Drivers: "Driver",
   Operators: "Operator",
+  Clients: "Client",
   Services: "Service",
   Materials: "Material",
 };
@@ -165,6 +182,27 @@ const fetchers = {
       Contact: "-", // Registration table doesn't have phone numbers
       Specialization: "N/A",
       Pressure: "N/A",
+    }));
+  },
+  Clients: async () => {
+    const token = localStorage.getItem("knoxToken");
+    const res = await fetch(
+      "http://localhost:8000/api/registration/register/client/",
+      {
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    // Map backend fields to frontend table fields
+    return data.map((item) => ({
+      Name: item.Name || "-",
+      Address: item.Address || "-",
+      Contact: item.Contact || "-",
+      Notes: item.Notes || "-",
     }));
   },
   Services: async () => {
@@ -322,6 +360,16 @@ const SettingsDataPage = () => {
             last_name: sanitized.lastName,
             username: sanitized.username,
             email: sanitized.email,
+          };
+          break;
+        case "Clients":
+          apiCall = registerClient;
+          payload = {
+            first_name: sanitized.firstName,
+            last_name: sanitized.lastName,
+            phone_number: sanitized.phoneNumber,
+            address: sanitized.address,
+            notes: sanitized.notes || "",
           };
           break;
         case "Materials":
@@ -576,6 +624,15 @@ const SettingsDataPage = () => {
             { key: "Name", label: "Name" },
             { key: "Email", label: "Email" },
             { key: "Contact", label: "Contact Number" },
+          ],
+        };
+      case "Clients":
+        return {
+          columns: [
+            { key: "Name", label: "Name" },
+            { key: "Address", label: "Address" },
+            { key: "Contact", label: "Contact Number" },
+            { key: "Notes", label: "Notes" },
           ],
         };
       case "Services":
