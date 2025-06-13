@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from django.db.models import Q
+from django.db.models import Q, F
 from .models import (
     Client,
     Availability,
@@ -288,8 +288,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
                                 "therapist": f"Therapist is already booked during this time slot ({appointment.start_time} - {appointment.end_time})"
                             }
                         )  # Check if therapist has marked availability (including cross-day availability)
-                from django.db.models import Q, F
-                from datetime import timedelta
 
                 # Same-day normal availability
                 same_day_normal = Q(
@@ -378,8 +376,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
                                         "therapists": f"Therapist {therapist.get_full_name()} is already booked during this time slot ({appointment.start_time} - {appointment.end_time})"
                                     }
                                 )  # Check if therapist has marked availability (including cross-day availability)
-                        from django.db.models import Q, F
-                        from datetime import timedelta
 
                         # Same-day normal availability
                         same_day_normal = Q(
@@ -467,8 +463,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
                                 "driver": f"Driver is already booked during this time slot ({appointment.start_time} - {appointment.end_time})"
                             }
                         )  # Check if driver has marked availability (including cross-day availability)
-                from django.db.models import Q, F
-                from datetime import timedelta
 
                 # Same-day normal availability
                 same_day_normal = Q(
