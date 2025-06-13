@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   MdAccessTime,
-  MdAutoAwesomeMosaic,
   MdBarChart,
   MdBusiness,
   MdCalendarMonth,
@@ -17,7 +16,7 @@ import {
   MdQuestionAnswer,
   MdSchedule,
   MdSettings,
-  MdTableChart, // Added for Data link
+  MdTableChart,
 } from "react-icons/md";
 import { useSelector } from "react-redux";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
@@ -208,16 +207,18 @@ const MainLayout = () => {
               <MdPerson style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
               Account (WAIT PLANO KO TO BAGUHIN)
             </NavLink>
-            <NavLink
-              to="/dashboard/settings/data"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-            >
-              {/* Changed icon to MdTableChart for data management */}
-              <MdTableChart
-                style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-              />
-              Data
-            </NavLink>
+            {!isTherapistOrDriver && (
+              <NavLink
+                to="/dashboard/settings/data"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                {/* Changed icon to MdTableChart for data management */}
+                <MdTableChart
+                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
+                />
+                Data
+              </NavLink>
+            )}
           </div>
 
           {/* Help Section with Sublinks */}
