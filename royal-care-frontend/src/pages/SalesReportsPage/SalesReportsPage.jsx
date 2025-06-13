@@ -185,7 +185,9 @@ const SalesReportsPage = () => {
             therapistName: item.therapistName,
             commission: 0,
             appointments: [],
-            period: currentPeriod === "Weekly" ? item.day : item.weekRange,
+            date: item.date, // Use the first appointment date for grouped view
+            day: currentPeriod === "Weekly" ? "This Week" : undefined,
+            weekRange: currentPeriod === "Monthly" ? "This Month" : undefined,
           };
         }
         grouped[item.therapistName].commission += parseFloat(item.commission);
@@ -427,63 +429,33 @@ const SalesReportsPage = () => {
           <table>
             <thead>
               <tr>
-                {currentPeriod === "Daily" && (
-                  <>
-                    <th>Therapist</th>
-                    <th>Commission</th>
-                    <th>Time</th>
-                    <th>Client</th>
-                    <th>Date</th>
-                  </>
-                )}
-                {currentPeriod === "Weekly" && (
-                  <>
-                    <th>Therapist</th>
-                    <th>Total Commission</th>
-                    <th>Period</th>
-                  </>
-                )}
-                {currentPeriod === "Monthly" && (
-                  <>
-                    <th>Therapist</th>
-                    <th>Total Commission</th>
-                    <th>Period</th>
-                  </>
-                )}
+                <th>Date</th>
+                <th>Therapist</th>
+                <th>Commission</th>
+                {currentPeriod === "Daily" && <th>Time</th>}
+                {currentPeriod === "Weekly" && <th>Day</th>}
+                {currentPeriod === "Monthly" && <th>Week Range</th>}
               </tr>
             </thead>
             <tbody>
               {items.length > 0 ? (
                 items.map((item, index) => (
                   <tr key={index}>
-                    {currentPeriod === "Daily" && (
-                      <>
-                        <td>{item.therapistName}</td>
-                        <td>₱{item.commission}</td>
-                        <td>{item.time}</td>
-                        <td>{item.clientName}</td>
-                        <td>{item.date}</td>
-                      </>
-                    )}
+                    <td>{item.date || "N/A"}</td>
+                    <td>{item.therapistName || "Unknown Therapist"}</td>
+                    <td>₱{item.commission}</td>
+                    {currentPeriod === "Daily" && <td>{item.time}</td>}
                     {currentPeriod === "Weekly" && (
-                      <>
-                        <td>{item.therapistName}</td>
-                        <td>₱{item.commission}</td>
-                        <td>This Week</td>
-                      </>
+                      <td>{item.day || "This Week"}</td>
                     )}
                     {currentPeriod === "Monthly" && (
-                      <>
-                        <td>{item.therapistName}</td>
-                        <td>₱{item.commission}</td>
-                        <td>This Month</td>
-                      </>
+                      <td>{item.weekRange || "This Month"}</td>
                     )}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={currentPeriod === "Daily" ? 5 : 3}>
+                  <td colSpan={currentPeriod === "Daily" ? 4 : 4}>
                     No commission data available for this period
                   </td>
                 </tr>
