@@ -6,7 +6,7 @@ from .views import (
     RegisterOperator,
     RegisterClient,
     RegisterMaterial,
-    RegisterService,
+    RegisterService, CompleteRegistrationAPIView, check_email_exists,
 )
 
 urlpatterns = [
@@ -16,4 +16,6 @@ urlpatterns = [
     path("register/client/", RegisterClient.as_view(), name="register_client"),
     path("register/material/", RegisterMaterial.as_view(), name="register_material"),
     path("register/service/", RegisterService.as_view(), name="register_service"),
+    path('complete-registration/', CompleteRegistrationAPIView.as_view(), name='complete_registration'),
+    path('check-email/', check_email_exists, name='check_email'),
 ]

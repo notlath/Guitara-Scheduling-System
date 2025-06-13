@@ -76,3 +76,26 @@ class MaterialSerializer(serializers.ModelSerializer):
 
         model = MaterialModel
         fields = ["id", "name", "description", "service"]
+
+
+class CompleteRegistrationSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    phone_number = serializers.CharField(max_length=20)
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_email(self, value):
+        from core.models import CustomUser
+
+        user = CustomUser.objects.filter(email=value).first()
+        if not user:
+            raise serializers.ValidationError("No user found with this email.")
+        # Only allow if user has no usable password
+        if user.has_usable_password() and user.password not in (None, "", "!"):
+            raise serializers.ValidationError("This email has already completed registration.")
+        return value
+
+    def validate_password(self, value):
+        # You can add more password validation here if needed
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters.")
+        return value

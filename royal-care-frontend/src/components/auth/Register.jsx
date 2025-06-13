@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import rcLogo from "../../assets/images/rc_logo.jpg";
 import { FormField } from "../../globals/FormField";
 import styles from "../../pages/LoginPage/LoginPage.module.css";
-import { api } from "../../services/api";
+import { completeRegistration, checkEmailExists, api } from "../../services/api";
 import { sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
+import { login } from "../../features/auth/authSlice";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -29,7 +31,16 @@ const Register = () => {
     confirmMatch: false,
   });
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [emailCheck, setEmailCheck] = useState({
+    loading: false,
+    exists: false,
+    eligible: false,
+    error: "",
+  });
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const location = useLocation();
+  const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
     // document.title = "Royal Care - Register";
@@ -38,6 +49,33 @@ const Register = () => {
       cleanupFido2Script();
     };
   }, []);
+
+  useEffect(() => {
+    if (!formData.email) return;
+    setEmailCheck((prev) => ({ ...prev, loading: true, error: "" }));
+    checkEmailExists(formData.email)
+      .then((res) => {
+        setEmailCheck({
+          loading: false,
+          exists: res.data.exists,
+          eligible: res.data.eligible,
+          error:
+            res.data.exists && !res.data.eligible
+              ? "This email has already completed registration."
+              : res.data.exists && res.data.eligible
+              ? ""
+              : "No registration found for this email. Please contact your operator.",
+        });
+      })
+      .catch(() => {
+        setEmailCheck({
+          loading: false,
+          exists: false,
+          eligible: false,
+          error: "Could not verify email.",
+        });
+      });
+  }, [formData.email]);
 
   const checkPasswordRequirements = (password, confirmPassword) => {
     return {
@@ -133,16 +171,17 @@ const Register = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Validate each field
-    const emailError = validateInput("email", formData.email, {
-      required: true,
-      pattern: "^[^s@]+@[^s@]+\\.[^s@]+$",
-    });
-    if (emailError) newErrors.email = emailError;
+    // Email: only show backend error if present, otherwise only show frontend error if not eligible
+    if (emailCheck.error) {
+      newErrors.email = emailCheck.error;
+    } else if (!emailCheck.eligible) {
+      // Only show frontend format error if not eligible
+      const emailFormatError = validateInput("email", formData.email, { required: true });
+      if (emailFormatError) newErrors.email = emailFormatError;
+    }
+    // If eligible, do not show any frontend email error at all
 
-    const passwordError = validateInput("password", formData.password, {
-      required: true,
-    });
+    const passwordError = validateInput("password", formData.password, { required: true });
     if (passwordError) newErrors.password = passwordError;
 
     // Validate password confirmation (required and match)
@@ -152,13 +191,39 @@ const Register = () => {
       newErrors.passwordConfirm = "Passwords don't match";
     }
 
-    const phoneError = validateInput("phone", formData.phone_number);
-    if (phoneError) newErrors.phone_number = phoneError;
+    // Phone: always validate as +63 + 10 digits
+    let phoneRaw = formData.phone_number.replace(/[^0-9]/g, "");
+    let phoneFull = phoneRaw ? `+63${phoneRaw}` : "";
+    if (phoneRaw.length !== 10) {
+      newErrors.phone_number = "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
+    } else {
+      // Validate the full international format (E.164)
+      const phoneE164 = /^\+639\d{9}$/;
+      if (!phoneE164.test(phoneFull)) {
+        newErrors.phone_number = "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
+      }
+    }
 
     setErrors(newErrors);
-    console.log("Validation errors:", newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  // Helper function to determine post-registration redirect
+  const getRedirectPath = useCallback((userRole) => {
+    const from = location.state?.from?.pathname;
+    if (from && from !== "/" && from.startsWith("/dashboard")) {
+      return from;
+    }
+    if (userRole === "operator") {
+      return "/dashboard";
+    } else if (userRole === "therapist") {
+      return "/dashboard";
+    } else if (userRole === "driver") {
+      return "/dashboard";
+    } else {
+      return "/dashboard";
+    }
+  }, [location.state]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -173,25 +238,51 @@ const Register = () => {
 
     setIsSubmitting(true);
 
+    // Always submit phone as +63 + digits (no dashes)
+    let phoneRaw = formData.phone_number.replace(/[^0-9]/g, "");
+    let phoneFull = phoneRaw ? `+63${phoneRaw}` : "";
+
     // Create a clean submission object without the confirm password field
     const submissionData = {
       email: formData.email,
       password: formData.password,
-      role: formData.role,
-      phone_number: formData.phone_number,
+      phone_number: phoneFull,
     };
 
-    console.log("Submitting data to API:", submissionData);
+    console.log("Submitting data to API (complete registration):", submissionData);
 
     try {
-      const response = await api.post("/auth/register/", submissionData);
+      const response = await completeRegistration(submissionData);
       console.log("Registration successful:", response.data);
+      // Save user and token to localStorage if provided by backend
+      if (response.data && response.data.token && response.data.user) {
+        localStorage.setItem("knoxToken", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        dispatch(login(response.data.user)); // Ensure Redux state is updated
+        navigate(getRedirectPath(response.data.user.role), { replace: true });
+        return;
+      }
+      // If no user/token returned, perform automatic login
+      try {
+        const loginResponse = await api.post("/auth/login/", {
+          username: formData.email,
+          password: formData.password,
+        });
+        if (loginResponse.data && loginResponse.data.token && loginResponse.data.user) {
+          localStorage.setItem("knoxToken", loginResponse.data.token);
+          localStorage.setItem("user", JSON.stringify(loginResponse.data.user));
+          dispatch(login(loginResponse.data.user));
+          navigate(getRedirectPath(loginResponse.data.user.role), { replace: true });
+          return;
+        }
+      } catch {
+        // Automatic login failed
+        setErrors({ form: "Registration succeeded, but automatic login failed. Please log in manually." });
+        return;
+      }
+      // Fallback: Show success and login button if no token/user returned and login failed
       setSuccess(true);
-
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        navigate("/login");
-      }, 3000);
+      return;
     } catch (err) {
       console.error("Registration error:", err);
       // Handle API errors
@@ -199,14 +290,12 @@ const Register = () => {
         const apiErrors = err.response.data;
         console.log("API returned errors:", apiErrors);
         const formattedErrors = {};
-
         // Format API errors to match our error state structure
         Object.keys(apiErrors).forEach((key) => {
           formattedErrors[key] = Array.isArray(apiErrors[key])
             ? apiErrors[key][0]
             : apiErrors[key];
         });
-
         setErrors(formattedErrors);
       } else {
         setErrors({ form: "Registration failed. Please try again." });
@@ -215,6 +304,29 @@ const Register = () => {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (success) {
+      // Try to get user from Redux, fallback to localStorage
+      let redirectUser = user;
+      if (!redirectUser) {
+        try {
+          const storedUser = JSON.parse(localStorage.getItem("user"));
+          if (storedUser && storedUser.role) {
+            redirectUser = storedUser;
+            dispatch(login(storedUser));
+          }
+        } catch {
+          // Ignore error if user not in localStorage
+        }
+      }
+      // Always redirect after short delay to avoid being stuck
+      const timer = setTimeout(() => {
+        navigate(getRedirectPath(redirectUser?.role), { replace: true });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [success, user, navigate, getRedirectPath, dispatch]);
 
   return (
     <div className={styles.loginContainer}>
@@ -230,7 +342,7 @@ const Register = () => {
 
           {success ? (
             <div className={styles.successMessage}>
-              <p>Registration successful! Redirecting to login page...</p>
+              <p>Registration successful! Redirecting to your dashboard...</p>
             </div>
           ) : (
             <>
@@ -261,6 +373,9 @@ const Register = () => {
                         autoComplete: "email",
                       }}
                     />
+                    {emailCheck.error && (
+                      <div className={styles.errorMessage}>{emailCheck.error}</div>
+                    )}
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
@@ -277,16 +392,8 @@ const Register = () => {
                           name="phone_number"
                           value={formData.phone_number}
                           onChange={(e) => {
-                            let val = e.target.value
-                              .replace(/[^0-9]/g, "")
-                              .slice(0, 10);
-                            if (val.length > 3 && val.length <= 7)
-                              val = val.replace(/(\d{3})(\d+)/, "$1-$2");
-                            else if (val.length > 7)
-                              val = val.replace(
-                                /(\d{3})(\d{4})(\d+)/,
-                                "$1-$2-$3"
-                              );
+                            // Only allow digits, max 10 digits (PH mobile)
+                            let val = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
                             setFormData({ ...formData, phone_number: val });
                             if (errors.phone_number)
                               setErrors((prev) => ({
@@ -294,16 +401,14 @@ const Register = () => {
                                 phone_number: "",
                               }));
                           }}
-                          placeholder="9XX-XXXX-XXX"
+                          placeholder="9XXXXXXXXX"
                           className={`global-form-field-input${
-                            errors.phone_number
-                              ? " global-form-field-error"
-                              : ""
+                            errors.phone_number ? " global-form-field-error" : ""
                           } ${styles.phoneInput}`}
                           autoComplete="tel"
-                          maxLength={12}
-                          pattern="[0-9]{3}-[0-9]{4}-[0-9]{3}"
-                          title="Enter a valid mobile number"
+                          maxLength={10}
+                          pattern="[0-9]{10}"
+                          title="Enter a valid 10-digit mobile number"
                           required
                         />
                       </div>
