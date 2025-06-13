@@ -5,7 +5,11 @@ import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import rcLogo from "../../assets/images/rc_logo.jpg";
 import { FormField } from "../../globals/FormField";
 import styles from "../../pages/LoginPage/LoginPage.module.css";
-import { completeRegistration, checkEmailExists, api } from "../../services/api";
+import {
+  completeRegistration,
+  checkEmailExists,
+  api,
+} from "../../services/api";
 import { sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
@@ -176,12 +180,16 @@ const Register = () => {
       newErrors.email = emailCheck.error;
     } else if (!emailCheck.eligible) {
       // Only show frontend format error if not eligible
-      const emailFormatError = validateInput("email", formData.email, { required: true });
+      const emailFormatError = validateInput("email", formData.email, {
+        required: true,
+      });
       if (emailFormatError) newErrors.email = emailFormatError;
     }
     // If eligible, do not show any frontend email error at all
 
-    const passwordError = validateInput("password", formData.password, { required: true });
+    const passwordError = validateInput("password", formData.password, {
+      required: true,
+    });
     if (passwordError) newErrors.password = passwordError;
 
     // Validate password confirmation (required and match)
@@ -195,12 +203,14 @@ const Register = () => {
     let phoneRaw = formData.phone_number.replace(/[^0-9]/g, "");
     let phoneFull = phoneRaw ? `+63${phoneRaw}` : "";
     if (phoneRaw.length !== 10) {
-      newErrors.phone_number = "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
+      newErrors.phone_number =
+        "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
     } else {
       // Validate the full international format (E.164)
       const phoneE164 = /^\+639\d{9}$/;
       if (!phoneE164.test(phoneFull)) {
-        newErrors.phone_number = "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
+        newErrors.phone_number =
+          "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
       }
     }
 
@@ -209,21 +219,24 @@ const Register = () => {
   };
 
   // Helper function to determine post-registration redirect
-  const getRedirectPath = useCallback((userRole) => {
-    const from = location.state?.from?.pathname;
-    if (from && from !== "/" && from.startsWith("/dashboard")) {
-      return from;
-    }
-    if (userRole === "operator") {
-      return "/dashboard";
-    } else if (userRole === "therapist") {
-      return "/dashboard";
-    } else if (userRole === "driver") {
-      return "/dashboard";
-    } else {
-      return "/dashboard";
-    }
-  }, [location.state]);
+  const getRedirectPath = useCallback(
+    (userRole) => {
+      const from = location.state?.from?.pathname;
+      if (from && from !== "/" && from.startsWith("/dashboard")) {
+        return from;
+      }
+      if (userRole === "operator") {
+        return "/dashboard";
+      } else if (userRole === "therapist") {
+        return "/dashboard";
+      } else if (userRole === "driver") {
+        return "/dashboard";
+      } else {
+        return "/dashboard";
+      }
+    },
+    [location.state]
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -249,7 +262,10 @@ const Register = () => {
       phone_number: phoneFull,
     };
 
-    console.log("Submitting data to API (complete registration):", submissionData);
+    console.log(
+      "Submitting data to API (complete registration):",
+      submissionData
+    );
 
     try {
       const response = await completeRegistration(submissionData);
@@ -268,16 +284,24 @@ const Register = () => {
           username: formData.email,
           password: formData.password,
         });
-        if (loginResponse.data && loginResponse.data.token && loginResponse.data.user) {
+        if (
+          loginResponse.data &&
+          loginResponse.data.token &&
+          loginResponse.data.user
+        ) {
           localStorage.setItem("knoxToken", loginResponse.data.token);
           localStorage.setItem("user", JSON.stringify(loginResponse.data.user));
           dispatch(login(loginResponse.data.user));
-          navigate(getRedirectPath(loginResponse.data.user.role), { replace: true });
+          navigate(getRedirectPath(loginResponse.data.user.role), {
+            replace: true,
+          });
           return;
         }
       } catch {
         // Automatic login failed
-        setErrors({ form: "Registration succeeded, but automatic login failed. Please log in manually." });
+        setErrors({
+          form: "Registration succeeded, but automatic login failed. Please log in manually.",
+        });
         return;
       }
       // Fallback: Show success and login button if no token/user returned and login failed
@@ -338,11 +362,11 @@ const Register = () => {
           <div className={styles.logo}>
             <img src={rcLogo} alt="Royal Care Logo" />
           </div>
-          <h2 className={styles.welcomeHeading}>Complete your Account</h2>
+          <h2 className={styles.welcomeHeading}>Complete Your Account Registration</h2>
 
           {success ? (
             <div className={styles.successMessage}>
-              <p>Registration successful! Redirecting to your dashboard...</p>
+              <p>Registration successful! Redirecting you to your dashboard...</p>
             </div>
           ) : (
             <>
@@ -374,12 +398,16 @@ const Register = () => {
                       }}
                     />
                     {emailCheck.error && (
-                      <div className={styles.errorMessage}>{emailCheck.error}</div>
+                      <div className={styles.errorMessage}>
+                        {emailCheck.error === "No registration found for this email. Please contact your operator."
+                          ? "No registration found for this email. Please contact support."
+                          : emailCheck.error}
+                      </div>
                     )}
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label="Phone number"
+                      label="Mobile Number"
                       name="phone_number"
                       as="custom"
                       required={true}
@@ -393,7 +421,9 @@ const Register = () => {
                           value={formData.phone_number}
                           onChange={(e) => {
                             // Only allow digits, max 10 digits (PH mobile)
-                            let val = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
+                            let val = e.target.value
+                              .replace(/[^0-9]/g, "")
+                              .slice(0, 10);
                             setFormData({ ...formData, phone_number: val });
                             if (errors.phone_number)
                               setErrors((prev) => ({
@@ -402,19 +432,20 @@ const Register = () => {
                               }));
                           }}
                           placeholder="9XXXXXXXXX"
-                          className={`global-form-field-input${
-                            errors.phone_number ? " global-form-field-error" : ""
-                          } ${styles.phoneInput}`}
+                          className={`global-form-field-input ${styles.phoneInput}`}
                           autoComplete="tel"
                           maxLength={10}
                           pattern="[0-9]{10}"
-                          title="Enter a valid 10-digit mobile number"
+                          title="Enter your 10-digit Philippine mobile number"
                           required
                         />
                       </div>
                       {errors.phone_number && (
                         <div className="global-form-field-error">
-                          {errors.phone_number}
+                          {errors.phone_number.replace(
+                            "10-digit PH mobile number (e.g., 9123456789)",
+                            "10-digit Philippine mobile number (e.g., 9123456789)"
+                          )}
                         </div>
                       )}
                     </FormField>
@@ -424,7 +455,7 @@ const Register = () => {
                     style={{ position: "relative" }}
                   >
                     <FormField
-                      label="Create password"
+                      label="Create Password"
                       name="password"
                       type="password"
                       value={formData.password}
@@ -453,7 +484,7 @@ const Register = () => {
                                 : styles.requirementUnmet
                             }
                           >
-                            At least one lowercase letter (a-z)
+                            Contains at least one lowercase letter (a-z)
                           </li>
                           <li
                             className={
@@ -462,7 +493,7 @@ const Register = () => {
                                 : styles.requirementUnmet
                             }
                           >
-                            At least one uppercase letter (A-Z)
+                            Contains at least one uppercase letter (A-Z)
                           </li>
                           <li
                             className={
@@ -471,7 +502,7 @@ const Register = () => {
                                 : styles.requirementUnmet
                             }
                           >
-                            At least one number (0-9)
+                            Contains at least one number (0-9)
                           </li>
                           <li
                             className={
@@ -480,7 +511,7 @@ const Register = () => {
                                 : styles.requirementUnmet
                             }
                           >
-                            At least one special character (@$!%*?&)
+                            Contains at least one special character (@$!%*?&)
                           </li>
                           <li
                             className={
@@ -489,7 +520,7 @@ const Register = () => {
                                 : styles.requirementUnmet
                             }
                           >
-                            At least 8 characters long
+                            Is at least 8 characters long
                           </li>
                         </ul>
                       </div>
@@ -497,7 +528,7 @@ const Register = () => {
                   </div>
                   <div className={styles.formGroup}>
                     <FormField
-                      label="Re-enter password"
+                      label="Confirm Password"
                       name="passwordConfirm"
                       type="password"
                       value={formData.passwordConfirm}
@@ -506,7 +537,7 @@ const Register = () => {
                       validate={fieldValidators.passwordConfirm}
                       onErrorChange={handleFieldError}
                       inputProps={{
-                        placeholder: "Repeat your password",
+                        placeholder: "Re-enter your password",
                         className: `${styles.inputWithIcon} global-form-field-input`,
                         id: "passwordConfirm",
                         autoComplete: "new-password",
@@ -520,13 +551,13 @@ const Register = () => {
                   className={`action-btn${isSubmitting ? " disabled" : ""}`}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Please Wait..." : "Complete Registration"}
+                  {isSubmitting ? "Registering..." : "Complete Registration"}
                 </button>
               </form>
               <div className={styles.registerLink}>
                 Already have an account?{" "}
                 <a href="/dashboard" className={styles.registerLinkAnchor}>
-                  Login here
+                  Log in here.
                 </a>
               </div>
             </>
