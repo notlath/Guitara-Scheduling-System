@@ -185,7 +185,9 @@ const SalesReportsPage = () => {
             therapistName: item.therapistName,
             commission: 0,
             appointments: [],
-            period: currentPeriod === "Weekly" ? item.day : item.weekRange,
+            date: item.date, // Use the first appointment date for grouped view
+            day: currentPeriod === "Weekly" ? "This Week" : undefined,
+            weekRange: currentPeriod === "Monthly" ? "This Month" : undefined,
           };
         }
         grouped[item.therapistName].commission += parseFloat(item.commission);
@@ -278,22 +280,11 @@ const SalesReportsPage = () => {
     } else if (currentPeriod === "Monthly") {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      const startOfPrevMonth = new Date(
-        now.getFullYear(),
-        now.getMonth() - 1,
-        1
-      );
 
       // Current month appointments
       currentItems = paidAppointments.filter((apt) => {
         const aptDate = new Date(apt.date);
         return aptDate >= startOfMonth && aptDate < endOfMonth;
-      });
-
-      // Previous month appointments
-      previousItems = paidAppointments.filter((apt) => {
-        const aptDate = new Date(apt.date);
-        return aptDate >= startOfPrevMonth && aptDate < startOfMonth;
       });
     }
 
@@ -402,6 +393,83 @@ const SalesReportsPage = () => {
     };
   }, [appointments, currentPeriod]);
 
+  // Calculate customer list data based on current period
+  const customerListData = useMemo(() => {
+    if (!appointments || appointments.length === 0) {
+      return {
+        items: [],
+      };
+    }
+
+    const now = new Date();
+    let currentItems = [];
+
+    if (currentPeriod === "Daily") {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      // Current day appointments - for daily, we only show completed appointments
+      currentItems = appointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return (
+          aptDate >= today &&
+          aptDate < new Date(today.getTime() + 24 * 60 * 60 * 1000) &&
+          apt.status === "completed"
+        );
+      });
+    } else if (currentPeriod === "Weekly") {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+      // Current week appointments
+      currentItems = appointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfWeek && aptDate < endOfWeek;
+      });
+    } else if (currentPeriod === "Monthly") {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+      // Current month appointments
+      currentItems = appointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfMonth && aptDate < endOfMonth;
+      });
+    }
+
+    // Group by client and count appointments
+    const groupedByClient = {};
+    currentItems.forEach((apt) => {
+      const clientName =
+        `${apt.client_details?.first_name || ""} ${
+          apt.client_details?.last_name || ""
+        }`.trim() || "Unknown Client";
+
+      const clientKey = `${clientName}_${apt.client_details?.id || "unknown"}`;
+
+      if (!groupedByClient[clientKey]) {
+        groupedByClient[clientKey] = {
+          clientName,
+          address: apt.client_details?.address || "Not provided",
+          contactNumber: apt.client_details?.phone_number || "Not provided",
+          appointmentCount: 0,
+          appointments: [],
+        };
+      }
+      groupedByClient[clientKey].appointmentCount += 1;
+      groupedByClient[clientKey].appointments.push(apt);
+    });
+
+    const formattedItems = Object.values(groupedByClient);
+
+    return {
+      items: formattedItems,
+    };
+  }, [appointments, currentPeriod]);
+
   const renderCommissionView = () => {
     const { currentTotal, items, comparison } = commissionData;
 
@@ -427,63 +495,33 @@ const SalesReportsPage = () => {
           <table>
             <thead>
               <tr>
-                {currentPeriod === "Daily" && (
-                  <>
-                    <th>Therapist</th>
-                    <th>Commission</th>
-                    <th>Time</th>
-                    <th>Client</th>
-                    <th>Date</th>
-                  </>
-                )}
-                {currentPeriod === "Weekly" && (
-                  <>
-                    <th>Therapist</th>
-                    <th>Total Commission</th>
-                    <th>Period</th>
-                  </>
-                )}
-                {currentPeriod === "Monthly" && (
-                  <>
-                    <th>Therapist</th>
-                    <th>Total Commission</th>
-                    <th>Period</th>
-                  </>
-                )}
+                <th>Date</th>
+                <th>Therapist</th>
+                <th>Commission</th>
+                {currentPeriod === "Daily" && <th>Time</th>}
+                {currentPeriod === "Weekly" && <th>Day</th>}
+                {currentPeriod === "Monthly" && <th>Week Range</th>}
               </tr>
             </thead>
             <tbody>
               {items.length > 0 ? (
                 items.map((item, index) => (
                   <tr key={index}>
-                    {currentPeriod === "Daily" && (
-                      <>
-                        <td>{item.therapistName}</td>
-                        <td>₱{item.commission}</td>
-                        <td>{item.time}</td>
-                        <td>{item.clientName}</td>
-                        <td>{item.date}</td>
-                      </>
-                    )}
+                    <td>{item.date || "N/A"}</td>
+                    <td>{item.therapistName || "Unknown Therapist"}</td>
+                    <td>₱{item.commission}</td>
+                    {currentPeriod === "Daily" && <td>{item.time}</td>}
                     {currentPeriod === "Weekly" && (
-                      <>
-                        <td>{item.therapistName}</td>
-                        <td>₱{item.commission}</td>
-                        <td>This Week</td>
-                      </>
+                      <td>{item.day || "This Week"}</td>
                     )}
                     {currentPeriod === "Monthly" && (
-                      <>
-                        <td>{item.therapistName}</td>
-                        <td>₱{item.commission}</td>
-                        <td>This Month</td>
-                      </>
+                      <td>{item.weekRange || "This Month"}</td>
                     )}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={currentPeriod === "Daily" ? 5 : 3}>
+                  <td colSpan={currentPeriod === "Daily" ? 4 : 4}>
                     No commission data available for this period
                   </td>
                 </tr>
@@ -554,6 +592,55 @@ const SalesReportsPage = () => {
     );
   };
 
+  const renderCustomerListView = () => {
+    const { items } = customerListData;
+
+    return (
+      <div className="customer-list-view">
+        <div className="customer-list-header">
+          <h2>Customer List - {currentPeriod}</h2>
+          <p className="period-info">
+            {currentPeriod === "Daily" &&
+              "Showing clients with completed appointments today"}
+            {currentPeriod === "Weekly" &&
+              "Showing clients with appointments this week"}
+            {currentPeriod === "Monthly" &&
+              "Showing clients with appointments this month"}
+          </p>
+        </div>
+
+        <div className="customer-list-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Address</th>
+                <th>Contact Number</th>
+                <th>Number of Appointments</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.length > 0 ? (
+                items.map((item, index) => (
+                  <tr key={index}>
+                    <td>{item.clientName}</td>
+                    <td>{item.address}</td>
+                    <td>{item.contactNumber}</td>
+                    <td>{item.appointmentCount}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4}>No customers found for this period</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   const renderPlaceholderView = (viewName) => {
     return (
       <div className="placeholder-container">
@@ -606,8 +693,8 @@ const SalesReportsPage = () => {
       <div className="sales-reports-content">
         {currentView === "Commission" && renderCommissionView()}
         {currentView === "Total Revenue" && renderTotalRevenueView()}
-        {(currentView === "Customer List" || currentView === "Services") &&
-          renderPlaceholderView(currentView)}
+        {currentView === "Customer List" && renderCustomerListView()}
+        {currentView === "Services" && renderPlaceholderView(currentView)}
       </div>
     </div>
   );

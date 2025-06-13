@@ -86,38 +86,11 @@
   font-weight: 600;
 }
 
-/* Content Area */
-.sales-reports-content {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-}
-
-/* Commission View */
-.commission-view,
-.revenue-view {
-  padding: 2rem;
-}
-
-.commission-header,
-.revenue-header {
-  text-align: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 3px solid #f1f5f9;
-}
-
-.commission-header h2,
-.revenue-header h2 {
-  font-size: 3rem;
-  font-weight: 800;
-  color: #1e293b;
-  margin: 0 0 0.5rem 0;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.period-info {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0;
 }
 
 .comparison {
@@ -149,14 +122,70 @@
   color: white;
 }
 
+/* Content Area */
+.sales-reports-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+/* Commission View, Revenue View, Customer List View */
+.commission-view,
+.revenue-view,
+.customer-list-view {
+  padding: 2rem;
+}
+
+.commission-header,
+.revenue-header,
+.customer-list-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 3px solid #f1f5f9;
+}
+
+.commission-header h2,
+.revenue-header h2 {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0 0 0.5rem 0;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.customer-list-header h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0 0 0.5rem 0;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.period-info {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0;
+}
+
 /* Table Styles */
 .commission-table,
-.revenue-table {
+.revenue-table,
+.customer-list-table {
   overflow-x: auto;
 }
 
 .commission-table table,
-.revenue-table table {
+.revenue-table table,
+.customer-list-table table {
   width: 100%;
   border-collapse: collapse;
   border-radius: 8px;
@@ -165,7 +194,8 @@
 }
 
 .commission-table th,
-.revenue-table th {
+.revenue-table th,
+.customer-list-table th {
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: white;
   padding: 1rem;
@@ -177,7 +207,8 @@
 }
 
 .commission-table td,
-.revenue-table td {
+.revenue-table td,
+.customer-list-table td {
   padding: 1rem;
   border-bottom: 1px solid #f1f5f9;
   color: #475569;
@@ -185,23 +216,27 @@
 }
 
 .commission-table tr:hover,
-.revenue-table tr:hover {
+.revenue-table tr:hover,
+.customer-list-table tr:hover {
   background-color: #f8fafc;
 }
 
 .commission-table tr:nth-child(even),
-.revenue-table tr:nth-child(even) {
+.revenue-table tr:nth-child(even),
+.customer-list-table tr:nth-child(even) {
   background-color: #fafbfc;
 }
 
 .commission-table tr:last-child td,
-.revenue-table tr:last-child td {
+.revenue-table tr:last-child td,
+.customer-list-table tr:last-child td {
   border-bottom: none;
 }
 
 /* Empty State */
 .commission-table td[colspan],
-.revenue-table td[colspan] {
+.revenue-table td[colspan],
+.customer-list-table td[colspan] {
   text-align: center;
   color: #64748b;
   font-style: italic;
@@ -280,38 +315,46 @@
   }
 
   .commission-header h2,
-  .revenue-header h2 {
+  .revenue-header h2,
+  .customer-list-header h2 {
     font-size: 2rem;
   }
 
   .commission-table,
-  .revenue-table {
+  .revenue-table,
+  .customer-list-table {
     font-size: 0.9rem;
   }
 
   .commission-table th,
   .revenue-table th,
+  .customer-list-table th,
   .commission-table td,
-  .revenue-table td {
+  .revenue-table td,
+  .customer-list-table td {
     padding: 0.75rem 0.5rem;
   }
 }
 
 @media (max-width: 480px) {
   .commission-header h2,
-  .revenue-header h2 {
+  .revenue-header h2,
+  .customer-list-header h2 {
     font-size: 1.5rem;
   }
 
   .commission-table,
-  .revenue-table {
+  .revenue-table,
+  .customer-list-table {
     font-size: 0.8rem;
   }
 
   .commission-table th,
   .revenue-table th,
+  .customer-list-table th,
   .commission-table td,
-  .revenue-table td {
+  .revenue-table td,
+  .customer-list-table td {
     padding: 0.5rem 0.25rem;
   }
 }
