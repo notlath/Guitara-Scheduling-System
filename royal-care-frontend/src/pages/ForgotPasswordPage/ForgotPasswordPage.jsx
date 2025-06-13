@@ -6,10 +6,11 @@ import styles from "../LoginPage/LoginPage.module.css";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import { FormField } from "../../globals/FormField";
 import FormBlueprint from "../../globals/FormBlueprint";
+import pageTitles from "../../constants/pageTitles";
 
 function ForgotPasswordPage() {
   useEffect(() => {
-    document.title = "Forgot Password | Royal Care";
+    document.title = pageTitles.forgotPassword;
   }, []);
 
   const [email, setEmail] = useState("");
@@ -38,18 +39,18 @@ function ForgotPasswordPage() {
     }
   };
 
-  const header = "Reset your password";
+  const header = "Forgot Your Password?";
   const formFields = (
     <div className={styles.formGroup}>
       <FormField
-        label="Email"
+        label="Email Address"
         name="email"
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         required
         inputProps={{
-          placeholder: "Enter your email",
+          placeholder: "e.g. johndoe@email.com",
           className: "global-form-field-input",
           id: "email",
         }}
@@ -57,14 +58,18 @@ function ForgotPasswordPage() {
     </div>
   );
   const errorMessage = error ? (
-    <div className="global-form-field-error">{error}</div>
+    <div className="global-form-field-error">
+      {error === "Failed to send reset code. Please try again."
+        ? "We couldn't send a reset code to that email. Please check your email address and try again."
+        : error}
+    </div>
   ) : null;
   const button = (
     <button type="submit" className="action-btn" disabled={loading}>
-      {loading ? "Sending..." : "Reset password"}
+      {loading ? "Sending..." : "Send Reset Code"}
     </button>
   );
-  const links = <a href="/">Back to login</a>;
+  const links = <a href="/">Back to Login</a>;
 
   return (
     <div className={styles.loginContainer}>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAppointments } from "../../features/scheduling/schedulingSlice";
+import pageTitles from "../../constants/pageTitles";
 import "./SalesReportsPage.module.css";
 
 const SalesReportsPage = () => {
@@ -14,7 +15,7 @@ const SalesReportsPage = () => {
   const periods = ["Daily", "Weekly", "Monthly"];
 
   useEffect(() => {
-    document.title = "Sales Reports | Royal Care";
+    document.title = pageTitles.salesReports;
     // Fetch appointments data for calculations
     dispatch(fetchAppointments());
   }, [dispatch]);

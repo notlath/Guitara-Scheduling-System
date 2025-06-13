@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import "../../styles/Placeholders.css";
+import pageTitles from "../../constants/pageTitles";
 
 const ContactPage = () => {
   useEffect(() => {
-    document.title = "Contact Support | Royal Care";
+    document.title = pageTitles.contact;
   }, []);
 
   return (

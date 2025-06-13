@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
+import pageTitles from "../../constants/pageTitles";
 
 const SettingsPage = () => {
   const [activeTab, setActiveTab] = useState("general");
 
   useEffect(() => {
-    document.title = "Settings | Royal Care";
+    document.title = pageTitles.settings;
   }, []);
 
   return (

@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import "../../styles/SystemInfo.css";
 import "../../globals/theme.css";
+import pageTitles from "../../constants/pageTitles";
 
 const SystemInfoPage = () => {
   useEffect(() => {
-    document.title = "System Information | Royal Care";
+    document.title = pageTitles.systemInfo;
   }, []);
 
   return (

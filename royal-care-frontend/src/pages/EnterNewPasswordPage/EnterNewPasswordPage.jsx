@@ -3,10 +3,11 @@ import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./EnterNewPasswordPage.module.css";
 import axios from "axios";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
+import pageTitles from "../../constants/pageTitles";
 
 function EnterNewPasswordPage() {
   useEffect(() => {
-    document.title = "Enter New Password | Royal Care";
+    document.title = pageTitles.enterNewPassword;
   }, []);
 
   const navigate = useNavigate();
@@ -47,7 +48,8 @@ function EnterNewPasswordPage() {
       }
     } catch (err) {
       setError(
-        err.response?.data?.error || "Failed to reset password. Please try again."
+        err.response?.data?.error ||
+          "Failed to reset password. Please try again."
       );
     } finally {
       setLoading(false);
@@ -87,11 +89,7 @@ function EnterNewPasswordPage() {
             {error && <div className={styles.errorText}>{error}</div>}
           </div>
 
-          <button
-            type="submit"
-            className="action-btn"
-            disabled={loading}
-          >
+          <button type="submit" className="action-btn" disabled={loading}>
             {loading ? "Submitting..." : "Submit"}
           </button>
 

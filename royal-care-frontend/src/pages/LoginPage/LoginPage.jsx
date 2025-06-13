@@ -12,6 +12,7 @@ import { handleAuthError } from "../../utils/authErrorHandler";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
 import { FormField } from "../../globals/FormField";
 import FormBlueprint from "../../globals/FormBlueprint";
+import pageTitles from "../../constants/pageTitles";
 
 function LoginPage() {
   const [formData, setFormData] = useState({ username: "", password: "" });
@@ -51,7 +52,7 @@ function LoginPage() {
   };
 
   useEffect(() => {
-    document.title = "Royal Care – Login";
+    document.title = pageTitles.login;
 
     // Clean up FIDO2 scripts when component unmounts
     return () => {

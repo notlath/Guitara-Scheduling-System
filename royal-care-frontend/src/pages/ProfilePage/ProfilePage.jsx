@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../../features/auth/authSlice";
+import pageTitles from "../../constants/pageTitles";
 import styles from "./ProfilePage.module.css";
 
 const ProfilePage = () => {
@@ -11,7 +12,7 @@ const ProfilePage = () => {
   const [userData, setUserData] = useState(null);
 
   useEffect(() => {
-    document.title = "Profile | Royal Care";
+    document.title = pageTitles.profile;
 
     // Get user data from Redux store or localStorage
     if (user) {
@@ -102,16 +103,16 @@ const ProfilePage = () => {
           <div className={styles.profileSection}>
             <div className={styles.userHeaderSection}>
               <h2 className={styles.userFullName}>
-                {userData.full_name || 
-                 (userData.first_name && userData.last_name 
-                   ? `${userData.first_name} ${userData.last_name}` 
-                   : "User Profile")}
+                {userData.full_name ||
+                  (userData.first_name && userData.last_name
+                    ? `${userData.first_name} ${userData.last_name}`
+                    : "User Profile")}
               </h2>
               <h3 className={styles.userUsername}>
                 @{userData.username || "username"}
               </h3>
             </div>
-            
+
             <div className={styles.infoGrid}>
               <div className={styles.infoCard}>
                 <div className={styles.infoLabel}>Email Address</div>

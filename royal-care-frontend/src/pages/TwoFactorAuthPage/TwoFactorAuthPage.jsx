@@ -4,10 +4,11 @@ import styles from "./TwoFactorAuthPage.module.css";
 
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import { FormField } from "../../globals/FormField";
+import pageTitles from "../../constants/pageTitles";
 
 function TwoFactorAuthPage() {
   useEffect(() => {
-    document.title = "Two-Factor Authentication | Royal Care";
+    document.title = pageTitles.twoFactorAuth;
   }, []);
 
   const navigate = useNavigate();

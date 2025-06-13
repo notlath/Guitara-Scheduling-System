@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./InventoryPage.css";
+import pageTitles from "../../constants/pageTitles";
 
 const InventoryPage = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -16,7 +17,7 @@ const InventoryPage = () => {
   });
 
   useEffect(() => {
-    document.title = "Inventory | Royal Care";
+    document.title = pageTitles.inventory;
   }, []);
 
   // Mock inventory data - in real app, this would come from API

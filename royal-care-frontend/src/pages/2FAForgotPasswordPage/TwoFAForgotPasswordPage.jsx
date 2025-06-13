@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./TwoFAForgotPasswordPage.module.css";
+import pageTitles from "../../constants/pageTitles";
 
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 
 function TwoFAForgotPasswordPage() {
   useEffect(() => {
-    document.title = "2FA Forgot Password | Royal Care";
+    document.title = pageTitles.twoFAForgotPassword;
   }, []);
 
   const navigate = useNavigate();

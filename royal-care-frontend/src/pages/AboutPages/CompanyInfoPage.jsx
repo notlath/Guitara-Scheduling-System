@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import { MdLocationOn } from "react-icons/md";
 import "../../styles/CompanyInfo.css";
+import pageTitles from "../../constants/pageTitles";
 
 const CompanyInfoPage = () => {
   useEffect(() => {
-    document.title = "Company Information | Royal Care";
+    document.title = pageTitles.companyInfo;
   }, []);
 
   return (
