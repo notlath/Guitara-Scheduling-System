@@ -19,6 +19,66 @@ const SalesReportsPage = () => {
     dispatch(fetchAppointments());
   }, [dispatch]);
 
+  // Debug effect to log appointments data when it changes
+  useEffect(() => {
+    if (appointments && appointments.length > 0) {
+      console.log("=== APPOINTMENTS DATA LOADED ===");
+      console.log("Total appointments:", appointments.length);
+
+      // Find today's appointments
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      const todayAppointments = appointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        const aptDateOnly = new Date(
+          aptDate.getFullYear(),
+          aptDate.getMonth(),
+          aptDate.getDate()
+        );
+        return aptDateOnly.getTime() === today.getTime();
+      });
+
+      console.log("Today's appointments:", todayAppointments.length);
+
+      if (todayAppointments.length > 0) {
+        console.log(
+          "Today's appointments details:",
+          todayAppointments.map((apt) => ({
+            id: apt.id,
+            date: apt.date,
+            status: apt.status,
+            clientName: apt.client_details
+              ? `${apt.client_details.first_name || ""} ${
+                  apt.client_details.last_name || ""
+                }`.trim()
+              : "No client details",
+          }))
+        );
+
+        const completedToday = todayAppointments.filter(
+          (apt) => apt.status === "completed"
+        );
+        console.log("Completed appointments today:", completedToday.length);
+
+        if (completedToday.length > 0) {
+          console.log("✅ COMPLETED TODAY:", completedToday);
+        } else {
+          console.log("❌ NO COMPLETED APPOINTMENTS TODAY");
+          console.log("Status values found:", [
+            ...new Set(todayAppointments.map((apt) => apt.status)),
+          ]);
+        }
+      } else {
+        console.log("❌ NO APPOINTMENTS FOR TODAY");
+        console.log(
+          "Sample dates from appointments:",
+          appointments.slice(0, 5).map((apt) => apt.date)
+        );
+      }
+    }
+  }, [appointments]);
+
   // Calculate commission data based on current period
   const commissionData = useMemo(() => {
     if (!appointments || appointments.length === 0) {
@@ -396,9 +456,26 @@ const SalesReportsPage = () => {
   // Calculate customer list data based on current period
   const customerListData = useMemo(() => {
     if (!appointments || appointments.length === 0) {
+      console.log("Customer List: No appointments data available");
       return {
         items: [],
       };
+    }
+
+    console.log(
+      "Customer List: Processing",
+      appointments.length,
+      "appointments"
+    );
+
+    // Log sample appointment data structure for debugging
+    if (appointments.length > 0) {
+      console.log("Sample appointment structure:", {
+        sampleAppointment: appointments[0],
+        dateField: appointments[0].date,
+        statusField: appointments[0].status,
+        clientDetailsField: appointments[0].client_details,
+      });
     }
 
     const now = new Date();
@@ -406,16 +483,85 @@ const SalesReportsPage = () => {
 
     if (currentPeriod === "Daily") {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+
+      console.log("=== CUSTOMER LIST DAILY FILTER DEBUG ===");
+      console.log("Today date object:", {
+        today: today.toISOString(),
+        todayTime: today.getTime(),
+        todayDateString: today.toDateString(),
+      });
+
+      console.log("Total appointments to check:", appointments.length);
 
       // Current day appointments - for daily, we only show completed appointments
       currentItems = appointments.filter((apt) => {
         const aptDate = new Date(apt.date);
-        return (
-          aptDate >= today &&
-          aptDate < new Date(today.getTime() + 24 * 60 * 60 * 1000) &&
-          apt.status === "completed"
+        const aptDateOnly = new Date(
+          aptDate.getFullYear(),
+          aptDate.getMonth(),
+          aptDate.getDate()
         );
+
+        const isToday = aptDateOnly.getTime() === today.getTime();
+        const isCompleted =
+          apt.status && apt.status.toLowerCase().includes("completed");
+        const passesFilter = isToday && isCompleted;
+
+        // Enhanced debug logging - log ALL appointments for today, regardless of status
+        if (isToday) {
+          console.log("📅 TODAY'S APPOINTMENT FOUND:", {
+            id: apt.id,
+            originalDate: apt.date,
+            parsedDate: aptDate.toISOString(),
+            dateOnly: aptDateOnly.toISOString(),
+            status: apt.status,
+            isCompleted: isCompleted,
+            passesFilter: passesFilter,
+            clientName: apt.client_details
+              ? `${apt.client_details.first_name || ""} ${
+                  apt.client_details.last_name || ""
+                }`.trim()
+              : "No client details",
+            clientId: apt.client_details?.id || "No client ID",
+          });
+        }
+
+        // Also log the first few appointments regardless to check date parsing
+        if (appointments.indexOf(apt) < 5) {
+          console.log("Sample appointment parsing:", {
+            id: apt.id,
+            originalDate: apt.date,
+            parsedDate: aptDate.toISOString(),
+            dateOnly: aptDateOnly.toISOString(),
+            isToday: isToday,
+            status: apt.status,
+          });
+        }
+
+        return passesFilter;
       });
+
+      console.log(
+        "Filtered completed appointments for today:",
+        currentItems.length
+      );
+      if (currentItems.length > 0) {
+        console.log(
+          "Completed appointments details:",
+          currentItems.map((apt) => ({
+            id: apt.id,
+            date: apt.date,
+            status: apt.status,
+            clientName: apt.client_details
+              ? `${apt.client_details.first_name || ""} ${
+                  apt.client_details.last_name || ""
+                }`.trim()
+              : "Unknown",
+          }))
+        );
+      }
     } else if (currentPeriod === "Weekly") {
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - now.getDay());
@@ -442,6 +588,12 @@ const SalesReportsPage = () => {
 
     // Group by client and count appointments
     const groupedByClient = {};
+
+    console.log(
+      "Customer List - Processing appointments:",
+      currentItems.length
+    );
+
     currentItems.forEach((apt) => {
       const clientName =
         `${apt.client_details?.first_name || ""} ${
@@ -449,6 +601,13 @@ const SalesReportsPage = () => {
         }`.trim() || "Unknown Client";
 
       const clientKey = `${clientName}_${apt.client_details?.id || "unknown"}`;
+
+      console.log("Processing client:", {
+        aptId: apt.id,
+        clientName,
+        clientKey,
+        clientDetails: apt.client_details,
+      });
 
       if (!groupedByClient[clientKey]) {
         groupedByClient[clientKey] = {
@@ -464,6 +623,86 @@ const SalesReportsPage = () => {
     });
 
     const formattedItems = Object.values(groupedByClient);
+
+    console.log("Customer List - Final grouped items:", formattedItems);
+
+    return {
+      items: formattedItems,
+    };
+  }, [appointments, currentPeriod]);
+
+  // Calculate services data based on current period
+  const servicesData = useMemo(() => {
+    if (!appointments || appointments.length === 0) {
+      return {
+        items: [],
+      };
+    }
+
+    const now = new Date();
+    let currentItems = [];
+
+    if (currentPeriod === "Daily") {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      // Current day appointments - all appointments for today
+      currentItems = appointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return (
+          aptDate >= today &&
+          aptDate < new Date(today.getTime() + 24 * 60 * 60 * 1000)
+        );
+      });
+    } else if (currentPeriod === "Weekly") {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+      // Current week appointments
+      currentItems = appointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfWeek && aptDate < endOfWeek;
+      });
+    } else if (currentPeriod === "Monthly") {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+      // Current month appointments
+      currentItems = appointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfMonth && aptDate < endOfMonth;
+      });
+    }
+
+    // Group by service and count appointments
+    const groupedByService = {};
+    currentItems.forEach((apt) => {
+      // Handle multiple services per appointment
+      if (apt.services_details && Array.isArray(apt.services_details)) {
+        apt.services_details.forEach((service) => {
+          const serviceName = service.name || "Unknown Service";
+          const serviceKey = `${serviceName}_${service.id || "unknown"}`;
+
+          if (!groupedByService[serviceKey]) {
+            groupedByService[serviceKey] = {
+              serviceName,
+              appointmentCount: 0,
+              appointments: [],
+            };
+          }
+          groupedByService[serviceKey].appointmentCount += 1;
+          groupedByService[serviceKey].appointments.push(apt);
+        });
+      }
+    });
+
+    // Sort by appointment count (most popular first)
+    const formattedItems = Object.values(groupedByService).sort(
+      (a, b) => b.appointmentCount - a.appointmentCount
+    );
 
     return {
       items: formattedItems,
@@ -641,16 +880,44 @@ const SalesReportsPage = () => {
     );
   };
 
-  const renderPlaceholderView = (viewName) => {
+  const renderServicesView = () => {
+    const { items } = servicesData;
+
     return (
-      <div className="placeholder-container">
-        <div className="placeholder-content">
-          <h2>{viewName} View</h2>
-          <p className="placeholder-text">
-            The {viewName} view is currently under development and will be
-            available soon.
+      <div className="services-view">
+        <div className="services-header">
+          <h2>Services - {currentPeriod}</h2>
+          <p className="period-info">
+            {currentPeriod === "Daily" && "Showing services booked today"}
+            {currentPeriod === "Weekly" && "Showing services booked this week"}
+            {currentPeriod === "Monthly" &&
+              "Showing services booked this month"}
           </p>
-          <div className="placeholder-loader"></div>
+        </div>
+
+        <div className="services-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Services</th>
+                <th>Number of Appointments</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.length > 0 ? (
+                items.map((item, index) => (
+                  <tr key={index}>
+                    <td>{item.serviceName}</td>
+                    <td>{item.appointmentCount}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={2}>No services found for this period</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     );
@@ -694,7 +961,7 @@ const SalesReportsPage = () => {
         {currentView === "Commission" && renderCommissionView()}
         {currentView === "Total Revenue" && renderTotalRevenueView()}
         {currentView === "Customer List" && renderCustomerListView()}
-        {currentView === "Services" && renderPlaceholderView(currentView)}
+        {currentView === "Services" && renderServicesView()}
       </div>
     </div>
   );

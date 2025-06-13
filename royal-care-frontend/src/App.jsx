@@ -151,9 +151,18 @@ const App = () => {
           />{" "}
           <Route path="scheduling" element={<SchedulingPage />} />
           <Route path="availability" element={<AvailabilityManager />} />
-          <Route path="bookings" element={<BookingsPage />} />
+          <Route path="bookings" element={<BookingsPage />} />{" "}
           <Route path="attendance" element={<AttendancePage />} />
-          <Route path="sales-reports" element={<SalesReportsPage />} />
+          <Route
+            path="sales-reports"
+            element={
+              user?.role === "therapist" || user?.role === "driver" ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <SalesReportsPage />
+              )
+            }
+          />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="profile" element={<ProfilePage />} />{" "}
           <Route path="settings" element={<SettingsPage />} />

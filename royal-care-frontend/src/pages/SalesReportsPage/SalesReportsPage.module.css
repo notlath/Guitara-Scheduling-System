@@ -130,16 +130,18 @@
   overflow: hidden;
 }
 
-/* Commission View, Revenue View, Customer List View */
+/* Commission View, Revenue View, Customer List View, Services View */
 .commission-view,
 .revenue-view,
-.customer-list-view {
+.customer-list-view,
+.services-view {
   padding: 2rem;
 }
 
 .commission-header,
 .revenue-header,
-.customer-list-header {
+.customer-list-header,
+.services-header {
   text-align: center;
   margin-bottom: 2rem;
   padding-bottom: 1.5rem;
@@ -158,7 +160,8 @@
   background-clip: text;
 }
 
-.customer-list-header h2 {
+.customer-list-header h2,
+.services-header h2 {
   font-size: 2.5rem;
   font-weight: 800;
   color: #1e293b;
@@ -179,13 +182,15 @@
 /* Table Styles */
 .commission-table,
 .revenue-table,
-.customer-list-table {
+.customer-list-table,
+.services-table {
   overflow-x: auto;
 }
 
 .commission-table table,
 .revenue-table table,
-.customer-list-table table {
+.customer-list-table table,
+.services-table table {
   width: 100%;
   border-collapse: collapse;
   border-radius: 8px;
@@ -195,7 +200,8 @@
 
 .commission-table th,
 .revenue-table th,
-.customer-list-table th {
+.customer-list-table th,
+.services-table th {
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: white;
   padding: 1rem;
@@ -208,7 +214,8 @@
 
 .commission-table td,
 .revenue-table td,
-.customer-list-table td {
+.customer-list-table td,
+.services-table td {
   padding: 1rem;
   border-bottom: 1px solid #f1f5f9;
   color: #475569;
@@ -217,19 +224,22 @@
 
 .commission-table tr:hover,
 .revenue-table tr:hover,
-.customer-list-table tr:hover {
+.customer-list-table tr:hover,
+.services-table tr:hover {
   background-color: #f8fafc;
 }
 
 .commission-table tr:nth-child(even),
 .revenue-table tr:nth-child(even),
-.customer-list-table tr:nth-child(even) {
+.customer-list-table tr:nth-child(even),
+.services-table tr:nth-child(even) {
   background-color: #fafbfc;
 }
 
 .commission-table tr:last-child td,
 .revenue-table tr:last-child td,
-.customer-list-table tr:last-child td {
+.customer-list-table tr:last-child td,
+.services-table tr:last-child td {
   border-bottom: none;
 }
 
