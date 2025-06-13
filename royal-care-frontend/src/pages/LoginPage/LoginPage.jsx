@@ -223,7 +223,15 @@ function LoginPage() {
 
   const header = "Good to See You!";
   const errorMessage = error ? (
-    <p className={"global-form-field-error"}>{error}</p>
+    <p className={"global-form-field-error"}>
+      {error === "Login failed. Please try again."
+        ? "Login failed. Please check your credentials and try again."
+        : error === "An unexpected error occurred"
+        ? "An unexpected error occurred. Please try again later."
+        : error === "Invalid verification code"
+        ? "Invalid verification code. Please try again."
+        : error}
+    </p>
   ) : null;
   const formFields = !needs2FA ? (
     <div className={styles.inputContainer}>
@@ -242,7 +250,9 @@ function LoginPage() {
           }}
         />
         {showFieldErrors && fieldErrors.username && (
-          <div className="global-form-field-error">{fieldErrors.username}</div>
+          <div className="global-form-field-error">
+            Please enter your email or username.
+          </div>
         )}
       </div>
       <div className={styles.formGroup}>
@@ -261,20 +271,22 @@ function LoginPage() {
           }}
         />
         {showFieldErrors && fieldErrors.password && (
-          <div className="global-form-field-error">{fieldErrors.password}</div>
+          <div className="global-form-field-error">
+            Please enter your password.
+          </div>
         )}
       </div>
     </div>
   ) : (
     <div className={styles.formGroup}>
       <FormField
-        label="2FA Code"
+        label="Two-Factor Authentication Code"
         name="verificationCode"
         value={verificationCode}
         onChange={handleChange}
         required
         inputProps={{
-          placeholder: "Enter 6-digit code",
+          placeholder: "Enter the 6-digit code",
           maxLength: 6,
           className:
             "global-form-field-input " +
@@ -283,7 +295,9 @@ function LoginPage() {
       />
       {showFieldErrors && fieldErrors.verificationCode && (
         <div className="global-form-field-error">
-          {fieldErrors.verificationCode}
+          {verificationCode.length === 0
+            ? "Please enter the 6-digit verification code."
+            : "Verification code must be exactly 6 digits."}
         </div>
       )}
     </div>
