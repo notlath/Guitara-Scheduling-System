@@ -1,423 +1,614 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAppointments } from "../../features/scheduling/schedulingSlice";
-import styles from "./SalesReportsPage.module.css";
+import "./SalesReportsPage.module.css";
 
 const SalesReportsPage = () => {
   const dispatch = useDispatch();
-  const [activeView, setActiveView] = useState("total_revenue");
-  const [timePeriod, setTimePeriod] = useState("daily");
+  const { appointments } = useSelector((state) => state.scheduling);
 
-  const { appointments, loading } = useSelector((state) => state.scheduling);
+  const [currentView, setCurrentView] = useState("Total Revenue");
+  const [currentPeriod, setCurrentPeriod] = useState("Daily");
+
+  const views = ["Total Revenue", "Commission", "Customer List", "Services"];
+  const periods = ["Daily", "Weekly", "Monthly"];
 
   useEffect(() => {
-    document.title = "Sales & Reports | Royal Care";
+    document.title = "Sales Reports | Royal Care";
     // Fetch appointments data for calculations
     dispatch(fetchAppointments());
   }, [dispatch]);
 
-  // Helper functions for date calculations
-  const getCurrentPeriodData = useMemo(() => {
-    if (!appointments || appointments.length === 0) return [];
-
-    const now = new Date();
-    let currentData = [];
-
-    switch (timePeriod) {
-      case "daily": {
-        // Today's appointments
-        const today = now.toISOString().split("T")[0];
-        currentData = appointments.filter(
-          (apt) =>
-            apt.date === today &&
-            (apt.status === "completed" || apt.status === "payment_completed")
-        );
-        break;
-      }
-
-      case "weekly": {
-        // Current week's appointments
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay());
-        startOfWeek.setHours(0, 0, 0, 0);
-
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
-
-        currentData = appointments.filter((apt) => {
-          const aptDate = new Date(apt.date);
-          return (
-            aptDate >= startOfWeek &&
-            aptDate <= endOfWeek &&
-            (apt.status === "completed" || apt.status === "payment_completed")
-          );
-        });
-        break;
-      }
-
-      case "monthly": {
-        // Current month's appointments
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-        currentData = appointments.filter((apt) => {
-          const aptDate = new Date(apt.date);
-          return (
-            aptDate >= startOfMonth &&
-            aptDate <= endOfMonth &&
-            (apt.status === "completed" || apt.status === "payment_completed")
-          );
-        });
-        break;
-      }
-
-      default:
-        currentData = [];
+  // Calculate commission data based on current period
+  const commissionData = useMemo(() => {
+    if (!appointments || appointments.length === 0) {
+      return {
+        currentTotal: 0,
+        previousTotal: 0,
+        items: [],
+        comparison: "no-data",
+      };
     }
 
-    return currentData;
-  }, [appointments, timePeriod]);
-
-  // Helper function to get previous period data for comparison
-  const getPreviousPeriodData = useMemo(() => {
-    if (!appointments || appointments.length === 0) return [];
-
     const now = new Date();
-    let previousData = [];
+    const COMMISSION_RATE = 0.4; // 40% commission
 
-    switch (timePeriod) {
-      case "daily": {
-        // Yesterday's appointments
-        const yesterday = new Date(now);
-        yesterday.setDate(now.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split("T")[0];
+    // Filter paid appointments only
+    const paidAppointments = appointments.filter(
+      (apt) => apt.payment_status === "paid" && apt.payment_amount > 0
+    );
 
-        previousData = appointments.filter(
-          (apt) =>
-            apt.date === yesterdayStr &&
-            (apt.status === "completed" || apt.status === "payment_completed")
+    let currentItems = [];
+    let previousItems = [];
+
+    if (currentPeriod === "Daily") {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      // Current day appointments
+      currentItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return (
+          aptDate >= today &&
+          aptDate < new Date(today.getTime() + 24 * 60 * 60 * 1000)
         );
-        break;
-      }
+      });
 
-      case "weekly": {
-        // Previous week's appointments
-        const startOfLastWeek = new Date(now);
-        startOfLastWeek.setDate(now.getDate() - now.getDay() - 7);
-        startOfLastWeek.setHours(0, 0, 0, 0);
+      // Previous day appointments
+      previousItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= yesterday && aptDate < today;
+      });
+    } else if (currentPeriod === "Weekly") {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
 
-        const endOfLastWeek = new Date(startOfLastWeek);
-        endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
-        endOfLastWeek.setHours(23, 59, 59, 999);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 7);
 
-        previousData = appointments.filter((apt) => {
-          const aptDate = new Date(apt.date);
-          return (
-            aptDate >= startOfLastWeek &&
-            aptDate <= endOfLastWeek &&
-            (apt.status === "completed" || apt.status === "payment_completed")
-          );
+      const startOfPrevWeek = new Date(startOfWeek);
+      startOfPrevWeek.setDate(startOfWeek.getDate() - 7);
+
+      // Current week appointments
+      currentItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfWeek && aptDate < endOfWeek;
+      });
+
+      // Previous week appointments
+      previousItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfPrevWeek && aptDate < startOfWeek;
+      });
+    } else if (currentPeriod === "Monthly") {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const startOfPrevMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() - 1,
+        1
+      );
+
+      // Current month appointments
+      currentItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfMonth && aptDate < endOfMonth;
+      });
+
+      // Previous month appointments
+      previousItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfPrevMonth && aptDate < startOfMonth;
+      });
+    }
+
+    // Calculate totals
+    const currentTotal = currentItems.reduce(
+      (sum, apt) => sum + parseFloat(apt.payment_amount || 0) * COMMISSION_RATE,
+      0
+    );
+    const previousTotal = previousItems.reduce(
+      (sum, apt) => sum + parseFloat(apt.payment_amount || 0) * COMMISSION_RATE,
+      0
+    );
+
+    // Format items for display
+    const formattedItems = currentItems.map((apt) => {
+      const commission = parseFloat(apt.payment_amount || 0) * COMMISSION_RATE;
+      const therapistName = apt.therapist_details
+        ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
+        : apt.therapists_details
+            ?.map((t) => `${t.first_name} ${t.last_name}`)
+            .join(", ") || "Unknown";
+
+      if (currentPeriod === "Daily") {
+        return {
+          therapistName,
+          commission: commission.toFixed(2),
+          time: `${apt.start_time || ""} - ${apt.end_time || ""}`,
+          clientName:
+            `${apt.client_details?.first_name || ""} ${
+              apt.client_details?.last_name || ""
+            }`.trim() || "Unknown Client",
+          date: new Date(apt.date).toLocaleDateString(),
+        };
+      } else if (currentPeriod === "Weekly") {
+        const dayName = new Date(apt.date).toLocaleDateString("en-US", {
+          weekday: "long",
         });
-        break;
-      }
-
-      case "monthly": {
-        // Previous month's appointments
-        const startOfLastMonth = new Date(
-          now.getFullYear(),
-          now.getMonth() - 1,
+        return {
+          therapistName,
+          commission: commission.toFixed(2),
+          day: dayName,
+          clientName:
+            `${apt.client_details?.first_name || ""} ${
+              apt.client_details?.last_name || ""
+            }`.trim() || "Unknown Client",
+          date: new Date(apt.date).toLocaleDateString(),
+          time: `${apt.start_time || ""} - ${apt.end_time || ""}`,
+        };
+      } else {
+        // Monthly - show week range
+        const aptDate = new Date(apt.date);
+        const startOfMonth = new Date(
+          aptDate.getFullYear(),
+          aptDate.getMonth(),
           1
         );
-        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-
-        previousData = appointments.filter((apt) => {
-          const aptDate = new Date(apt.date);
-          return (
-            aptDate >= startOfLastMonth &&
-            aptDate <= endOfLastMonth &&
-            (apt.status === "completed" || apt.status === "payment_completed")
-          );
-        });
-        break;
-      }
-
-      default:
-        previousData = [];
-    }
-
-    return previousData;
-  }, [appointments, timePeriod]);
-
-  // Calculate total revenue
-  const calculateRevenue = (appointmentData) => {
-    return appointmentData.reduce((total, apt) => {
-      // Use payment_amount if available, otherwise calculate from services
-      if (apt.payment_amount) {
-        return total + parseFloat(apt.payment_amount);
-      } else if (apt.services_details && apt.services_details.length > 0) {
-        const serviceTotal = apt.services_details.reduce((sum, service) => {
-          return sum + (parseFloat(service.price) || 0);
-        }, 0);
-        return total + serviceTotal;
-      } else if (apt.total_price) {
-        return total + parseFloat(apt.total_price);
-      }
-      return total;
-    }, 0);
-  };
-
-  const currentRevenue = calculateRevenue(getCurrentPeriodData);
-  const previousRevenue = calculateRevenue(getPreviousPeriodData);
-  const revenueComparison =
-    currentRevenue > previousRevenue ? "higher" : "lower";
-
-  // Format currency
-  const formatCurrency = (amount) => {
-    return `₱${parseFloat(amount).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  };
-
-  // Group appointments by client for display
-  const getClientRevenueData = () => {
-    const clientGroups = getCurrentPeriodData.reduce((groups, apt) => {
-      const clientName = apt.client_details
-        ? `${apt.client_details.first_name} ${apt.client_details.last_name}`
-        : "Unknown Client";
-
-      if (!groups[clientName]) {
-        groups[clientName] = [];
-      }
-      groups[clientName].push(apt);
-      return groups;
-    }, {});
-
-    return Object.entries(clientGroups)
-      .map(([clientName, clientAppointments]) => {
-        const totalRevenue = calculateRevenue(clientAppointments);
-
-        let timeInfo = "";
-        if (timePeriod === "daily") {
-          // Show time for daily view
-          timeInfo = clientAppointments.map((apt) => apt.start_time).join(", ");
-        } else if (timePeriod === "weekly") {
-          // Show days for weekly view
-          const days = [
-            ...new Set(
-              clientAppointments.map((apt) => {
-                const date = new Date(apt.date);
-                return date.toLocaleDateString("en-US", { weekday: "short" });
-              })
-            ),
-          ];
-          timeInfo = days.join(", ");
-        } else {
-          // Show week ranges for monthly view
-          const weeks = [
-            ...new Set(
-              clientAppointments.map((apt) => {
-                const date = new Date(apt.date);
-                const startOfWeek = new Date(date);
-                startOfWeek.setDate(date.getDate() - date.getDay());
-                const endOfWeek = new Date(startOfWeek);
-                endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-                return `${startOfWeek.getDate()}/${
-                  startOfWeek.getMonth() + 1
-                } - ${endOfWeek.getDate()}/${endOfWeek.getMonth() + 1}`;
-              })
-            ),
-          ];
-          timeInfo = weeks.join(", ");
-        }
+        const dayOfMonth = aptDate.getDate();
+        const weekNumber = Math.ceil((dayOfMonth + startOfMonth.getDay()) / 7);
+        const weekRange = `Week ${weekNumber}`;
 
         return {
-          clientName,
-          totalRevenue,
-          timeInfo,
-          appointmentCount: clientAppointments.length,
+          therapistName,
+          commission: commission.toFixed(2),
+          weekRange,
+          clientName:
+            `${apt.client_details?.first_name || ""} ${
+              apt.client_details?.last_name || ""
+            }`.trim() || "Unknown Client",
+          date: new Date(apt.date).toLocaleDateString(),
+          time: `${apt.start_time || ""} - ${apt.end_time || ""}`,
         };
-      })
-      .sort((a, b) => b.totalRevenue - a.totalRevenue);
-  };
+      }
+    });
 
-  const renderTotalRevenueView = () => {
-    const clientData = getClientRevenueData();
+    // Group by therapist for weekly and monthly views
+    let groupedItems = formattedItems;
+    if (currentPeriod === "Weekly" || currentPeriod === "Monthly") {
+      const grouped = {};
+      formattedItems.forEach((item) => {
+        if (!grouped[item.therapistName]) {
+          grouped[item.therapistName] = {
+            therapistName: item.therapistName,
+            commission: 0,
+            appointments: [],
+            period: currentPeriod === "Weekly" ? item.day : item.weekRange,
+          };
+        }
+        grouped[item.therapistName].commission += parseFloat(item.commission);
+        grouped[item.therapistName].appointments.push(item);
+      });
+
+      groupedItems = Object.values(grouped).map((group) => ({
+        ...group,
+        commission: group.commission.toFixed(2),
+      }));
+    }
+
+    const comparison =
+      currentTotal > previousTotal
+        ? "higher"
+        : currentTotal < previousTotal
+        ? "lower"
+        : "same";
+
+    return {
+      currentTotal,
+      previousTotal,
+      items: groupedItems,
+      comparison,
+    };
+  }, [appointments, currentPeriod]);
+
+  // Calculate total revenue data based on current period
+  const revenueData = useMemo(() => {
+    if (!appointments || appointments.length === 0) {
+      return {
+        currentTotal: 0,
+        previousTotal: 0,
+        items: [],
+        comparison: "no-data",
+      };
+    }
+
+    const now = new Date();
+
+    // Filter paid appointments only
+    const paidAppointments = appointments.filter(
+      (apt) => apt.payment_status === "paid" && apt.payment_amount > 0
+    );
+
+    let currentItems = [];
+    let previousItems = [];
+
+    if (currentPeriod === "Daily") {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      // Current day appointments
+      currentItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return (
+          aptDate >= today &&
+          aptDate < new Date(today.getTime() + 24 * 60 * 60 * 1000)
+        );
+      });
+
+      // Previous day appointments
+      previousItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= yesterday && aptDate < today;
+      });
+    } else if (currentPeriod === "Weekly") {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+      const startOfPrevWeek = new Date(startOfWeek);
+      startOfPrevWeek.setDate(startOfWeek.getDate() - 7);
+
+      // Current week appointments
+      currentItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfWeek && aptDate < endOfWeek;
+      });
+
+      // Previous week appointments
+      previousItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfPrevWeek && aptDate < startOfWeek;
+      });
+    } else if (currentPeriod === "Monthly") {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const startOfPrevMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() - 1,
+        1
+      );
+
+      // Current month appointments
+      currentItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfMonth && aptDate < endOfMonth;
+      });
+
+      // Previous month appointments
+      previousItems = paidAppointments.filter((apt) => {
+        const aptDate = new Date(apt.date);
+        return aptDate >= startOfPrevMonth && aptDate < startOfMonth;
+      });
+    }
+
+    // Calculate totals
+    const currentTotal = currentItems.reduce(
+      (sum, apt) => sum + parseFloat(apt.payment_amount || 0),
+      0
+    );
+    const previousTotal = previousItems.reduce(
+      (sum, apt) => sum + parseFloat(apt.payment_amount || 0),
+      0
+    );
+
+    // Format items for display - group by client for weekly and monthly
+    let formattedItems = [];
+
+    if (currentPeriod === "Daily") {
+      formattedItems = currentItems.map((apt) => ({
+        clientName:
+          `${apt.client_details?.first_name || ""} ${
+            apt.client_details?.last_name || ""
+          }`.trim() || "Unknown Client",
+        revenue: parseFloat(apt.payment_amount || 0).toFixed(2),
+        time: `${apt.start_time || ""} - ${apt.end_time || ""}`,
+        date: new Date(apt.date).toLocaleDateString(),
+      }));
+    } else if (currentPeriod === "Weekly") {
+      const groupedByClient = {};
+      currentItems.forEach((apt) => {
+        const clientName =
+          `${apt.client_details?.first_name || ""} ${
+            apt.client_details?.last_name || ""
+          }`.trim() || "Unknown Client";
+        const dayName = new Date(apt.date).toLocaleDateString("en-US", {
+          weekday: "long",
+        });
+
+        if (!groupedByClient[clientName]) {
+          groupedByClient[clientName] = {
+            clientName,
+            revenue: 0,
+            day: dayName,
+            appointments: [],
+          };
+        }
+        groupedByClient[clientName].revenue += parseFloat(
+          apt.payment_amount || 0
+        );
+        groupedByClient[clientName].appointments.push(apt);
+      });
+
+      formattedItems = Object.values(groupedByClient).map((group) => ({
+        ...group,
+        revenue: group.revenue.toFixed(2),
+      }));
+    } else {
+      // Monthly - group by client and show week range
+      const groupedByClient = {};
+      currentItems.forEach((apt) => {
+        const clientName =
+          `${apt.client_details?.first_name || ""} ${
+            apt.client_details?.last_name || ""
+          }`.trim() || "Unknown Client";
+        const aptDate = new Date(apt.date);
+        const startOfMonth = new Date(
+          aptDate.getFullYear(),
+          aptDate.getMonth(),
+          1
+        );
+        const dayOfMonth = aptDate.getDate();
+        const weekNumber = Math.ceil((dayOfMonth + startOfMonth.getDay()) / 7);
+        const weekRange = `Week ${weekNumber}`;
+
+        if (!groupedByClient[clientName]) {
+          groupedByClient[clientName] = {
+            clientName,
+            revenue: 0,
+            weekRange,
+            appointments: [],
+          };
+        }
+        groupedByClient[clientName].revenue += parseFloat(
+          apt.payment_amount || 0
+        );
+        groupedByClient[clientName].appointments.push(apt);
+      });
+
+      formattedItems = Object.values(groupedByClient).map((group) => ({
+        ...group,
+        revenue: group.revenue.toFixed(2),
+      }));
+    }
+
+    const comparison =
+      currentTotal > previousTotal
+        ? "higher"
+        : currentTotal < previousTotal
+        ? "lower"
+        : "same";
+
+    return {
+      currentTotal,
+      previousTotal,
+      items: formattedItems,
+      comparison,
+    };
+  }, [appointments, currentPeriod]);
+
+  const renderCommissionView = () => {
+    const { currentTotal, items, comparison } = commissionData;
 
     return (
-      <div className={styles.revenueView}>
-        <div className={styles.revenueHeader}>
-          <h2>Total Revenue: {formatCurrency(currentRevenue)}</h2>
-          <p
-            className={`${styles.revenueComparison} ${styles[revenueComparison]}`}
-          >
-            {formatCurrency(Math.abs(currentRevenue - previousRevenue))}{" "}
-            {revenueComparison} than last{" "}
-            {timePeriod === "daily"
-              ? "day"
-              : timePeriod === "weekly"
-              ? "week"
-              : "month"}
+      <div className="commission-view">
+        <div className="commission-header">
+          <h2>
+            ₱
+            {currentTotal.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </h2>
+          <p className={`comparison ${comparison}`}>
+            {comparison === "higher" && "Higher than last period"}
+            {comparison === "lower" && "Lower than last period"}
+            {comparison === "same" && "Same as last period"}
+            {comparison === "no-data" && "No previous data available"}
           </p>
         </div>
 
-        <div className={styles.revenueTable}>
-          <div className={styles.tableHeader}>
-            <div className={styles.headerCell}>Date/Time</div>
-            <div className={styles.headerCell}>Client Name</div>
-            <div className={styles.headerCell}>Revenue</div>
-          </div>
-
-          {clientData.length === 0 ? (
-            <div className={styles.noData}>
-              No revenue data for this {timePeriod} period
-            </div>
-          ) : (
-            clientData.map((client, index) => (
-              <div key={index} className={styles.tableRow}>
-                <div className={styles.tableCell}>{client.timeInfo}</div>
-                <div className={styles.tableCell}>{client.clientName}</div>
-                <div className={`${styles.tableCell} ${styles.revenueAmount}`}>
-                  {formatCurrency(client.totalRevenue)}
-                </div>
-              </div>
-            ))
-          )}
+        <div className="commission-table">
+          <table>
+            <thead>
+              <tr>
+                {currentPeriod === "Daily" && (
+                  <>
+                    <th>Therapist</th>
+                    <th>Commission</th>
+                    <th>Time</th>
+                    <th>Client</th>
+                    <th>Date</th>
+                  </>
+                )}
+                {currentPeriod === "Weekly" && (
+                  <>
+                    <th>Therapist</th>
+                    <th>Total Commission</th>
+                    <th>Period</th>
+                  </>
+                )}
+                {currentPeriod === "Monthly" && (
+                  <>
+                    <th>Therapist</th>
+                    <th>Total Commission</th>
+                    <th>Period</th>
+                  </>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {items.length > 0 ? (
+                items.map((item, index) => (
+                  <tr key={index}>
+                    {currentPeriod === "Daily" && (
+                      <>
+                        <td>{item.therapistName}</td>
+                        <td>₱{item.commission}</td>
+                        <td>{item.time}</td>
+                        <td>{item.clientName}</td>
+                        <td>{item.date}</td>
+                      </>
+                    )}
+                    {currentPeriod === "Weekly" && (
+                      <>
+                        <td>{item.therapistName}</td>
+                        <td>₱{item.commission}</td>
+                        <td>This Week</td>
+                      </>
+                    )}
+                    {currentPeriod === "Monthly" && (
+                      <>
+                        <td>{item.therapistName}</td>
+                        <td>₱{item.commission}</td>
+                        <td>This Month</td>
+                      </>
+                    )}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={currentPeriod === "Daily" ? 5 : 3}>
+                    No commission data available for this period
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     );
   };
 
-  const renderCommissionView = () => {
+  const renderTotalRevenueView = () => {
+    const { currentTotal, items, comparison } = revenueData;
+
     return (
-      <div className={styles.commissionView}>
-        <h2>Commission Report</h2>
-        <p className={styles.comingSoon}>
-          Commission calculations will be implemented in the next update.
-        </p>
+      <div className="revenue-view">
+        <div className="revenue-header">
+          <h2>
+            ₱
+            {currentTotal.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </h2>
+          <p className={`comparison ${comparison}`}>
+            {comparison === "higher" && "Higher than last period"}
+            {comparison === "lower" && "Lower than last period"}
+            {comparison === "same" && "Same as last period"}
+            {comparison === "no-data" && "No previous data available"}
+          </p>
+        </div>
+
+        <div className="revenue-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Client Name</th>
+                <th>Revenue</th>
+                {currentPeriod === "Daily" && <th>Time</th>}
+                {currentPeriod === "Weekly" && <th>Day</th>}
+                {currentPeriod === "Monthly" && <th>Week Range</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {items.length > 0 ? (
+                items.map((item, index) => (
+                  <tr key={index}>
+                    <td>{item.date || "N/A"}</td>
+                    <td>{item.clientName || "Unknown Client"}</td>
+                    <td>₱{item.revenue}</td>
+                    {currentPeriod === "Daily" && <td>{item.time}</td>}
+                    {currentPeriod === "Weekly" && <td>{item.day}</td>}
+                    {currentPeriod === "Monthly" && <td>{item.weekRange}</td>}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={currentPeriod === "Daily" ? 4 : 4}>
+                    No revenue data available for this period
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   };
 
-  const renderCustomerListView = () => {
+  const renderPlaceholderView = (viewName) => {
     return (
-      <div className={styles.customerListView}>
-        <h2>Customer List</h2>
-        <p className={styles.comingSoon}>
-          Customer analytics will be implemented in the next update.
-        </p>
+      <div className="placeholder-container">
+        <div className="placeholder-content">
+          <h2>{viewName} View</h2>
+          <p className="placeholder-text">
+            The {viewName} view is currently under development and will be
+            available soon.
+          </p>
+          <div className="placeholder-loader"></div>
+        </div>
       </div>
     );
   };
-
-  const renderServicesView = () => {
-    return (
-      <div className={styles.servicesView}>
-        <h2>Services Report</h2>
-        <p className={styles.comingSoon}>
-          Service performance analytics will be implemented in the next update.
-        </p>
-      </div>
-    );
-  };
-
-  const renderActiveView = () => {
-    switch (activeView) {
-      case "total_revenue":
-        return renderTotalRevenueView();
-      case "commission":
-        return renderCommissionView();
-      case "customer_list":
-        return renderCustomerListView();
-      case "services":
-        return renderServicesView();
-      default:
-        return renderTotalRevenueView();
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className={`${styles.salesReportsPage} ${styles.loading}`}>
-        <div className={styles.loadingSpinner}></div>
-        <p>Loading sales data...</p>
-      </div>
-    );
-  }
 
   return (
-    <div className={styles.salesReportsPage}>
-      <div className={styles.salesHeader}>
-        <h1>Sales & Reports</h1>
-      </div>
+    <div className="sales-reports-page">
+      <div className="sales-reports-header">
+        <h1>Sales & Reports Dashboard</h1>
 
-      <div className={styles.controlsSection}>
-        <div className={styles.viewTabs}>
-          <button
-            className={`${styles.tabButton} ${
-              activeView === "total_revenue" ? styles.active : ""
-            }`}
-            onClick={() => setActiveView("total_revenue")}
-          >
-            Total Revenue
-          </button>
-          <button
-            className={`${styles.tabButton} ${
-              activeView === "commission" ? styles.active : ""
-            }`}
-            onClick={() => setActiveView("commission")}
-          >
-            Commission
-          </button>
-          <button
-            className={`${styles.tabButton} ${
-              activeView === "customer_list" ? styles.active : ""
-            }`}
-            onClick={() => setActiveView("customer_list")}
-          >
-            Customer List
-          </button>
-          <button
-            className={`${styles.tabButton} ${
-              activeView === "services" ? styles.active : ""
-            }`}
-            onClick={() => setActiveView("services")}
-          >
-            Services
-          </button>
+        {/* View Selector */}
+        <div className="view-selector">
+          {views.map((view) => (
+            <button
+              key={view}
+              className={`view-btn ${currentView === view ? "active" : ""}`}
+              onClick={() => setCurrentView(view)}
+            >
+              {view}
+            </button>
+          ))}
         </div>
 
-        <div className={styles.timePeriodSelector}>
-          <button
-            className={`${styles.periodButton} ${
-              timePeriod === "daily" ? styles.active : ""
-            }`}
-            onClick={() => setTimePeriod("daily")}
-          >
-            Daily
-          </button>
-          <button
-            className={`${styles.periodButton} ${
-              timePeriod === "weekly" ? styles.active : ""
-            }`}
-            onClick={() => setTimePeriod("weekly")}
-          >
-            Weekly
-          </button>
-          <button
-            className={`${styles.periodButton} ${
-              timePeriod === "monthly" ? styles.active : ""
-            }`}
-            onClick={() => setTimePeriod("monthly")}
-          >
-            Monthly
-          </button>
+        {/* Period Selector */}
+        <div className="period-selector">
+          {periods.map((period) => (
+            <button
+              key={period}
+              className={`period-btn ${
+                currentPeriod === period ? "active" : ""
+              }`}
+              onClick={() => setCurrentPeriod(period)}
+            >
+              {period}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className={styles.contentSection}>{renderActiveView()}</div>
+      <div className="sales-reports-content">
+        {currentView === "Commission" && renderCommissionView()}
+        {currentView === "Total Revenue" && renderTotalRevenueView()}
+        {(currentView === "Customer List" || currentView === "Services") &&
+          renderPlaceholderView(currentView)}
+      </div>
     </div>
   );
 };
