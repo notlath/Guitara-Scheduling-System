@@ -5,6 +5,7 @@ import LayoutRow from "../../globals/LayoutRow";
 import "../../globals/LayoutRow.css";
 import PageLayout from "../../globals/PageLayout";
 import {
+  registerClient,
   registerDriver,
   registerMaterial,
   registerOperator,
@@ -16,7 +17,14 @@ import "../../styles/Settings.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import styles from "./SettingsDataPage.module.css";
 
-const TABS = ["Therapists", "Drivers", "Operators", "Services", "Materials"];
+const TABS = [
+  "Therapists",
+  "Drivers",
+  "Operators",
+  "Clients",
+  "Services",
+  "Materials",
+];
 
 const TAB_PLACEHOLDERS = {
   Therapists: [
@@ -47,6 +55,15 @@ const TAB_PLACEHOLDERS = {
       Contact: "09112223333",
       Specialization: "N/A",
       Pressure: "N/A",
+    },
+  ],
+  Clients: [
+    {
+      Name: "John Smith",
+      Email: "john.smith@example.com",
+      Address: "123 Main St, City",
+      Contact: "09123456789",
+      Notes: "Regular client",
     },
   ],
   Services: [
@@ -93,6 +110,7 @@ const TAB_SINGULARS = {
   Therapists: "Therapist",
   Drivers: "Driver",
   Operators: "Operator",
+  Clients: "Client",
   Services: "Service",
   Materials: "Material",
 };
@@ -165,6 +183,28 @@ const fetchers = {
       Contact: "-", // Registration table doesn't have phone numbers
       Specialization: "N/A",
       Pressure: "N/A",
+    }));
+  },
+  Clients: async () => {
+    const token = localStorage.getItem("knoxToken");
+    const res = await fetch(
+      "http://localhost:8000/api/registration/register/client/",
+      {
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    // Map backend fields to frontend table fields
+    return data.map((item) => ({
+      Name: item.Name || "-",
+      Email: item.Email || "-",
+      Address: item.Address || "-",
+      Contact: item.Contact || "-",
+      Notes: item.Notes || "-",
     }));
   },
   Services: async () => {
@@ -322,6 +362,17 @@ const SettingsDataPage = () => {
             last_name: sanitized.lastName,
             username: sanitized.username,
             email: sanitized.email,
+          };
+          break;
+        case "Clients":
+          apiCall = registerClient;
+          payload = {
+            first_name: sanitized.firstName,
+            last_name: sanitized.lastName,
+            email: sanitized.email,
+            phone_number: sanitized.phoneNumber,
+            address: sanitized.address,
+            notes: sanitized.notes || "",
           };
           break;
         case "Materials":
@@ -495,6 +546,62 @@ const SettingsDataPage = () => {
             />
           </>
         );
+      case "Clients":
+        return (
+          <>
+            <div className={styles["flex-row-fields"]}>
+              <FormField
+                name="firstName"
+                label="First Name"
+                value={formData.firstName || ""}
+                onChange={handleInputChange}
+                inputProps={{ autoComplete: "off", maxLength: 50 }}
+              />
+              <FormField
+                name="lastName"
+                label="Last Name"
+                value={formData.lastName || ""}
+                onChange={handleInputChange}
+                inputProps={{ autoComplete: "off", maxLength: 50 }}
+              />
+            </div>
+            <FormField
+              name="email"
+              label="Email"
+              type="email"
+              value={formData.email || ""}
+              onChange={handleInputChange}
+              inputProps={{ maxLength: 100 }}
+            />
+            <FormField
+              name="address"
+              label="Address"
+              value={formData.address || ""}
+              onChange={handleInputChange}
+              inputProps={{ maxLength: 200 }}
+            />
+            <FormField
+              name="phoneNumber"
+              label="Contact Number"
+              value={formData.phoneNumber || ""}
+              onChange={handleInputChange}
+              inputProps={{ maxLength: 20 }}
+            />
+            <FormField
+              name="notes"
+              label="Notes"
+              as="textarea"
+              value={formData.notes || ""}
+              onChange={handleInputChange}
+              inputProps={{
+                className: "global-form-field-textarea",
+                maxLength: 500,
+                rows: 3,
+              }}
+              required={false}
+            />
+          </>
+        );
       case "Services":
         return (
           <>
@@ -576,6 +683,16 @@ const SettingsDataPage = () => {
             { key: "Name", label: "Name" },
             { key: "Email", label: "Email" },
             { key: "Contact", label: "Contact Number" },
+          ],
+        };
+      case "Clients":
+        return {
+          columns: [
+            { key: "Name", label: "Name" },
+            { key: "Email", label: "Email" },
+            { key: "Address", label: "Address" },
+            { key: "Contact", label: "Contact Number" },
+            { key: "Notes", label: "Notes" },
           ],
         };
       case "Services":

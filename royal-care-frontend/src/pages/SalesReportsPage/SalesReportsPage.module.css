@@ -1,31 +1,249 @@
 /* Sales Reports Page Styles */
 .sales-reports-page {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
-  background-color: #f8fafc;
+  background-color: #f8f9fa;
   min-height: 100vh;
 }
 
-.sales-reports-page.loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.sales-reports-header {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
+}
+
+.sales-reports-header h1 {
+  margin: 0 0 1.5rem 0;
+  font-size: 2.5rem;
+  font-weight: 700;
   text-align: center;
 }
 
-.loading-spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #e2e8f0;
-  border-top: 4px solid #3b82f6;
+/* View Selector */
+.view-selector {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.view-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.view-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.view-btn.active {
+  background: rgba(255, 255, 255, 0.9);
+  color: #6366f1;
+  border-color: rgba(255, 255, 255, 0.9);
+  font-weight: 700;
+}
+
+/* Period Selector */
+.period-selector {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.period-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.period-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.period-btn.active {
+  background: rgba(255, 255, 255, 0.8);
+  color: #6366f1;
+  border-color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+}
+
+/* Content Area */
+.sales-reports-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+/* Commission View */
+.commission-view,
+.revenue-view {
+  padding: 2rem;
+}
+
+.commission-header,
+.revenue-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 3px solid #f1f5f9;
+}
+
+.commission-header h2,
+.revenue-header h2 {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0 0 0.5rem 0;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.comparison {
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+.comparison.higher {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.comparison.lower {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.comparison.same {
+  background: linear-gradient(135deg, #6366f1 0%, #5b21b6 100%);
+  color: white;
+}
+
+.comparison.no-data {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: white;
+}
+
+/* Table Styles */
+.commission-table,
+.revenue-table {
+  overflow-x: auto;
+}
+
+.commission-table table,
+.revenue-table table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.commission-table th,
+.revenue-table th {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.commission-table td,
+.revenue-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
+  font-weight: 500;
+}
+
+.commission-table tr:hover,
+.revenue-table tr:hover {
+  background-color: #f8fafc;
+}
+
+.commission-table tr:nth-child(even),
+.revenue-table tr:nth-child(even) {
+  background-color: #fafbfc;
+}
+
+.commission-table tr:last-child td,
+.revenue-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Empty State */
+.commission-table td[colspan],
+.revenue-table td[colspan] {
+  text-align: center;
+  color: #64748b;
+  font-style: italic;
+  padding: 3rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+/* Placeholder View */
+.placeholder-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 3rem;
+}
+
+.placeholder-content {
+  text-align: center;
+  max-width: 500px;
+}
+
+.placeholder-content h2 {
+  color: #1e293b;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.placeholder-text {
+  color: #64748b;
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.placeholder-loader {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #f1f5f9;
+  border-top: 4px solid #6366f1;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
+  margin: 0 auto;
 }
 
 @keyframes spin {
@@ -37,373 +255,63 @@
   }
 }
 
-/* Header Section */
-.sales-header {
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
-.sales-header h1 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Controls Section */
-.controls-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.view-tabs {
-  display: flex;
-  gap: 0.5rem;
-  background-color: #ffffff;
-  padding: 0.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e2e8f0;
-}
-
-.tab-button {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  background-color: transparent;
-  color: #64748b;
-  font-weight: 500;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.95rem;
-  white-space: nowrap;
-}
-
-.tab-button:hover {
-  background-color: #f1f5f9;
-  color: #475569;
-}
-
-.tab-button.active {
-  background-color: #3b82f6;
-  color: #ffffff;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-}
-
-.time-period-selector {
-  display: flex;
-  gap: 0.5rem;
-  background-color: #ffffff;
-  padding: 0.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e2e8f0;
-}
-
-.period-button {
-  padding: 0.75rem 1.25rem;
-  border: none;
-  background-color: transparent;
-  color: #64748b;
-  font-weight: 500;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.95rem;
-  min-width: 80px;
-}
-
-.period-button:hover {
-  background-color: #f1f5f9;
-  color: #475569;
-}
-
-.period-button.active {
-  background-color: #10b981;
-  color: #ffffff;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
-}
-
-/* Content Section */
-.content-section {
-  background-color: #ffffff;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e2e8f0;
-}
-
-/* Revenue View */
-.revenue-view {
-  animation: fadeIn 0.3s ease-in;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.revenue-header {
-  margin-bottom: 2rem;
-  text-align: center;
-  padding: 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  color: white;
-}
-
-.revenue-header h2 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin: 0 0 1rem 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.revenue-comparison {
-  font-size: 1.2rem;
-  font-weight: 600;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  display: inline-block;
-}
-
-.revenue-comparison.higher {
-  color: #10b981;
-  background-color: rgba(16, 185, 129, 0.1);
-}
-
-.revenue-comparison.lower {
-  color: #ef4444;
-  background-color: rgba(239, 68, 68, 0.1);
-}
-
-/* Revenue Table */
-.revenue-table {
-  background-color: #ffffff;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e2e8f0;
-}
-
-.table-header {
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
-  gap: 1rem;
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-  color: white;
-  padding: 1rem 1.5rem;
-  font-weight: 600;
-  font-size: 0.95rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.header-cell {
-  display: flex;
-  align-items: center;
-}
-
-.table-row {
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #f1f5f9;
-  transition: background-color 0.2s ease;
-}
-
-.table-row:hover {
-  background-color: #f8fafc;
-}
-
-.table-row:last-child {
-  border-bottom: none;
-}
-
-.table-cell {
-  display: flex;
-  align-items: center;
-  font-size: 0.95rem;
-  color: #374151;
-}
-
-.revenue-amount {
-  font-weight: 700;
-  color: #059669;
-  font-size: 1.1rem;
-}
-
-.no-data {
-  text-align: center;
-  padding: 3rem;
-  color: #6b7280;
-  font-size: 1.1rem;
-  background-color: #f9fafb;
-  border-radius: 8px;
-  margin: 1rem;
-}
-
-/* Commission, Customer List, Services Views */
-.commission-view,
-.customer-list-view,
-.services-view {
-  text-align: center;
-  padding: 3rem;
-  animation: fadeIn 0.3s ease-in;
-}
-
-.commission-view h2,
-.customer-list-view h2,
-.services-view h2 {
-  font-size: 2rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 1rem;
-}
-
-.coming-soon {
-  font-size: 1.2rem;
-  color: #6b7280;
-  background-color: #f9fafb;
-  padding: 2rem;
-  border-radius: 12px;
-  border: 2px dashed #d1d5db;
-  margin-top: 2rem;
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
   .sales-reports-page {
     padding: 1rem;
   }
 
-  .controls-section {
+  .sales-reports-header {
+    padding: 1.5rem;
+  }
+
+  .sales-reports-header h1 {
+    font-size: 2rem;
+  }
+
+  .view-selector {
     flex-direction: column;
-    align-items: stretch;
-    gap: 1rem;
+    align-items: center;
   }
 
-  .view-tabs,
-  .time-period-selector {
-    justify-content: center;
+  .view-btn {
+    width: 100%;
+    max-width: 200px;
   }
 
-  .tab-button,
-  .period-button {
-    flex: 1;
-    min-width: auto;
-  }
-
+  .commission-header h2,
   .revenue-header h2 {
     font-size: 2rem;
   }
 
-  .revenue-comparison {
-    font-size: 1rem;
+  .commission-table,
+  .revenue-table {
+    font-size: 0.9rem;
   }
 
-  .table-header,
-  .table-row {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-    text-align: center;
-  }
-
-  .header-cell,
-  .table-cell {
-    justify-content: center;
-  }
-
-  .content-section {
-    padding: 1rem;
+  .commission-table th,
+  .revenue-table th,
+  .commission-table td,
+  .revenue-table td {
+    padding: 0.75rem 0.5rem;
   }
 }
 
 @media (max-width: 480px) {
-  .sales-header h1 {
-    font-size: 2rem;
+  .commission-header h2,
+  .revenue-header h2 {
+    font-size: 1.5rem;
   }
 
-  .view-tabs {
-    flex-wrap: wrap;
+  .commission-table,
+  .revenue-table {
+    font-size: 0.8rem;
   }
 
-  .tab-button {
-    flex: 1 1 45%;
-  }
-}
-
-/* Loading States */
-.revenue-view.loading {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-/* Enhanced Visual Effects */
-.revenue-header {
-  position: relative;
-  overflow: hidden;
-}
-
-.revenue-header::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
-  transition: left 0.5s ease;
-}
-
-.revenue-header:hover::before {
-  left: 100%;
-}
-
-/* Smooth Transitions */
-* {
-  transition: all 0.2s ease;
-}
-
-/* Focus States for Accessibility */
-.tab-button:focus,
-.period-button:focus {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
-}
-
-/* Print Styles */
-@media print {
-  .controls-section {
-    display: none;
-  }
-
-  .sales-reports-page {
-    padding: 0;
-    background-color: white;
-  }
-
-  .content-section {
-    box-shadow: none;
-    border: 1px solid #000;
+  .commission-table th,
+  .revenue-table th,
+  .commission-table td,
+  .revenue-table td {
+    padding: 0.5rem 0.25rem;
   }
 }
