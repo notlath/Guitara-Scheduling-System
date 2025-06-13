@@ -47,7 +47,7 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
   // Get availability status for a time slot
   const getTimeSlotStatus = (timeSlot, date) => {
     if (isPastTimeSlot(timeSlot, date)) {
-      return { status: "past", color: "#6b7280", emoji: "⚫" }; // Gray
+      return { status: "past", color: "#6b7280" }; // Gray
     }
 
     // Check if there are appointments at this time
@@ -77,21 +77,21 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
 
     // If no therapists have set availability for this time
     if (totalTherapists === 0) {
-      return { status: "no-availability", color: "#4b3b06", emoji: "🟡" }; // Orange-brown
+      return { status: "no-availability", color: "#4b3b06" }; // Orange-brown
     }
 
     // All slots are booked
     if (availableCount === 0) {
-      return { status: "fully-booked", color: "#dc2626", emoji: "🔴" }; // Red
+      return { status: "fully-booked", color: "#dc2626" }; // Red
     }
 
     // Some availability remaining
     if (availableCount < totalTherapists) {
-      return { status: "limited", color: "#f59e0b", emoji: "🟡" }; // Orange
+      return { status: "limited", color: "#f59e0b" }; // Orange
     }
 
     // Full availability
-    return { status: "available", color: "#16a34a", emoji: "🟢" }; // Green
+    return { status: "available", color: "#16a34a" }; // Green
   };
 
   // Check if a date is in the past (before today)
@@ -366,94 +366,6 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     );
   };
 
-  // Render bookings for the selected day
-  const renderDayBookings = () => {
-    // Ensure appointmentsByDate is always an array - handle null, undefined, or non-array values
-    let bookings = [];
-    if (appointmentsByDate && Array.isArray(appointmentsByDate)) {
-      bookings = appointmentsByDate;
-    } else if (appointmentsByDate && typeof appointmentsByDate === "object") {
-      // Handle case where it might be an object with array inside
-      bookings =
-        appointmentsByDate.appointments || appointmentsByDate.data || [];
-    }
-
-    if (!Array.isArray(bookings)) {
-      bookings = [];
-    }
-
-    if (bookings.length === 0) {
-      return (
-        <div className="day-bookings">
-          <h3>Bookings for {selectedDate.toLocaleDateString()}</h3>
-          <p className="no-bookings">No bookings found for this date.</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="day-bookings">
-        <h3>Bookings for {selectedDate.toLocaleDateString()}</h3>
-        <div className="bookings-list">
-          {bookings.map((appointment, index) => (
-            <div key={appointment.id || index} className="booking-card">
-              <div className="booking-header">
-                <h4>
-                  {appointment.client_details?.first_name || "N/A"}{" "}
-                  {appointment.client_details?.last_name || ""}
-                </h4>
-                <span
-                  className={`status-badge status-${
-                    appointment.status || "pending"
-                  }`}
-                >
-                  {appointment.status
-                    ? appointment.status.charAt(0).toUpperCase() +
-                      appointment.status.slice(1)
-                    : "Pending"}
-                </span>
-              </div>
-              <div className="booking-details">
-                <p>
-                  <strong>Time:</strong> {appointment.start_time || "N/A"} -{" "}
-                  {appointment.end_time || "N/A"}
-                </p>
-                <p>
-                  <strong>Services:</strong>{" "}
-                  {appointment.services_details
-                    ?.map((s) => s.name)
-                    .join(", ") || "N/A"}
-                </p>
-                {appointment.therapist_details && (
-                  <p>
-                    <strong>Therapist:</strong>{" "}
-                    {appointment.therapist_details.first_name}{" "}
-                    {appointment.therapist_details.last_name}
-                  </p>
-                )}
-                {appointment.driver_details && (
-                  <p>
-                    <strong>Driver:</strong>{" "}
-                    {appointment.driver_details.first_name}{" "}
-                    {appointment.driver_details.last_name}
-                  </p>
-                )}
-                <p>
-                  <strong>Location:</strong> {appointment.location || "N/A"}
-                </p>
-                {appointment.notes && (
-                  <p>
-                    <strong>Notes:</strong> {appointment.notes}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   // Generate calendar UI for day view
   const renderDayCalendar = () => {
     const timeSlots = generateTimeSlots();
@@ -501,7 +413,6 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
                       opacity: slotStatus.status === "past" ? 0.5 : 1,
                     }}
                   >
-                    <span className="time-slot-emoji">{slotStatus.emoji}</span>
                     <span className="time-slot-time">{time}</span>
                   </div>
                 );
@@ -510,26 +421,43 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
             {/* Legend for time slot colors */}
             <div className="time-slot-legend">
               <div className="legend-item">
-                <span>🟢</span> Available
+                <span
+                  className="legend-circle"
+                  style={{ backgroundColor: "#16a34a" }}
+                ></span>{" "}
+                Available
               </div>
               <div className="legend-item">
-                <span>🟡</span> Limited availability
+                <span
+                  className="legend-circle"
+                  style={{ backgroundColor: "#f59e0b" }}
+                ></span>{" "}
+                Limited availability
               </div>
               <div className="legend-item">
-                <span>🔴</span> Fully booked
+                <span
+                  className="legend-circle"
+                  style={{ backgroundColor: "#dc2626" }}
+                ></span>{" "}
+                Fully booked
               </div>
               <div className="legend-item">
-                <span style={{ color: "#4b3b06" }}>🟡</span> No availability set
+                <span
+                  className="legend-circle"
+                  style={{ backgroundColor: "#4b3b06" }}
+                ></span>{" "}
+                No availability set
               </div>
               <div className="legend-item">
-                <span>⚫</span> Past time
+                <span
+                  className="legend-circle"
+                  style={{ backgroundColor: "#6b7280" }}
+                ></span>{" "}
+                Past time
               </div>
             </div>
           </div>
         )}
-
-        {/* Show bookings after time slots selection but before availability info */}
-        {renderDayBookings()}
       </div>
     );
   };
@@ -538,7 +466,7 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     <div className="calendar-wrapper">
       {view === "month" ? renderMonthCalendar() : renderDayCalendar()}
 
-      {/* Only show availability info for current/future dates - moved below bookings */}
+      {/* Only show availability info for current/future dates */}
       {view === "day" && !isPastDate(selectedDate) && (
         <div className="availability-info">
           <div className="therapists-section">
@@ -618,6 +546,108 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
                 different time slot or proceed without a driver.
               </p>
             )}
+          </div>
+
+          {/* Display bookings for the selected day */}
+          <div className="day-bookings">
+            {(() => {
+              // Ensure appointmentsByDate is always an array - handle null, undefined, or non-array values
+              let bookings = [];
+              if (appointmentsByDate && Array.isArray(appointmentsByDate)) {
+                bookings = appointmentsByDate;
+              } else if (
+                appointmentsByDate &&
+                typeof appointmentsByDate === "object"
+              ) {
+                // Handle case where it might be an object with array inside
+                bookings =
+                  appointmentsByDate.appointments ||
+                  appointmentsByDate.data ||
+                  [];
+              }
+
+              if (!Array.isArray(bookings)) {
+                bookings = [];
+              }
+
+              if (bookings.length === 0) {
+                return (
+                  <>
+                    <h3>Bookings for {selectedDate.toLocaleDateString()}</h3>
+                    <p className="no-bookings">
+                      No bookings found for this date.
+                    </p>
+                  </>
+                );
+              }
+
+              return (
+                <>
+                  <h3>Bookings for {selectedDate.toLocaleDateString()}</h3>
+                  <div className="bookings-list">
+                    {bookings.map((appointment, index) => (
+                      <div
+                        key={appointment.id || index}
+                        className="booking-card"
+                      >
+                        <div className="booking-header">
+                          <h4>
+                            {appointment.client_details?.first_name || "N/A"}{" "}
+                            {appointment.client_details?.last_name || ""}
+                          </h4>
+                          <span
+                            className={`status-badge status-${
+                              appointment.status || "pending"
+                            }`}
+                          >
+                            {appointment.status
+                              ? appointment.status.charAt(0).toUpperCase() +
+                                appointment.status.slice(1)
+                              : "Pending"}
+                          </span>
+                        </div>
+                        <div className="booking-details">
+                          <p>
+                            <strong>Time:</strong>{" "}
+                            {appointment.start_time || "N/A"} -{" "}
+                            {appointment.end_time || "N/A"}
+                          </p>
+                          <p>
+                            <strong>Services:</strong>{" "}
+                            {appointment.services_details
+                              ?.map((s) => s.name)
+                              .join(", ") || "N/A"}
+                          </p>
+                          {appointment.therapist_details && (
+                            <p>
+                              <strong>Therapist:</strong>{" "}
+                              {appointment.therapist_details.first_name}{" "}
+                              {appointment.therapist_details.last_name}
+                            </p>
+                          )}
+                          {appointment.driver_details && (
+                            <p>
+                              <strong>Driver:</strong>{" "}
+                              {appointment.driver_details.first_name}{" "}
+                              {appointment.driver_details.last_name}
+                            </p>
+                          )}
+                          <p>
+                            <strong>Location:</strong>{" "}
+                            {appointment.location || "N/A"}
+                          </p>
+                          {appointment.notes && (
+                            <p>
+                              <strong>Notes:</strong> {appointment.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

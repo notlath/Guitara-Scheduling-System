@@ -118,9 +118,8 @@ const DriverDashboard = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   // Loading states for individual button actions
   const [buttonLoading, setButtonLoading] = useState({});
-
   // Pickup assignment timer state
-  const [pickupTimers, setPickupTimers] = useState({});
+  const [_pickupTimers, setPickupTimers] = useState({});
 
   // Helper function to set loading state for specific action
   const setActionLoading = (actionKey, isLoading) => {
@@ -979,9 +978,15 @@ const DriverDashboard = () => {
   };
   const renderActionButtons = (appointment) => {
     const { status, id, both_parties_accepted, requires_car } = appointment;
+    // Enhanced multi-therapist detection logic
     const isGroupTransport =
-      appointment.therapist_group && appointment.therapist_group.length > 1;
-    const requiresCompanyCar = isGroupTransport;
+      (appointment.therapists_details &&
+        appointment.therapists_details.length > 1) ||
+      (appointment.therapists &&
+        Array.isArray(appointment.therapists) &&
+        appointment.therapists.length > 1) ||
+      (appointment.group_size && appointment.group_size > 1);
+    const requiresCompanyCar = isGroupTransport || requires_car;
 
     // Disable all actions if driver has an active pickup assignment (except the pickup itself)
     const isDisabledDueToPickup =
@@ -1255,47 +1260,124 @@ const DriverDashboard = () => {
           (timeRemaining % (60 * 1000)) / 1000
         );
 
+        // Determine urgency level for styling
+        const isUrgent = minutesRemaining < 5;
+        const isCritical = minutesRemaining < 2;
+
         return (
           <div className="appointment-actions">
-            <div className="pickup-assignment-info">
-              <span className="pickup-assignment-badge">
-                🚖 Pickup Assignment - {therapistName}
-              </span>
-              <p>
-                <strong>Session completed:</strong>{" "}
-                {sessionEndTime
-                  ? new Date(sessionEndTime).toLocaleString()
-                  : "Recently"}
-              </p>
-              <p>
-                <strong>Date:</strong>{" "}
-                {new Date(appointment.date).toLocaleDateString()}
-              </p>
-              <p>
-                <strong>Pickup location:</strong> {appointment.location}
-              </p>
-              {therapistPhone && (
-                <p>
-                  <strong>Therapist phone:</strong>{" "}
-                  <a href={`tel:${therapistPhone}`} className="phone-link">
-                    {therapistPhone}
-                  </a>
-                </p>
-              )}
-              <p className="confirmation-timer">
-                <strong>Confirm within:</strong> {minutesRemaining}m{" "}
-                {secondsRemaining}s
-              </p>
-            </div>
-            <div className="pickup-assignment-buttons">
-              <LoadingButton
-                className="confirm-pickup-button"
-                onClick={() => handleConfirmPickup(id)}
-                loading={buttonLoading[`confirm-pickup-${id}`]}
-                loadingText="Confirming..."
-              >
-                Confirm Pickup
-              </LoadingButton>
+            <div
+              className={`pickup-assignment-urgent ${
+                isCritical ? "critical" : isUrgent ? "urgent" : "normal"
+              }`}
+            >
+              {/* Therapist Priority Information */}
+              <div className="therapist-priority-info">
+                <div className="pickup-assignment-header">
+                  <h3 className="therapist-pickup-title">
+                    <i className="fas fa-user-md"></i>
+                    Pick up {therapistName}
+                  </h3>
+                  <div
+                    className={`countdown-timer ${
+                      isCritical ? "critical" : isUrgent ? "urgent" : "normal"
+                    }`}
+                  >
+                    <i className="fas fa-clock"></i>
+                    <span className="timer-text">
+                      {minutesRemaining}m {secondsRemaining}s
+                    </span>
+                  </div>
+                </div>
+
+                {/* Therapist Contact Information */}
+                <div className="therapist-contact-priority">
+                  <div className="contact-item">
+                    <i className="fas fa-phone"></i>
+                    {therapistPhone ? (
+                      <a
+                        href={`tel:${therapistPhone}`}
+                        className="phone-link-priority"
+                      >
+                        {therapistPhone}
+                      </a>
+                    ) : (
+                      <span className="no-phone">Phone not available</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Session Completion Information */}
+              <div className="session-completion-info">
+                <h4 className="section-title">
+                  <i className="fas fa-check-circle"></i>
+                  Session Completed
+                </h4>
+                <div className="completion-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Completed:</span>
+                    <span className="detail-value">
+                      {sessionEndTime
+                        ? new Date(sessionEndTime).toLocaleString()
+                        : "Recently"}
+                    </span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Date:</span>
+                    <span className="detail-value">
+                      {new Date(appointment.date).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pickup Location Priority */}
+              <div className="pickup-location-priority">
+                <h4 className="section-title">
+                  <i className="fas fa-map-marker-alt"></i>
+                  Pickup Location
+                </h4>
+                <div className="location-details">
+                  <p className="location-address">{appointment.location}</p>
+                  <p className="client-context">
+                    Client: {appointment.client_details?.first_name}{" "}
+                    {appointment.client_details?.last_name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Auto-disable Warning */}
+              <div className="auto-disable-warning">
+                <div className="warning-content">
+                  <i className="fas fa-exclamation-triangle"></i>
+                  <div className="warning-text">
+                    <strong>
+                      Auto-disable in {minutesRemaining}m {secondsRemaining}s
+                    </strong>
+                    <p>
+                      If not confirmed, your account will be temporarily
+                      disabled and this pickup will be reassigned to the next
+                      available driver.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Confirmation Action */}
+              <div className="pickup-confirmation-action">
+                <LoadingButton
+                  className={`confirm-pickup-button-priority ${
+                    isCritical ? "critical" : isUrgent ? "urgent" : "normal"
+                  }`}
+                  onClick={() => handleConfirmPickup(id)}
+                  loading={buttonLoading[`confirm-pickup-${id}`]}
+                  loadingText="Confirming..."
+                >
+                  <i className="fas fa-check"></i>
+                  CONFIRM PICKUP
+                </LoadingButton>
+              </div>
             </div>
           </div>
         );
@@ -1443,11 +1525,56 @@ const DriverDashboard = () => {
 
     return (
       <div className="appointments-list">
+        {" "}
         {appointmentsList.map((appointment) => {
+          // Enhanced multi-therapist detection logic
           const isGroupTransport =
-            appointment.therapist_group &&
-            appointment.therapist_group.length > 1;
-          const requiresCompanyCar = isGroupTransport;
+            (appointment.therapists_details &&
+              appointment.therapists_details.length > 1) ||
+            (appointment.therapists &&
+              Array.isArray(appointment.therapists) &&
+              appointment.therapists.length > 1) ||
+            (appointment.group_size && appointment.group_size > 1);
+
+          const requiresCompanyCar =
+            isGroupTransport || appointment.requires_car;
+
+          // Debug logging for vehicle type determination
+          if (
+            appointment.therapists_details &&
+            appointment.therapists_details.length > 1
+          ) {
+            console.log(
+              `🚗 Appointment ${appointment.id}: Multi-therapist detected via therapists_details (${appointment.therapists_details.length} therapists) -> Company Car`
+            );
+          } else if (
+            appointment.therapists &&
+            Array.isArray(appointment.therapists) &&
+            appointment.therapists.length > 1
+          ) {
+            console.log(
+              `🚗 Appointment ${appointment.id}: Multi-therapist detected via therapists array (${appointment.therapists.length} therapists) -> Company Car`
+            );
+          } else if (appointment.group_size && appointment.group_size > 1) {
+            console.log(
+              `🚗 Appointment ${appointment.id}: Multi-therapist detected via group_size (${appointment.group_size}) -> Company Car`
+            );
+          } else if (appointment.requires_car) {
+            console.log(
+              `🚗 Appointment ${appointment.id}: Company car required via requires_car flag -> Company Car`
+            );
+          } else {
+            console.log(
+              `🏍️ Appointment ${appointment.id}: Single therapist booking -> Motorcycle`,
+              {
+                therapists_details_length:
+                  appointment.therapists_details?.length || 0,
+                therapists_length: appointment.therapists?.length || 0,
+                group_size: appointment.group_size,
+                requires_car: appointment.requires_car,
+              }
+            );
+          }
 
           return (
             <div
@@ -1500,38 +1627,40 @@ const DriverDashboard = () => {
                   <strong>Services:</strong>{" "}
                   {appointment.services_details?.map((s) => s.name).join(", ")}
                 </p>
-
-                {/* Therapist Information */}
+                {/* Therapist Information */}{" "}
                 {isGroupTransport ? (
                   <div className="therapist-group-info">
                     <strong>
-                      Therapists ({appointment.therapist_group?.length || 0}):
+                      Therapists ({appointment.therapists_details?.length || 0}
+                      ):
                     </strong>
                     <div className="therapist-list">
-                      {appointment.therapist_group?.map((therapist, index) => (
-                        <div
-                          key={therapist.id || index}
-                          className="therapist-item"
-                        >
-                          <span className="therapist-name">
-                            {therapist.first_name} {therapist.last_name}
-                          </span>
-                          <span className="therapist-specialization">
-                            {therapist.specialization}
-                          </span>
-                          {appointment.status === "picking_up_therapists" && (
-                            <span
-                              className={`pickup-status ${
-                                therapist.pickup_status || "waiting"
-                              }`}
-                            >
-                              {therapist.pickup_status === "picked_up"
-                                ? "✓ In Vehicle"
-                                : "⏳ Waiting"}
+                      {appointment.therapists_details?.map(
+                        (therapist, index) => (
+                          <div
+                            key={therapist.id || index}
+                            className="therapist-item"
+                          >
+                            <span className="therapist-name">
+                              {therapist.first_name} {therapist.last_name}
                             </span>
-                          )}
-                        </div>
-                      ))}
+                            <span className="therapist-specialization">
+                              {therapist.specialization}
+                            </span>
+                            {appointment.status === "picking_up_therapists" && (
+                              <span
+                                className={`pickup-status ${
+                                  therapist.pickup_status || "waiting"
+                                }`}
+                              >
+                                {therapist.pickup_status === "picked_up"
+                                  ? "✓ In Vehicle"
+                                  : "⏳ Waiting"}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -1549,7 +1678,6 @@ const DriverDashboard = () => {
                     </p>
                   )
                 )}
-
                 {/* Enhanced info for completed transports in "All My Transports" view */}
                 {(appointment.status === "therapist_dropped_off" ||
                   appointment.status === "payment_completed" ||
@@ -1573,16 +1701,25 @@ const DriverDashboard = () => {
                           <strong>Completed:</strong>{" "}
                           {new Date(appointment.updated_at).toLocaleString()}
                         </p>
-                      )}
-                      {appointment.total_amount && (
-                        <p>
-                          <strong>Session Value:</strong> ₱
-                          {appointment.total_amount}
-                        </p>
-                      )}
+                      )}{" "}
+                      {appointment.services_details &&
+                        appointment.services_details.length > 0 && (
+                          <p>
+                            <strong>Session Value:</strong> ₱
+                            {(() => {
+                              const total = appointment.services_details.reduce(
+                                (sum, service) => {
+                                  const price = parseFloat(service.price) || 0;
+                                  return sum + price;
+                                },
+                                0
+                              );
+                              return total.toFixed(2);
+                            })()}
+                          </p>
+                        )}
                     </div>
                   )}
-
                 {/* Driver Status Information */}
                 {appointment.status === "therapist_dropped_off" && (
                   <div className="driver-status-info">
@@ -1594,7 +1731,6 @@ const DriverDashboard = () => {
                     </p>
                   </div>
                 )}
-
                 {/* Pickup Assignment Information */}
                 {appointment.status === "driver_assigned_pickup" && (
                   <div className="pickup-assignment-info">
@@ -1611,7 +1747,6 @@ const DriverDashboard = () => {
                     )}
                   </div>
                 )}
-
                 {/* Session Progress for Completed Transport */}
                 {appointment.status === "transport_completed" &&
                   appointment.session_details && (
@@ -1626,7 +1761,6 @@ const DriverDashboard = () => {
                       </p>
                     </div>
                   )}
-
                 {appointment.notes && (
                   <p>
                     <strong>Notes:</strong> {appointment.notes}
@@ -1684,15 +1818,44 @@ const DriverDashboard = () => {
             </button>
           </div>
         )}{" "}
-        {/* Active Pickup Assignment Banner */}
+        {/* Enhanced Active Pickup Assignment Banner */}
         {hasActivePickupAssignment && activePickupAssignment && (
-          <div className="pickup-notice">
-            <p>
-              <strong>Active pickup assignment:</strong>{" "}
-              {activePickupAssignment.therapist?.first_name}{" "}
-              {activePickupAssignment.therapist?.last_name} at{" "}
-              {activePickupAssignment.location}
-            </p>
+          <div className="active-pickup-banner">
+            <div className="banner-content">
+              <div className="pickup-urgency-indicator">
+                <i className="fas fa-exclamation-triangle"></i>
+                <span className="urgency-text">URGENT PICKUP ASSIGNMENT</span>
+              </div>
+              <div className="pickup-banner-details">
+                <h3 className="therapist-name-emphasis">
+                  Pick up {activePickupAssignment.therapist?.first_name}{" "}
+                  {activePickupAssignment.therapist?.last_name}
+                </h3>
+                <p className="pickup-location-emphasis">
+                  📍 {activePickupAssignment.location}
+                </p>
+                <div className="banner-timer">
+                  <i className="fas fa-clock"></i>
+                  <span>
+                    Confirm within 15 minutes or account will be disabled
+                  </span>
+                </div>
+              </div>
+              <div className="banner-actions">
+                <button
+                  className="view-pickup-btn"
+                  onClick={() => setView("today")}
+                >
+                  VIEW PICKUP →
+                </button>
+              </div>
+            </div>
+            <div className="banner-warning">
+              <i className="fas fa-warning"></i>
+              <span>
+                All other actions are disabled until this pickup is confirmed
+              </span>
+            </div>
           </div>
         )}
         <div className="view-selector">

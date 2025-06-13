@@ -1936,11 +1936,21 @@ const OperatorDashboard = () => {
                     ?.map((s) => s.name)
                     .join(", ") || "N/A"}
                 </span>
-              </div>
+              </div>{" "}
               <div className="detail-row">
                 <span className="label">Total Amount:</span>
-                <span className="value">
-                  ₱{appointment.total_amount || "0.00"}
+                <span className="value total-amount">
+                  ₱
+                  {(() => {
+                    // Calculate total from services_details with proper number handling
+                    const total =
+                      appointment.services_details?.reduce((sum, service) => {
+                        const price = Number(service.price) || 0;
+                        return sum + price;
+                      }, 0) || 0;
+
+                    return total.toFixed(2);
+                  })()}
                 </span>
               </div>
               {renderTherapistInfo(appointment)}

@@ -197,6 +197,40 @@
   background-color: #138496;
 }
 
+/* Payment-specific styles */
+.appointment-card.payment-pending {
+  border-left: 4px solid #28a745;
+  background-color: #f8fff9;
+}
+
+.appointment-card.payment-pending .total-amount {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #28a745;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  padding: 4px 0;
+}
+
+.detail-row .label {
+  font-weight: 600;
+  color: #495057;
+  margin-right: 10px;
+}
+
+.detail-row .value {
+  color: #212529;
+  text-align: right;
+  flex-grow: 1;
+}
+
 .notifications-list {
   display: grid;
   gap: 15px;
