@@ -141,15 +141,15 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                         availability.is_cross_day = False
 
             except ValueError:
-                pass  # Invalid date format, continue without date filtering
-
-        # Serialize and return
+                pass  # Invalid date format, continue without date filtering        # Serialize and return
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def available_therapists(self, request):
         """Get all available therapists for a given date and time range"""
+        from django.db.models import Q
+
         date_str = request.query_params.get("date")
         start_time_str = request.query_params.get("start_time")
         end_time_str = request.query_params.get("end_time")
@@ -174,7 +174,6 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )  # Start with therapists who have availability at this time
         # Handle both same-day and cross-day availability
-        from django.db.models import Q, F
         from datetime import timedelta
 
         # Query logic for availability:
@@ -320,6 +319,8 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def available_drivers(self, request):
         """Get all available drivers for a given date and time range"""
+        from django.db.models import Q
+
         date_str = request.query_params.get("date")
         start_time_str = request.query_params.get("start_time")
         end_time_str = request.query_params.get("end_time")
@@ -341,9 +342,7 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )  # Start with drivers who have availability at this time
-        # Handle both same-day and cross-day availability
-        from django.db.models import Q, F
-        from datetime import timedelta
+        # Handle both same-day and cross-day availability        from datetime import timedelta
 
         # Query logic for availability:
         # 1. Same day: Normal case where start_time <= requested_time <= end_time
@@ -623,6 +622,8 @@ class AppointmentFilter(FilterSet):
     client_name = CharFilter(method="filter_client_name")
 
     def filter_client_name(self, queryset, name, value):
+        from django.db.models import Q
+
         return queryset.filter(
             Q(client__first_name__icontains=value)
             | Q(client__last_name__icontains=value)
@@ -657,6 +658,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     ]
 
     def get_queryset(self):
+        from django.db.models import Q
+
         user = self.request.user
 
         # Operators can see all appointments
@@ -665,15 +668,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Therapists can see their own appointments (both single and multi-therapist)
         elif user.role == "therapist":
-            from django.db.models import Q
-
             return Appointment.objects.filter(
                 Q(therapist=user) | Q(therapists=user)
-            ).distinct()  # Drivers can see their own appointments
+            ).distinct()
+
+        # Drivers can see their own appointments
         elif user.role == "driver":
-            return Appointment.objects.filter(
-                driver=user
-            )  # Other roles can't see any appointments
+            return Appointment.objects.filter(driver=user)
+
+        # Other roles can't see any appointments
         return Appointment.objects.none()
 
     def perform_create(self, serializer):
@@ -1346,15 +1349,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         # Apply FIFO logic - get driver who became available earliest
-        if available_drivers.exists():
-            # Sort by last_available_at (earliest first) for FIFO
+        if (
+            available_drivers.exists()
+        ):  # Sort by last_available_at (earliest first) for FIFO
             return available_drivers.order_by("last_available_at").first()
 
         return None
 
     def _get_busy_drivers_with_availability(self, appointment_date):
         """Get drivers who are busy but have availability for the given date"""
-        from django.db.models import Q
 
         # Find drivers who have availability for the date but are currently busy
         busy_drivers = CustomUser.objects.filter(

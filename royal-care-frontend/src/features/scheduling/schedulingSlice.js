@@ -664,7 +664,8 @@ export const autoCancelOverdueAppointments = createAsyncThunk(
 // Fetch available therapists for a specific date and time
 export const fetchAvailableTherapists = createAsyncThunk(
   "scheduling/fetchAvailableTherapists",
-  async (params, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
+    // If no params provided, just return empty array (used in some contexts)
     if (!params) {
       console.error("fetchAvailableTherapists: No parameters provided");
       return rejectWithValue({ error: "No parameters provided" });
@@ -706,26 +707,67 @@ export const fetchAvailableTherapists = createAsyncThunk(
       return rejectWithValue({ error: "Authentication required" });
     }
 
+    // ENHANCED DEBUG: Log comprehensive debugging info
+    console.log("🔍 ENHANCED DEBUG - fetchAvailableTherapists:");
+    console.log("  Environment:", import.meta.env.MODE);
+    console.log("  API_URL:", API_URL);
+    console.log("  Has Token:", !!token);
+    console.log("  Token Length:", token ? token.length : 0);
+    console.log(
+      "  Token Preview:",
+      token ? token.substring(0, 10) + "..." : "None"
+    );
+    console.log("  Parameters:", { date, start_time, end_time });
+
     const url = `${API_URL}availabilities/available_therapists/?date=${date}&start_time=${start_time}&end_time=${end_time}`;
-    console.log("fetchAvailableTherapists: Starting API call to", url);
+    console.log("  Full URL:", url);
 
     try {
+      console.log(
+        "📡 Making authenticated request to availability endpoint..."
+      );
       const response = await axios.get(url, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
       console.log(
-        "fetchAvailableTherapists: Success, received",
+        "✅ fetchAvailableTherapists: Success, received",
         response.data.length,
         "therapists"
       );
       return response.data;
     } catch (error) {
-      console.error(
-        "fetchAvailableTherapists: Error",
-        error.response?.data || error.message
-      );
+      console.error("❌ fetchAvailableTherapists: Detailed Error Analysis:");
+      console.error("  Error object:", error);
+      console.error("  Error message:", error.message);
+      console.error("  Error status:", error.response?.status);
+      console.error("  Error data:", error.response?.data);
+      console.error("  Error headers:", error.response?.headers);
+      console.error("  Request config:", error.config);
+      console.error("  Request URL from config:", error.config?.url);
+      console.error("  Request headers from config:", error.config?.headers);
+
+      // Special handling for 404 errors
+      if (error.response?.status === 404) {
+        console.error("🚨 404 ERROR DETECTED - This endpoint should exist!");
+        console.error(
+          "  Expected URL pattern: /api/scheduling/availabilities/available_therapists/"
+        );
+        console.error("  Actual URL attempted:", url);
+        console.error("  API_URL base:", API_URL);
+
+        // Test the base API URL
+        try {
+          const baseTest = await axios.get(
+            `${API_URL.replace("/scheduling/", "/")}`
+          );
+          console.log("  Base API reachable:", baseTest.status);
+        } catch (baseError) {
+          console.error("  Base API test failed:", baseError.message);
+        }
+      }
+
       return rejectWithValue(
         error.response?.data || {
           error: "Could not fetch available therapists",
@@ -2320,35 +2362,6 @@ const schedulingSlice = createSlice({
         state.loading = true;
       })
       .addCase(startJourney.fulfilled, (state, action) => {
-        state.loading = false;
-        const index = state.appointments.findIndex(
-          (appt) => appt.id === action.payload.id
-        );
-        if (index !== -1) {
-          state.appointments[index] = action.payload;
-        }
-        const todayIndex = state.todayAppointments.findIndex(
-          (appt) => appt.id === action.payload.id
-        );
-        if (todayIndex !== -1) {
-          state.todayAppointments[todayIndex] = action.payload;
-        }
-        const upcomingIndex = state.upcomingAppointments.findIndex(
-          (appt) => appt.id === action.payload.id
-        );
-        if (upcomingIndex !== -1) {
-          state.upcomingAppointments[upcomingIndex] = action.payload;
-        }
-      })
-      .addCase(startJourney.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // startSession
-      .addCase(startSession.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(startSession.fulfilled, (state, action) => {
         state.loading = false;
         const index = state.appointments.findIndex(
           (appt) => appt.id === action.payload.id

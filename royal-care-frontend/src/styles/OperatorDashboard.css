@@ -197,6 +197,40 @@
   background-color: #138496;
 }
 
+/* Payment-specific styles */
+.appointment-card.payment-pending {
+  border-left: 4px solid #28a745;
+  background-color: #f8fff9;
+}
+
+.appointment-card.payment-pending .total-amount {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #28a745;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  padding: 4px 0;
+}
+
+.detail-row .label {
+  font-weight: 600;
+  color: #495057;
+  margin-right: 10px;
+}
+
+.detail-row .value {
+  color: #212529;
+  text-align: right;
+  flex-grow: 1;
+}
+
 .notifications-list {
   display: grid;
   gap: 15px;
@@ -703,6 +737,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+  margin-top: 4px;
 }
 
 .therapist-item {
@@ -711,15 +746,46 @@
 }
 
 .therapist-name {
+  display: block;
   font-weight: 500;
+  color: #2c3e50;
+  line-height: 1.4;
+  margin-bottom: 4px;
 }
 
-.therapist-separator {
-  color: #666;
+.therapist-specialization {
+  color: #6c757d;
+  font-style: italic;
+  font-weight: normal;
 }
 
 .no-therapist {
-  color: #999;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Therapist Display Styles */
+.therapists-list,
+.therapist-list {
+  margin-top: 4px;
+}
+
+.therapist-name {
+  display: block;
+  font-weight: 500;
+  color: #2c3e50;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.therapist-specialization {
+  color: #6c757d;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.no-therapist {
+  color: #6c757d;
   font-style: italic;
 }
 

@@ -7,6 +7,7 @@ from .serializers import (
     TherapistSerializer,
     DriverSerializer,
     OperatorSerializer,
+    ClientSerializer,
     ServiceSerializer,
     MaterialSerializer,
     CompleteRegistrationSerializer,
@@ -515,6 +516,67 @@ class RegisterOperator(APIView):
                 )
 
         logger.warning(f"Operator serializer errors: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RegisterClient(APIView):
+    def get(self, request):
+        # Fetch all clients from scheduling app
+        from scheduling.models import Client
+
+        clients = Client.objects.all()
+        # Map to frontend table fields
+        data = []
+        for client in clients:
+            data.append(
+                {
+                    "Name": f"{client.first_name} {client.last_name}".strip(),
+                    "Email": client.email or "-",
+                    "Address": client.address,
+                    "Contact": client.phone_number,
+                    "Notes": client.notes or "-",
+                }
+            )
+        return Response(data)
+
+    def post(self, request):
+        logger.warning(f"Client registration payload: {request.data}")
+        serializer = ClientSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            logger.warning(f"Client registration validated: {data}")
+
+            try:
+                # Store in local Django database (scheduling app)
+                from scheduling.models import Client  # Create client in local database
+
+                client = Client.objects.create(
+                    first_name=data["first_name"],
+                    last_name=data["last_name"],
+                    email=data.get("email", ""),
+                    phone_number=data["phone_number"],
+                    address=data["address"],
+                    notes=data.get("notes", ""),
+                )
+
+                logger.info(
+                    f"Client stored locally: {client.first_name} {client.last_name}"
+                )
+                return Response(
+                    {"message": "Client registered successfully"},
+                    status=status.HTTP_201_CREATED,
+                )
+
+            except Exception as exc:
+                logger.error(
+                    f"Exception during client registration: {exc}", exc_info=True
+                )
+                return Response(
+                    {"error": f"Internal server error: {exc}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+        logger.warning(f"Client serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

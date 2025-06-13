@@ -325,11 +325,6 @@
   font-weight: 500;
 }
 
-.time-slot-emoji {
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
 .time-slot-time {
   font-size: var(--font-size-sm);
 }
@@ -374,20 +369,44 @@
   flex-shrink: 0;
 }
 
-/* Availability info section */
-.availability-info {
-  margin-top: var(--spacing-md);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-sm);
+.legend-circle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.therapists-section,
-.drivers-section {
+/* Availability info section */
+.availability-info {
+  /* margin-top: var(--spacing-md); */
+  display: grid;
+  grid-template-areas:
+    "therapists drivers"
+    "bookings bookings";
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+}
+
+.therapists-section {
+  grid-area: therapists;
   background-color: var(--background-50);
   padding: var(--spacing-sm);
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--background-100);
+}
+
+.drivers-section {
+  grid-area: drivers;
+  background-color: var(--background-50);
+  padding: var(--spacing-sm);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--background-100);
 }
 
 .therapists-section h3,
@@ -467,6 +486,15 @@
   .day-view-container {
     padding: var(--spacing-sm);
   }
+
+  /* Stack availability sections vertically on mobile */
+  .availability-info {
+    grid-template-areas:
+      "therapists"
+      "drivers"
+      "bookings";
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
@@ -535,11 +563,13 @@
 
 /* Day view bookings */
 .day-bookings {
-  margin: var(--spacing-md) 0;
+  grid-area: bookings;
+  margin: 0; /* Remove margin since it's in grid */
   padding: var(--spacing-md);
-  background-color: var(--background);
+  background-color: var(--background-50);
   border-radius: 8px;
   border: 1px solid var(--background-100);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .day-bookings h3 {
@@ -569,7 +599,7 @@
   padding: var(--spacing-md);
   border: 1px solid var(--background-200);
   border-radius: 8px;
-  background-color: var(--background-50);
+  background-color: var(--background);
   transition: all 0.2s ease;
 }
 
@@ -639,4 +669,25 @@
 .booking-details strong {
   color: var(--text-primary);
   font-weight: 600;
+}
+
+/* Therapist Display Styles */
+.therapist-name {
+  display: block;
+  font-weight: 500;
+  color: #2c3e50;
+  line-height: 1.4;
+}
+
+.therapist-specialization {
+  color: #6c757d;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.availability-time {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-top: 2px;
 }

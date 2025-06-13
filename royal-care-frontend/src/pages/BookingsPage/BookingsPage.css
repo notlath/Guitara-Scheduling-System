@@ -191,6 +191,126 @@
   color: #383d41;
 }
 
+/* Driver and Transport Related Statuses */
+.status-driver_transport_completed {
+  background-color: #d1fae5;
+  color: #047857;
+}
+
+.status-therapist_confirmed {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.status-driver_confirmed {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.status-journey_started,
+.status-journey {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-arrived {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
+
+.status-dropped_off {
+  background-color: #e0f2fe;
+  color: #0277bd;
+}
+
+/* Session Related Statuses */
+.status-session_in_progress,
+.status-session_started {
+  background-color: #f0f9ff;
+  color: #0369a1;
+}
+
+.status-in_progress {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+/* Payment Related Statuses */
+.status-awaiting_payment,
+.status-payment_requested {
+  background-color: #fef7cd;
+  color: #a16207;
+}
+
+.status-payment_completed {
+  background-color: #d1fae5;
+  color: #047857;
+}
+
+/* Pickup Related Statuses */
+.status-pickup_requested {
+  background-color: #ede9fe;
+  color: #6b21a8;
+}
+
+.status-driver_assigned_pickup {
+  background-color: #e0f2fe;
+  color: #0277bd;
+}
+
+.status-return_journey {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-transport_completed {
+  background-color: #cfe2ff;
+  color: #0b5394;
+}
+
+/* Additional Transport Statuses */
+.status-driver_assigned {
+  background-color: #e0f2fe;
+  color: #0277bd;
+}
+
+.status-en_route_pickup {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-therapist_dropped_off {
+  background-color: #e0f2fe;
+  color: #0277bd;
+}
+
+/* Attendnace Related Statuses */
+.status-present {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-absent {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-late {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-on_leave,
+.status-leave {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
+
+.status-scheduled {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
 .booking-details {
   margin-bottom: 1rem;
 }
@@ -300,6 +420,25 @@
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+/* Therapist Display Styles */
+.therapist-list {
+  margin-top: 4px;
+}
+
+.therapist-name {
+  display: block;
+  font-weight: 500;
+  color: #2c3e50;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.therapist-specialization {
+  color: #6c757d;
+  font-style: italic;
+  font-weight: normal;
 }
 
 /* Responsive design */

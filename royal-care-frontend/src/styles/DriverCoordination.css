@@ -567,7 +567,566 @@
   cursor: not-allowed;
 }
 
-/* Simple pickup notice */
+/* Enhanced Active Pickup Banner */
+.active-pickup-banner {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);
+  animation: pulseGlow 2s infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);
+  }
+  50% {
+    box-shadow: 0 6px 30px rgba(220, 53, 69, 0.5);
+  }
+  100% {
+    box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);
+  }
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  gap: 20px;
+}
+
+.pickup-urgency-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.pickup-urgency-indicator i {
+  font-size: 1.2rem;
+  animation: flash 1s infinite;
+}
+
+@keyframes flash {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0.5;
+  }
+}
+
+.pickup-banner-details {
+  flex: 1;
+  text-align: center;
+}
+
+.therapist-name-emphasis {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 0 0 8px 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.pickup-location-emphasis {
+  font-size: 1.1rem;
+  margin: 0;
+  opacity: 0.9;
+}
+
+.banner-timer {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.banner-actions .view-pickup-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid white;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.banner-actions .view-pickup-btn:hover {
+  background: white;
+  color: #dc3545;
+}
+
+.banner-warning {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Enhanced Pickup Assignment Card */
+.pickup-assignment-urgent {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border: 3px solid;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.pickup-assignment-urgent.normal {
+  border-color: #28a745;
+}
+
+.pickup-assignment-urgent.urgent {
+  border-color: #ffc107;
+  animation: urgentPulse 2s infinite;
+}
+
+.pickup-assignment-urgent.critical {
+  border-color: #dc3545;
+  animation: criticalPulse 1s infinite;
+}
+
+@keyframes urgentPulse {
+  0%,
+  100% {
+    border-color: #ffc107;
+    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+  }
+  50% {
+    border-color: #e0a800;
+    box-shadow: 0 12px 35px rgba(255, 193, 7, 0.5);
+  }
+}
+
+@keyframes criticalPulse {
+  0%,
+  100% {
+    border-color: #dc3545;
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+  }
+  50% {
+    border-color: #c82333;
+    box-shadow: 0 12px 35px rgba(220, 53, 69, 0.6);
+  }
+}
+
+/* Therapist Priority Section */
+.therapist-priority-info {
+  background: #f8f9fa;
+  padding: 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.pickup-assignment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.therapist-pickup-title {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: bold;
+}
+
+.therapist-pickup-title i {
+  color: #007bff;
+  font-size: 1.2rem;
+}
+
+.countdown-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.countdown-timer.normal {
+  background: #d4edda;
+  color: #155724;
+}
+
+.countdown-timer.urgent {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.countdown-timer.critical {
+  background: #f8d7da;
+  color: #721c24;
+  animation: flash 1s infinite;
+}
+
+.countdown-timer i {
+  font-size: 1.1rem;
+}
+
+.timer-text {
+  font-family: "Courier New", monospace;
+  font-size: 1.1rem;
+}
+
+.therapist-contact-priority {
+  margin-top: 15px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1rem;
+}
+
+.contact-item i {
+  color: #28a745;
+  width: 20px;
+  text-align: center;
+}
+
+.phone-link-priority {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.1rem;
+  padding: 8px 12px;
+  background: #e3f2fd;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.phone-link-priority:hover {
+  background: #bbdefb;
+  text-decoration: none;
+}
+
+.no-phone {
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Section Headers */
+.section-title {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 8px;
+}
+
+.section-title i {
+  color: #007bff;
+}
+
+/* Session Completion Section */
+.session-completion-info {
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.completion-details {
+  display: grid;
+  gap: 8px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #495057;
+}
+
+.detail-value {
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+/* Pickup Location Section */
+.pickup-location-priority {
+  background: #fff8e1;
+  padding: 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.location-details {
+  margin-top: 12px;
+}
+
+.location-address {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #2c3e50;
+  margin: 0 0 8px 0;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+  border-left: 4px solid #ff9800;
+}
+
+.client-context {
+  color: #6c757d;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Auto-disable Warning */
+.auto-disable-warning {
+  background: #fff3cd;
+  padding: 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.warning-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.warning-content i {
+  color: #856404;
+  font-size: 1.3rem;
+  margin-top: 2px;
+}
+
+.warning-text strong {
+  color: #856404;
+  font-size: 1.1rem;
+}
+
+.warning-text p {
+  margin: 8px 0 0 0;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+/* Confirmation Action */
+.pickup-confirmation-action {
+  background: white;
+  padding: 20px;
+  text-align: center;
+}
+
+.confirm-pickup-button-priority {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+  justify-content: center;
+}
+
+.confirm-pickup-button-priority:hover:not(:disabled) {
+  background: #218838;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.confirm-pickup-button-priority.urgent {
+  background: #ffc107;
+  color: #212529;
+}
+
+.confirm-pickup-button-priority.urgent:hover:not(:disabled) {
+  background: #e0a800;
+}
+
+.confirm-pickup-button-priority.critical {
+  background: #dc3545;
+  animation: criticalButtonPulse 1s infinite;
+}
+
+@keyframes criticalButtonPulse {
+  0%,
+  100% {
+    background: #dc3545;
+  }
+  50% {
+    background: #c82333;
+  }
+}
+
+.confirm-pickup-button-priority:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.confirm-pickup-button-priority i {
+  font-size: 1rem;
+}
+
+/* Priority Notice for Disabled Actions */
+.pickup-priority-notice {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 10px 0;
+  color: #856404;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.pickup-priority-notice i {
+  margin-right: 8px;
+}
+
+.disabled-due-pickup {
+  opacity: 0.6;
+  pointer-events: none;
+  position: relative;
+}
+
+.disabled-due-pickup::after {
+  content: "Disabled until pickup confirmed";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* Vehicle Badge Styles */
+.vehicle-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-left: 8px;
+  display: inline-block;
+}
+
+.vehicle-badge.company-car {
+  background-color: #0d6efd;
+  color: white;
+  border: 1px solid #0b5ed7;
+}
+
+.vehicle-badge.motorcycle {
+  background-color: #28a745;
+  color: white;
+  border: 1px solid #1e7e34;
+}
+
+/* Header badges container */
+.header-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Simple Therapist Display - Each name on its own line */
+.therapist-name {
+  display: block;
+}
+
+/* Pickup status styling */
+.pickup-status {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pickup-status.picked_up {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.pickup-status.waiting {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .banner-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+  }
+
+  .pickup-assignment-header {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .therapist-pickup-title {
+    font-size: 1.2rem;
+  }
+
+  .countdown-timer {
+    justify-content: center;
+  }
+
+  .detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .location-address {
+    font-size: 1rem;
+  }
+
+  .confirm-pickup-button-priority {
+    width: 100%;
+    min-width: auto;
+  }
+}
+
+/* Simple pickup notice - keep original for backward compatibility */
 .pickup-notice {
   background: #fff3cd;
   border: 1px solid #ffeaa7;
