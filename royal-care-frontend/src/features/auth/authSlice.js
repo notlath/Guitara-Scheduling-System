@@ -27,9 +27,22 @@ const authSlice = createSlice({
     authInitialized(state) {
       state.isAuthLoading = false; // Mark auth as initialized (even if no user)
     },
+    updateUserProfile(state, action) {
+      // Update user profile data
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+        // Update localStorage with new user data
+        localStorage.setItem("user", JSON.stringify(state.user));
+      }
+    },
   },
 });
 
-export const { login, logout, setAuthLoading, authInitialized } =
-  authSlice.actions;
+export const {
+  login,
+  logout,
+  setAuthLoading,
+  authInitialized,
+  updateUserProfile,
+} = authSlice.actions;
 export default authSlice.reducer;
