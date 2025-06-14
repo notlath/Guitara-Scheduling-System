@@ -1,9 +1,13 @@
 /* InventoryPage Styles */
-/* .inventory-page {
+.inventory-page {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
-} */
+  background: #fafbfc;
+  min-height: 100vh;
+  border-radius: 18px;
+  box-shadow: 0 2px 16px rgba(44, 62, 80, 0.06);
+}
 
 .inventory-header {
   display: flex;
@@ -25,14 +29,26 @@
   gap: 15px;
   align-items: center;
   margin-bottom: 20px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(44, 62, 80, 0.04);
+  padding: 16px 20px;
 }
 
 .inventory-controls input,
 .inventory-controls select {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: 10px 16px;
+  border: 1.5px solid #ddd;
+  border-radius: 6px;
+  font-size: 15px;
+  background: #f7f7fa;
+  transition: border 0.2s;
+}
+
+.inventory-controls input:focus,
+.inventory-controls select:focus {
+  border: 1.5px solid #b2bec3;
+  outline: none;
 }
 
 .add-item-button {
@@ -93,16 +109,34 @@
 .stock-high {
   background-color: #d4edda;
   color: #155724;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  display: inline-block;
 }
 
 .stock-medium {
   background-color: #fff3cd;
   color: #856404;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  display: inline-block;
 }
 
 .stock-low {
   background-color: #f8d7da;
   color: #721c24;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  display: inline-block;
 }
 
 .item-actions {
@@ -271,72 +305,103 @@
 
 .stat-card {
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-  padding: 20px 30px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.07);
+  padding: 24px 36px;
   min-width: 140px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: 1px solid #e0e0e0;
+  border: 1.5px solid #e0e0e0;
+  transition: box-shadow 0.2s, border 0.2s;
 }
 
 .stat-card.warning {
-  background: #fff3cd;
+  background: #fffbe6;
   color: #856404;
-  border-color: #ffeeba;
+  border: 2px solid #ffe082;
+  box-shadow: 0 4px 16px rgba(255, 193, 7, 0.08);
+  position: relative;
+}
+
+.stat-card.warning::before {
+  content: "!";
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  background: #ffe082;
+  color: #856404;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.1rem;
+  box-shadow: 0 1px 4px rgba(255, 193, 7, 0.12);
 }
 
 .stat-number {
-  font-size: 2rem;
+  font-size: 2.2rem;
   font-weight: bold;
   margin-bottom: 8px;
 }
 
 .stat-label {
-  font-size: 1rem;
+  font-size: 1.05rem;
   color: #7f8c8d;
 }
 
 .search-input {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: 10px 16px;
+  border: 1.5px solid #ddd;
+  border-radius: 6px;
+  font-size: 15px;
+  background: #f7f7fa;
+  transition: border 0.2s;
+}
+
+.search-input:focus {
+  border: 1.5px solid #b2bec3;
+  outline: none;
 }
 
 .category-select {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: 10px 16px;
+  border: 1.5px solid #ddd;
+  border-radius: 6px;
+  font-size: 15px;
+  background: #f7f7fa;
+  transition: border 0.2s;
+}
+
+.category-select:focus {
+  border: 1.5px solid #b2bec3;
+  outline: none;
 }
 
 .inventory-table-container {
   margin-top: 30px;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.07);
   padding: 0 0 20px 0;
 }
 
-.inventory-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 15px;
+/* DataTable table row hover effect */
+:global(.data-table-row):hover {
+  background: #f5f7fa;
+  transition: background 0.2s;
 }
 
-.inventory-table th,
-.inventory-table td {
-  padding: 12px 10px;
-  border-bottom: 1px solid #e0e0e0;
-  text-align: left;
-}
-
-.inventory-table th {
+/* Sticky table header for DataTable */
+:global(.data-table thead th) {
+  position: sticky;
+  top: 0;
   background: #f8f9fa;
-  color: #2c3e50;
-  font-weight: 600;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(44, 62, 80, 0.03);
 }
 
 .item-name {

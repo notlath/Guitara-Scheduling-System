@@ -121,10 +121,10 @@ const InventoryPage = () => {
       return {
         status: "warning",
         label: "Getting Low",
-        class: "stock-warning",
+        class: "stock-medium",
       };
     } else {
-      return { status: "good", label: "In Stock", class: "stock-good" };
+      return { status: "good", label: "In Stock", class: "stock-high" };
     }
   };
 
