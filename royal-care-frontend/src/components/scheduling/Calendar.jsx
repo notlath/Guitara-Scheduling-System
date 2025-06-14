@@ -8,7 +8,13 @@ import {
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/Calendar.css";
 
-const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
+const Calendar = ({
+  onDateSelected,
+  onTimeSelected,
+  selectedDate,
+  showClientLabels = false,
+  context = "therapist",
+}) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(null);
   const [view, setView] = useState("month"); // 'month' or 'day'
@@ -30,14 +36,16 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
       // Fetch today's appointments and availability immediately
       dispatch(fetchAppointmentsByDate(formattedToday));
 
-      // Fetch availability for a reasonable time window (e.g., 2 PM - 3 PM)
+      // Fetch availability for the full operating hours (1 PM - 1 AM)
       const params = {
         date: formattedToday,
-        start_time: "14:00",
-        end_time: "15:00",
+        start_time: "13:00", // 1 PM
+        end_time: "01:00", // 1 AM next day
       };
 
-      console.log("Calendar: Initial load - fetching today's availability");
+      console.log(
+        "Calendar: Initial load - fetching today's availability for full operating hours"
+      );
       dispatch(fetchAvailableTherapists(params));
       dispatch(fetchAvailableDrivers(params));
     }
@@ -180,8 +188,8 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     if (formattedDate && !isPastDate(firstDay)) {
       const params = {
         date: formattedDate,
-        start_time: "14:00",
-        end_time: "15:00",
+        start_time: "13:00", // 1 PM
+        end_time: "01:00", // 1 AM next day
       };
 
       console.log("Calendar: Fetching availability for previous month");
@@ -205,8 +213,8 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     if (formattedDate && !isPastDate(firstDay)) {
       const params = {
         date: formattedDate,
-        start_time: "14:00",
-        end_time: "15:00",
+        start_time: "13:00", // 1 PM
+        end_time: "01:00", // 1 AM next day
       };
 
       console.log("Calendar: Fetching availability for next month");
@@ -245,12 +253,11 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
           return;
         }
 
-        // Use more realistic time slots instead of broad range
-        // Fetch availability for common appointment hours (1-hour window)
+        // Fetch availability for the full operating hours (1 PM - 1 AM)
         const params = {
           date: formattedDate,
-          start_time: "09:00", // More realistic start time
-          end_time: "10:00", // 1-hour window instead of broader range
+          start_time: "13:00", // 1 PM
+          end_time: "01:00", // 1 AM next day
         };
 
         console.log(
@@ -396,9 +403,99 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
               // Check if this day is in the past
               const isPastDay = cellDateMidnight < todayMidnight;
 
-              const appointment = appointments.find((appointment) => {
+              // Get all appointments for this day
+              const dayAppointments = appointments.filter((appointment) => {
                 return appointment.date === formattedDate;
               });
+
+              const hasAppointments = dayAppointments.length > 0;
+
+              // Extract client names and status info for the day
+              const clientInfo = dayAppointments
+                .map((appointment) => ({
+                  name: `${appointment.client_details?.first_name || ""} ${
+                    appointment.client_details?.last_name || ""
+                  }`.trim(),
+                  status: appointment.status,
+                  id: appointment.id,
+                }))
+                .filter((info) => info.name);
+
+              // Helper function to get context-aware status color class
+              const getStatusColorClass = (status) => {
+                // Define comprehensive status groupings for each role-specific context
+                const therapistStatuses = {
+                  // Initial appointment states
+                  pending: "status-pending",
+                  confirmed: "status-confirmed",
+                  therapist_confirmed: "status-confirmed",
+                  driver_confirmed: "status-confirmed",
+
+                  // Active appointment workflow
+                  in_progress: "status-active",
+                  journey: "status-active",
+                  journey_started: "status-active",
+                  arrived: "status-active",
+                  dropped_off: "status-session",
+                  session_in_progress: "status-session",
+
+                  // Post-session states
+                  awaiting_payment: "status-session",
+                  payment_requested: "status-session",
+                  pickup_requested: "status-active",
+                  driver_assigned_pickup: "status-active",
+                  return_journey: "status-active",
+
+                  // Final states
+                  completed: "status-completed",
+                  payment_completed: "status-completed",
+                  transport_completed: "status-completed",
+                  cancelled: "status-cancelled",
+                  rejected: "status-cancelled",
+                  auto_cancelled: "status-cancelled",
+                };
+
+                const driverStatuses = {
+                  // Initial states - driver assignment workflow
+                  pending: "status-pending",
+                  confirmed: "status-confirmed",
+                  therapist_confirmed: "status-pending", // Waiting for driver confirmation
+                  driver_confirmed: "status-confirmed",
+
+                  // Transport workflow states
+                  in_progress: "status-active",
+                  journey: "status-active",
+                  journey_started: "status-active",
+                  driving_to_location: "status-active",
+                  arrived: "status-active",
+                  at_location: "status-active",
+                  dropped_off: "status-active",
+                  driver_transport_completed: "status-completed",
+
+                  // Pickup workflow states (after session)
+                  pickup_requested: "status-pending", // Available for pickup assignment
+                  driver_assigned_pickup: "status-active", // Assigned for pickup
+                  return_journey: "status-active",
+
+                  // Multi-therapist group transport
+                  picking_up_therapists: "status-active",
+                  transporting_group: "status-active",
+                  therapist_dropped_off: "status-active",
+
+                  // Final states
+                  transport_completed: "status-completed",
+                  completed: "status-completed",
+                  cancelled: "status-cancelled",
+                  rejected: "status-cancelled",
+                };
+
+                // Select appropriate status mapping based on context
+                const statusMap =
+                  context === "driver" ? driverStatuses : therapistStatuses;
+
+                // Return mapped status or default
+                return statusMap[status] || "status-default";
+              };
 
               return (
                 <div
@@ -410,11 +507,35 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
                     currentMonth.getFullYear() === selectedDate.getFullYear()
                       ? "selected-day"
                       : ""
-                  } ${appointment ? "appointment-day" : ""} ${
+                  } ${hasAppointments ? "appointment-day" : ""} ${
                     isToday ? "today" : ""
                   } ${isPastDay ? "past-day" : ""}`}
                   onClick={() => handleDateClick(day)}
                 >
+                  {/* Client labels - show only for therapist/driver dashboards */}
+                  {showClientLabels && clientInfo.length > 0 && (
+                    <div className="client-labels">
+                      {clientInfo.slice(0, 2).map((info, index) => (
+                        <span
+                          key={index}
+                          className={`client-label ${getStatusColorClass(
+                            info.status
+                          )}`}
+                          title={`${info.name} - Status: ${info.status.replace(
+                            /_/g,
+                            " "
+                          )}`}
+                        >
+                          {info.name}
+                        </span>
+                      ))}
+                      {clientInfo.length > 2 && (
+                        <span className="client-label more-clients">
+                          +{clientInfo.length - 2} more
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <span className="day-number">{day}</span>
                   {isToday && <span className="today-label">Today</span>}
                 </div>
@@ -422,6 +543,77 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
             })
           )}
         </div>
+
+        {/* Context-aware status legend for client labels */}
+        {showClientLabels && (
+          <div className="calendar-status-legend">
+            <h4>
+              Client Label Colors (
+              {context === "driver" ? "Driver" : "Therapist"} View):
+            </h4>
+            <div className="status-legend-grid">
+              <div className="status-legend-item">
+                <div
+                  className="status-legend-color"
+                  style={{ backgroundColor: "#f59e0b" }}
+                ></div>
+                <span>
+                  Pending
+                  {context === "driver"
+                    ? "/Awaiting Assignment"
+                    : "/Awaiting Confirmation"}
+                </span>
+              </div>
+              <div className="status-legend-item">
+                <div
+                  className="status-legend-color"
+                  style={{ backgroundColor: "#3b82f6" }}
+                ></div>
+                <span>
+                  Confirmed
+                  {context === "driver"
+                    ? "/Ready to Drive"
+                    : "/Ready to Proceed"}
+                </span>
+              </div>
+              {context === "driver" ? (
+                <div className="status-legend-item">
+                  <div
+                    className="status-legend-color"
+                    style={{ backgroundColor: "#8b5cf6" }}
+                  ></div>
+                  <span>Active Transport/Pickup</span>
+                </div>
+              ) : (
+                <div className="status-legend-item">
+                  <div
+                    className="status-legend-color"
+                    style={{ backgroundColor: "#10b981" }}
+                  ></div>
+                  <span>Session/Treatment</span>
+                </div>
+              )}
+              <div className="status-legend-item">
+                <div
+                  className="status-legend-color"
+                  style={{ backgroundColor: "#22c55e" }}
+                ></div>
+                <span>
+                  {context === "driver"
+                    ? "Transport Completed"
+                    : "Session Completed"}
+                </span>
+              </div>
+              <div className="status-legend-item">
+                <div
+                  className="status-legend-color"
+                  style={{ backgroundColor: "#ef4444" }}
+                ></div>
+                <span>Cancelled/Rejected</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Time Slots Preview - Show immediately for today or selected date */}
         <div className="time-slots-preview">

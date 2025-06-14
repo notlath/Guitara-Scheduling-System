@@ -20,6 +20,7 @@ import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css";
 import RejectionModal from "./RejectionModal";
+import Calendar from "./scheduling/Calendar";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 import TabSwitcher from "../globals/TabSwitcher";
 
@@ -1000,14 +1001,25 @@ const TherapistDashboard = () => {
               <h2>Upcoming Appointments</h2>
               {renderAppointmentsList(myUpcomingAppointments)}
             </div>
-          )}
+          )}{" "}
           {currentView === "all" && (
             <div className="all-appointments">
               <h2>All My Appointments</h2>
               {renderAppointmentsList(myAppointments)}
             </div>
-          )}{" "}
-        </div>
+          )}
+          {currentView === "calendar" && (
+            <div className="calendar-view">
+              <h2>Calendar View</h2>{" "}
+              <Calendar
+                showClientLabels={true}
+                context="therapist"
+                onDateSelected={() => {}} // Optional: Add date selection handling
+                onTimeSelected={() => {}} // Optional: Add time selection handling
+              />
+            </div>
+          )}
+        </div>{" "}
         <WebSocketStatus />
         <RejectionModal
           isOpen={rejectionModal.isOpen}

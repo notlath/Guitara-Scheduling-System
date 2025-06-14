@@ -1195,7 +1195,7 @@ const SalesReportsPage = () => {
               }}
             >
               <h3 style={{ margin: 0, marginBottom: "var(--spacing-xs)" }}>
-                Total Revenue Report - {currentPeriod}
+                Total Revenue: ₱{revenueData.currentTotal.toFixed(2)}
               </h3>
               <p
                 style={{
@@ -1204,7 +1204,7 @@ const SalesReportsPage = () => {
                   fontSize: "var(--font-size-sm)",
                 }}
               >
-                Total Revenue: ₱{revenueData.currentTotal.toFixed(2)}
+                Total Revenue Report - {currentPeriod}
               </p>
             </div>
 
