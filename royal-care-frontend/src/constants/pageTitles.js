@@ -4,7 +4,7 @@
 const BRAND_SUFFIX = " | Royal Care Pasig";
 
 const pageTitles = {
-  login: "Login" + BRAND_SUFFIX + " Scheduling",
+  login: "Login" + BRAND_SUFFIX,
   register: "Register" + BRAND_SUFFIX,
   registration: "Registration" + BRAND_SUFFIX,
   forgotPassword: "Forgot Password" + BRAND_SUFFIX,
