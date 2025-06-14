@@ -264,6 +264,7 @@ const AppointmentForm = ({
         })()
       : "",
     start_time: selectedTime || "",
+    end_time: "", // Add end_time to form state
     location: "",
     notes: "",
   };
@@ -271,7 +272,6 @@ const AppointmentForm = ({
   const [formData, setFormData] = useState(initialFormState);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [endTime, setEndTime] = useState(""); // Store calculated end time separately
   const [isFormReady, setIsFormReady] = useState(false); // Add form ready state
   const [fetchingAvailability, setFetchingAvailability] = useState(false); // Track availability fetching
 
@@ -502,11 +502,19 @@ const AppointmentForm = ({
     }
   }, [isFormReady]);
 
-  // Update end time when relevant form data changes
+  // Update end time when relevant form data changes (only if end_time is empty - don't override manual input)
   useEffect(() => {
-    const calculatedEndTime = calculateEndTime();
-    setEndTime(calculatedEndTime);
-  }, [calculateEndTime]);
+    // Only auto-calculate if end_time is empty (user hasn't manually set it)
+    if (!formData.end_time) {
+      const calculatedEndTime = calculateEndTime();
+      if (calculatedEndTime && calculatedEndTime !== formData.end_time) {
+        setFormData((prev) => ({
+          ...prev,
+          end_time: calculatedEndTime,
+        }));
+      }
+    }
+  }, [calculateEndTime, formData.end_time]);
 
   // Create a ref to store previous values for therapist fetch
   const prevFetchTherapistsRef = useRef({
@@ -546,20 +554,23 @@ const AppointmentForm = ({
     const timeoutId = setTimeout(() => {
       setFetchingAvailability(true);
 
-      let calculatedEndTime;
-      try {
-        calculatedEndTime = calculateEndTime();
-        if (!calculatedEndTime) {
-          console.warn(
-            "Cannot fetch available therapists: unable to calculate end time"
-          );
+      // Use manually entered end time if available, otherwise calculate it
+      let endTimeToUse = formData.end_time;
+      if (!endTimeToUse) {
+        try {
+          endTimeToUse = calculateEndTime();
+          if (!endTimeToUse) {
+            console.warn(
+              "Cannot fetch available therapists: unable to determine end time"
+            );
+            setFetchingAvailability(false);
+            return;
+          }
+        } catch (error) {
+          console.error("Error calculating end time:", error);
           setFetchingAvailability(false);
           return;
         }
-      } catch (error) {
-        console.error("Error calculating end time:", error);
-        setFetchingAvailability(false);
-        return;
       }
 
       prevFetchTherapistsRef.current = {
@@ -577,7 +588,7 @@ const AppointmentForm = ({
           fetchAvailableTherapists({
             date: availabilityParams.date,
             start_time: availabilityParams.start_time,
-            end_time: calculatedEndTime,
+            end_time: endTimeToUse,
             service_id: serviceId,
           })
         );
@@ -587,7 +598,7 @@ const AppointmentForm = ({
           fetchAvailableDrivers({
             date: availabilityParams.date,
             start_time: availabilityParams.start_time,
-            end_time: calculatedEndTime,
+            end_time: endTimeToUse,
           })
         );
 
@@ -607,6 +618,7 @@ const AppointmentForm = ({
     availabilityParams.date,
     availabilityParams.start_time,
     availabilityParams.services,
+    formData.end_time,
     calculateEndTime,
     dispatch,
     loading,
@@ -636,6 +648,7 @@ const AppointmentForm = ({
           driver: appointment.driver || "",
           date: formattedDate,
           start_time: appointment.start_time || "",
+          end_time: appointment.end_time || "",
           location: appointment.location || "",
           notes: appointment.notes || "",
         });
@@ -820,19 +833,22 @@ const AppointmentForm = ({
 
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.start_time) newErrors.start_time = "Start time is required";
+    if (!formData.end_time) newErrors.end_time = "End time is required";
     if (!formData.location) newErrors.location = "Location is required";
-    if (!endTime)
-      newErrors.services = "Cannot calculate end time with selected service";
+
+    // Validate that end time is after start time
+    if (formData.start_time && formData.end_time) {
+      const startTime = new Date(`2000-01-01T${formData.start_time}:00`);
+      const endTime = new Date(`2000-01-01T${formData.end_time}:00`);
+
+      if (endTime <= startTime) {
+        newErrors.end_time = "End time must be after start time";
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [
-    formData,
-    endTime,
-    availabilityParams,
-    availableTherapists,
-    availableDrivers,
-  ]);
+  }, [formData, availabilityParams, availableTherapists, availableDrivers]);
 
   // Helper function to ensure data is in the correct format for the API
   const sanitizeDataForApi = useCallback((data) => {
@@ -904,8 +920,8 @@ const AppointmentForm = ({
     setIsSubmitting(true);
 
     try {
-      // Use our calculated end time
-      if (!endTime) {
+      // Use the form's end time (either calculated or manually entered)
+      if (!formData.end_time) {
         throw new Error(
           "Could not calculate end time. Please check services selected."
         );
@@ -924,6 +940,7 @@ const AppointmentForm = ({
         driver: formData.driver ? parseInt(formData.driver, 10) : null,
         date: formData.date || "",
         start_time: formData.start_time || "",
+        end_time: formData.end_time || "",
         location: formData.location || "",
         notes: formData.notes || "",
         multipleTherapists: formData.multipleTherapists || false,
@@ -977,7 +994,6 @@ const AppointmentForm = ({
       // Prepare appointment data with required fields
       const appointmentData = {
         ...sanitizedFormData,
-        end_time: endTime,
         status: "pending",
         payment_status: "unpaid",
         // Set requires_car and group_size for multi-therapist bookings
@@ -1114,7 +1130,6 @@ const AppointmentForm = ({
 
       // Reset form and call success callback
       setFormData(initialFormState);
-      setEndTime("");
       onSubmitSuccess();
     } catch (error) {
       console.error("Error submitting appointment:", error);
@@ -1572,17 +1587,17 @@ const AppointmentForm = ({
           </div>
 
           <div className="form-group">
-            <label htmlFor="end_time">End Time (Auto-calculated):</label>
+            <label htmlFor="end_time">End Time:</label>
             <input
               type="time"
               id="end_time"
               name="end_time"
-              value={endTime}
-              disabled
-              className={!endTime && formData.services ? "error" : ""}
+              value={formData.end_time || ""}
+              onChange={handleChange}
+              className={errors.end_time ? "error" : ""}
             />
-            {!endTime && formData.services && formData.start_time && (
-              <div className="error-text">Could not calculate end time</div>
+            {errors.end_time && (
+              <div className="error-text">{errors.end_time}</div>
             )}
           </div>
         </div>
