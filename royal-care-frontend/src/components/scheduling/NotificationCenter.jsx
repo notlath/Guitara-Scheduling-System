@@ -145,39 +145,42 @@ const NotificationCenter = ({ onClose }) => {
   }, [user?.role, user?.username]);
 
   // Mark notification as read
-  const markAsRead = useCallback(async (notificationId) => {
-    try {
-      const token = localStorage.getItem("knoxToken");
+  const markAsRead = useCallback(
+    async (notificationId) => {
+      try {
+        const token = localStorage.getItem("knoxToken");
 
-      const response = await fetch(
-        `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_read/`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.ok) {
-        // Update local state to mark as read
-        setNotifications((prev) =>
-          prev.map((notif) =>
-            notif.id === notificationId ? { ...notif, is_read: true } : notif
-          )
+        const response = await fetch(
+          `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_read/`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Token ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
         );
 
-        // Update Redux state to decrease unread count
-        dispatch(markNotificationAsRead(notificationId));
-      } else {
-        const errorData = await response.text();
-        console.error("Failed to mark as read:", response.status, errorData);
+        if (response.ok) {
+          // Update local state to mark as read
+          setNotifications((prev) =>
+            prev.map((notif) =>
+              notif.id === notificationId ? { ...notif, is_read: true } : notif
+            )
+          );
+
+          // Update Redux state to decrease unread count
+          dispatch(markNotificationAsRead(notificationId));
+        } else {
+          const errorData = await response.text();
+          console.error("Failed to mark as read:", response.status, errorData);
+        }
+      } catch (error) {
+        console.error("Error in markAsRead:", error);
       }
-    } catch (error) {
-      console.error("Error in markAsRead:", error);
-    }
-  }, [dispatch]);
+    },
+    [dispatch]
+  );
 
   // Intersection Observer to detect when notifications are fully viewed
   useEffect(() => {
@@ -185,13 +188,17 @@ const NotificationCenter = ({ onClose }) => {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && entry.intersectionRatio >= 0.8) {
-            const notificationId = parseInt(entry.target.dataset.notificationId);
+            const notificationId = parseInt(
+              entry.target.dataset.notificationId
+            );
             if (notificationId && !viewedNotifications.has(notificationId)) {
-              const notification = notifications.find(n => n.id === notificationId);
+              const notification = notifications.find(
+                (n) => n.id === notificationId
+              );
               if (notification && !notification.is_read) {
                 // Give user 2 seconds to read the notification before marking as read
                 setTimeout(() => {
-                  setViewedNotifications(prev => {
+                  setViewedNotifications((prev) => {
                     const newSet = new Set(prev);
                     if (!newSet.has(notificationId)) {
                       newSet.add(notificationId);

@@ -158,7 +158,8 @@ button {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
   }

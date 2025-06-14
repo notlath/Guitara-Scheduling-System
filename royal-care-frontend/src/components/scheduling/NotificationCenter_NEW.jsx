@@ -7,7 +7,10 @@ import {
   MdRefresh,
 } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
-import { markNotificationAsRead, markAllNotificationsAsRead } from "../../features/scheduling/schedulingSlice";
+import {
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+} from "../../features/scheduling/schedulingSlice";
 import styles from "../../styles/NotificationCenter_NEW.module.css";
 
 const NotificationCenter = ({ onClose }) => {
@@ -62,36 +65,39 @@ const NotificationCenter = ({ onClose }) => {
   };
 
   // Mark notification as read
-  const markAsRead = useCallback(async (notificationId) => {
-    try {
-      const token = localStorage.getItem("knoxToken");
+  const markAsRead = useCallback(
+    async (notificationId) => {
+      try {
+        const token = localStorage.getItem("knoxToken");
 
-      const response = await fetch(
-        `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_read/`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.ok) {
-        // Update local state
-        setNotifications((prev) =>
-          prev.map((notif) =>
-            notif.id === notificationId ? { ...notif, is_read: true } : notif
-          )
+        const response = await fetch(
+          `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_read/`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Token ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
         );
 
-        // Update Redux state to decrease unread count
-        dispatch(markNotificationAsRead(notificationId));
+        if (response.ok) {
+          // Update local state
+          setNotifications((prev) =>
+            prev.map((notif) =>
+              notif.id === notificationId ? { ...notif, is_read: true } : notif
+            )
+          );
+
+          // Update Redux state to decrease unread count
+          dispatch(markNotificationAsRead(notificationId));
+        }
+      } catch (err) {
+        console.error("Error marking as read:", err);
       }
-    } catch (err) {
-      console.error("Error marking as read:", err);
-    }
-  }, [dispatch]);
+    },
+    [dispatch]
+  );
 
   // Intersection Observer to detect when notifications are fully viewed
   useEffect(() => {
@@ -99,13 +105,17 @@ const NotificationCenter = ({ onClose }) => {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && entry.intersectionRatio >= 0.8) {
-            const notificationId = parseInt(entry.target.dataset.notificationId);
+            const notificationId = parseInt(
+              entry.target.dataset.notificationId
+            );
             if (notificationId && !viewedNotifications.has(notificationId)) {
-              const notification = notifications.find(n => n.id === notificationId);
+              const notification = notifications.find(
+                (n) => n.id === notificationId
+              );
               if (notification && !notification.is_read) {
                 // Give user 2 seconds to read the notification before marking as read
                 setTimeout(() => {
-                  setViewedNotifications(prev => {
+                  setViewedNotifications((prev) => {
                     const newSet = new Set(prev);
                     if (!newSet.has(notificationId)) {
                       newSet.add(notificationId);
@@ -194,7 +204,7 @@ const NotificationCenter = ({ onClose }) => {
     try {
       // Use Redux action instead of direct API call
       await dispatch(markAllNotificationsAsRead()).unwrap();
-      
+
       // Update all notifications to read in local state
       setNotifications((prev) =>
         prev.map((notif) => ({ ...notif, is_read: true }))
