@@ -96,7 +96,7 @@
   aspect-ratio: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: flex-end;
   align-items: flex-start;
   padding: var(--spacing-xm, 0.75rem);
   border: 0.5px solid var(--background-100, #e6e6e6);
@@ -123,6 +123,9 @@
 .day-number {
   font-weight: 500;
   line-height: 1;
+  position: relative;
+  z-index: 2;
+  margin-top: auto;
 }
 
 /* Today styling */
@@ -144,6 +147,70 @@
   margin-top: 2px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+/* Client labels for therapist/driver dashboards */
+.client-labels {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  z-index: 1;
+  max-height: 40px;
+  overflow: hidden;
+}
+
+.client-label {
+  font-size: 9px;
+  line-height: 1.2;
+  padding: 1px 2px;
+  background-color: var(--accent-400);
+  color: white;
+  border-radius: 2px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.client-label.more-clients {
+  background-color: var(--primary-500);
+  font-style: italic;
+}
+
+/* Status-based client label colors */
+.client-label.status-pending {
+  background-color: #f59e0b; /* Orange for pending */
+}
+
+.client-label.status-confirmed {
+  background-color: #3b82f6; /* Blue for confirmed */
+}
+
+.client-label.status-active {
+  background-color: #8b5cf6; /* Purple for active/in progress */
+}
+
+.client-label.status-session {
+  background-color: #10b981; /* Green for session in progress */
+}
+
+.client-label.status-completed {
+  background-color: #22c55e; /* Light green for completed */
+}
+
+.client-label.status-cancelled {
+  background-color: #ef4444; /* Red for cancelled */
+}
+
+.client-label.status-default {
+  background-color: var(--accent-400); /* Default accent color */
 }
 
 /* Past days styling */
@@ -534,6 +601,60 @@
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
+}
+
+/* Dashboard calendar view styling */
+.calendar-view {
+  padding: var(--spacing-md);
+}
+
+.calendar-view h2 {
+  margin-bottom: var(--spacing-md);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.calendar-view h2::before {
+  content: "📅";
+  font-size: 1.2em;
+}
+
+/* Calendar legend for status colors */
+.calendar-status-legend {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background-color: var(--background-50);
+  border-radius: 8px;
+  border: 1px solid var(--background-200);
+}
+
+.calendar-status-legend h4 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-600);
+  font-weight: 600;
+}
+
+.status-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-xs);
+}
+
+.status-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+}
+
+.status-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* Responsive design for time slots preview */

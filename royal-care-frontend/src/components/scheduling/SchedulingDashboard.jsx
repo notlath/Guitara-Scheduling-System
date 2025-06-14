@@ -382,6 +382,7 @@ const SchedulingDashboard = () => {
               onDateSelected={handleDateSelected}
               onTimeSelected={handleTimeSelected}
               selectedDate={selectedDate}
+              showClientLabels={user?.role === 'therapist' || user?.role === 'driver'}
             />
           )}
 

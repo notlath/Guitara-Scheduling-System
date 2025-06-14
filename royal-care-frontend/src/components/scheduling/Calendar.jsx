@@ -8,7 +8,7 @@ import {
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/Calendar.css";
 
-const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
+const Calendar = ({ onDateSelected, onTimeSelected, selectedDate, showClientLabels = false }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(null);
   const [view, setView] = useState("month"); // 'month' or 'day'
@@ -396,9 +396,46 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
               // Check if this day is in the past
               const isPastDay = cellDateMidnight < todayMidnight;
 
-              const appointment = appointments.find((appointment) => {
+              // Get all appointments for this day
+              const dayAppointments = appointments.filter((appointment) => {
                 return appointment.date === formattedDate;
               });
+
+              const hasAppointments = dayAppointments.length > 0;
+
+              // Extract client names and status info for the day
+              const clientInfo = dayAppointments.map(appointment => ({
+                name: `${appointment.client_details?.first_name || ''} ${appointment.client_details?.last_name || ''}`.trim(),
+                status: appointment.status,
+                id: appointment.id
+              })).filter(info => info.name);
+
+              // Helper function to get status color class
+              const getStatusColorClass = (status) => {
+                switch (status) {
+                  case "pending":
+                    return "status-pending";
+                  case "confirmed":
+                  case "therapist_confirmed":
+                  case "driver_confirmed":
+                    return "status-confirmed";
+                  case "in_progress":
+                  case "journey_started":
+                  case "journey":
+                  case "arrived":
+                    return "status-active";
+                  case "session_in_progress":
+                    return "status-session";
+                  case "completed":
+                  case "payment_completed":
+                  case "transport_completed":
+                    return "status-completed";
+                  case "cancelled":
+                    return "status-cancelled";
+                  default:
+                    return "status-default";
+                }
+              };
 
               return (
                 <div
@@ -410,11 +447,30 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
                     currentMonth.getFullYear() === selectedDate.getFullYear()
                       ? "selected-day"
                       : ""
-                  } ${appointment ? "appointment-day" : ""} ${
+                  } ${hasAppointments ? "appointment-day" : ""} ${
                     isToday ? "today" : ""
                   } ${isPastDay ? "past-day" : ""}`}
                   onClick={() => handleDateClick(day)}
                 >
+                  {/* Client labels - show only for therapist/driver dashboards */}
+                  {showClientLabels && clientInfo.length > 0 && (
+                    <div className="client-labels">
+                      {clientInfo.slice(0, 2).map((info, index) => (
+                        <span 
+                          key={index} 
+                          className={`client-label ${getStatusColorClass(info.status)}`}
+                          title={`${info.name} - Status: ${info.status.replace(/_/g, ' ')}`}
+                        >
+                          {info.name}
+                        </span>
+                      ))}
+                      {clientInfo.length > 2 && (
+                        <span className="client-label more-clients">
+                          +{clientInfo.length - 2} more
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <span className="day-number">{day}</span>
                   {isToday && <span className="today-label">Today</span>}
                 </div>
@@ -422,6 +478,39 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
             })
           )}
         </div>
+
+        {/* Status legend for client labels - show only when showClientLabels is true */}
+        {showClientLabels && (
+          <div className="calendar-status-legend">
+            <h4>Client Label Colors:</h4>
+            <div className="status-legend-grid">
+              <div className="status-legend-item">
+                <div className="status-legend-color" style={{ backgroundColor: '#f59e0b' }}></div>
+                <span>Pending</span>
+              </div>
+              <div className="status-legend-item">
+                <div className="status-legend-color" style={{ backgroundColor: '#3b82f6' }}></div>
+                <span>Confirmed</span>
+              </div>
+              <div className="status-legend-item">
+                <div className="status-legend-color" style={{ backgroundColor: '#8b5cf6' }}></div>
+                <span>Active/En Route</span>
+              </div>
+              <div className="status-legend-item">
+                <div className="status-legend-color" style={{ backgroundColor: '#10b981' }}></div>
+                <span>Session</span>
+              </div>
+              <div className="status-legend-item">
+                <div className="status-legend-color" style={{ backgroundColor: '#22c55e' }}></div>
+                <span>Completed</span>
+              </div>
+              <div className="status-legend-item">
+                <div className="status-legend-color" style={{ backgroundColor: '#ef4444' }}></div>
+                <span>Cancelled</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Time Slots Preview - Show immediately for today or selected date */}
         <div className="time-slots-preview">

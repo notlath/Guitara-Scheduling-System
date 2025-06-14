@@ -21,6 +21,7 @@ import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css"; // Reuse therapist styles for consistency
 import RejectionModal from "./RejectionModal";
+import Calendar from "./scheduling/Calendar";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
 // Enhanced driver status states for dynamic coordination
@@ -1644,8 +1645,7 @@ const DriverDashboard = () => {
               </span>
             </div>
           </div>
-        )}
-        <div className="view-selector">
+        )}        <div className="view-selector">
           <button
             className={currentView === "today" ? "active" : ""}
             onClick={() => setView("today")}
@@ -1663,6 +1663,12 @@ const DriverDashboard = () => {
             onClick={() => setView("all")}
           >
             All My Transports
+          </button>
+          <button
+            className={currentView === "calendar" ? "active" : ""}
+            onClick={() => setView("calendar")}
+          >
+            Calendar View
           </button>
         </div>
         <div className="dashboard-content">
@@ -1749,9 +1755,17 @@ const DriverDashboard = () => {
                     <span className="stat-label">Total Transports</span>
                   </div>
                 </div>
-              </div>
-
-              {renderAppointmentsList(myAllTransports)}
+              </div>              {renderAppointmentsList(myAllTransports)}
+            </div>
+          )}
+          {currentView === "calendar" && (
+            <div className="calendar-view">
+              <h2>Calendar View</h2>
+              <Calendar 
+                showClientLabels={true}
+                onDateSelected={() => {}} // Optional: Add date selection handling
+                onTimeSelected={() => {}} // Optional: Add time selection handling
+              />
             </div>
           )}
         </div>

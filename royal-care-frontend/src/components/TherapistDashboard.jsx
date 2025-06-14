@@ -20,6 +20,7 @@ import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css";
 import RejectionModal from "./RejectionModal";
+import Calendar from "./scheduling/Calendar";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
 const TherapistDashboard = () => {
@@ -977,8 +978,7 @@ const TherapistDashboard = () => {
               Retry
             </button>
           </div>
-        )}
-        <div className="view-selector">
+        )}        <div className="view-selector">
           <button
             className={currentView === "today" ? "active" : ""}
             onClick={() => setView("today")}
@@ -997,6 +997,12 @@ const TherapistDashboard = () => {
           >
             All My Appointments
           </button>
+          <button
+            className={currentView === "calendar" ? "active" : ""}
+            onClick={() => setView("calendar")}
+          >
+            Calendar View
+          </button>
         </div>
         <div className="dashboard-content">
           {currentView === "today" && (
@@ -1010,15 +1016,23 @@ const TherapistDashboard = () => {
               <h2>Upcoming Appointments</h2>
               {renderAppointmentsList(myUpcomingAppointments)}
             </div>
-          )}
-          {currentView === "all" && (
+          )}          {currentView === "all" && (
             <div className="all-appointments">
               <h2>All My Appointments</h2>
               {renderAppointmentsList(myAppointments)}
             </div>
-          )}{" "}
-        </div>
-        <WebSocketStatus />
+          )}
+          {currentView === "calendar" && (
+            <div className="calendar-view">
+              <h2>Calendar View</h2>
+              <Calendar 
+                showClientLabels={true}
+                onDateSelected={() => {}} // Optional: Add date selection handling
+                onTimeSelected={() => {}} // Optional: Add time selection handling
+              />
+            </div>
+          )}
+        </div>        <WebSocketStatus />
         <RejectionModal
           isOpen={rejectionModal.isOpen}
           onClose={handleRejectionCancel}
