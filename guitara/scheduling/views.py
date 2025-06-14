@@ -11,6 +11,10 @@ from django_filters.rest_framework import (
 from django.db import models
 from datetime import datetime
 from .models import Client, Availability, Appointment, Notification
+import logging
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 try:
     from registration.models import Service
@@ -1274,32 +1278,54 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     def _create_notifications(self, appointment, notification_type, message):
         """Helper method to create notifications for all involved parties"""
-        # Create notification for therapist
-        if appointment.therapist:
-            Notification.objects.create(
-                user=appointment.therapist,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
+        try:
+            # Create notification for therapist
+            if appointment.therapist and hasattr(appointment.therapist, "id"):
+                try:
+                    Notification.objects.create(
+                        user=appointment.therapist,
+                        appointment=appointment,
+                        notification_type=notification_type,
+                        message=message,
+                    )
+                    logger.info(
+                        f"Created notification for therapist {appointment.therapist.username}"
+                    )
+                except Exception as e:
+                    logger.error(f"Error creating notification for therapist: {e}")
 
-        # Create notification for driver
-        if appointment.driver:
-            Notification.objects.create(
-                user=appointment.driver,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
+            # Create notification for driver
+            if appointment.driver and hasattr(appointment.driver, "id"):
+                try:
+                    Notification.objects.create(
+                        user=appointment.driver,
+                        appointment=appointment,
+                        notification_type=notification_type,
+                        message=message,
+                    )
+                    logger.info(
+                        f"Created notification for driver {appointment.driver.username}"
+                    )
+                except Exception as e:
+                    logger.error(f"Error creating notification for driver: {e}")
 
-        # Create notification for operator
-        if appointment.operator:
-            Notification.objects.create(
-                user=appointment.operator,
-                appointment=appointment,
-                notification_type=notification_type,
-                message=message,
-            )
+            # Create notification for operator
+            if appointment.operator and hasattr(appointment.operator, "id"):
+                try:
+                    Notification.objects.create(
+                        user=appointment.operator,
+                        appointment=appointment,
+                        notification_type=notification_type,
+                        message=message,
+                    )
+                    logger.info(
+                        f"Created notification for operator {appointment.operator.username}"
+                    )
+                except Exception as e:
+                    logger.error(f"Error creating notification for operator: {e}")
+
+        except Exception as e:
+            logger.error(f"Error in _create_notifications: {e}", exc_info=True)
 
         # Send WebSocket notification
         channel_layer = get_channel_layer()
@@ -2254,10 +2280,159 @@ class NotificationViewSet(viewsets.ModelViewSet):
     filterset_fields = ["is_read", "notification_type"]
 
     def get_queryset(self):
-        """Return notifications for the current user"""
-        return Notification.objects.filter(user=self.request.user).order_by(
-            "-created_at"
-        )
+        """Return notifications for the current user with error handling"""
+        try:
+            # Use select_related to avoid N+1 queries and handle potential foreign key issues
+            queryset = (
+                Notification.objects.filter(user=self.request.user)
+                .select_related("user", "appointment", "rejection")
+                .order_by("-created_at")
+            )
+            logger.info(
+                f"NotificationViewSet: Found {queryset.count()} notifications for user {self.request.user.username}"
+            )
+            return queryset
+
+        except Exception as e:
+            logger.error(f"NotificationViewSet get_queryset error: {e}", exc_info=True)
+            # Return empty queryset if there's an error
+            return Notification.objects.none()
+
+    def list(self, request, *args, **kwargs):
+        """List notifications with enhanced error handling"""
+        try:
+            logger.info(
+                f"NotificationViewSet list called for user: {request.user.username}"
+            )
+
+            # Get notifications count first to debug
+            try:
+                total_notifications = Notification.objects.filter(
+                    user=request.user
+                ).count()
+                unread_notifications = Notification.objects.filter(
+                    user=request.user, is_read=False
+                ).count()
+                logger.info(
+                    f"User {request.user.username} has {total_notifications} total notifications, {unread_notifications} unread"
+                )
+            except Exception as count_error:
+                logger.warning(f"Error counting notifications: {count_error}")
+                total_notifications = 0
+                unread_notifications = 0
+
+            # Get the actual queryset
+            queryset = self.get_queryset()
+
+            # Apply any filtering
+            try:
+                # Set up the viewset properly for filtering
+                self.format_kwarg = getattr(self, "format_kwarg", None)
+                queryset = self.filter_queryset(queryset)
+            except Exception as filter_error:
+                logger.warning(f"Error filtering queryset: {filter_error}")
+                # Use unfiltered queryset if filtering fails
+                queryset = self.get_queryset()
+
+            # Paginate if needed
+            try:
+                page = self.paginate_queryset(queryset)
+                if page is not None:
+                    # Ensure format_kwarg is set for serializer context
+                    self.format_kwarg = getattr(self, "format_kwarg", None)
+                    serializer = self.get_serializer(page, many=True)
+                    return self.get_paginated_response(
+                        {
+                            "notifications": serializer.data,
+                            "unreadCount": unread_notifications,
+                        }
+                    )
+            except Exception as pagination_error:
+                logger.warning(
+                    f"Pagination error, using full queryset: {pagination_error}"
+                )
+
+            # Serialize data
+            try:
+                # Ensure format_kwarg is set for serializer context
+                self.format_kwarg = getattr(self, "format_kwarg", None)
+                serializer = self.get_serializer(queryset, many=True)
+                serialized_data = serializer.data
+
+                logger.info(
+                    f"Successfully serialized {len(serialized_data)} notifications"
+                )
+
+                return Response(
+                    {
+                        "notifications": serialized_data,
+                        "unreadCount": unread_notifications,
+                        "totalCount": total_notifications,
+                    }
+                )
+            except Exception as serialization_error:
+                logger.error(
+                    f"Serialization error: {serialization_error}", exc_info=True
+                )
+
+                # Try to serialize individually to identify problematic notifications
+                safe_notifications = []
+                problem_count = 0
+
+                for notification in queryset[:10]:  # Limit to first 10 to avoid timeout
+                    try:
+                        serializer = self.get_serializer(notification)
+                        safe_notifications.append(serializer.data)
+                    except Exception as individual_error:
+                        logger.warning(
+                            f"Failed to serialize notification {notification.id}: {individual_error}"
+                        )
+                        problem_count += 1
+                        # Add a placeholder for the problematic notification
+                        safe_notifications.append(
+                            {
+                                "id": notification.id,
+                                "message": "Error loading this notification",
+                                "notification_type": "error",
+                                "is_read": False,
+                                "created_at": (
+                                    str(notification.created_at)
+                                    if hasattr(notification, "created_at")
+                                    else None
+                                ),
+                                "user": request.user.id,
+                                "appointment": None,
+                                "rejection": None,
+                                "error": str(individual_error),
+                            }
+                        )
+
+                logger.warning(
+                    f"Returned {len(safe_notifications)} notifications with {problem_count} errors"
+                )
+
+                return Response(
+                    {
+                        "notifications": safe_notifications,
+                        "unreadCount": unread_notifications,
+                        "totalCount": total_notifications,
+                        "errors": problem_count,
+                        "warning": f"{problem_count} notifications could not be loaded properly",
+                    }
+                )
+
+        except Exception as e:
+            logger.error(f"NotificationViewSet list error: {e}", exc_info=True)
+            return Response(
+                {
+                    "error": "Failed to fetch notifications",
+                    "detail": str(e),
+                    "notifications": [],
+                    "unreadCount": 0,
+                    "totalCount": 0,
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     @action(detail=True, methods=["post"])
     def mark_as_read(self, request, pk=None):

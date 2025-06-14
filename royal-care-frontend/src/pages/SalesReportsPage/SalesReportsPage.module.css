@@ -1,370 +1,150 @@
-/* Sales Reports Page Styles */
-.sales-reports-page {
-  padding: 2rem;
-  background-color: #f8f9fa;
-  min-height: 100vh;
-}
+@import "../../globals/TabSwitcher.css";
 
-.sales-reports-header {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  color: white;
-  padding: 2rem;
+/* Sales Reports Page - Following consistent design system */
+
+/* Data table wrapper using consistent styling */
+.dataTableWrapper,
+.data-table-wrapper {
+  background: var(--background);
   border-radius: 12px;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
+  border: 1px solid var(--background-100);
+  margin-bottom: var(--spacing-lg);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden; /* Prevent horizontal scroll */
 }
 
-.sales-reports-header h1 {
-  margin: 0 0 1.5rem 0;
-  font-size: 2.5rem;
-  font-weight: 700;
-  text-align: center;
-}
-
-/* View Selector */
-.view-selector {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.view-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-}
-
-.view-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: translateY(-2px);
-}
-
-.view-btn.active {
-  background: rgba(255, 255, 255, 0.9);
-  color: #6366f1;
-  border-color: rgba(255, 255, 255, 0.9);
-  font-weight: 700;
-}
-
-/* Period Selector */
-.period-selector {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-}
-
-.period-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-}
-
-.period-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.period-btn.active {
-  background: rgba(255, 255, 255, 0.8);
-  color: #6366f1;
-  border-color: rgba(255, 255, 255, 0.8);
-  font-weight: 600;
-}
-
-.period-info {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #64748b;
-  margin: 0;
-}
-
-.comparison {
-  font-size: 1.1rem;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  display: inline-block;
-  margin-top: 0.5rem;
-}
-
-.comparison.higher {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-}
-
-.comparison.lower {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
-}
-
-.comparison.same {
-  background: linear-gradient(135deg, #6366f1 0%, #5b21b6 100%);
-  color: white;
-}
-
-.comparison.no-data {
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-  color: white;
-}
-
-/* Content Area */
-.sales-reports-content {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-}
-
-/* Commission View, Revenue View, Customer List View, Services View */
-.commission-view,
-.revenue-view,
-.customer-list-view,
-.services-view {
-  padding: 2rem;
-}
-
-.commission-header,
-.revenue-header,
-.customer-list-header,
-.services-header {
-  text-align: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 3px solid #f1f5f9;
-}
-
-.commission-header h2,
-.revenue-header h2 {
-  font-size: 3rem;
-  font-weight: 800;
-  color: #1e293b;
-  margin: 0 0 0.5rem 0;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.customer-list-header h2,
-.services-header h2 {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: #1e293b;
-  margin: 0 0 0.5rem 0;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.period-info {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #64748b;
-  margin: 0;
-}
-
-/* Table Styles */
-.commission-table,
-.revenue-table,
-.customer-list-table,
-.services-table {
-  overflow-x: auto;
-}
-
-.commission-table table,
-.revenue-table table,
-.customer-list-table table,
-.services-table table {
+.dataTable,
+.data-table {
   width: 100%;
   border-collapse: collapse;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  table-layout: fixed; /* Fixed layout prevents overflow */
+  min-width: unset; /* Remove minimum width that could cause overflow */
 }
 
-.commission-table th,
-.revenue-table th,
-.customer-list-table th,
-.services-table th {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  color: white;
-  padding: 1rem;
+.dataTable th,
+.dataTable td,
+.data-table th,
+.data-table td {
+  padding: var(--spacing-sm) var(--spacing-md);
   text-align: left;
-  font-weight: 600;
-  font-size: 0.95rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal; /* Allow text wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.commission-table td,
-.revenue-table td,
-.customer-list-table td,
-.services-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #f1f5f9;
-  color: #475569;
-  font-weight: 500;
+/* Define responsive column widths */
+.dataTable th:nth-child(1),
+.dataTable td:nth-child(1),
+.data-table th:nth-child(1),
+.data-table td:nth-child(1) {
+  width: 30%; /* Date column - increased for longer date ranges */
 }
 
-.commission-table tr:hover,
-.revenue-table tr:hover,
-.customer-list-table tr:hover,
-.services-table tr:hover {
-  background-color: #f8fafc;
+.dataTable th:nth-child(2),
+.dataTable td:nth-child(2),
+.data-table th:nth-child(2),
+.data-table td:nth-child(2) {
+  width: 30%; /* Name column (Therapist/Client) */
 }
 
-.commission-table tr:nth-child(even),
-.revenue-table tr:nth-child(even),
-.customer-list-table tr:nth-child(even),
-.services-table tr:nth-child(even) {
-  background-color: #fafbfc;
+.dataTable th:nth-child(3),
+.dataTable td:nth-child(3),
+.data-table th:nth-child(3),
+.data-table td:nth-child(3) {
+  width: 25%; /* Amount column (Commission/Revenue) */
 }
 
-.commission-table tr:last-child td,
-.revenue-table tr:last-child td,
-.customer-list-table tr:last-child td,
-.services-table tr:last-child td {
+.dataTable th:nth-child(4),
+.dataTable td:nth-child(4),
+.data-table th:nth-child(4),
+.data-table td:nth-child(4) {
+  width: 30%; /* Time/Day/Range column */
+}
+
+.dataTable th,
+.data-table th {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  border-bottom: 1px solid var(--background-100);
+}
+
+.dataTable tr,
+.data-table tr {
+  border-bottom: 1px solid var(--background-100);
+}
+
+.dataTable tr:last-child,
+.data-table tr:last-child {
   border-bottom: none;
 }
 
-/* Empty State */
-.commission-table td[colspan],
-.revenue-table td[colspan],
-.customer-list-table td[colspan] {
+.dataTable td,
+.data-table td {
+  font-weight: 400;
+  color: var(--text);
+}
+
+.dataTable tr:hover,
+.data-table tr:hover {
+  background-color: var(--background-50);
+}
+
+.noData,
+.no-data {
   text-align: center;
-  color: #64748b;
-  font-style: italic;
-  padding: 3rem;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: var(--background-500);
+  font-weight: 400;
+  padding: var(--spacing-xl);
 }
 
-/* Placeholder View */
-.placeholder-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  padding: 3rem;
+/* Period selector buttons */
+.period-btn {
+  background: var(--background-40);
+  border-radius: 100px;
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--background-600);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 400;
+  transition: background-color 0.2s;
+  margin-right: var(--spacing-xs);
+  flex: 0 0 auto;
 }
 
-.placeholder-content {
-  text-align: center;
-  max-width: 500px;
+.period-btn.active {
+  background-color: var(--primary);
+  color: var(--background);
+  font-weight: 400;
 }
 
-.placeholder-content h2 {
-  color: #1e293b;
-  font-size: 2rem;
-  margin-bottom: 1rem;
+.period-btn:not(.active):hover {
+  background-color: var(--background-100);
 }
 
-.placeholder-text {
-  color: #64748b;
-  font-size: 1.1rem;
-  margin-bottom: 2rem;
-  line-height: 1.6;
+/* Comparison text styling */
+.comparison {
+  font-size: var(--font-size-sm);
+  color: var(--muted);
 }
 
-.placeholder-loader {
-  width: 60px;
-  height: 60px;
-  border: 4px solid #f1f5f9;
-  border-top: 4px solid #6366f1;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
+.comparison.higher {
+  color: var(--success, #10b981);
 }
 
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+.comparison.lower {
+  color: var(--error, #ef4444);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .sales-reports-page {
-    padding: 1rem;
-  }
-
-  .sales-reports-header {
-    padding: 1.5rem;
-  }
-
-  .sales-reports-header h1 {
-    font-size: 2rem;
-  }
-
-  .view-selector {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .view-btn {
-    width: 100%;
-    max-width: 200px;
-  }
-
-  .commission-header h2,
-  .revenue-header h2,
-  .customer-list-header h2 {
-    font-size: 2rem;
-  }
-
-  .commission-table,
-  .revenue-table,
-  .customer-list-table {
-    font-size: 0.9rem;
-  }
-
-  .commission-table th,
-  .revenue-table th,
-  .customer-list-table th,
-  .commission-table td,
-  .revenue-table td,
-  .customer-list-table td {
-    padding: 0.75rem 0.5rem;
-  }
+.comparison.same {
+  color: var(--primary);
 }
 
-@media (max-width: 480px) {
-  .commission-header h2,
-  .revenue-header h2,
-  .customer-list-header h2 {
-    font-size: 1.5rem;
-  }
-
-  .commission-table,
-  .revenue-table,
-  .customer-list-table {
-    font-size: 0.8rem;
-  }
-
-  .commission-table th,
-  .revenue-table th,
-  .customer-list-table th,
-  .commission-table td,
-  .revenue-table td,
-  .customer-list-table td {
-    padding: 0.5rem 0.25rem;
-  }
+.comparison.no-data {
+  color: var(--muted);
 }

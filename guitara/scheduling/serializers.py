@@ -527,45 +527,95 @@ class NotificationSerializer(serializers.ModelSerializer):
         try:
             data = super().to_representation(instance)
 
-            # Add basic user info if needed
-            if instance.user:
-                data["user_info"] = {
-                    "id": instance.user.id,
-                    "username": instance.user.username,
-                    "first_name": instance.user.first_name,
-                    "last_name": instance.user.last_name,
-                }
+            # Safely add user info
+            try:
+                if instance.user:
+                    data["user_info"] = {
+                        "id": instance.user.id,
+                        "username": getattr(instance.user, "username", ""),
+                        "first_name": getattr(instance.user, "first_name", ""),
+                        "last_name": getattr(instance.user, "last_name", ""),
+                    }
+            except Exception as user_error:
+                import logging
 
-            # Add basic appointment info if needed
-            if instance.appointment:
-                data["appointment_info"] = {
-                    "id": instance.appointment.id,
-                    "date": instance.appointment.date,
-                    "status": instance.appointment.status,
-                }
+                logger = logging.getLogger(__name__)
+                logger.warning(f"NotificationSerializer user info error: {user_error}")
+                data["user_info"] = None
+
+            # Safely add appointment info
+            try:
+                if instance.appointment:
+                    data["appointment_info"] = {
+                        "id": instance.appointment.id,
+                        "date": (
+                            instance.appointment.date.isoformat()
+                            if hasattr(instance.appointment.date, "isoformat")
+                            else str(instance.appointment.date)
+                        ),
+                        "status": getattr(instance.appointment, "status", "unknown"),
+                    }
+            except Exception as appointment_error:
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.warning(
+                    f"NotificationSerializer appointment info error: {appointment_error}"
+                )
+                data["appointment_info"] = None
 
             return data
+
         except Exception as e:
             import logging
+            from django.utils import timezone
 
             logger = logging.getLogger(__name__)
-            logger.error(f"NotificationSerializer error: {e}")
-            # Return minimal data if there's an error
-            return {
-                "id": instance.id if hasattr(instance, "id") else None,
-                "message": (
-                    instance.message
-                    if hasattr(instance, "message")
-                    else "Error loading notification"
-                ),
-                "notification_type": (
-                    instance.notification_type
-                    if hasattr(instance, "notification_type")
-                    else "unknown"
-                ),
-                "is_read": instance.is_read if hasattr(instance, "is_read") else False,
-                "created_at": (
-                    instance.created_at if hasattr(instance, "created_at") else None
-                ),
-                "error": str(e),
-            }
+            logger.error(f"NotificationSerializer critical error: {e}", exc_info=True)
+
+            # Return minimal safe data
+            try:
+                return {
+                    "id": getattr(instance, "id", None),
+                    "user": (
+                        getattr(instance.user, "id", None)
+                        if hasattr(instance, "user") and instance.user
+                        else None
+                    ),
+                    "appointment": (
+                        getattr(instance.appointment, "id", None)
+                        if hasattr(instance, "appointment") and instance.appointment
+                        else None
+                    ),
+                    "notification_type": getattr(
+                        instance, "notification_type", "unknown"
+                    ),
+                    "message": getattr(
+                        instance, "message", "Error loading notification"
+                    ),
+                    "is_read": getattr(instance, "is_read", False),
+                    "created_at": str(getattr(instance, "created_at", timezone.now())),
+                    "rejection": (
+                        getattr(instance.rejection, "id", None)
+                        if hasattr(instance, "rejection") and instance.rejection
+                        else None
+                    ),
+                    "user_info": None,
+                    "appointment_info": None,
+                    "error": str(e),
+                }
+            except Exception as critical_error:
+                logger.error(
+                    f"NotificationSerializer complete failure: {critical_error}"
+                )
+                return {
+                    "id": None,
+                    "user": None,
+                    "appointment": None,
+                    "notification_type": "error",
+                    "message": "Critical error loading notification",
+                    "is_read": False,
+                    "created_at": timezone.now().isoformat(),
+                    "rejection": None,
+                    "error": f"Critical error: {critical_error}",
+                }

@@ -1,20 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
   completeAppointment,
-  fetchAppointments,
-  fetchTodayAppointments,
-  fetchUpcomingAppointments,
   rejectAppointment,
   requestPayment,
   requestPickup,
   startSession,
   therapistConfirm,
 } from "../features/scheduling/schedulingSlice";
+import { useTherapistDashboardData } from "../hooks/useDashboardIntegration";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
-import syncService from "../services/syncService";
 import { LoadingButton, PageLoadingState } from "./common/LoadingComponents";
 
 import LayoutRow from "../globals/LayoutRow";
@@ -47,7 +44,6 @@ const TherapistDashboard = () => {
     isOpen: false,
     appointmentId: null,
   });
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Loading states for individual button actions
   const [buttonLoading, setButtonLoading] = useState({});
@@ -59,129 +55,28 @@ const TherapistDashboard = () => {
       [actionKey]: isLoading,
     }));
   };
-
   const { user } = useSelector((state) => state.auth);
+
+  // 🔥 FIXED: Use centralized data manager instead of individual polling
   const {
-    appointments,
-    todayAppointments,
-    upcomingAppointments,
+    myAppointments,
+    myTodayAppointments,
+    myUpcomingAppointments,
     loading,
     error,
-  } = useSelector((state) => state.scheduling); // Filter appointments for current therapist (both single and multi-therapist)
-  const myAppointments = appointments.filter(
-    (apt) =>
-      apt.therapist === user?.id ||
-      (apt.therapists && apt.therapists.includes(user?.id))
-  );
+    isInitialLoad,
+    refreshAppointments,
+  } = useTherapistDashboardData(); // 🔥 FIXED: Replace redundant refreshAppointments with centralized data manager
+  // refreshAppointments is now provided by useTherapistDashboardData hook
 
-  const myTodayAppointments = todayAppointments.filter(
-    (apt) =>
-      (apt.therapist === user?.id ||
-        (apt.therapists && apt.therapists.includes(user?.id))) &&
-      apt.status !== "transport_completed" // Exclude completed transport from today view
-  );
-  const myUpcomingAppointments = upcomingAppointments.filter(
-    (apt) =>
-      (apt.therapist === user?.id ||
-        (apt.therapists && apt.therapists.includes(user?.id))) &&
-      apt.status !== "transport_completed" // Exclude completed transport from upcoming view
-  );
+  // 🔥 REMOVED: All redundant polling and data fetching
+  // The centralized data manager (useTherapistDashboardData) handles all polling automatically
+  // No need for individual dashboard polling or initial data loading
 
-  // Refresh appointments data silently in background
-  const refreshAppointments = useCallback(
-    async (isBackground = false, targetView = null) => {
-      // Never show loading indicators for background updates
-      // Only show loading on initial load via Redux state
+  // 🔥 REMOVED: Initial data loading is handled by centralized data manager
 
-      try {
-        // Optimize by only fetching what's needed based on current view
-        if (isBackground) {
-          // For background updates, fetch only the currently viewed data to reduce load
-          const viewToUse = targetView || currentView;
-          switch (viewToUse) {
-            case "today":
-              await dispatch(fetchTodayAppointments());
-              break;
-            case "upcoming":
-              await dispatch(fetchUpcomingAppointments());
-              break;
-            case "all":
-            default:
-              await dispatch(fetchAppointments());
-              break;
-          }
-        } else {
-          // For initial load, fetch all data
-          await Promise.all([
-            dispatch(fetchAppointments()),
-            dispatch(fetchTodayAppointments()),
-            dispatch(fetchUpcomingAppointments()),
-          ]);
-        }
-      } catch (error) {
-        // Silent error handling for background updates to avoid disrupting UX
-        if (!isBackground) {
-          console.error("Error fetching appointments:", error);
-        }
-      }
-    },
-    [dispatch, currentView]
-  ); // Remove isInitialLoad from dependencies to prevent loops  // Setup polling for real-time updates (WebSocket connections disabled)
-  useEffect(() => {
-    // Real-time sync is handled by useSyncEventHandlers hook
-    // Here we only set up periodic polling as a fallback
-
-    // Set up adaptive polling with smart refresh
-    const setupPolling = () => {
-      const interval = syncService.getPollingInterval(30000); // Base 30 seconds for therapist
-      return setInterval(() => {
-        if (syncService.shouldRefresh("therapist_appointments")) {
-          dispatch(fetchAppointments());
-          dispatch(fetchTodayAppointments());
-          dispatch(fetchUpcomingAppointments());
-          syncService.markUpdated("therapist_appointments");
-        }
-      }, interval);
-    };
-
-    const pollingInterval = setupPolling();
-
-    return () => {
-      clearInterval(pollingInterval);
-    };
-  }, [dispatch]); // Simplified dependencies  // Load appointments on component mount
-  useEffect(() => {
-    let mounted = true;
-
-    const loadInitialData = async () => {
-      if (!mounted) return;
-
-      // Initialize appointment fetching
-      if (mounted) {
-        await Promise.all([
-          dispatch(fetchAppointments()),
-          dispatch(fetchTodayAppointments()),
-          dispatch(fetchUpcomingAppointments()),
-        ]);
-        setIsInitialLoad(false);
-      }
-    };
-
-    loadInitialData();
-
-    return () => {
-      mounted = false;
-    };
-  }, [dispatch]); // Only depend on dispatch
-  // Refresh specific view data when view changes (silent background update)
-  useEffect(() => {
-    if (!isInitialLoad) {
-      // Call dispatch actions directly to avoid dependency issues
-      dispatch(fetchAppointments());
-      dispatch(fetchTodayAppointments());
-      dispatch(fetchUpcomingAppointments());
-    }
-  }, [currentView, dispatch, isInitialLoad]); // Include all dependencies
+  // 🔥 REMOVED: View changes don't trigger API calls - data is filtered client-side
+  // The centralized data manager provides all needed data, and filtering happens in the component
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");

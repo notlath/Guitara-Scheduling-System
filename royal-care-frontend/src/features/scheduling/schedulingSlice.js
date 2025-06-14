@@ -1122,18 +1122,72 @@ export const fetchNotifications = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
+
+    console.log("🔄 fetchNotifications: Starting API call...");
+
     try {
       const response = await axios.get(`${API_URL}notifications/`, {
         headers: { Authorization: `Token ${token}` },
       });
+
+      console.log("✅ fetchNotifications: Success", {
+        status: response.status,
+        dataType: typeof response.data,
+        hasResults: !!response.data?.results,
+        dataKeys: Object.keys(response.data || {}),
+        dataLength: Array.isArray(response.data)
+          ? response.data.length
+          : "not array",
+      });
+
       // Ensure the response has the expected structure
-      const notifications = response.data.results || response.data; // Adapt to potential pagination
+      const notifications =
+        response.data.notifications ||
+        response.data.results ||
+        response.data ||
+        [];
       const unreadCount =
-        response.data.unread_count !== undefined
+        response.data.unreadCount !== undefined
+          ? response.data.unreadCount
+          : response.data.unread_count !== undefined
           ? response.data.unread_count
-          : notifications.filter((n) => !n.is_read).length;
-      return { notifications, unreadCount };
+          : Array.isArray(notifications)
+          ? notifications.filter((n) => !n.is_read).length
+          : 0;
+
+      console.log("📊 fetchNotifications: Processed data", {
+        notificationCount: Array.isArray(notifications)
+          ? notifications.length
+          : 0,
+        unreadCount,
+        sampleNotification: notifications[0] || "none",
+      });
+
+      return {
+        notifications: Array.isArray(notifications) ? notifications : [],
+        unreadCount,
+      };
     } catch (error) {
+      console.error("❌ fetchNotifications: Error", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        url: error.config?.url,
+      });
+
+      // If it's a 500 error, try to provide a fallback
+      if (error.response?.status === 500) {
+        console.log(
+          "🔄 fetchNotifications: 500 error detected, returning empty fallback"
+        );
+        return {
+          notifications: [],
+          unreadCount: 0,
+          error: "Server error - notifications temporarily unavailable",
+        };
+      }
+
       return rejectWithValue(
         handleApiError(error, "Could not fetch notifications")
       );
@@ -1494,18 +1548,66 @@ export const markAppointmentPaid = createAsyncThunk(
   async ({ appointmentId, paymentData }, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
     if (!token) return rejectWithValue("Authentication required");
+
+    console.log("🔍 markAppointmentPaid: Starting payment verification", {
+      appointmentId,
+      paymentData,
+      endpoint: `${API_URL}appointments/${appointmentId}/mark_payment_received/`,
+    });
+
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/mark_completed/`,
+        `${API_URL}appointments/${appointmentId}/mark_payment_received/`,
         {
           payment_method: paymentData?.method || "cash",
-          payment_amount: paymentData?.amount || 0,
+          payment_amount: parseFloat(paymentData?.amount) || 0,
+          payment_notes: paymentData?.notes || "",
         },
         { headers: { Authorization: `Token ${token}` } }
       );
+
+      console.log("✅ markAppointmentPaid: Success", response.data);
       sendAppointmentUpdate(response.data.id);
       return response.data;
     } catch (error) {
+      console.error("❌ markAppointmentPaid: Error", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+
+      // If the new endpoint doesn't exist, fallback to the old one
+      if (error.response?.status === 404) {
+        console.log(
+          "🔄 markAppointmentPaid: Falling back to mark_completed endpoint"
+        );
+        try {
+          const fallbackResponse = await axios.post(
+            `${API_URL}appointments/${appointmentId}/mark_completed/`,
+            {
+              payment_method: paymentData?.method || "cash",
+              payment_amount: parseFloat(paymentData?.amount) || 0,
+            },
+            { headers: { Authorization: `Token ${token}` } }
+          );
+
+          console.log(
+            "✅ markAppointmentPaid: Fallback success",
+            fallbackResponse.data
+          );
+          sendAppointmentUpdate(fallbackResponse.data.id);
+          return fallbackResponse.data;
+        } catch (fallbackError) {
+          console.error(
+            "❌ markAppointmentPaid: Fallback also failed",
+            fallbackError
+          );
+          return rejectWithValue(
+            handleApiError(fallbackError, "Could not mark appointment as paid")
+          );
+        }
+      }
+
       return rejectWithValue(
         handleApiError(error, "Could not mark appointment as paid")
       );
@@ -2181,20 +2283,46 @@ const schedulingSlice = createSlice({
       })
       .addCase(fetchNotifications.fulfilled, (state, action) => {
         state.loading = false;
-        state.notifications = action.payload.notifications;
-        state.unreadNotificationCount = action.payload.unreadCount;
+
+        // Handle both successful response and fallback error case
+        const payload = action.payload || {};
+        state.notifications = Array.isArray(payload.notifications)
+          ? payload.notifications
+          : [];
+        state.unreadNotificationCount =
+          typeof payload.unreadCount === "number" ? payload.unreadCount : 0;
+
+        // If there was a server error but we got a fallback response
+        if (payload.error) {
+          state.error = payload.error;
+        } else {
+          state.error = null;
+        }
+
         console.log("✅ Redux: fetchNotifications fulfilled", {
-          notificationCount: action.payload.notifications?.length || 0,
-          unreadCount: action.payload.unreadCount,
-          hasArray: Array.isArray(action.payload.notifications),
+          notificationCount: state.notifications.length,
+          unreadCount: state.unreadNotificationCount,
+          hasArray: Array.isArray(state.notifications),
+          hasError: !!payload.error,
+          isFallback: !!payload.error,
         });
       })
       .addCase(fetchNotifications.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = action.payload || "Failed to load notifications";
+
+        // Provide empty arrays as fallback to prevent UI errors
+        if (!Array.isArray(state.notifications)) {
+          state.notifications = [];
+        }
+        if (typeof state.unreadNotificationCount !== "number") {
+          state.unreadNotificationCount = 0;
+        }
+
         console.error("❌ Redux: fetchNotifications rejected", {
           payload: action.payload,
           error: action.error,
+          fallbackProvided: true,
         });
       })
       // markNotificationAsRead

@@ -1,14 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
-import {
-  deleteAppointment,
-  fetchAppointments,
-  fetchTodayAppointments,
-  fetchUpcomingAppointments,
-} from "../../features/scheduling/schedulingSlice";
+import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
+import { useSchedulingDashboardData } from "../../hooks/useDashboardIntegration";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
-import syncService from "../../services/syncService";
 import { PageLoadingState, SkeletonLoader } from "../common/LoadingComponents";
 
 import { MdAdd, MdNotifications } from "react-icons/md";
@@ -49,48 +44,21 @@ const SchedulingDashboard = () => {
 
   const dispatch = useDispatch();
   const {
+    appointments,
     todayAppointments,
     upcomingAppointments,
-    unreadNotificationCount,
     loading,
     error,
-  } = useSelector((state) => state.scheduling);
+    refreshAfterFormSubmit,
+  } = useSchedulingDashboardData();
+
   const { user } = useSelector((state) => state.auth);
+  const { unreadNotificationCount } = useSelector((state) => state.scheduling);
   const defaultDate = useMemo(() => new Date(), []);
 
-  // Load appointments on component mount and setup polling
-  useEffect(() => {
-    // Initial load
-    dispatch(fetchAppointments());
-    dispatch(fetchTodayAppointments());
-    dispatch(fetchUpcomingAppointments());
-
-    // Setup polling for real-time updates (WebSocket connections disabled)
-    // Using polling mode for real-time updates
-
-    // Real-time sync is handled by useSyncEventHandlers hook
-    // Here we only set up periodic polling as a fallback
-
-    // Smart polling with user activity detection
-    const setupPolling = () => {
-      const interval = syncService.getPollingInterval(20000); // Base 20 seconds
-      return setInterval(() => {
-        if (syncService.shouldRefresh("scheduling_appointments")) {
-          dispatch(fetchAppointments());
-          dispatch(fetchTodayAppointments());
-          dispatch(fetchUpcomingAppointments());
-          syncService.markUpdated("scheduling_appointments");
-        }
-      }, interval);
-    };
-
-    const pollingInterval = setupPolling();
-
-    // Cleanup polling interval when component unmounts
-    return () => {
-      clearInterval(pollingInterval);
-    };
-  }, [dispatch]); // Simplified dependencies
+  // 🔥 REMOVED: All redundant polling and data fetching
+  // The centralized data manager (useSchedulingDashboardData) handles all polling automatically
+  // No need for individual dashboard polling or initial data loading
 
   const handleDateSelected = (date) => {
     setSelectedDate(date);
@@ -119,10 +87,8 @@ const SchedulingDashboard = () => {
     if (window.confirm("Are you sure you want to delete this booking?")) {
       try {
         await dispatch(deleteAppointment(appointmentId)).unwrap();
-        // Refresh data after successful deletion
-        dispatch(fetchAppointments());
-        dispatch(fetchTodayAppointments());
-        dispatch(fetchUpcomingAppointments());
+        // 🔥 FIXED: Use centralized data manager refresh instead of individual API calls
+        await refreshAfterFormSubmit();
       } catch (error) {
         // Add user feedback
         alert(`Failed to delete appointment: ${error.message || error}`);
@@ -130,12 +96,10 @@ const SchedulingDashboard = () => {
     }
   };
 
-  const handleFormSubmitSuccess = () => {
+  const handleFormSubmitSuccess = async () => {
     setIsFormVisible(false);
-    // Refresh data after successful form submission
-    dispatch(fetchAppointments());
-    dispatch(fetchTodayAppointments());
-    dispatch(fetchUpcomingAppointments());
+    // 🔥 FIXED: Use centralized data manager refresh instead of individual API calls
+    await refreshAfterFormSubmit();
   };
 
   const handleFormCancel = () => {
