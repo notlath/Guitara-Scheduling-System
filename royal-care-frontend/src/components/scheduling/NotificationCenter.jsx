@@ -19,10 +19,38 @@ const NotificationCenter = ({ onClose }) => {
   const [openMenuId, setOpenMenuId] = useState(null);
   const notificationRef = useRef(null);
 
+  // Helper function to generate notification titles
+  const getNotificationTitle = (notification) => {
+    const type =
+      notification.notification_type || notification.type || "general";
+
+    switch (type) {
+      case "appointment_created":
+      case "appointment_confirmed":
+        return "Appointment Confirmed";
+      case "appointment_updated":
+        return "Appointment Updated";
+      case "appointment_cancelled":
+        return "Appointment Cancelled";
+      case "appointment_reminder":
+        return "Appointment Reminder";
+      case "appointment_rejected":
+        return "Appointment Rejected";
+      case "driver_assigned":
+        return "Driver Assigned";
+      case "transport_completed":
+        return "Transport Completed";
+      default:
+        return "Notification";
+    }
+  };
+
   // Fetch notifications directly from API
   const fetchNotifications = async () => {
     setLoading(true);
     setError(null);
+
+    console.log("🔄 Fetching notifications...");
 
     try {
       const token = localStorage.getItem("knoxToken");
@@ -30,6 +58,8 @@ const NotificationCenter = ({ onClose }) => {
       if (!token) {
         throw new Error("No authentication token found");
       }
+
+      console.log("📡 Making request to notifications API...");
 
       const response = await fetch(
         "http://localhost:8000/api/scheduling/notifications/",
@@ -41,17 +71,75 @@ const NotificationCenter = ({ onClose }) => {
         }
       );
 
+      console.log(
+        `📊 Response status: ${response.status} ${response.statusText}`
+      );
+
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error("Authentication failed - please log in again");
         }
-        throw new Error(`Failed to fetch notifications: ${response.status}`);
+
+        // Try to get error details from response
+        let errorMessage = `Failed to fetch notifications: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          console.log("❌ Error response data:", errorData);
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          } else if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch (parseError) {
+          // If we can't parse the error response, use the status
+          console.warn("Could not parse error response:", parseError);
+        }
+
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      setNotifications(data || []);
+      console.log("📦 Received data:", data);
+
+      // Handle the new backend response format which may include additional metadata
+      let notificationsList = [];
+
+      if (Array.isArray(data)) {
+        // Old format - direct array
+        notificationsList = data;
+        console.log("✅ Using legacy array format");
+      } else if (data && Array.isArray(data.notifications)) {
+        // New format - object with notifications array
+        notificationsList = data.notifications;
+        console.log(
+          `✅ Loaded ${notificationsList.length} notifications (${
+            data.unreadCount || 0
+          } unread)`
+        );
+
+        // Log any warnings from backend
+        if (data.warning) {
+          console.warn("⚠️ Backend warning:", data.warning);
+        }
+        if (data.errors && data.errors > 0) {
+          console.warn(
+            `⚠️ Backend encountered ${data.errors} errors while loading notifications`
+          );
+        }
+      } else {
+        // Fallback - treat as empty array
+        console.warn("⚠️ Unexpected response format:", data);
+        notificationsList = [];
+      }
+
+      console.log(`🎯 Setting ${notificationsList.length} notifications`);
+      setNotifications(notificationsList);
     } catch (err) {
+      console.error("Error fetching notifications:", err);
       setError(err.message);
+
+      // Set empty notifications array as fallback
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -228,9 +316,20 @@ const NotificationCenter = ({ onClose }) => {
       case "appointment_updated":
         return <MdUpdate size={20} />;
       case "appointment_cancelled":
+      case "appointment_auto_cancelled":
         return <MdEventBusy size={20} />;
       case "appointment_reminder":
         return <MdSchedule size={20} />;
+      case "appointment_accepted":
+      case "appointment_started":
+      case "appointment_completed":
+        return <MdEventAvailable size={20} />;
+      case "appointment_rejected":
+        return <MdEventBusy size={20} />;
+      case "rejection_reviewed":
+        return <MdUpdate size={20} />;
+      case "therapist_disabled":
+        return <MdEventBusy size={20} />;
       default:
         return <MdNotifications size={20} />;
     }
@@ -284,15 +383,24 @@ const NotificationCenter = ({ onClose }) => {
               className={`${styles.notificationItem} ${
                 !notification.is_read ? styles.unread : ""
               }`}
-              data-type={notification.type}
+              data-type={notification.notification_type || notification.type}
             >
               <div className={styles.notificationContent}>
                 <div className={styles.notificationIcon}>
-                  {getNotificationIcon(notification.type)}
+                  {getNotificationIcon(
+                    notification.notification_type || notification.type
+                  )}
                 </div>
                 <div className={styles.notificationText}>
                   <div className={styles.notificationTitle}>
-                    {notification.title}
+                    {notification.title ||
+                      `${(
+                        notification.notification_type ||
+                        notification.type ||
+                        "notification"
+                      )
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase())}`}
                   </div>
                   <div className={styles.notificationMessage}>
                     {notification.message}
@@ -300,6 +408,19 @@ const NotificationCenter = ({ onClose }) => {
                   <div className={styles.notificationTime}>
                     {formatTime(notification.created_at)}
                   </div>
+                  {/* Show error info if present */}
+                  {notification.error && (
+                    <div
+                      className={styles.notificationError}
+                      style={{
+                        fontSize: "12px",
+                        color: "#ff6b6b",
+                        marginTop: "4px",
+                      }}
+                    >
+                      Error loading notification details
+                    </div>
+                  )}
                 </div>
               </div>
 

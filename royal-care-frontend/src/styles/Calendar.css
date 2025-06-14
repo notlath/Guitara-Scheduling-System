@@ -7,7 +7,7 @@
   max-width: 1200px;
   margin: 0 auto;
   border-radius: 8px;
-  background-color: var(--background);
+  background-color: var(--background, #ffffff);
 }
 
 /* Calendar container */
@@ -66,26 +66,29 @@
 
 /* Calendar grid (days and headers) */
 .calendar-days {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  border: 1px solid var(--background-200);
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  border: 1px solid var(--background-200, #cccccc);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  width: 100%;
+  gap: 0;
 }
 
 /* Day of week header cells */
 .day-header {
-  background-color: var(--background-200);
-  border-bottom: 1px solid var(--background-300);
-  padding: var(--spacing-sm);
-  color: var(--background-600);
-  font-size: var(--font-size-sm);
+  background-color: var(--background-200, #cccccc);
+  border-bottom: 1px solid var(--background-300, #b3b3b3);
+  padding: var(--spacing-sm, 1rem);
+  color: var(--background-600, #666666);
+  font-size: var(--font-size-sm, 0.8rem);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 400;
   display: grid;
   place-items: center;
+  min-height: 40px;
 }
 
 /* Calendar day cells */
@@ -95,18 +98,20 @@
   flex-direction: column;
   justify-content: flex-start;
   align-items: flex-start;
-  padding: var(--spacing-xm);
-  border: 0.5px solid var(--background-100);
-  background-color: var(--background);
-  font-size: var(--font-size-base);
-  color: var(--text);
+  padding: var(--spacing-xm, 0.75rem);
+  border: 0.5px solid var(--background-100, #e6e6e6);
+  background-color: var(--background, #ffffff);
+  font-size: var(--font-size-base, 1rem);
+  color: var(--text, #0f0c05);
   position: relative;
   transition: all 0.3s ease;
+  min-height: 80px;
+  cursor: pointer;
 }
 
 /* Empty day cells (padding at start/end of month) */
 .empty-day {
-  background-color: var(--background-50);
+  background-color: var(--background-50, #f2f2f2);
 }
 
 /* Clickable day */

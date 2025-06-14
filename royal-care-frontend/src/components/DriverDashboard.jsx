@@ -1,18 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
   completeReturnJourney,
   confirmPickup, // Added for completing return journey
-  fetchAppointments,
-  fetchTodayAppointments,
-  fetchUpcomingAppointments,
   rejectAppointment, // Added for pickup confirmation
   rejectPickup, // General appointment rejection
   startJourney,
   updateAppointmentStatus, // Used for general status updates, including confirmations
 } from "../features/scheduling/schedulingSlice";
+import { useDriverDashboardData } from "../hooks/useDashboardIntegration";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import { LoadingButton, PageLoadingState } from "./common/LoadingComponents";
@@ -115,7 +113,7 @@ const DriverDashboard = () => {
     isOpen: false,
     appointmentId: null,
   });
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  // 🔥 REMOVED: Redundant isInitialLoad - now provided by centralized hook
   // Loading states for individual button actions
   const [buttonLoading, setButtonLoading] = useState({});
   // Pickup assignment timer state
@@ -161,251 +159,36 @@ const DriverDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-
   const { user } = useSelector((state) => state.auth);
+
+  // 🔥 FIXED: Use centralized data manager instead of individual polling
   const {
-    appointments,
-    todayAppointments,
-    upcomingAppointments,
+    myAppointments,
+    myTodayAppointments,
+    myUpcomingAppointments,
+    myAllTransports,
+    hasActivePickupAssignment,
+    activePickupAssignment,
     loading,
     error,
-  } = useSelector((state) => state.scheduling);
-
+    isInitialLoad,
+    refreshAppointments,
+    forceRefresh,
+  } = useDriverDashboardData();
   // Debug: Log all appointments data
   console.log("🔍 Driver Dashboard Debug:", {
     user: user,
-    totalAppointments: appointments.length,
-    appointmentsWithDriver: appointments.filter(
-      (apt) => apt.driver === user?.id
-    ),
-    allAppointments: appointments,
-  }); // Filter appointments for current driver - only show those visible to driver
-  const myAppointments = appointments.filter((apt) => {
-    // Driver assigned to this appointment (main driver field)
-    const isAssignedDriver = apt.driver === user?.id;
-
-    // Debug: Log all appointments for this driver
-    if (isAssignedDriver) {
-      console.log(
-        `🚗 Driver appointment ${apt.id}: status="${apt.status}", client="${
-          apt.client_details?.first_name || "Unknown"
-        }"`,
-        apt
-      );
-    }
-
-    // Only show appointments assigned to this driver
-    if (!isAssignedDriver) return false;
-
-    // Only show appointments that should be visible to driver:
-    // - pending: Initial booking (driver needs to see to accept)
-    // - therapist_confirmed: After therapist(s) confirmed, waiting for driver
-    // - driver_confirmed: Driver confirmed, ready to start journey
-    // - in_progress: Operator started appointment, ready for journey
-    // - journey_started: Driver is traveling to client
-    // - arrived: Driver arrived at client location
-    // - dropped_off: Driver dropped off therapist
-    // - session_in_progress: Therapist(s) dropped off, session ongoing
-    // - awaiting_payment: Session complete, awaiting payment    // - completed: Appointment complete, may need pickup
-    // - pickup_requested: Therapist requested pickup
-    // - driver_assigned_pickup: Driver assigned for pickup (needs confirmation)
-    // - return_journey: Driver confirmed pickup and traveling back
-
-    const visibleStatuses = [
-      "pending",
-      "therapist_confirmed",
-      "driver_confirmed",
-      "in_progress",
-      "journey_started",
-      "journey", // Backend is using this status - needs to be included
-      "arrived",
-      "dropped_off",
-      "driver_transport_completed", // Driver completed transport - shows in all views
-      "session_in_progress",
-      "awaiting_payment",
-      "completed",
-      "pickup_requested",
-      "driver_assigned_pickup", // Show pickup assignments to driver
-      "return_journey", // Show return journey status
-      "transport_completed", // Show completed transport cycles
-    ];
-
-    return visibleStatuses.includes(apt.status);
-  });
-  const myTodayAppointments = todayAppointments.filter((apt) => {
-    const isAssignedDriver = apt.driver === user?.id;
-    if (!isAssignedDriver) return false;
-    const visibleStatuses = [
-      "pending",
-      "therapist_confirmed",
-      "driver_confirmed",
-      "in_progress",
-      "journey_started",
-      "journey", // Added missing status that backend is using
-      "arrived",
-      // "dropped_off" and "driver_transport_completed" excluded from today's view - driver's work is done
-      "pickup_requested",
-      "driver_assigned_pickup", // Show pickup assignments to driver
-      "return_journey", // Show return journey status
-    ];
-    return visibleStatuses.includes(apt.status);
-  });
-  const myUpcomingAppointments = upcomingAppointments.filter((apt) => {
-    const isAssignedDriver = apt.driver === user?.id;
-    if (!isAssignedDriver) return false;
-
-    const visibleStatuses = [
-      "pending",
-      "therapist_confirmed",
-      "driver_confirmed",
-      "in_progress",
-      "journey_started",
-      "journey", // Added missing status that backend is using
-      "arrived",
-      // "dropped_off" and "driver_transport_completed" excluded from upcoming view - driver's work is done
-      "pickup_requested",
-      "driver_assigned_pickup", // Show pickup assignments to driver
-      "return_journey", // Show return journey status
-    ];
-    return visibleStatuses.includes(apt.status);
+    totalAppointments: myAppointments.length,
+    hasActivePickupAssignment,
+    activePickupAssignment,
   });
 
-  // Separate filter for "All My Transports" view - includes completed transports
-  const myAllTransports = appointments
-    .filter((apt) => {
-      const isAssignedDriver = apt.driver === user?.id;
-      if (!isAssignedDriver) return false; // For "All" view, show everything including completed/dropped-off transports
-      const allStatuses = [
-        "pending",
-        "therapist_confirmed",
-        "driver_confirmed",
-        "in_progress",
-        "journey_started",
-        "journey",
-        "arrived",
-        "dropped_off",
-        "driver_transport_completed", // Driver's transport is complete after drop-off
-        "session_in_progress",
-        "awaiting_payment",
-        "completed", // This shows completed transports in "All My Transports"
-        "pickup_requested",
-        "therapist_dropped_off", // Legacy status support
-        "payment_completed", // Session fully finished        "driver_assigned_pickup", // Driver assigned for pickup
-        "return_journey", // Return journey status
-        "transport_completed", // Transport cycle completed
-      ];
+  // 🔥 REMOVED: All redundant filtering and state management
+  // The useDriverDashboardData hook provides all filtered data and state
 
-      return allStatuses.includes(apt.status);
-    })
-    .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date, newest first
-
-  // Check if driver has an active pickup assignment - this disables other actions
-  const hasActivePickupAssignment = myAppointments.some(
-    (apt) => apt.status === "driver_assigned_pickup"
-  );
-
-  // Get the active pickup assignment details
-  const activePickupAssignment = myAppointments.find(
-    (apt) => apt.status === "driver_assigned_pickup"
-  );
-
-  // Refresh appointments data silently in background
-  const refreshAppointments = useCallback(
-    async (isBackground = false, targetView = null) => {
-      // Never show loading indicators for background updates
-      // Only show loading on initial load via Redux state
-
-      try {
-        // Optimize by only fetching what's needed based on current view
-        if (isBackground) {
-          // For background updates, fetch only the currently viewed data to reduce load
-          const viewToUse = targetView || currentView;
-          switch (viewToUse) {
-            case "today":
-              await dispatch(fetchTodayAppointments());
-              break;
-            case "upcoming":
-              await dispatch(fetchUpcomingAppointments());
-              break;
-            case "all":
-            default:
-              await dispatch(fetchAppointments());
-              break;
-          }
-        } else {
-          // For initial load, fetch all data
-          await Promise.all([
-            dispatch(fetchAppointments()),
-            dispatch(fetchTodayAppointments()),
-            dispatch(fetchUpcomingAppointments()),
-          ]);
-        }
-      } catch (error) {
-        // Silent error handling for background updates to avoid disrupting UX
-        if (!isBackground) {
-          console.error("Error fetching appointments:", error);
-        }
-      }
-    },
-    [dispatch, currentView]
-  );
-  // Setup polling for real-time updates (WebSocket connections disabled)
-  useEffect(() => {
-    // Real-time sync is handled by useSyncEventHandlers hook
-    // Here we only set up periodic polling as a fallback
-
-    // Set up adaptive polling with smart refresh
-    const setupPolling = () => {
-      const interval = syncService.getPollingInterval(30000); // Base 30 seconds for driver
-      return setInterval(() => {
-        if (syncService.shouldRefresh("driver_appointments")) {
-          dispatch(fetchAppointments());
-          dispatch(fetchTodayAppointments());
-          dispatch(fetchUpcomingAppointments());
-          syncService.markUpdated("driver_appointments");
-        }
-      }, interval);
-    };
-
-    const pollingInterval = setupPolling();
-
-    return () => {
-      clearInterval(pollingInterval);
-    };
-  }, [dispatch]);
-  // Load appointments on component mount
-  useEffect(() => {
-    let mounted = true;
-
-    const loadInitialData = async () => {
-      if (!mounted) return;
-
-      // Initialize appointment fetching
-      if (mounted) {
-        await Promise.all([
-          dispatch(fetchAppointments()),
-          dispatch(fetchTodayAppointments()),
-          dispatch(fetchUpcomingAppointments()),
-        ]);
-        setIsInitialLoad(false);
-      }
-    };
-
-    loadInitialData();
-
-    return () => {
-      mounted = false;
-    };
-  }, [dispatch]);
-  // Refresh specific view data when view changes (silent background update)
-  useEffect(() => {
-    if (!isInitialLoad) {
-      // Call dispatch actions directly to avoid dependency issues
-      dispatch(fetchAppointments());
-      dispatch(fetchTodayAppointments());
-      dispatch(fetchUpcomingAppointments());
-    }
-  }, [currentView, dispatch, isInitialLoad]);
+  // 🔥 REMOVED: All redundant polling and data fetching
+  // The centralized data manager handles all polling automatically
+  // No need for individual dashboard polling or initial data loading
 
   // Setup timer for pickup assignments countdown
   useEffect(() => {
@@ -443,10 +226,9 @@ const DriverDashboard = () => {
             `${message}\n\nWould you like to check the operator dashboard?`
           )
         ) {
-          // In a real app, you might navigate to a specific urgent requests page
-          // For now, we'll just refresh the appointments to show any new assignments
-          dispatch(fetchAppointments());
-          dispatch(fetchTodayAppointments());
+          // 🔥 FIXED: Use centralized data manager instead of direct API calls
+          // For urgent requests, force immediate refresh via data manager
+          forceRefresh(["appointments", "todayAppointments"]);
         }
       }
     };
@@ -460,7 +242,7 @@ const DriverDashboard = () => {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [user, dispatch]);
+  }, [user, forceRefresh]);
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");

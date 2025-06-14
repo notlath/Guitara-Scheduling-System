@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useCallback, useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
@@ -13,6 +13,7 @@ import {
 } from "../features/scheduling/schedulingSlice";
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
+import { useOperatorDashboardData } from "../hooks/useDashboardIntegration";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import syncService from "../services/syncService";
@@ -52,13 +53,26 @@ const OperatorDashboard = () => {
 
   // Loading states for individual button actions
   const [buttonLoading, setButtonLoading] = useState({});
-
   // Helper function to set loading state for specific action
   const setActionLoading = (actionKey, isLoading) => {
-    setButtonLoading((prev) => ({
-      ...prev,
-      [actionKey]: isLoading,
-    }));
+    console.log(`🔄 setActionLoading: ${actionKey} = ${isLoading}`);
+    setButtonLoading((prev) => {
+      const newState = {
+        ...prev,
+        [actionKey]: isLoading,
+      };
+      console.log("🔍 setActionLoading: New button loading state:", newState);
+      return newState;
+    });
+  };
+  // Force clear loading state for emergency situations
+  const _forceClearLoading = (actionKey) => {
+    console.log(`🚨 forceClearLoading: Forcing clear for ${actionKey}`);
+    setButtonLoading((prev) => {
+      const newState = { ...prev };
+      delete newState[actionKey];
+      return newState;
+    });
   };
 
   // Payment verification modal state
@@ -77,17 +91,24 @@ const OperatorDashboard = () => {
     busyDrivers: [],
     pendingPickups: [],
   });
-
   // Get state from Redux store
   const {
+    rejectedAppointments,
+    pendingAppointments,
+    awaitingPaymentAppointments,
+    overdueAppointments,
+    approachingDeadlineAppointments,
+    activeSessions,
+    pickupRequests,
+    rejectionStats,
     appointments,
     todayAppointments,
     upcomingAppointments,
     notifications,
-    staffMembers: _staffMembers,
     loading,
     error,
-  } = useSelector((state) => state.scheduling);
+    refreshData,
+  } = useOperatorDashboardData();
   // Helper function to get driver task description based on appointment status
   const getDriverTaskDescription = (appointment) => {
     if (!appointment) return "On assignment";
@@ -299,89 +320,12 @@ const OperatorDashboard = () => {
     return () => {
       unsubscribe();
     };
-  }, []); // Filter rejected appointments for review (ensure appointments is an array)
-  const rejectedAppointments = useMemo(() => {
-    return (appointments || []).filter(
-      (apt) => apt.status === "rejected" && !apt.review_decision
-    );
-  }, [appointments]);
+  }, []);
+  // 🔥 REMOVED: All redundant filtering and memoized computations
+  // The useOperatorDashboardData hook provides all filtered data
 
-  // Filter appointments that are pending and approaching timeout
-  const pendingAppointments = useMemo(() => {
-    return (appointments || []).filter(
-      (apt) => apt.status === "pending" && apt.response_deadline
-    );
-  }, [appointments]);
-
-  // Filter appointments awaiting payment verification
-  const awaitingPaymentAppointments = useMemo(() => {
-    return (appointments || []).filter(
-      (apt) => apt.status === "awaiting_payment"
-    );
-  }, [appointments]); // Calculate which appointments are overdue
-  const overdueAppointments = useMemo(() => {
-    return pendingAppointments.filter(
-      (apt) => new Date(apt.response_deadline) < new Date()
-    );
-  }, [pendingAppointments]);
-
-  // Calculate which appointments are approaching deadline (within 10 minutes)
-  const approachingDeadlineAppointments = useMemo(() => {
-    return pendingAppointments.filter((apt) => {
-      const deadline = new Date(apt.response_deadline);
-      const now = new Date();
-      const timeDiff = deadline.getTime() - now.getTime();
-      const minutesDiff = timeDiff / (1000 * 60);
-      return minutesDiff > 0 && minutesDiff <= 10;
-    });
-  }, [pendingAppointments]);
-  // Calculate rejection statistics
-  const rejectionStats = useMemo(() => {
-    const rejected = (appointments || []).filter(
-      (apt) => apt.status === "rejected"
-    );
-    const therapistRejections = rejected.filter(
-      (apt) => apt.rejected_by_details?.role?.toLowerCase() === "therapist"
-    );
-    const driverRejections = rejected.filter(
-      (apt) => apt.rejected_by_details?.role?.toLowerCase() === "driver"
-    );
-
-    return {
-      total: rejected.length,
-      therapist: therapistRejections.length,
-      driver: driverRejections.length,
-      pending: rejectedAppointments.length,
-    };
-  }, [appointments, rejectedAppointments]);
-  // Refresh data
-  const refreshData = useCallback(() => {
-    dispatch(fetchAppointments());
-    dispatch(fetchNotifications());
-  }, [dispatch]); // Setup polling for real-time updates (WebSocket connections disabled)
-  useEffect(() => {
-    // Real-time sync is handled by useSyncEventHandlers hook
-    // Here we only set up periodic polling as a fallback
-
-    // Set up adaptive polling based on user activity
-    const setupPolling = () => {
-      const interval = syncService.getPollingInterval(20000); // Base 20 seconds
-      return setInterval(() => {
-        if (syncService.shouldRefresh("operator_appointments")) {
-          dispatch(fetchAppointments());
-          dispatch(fetchNotifications());
-          syncService.markUpdated("operator_appointments");
-        }
-      }, interval);
-    };
-
-    const pollingInterval = setupPolling();
-
-    // Cleanup polling
-    return () => {
-      clearInterval(pollingInterval);
-    };
-  }, [dispatch]); // Simplified dependencies
+  // 🔥 REMOVED: Old redundant polling - now handled by centralized DataManager
+  // Real-time sync is handled by useSyncEventHandlers hook and centralized data manager
 
   // Load data on component mount
   useEffect(() => {
@@ -601,25 +545,60 @@ const OperatorDashboard = () => {
   const handleMarkPaymentPaid = async () => {
     const actionKey = `payment_${paymentModal.appointmentId}`;
 
+    console.log("🔍 handleMarkPaymentPaid: Starting with data:", {
+      actionKey,
+      appointmentId: paymentModal.appointmentId,
+      paymentData,
+      currentButtonLoading: buttonLoading[actionKey],
+    });
+
     // Validate payment data
     if (!paymentData.amount || parseFloat(paymentData.amount) <= 0) {
+      console.log(
+        "❌ handleMarkPaymentPaid: Invalid payment amount",
+        paymentData.amount
+      );
       alert("Please enter a valid payment amount.");
       return;
     }
 
     try {
+      console.log(
+        "🔄 handleMarkPaymentPaid: Setting loading state to true for",
+        actionKey
+      );
       setActionLoading(actionKey, true);
+
+      // Safety timeout to clear loading state after 30 seconds
+      const safetyTimeout = setTimeout(() => {
+        console.log(
+          "🚨 handleMarkPaymentPaid: Safety timeout triggered, clearing loading state"
+        );
+        _forceClearLoading(actionKey);
+      }, 30000);
 
       // Pass the appointment ID as a number, not an object
       const appointmentId = parseInt(paymentModal.appointmentId, 10);
-      console.log("Marking payment as paid for appointment ID:", appointmentId);
+      console.log("🔍 handleMarkPaymentPaid: Dispatching markAppointmentPaid", {
+        appointmentId,
+        paymentData,
+        actionKey,
+      });
 
-      await dispatch(
+      const result = await dispatch(
         markAppointmentPaid({
           appointmentId,
           paymentData,
         })
       ).unwrap();
+
+      console.log(
+        "✅ handleMarkPaymentPaid: Payment verification successful",
+        result
+      );
+
+      // Clear the safety timeout since operation completed successfully
+      clearTimeout(safetyTimeout);
 
       // Close modal and refresh data
       setPaymentModal({
@@ -632,18 +611,46 @@ const OperatorDashboard = () => {
         amount: "",
         notes: "",
       });
+
+      console.log("🔄 handleMarkPaymentPaid: Refreshing dashboard data");
       refreshData();
 
       alert("Payment marked as received successfully!");
     } catch (error) {
-      console.error("Failed to mark payment as paid:", error);
-      alert("Failed to mark payment as paid. Please try again.");
+      console.error("❌ handleMarkPaymentPaid: Error occurred:", error);
+
+      // Show more detailed error information
+      const errorMessage =
+        error?.message || error?.error || error || "Unknown error occurred";
+      alert(`Failed to mark payment as paid: ${errorMessage}`);
     } finally {
+      console.log(
+        "🔄 handleMarkPaymentPaid: Setting loading state to false for",
+        actionKey
+      );
       setActionLoading(actionKey, false);
+
+      // Add a small delay to ensure state update completes
+      setTimeout(() => {
+        console.log("🔍 handleMarkPaymentPaid: Loading state after cleanup:", {
+          actionKey,
+          isLoading: buttonLoading[actionKey],
+        });
+      }, 100);
     }
   };
-
   const handlePaymentModalCancel = () => {
+    // Clear any payment-related loading states when modal is cancelled
+    const appointmentId = paymentModal.appointmentId;
+    if (appointmentId) {
+      const paymentActionKey = `payment_${appointmentId}`;
+      console.log(
+        "🔄 handlePaymentModalCancel: Clearing loading state for",
+        paymentActionKey
+      );
+      setActionLoading(paymentActionKey, false);
+    }
+
     setPaymentModal({
       isOpen: false,
       appointmentId: null,
@@ -1992,31 +1999,26 @@ const OperatorDashboard = () => {
                 <i className="fas fa-check-circle"></i>
                 Verify Payment Received
               </LoadingButton>
-            </div>
+            </div>{" "}
           </div>
         ))}
       </div>
     );
   };
-  // Calculate counts for tab buttons
-  const activeSessions = (appointments || []).filter(
-    (apt) => apt.status === "in_progress" || apt.status === "therapist_en_route"
-  );
 
-  const pickupRequests = (appointments || []).filter(
-    (apt) =>
-      apt.status === "pickup_requested" ||
-      apt.status === "driver_assigned_pickup"
-  );
+  // 🔥 REMOVED: Duplicate variable declarations
+  // activeSessions and pickupRequests are now provided by useOperatorDashboardData
+
   return (
     <PageLayout>
       <div className={`operator-dashboard`}>
+        {" "}
         <LayoutRow title="Operator Dashboard">
           <div className="action-buttons">
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>
-          </div>{" "}
+          </div>
         </LayoutRow>
         {loading && (
           <LoadingSpinner
