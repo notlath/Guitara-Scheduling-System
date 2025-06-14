@@ -250,13 +250,6 @@ button:disabled {
   margin: 2px 0;
 }
 
-.help-text {
-  font-size: 0.85rem;
-  color: #666;
-  margin-top: 4px;
-  font-style: italic;
-}
-
 /* Error state for multi-select */
 .multi-select.error {
   border-color: #ff6b6b;

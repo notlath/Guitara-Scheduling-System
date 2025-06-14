@@ -36,14 +36,14 @@ const Calendar = ({
       // Fetch today's appointments and availability immediately
       dispatch(fetchAppointmentsByDate(formattedToday));
 
-      // Fetch availability for a reasonable time window (e.g., 2 PM - 3 PM)
+      // Fetch availability for the full operating hours (1 PM - 1 AM)
       const params = {
         date: formattedToday,
-        start_time: "14:00",
-        end_time: "15:00",
+        start_time: "13:00", // 1 PM
+        end_time: "01:00",   // 1 AM next day
       };
 
-      console.log("Calendar: Initial load - fetching today's availability");
+      console.log("Calendar: Initial load - fetching today's availability for full operating hours");
       dispatch(fetchAvailableTherapists(params));
       dispatch(fetchAvailableDrivers(params));
     }
@@ -186,8 +186,8 @@ const Calendar = ({
     if (formattedDate && !isPastDate(firstDay)) {
       const params = {
         date: formattedDate,
-        start_time: "14:00",
-        end_time: "15:00",
+        start_time: "13:00", // 1 PM
+        end_time: "01:00",   // 1 AM next day
       };
 
       console.log("Calendar: Fetching availability for previous month");
@@ -211,8 +211,8 @@ const Calendar = ({
     if (formattedDate && !isPastDate(firstDay)) {
       const params = {
         date: formattedDate,
-        start_time: "14:00",
-        end_time: "15:00",
+        start_time: "13:00", // 1 PM
+        end_time: "01:00",   // 1 AM next day
       };
 
       console.log("Calendar: Fetching availability for next month");
@@ -251,12 +251,11 @@ const Calendar = ({
           return;
         }
 
-        // Use more realistic time slots instead of broad range
-        // Fetch availability for common appointment hours (1-hour window)
+        // Fetch availability for the full operating hours (1 PM - 1 AM)
         const params = {
           date: formattedDate,
-          start_time: "09:00", // More realistic start time
-          end_time: "10:00", // 1-hour window instead of broader range
+          start_time: "13:00", // 1 PM
+          end_time: "01:00",   // 1 AM next day
         };
 
         console.log(
