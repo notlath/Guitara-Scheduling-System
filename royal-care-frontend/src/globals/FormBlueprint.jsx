@@ -1,8 +1,7 @@
-import React from "react";
 import PropTypes from "prop-types";
+import React from "react";
 import "./FormBlueprint.css";
 import rcLogo from "./logo";
-
 /**
  * Generic form blueprint for authentication and other forms.
  *
