@@ -10,24 +10,24 @@
  */
 export const fuzzyMatch = (query, text) => {
   if (!query || !text) return false;
-  
+
   const queryLower = query.toLowerCase();
   const textLower = text.toLowerCase();
-  
+
   // Direct match (fastest)
   if (textLower.includes(queryLower)) return true;
-  
+
   // Fuzzy matching - check if query characters appear in order
   let queryIndex = 0;
   let textIndex = 0;
-  
+
   while (queryIndex < queryLower.length && textIndex < textLower.length) {
     if (queryLower[queryIndex] === textLower[textIndex]) {
       queryIndex++;
     }
     textIndex++;
   }
-  
+
   return queryIndex === queryLower.length;
 };
 
@@ -40,20 +40,24 @@ export const fuzzyMatch = (query, text) => {
  */
 export const filterClients = (clients, searchTerm, maxResults = 50) => {
   if (!clients || !Array.isArray(clients)) return [];
-  
+
   if (!searchTerm || !searchTerm.trim()) {
     return clients.slice(0, maxResults);
   }
-  
+
   return clients
-    .filter(client => {
-      const fullName = `${client.first_name || ''} ${client.last_name || ''}`.trim();
-      const phoneNumber = client.phone_number || '';
-      
-      return fuzzyMatch(searchTerm, fullName) || 
-             fuzzyMatch(searchTerm, client.first_name) || 
-             fuzzyMatch(searchTerm, client.last_name) ||
-             fuzzyMatch(searchTerm, phoneNumber);
+    .filter((client) => {
+      const fullName = `${client.first_name || ""} ${
+        client.last_name || ""
+      }`.trim();
+      const phoneNumber = client.phone_number || "";
+
+      return (
+        fuzzyMatch(searchTerm, fullName) ||
+        fuzzyMatch(searchTerm, client.first_name) ||
+        fuzzyMatch(searchTerm, client.last_name) ||
+        fuzzyMatch(searchTerm, phoneNumber)
+      );
     })
     .slice(0, maxResults);
 };
@@ -66,21 +70,21 @@ export const filterClients = (clients, searchTerm, maxResults = 50) => {
  */
 export const highlightMatches = (text, query) => {
   if (!query || !text) return text;
-  
+
   const queryLower = query.toLowerCase();
   const textLower = text.toLowerCase();
-  
+
   // Simple highlighting for direct matches
   if (textLower.includes(queryLower)) {
-    const regex = new RegExp(`(${query})`, 'gi');
-    return text.replace(regex, '<mark>$1</mark>');
+    const regex = new RegExp(`(${query})`, "gi");
+    return text.replace(regex, "<mark>$1</mark>");
   }
-  
+
   return text;
 };
 
 export default {
   fuzzyMatch,
   filterClients,
-  highlightMatches
+  highlightMatches,
 };

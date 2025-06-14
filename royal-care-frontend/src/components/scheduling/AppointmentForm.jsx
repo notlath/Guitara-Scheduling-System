@@ -40,7 +40,9 @@ const ClientSearchDropdown = ({
     if (!searchTerm.trim()) return clients;
 
     return clients.filter((client) => {
-      const fullName = `${client.first_name || ""} ${client.last_name || ""}`.trim();
+      const fullName = `${client.first_name || ""} ${
+        client.last_name || ""
+      }`.trim();
       const phoneNumber = client.phone_number || "";
 
       return (
@@ -57,7 +59,9 @@ const ClientSearchDropdown = ({
     if (!selectedClient) return "";
     const client = clients?.find((c) => c.id === selectedClient);
     if (!client) return "";
-    return `${client.first_name || ""} ${client.last_name || ""} - ${client.phone_number || "No phone"}`.trim();
+    return `${client.first_name || ""} ${client.last_name || ""} - ${
+      client.phone_number || "No phone"
+    }`.trim();
   };
 
   // Handle input change
@@ -144,7 +148,8 @@ const ClientSearchDropdown = ({
         ref={searchInputRef}
         type="text"
         value={
-          searchTerm || (selectedClient && !isOpen ? getSelectedClientText() : "")
+          searchTerm ||
+          (selectedClient && !isOpen ? getSelectedClientText() : "")
         }
         onChange={handleInputChange}
         onFocus={() => {
@@ -166,7 +171,9 @@ const ClientSearchDropdown = ({
             filteredClients.map((client, index) => (
               <div
                 key={`client-${client.id}`}
-                className={`client-search-item ${index === selectedIndex ? "selected" : ""}`}
+                className={`client-search-item ${
+                  index === selectedIndex ? "selected" : ""
+                }`}
                 onClick={() => handleClientSelect(client)}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
@@ -1268,9 +1275,11 @@ const AppointmentForm = ({
             clients={clients}
             selectedClient={formData.client}
             onClientSelect={(clientId) => {
-              setFormData(prev => ({ ...prev, client: clientId || "" }));
+              setFormData((prev) => ({ ...prev, client: clientId || "" }));
               // Clear error when client is selected
-              setErrors(prev => prev.client ? { ...prev, client: "" } : prev);
+              setErrors((prev) =>
+                prev.client ? { ...prev, client: "" } : prev
+              );
             }}
             error={errors.client}
             disabled={isSubmitting}
