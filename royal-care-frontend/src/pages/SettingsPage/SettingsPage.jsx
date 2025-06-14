@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
 import pageTitles from "../../constants/pageTitles";
+import TabSwitcher from "../../globals/TabSwitcher";
 
 const SettingsPage = () => {
   const [activeTab, setActiveTab] = useState("general");
@@ -15,36 +16,16 @@ const SettingsPage = () => {
       <div className="settings-content">
         <h1>Settings</h1>
 
-        <div className="settings-tabs">
-          <button
-            className={`tab-button ${activeTab === "general" ? "active" : ""}`}
-            onClick={() => setActiveTab("general")}
-          >
-            General
-          </button>
-          <button
-            className={`tab-button ${activeTab === "account" ? "active" : ""}`}
-            onClick={() => setActiveTab("account")}
-          >
-            Account
-          </button>
-          <button
-            className={`tab-button ${
-              activeTab === "notifications" ? "active" : ""
-            }`}
-            onClick={() => setActiveTab("notifications")}
-          >
-            Notifications
-          </button>
-          <button
-            className={`tab-button ${
-              activeTab === "appearance" ? "active" : ""
-            }`}
-            onClick={() => setActiveTab("appearance")}
-          >
-            Appearance
-          </button>
-        </div>
+        <TabSwitcher
+          tabs={[
+            { label: "General", value: "general" },
+            { label: "Account", value: "account" },
+            { label: "Notifications", value: "notifications" },
+            { label: "Appearance", value: "appearance" },
+          ]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
         <div className="settings-tab-content">
           {activeTab === "general" && (

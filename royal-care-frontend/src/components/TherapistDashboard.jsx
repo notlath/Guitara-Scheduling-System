@@ -22,6 +22,7 @@ import "../styles/TherapistDashboard.css";
 import RejectionModal from "./RejectionModal";
 import Calendar from "./scheduling/Calendar";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
+import TabSwitcher from "../globals/TabSwitcher";
 
 const TherapistDashboard = () => {
   const dispatch = useDispatch();
@@ -978,33 +979,16 @@ const TherapistDashboard = () => {
               Retry
             </button>
           </div>
-        )}{" "}
-        <div className="view-selector">
-          <button
-            className={currentView === "today" ? "active" : ""}
-            onClick={() => setView("today")}
-          >
-            Today's Appointments
-          </button>
-          <button
-            className={currentView === "upcoming" ? "active" : ""}
-            onClick={() => setView("upcoming")}
-          >
-            Upcoming Appointments
-          </button>
-          <button
-            className={currentView === "all" ? "active" : ""}
-            onClick={() => setView("all")}
-          >
-            All My Appointments
-          </button>
-          <button
-            className={currentView === "calendar" ? "active" : ""}
-            onClick={() => setView("calendar")}
-          >
-            Calendar View
-          </button>
-        </div>
+        )}
+        <TabSwitcher
+          tabs={[
+            { label: "Today's Appointments", value: "today" },
+            { label: "Upcoming Appointments", value: "upcoming" },
+            { label: "All My Appointments", value: "all" },
+          ]}
+          activeTab={currentView}
+          onTabChange={setView}
+        />
         <div className="dashboard-content">
           {currentView === "today" && (
             <div className="todays-appointments">

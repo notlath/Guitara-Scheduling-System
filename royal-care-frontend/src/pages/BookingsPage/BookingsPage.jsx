@@ -9,6 +9,7 @@ import {
 } from "../../features/scheduling/schedulingSlice";
 import "./BookingsPage.css";
 import pageTitles from "../../constants/pageTitles";
+import TabSwitcher from "../../globals/TabSwitcher";
 
 const BookingsPage = () => {
   const dispatch = useDispatch();
@@ -116,52 +117,27 @@ const BookingsPage = () => {
           />
         </div>
 
-        <div className="filter-tabs">
-          <button
-            className={`filter-tab ${activeFilter === "all" ? "active" : ""}`}
-            onClick={() => setActiveFilter("all")}
-          >
-            All Bookings ({appointments?.length || 0})
-          </button>
-          <button
-            className={`filter-tab ${activeFilter === "today" ? "active" : ""}`}
-            onClick={() => setActiveFilter("today")}
-          >
-            Today ({todayAppointments?.length || 0})
-          </button>
-          <button
-            className={`filter-tab ${
-              activeFilter === "upcoming" ? "active" : ""
-            }`}
-            onClick={() => setActiveFilter("upcoming")}
-          >
-            Upcoming ({upcomingAppointments?.length || 0})
-          </button>
-          <button
-            className={`filter-tab ${
-              activeFilter === "pending" ? "active" : ""
-            }`}
-            onClick={() => setActiveFilter("pending")}
-          >
-            Pending
-          </button>
-          <button
-            className={`filter-tab ${
-              activeFilter === "confirmed" ? "active" : ""
-            }`}
-            onClick={() => setActiveFilter("confirmed")}
-          >
-            Confirmed
-          </button>
-          <button
-            className={`filter-tab ${
-              activeFilter === "completed" ? "active" : ""
-            }`}
-            onClick={() => setActiveFilter("completed")}
-          >
-            Completed
-          </button>
-        </div>
+        <TabSwitcher
+          tabs={[
+            {
+              label: `All Bookings (${appointments?.length || 0})`,
+              value: "all",
+            },
+            {
+              label: `Today (${todayAppointments?.length || 0})`,
+              value: "today",
+            },
+            {
+              label: `Upcoming (${upcomingAppointments?.length || 0})`,
+              value: "upcoming",
+            },
+            { label: "Pending", value: "pending" },
+            { label: "Confirmed", value: "confirmed" },
+            { label: "Completed", value: "completed" },
+          ]}
+          activeTab={activeFilter}
+          onTabChange={setActiveFilter}
+        />
       </div>
 
       <div className="bookings-content">

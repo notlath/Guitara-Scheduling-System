@@ -2060,7 +2060,7 @@ const OperatorDashboard = () => {
             </div>
           </div>
         </div>{" "}
-        <div className="view-selector">
+        <div className="tab-switcher">
           <button
             className={currentView === "rejected" ? "active" : ""}
             onClick={() => setView("rejected")}
@@ -2072,7 +2072,7 @@ const OperatorDashboard = () => {
             onClick={() => setView("pending")}
           >
             Pending Acceptance ({pendingAppointments.length})
-          </button>{" "}
+          </button>
           <button
             className={currentView === "timeouts" ? "active" : ""}
             onClick={() => setView("timeouts")}
@@ -2093,13 +2093,13 @@ const OperatorDashboard = () => {
             onClick={() => setView("all")}
           >
             All Appointments
-          </button>{" "}
+          </button>
           <button
             className={currentView === "notifications" ? "active" : ""}
             onClick={() => setView("notifications")}
           >
             Notifications
-          </button>{" "}
+          </button>
           <button
             className={currentView === "availability" ? "active" : ""}
             onClick={() => setView("availability")}
@@ -2130,7 +2130,7 @@ const OperatorDashboard = () => {
           >
             Pickup Requests ({pickupRequests.length})
           </button>
-        </div>{" "}
+        </div>
         <div
           className={`dashboard-content ${
             paymentModal.isOpen || reviewModal.isOpen ? "faded" : ""
@@ -2387,6 +2387,7 @@ const OperatorDashboard = () => {
         </div>
       )}
       {/* End of global-content wrapper closing div is above after modals */}
+      {/* Close PageLayout here */}
     </PageLayout>
   );
 };
