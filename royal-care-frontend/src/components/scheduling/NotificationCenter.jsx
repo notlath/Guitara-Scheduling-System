@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MdDelete,
   MdEventAvailable,
@@ -9,6 +9,7 @@ import {
   MdSchedule,
   MdUpdate,
 } from "react-icons/md";
+import { useSelector } from "react-redux";
 import styles from "../../styles/NotificationCenter.module.css";
 
 const NotificationCenter = ({ onClose }) => {
@@ -19,38 +20,19 @@ const NotificationCenter = ({ onClose }) => {
   const [openMenuId, setOpenMenuId] = useState(null);
   const notificationRef = useRef(null);
 
-  // Helper function to generate notification titles
-  const getNotificationTitle = (notification) => {
-    const type =
-      notification.notification_type || notification.type || "general";
-
-    switch (type) {
-      case "appointment_created":
-      case "appointment_confirmed":
-        return "Appointment Confirmed";
-      case "appointment_updated":
-        return "Appointment Updated";
-      case "appointment_cancelled":
-        return "Appointment Cancelled";
-      case "appointment_reminder":
-        return "Appointment Reminder";
-      case "appointment_rejected":
-        return "Appointment Rejected";
-      case "driver_assigned":
-        return "Driver Assigned";
-      case "transport_completed":
-        return "Transport Completed";
-      default:
-        return "Notification";
-    }
-  };
-
+  // Get user information for role-aware filtering
+  const { user } = useSelector((state) => state.auth);
   // Fetch notifications directly from API
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     console.log("🔄 Fetching notifications...");
+    console.log(
+      `👤 User role: ${user?.role || "Unknown"} - ${
+        user?.username || "Unknown user"
+      }`
+    );
 
     try {
       const token = localStorage.getItem("knoxToken");
@@ -114,7 +96,7 @@ const NotificationCenter = ({ onClose }) => {
         console.log(
           `✅ Loaded ${notificationsList.length} notifications (${
             data.unreadCount || 0
-          } unread)`
+          } unread) for ${user?.role || "unknown"} user`
         );
 
         // Log any warnings from backend
@@ -132,6 +114,19 @@ const NotificationCenter = ({ onClose }) => {
         notificationsList = [];
       }
 
+      // Log notification types for debugging role filtering
+      if (notificationsList.length > 0) {
+        const notificationTypes = notificationsList
+          .map((n) => n.notification_type || n.type)
+          .filter(Boolean);
+        const uniqueTypes = [...new Set(notificationTypes)];
+        console.log(
+          `🏷️ Notification types received for ${user?.role}: ${uniqueTypes.join(
+            ", "
+          )}`
+        );
+      }
+
       console.log(`🎯 Setting ${notificationsList.length} notifications`);
       setNotifications(notificationsList);
     } catch (err) {
@@ -143,7 +138,7 @@ const NotificationCenter = ({ onClose }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.role, user?.username]);
 
   // Mark notification as read
   const markAsRead = async (notificationId) => {
@@ -288,7 +283,7 @@ const NotificationCenter = ({ onClose }) => {
   // Fetch notifications on mount
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [fetchNotifications]);
 
   // Filter notifications
   const filteredNotifications = showAll

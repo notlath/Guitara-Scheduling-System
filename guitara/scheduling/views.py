@@ -2280,16 +2280,60 @@ class NotificationViewSet(viewsets.ModelViewSet):
     filterset_fields = ["is_read", "notification_type"]
 
     def get_queryset(self):
-        """Return notifications for the current user with error handling"""
+        """Return notifications for the current user with role-based filtering"""
         try:
-            # Use select_related to avoid N+1 queries and handle potential foreign key issues
+            # Base queryset for current user
             queryset = (
                 Notification.objects.filter(user=self.request.user)
                 .select_related("user", "appointment", "rejection")
                 .order_by("-created_at")
             )
+
+            # Apply role-based filtering
+            user_role = getattr(self.request.user, "role", None)
+
+            if user_role == "therapist":
+                # Therapists should only see notifications relevant to their role
+                # Exclude operator-only notifications
+                queryset = queryset.exclude(
+                    notification_type__in=[
+                        "appointment_auto_cancelled",  # This is sent only to operators
+                    ]
+                ).filter(
+                    # Only show notifications where the therapist is directly involved
+                    models.Q(appointment__therapist=self.request.user)
+                    | models.Q(appointment__therapists=self.request.user)
+                    | models.Q(appointment__isnull=True)  # General notifications
+                )
+
+                logger.info(
+                    f"Therapist {self.request.user.username}: Filtered to {queryset.count()} role-relevant notifications"
+                )
+
+            elif user_role == "driver":
+                # Drivers should only see notifications relevant to their role
+                # Exclude operator-only and therapist-only notifications
+                queryset = queryset.exclude(
+                    notification_type__in=[
+                        "appointment_auto_cancelled",  # Operator-only notifications
+                        "rejection_reviewed",  # Therapist-operator communication
+                        "therapist_disabled",  # Therapist-specific notifications
+                    ]
+                ).filter(
+                    # Only show notifications where the driver is directly involved
+                    models.Q(appointment__driver=self.request.user)
+                    | models.Q(appointment__isnull=True)  # General notifications
+                )
+
+                logger.info(
+                    f"Driver {self.request.user.username}: Filtered to {queryset.count()} role-relevant notifications"
+                )
+
+            # Operators see all notifications (no additional filtering)
+            # This maintains backward compatibility for operators
+
             logger.info(
-                f"NotificationViewSet: Found {queryset.count()} notifications for user {self.request.user.username}"
+                f"NotificationViewSet: Found {queryset.count()} notifications for {user_role} user {self.request.user.username}"
             )
             return queryset
 
