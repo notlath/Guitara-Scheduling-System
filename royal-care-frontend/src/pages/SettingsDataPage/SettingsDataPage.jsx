@@ -16,6 +16,7 @@ import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import styles from "./SettingsDataPage.module.css";
+import DataTable from "../../globals/DataTable";
 
 const TABS = [
   "Therapists",
@@ -725,41 +726,7 @@ const SettingsDataPage = () => {
             ))}
           </div>
         </div>
-        <div className={styles["data-table-wrapper"]}>
-          <table className={styles["data-table"]}>
-            <thead>
-              <tr className={styles["thead-row"]}>
-                {tableConfig.columns.map((col) => (
-                  <th key={col.key} scope="col">
-                    {col.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {tableData[activeTab] && tableData[activeTab].length > 0 ? (
-                tableData[activeTab].map((row, idx) => (
-                  <tr key={idx}>
-                    {tableConfig.columns.map((col) => (
-                      <td key={col.key}>
-                        {row[col.key] !== undefined ? row[col.key] : "-"}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={tableConfig.columns.length}
-                    className={styles["no-data"]}
-                  >
-                    No data available.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable columns={tableConfig.columns} data={tableData[activeTab]} />
       </div>
     </PageLayout>
   );
