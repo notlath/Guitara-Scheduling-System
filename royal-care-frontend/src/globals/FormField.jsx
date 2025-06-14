@@ -105,7 +105,10 @@ export function FormField({
       <div className="global-form-field-relative-wrapper">
         {/* Password field: show input and eye icon */}
         {as === "input" && type === "password" ? (
-          <div style={{ position: "relative", width: "100%" }}>
+          <div
+            className="passwordFieldWrapper"
+            style={{ position: "relative", width: "100%" }}
+          >
             <input
               className={inputClassName}
               type={showPassword ? "text" : "password"}

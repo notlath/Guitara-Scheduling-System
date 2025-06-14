@@ -87,7 +87,7 @@
 .errorMessage {
   color: var(--error);
   font-size: var(--font-size-base);
-  margin: 0 auto;
+  /* margin: 0 auto; */
   margin-bottom: var(--spacing-mm);
   background: var(--background);
   border: 1px solid var(--error);
@@ -96,6 +96,8 @@
   /* font-weight: 400; */
   word-break: break-word;
   white-space: pre-line;
+  width: 100%;
+  text-align: center;
 }
 
 .statusText {

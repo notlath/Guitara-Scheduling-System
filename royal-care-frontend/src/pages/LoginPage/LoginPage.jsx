@@ -224,7 +224,7 @@ function LoginPage() {
 
   const header = "Good to See You!";
   const errorMessage = error ? (
-    <p className={"global-form-field-error"}>
+    <p className={`${styles.errorMessage}`}>
       {error === "Login failed. Please try again."
         ? "Login failed. Please check your credentials and try again."
         : error === "An unexpected error occurred"

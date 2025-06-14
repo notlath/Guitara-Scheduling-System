@@ -100,7 +100,8 @@
   width: 32px;
 }
 
-.global-form-field-input[type="password"],
-.global-form-field-input[type="text"] {
+/* Only apply right padding to password fields (even when type is text) inside the password field wrapper */
+.passwordFieldWrapper .global-form-field-input[type="password"],
+.passwordFieldWrapper .global-form-field-input[type="text"] {
   padding-right: 36px !important;
 }
