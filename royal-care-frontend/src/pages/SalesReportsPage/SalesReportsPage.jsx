@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchAppointments } from "../../features/scheduling/schedulingSlice";
-import PageLayout from "../../globals/PageLayout";
-import LayoutRow from "../../globals/LayoutRow";
 import pageTitles from "../../constants/pageTitles";
+import { fetchAppointments } from "../../features/scheduling/schedulingSlice";
+import LayoutRow from "../../globals/LayoutRow";
+import PageLayout from "../../globals/PageLayout";
 import styles from "./SalesReportsPage.module.css";
 // Export dependencies
-import { saveAs } from 'file-saver';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { saveAs } from "file-saver";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 const SalesReportsPage = () => {
   const dispatch = useDispatch();
@@ -83,14 +83,17 @@ const SalesReportsPage = () => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showExportDropdown && !event.target.closest(`.${styles.exportDropdown}`)) {
+      if (
+        showExportDropdown &&
+        !event.target.closest(`.${styles.exportDropdown}`)
+      ) {
         setShowExportDropdown(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showExportDropdown]);
 
@@ -793,205 +796,289 @@ const SalesReportsPage = () => {
   // Export functions
   const exportToCSV = () => {
     let data = [];
-    let filename = '';
+    let filename = "";
 
     if (currentView === "Total Revenue") {
       const { items } = revenueData;
-      data = items.map(item => ({
+      data = items.map((item) => ({
         Date: item.date || "N/A",
-        'Client Name': item.clientName || "Unknown Client",
+        "Client Name": item.clientName || "Unknown Client",
         Revenue: `₱${item.revenue}`,
-        [`${currentPeriod === "Daily" ? "Time" : currentPeriod === "Weekly" ? "Day" : "Week Range"}`]: 
-          currentPeriod === "Daily" ? item.time : 
-          currentPeriod === "Weekly" ? item.day : 
-          item.weekRange || "N/A"
+        [`${
+          currentPeriod === "Daily"
+            ? "Time"
+            : currentPeriod === "Weekly"
+            ? "Day"
+            : "Week Range"
+        }`]:
+          currentPeriod === "Daily"
+            ? item.time
+            : currentPeriod === "Weekly"
+            ? item.day
+            : item.weekRange || "N/A",
       }));
-      filename = `total_revenue_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
+      filename = `total_revenue_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
     } else if (currentView === "Commission") {
       const { items } = commissionData;
-      data = items.map(item => ({
+      data = items.map((item) => ({
         Date: item.date || "N/A",
         Therapist: item.therapistName || "Unknown Therapist",
         Commission: `₱${item.commission}`,
-        [`${currentPeriod === "Daily" ? "Time" : currentPeriod === "Weekly" ? "Day" : "Week Range"}`]: 
-          currentPeriod === "Daily" ? item.time : 
-          currentPeriod === "Weekly" ? item.day : 
-          item.weekRange || "N/A"
+        [`${
+          currentPeriod === "Daily"
+            ? "Time"
+            : currentPeriod === "Weekly"
+            ? "Day"
+            : "Week Range"
+        }`]:
+          currentPeriod === "Daily"
+            ? item.time
+            : currentPeriod === "Weekly"
+            ? item.day
+            : item.weekRange || "N/A",
       }));
-      filename = `commission_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
+      filename = `commission_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
     } else if (currentView === "Customer List") {
       const { items } = customerListData;
-      data = items.map(item => ({
+      data = items.map((item) => ({
         Name: item.clientName,
         Address: item.address,
-        'Contact Number': item.contactNumber,
-        'Number of Appointments': item.appointmentCount
+        "Contact Number": item.contactNumber,
+        "Number of Appointments": item.appointmentCount,
       }));
-      filename = `customer_list_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
+      filename = `customer_list_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
     } else if (currentView === "Services") {
       const { items } = servicesData;
-      data = items.map(item => ({
+      data = items.map((item) => ({
         Services: item.serviceName,
-        'Number of Appointments': item.appointmentCount
+        "Number of Appointments": item.appointmentCount,
       }));
-      filename = `services_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
+      filename = `services_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
     }
 
     if (data.length === 0) {
-      alert('No data available to export');
+      alert("No data available to export");
       return;
     }
 
     // Convert to CSV
     const csvContent = convertToCSV(data);
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     saveAs(blob, filename);
   };
 
   const convertToCSV = (data) => {
-    if (data.length === 0) return '';
-    
+    if (data.length === 0) return "";
+
     const headers = Object.keys(data[0]);
     const csvRows = [
-      headers.join(','),
-      ...data.map(row => 
-        headers.map(header => {
-          const value = row[header];
-          // Escape commas and quotes in CSV
-          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-            return `"${value.replace(/"/g, '""')}"`;
-          }
-          return value;
-        }).join(',')
-      )
+      headers.join(","),
+      ...data.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            // Escape commas and quotes in CSV
+            if (
+              typeof value === "string" &&
+              (value.includes(",") || value.includes('"'))
+            ) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          })
+          .join(",")
+      ),
     ];
-    
-    return csvRows.join('\n');
+
+    return csvRows.join("\n");
   };
 
   const exportToExcel = () => {
     let data = [];
-    let filename = '';
+    let filename = "";
 
     if (currentView === "Total Revenue") {
       const { items } = revenueData;
-      data = items.map(item => ({
+      data = items.map((item) => ({
         Date: item.date || "N/A",
-        'Client Name': item.clientName || "Unknown Client",
+        "Client Name": item.clientName || "Unknown Client",
         Revenue: `₱${item.revenue}`,
-        [`${currentPeriod === "Daily" ? "Time" : currentPeriod === "Weekly" ? "Day" : "Week Range"}`]: 
-          currentPeriod === "Daily" ? item.time : 
-          currentPeriod === "Weekly" ? item.day : 
-          item.weekRange || "N/A"
+        [`${
+          currentPeriod === "Daily"
+            ? "Time"
+            : currentPeriod === "Weekly"
+            ? "Day"
+            : "Week Range"
+        }`]:
+          currentPeriod === "Daily"
+            ? item.time
+            : currentPeriod === "Weekly"
+            ? item.day
+            : item.weekRange || "N/A",
       }));
-      filename = `total_revenue_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      filename = `total_revenue_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.xlsx`;
     } else if (currentView === "Commission") {
       const { items } = commissionData;
-      data = items.map(item => ({
+      data = items.map((item) => ({
         Date: item.date || "N/A",
         Therapist: item.therapistName || "Unknown Therapist",
         Commission: `₱${item.commission}`,
-        [`${currentPeriod === "Daily" ? "Time" : currentPeriod === "Weekly" ? "Day" : "Week Range"}`]: 
-          currentPeriod === "Daily" ? item.time : 
-          currentPeriod === "Weekly" ? item.day : 
-          item.weekRange || "N/A"
+        [`${
+          currentPeriod === "Daily"
+            ? "Time"
+            : currentPeriod === "Weekly"
+            ? "Day"
+            : "Week Range"
+        }`]:
+          currentPeriod === "Daily"
+            ? item.time
+            : currentPeriod === "Weekly"
+            ? item.day
+            : item.weekRange || "N/A",
       }));
-      filename = `commission_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      filename = `commission_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.xlsx`;
     } else if (currentView === "Customer List") {
       const { items } = customerListData;
-      data = items.map(item => ({
+      data = items.map((item) => ({
         Name: item.clientName,
         Address: item.address,
-        'Contact Number': item.contactNumber,
-        'Number of Appointments': item.appointmentCount
+        "Contact Number": item.contactNumber,
+        "Number of Appointments": item.appointmentCount,
       }));
-      filename = `customer_list_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      filename = `customer_list_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.xlsx`;
     } else if (currentView === "Services") {
       const { items } = servicesData;
-      data = items.map(item => ({
+      data = items.map((item) => ({
         Services: item.serviceName,
-        'Number of Appointments': item.appointmentCount
+        "Number of Appointments": item.appointmentCount,
       }));
-      filename = `services_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      filename = `services_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.xlsx`;
     }
 
     if (data.length === 0) {
-      alert('No data available to export');
+      alert("No data available to export");
       return;
     }
 
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, `${currentView} - ${currentPeriod}`);
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      `${currentView} - ${currentPeriod}`
+    );
     XLSX.writeFile(workbook, filename);
   };
 
   const exportToPDF = () => {
     let data = [];
-    let filename = '';
+    let filename = "";
     let headers = [];
 
     if (currentView === "Total Revenue") {
       const { items } = revenueData;
-      headers = ['Date', 'Client Name', 'Revenue', currentPeriod === "Daily" ? "Time" : currentPeriod === "Weekly" ? "Day" : "Week Range"];
-      data = items.map(item => [
+      headers = [
+        "Date",
+        "Client Name",
+        "Revenue",
+        currentPeriod === "Daily"
+          ? "Time"
+          : currentPeriod === "Weekly"
+          ? "Day"
+          : "Week Range",
+      ];
+      data = items.map((item) => [
         item.date || "N/A",
         item.clientName || "Unknown Client",
         `₱${item.revenue}`,
-        currentPeriod === "Daily" ? (item.time || "N/A") : 
-        currentPeriod === "Weekly" ? (item.day || "N/A") : 
-        (item.weekRange || "N/A")
+        currentPeriod === "Daily"
+          ? item.time || "N/A"
+          : currentPeriod === "Weekly"
+          ? item.day || "N/A"
+          : item.weekRange || "N/A",
       ]);
-      filename = `total_revenue_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
+      filename = `total_revenue_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
     } else if (currentView === "Commission") {
       const { items } = commissionData;
-      headers = ['Date', 'Therapist', 'Commission', currentPeriod === "Daily" ? "Time" : currentPeriod === "Weekly" ? "Day" : "Week Range"];
-      data = items.map(item => [
+      headers = [
+        "Date",
+        "Therapist",
+        "Commission",
+        currentPeriod === "Daily"
+          ? "Time"
+          : currentPeriod === "Weekly"
+          ? "Day"
+          : "Week Range",
+      ];
+      data = items.map((item) => [
         item.date || "N/A",
         item.therapistName || "Unknown Therapist",
         `₱${item.commission}`,
-        currentPeriod === "Daily" ? (item.time || "N/A") : 
-        currentPeriod === "Weekly" ? (item.day || "N/A") : 
-        (item.weekRange || "N/A")
+        currentPeriod === "Daily"
+          ? item.time || "N/A"
+          : currentPeriod === "Weekly"
+          ? item.day || "N/A"
+          : item.weekRange || "N/A",
       ]);
-      filename = `commission_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
+      filename = `commission_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
     } else if (currentView === "Customer List") {
       const { items } = customerListData;
-      headers = ['Name', 'Address', 'Contact Number', 'Number of Appointments'];
-      data = items.map(item => [
+      headers = ["Name", "Address", "Contact Number", "Number of Appointments"];
+      data = items.map((item) => [
         item.clientName,
         item.address,
         item.contactNumber,
-        item.appointmentCount
+        item.appointmentCount,
       ]);
-      filename = `customer_list_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
+      filename = `customer_list_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
     } else if (currentView === "Services") {
       const { items } = servicesData;
-      headers = ['Services', 'Number of Appointments'];
-      data = items.map(item => [
-        item.serviceName,
-        item.appointmentCount
-      ]);
-      filename = `services_${currentPeriod.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
+      headers = ["Services", "Number of Appointments"];
+      data = items.map((item) => [item.serviceName, item.appointmentCount]);
+      filename = `services_${currentPeriod.toLowerCase()}_${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
     }
 
     if (data.length === 0) {
-      alert('No data available to export');
+      alert("No data available to export");
       return;
     }
 
     const doc = new jsPDF();
-    
+
     // Add title
     doc.setFontSize(16);
     doc.text(`${currentView} - ${currentPeriod}`, 20, 20);
-    
+
     // Add generation date
     doc.setFontSize(10);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
-    
-    // Add table
-    doc.autoTable({
+
+    // Add table using autoTable
+    autoTable(doc, {
       head: [headers],
       body: data,
       startY: 40,
@@ -1047,17 +1134,27 @@ const SalesReportsPage = () => {
       <div>
         {currentView === "Commission" && (
           <div className={styles.dataTableWrapper}>
-            <div style={{ 
-              padding: 'var(--spacing-md)', 
-              borderBottom: '1px solid var(--background-100)',
-              background: 'var(--background-50)'
-            }}>
-              <h3 style={{ margin: 0, marginBottom: 'var(--spacing-xs)' }}>Commission Report - {currentPeriod}</h3>
-              <p style={{ margin: 0, color: 'var(--text-500)', fontSize: 'var(--font-size-sm)' }}>
+            <div
+              style={{
+                padding: "var(--spacing-md)",
+                borderBottom: "1px solid var(--background-100)",
+                background: "var(--background-50)",
+              }}
+            >
+              <h3 style={{ margin: 0, marginBottom: "var(--spacing-xs)" }}>
+                Commission Report - {currentPeriod}
+              </h3>
+              <p
+                style={{
+                  margin: 0,
+                  color: "var(--text-500)",
+                  fontSize: "var(--font-size-sm)",
+                }}
+              >
                 Total Commission: ₱{commissionData.currentTotal.toFixed(2)}
               </p>
             </div>
-            
+
             {commissionData.items.length > 0 ? (
               <table className={styles.dataTable}>
                 <thead>
@@ -1065,7 +1162,13 @@ const SalesReportsPage = () => {
                     <th>Date</th>
                     <th>Therapist</th>
                     <th>Commission</th>
-                    <th>{currentPeriod === "Daily" ? "Time" : currentPeriod === "Weekly" ? "Day" : "Week Range"}</th>
+                    <th>
+                      {currentPeriod === "Daily"
+                        ? "Time"
+                        : currentPeriod === "Weekly"
+                        ? "Day"
+                        : "Week Range"}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1074,30 +1177,48 @@ const SalesReportsPage = () => {
                       <td>{item.date || "N/A"}</td>
                       <td>{item.therapistName}</td>
                       <td>₱{item.commission}</td>
-                      <td>{currentPeriod === "Daily" ? item.time : currentPeriod === "Weekly" ? item.day : item.weekRange || "N/A"}</td>
+                      <td>
+                        {currentPeriod === "Daily"
+                          ? item.time
+                          : currentPeriod === "Weekly"
+                          ? item.day
+                          : item.weekRange || "N/A"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <div className={styles.noData}>No commission data available for {currentPeriod.toLowerCase()}</div>
+              <div className={styles.noData}>
+                No commission data available for {currentPeriod.toLowerCase()}
+              </div>
             )}
           </div>
         )}
-        
+
         {currentView === "Total Revenue" && (
           <div className={styles.dataTableWrapper}>
-            <div style={{ 
-              padding: 'var(--spacing-md)', 
-              borderBottom: '1px solid var(--background-100)',
-              background: 'var(--background-50)'
-            }}>
-              <h3 style={{ margin: 0, marginBottom: 'var(--spacing-xs)' }}>Total Revenue Report - {currentPeriod}</h3>
-              <p style={{ margin: 0, color: 'var(--text-500)', fontSize: 'var(--font-size-sm)' }}>
+            <div
+              style={{
+                padding: "var(--spacing-md)",
+                borderBottom: "1px solid var(--background-100)",
+                background: "var(--background-50)",
+              }}
+            >
+              <h3 style={{ margin: 0, marginBottom: "var(--spacing-xs)" }}>
+                Total Revenue Report - {currentPeriod}
+              </h3>
+              <p
+                style={{
+                  margin: 0,
+                  color: "var(--text-500)",
+                  fontSize: "var(--font-size-sm)",
+                }}
+              >
                 Total Revenue: ₱{revenueData.currentTotal.toFixed(2)}
               </p>
             </div>
-            
+
             {revenueData.items.length > 0 ? (
               <table className={styles.dataTable}>
                 <thead>
@@ -1105,7 +1226,13 @@ const SalesReportsPage = () => {
                     <th>Date</th>
                     <th>Client Name</th>
                     <th>Revenue</th>
-                    <th>{currentPeriod === "Daily" ? "Time" : currentPeriod === "Weekly" ? "Day" : "Week Range"}</th>
+                    <th>
+                      {currentPeriod === "Daily"
+                        ? "Time"
+                        : currentPeriod === "Weekly"
+                        ? "Day"
+                        : "Week Range"}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1114,30 +1241,48 @@ const SalesReportsPage = () => {
                       <td>{item.date || "N/A"}</td>
                       <td>{item.clientName}</td>
                       <td>₱{item.revenue}</td>
-                      <td>{currentPeriod === "Daily" ? item.time : currentPeriod === "Weekly" ? item.day : item.weekRange || "N/A"}</td>
+                      <td>
+                        {currentPeriod === "Daily"
+                          ? item.time
+                          : currentPeriod === "Weekly"
+                          ? item.day
+                          : item.weekRange || "N/A"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <div className={styles.noData}>No revenue data available for {currentPeriod.toLowerCase()}</div>
+              <div className={styles.noData}>
+                No revenue data available for {currentPeriod.toLowerCase()}
+              </div>
             )}
           </div>
         )}
-        
+
         {currentView === "Customer List" && (
           <div className={styles.dataTableWrapper}>
-            <div style={{ 
-              padding: 'var(--spacing-md)', 
-              borderBottom: '1px solid var(--background-100)',
-              background: 'var(--background-50)'
-            }}>
-              <h3 style={{ margin: 0, marginBottom: 'var(--spacing-xs)' }}>Customer List - {currentPeriod}</h3>
-              <p style={{ margin: 0, color: 'var(--text-500)', fontSize: 'var(--font-size-sm)' }}>
+            <div
+              style={{
+                padding: "var(--spacing-md)",
+                borderBottom: "1px solid var(--background-100)",
+                background: "var(--background-50)",
+              }}
+            >
+              <h3 style={{ margin: 0, marginBottom: "var(--spacing-xs)" }}>
+                Customer List - {currentPeriod}
+              </h3>
+              <p
+                style={{
+                  margin: 0,
+                  color: "var(--text-500)",
+                  fontSize: "var(--font-size-sm)",
+                }}
+              >
                 Total Customers: {customerListData.items.length}
               </p>
             </div>
-            
+
             {customerListData.items.length > 0 ? (
               <table className={styles.dataTable}>
                 <thead>
@@ -1160,24 +1305,36 @@ const SalesReportsPage = () => {
                 </tbody>
               </table>
             ) : (
-              <div className={styles.noData}>No customer data available for {currentPeriod.toLowerCase()}</div>
+              <div className={styles.noData}>
+                No customer data available for {currentPeriod.toLowerCase()}
+              </div>
             )}
           </div>
         )}
-        
+
         {currentView === "Services" && (
           <div className={styles.dataTableWrapper}>
-            <div style={{ 
-              padding: 'var(--spacing-md)', 
-              borderBottom: '1px solid var(--background-100)',
-              background: 'var(--background-50)'
-            }}>
-              <h3 style={{ margin: 0, marginBottom: 'var(--spacing-xs)' }}>Services Report - {currentPeriod}</h3>
-              <p style={{ margin: 0, color: 'var(--text-500)', fontSize: 'var(--font-size-sm)' }}>
+            <div
+              style={{
+                padding: "var(--spacing-md)",
+                borderBottom: "1px solid var(--background-100)",
+                background: "var(--background-50)",
+              }}
+            >
+              <h3 style={{ margin: 0, marginBottom: "var(--spacing-xs)" }}>
+                Services Report - {currentPeriod}
+              </h3>
+              <p
+                style={{
+                  margin: 0,
+                  color: "var(--text-500)",
+                  fontSize: "var(--font-size-sm)",
+                }}
+              >
                 Total Services: {servicesData.items.length}
               </p>
             </div>
-            
+
             {servicesData.items.length > 0 ? (
               <table className={styles.dataTable}>
                 <thead>
@@ -1196,7 +1353,9 @@ const SalesReportsPage = () => {
                 </tbody>
               </table>
             ) : (
-              <div className={styles.noData}>No services data available for {currentPeriod.toLowerCase()}</div>
+              <div className={styles.noData}>
+                No services data available for {currentPeriod.toLowerCase()}
+              </div>
             )}
           </div>
         )}
@@ -1204,7 +1363,7 @@ const SalesReportsPage = () => {
 
       <div className={styles.exportContainer}>
         <div className={styles.exportDropdown}>
-          <button 
+          <button
             className={styles.exportButton}
             onClick={() => setShowExportDropdown(!showExportDropdown)}
           >
@@ -1212,7 +1371,7 @@ const SalesReportsPage = () => {
           </button>
           {showExportDropdown && (
             <div className={styles.dropdownMenu}>
-              <button 
+              <button
                 className={styles.dropdownItem}
                 onClick={() => {
                   exportToCSV();
@@ -1221,7 +1380,7 @@ const SalesReportsPage = () => {
               >
                 📄 Export to CSV
               </button>
-              <button 
+              <button
                 className={styles.dropdownItem}
                 onClick={() => {
                   exportToExcel();
@@ -1230,7 +1389,7 @@ const SalesReportsPage = () => {
               >
                 📊 Export to Excel
               </button>
-              <button 
+              <button
                 className={styles.dropdownItem}
                 onClick={() => {
                   exportToPDF();
