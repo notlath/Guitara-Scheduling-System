@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
 import { useSchedulingDashboardData } from "../../hooks/useDashboardIntegration";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
-import { PageLoadingState } from "../common/LoadingComponents";
+import { PageLoadingState, SkeletonLoader } from "../common/LoadingComponents";
 
 import { MdAdd, MdNotifications } from "react-icons/md";
 import LayoutRow from "../../globals/LayoutRow";
