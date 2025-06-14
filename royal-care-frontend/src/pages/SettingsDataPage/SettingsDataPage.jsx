@@ -17,6 +17,7 @@ import "../../styles/Settings.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import styles from "./SettingsDataPage.module.css";
 import DataTable from "../../globals/DataTable";
+import Select from "react-select";
 
 const TABS = [
   "Therapists",
@@ -251,10 +252,10 @@ const SettingsDataPage = () => {
     });
   };
 
-  const handleMultiSelectChange = (e) => {
-    const options = Array.from(e.target.selectedOptions, (opt) => opt.value);
-    setFormData((prev) => ({ ...prev, materials: options }));
-  };
+  // const handleMultiSelectChange = (e) => {
+  //   const options = Array.from(e.target.selectedOptions, (opt) => opt.value);
+  //   setFormData((prev) => ({ ...prev, materials: options }));
+  // };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -577,21 +578,37 @@ const SettingsDataPage = () => {
               value={formData.price || ""}
               onChange={handleInputChange}
             />
-            <FormField
-              as="select"
-              name="materials"
-              label="Materials"
-              value={formData.materials || []}
-              onChange={handleMultiSelectChange}
-              multiple
-              required={false}
-            >
-              {MATERIAL_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </FormField>
+            <div className="global-form-field-group">
+              <div className="global-form-field-label-row">
+                <label
+                  className="global-form-field-label"
+                  htmlFor="materials-select"
+                >
+                  Materials
+                </label>
+              </div>
+              <Select
+                id="materials-select"
+                isMulti
+                options={MATERIAL_OPTIONS.map((opt) => ({
+                  label: opt,
+                  value: opt,
+                }))}
+                value={(formData.materials || []).map((mat) => ({
+                  label: mat,
+                  value: mat,
+                }))}
+                onChange={(selected) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    materials: selected ? selected.map((s) => s.value) : [],
+                  }));
+                }}
+                placeholder="Select materials..."
+                classNamePrefix="react-select"
+                styles={{ menu: (base) => ({ ...base, zIndex: 9999 }) }}
+              />
+            </div>
           </>
         );
       case "Materials":
