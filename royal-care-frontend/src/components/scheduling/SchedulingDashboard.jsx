@@ -9,6 +9,7 @@ import { PageLoadingState, SkeletonLoader } from "../common/LoadingComponents";
 import { MdAdd, MdNotifications } from "react-icons/md";
 import LayoutRow from "../../globals/LayoutRow";
 import PageLayout from "../../globals/PageLayout";
+import TabSwitcher from "../../globals/TabSwitcher";
 import "../../globals/TabSwitcher.css";
 import "../../styles/SchedulingDashboard.css";
 import ErrorBoundary from "../common/ErrorBoundary";
@@ -317,38 +318,16 @@ const SchedulingDashboard = () => {
             )}
           </div>
         </LayoutRow>
-        <div className="view-selector">
-          <button
-            className={currentView === "calendar" ? "active" : ""}
-            onClick={() => setView("calendar")}
-          >
-            Month View
-          </button>
-          <button
-            className={currentView === "week" ? "active" : ""}
-            onClick={() => setView("week")}
-          >
-            Week View
-          </button>
-          <button
-            className={currentView === "today" ? "active" : ""}
-            onClick={() => setView("today")}
-          >
-            Today's Bookings
-          </button>
-          <button
-            className={currentView === "list" ? "active" : ""}
-            onClick={() => setView("list")}
-          >
-            Upcoming Bookings
-          </button>
-          <button
-            className={currentView === "availability" ? "active" : ""}
-            onClick={() => setView("availability")}
-          >
-            Manage Availability
-          </button>
-        </div>
+        <TabSwitcher
+          tabs={[
+            { label: "Month View", value: "calendar" },
+            { label: "Week View", value: "week" },
+            { label: "Today's Bookings", value: "today" },
+            { label: "Upcoming Bookings", value: "list" },
+          ]}
+          activeTab={currentView}
+          onTabChange={setView}
+        />
 
         {loading && (
           <PageLoadingState

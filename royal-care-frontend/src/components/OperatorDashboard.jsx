@@ -1856,6 +1856,7 @@ const OperatorDashboard = () => {
               <span className={`status ${request.status}`}>
                 {request.status}
               </span>
+              </span>
             </div>
             <div className="pickup-details">
               <div className="detail-row">
@@ -2060,14 +2061,13 @@ const OperatorDashboard = () => {
             </div>
           </div>
         </div>{" "}
-        <div className="view-selector">
-          <button
-            className={currentView === "rejected" ? "active" : ""}
-            onClick={() => setView("rejected")}
-          >
-            Pending Reviews ({rejectedAppointments.length})
-          </button>
-          <button
+        <TabSwitcher
+          tabs={[
+            { label: `Pending Reviews (${rejectedAppointments.length})`, value: "rejected" },
+            { label: `Pending Acceptance (${pendingAppointments.length})`, value: "pending" },
+            { label: `Timeouts (${overdueAppointments.length + approachingDeadlineAppointments.length})`, value: "timeouts" },
+            { label: `Payment Verification (${awaitingPaymentAppointments.length})`, value: "payment_verification" },
+            { label: "All Appointments", value: "all" },
             className={currentView === "pending" ? "active" : ""}
             onClick={() => setView("pending")}
           >

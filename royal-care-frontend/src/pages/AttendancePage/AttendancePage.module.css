@@ -1,0 +1,219 @@
+/* AttendancePage.module.css - migrated from AttendancePage.css */
+.attendance-page {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.attendance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.attendance-header h1 {
+  color: #2c3e50;
+  margin: 0;
+  font-size: 2.5rem;
+}
+
+.attendance-stats {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  padding: 20px 30px;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid #e0e0e0;
+}
+
+.stat-card.present {
+  background: #d4edda;
+  color: #155724;
+  border-color: #b7e4c7;
+}
+
+.stat-card.absent {
+  background: #f8d7da;
+  color: #721c24;
+  border-color: #f5c6cb;
+}
+
+.stat-card.late {
+  background: #fff3cd;
+  color: #856404;
+  border-color: #ffeeba;
+}
+
+.stat-card.leave {
+  background: #e2e3e5;
+  color: #383d41;
+  border-color: #d6d8db;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 1rem;
+  color: #7f8c8d;
+}
+
+.attendance-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, border 0.2s;
+}
+
+.filter-btn.active {
+  background: #2c3e50;
+  color: #fff;
+  border: 1.5px solid #2c3e50;
+}
+
+.attendance-content {
+  margin-bottom: 32px;
+}
+
+.attendance-table-container {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  padding: 0 0 20px 0;
+}
+
+.attendance-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.attendance-table th,
+.attendance-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.attendance-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.attendance-table tr:hover {
+  background-color: #f8f9fa;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-present {
+  background-color: #b7e4c7;
+  color: #155724;
+}
+
+.status-absent {
+  background-color: #f5c6cb;
+  color: #721c24;
+}
+
+.status-late {
+  background-color: #ffeeba;
+  color: #856404;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 40px;
+  font-size: 1.1rem;
+  color: #7f8c8d;
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+  color: #7f8c8d;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #7f8c8d;
+}
+
+.attendance-summary {
+  margin-top: 32px;
+}
+
+.summary-section {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  padding: 24px 32px;
+  margin-bottom: 24px;
+}
+
+.summary-grid {
+  display: flex;
+  gap: 32px;
+  margin-top: 16px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.summary-label {
+  color: #7f8c8d;
+  font-size: 1rem;
+}
+
+.summary-value {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.demo-notice {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 18px 24px;
+  color: #7f8c8d;
+  font-size: 0.98rem;
+}

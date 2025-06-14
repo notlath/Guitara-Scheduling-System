@@ -18,6 +18,7 @@ import { sanitizeFormInput } from "../../utils/formSanitization";
 import styles from "./SettingsDataPage.module.css";
 import DataTable from "../../globals/DataTable";
 import Select from "react-select";
+import TabSwitcher from "../../globals/TabSwitcher";
 
 const TABS = [
   "Therapists",
@@ -731,17 +732,11 @@ const SettingsDataPage = () => {
               </button>
             </div>
           </LayoutRow>
-          <div className="tab-switcher">
-            {TABS.map((tab) => (
-              <button
-                key={tab}
-                className={"tab-btn" + (activeTab === tab ? " active" : "")}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          <TabSwitcher
+            tabs={TABS.map((tab) => ({ label: tab, value: tab }))}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
         </div>
         <DataTable columns={tableConfig.columns} data={tableData[activeTab]} />
       </div>

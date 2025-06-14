@@ -4,6 +4,7 @@ import pageTitles from "../../constants/pageTitles";
 import { fetchAppointments } from "../../features/scheduling/schedulingSlice";
 import LayoutRow from "../../globals/LayoutRow";
 import PageLayout from "../../globals/PageLayout";
+import TabSwitcher from "../../globals/TabSwitcher";
 import styles from "./SalesReportsPage.module.css";
 // Export dependencies
 import { saveAs } from "file-saver";
@@ -1101,34 +1102,22 @@ const SalesReportsPage = () => {
   return (
     <PageLayout>
       <LayoutRow title="Sales & Reports Dashboard">
-        <div className="view-selector">
-          {views.map((view) => (
-            <button
-              key={view}
-              className={`view-btn ${currentView === view ? "active" : ""}`}
-              onClick={() => setCurrentView(view)}
-            >
-              {view}
-            </button>
-          ))}
-        </div>
+        <TabSwitcher
+          tabs={views.map((view) => ({ label: view, value: view }))}
+          activeTab={currentView}
+          onTabChange={setCurrentView}
+        />
       </LayoutRow>
 
       <div
         className="view-selector"
         style={{ marginBottom: "var(--spacing-md)" }}
       >
-        {periods.map((period) => (
-          <button
-            key={period}
-            className={`${styles.periodBtn} ${
-              currentPeriod === period ? "active" : ""
-            }`}
-            onClick={() => setCurrentPeriod(period)}
-          >
-            {period}
-          </button>
-        ))}
+        <TabSwitcher
+          tabs={periods.map((period) => ({ label: period, value: period }))}
+          activeTab={currentPeriod}
+          onTabChange={setCurrentPeriod}
+        />
       </div>
 
       <div>

@@ -22,6 +22,7 @@ import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css"; // Reuse therapist styles for consistency
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
+import TabSwitcher from "../globals/TabSwitcher";
 
 // Enhanced driver status states for dynamic coordination
 const DRIVER_STATUS_STATES = {
@@ -1645,26 +1646,15 @@ const DriverDashboard = () => {
             </div>
           </div>
         )}
-        <div className="view-selector">
-          <button
-            className={currentView === "today" ? "active" : ""}
-            onClick={() => setView("today")}
-          >
-            Today's Transports
-          </button>
-          <button
-            className={currentView === "upcoming" ? "active" : ""}
-            onClick={() => setView("upcoming")}
-          >
-            Upcoming Transports
-          </button>
-          <button
-            className={currentView === "all" ? "active" : ""}
-            onClick={() => setView("all")}
-          >
-            All My Transports
-          </button>
-        </div>
+        <TabSwitcher
+          tabs={[
+            { label: "Today's Transports", value: "today" },
+            { label: "Upcoming Transports", value: "upcoming" },
+            { label: "All My Transports", value: "all" },
+          ]}
+          activeTab={currentView}
+          onTabChange={setView}
+        />
         <div className="dashboard-content">
           {currentView === "today" && (
             <div className="todays-appointments">
