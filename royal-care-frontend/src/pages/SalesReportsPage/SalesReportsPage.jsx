@@ -17,6 +17,58 @@ const SalesReportsPage = () => {
   const views = ["Total Revenue", "Commission", "Customer List", "Services"];
   const periods = ["Daily", "Weekly", "Monthly"];
 
+  // Helper functions to get actual date ranges
+  const getDateRange = (period) => {
+    const now = new Date();
+
+    if (period === "Daily") {
+      return {
+        start: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+        end: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
+        label: now.toLocaleDateString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }),
+      };
+    } else if (period === "Weekly") {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      return {
+        start: startOfWeek,
+        end: endOfWeek,
+        label: `${startOfWeek.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })} - ${endOfWeek.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })}`,
+      };
+    } else if (period === "Monthly") {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      endOfMonth.setHours(23, 59, 59, 999);
+
+      return {
+        start: startOfMonth,
+        end: endOfMonth,
+        label: now.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+        }),
+      };
+    }
+  };
+
   useEffect(() => {
     document.title = pageTitles.salesReports;
     // Fetch appointments data for calculations
@@ -242,6 +294,7 @@ const SalesReportsPage = () => {
     // Group by therapist for weekly and monthly views
     let groupedItems = formattedItems;
     if (currentPeriod === "Weekly" || currentPeriod === "Monthly") {
+      const dateRange = getDateRange(currentPeriod);
       const grouped = {};
       formattedItems.forEach((item) => {
         if (!grouped[item.therapistName]) {
@@ -249,9 +302,10 @@ const SalesReportsPage = () => {
             therapistName: item.therapistName,
             commission: 0,
             appointments: [],
-            date: currentPeriod === "Weekly" ? "This Week" : "This Month", // Show period instead of specific date
-            day: currentPeriod === "Weekly" ? "This Week" : undefined,
-            weekRange: currentPeriod === "Monthly" ? "This Month" : undefined,
+            date: dateRange.label, // Show actual date range instead of generic period
+            day: currentPeriod === "Weekly" ? dateRange.label : undefined,
+            weekRange:
+              currentPeriod === "Monthly" ? dateRange.label : undefined,
           };
         }
         grouped[item.therapistName].commission += parseFloat(item.commission);
@@ -376,6 +430,7 @@ const SalesReportsPage = () => {
         date: new Date(apt.date).toLocaleDateString(),
       }));
     } else if (currentPeriod === "Weekly") {
+      const dateRange = getDateRange(currentPeriod);
       const groupedByClient = {};
       currentItems.forEach((apt) => {
         const clientName =
@@ -391,7 +446,7 @@ const SalesReportsPage = () => {
             clientName,
             revenue: 0,
             day: dayName,
-            date: "This Week", // Show period instead of specific date
+            date: dateRange.label, // Show actual date range instead of generic period
             appointments: [],
           };
         }
@@ -407,6 +462,7 @@ const SalesReportsPage = () => {
       }));
     } else {
       // Monthly - group by client and show week range
+      const dateRange = getDateRange(currentPeriod);
       const groupedByClient = {};
       currentItems.forEach((apt) => {
         const clientName =
@@ -428,7 +484,7 @@ const SalesReportsPage = () => {
             clientName,
             revenue: 0,
             weekRange,
-            date: "This Month", // Show period instead of specific date
+            date: dateRange.label, // Show actual date range instead of generic period
             appointments: [],
           };
         }

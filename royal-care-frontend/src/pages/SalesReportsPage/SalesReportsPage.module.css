@@ -5,60 +5,63 @@
 /* Data table wrapper using consistent styling */
 .dataTableWrapper,
 .data-table-wrapper {
-  overflow-x: auto;
   background: var(--background);
   border-radius: 12px;
   border: 1px solid var(--background-100);
   margin-bottom: var(--spacing-lg);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden; /* Prevent horizontal scroll */
 }
 
 .dataTable,
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px;
-  table-layout: fixed; /* Fixed table layout to prevent shifting */
+  table-layout: fixed; /* Fixed layout prevents overflow */
+  min-width: unset; /* Remove minimum width that could cause overflow */
 }
 
 .dataTable th,
 .dataTable td,
 .data-table th,
 .data-table td {
-  padding: var(--spacing-sm) var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
   text-align: left;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal; /* Allow text wrapping */
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-/* Define consistent column widths */
+/* Define responsive column widths */
 .dataTable th:nth-child(1),
 .dataTable td:nth-child(1),
 .data-table th:nth-child(1),
 .data-table td:nth-child(1) {
-  width: 120px; /* Date column */
+  width: 30%; /* Date column - increased for longer date ranges */
 }
 
 .dataTable th:nth-child(2),
 .dataTable td:nth-child(2),
 .data-table th:nth-child(2),
 .data-table td:nth-child(2) {
-  width: 200px; /* Name column (Therapist/Client) */
+  width: 30%; /* Name column (Therapist/Client) */
 }
 
 .dataTable th:nth-child(3),
 .dataTable td:nth-child(3),
 .data-table th:nth-child(3),
 .data-table td:nth-child(3) {
-  width: 120px; /* Amount column (Commission/Revenue) */
+  width: 25%; /* Amount column (Commission/Revenue) */
 }
 
 .dataTable th:nth-child(4),
 .dataTable td:nth-child(4),
 .data-table th:nth-child(4),
 .data-table td:nth-child(4) {
-  width: auto; /* Time/Day/Range column */
-  min-width: 100px;
+  width: 30%; /* Time/Day/Range column */
 }
 
 .dataTable th,
