@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MdClose,
   MdDelete,
@@ -6,7 +6,11 @@ import {
   MdMoreVert,
   MdRefresh,
 } from "react-icons/md";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+} from "../../features/scheduling/schedulingSlice";
 import styles from "../../styles/NotificationCenter_NEW.module.css";
 
 const NotificationCenter = ({ onClose }) => {
@@ -15,8 +19,11 @@ const NotificationCenter = ({ onClose }) => {
   const [error, setError] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [viewedNotifications, setViewedNotifications] = useState(new Set());
+  const notificationItemsRef = useRef(new Map());
 
   const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
 
   // Fetch notifications directly from API
   const fetchNotifications = async () => {
@@ -58,33 +65,83 @@ const NotificationCenter = ({ onClose }) => {
   };
 
   // Mark notification as read
-  const markAsRead = async (notificationId) => {
-    try {
-      const token = localStorage.getItem("knoxToken");
+  const markAsRead = useCallback(
+    async (notificationId) => {
+      try {
+        const token = localStorage.getItem("knoxToken");
 
-      const response = await fetch(
-        `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark-read/`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.ok) {
-        // Update local state
-        setNotifications((prev) =>
-          prev.map((notif) =>
-            notif.id === notificationId ? { ...notif, is_read: true } : notif
-          )
+        const response = await fetch(
+          `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_read/`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Token ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
         );
+
+        if (response.ok) {
+          // Update local state
+          setNotifications((prev) =>
+            prev.map((notif) =>
+              notif.id === notificationId ? { ...notif, is_read: true } : notif
+            )
+          );
+
+          // Update Redux state to decrease unread count
+          dispatch(markNotificationAsRead(notificationId));
+        }
+      } catch (err) {
+        console.error("Error marking as read:", err);
       }
-    } catch (err) {
-      console.error("Error marking as read:", err);
-    }
-  };
+    },
+    [dispatch]
+  );
+
+  // Intersection Observer to detect when notifications are fully viewed
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.8) {
+            const notificationId = parseInt(
+              entry.target.dataset.notificationId
+            );
+            if (notificationId && !viewedNotifications.has(notificationId)) {
+              const notification = notifications.find(
+                (n) => n.id === notificationId
+              );
+              if (notification && !notification.is_read) {
+                // Give user 2 seconds to read the notification before marking as read
+                setTimeout(() => {
+                  setViewedNotifications((prev) => {
+                    const newSet = new Set(prev);
+                    if (!newSet.has(notificationId)) {
+                      newSet.add(notificationId);
+                      markAsRead(notificationId);
+                    }
+                    return newSet;
+                  });
+                }, 2000);
+              }
+            }
+          }
+        });
+      },
+      {
+        threshold: 0.8, // Trigger when 80% of notification is visible
+        rootMargin: "0px 0px -20px 0px", // Small margin to ensure notification is truly in view
+      }
+    );
+
+    // Observe all notification items
+    notificationItemsRef.current.forEach((element) => {
+      if (element) observer.observe(element);
+    });
+
+    return () => observer.disconnect();
+  }, [notifications, viewedNotifications, markAsRead]);
 
   // Mark notification as unread
   const markAsUnread = async (notificationId) => {
@@ -145,27 +202,39 @@ const NotificationCenter = ({ onClose }) => {
   // Mark all as read
   const markAllAsRead = async () => {
     try {
-      const token = localStorage.getItem("knoxToken");
+      // Use Redux action instead of direct API call
+      await dispatch(markAllNotificationsAsRead()).unwrap();
 
-      const response = await fetch(
-        "http://localhost:8000/api/scheduling/notifications/mark-all-read/",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+      // Update all notifications to read in local state
+      setNotifications((prev) =>
+        prev.map((notif) => ({ ...notif, is_read: true }))
       );
-
-      if (response.ok) {
-        // Update all notifications to read
-        setNotifications((prev) =>
-          prev.map((notif) => ({ ...notif, is_read: true }))
-        );
-      }
     } catch (err) {
       console.error("Error marking all as read:", err);
+      // Fallback to direct API call if Redux action fails
+      try {
+        const token = localStorage.getItem("knoxToken");
+
+        const response = await fetch(
+          "http://localhost:8000/api/scheduling/notifications/mark_all_as_read/",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Token ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          // Update all notifications to read
+          setNotifications((prev) =>
+            prev.map((notif) => ({ ...notif, is_read: true }))
+          );
+        }
+      } catch (fallbackErr) {
+        console.error("Error with fallback mark all as read:", fallbackErr);
+      }
     }
   };
 
@@ -285,9 +354,17 @@ const NotificationCenter = ({ onClose }) => {
           filteredNotifications.map((notification) => (
             <div
               key={notification.id}
+              ref={(el) => {
+                if (el) {
+                  notificationItemsRef.current.set(notification.id, el);
+                } else {
+                  notificationItemsRef.current.delete(notification.id);
+                }
+              }}
               className={`${styles.notificationItem} ${
                 !notification.is_read ? styles.unread : ""
               }`}
+              data-notification-id={notification.id}
             >
               <div className={styles.notificationContent}>
                 <div className={styles.notificationIcon}>
