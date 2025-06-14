@@ -21,6 +21,28 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
     appointmentsByDate,
   } = useSelector((state) => state.scheduling);
 
+  // Initialize with today's data when component mounts
+  useEffect(() => {
+    const today = new Date();
+    const formattedToday = formatDate(today);
+
+    if (formattedToday) {
+      // Fetch today's appointments and availability immediately
+      dispatch(fetchAppointmentsByDate(formattedToday));
+
+      // Fetch availability for a reasonable time window (e.g., 2 PM - 3 PM)
+      const params = {
+        date: formattedToday,
+        start_time: "14:00",
+        end_time: "15:00",
+      };
+
+      console.log("Calendar: Initial load - fetching today's availability");
+      dispatch(fetchAvailableTherapists(params));
+      dispatch(fetchAvailableDrivers(params));
+    }
+  }, [dispatch]); // Include dispatch in dependencies
+
   // Helper to format date as YYYY-MM-DD
   const formatDate = (date) => {
     try {
@@ -144,15 +166,53 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
 
   // Handle month navigation
   const prevMonth = () => {
-    setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
+    const newMonth = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() - 1,
+      1
     );
+    setCurrentMonth(newMonth);
+
+    // Fetch availability for the first day of the new month
+    const firstDay = new Date(newMonth.getFullYear(), newMonth.getMonth(), 1);
+    const formattedDate = formatDate(firstDay);
+
+    if (formattedDate && !isPastDate(firstDay)) {
+      const params = {
+        date: formattedDate,
+        start_time: "14:00",
+        end_time: "15:00",
+      };
+
+      console.log("Calendar: Fetching availability for previous month");
+      dispatch(fetchAvailableTherapists(params));
+      dispatch(fetchAvailableDrivers(params));
+    }
   };
 
   const nextMonth = () => {
-    setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+    const newMonth = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() + 1,
+      1
     );
+    setCurrentMonth(newMonth);
+
+    // Fetch availability for the first day of the new month
+    const firstDay = new Date(newMonth.getFullYear(), newMonth.getMonth(), 1);
+    const formattedDate = formatDate(firstDay);
+
+    if (formattedDate && !isPastDate(firstDay)) {
+      const params = {
+        date: formattedDate,
+        start_time: "14:00",
+        end_time: "15:00",
+      };
+
+      console.log("Calendar: Fetching availability for next month");
+      dispatch(fetchAvailableTherapists(params));
+      dispatch(fetchAvailableDrivers(params));
+    }
   };
 
   // Handle returning to month view
@@ -361,6 +421,112 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate }) => {
               );
             })
           )}
+        </div>
+
+        {/* Time Slots Preview - Show immediately for today or selected date */}
+        <div className="time-slots-preview">
+          <h3>
+            Time Slots Preview{" "}
+            {selectedDate
+              ? `for ${selectedDate.toLocaleDateString()}`
+              : "for Today"}
+          </h3>
+          <div className="time-slots-grid-compact">
+            {generateTimeSlots().map((time, index) => {
+              const previewDate = selectedDate || new Date();
+              const slotStatus = getTimeSlotStatus(time, previewDate);
+              return (
+                <div
+                  key={index}
+                  className={`time-slot-preview ${slotStatus.status}`}
+                  style={{
+                    backgroundColor: slotStatus.color,
+                    opacity: 0.8,
+                    cursor:
+                      slotStatus.status === "past" ? "not-allowed" : "pointer",
+                  }}
+                  title={`${time} - ${slotStatus.status.replace("-", " ")}`}
+                  onClick={() => {
+                    if (slotStatus.status !== "past") {
+                      setSelectedTime(time);
+                      onTimeSelected?.(time);
+
+                      // Fetch updated availability for the selected time
+                      const targetDate = selectedDate || new Date();
+                      const formattedDate = formatDate(targetDate);
+
+                      if (formattedDate) {
+                        const [hours, minutes] = time.split(":").map(Number);
+                        const endDate = new Date();
+                        endDate.setHours(hours, minutes + 60, 0); // Add 1 hour
+                        const endTime = `${endDate
+                          .getHours()
+                          .toString()
+                          .padStart(2, "0")}:${endDate
+                          .getMinutes()
+                          .toString()
+                          .padStart(2, "0")}`;
+
+                        const params = {
+                          date: formattedDate,
+                          start_time: time,
+                          end_time: endTime,
+                        };
+
+                        console.log(
+                          "Calendar: Fetching availability for selected time slot:",
+                          params
+                        );
+                        dispatch(fetchAvailableTherapists(params));
+                        dispatch(fetchAvailableDrivers(params));
+                      }
+                    }
+                  }}
+                >
+                  <span className="time-preview">{time}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Legend for time slot colors */}
+          <div className="time-slot-legend-compact">
+            <div className="legend-item">
+              <span
+                className="legend-circle"
+                style={{ backgroundColor: "#16a34a" }}
+              ></span>{" "}
+              Available
+            </div>
+            <div className="legend-item">
+              <span
+                className="legend-circle"
+                style={{ backgroundColor: "#f59e0b" }}
+              ></span>{" "}
+              Limited
+            </div>
+            <div className="legend-item">
+              <span
+                className="legend-circle"
+                style={{ backgroundColor: "#dc2626" }}
+              ></span>{" "}
+              Fully booked
+            </div>
+            <div className="legend-item">
+              <span
+                className="legend-circle"
+                style={{ backgroundColor: "#4b3b06" }}
+              ></span>{" "}
+              No availability
+            </div>
+            <div className="legend-item">
+              <span
+                className="legend-circle"
+                style={{ backgroundColor: "#6b7280" }}
+              ></span>{" "}
+              Past time
+            </div>
+          </div>
         </div>
       </div>
     );
