@@ -58,7 +58,7 @@ function ForgotPasswordPage() {
     </div>
   );
   const errorMessage = error ? (
-    <div className="global-form-field-error">
+    <div className={styles.errorMessage}>
       {error === "Failed to send reset code. Please try again."
         ? "We couldn't send a reset code to that email. Please check your email address and try again."
         : error}
