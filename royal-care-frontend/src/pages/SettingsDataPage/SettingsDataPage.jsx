@@ -16,6 +16,8 @@ import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import styles from "./SettingsDataPage.module.css";
+import DataTable from "../../globals/DataTable";
+import Select from "react-select";
 
 const TABS = [
   "Therapists",
@@ -25,68 +27,6 @@ const TABS = [
   "Services",
   "Materials",
 ];
-
-const TAB_PLACEHOLDERS = {
-  Therapists: [
-    {
-      Username: "therapist1",
-      Name: "Jane Doe",
-      Email: "jane@example.com",
-      Contact: "09123456789",
-      Specialization: "Swedish",
-      Pressure: "Medium",
-    },
-  ],
-  Drivers: [
-    {
-      Username: "driver1",
-      Name: "John Smith",
-      Email: "john@example.com",
-      Contact: "09987654321",
-      Specialization: "N/A",
-      Pressure: "N/A",
-    },
-  ],
-  Operators: [
-    {
-      Username: "operator1",
-      Name: "Mary Lee",
-      Email: "mary@example.com",
-      Contact: "09112223333",
-      Specialization: "N/A",
-      Pressure: "N/A",
-    },
-  ],
-  Clients: [
-    {
-      Name: "John Smith",
-      Email: "john.smith@example.com",
-      Address: "123 Main St, City",
-      Contact: "09123456789",
-      Notes: "Regular client",
-    },
-  ],
-  Services: [
-    {
-      Username: "-",
-      Name: "Massage",
-      Email: "-",
-      Contact: "-",
-      Specialization: "Deep Tissue",
-      Pressure: "High",
-    },
-  ],
-  Materials: [
-    {
-      Username: "-",
-      Name: "Oil",
-      Email: "-",
-      Contact: "-",
-      Specialization: "Lavender",
-      Pressure: "-",
-    },
-  ],
-};
 
 const SPECIALIZATION_OPTIONS = [
   "Shiatsu Massage",
@@ -266,7 +206,14 @@ const SettingsDataPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({});
   const [successPrompt, setSuccessPrompt] = useState("");
-  const [tableData, setTableData] = useState(TAB_PLACEHOLDERS);
+  const [tableData, setTableData] = useState({
+    Therapists: [],
+    Drivers: [],
+    Operators: [],
+    Clients: [],
+    Services: [],
+    Materials: [],
+  });
 
   useEffect(() => {
     document.title = `${activeTab} | Royal Care`;
@@ -305,10 +252,10 @@ const SettingsDataPage = () => {
     });
   };
 
-  const handleMultiSelectChange = (e) => {
-    const options = Array.from(e.target.selectedOptions, (opt) => opt.value);
-    setFormData((prev) => ({ ...prev, materials: options }));
-  };
+  // const handleMultiSelectChange = (e) => {
+  //   const options = Array.from(e.target.selectedOptions, (opt) => opt.value);
+  //   setFormData((prev) => ({ ...prev, materials: options }));
+  // };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -631,21 +578,37 @@ const SettingsDataPage = () => {
               value={formData.price || ""}
               onChange={handleInputChange}
             />
-            <FormField
-              as="select"
-              name="materials"
-              label="Materials"
-              value={formData.materials || []}
-              onChange={handleMultiSelectChange}
-              multiple
-              required={false}
-            >
-              {MATERIAL_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </FormField>
+            <div className="global-form-field-group">
+              <div className="global-form-field-label-row">
+                <label
+                  className="global-form-field-label"
+                  htmlFor="materials-select"
+                >
+                  Materials
+                </label>
+              </div>
+              <Select
+                id="materials-select"
+                isMulti
+                options={MATERIAL_OPTIONS.map((opt) => ({
+                  label: opt,
+                  value: opt,
+                }))}
+                value={(formData.materials || []).map((mat) => ({
+                  label: mat,
+                  value: mat,
+                }))}
+                onChange={(selected) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    materials: selected ? selected.map((s) => s.value) : [],
+                  }));
+                }}
+                placeholder="Select materials..."
+                classNamePrefix="react-select"
+                styles={{ menu: (base) => ({ ...base, zIndex: 9999 }) }}
+              />
+            </div>
           </>
         );
       case "Materials":
@@ -757,62 +720,30 @@ const SettingsDataPage = () => {
         <div className={styles["success-prompt"]}>{successPrompt}</div>
       )}
       <div className={"global-content" + (showModal ? " faded" : "")}>
-        <LayoutRow title="Data">
-          <div className="action-buttons">
-            <button className="primary-action-btn" onClick={handleAddClick}>
-              <span className="primary-action-icon">
-                <MdAdd size={20} />
-              </span>{" "}
-              Add
-            </button>
+        <div className={styles["header-tabs-container"]}>
+          <LayoutRow title="Data">
+            <div className="action-buttons">
+              <button className="primary-action-btn" onClick={handleAddClick}>
+                <span className="primary-action-icon">
+                  <MdAdd size={20} />
+                </span>{" "}
+                Add
+              </button>
+            </div>
+          </LayoutRow>
+          <div className="tab-switcher">
+            {TABS.map((tab) => (
+              <button
+                key={tab}
+                className={"tab-btn" + (activeTab === tab ? " active" : "")}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
-        </LayoutRow>
-        <div className="tab-switcher">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              className={"tab-btn" + (activeTab === tab ? " active" : "")}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
         </div>
-        <div className={styles["data-table-wrapper"]}>
-          <table className={styles["data-table"]}>
-            <thead>
-              <tr>
-                {tableConfig.columns.map((col) => (
-                  <th key={col.key} scope="col">
-                    {col.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {tableData[activeTab] && tableData[activeTab].length > 0 ? (
-                tableData[activeTab].map((row, idx) => (
-                  <tr key={idx}>
-                    {tableConfig.columns.map((col) => (
-                      <td key={col.key}>
-                        {row[col.key] !== undefined ? row[col.key] : "-"}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={tableConfig.columns.length}
-                    className={styles["no-data"]}
-                  >
-                    No data available.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable columns={tableConfig.columns} data={tableData[activeTab]} />
       </div>
     </PageLayout>
   );

@@ -3,48 +3,11 @@
 
 /* Place your SettingsDataPage specific styles here */
 
-/* Removed .settings-container and .settings-content: now global */
-
-.data-table-wrapper {
-  overflow-x: auto;
-  background: var(--background);
-  border-radius: 12px;
-  /* box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04); */
-  border: 1px solid var(--background-100);
+:root {
+  --table-border-color: var(--border-light);
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 800px;
-}
-.data-table th,
-.data-table td {
-  padding: var(--spacing-sm) var(--spacing-sm);
-  text-align: left;
-}
-.data-table th {
-  /* background: var(--background-50); */
-  font-weight: 400;
-  color: var(--muted);
-  font-size: var(--font-size-sm);
-}
-.data-table tr {
-  border-bottom: 1px solid var(--background-100);
-}
-.data-table tr:last-child {
-  border-bottom: none;
-}
-.data-table td {
-  /* color: var(--text-700); */
-  font-weight: 400;
-}
-
-.no-data {
-  text-align: center;
-  color: var(--background-500);
-  font-weight: 400;
-}
+/* Table styles removed: now global in DataTable.module.css */
 
 .modal-overlay {
   position: fixed;
@@ -101,7 +64,6 @@
 .modal-form {
   display: flex;
   flex-direction: column;
-  /* gap: 0.8rem; */
 }
 
 .success-prompt {
@@ -124,4 +86,9 @@
   user-select: none;
 }
 
-/* Removed local field styles, now using global FormField.css */
+.header-tabs-container {
+  position: sticky;
+  top: var(--spacing-md);
+  z-index: 20;
+  background: var(--background);
+}

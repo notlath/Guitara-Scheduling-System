@@ -1,0 +1,66 @@
+@import "../globals/TabSwitcher.css";
+@import "../globals/FormField.css";
+
+:root {
+  --table-border-color: var(--border-light);
+}
+
+.data-table-wrapper {
+  max-height: 74vh;
+  height: auto;
+  overflow-y: auto;
+  overflow-x: auto;
+  background: var(--background);
+  border-radius: 12px;
+  border: 1px solid var(--table-border-color);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+.data-table th,
+.data-table td {
+  text-align: left;
+  border-right: 1px solid var(--table-border-color);
+  padding: var(--spacing-xs) var(--spacing-xm);
+}
+
+.data-table th:last-child,
+.data-table td:last-child {
+  border-right: none;
+}
+
+.data-table th {
+  background: var(--background-25);
+  font-weight: 400;
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.data-table td {
+  vertical-align: top;
+}
+
+.data-table tbody tr,
+.data-table thead tr {
+  border-bottom: 1px solid var(--table-border-color);
+}
+.data-table tbody tr:last-child {
+  border-bottom: none;
+}
+.data-table td {
+  font-weight: 400;
+}
+
+.data-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  background: var(--background-25);
+}
+
+.no-data {
+  color: var(--muted);
+}
