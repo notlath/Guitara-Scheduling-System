@@ -135,4 +135,37 @@ button {
   background-color: var(--background-200);
 }
 
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: linear-gradient(135deg, #ff4757, #ff3742);
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 6px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
+  border: 2px solid var(--background);
+  z-index: 1;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(255, 71, 87, 0.5);
+  }
+}
+
 /* Only utility and component-specific styles here. Use theme.css for all typography and color variables. */
