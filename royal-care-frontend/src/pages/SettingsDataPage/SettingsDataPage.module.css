@@ -5,12 +5,19 @@
 
 /* Removed .settings-container and .settings-content: now global */
 
+:root {
+  --table-border-color: var(--border-light);
+}
+
 .data-table-wrapper {
+  /* Revert to previous behavior: only scroll table, not page */
+  max-height: 74vh;
+  height: auto;
+  overflow-y: auto;
   overflow-x: auto;
   background: var(--background);
   border-radius: 12px;
-  /* box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04); */
-  border: 1px solid var(--background-100);
+  border: 1px solid var(--table-border-color);
 }
 
 .data-table {
@@ -20,19 +27,32 @@
 }
 .data-table th,
 .data-table td {
-  padding: var(--spacing-sm) var(--spacing-sm);
   text-align: left;
+  border-right: 1px solid var(--table-border-color);
+  padding: var(--spacing-xs) var(--spacing-xm);
 }
+
+.data-table th:last-child,
+.data-table td:last-child {
+  border-right: none;
+}
+
 .data-table th {
-  /* background: var(--background-50); */
+  background: var(--background-25);
   font-weight: 400;
   color: var(--muted);
   font-size: var(--font-size-sm);
 }
-.data-table tr {
-  border-bottom: 1px solid var(--background-100);
+
+.data-table td {
+  vertical-align: top;
 }
-.data-table tr:last-child {
+
+.data-table tbody tr,
+.data-table thead tr {
+  border-bottom: 1px solid var(--table-border-color);
+}
+.data-table tbody tr:last-child {
   border-bottom: none;
 }
 .data-table td {
@@ -40,10 +60,19 @@
   font-weight: 400;
 }
 
+/* Make thead sticky */
+.data-table thead {
+  position: sticky;
+  top: 0; /* Adjust if header-tabs-container height changes */
+  z-index: 15;
+  background: var(--background-25);
+}
+
 .no-data {
-  text-align: center;
-  color: var(--background-500);
-  font-weight: 400;
+  /* text-align: center; */
+  color: var(--muted);
+  /* font-weight: 400; */
+  /* font-size: var(--font-size-sm); */
 }
 
 .modal-overlay {
@@ -124,4 +153,11 @@
   user-select: none;
 }
 
-/* Removed local field styles, now using global FormField.css */
+/* Make header-tabs-container sticky */
+.header-tabs-container {
+  position: sticky;
+  top: var(--spacing-md);
+  z-index: 20;
+  background: var(--background);
+  /* padding: var(--spacing-xl) 0; */
+}

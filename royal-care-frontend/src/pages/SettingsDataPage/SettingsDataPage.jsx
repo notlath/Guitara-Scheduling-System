@@ -26,68 +26,6 @@ const TABS = [
   "Materials",
 ];
 
-const TAB_PLACEHOLDERS = {
-  Therapists: [
-    {
-      Username: "therapist1",
-      Name: "Jane Doe",
-      Email: "jane@example.com",
-      Contact: "09123456789",
-      Specialization: "Swedish",
-      Pressure: "Medium",
-    },
-  ],
-  Drivers: [
-    {
-      Username: "driver1",
-      Name: "John Smith",
-      Email: "john@example.com",
-      Contact: "09987654321",
-      Specialization: "N/A",
-      Pressure: "N/A",
-    },
-  ],
-  Operators: [
-    {
-      Username: "operator1",
-      Name: "Mary Lee",
-      Email: "mary@example.com",
-      Contact: "09112223333",
-      Specialization: "N/A",
-      Pressure: "N/A",
-    },
-  ],
-  Clients: [
-    {
-      Name: "John Smith",
-      Email: "john.smith@example.com",
-      Address: "123 Main St, City",
-      Contact: "09123456789",
-      Notes: "Regular client",
-    },
-  ],
-  Services: [
-    {
-      Username: "-",
-      Name: "Massage",
-      Email: "-",
-      Contact: "-",
-      Specialization: "Deep Tissue",
-      Pressure: "High",
-    },
-  ],
-  Materials: [
-    {
-      Username: "-",
-      Name: "Oil",
-      Email: "-",
-      Contact: "-",
-      Specialization: "Lavender",
-      Pressure: "-",
-    },
-  ],
-};
-
 const SPECIALIZATION_OPTIONS = [
   "Shiatsu Massage",
   "Combi Massage",
@@ -266,7 +204,14 @@ const SettingsDataPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({});
   const [successPrompt, setSuccessPrompt] = useState("");
-  const [tableData, setTableData] = useState(TAB_PLACEHOLDERS);
+  const [tableData, setTableData] = useState({
+    Therapists: [],
+    Drivers: [],
+    Operators: [],
+    Clients: [],
+    Services: [],
+    Materials: [],
+  });
 
   useEffect(() => {
     document.title = `${activeTab} | Royal Care`;
@@ -757,31 +702,33 @@ const SettingsDataPage = () => {
         <div className={styles["success-prompt"]}>{successPrompt}</div>
       )}
       <div className={"global-content" + (showModal ? " faded" : "")}>
-        <LayoutRow title="Data">
-          <div className="action-buttons">
-            <button className="primary-action-btn" onClick={handleAddClick}>
-              <span className="primary-action-icon">
-                <MdAdd size={20} />
-              </span>{" "}
-              Add
-            </button>
+        <div className={styles["header-tabs-container"]}>
+          <LayoutRow title="Data">
+            <div className="action-buttons">
+              <button className="primary-action-btn" onClick={handleAddClick}>
+                <span className="primary-action-icon">
+                  <MdAdd size={20} />
+                </span>{" "}
+                Add
+              </button>
+            </div>
+          </LayoutRow>
+          <div className="tab-switcher">
+            {TABS.map((tab) => (
+              <button
+                key={tab}
+                className={"tab-btn" + (activeTab === tab ? " active" : "")}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
-        </LayoutRow>
-        <div className="tab-switcher">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              className={"tab-btn" + (activeTab === tab ? " active" : "")}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
         </div>
         <div className={styles["data-table-wrapper"]}>
           <table className={styles["data-table"]}>
             <thead>
-              <tr>
+              <tr className={styles["thead-row"]}>
                 {tableConfig.columns.map((col) => (
                   <th key={col.key} scope="col">
                     {col.label}
