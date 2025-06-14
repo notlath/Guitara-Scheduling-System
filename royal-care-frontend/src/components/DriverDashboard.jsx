@@ -1645,7 +1645,8 @@ const DriverDashboard = () => {
               </span>
             </div>
           </div>
-        )}        <div className="view-selector">
+        )}{" "}
+        <div className="view-selector">
           <button
             className={currentView === "today" ? "active" : ""}
             onClick={() => setView("today")}
@@ -1687,7 +1688,6 @@ const DriverDashboard = () => {
           {currentView === "all" && (
             <div className="all-appointments">
               <h2>All My Transports</h2>
-
               {/* Transport Statistics Summary */}
               <div className="transport-stats-summary">
                 <div className="stats-grid">
@@ -1755,14 +1755,16 @@ const DriverDashboard = () => {
                     <span className="stat-label">Total Transports</span>
                   </div>
                 </div>
-              </div>              {renderAppointmentsList(myAllTransports)}
+              </div>{" "}
+              {renderAppointmentsList(myAllTransports)}
             </div>
           )}
           {currentView === "calendar" && (
             <div className="calendar-view">
-              <h2>Calendar View</h2>
-              <Calendar 
+              <h2>Calendar View</h2>{" "}
+              <Calendar
                 showClientLabels={true}
+                context="driver"
                 onDateSelected={() => {}} // Optional: Add date selection handling
                 onTimeSelected={() => {}} // Optional: Add time selection handling
               />

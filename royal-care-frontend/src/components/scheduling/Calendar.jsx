@@ -8,7 +8,13 @@ import {
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/Calendar.css";
 
-const Calendar = ({ onDateSelected, onTimeSelected, selectedDate, showClientLabels = false }) => {
+const Calendar = ({
+  onDateSelected,
+  onTimeSelected,
+  selectedDate,
+  showClientLabels = false,
+  context = "therapist",
+}) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(null);
   const [view, setView] = useState("month"); // 'month' or 'day'
@@ -404,37 +410,90 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate, showClientLabe
               const hasAppointments = dayAppointments.length > 0;
 
               // Extract client names and status info for the day
-              const clientInfo = dayAppointments.map(appointment => ({
-                name: `${appointment.client_details?.first_name || ''} ${appointment.client_details?.last_name || ''}`.trim(),
-                status: appointment.status,
-                id: appointment.id
-              })).filter(info => info.name);
+              const clientInfo = dayAppointments
+                .map((appointment) => ({
+                  name: `${appointment.client_details?.first_name || ""} ${
+                    appointment.client_details?.last_name || ""
+                  }`.trim(),
+                  status: appointment.status,
+                  id: appointment.id,
+                }))
+                .filter((info) => info.name);
 
-              // Helper function to get status color class
+              // Helper function to get context-aware status color class
               const getStatusColorClass = (status) => {
-                switch (status) {
-                  case "pending":
-                    return "status-pending";
-                  case "confirmed":
-                  case "therapist_confirmed":
-                  case "driver_confirmed":
-                    return "status-confirmed";
-                  case "in_progress":
-                  case "journey_started":
-                  case "journey":
-                  case "arrived":
-                    return "status-active";
-                  case "session_in_progress":
-                    return "status-session";
-                  case "completed":
-                  case "payment_completed":
-                  case "transport_completed":
-                    return "status-completed";
-                  case "cancelled":
-                    return "status-cancelled";
-                  default:
-                    return "status-default";
-                }
+                // Define comprehensive status groupings for each role-specific context
+                const therapistStatuses = {
+                  // Initial appointment states
+                  pending: "status-pending",
+                  confirmed: "status-confirmed",
+                  therapist_confirmed: "status-confirmed",
+                  driver_confirmed: "status-confirmed",
+
+                  // Active appointment workflow
+                  in_progress: "status-active",
+                  journey: "status-active",
+                  journey_started: "status-active",
+                  arrived: "status-active",
+                  dropped_off: "status-session",
+                  session_in_progress: "status-session",
+
+                  // Post-session states
+                  awaiting_payment: "status-session",
+                  payment_requested: "status-session",
+                  pickup_requested: "status-active",
+                  driver_assigned_pickup: "status-active",
+                  return_journey: "status-active",
+
+                  // Final states
+                  completed: "status-completed",
+                  payment_completed: "status-completed",
+                  transport_completed: "status-completed",
+                  cancelled: "status-cancelled",
+                  rejected: "status-cancelled",
+                  auto_cancelled: "status-cancelled",
+                };
+
+                const driverStatuses = {
+                  // Initial states - driver assignment workflow
+                  pending: "status-pending",
+                  confirmed: "status-confirmed",
+                  therapist_confirmed: "status-pending", // Waiting for driver confirmation
+                  driver_confirmed: "status-confirmed",
+
+                  // Transport workflow states
+                  in_progress: "status-active",
+                  journey: "status-active",
+                  journey_started: "status-active",
+                  driving_to_location: "status-active",
+                  arrived: "status-active",
+                  at_location: "status-active",
+                  dropped_off: "status-active",
+                  driver_transport_completed: "status-completed",
+
+                  // Pickup workflow states (after session)
+                  pickup_requested: "status-pending", // Available for pickup assignment
+                  driver_assigned_pickup: "status-active", // Assigned for pickup
+                  return_journey: "status-active",
+
+                  // Multi-therapist group transport
+                  picking_up_therapists: "status-active",
+                  transporting_group: "status-active",
+                  therapist_dropped_off: "status-active",
+
+                  // Final states
+                  transport_completed: "status-completed",
+                  completed: "status-completed",
+                  cancelled: "status-cancelled",
+                  rejected: "status-cancelled",
+                };
+
+                // Select appropriate status mapping based on context
+                const statusMap =
+                  context === "driver" ? driverStatuses : therapistStatuses;
+
+                // Return mapped status or default
+                return statusMap[status] || "status-default";
               };
 
               return (
@@ -456,10 +515,15 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate, showClientLabe
                   {showClientLabels && clientInfo.length > 0 && (
                     <div className="client-labels">
                       {clientInfo.slice(0, 2).map((info, index) => (
-                        <span 
-                          key={index} 
-                          className={`client-label ${getStatusColorClass(info.status)}`}
-                          title={`${info.name} - Status: ${info.status.replace(/_/g, ' ')}`}
+                        <span
+                          key={index}
+                          className={`client-label ${getStatusColorClass(
+                            info.status
+                          )}`}
+                          title={`${info.name} - Status: ${info.status.replace(
+                            /_/g,
+                            " "
+                          )}`}
                         >
                           {info.name}
                         </span>
@@ -479,34 +543,72 @@ const Calendar = ({ onDateSelected, onTimeSelected, selectedDate, showClientLabe
           )}
         </div>
 
-        {/* Status legend for client labels - show only when showClientLabels is true */}
+        {/* Context-aware status legend for client labels */}
         {showClientLabels && (
           <div className="calendar-status-legend">
-            <h4>Client Label Colors:</h4>
+            <h4>
+              Client Label Colors (
+              {context === "driver" ? "Driver" : "Therapist"} View):
+            </h4>
             <div className="status-legend-grid">
               <div className="status-legend-item">
-                <div className="status-legend-color" style={{ backgroundColor: '#f59e0b' }}></div>
-                <span>Pending</span>
+                <div
+                  className="status-legend-color"
+                  style={{ backgroundColor: "#f59e0b" }}
+                ></div>
+                <span>
+                  Pending
+                  {context === "driver"
+                    ? "/Awaiting Assignment"
+                    : "/Awaiting Confirmation"}
+                </span>
               </div>
               <div className="status-legend-item">
-                <div className="status-legend-color" style={{ backgroundColor: '#3b82f6' }}></div>
-                <span>Confirmed</span>
+                <div
+                  className="status-legend-color"
+                  style={{ backgroundColor: "#3b82f6" }}
+                ></div>
+                <span>
+                  Confirmed
+                  {context === "driver"
+                    ? "/Ready to Drive"
+                    : "/Ready to Proceed"}
+                </span>
+              </div>
+              {context === "driver" ? (
+                <div className="status-legend-item">
+                  <div
+                    className="status-legend-color"
+                    style={{ backgroundColor: "#8b5cf6" }}
+                  ></div>
+                  <span>Active Transport/Pickup</span>
+                </div>
+              ) : (
+                <div className="status-legend-item">
+                  <div
+                    className="status-legend-color"
+                    style={{ backgroundColor: "#10b981" }}
+                  ></div>
+                  <span>Session/Treatment</span>
+                </div>
+              )}
+              <div className="status-legend-item">
+                <div
+                  className="status-legend-color"
+                  style={{ backgroundColor: "#22c55e" }}
+                ></div>
+                <span>
+                  {context === "driver"
+                    ? "Transport Completed"
+                    : "Session Completed"}
+                </span>
               </div>
               <div className="status-legend-item">
-                <div className="status-legend-color" style={{ backgroundColor: '#8b5cf6' }}></div>
-                <span>Active/En Route</span>
-              </div>
-              <div className="status-legend-item">
-                <div className="status-legend-color" style={{ backgroundColor: '#10b981' }}></div>
-                <span>Session</span>
-              </div>
-              <div className="status-legend-item">
-                <div className="status-legend-color" style={{ backgroundColor: '#22c55e' }}></div>
-                <span>Completed</span>
-              </div>
-              <div className="status-legend-item">
-                <div className="status-legend-color" style={{ backgroundColor: '#ef4444' }}></div>
-                <span>Cancelled</span>
+                <div
+                  className="status-legend-color"
+                  style={{ backgroundColor: "#ef4444" }}
+                ></div>
+                <span>Cancelled/Rejected</span>
               </div>
             </div>
           </div>

@@ -978,7 +978,8 @@ const TherapistDashboard = () => {
               Retry
             </button>
           </div>
-        )}        <div className="view-selector">
+        )}{" "}
+        <div className="view-selector">
           <button
             className={currentView === "today" ? "active" : ""}
             onClick={() => setView("today")}
@@ -1016,7 +1017,8 @@ const TherapistDashboard = () => {
               <h2>Upcoming Appointments</h2>
               {renderAppointmentsList(myUpcomingAppointments)}
             </div>
-          )}          {currentView === "all" && (
+          )}{" "}
+          {currentView === "all" && (
             <div className="all-appointments">
               <h2>All My Appointments</h2>
               {renderAppointmentsList(myAppointments)}
@@ -1024,15 +1026,17 @@ const TherapistDashboard = () => {
           )}
           {currentView === "calendar" && (
             <div className="calendar-view">
-              <h2>Calendar View</h2>
-              <Calendar 
+              <h2>Calendar View</h2>{" "}
+              <Calendar
                 showClientLabels={true}
+                context="therapist"
                 onDateSelected={() => {}} // Optional: Add date selection handling
                 onTimeSelected={() => {}} // Optional: Add time selection handling
               />
             </div>
           )}
-        </div>        <WebSocketStatus />
+        </div>{" "}
+        <WebSocketStatus />
         <RejectionModal
           isOpen={rejectionModal.isOpen}
           onClose={handleRejectionCancel}
