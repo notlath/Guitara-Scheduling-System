@@ -1,9 +1,9 @@
 /* AttendancePage.module.css - migrated from AttendancePage.css */
-.attendance-page {
+/* .attendance-page {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
-}
+} */
 
 .attendance-header {
   display: flex;
@@ -134,11 +134,14 @@
 }
 
 .status-badge {
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: bold;
   text-transform: uppercase;
+  display: inline-block;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .status-present {
@@ -154,6 +157,11 @@
 .status-late {
   background-color: #ffeeba;
   color: #856404;
+}
+
+.status-leave {
+  background-color: #e2e3e5;
+  color: #383d41;
 }
 
 .loading-spinner {
@@ -216,4 +224,47 @@
   padding: 18px 24px;
   color: #7f8c8d;
   font-size: 0.98rem;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.edit-btn, .note-btn {
+  background: #fff;
+  border: 1.5px solid #b7e4c7;
+  color: #155724;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  transition: background 0.18s, border 0.18s, box-shadow 0.18s, color 0.18s;
+  outline: none;
+}
+
+.edit-btn:hover {
+  background: #d4edda;
+  border-color: #155724;
+  color: #155724;
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.13);
+}
+
+.note-btn {
+  border-color: #ffeeba;
+  color: #856404;
+}
+
+.note-btn:hover {
+  background: #fff3cd;
+  border-color: #856404;
+  color: #856404;
+  box-shadow: 0 4px 12px rgba(255, 238, 186, 0.13);
 }

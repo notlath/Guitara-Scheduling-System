@@ -1856,7 +1856,6 @@ const OperatorDashboard = () => {
               <span className={`status ${request.status}`}>
                 {request.status}
               </span>
-              </span>
             </div>
             <div className="pickup-details">
               <div className="detail-row">
@@ -2061,18 +2060,19 @@ const OperatorDashboard = () => {
             </div>
           </div>
         </div>{" "}
-        <TabSwitcher
-          tabs={[
-            { label: `Pending Reviews (${rejectedAppointments.length})`, value: "rejected" },
-            { label: `Pending Acceptance (${pendingAppointments.length})`, value: "pending" },
-            { label: `Timeouts (${overdueAppointments.length + approachingDeadlineAppointments.length})`, value: "timeouts" },
-            { label: `Payment Verification (${awaitingPaymentAppointments.length})`, value: "payment_verification" },
-            { label: "All Appointments", value: "all" },
+        <div className="tab-switcher">
+          <button
+            className={currentView === "rejected" ? "active" : ""}
+            onClick={() => setView("rejected")}
+          >
+            Pending Reviews ({rejectedAppointments.length})
+          </button>
+          <button
             className={currentView === "pending" ? "active" : ""}
             onClick={() => setView("pending")}
           >
             Pending Acceptance ({pendingAppointments.length})
-          </button>{" "}
+          </button>
           <button
             className={currentView === "timeouts" ? "active" : ""}
             onClick={() => setView("timeouts")}
@@ -2093,13 +2093,13 @@ const OperatorDashboard = () => {
             onClick={() => setView("all")}
           >
             All Appointments
-          </button>{" "}
+          </button>
           <button
             className={currentView === "notifications" ? "active" : ""}
             onClick={() => setView("notifications")}
           >
             Notifications
-          </button>{" "}
+          </button>
           <button
             className={currentView === "availability" ? "active" : ""}
             onClick={() => setView("availability")}
@@ -2130,7 +2130,7 @@ const OperatorDashboard = () => {
           >
             Pickup Requests ({pickupRequests.length})
           </button>
-        </div>{" "}
+        </div>
         <div
           className={`dashboard-content ${
             paymentModal.isOpen || reviewModal.isOpen ? "faded" : ""
@@ -2387,6 +2387,7 @@ const OperatorDashboard = () => {
         </div>
       )}
       {/* End of global-content wrapper closing div is above after modals */}
+      {/* Close PageLayout here */}
     </PageLayout>
   );
 };
