@@ -17,12 +17,12 @@ import { LoadingButton, PageLoadingState } from "./common/LoadingComponents";
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
+import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css"; // Reuse therapist styles for consistency
 import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
-import TabSwitcher from "../globals/TabSwitcher";
 
 // Enhanced driver status states for dynamic coordination
 const DRIVER_STATUS_STATES = {
