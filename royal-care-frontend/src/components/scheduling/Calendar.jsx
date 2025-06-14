@@ -40,10 +40,12 @@ const Calendar = ({
       const params = {
         date: formattedToday,
         start_time: "13:00", // 1 PM
-        end_time: "01:00",   // 1 AM next day
+        end_time: "01:00", // 1 AM next day
       };
 
-      console.log("Calendar: Initial load - fetching today's availability for full operating hours");
+      console.log(
+        "Calendar: Initial load - fetching today's availability for full operating hours"
+      );
       dispatch(fetchAvailableTherapists(params));
       dispatch(fetchAvailableDrivers(params));
     }
@@ -187,7 +189,7 @@ const Calendar = ({
       const params = {
         date: formattedDate,
         start_time: "13:00", // 1 PM
-        end_time: "01:00",   // 1 AM next day
+        end_time: "01:00", // 1 AM next day
       };
 
       console.log("Calendar: Fetching availability for previous month");
@@ -212,7 +214,7 @@ const Calendar = ({
       const params = {
         date: formattedDate,
         start_time: "13:00", // 1 PM
-        end_time: "01:00",   // 1 AM next day
+        end_time: "01:00", // 1 AM next day
       };
 
       console.log("Calendar: Fetching availability for next month");
@@ -255,7 +257,7 @@ const Calendar = ({
         const params = {
           date: formattedDate,
           start_time: "13:00", // 1 PM
-          end_time: "01:00",   // 1 AM next day
+          end_time: "01:00", // 1 AM next day
         };
 
         console.log(
