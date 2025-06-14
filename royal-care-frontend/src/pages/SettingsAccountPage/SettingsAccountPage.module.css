@@ -1,5 +1,252 @@
-/* Place your SettingsAccountPage specific styles here */
+/* Account Settings Page Styles */
 
 .settings-content {
   max-width: var(--container-max-width);
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem;
+  text-align: center;
+}
+
+.loadingContainer p {
+  margin-top: 1rem;
+  color: var(--text-600);
+  font-size: 1.1rem;
+}
+
+/* User Header */
+.userHeader {
+  background: linear-gradient(
+    135deg,
+    var(--primary-50) 0%,
+    var(--primary-100) 100%
+  );
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--primary-200);
+}
+
+.userInfo h2 {
+  margin: 0 0 0.5rem 0;
+  color: var(--primary-800);
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.userRole {
+  display: inline-block;
+  background: var(--primary-600);
+  color: white;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+.userEmail {
+  color: var(--text-600);
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* Section Tabs */
+.sectionTabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid var(--background-100);
+}
+
+.tabButton {
+  background: none;
+  border: none;
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-600);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+  border-radius: 8px 8px 0 0;
+}
+
+.tabButton:hover {
+  background: var(--background-50);
+  color: var(--primary-600);
+}
+
+.tabButton.active {
+  color: var(--primary-600);
+  background: var(--primary-50);
+  border-bottom-color: var(--primary-600);
+}
+
+/* Form Sections */
+.section {
+  background: var(--background);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--background-100);
+}
+
+.section h3 {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-800);
+  font-size: 1.4rem;
+  font-weight: 600;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--primary-100);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formGroup label {
+  font-weight: 600;
+  color: var(--text-700);
+  font-size: 0.95rem;
+}
+
+.input {
+  padding: 0.8rem 1rem;
+  border: 2px solid var(--background-200);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background: var(--background);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary-400);
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+.input:invalid {
+  border-color: var(--error);
+}
+
+.helpText {
+  color: var(--text-500);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+/* Messages */
+.errorMessage {
+  background: var(--error-bg);
+  color: var(--error-text);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--error);
+  font-weight: 500;
+}
+
+.successMessage {
+  background: var(--success-bg);
+  color: var(--success-text);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--success);
+  font-weight: 500;
+}
+
+/* Submit Button */
+.submitButton {
+  background: var(--primary-600);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+  min-width: 150px;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: var(--primary-700);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--primary-200);
+}
+
+.submitButton:disabled {
+  background: var(--text-300);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .userHeader {
+    padding: 1.5rem;
+  }
+
+  .userInfo h2 {
+    font-size: 1.5rem;
+  }
+
+  .section {
+    padding: 1.5rem;
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .sectionTabs {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .tabButton {
+    border-radius: 0;
+    border-bottom: 1px solid var(--background-100);
+    border-right: 3px solid transparent;
+  }
+
+  .tabButton.active {
+    border-bottom-color: var(--background-100);
+    border-right-color: var(--primary-600);
+  }
+}
+
+@media (max-width: 480px) {
+  .userHeader {
+    padding: 1rem;
+  }
+
+  .section {
+    padding: 1rem;
+  }
+
+  .submitButton {
+    width: 100%;
+  }
 }
