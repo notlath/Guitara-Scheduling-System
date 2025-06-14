@@ -219,19 +219,54 @@ DEFAULT_FROM_EMAIL = env(
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{levelname}] {asctime} {name} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "[{levelname}] {name}: {message}",
+            "style": "{",
+        },
+    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+        "file": {
+            "class": "logging.FileHandler",
+            "filename": "debug.log",
+            "formatter": "verbose",
         },
     },
     "loggers": {
         "django.db.backends": {
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": "INFO",  # Reduced from DEBUG to avoid too much noise
         },
         "django.contrib.auth": {
             "handlers": ["console"],
             "level": "DEBUG",
         },
+        "scheduling": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "scheduling.views": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "scheduling.serializers": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
     },
 }
