@@ -11,6 +11,7 @@ import {
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/AppointmentForm.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
+import { fuzzyMatch } from "../../utils/searchUtils";
 import {
   FormLoadingOverlay,
   LoadingButton,
@@ -18,7 +19,185 @@ import {
   OptimisticIndicator,
 } from "../common/LoadingComponents";
 
-// Fallback data for therapists and drivers in case API calls fail
+// Client Search Component
+const ClientSearchDropdown = ({
+  clients,
+  selectedClient,
+  onClientSelect,
+  error,
+  disabled = false,
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const searchInputRef = useRef(null);
+  const dropdownRef = useRef(null);
+
+  // Filter clients based on search term with fuzzy matching
+  const filteredClients = useMemo(() => {
+    if (!clients || !Array.isArray(clients)) return [];
+
+    if (!searchTerm.trim()) return clients;
+
+    return clients.filter((client) => {
+      const fullName = `${client.first_name || ""} ${
+        client.last_name || ""
+      }`.trim();
+      const phoneNumber = client.phone_number || "";
+
+      return (
+        fuzzyMatch(searchTerm, fullName) ||
+        fuzzyMatch(searchTerm, client.first_name) ||
+        fuzzyMatch(searchTerm, client.last_name) ||
+        fuzzyMatch(searchTerm, phoneNumber)
+      );
+    });
+  }, [clients, searchTerm]);
+
+  // Get display text for selected client
+  const getSelectedClientText = () => {
+    if (!selectedClient) return "";
+    const client = clients?.find((c) => c.id === selectedClient);
+    if (!client) return "";
+    return `${client.first_name || ""} ${client.last_name || ""} - ${
+      client.phone_number || "No phone"
+    }`.trim();
+  };
+
+  // Handle input change
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setIsOpen(true);
+    setSelectedIndex(-1);
+
+    // Clear selection if input is cleared
+    if (!value.trim() && selectedClient) {
+      onClientSelect(null);
+    }
+  };
+
+  // Handle client selection
+  const handleClientSelect = (client) => {
+    onClientSelect(client.id);
+    setSearchTerm("");
+    setIsOpen(false);
+    setSelectedIndex(-1);
+  };
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e) => {
+    if (!isOpen) {
+      if (e.key === "Enter" || e.key === "ArrowDown") {
+        setIsOpen(true);
+        setSelectedIndex(0);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setSelectedIndex((prev) =>
+          prev < filteredClients.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (selectedIndex >= 0 && filteredClients[selectedIndex]) {
+          handleClientSelect(filteredClients[selectedIndex]);
+        }
+        break;
+      case "Escape":
+        setIsOpen(false);
+        setSelectedIndex(-1);
+        searchInputRef.current?.blur();
+        break;
+    }
+  };
+
+  // Handle clicks outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSelectedIndex(-1);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Update search term when selected client changes externally
+  useEffect(() => {
+    if (selectedClient && !searchTerm) {
+      // Don't update search term if user is actively searching
+      setSearchTerm("");
+    }
+  }, [selectedClient, searchTerm]);
+
+  return (
+    <div className="client-search-dropdown" ref={dropdownRef}>
+      <input
+        ref={searchInputRef}
+        type="text"
+        value={
+          searchTerm ||
+          (selectedClient && !isOpen ? getSelectedClientText() : "")
+        }
+        onChange={handleInputChange}
+        onFocus={() => {
+          setIsOpen(true);
+          if (selectedClient) {
+            setSearchTerm(""); // Clear display text when focusing to show search input
+          }
+        }}
+        onKeyDown={handleKeyDown}
+        placeholder="Search client by name or phone..."
+        className={`client-search-input ${error ? "error" : ""}`}
+        disabled={disabled}
+        autoComplete="off"
+      />
+
+      {isOpen && (
+        <div className="client-search-results">
+          {filteredClients.length > 0 ? (
+            filteredClients.map((client, index) => (
+              <div
+                key={`client-${client.id}`}
+                className={`client-search-item ${
+                  index === selectedIndex ? "selected" : ""
+                }`}
+                onClick={() => handleClientSelect(client)}
+                onMouseEnter={() => setSelectedIndex(index)}
+              >
+                <div className="client-name">
+                  {client.first_name || ""} {client.last_name || ""}
+                </div>
+                <div className="client-phone">
+                  {client.phone_number || "No phone number"}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="client-search-no-results">
+              {searchTerm
+                ? `No clients found matching "${searchTerm}"`
+                : "No clients available"}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const FALLBACK_THERAPISTS = [
   {
     id: 101,
@@ -1092,27 +1271,19 @@ const AppointmentForm = ({
       >
         <div className="form-group">
           <label htmlFor="client">Client:</label>
-          <select
-            id="client"
-            name="client"
-            value={formData.client}
-            onChange={handleChange}
-            className={errors.client ? "error" : ""}
-          >
-            <option value="">Select a client</option>
-            {clients && clients.length > 0 ? (
-              clients.map((client) => (
-                <option key={`client-${client.id}`} value={client.id}>
-                  {client.first_name || ""} {client.last_name || ""} -{" "}
-                  {client.phone_number || "No phone"}
-                </option>
-              ))
-            ) : (
-              <option value="" disabled>
-                Loading clients...
-              </option>
-            )}
-          </select>
+          <ClientSearchDropdown
+            clients={clients}
+            selectedClient={formData.client}
+            onClientSelect={(clientId) => {
+              setFormData((prev) => ({ ...prev, client: clientId || "" }));
+              // Clear error when client is selected
+              setErrors((prev) =>
+                prev.client ? { ...prev, client: "" } : prev
+              );
+            }}
+            error={errors.client}
+            disabled={isSubmitting}
+          />
           {errors.client && <div className="error-text">{errors.client}</div>}
         </div>
         <div className="form-group">
