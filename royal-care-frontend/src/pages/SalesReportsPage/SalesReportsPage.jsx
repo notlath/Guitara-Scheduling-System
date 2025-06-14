@@ -249,7 +249,7 @@ const SalesReportsPage = () => {
             therapistName: item.therapistName,
             commission: 0,
             appointments: [],
-            date: item.date, // Use the first appointment date for grouped view
+            date: currentPeriod === "Weekly" ? "This Week" : "This Month", // Show period instead of specific date
             day: currentPeriod === "Weekly" ? "This Week" : undefined,
             weekRange: currentPeriod === "Monthly" ? "This Month" : undefined,
           };
@@ -391,6 +391,7 @@ const SalesReportsPage = () => {
             clientName,
             revenue: 0,
             day: dayName,
+            date: "This Week", // Show period instead of specific date
             appointments: [],
           };
         }
@@ -427,6 +428,7 @@ const SalesReportsPage = () => {
             clientName,
             revenue: 0,
             weekRange,
+            date: "This Month", // Show period instead of specific date
             appointments: [],
           };
         }
@@ -758,9 +760,11 @@ const SalesReportsPage = () => {
               <th>Date</th>
               <th>Therapist</th>
               <th>Commission</th>
-              {currentPeriod === "Daily" && <th>Time</th>}
-              {currentPeriod === "Weekly" && <th>Day</th>}
-              {currentPeriod === "Monthly" && <th>Week Range</th>}
+              <th>
+                {currentPeriod === "Daily" && "Time"}
+                {currentPeriod === "Weekly" && "Day"}
+                {currentPeriod === "Monthly" && "Week Range"}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -770,21 +774,17 @@ const SalesReportsPage = () => {
                   <td>{item.date || "N/A"}</td>
                   <td>{item.therapistName || "Unknown Therapist"}</td>
                   <td>₱{item.commission}</td>
-                  {currentPeriod === "Daily" && <td>{item.time}</td>}
-                  {currentPeriod === "Weekly" && (
-                    <td>{item.day || "This Week"}</td>
-                  )}
-                  {currentPeriod === "Monthly" && (
-                    <td>{item.weekRange || "This Month"}</td>
-                  )}
+                  <td>
+                    {currentPeriod === "Daily" && (item.time || "N/A")}
+                    {currentPeriod === "Weekly" && (item.day || "This Week")}
+                    {currentPeriod === "Monthly" &&
+                      (item.weekRange || "This Month")}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td
-                  colSpan={currentPeriod === "Daily" ? 4 : 4}
-                  className={styles.noData}
-                >
+                <td colSpan={4} className={styles.noData}>
                   No commission data available for this period
                 </td>
               </tr>
@@ -840,9 +840,11 @@ const SalesReportsPage = () => {
               <th>Date</th>
               <th>Client Name</th>
               <th>Revenue</th>
-              {currentPeriod === "Daily" && <th>Time</th>}
-              {currentPeriod === "Weekly" && <th>Day</th>}
-              {currentPeriod === "Monthly" && <th>Week Range</th>}
+              <th>
+                {currentPeriod === "Daily" && "Time"}
+                {currentPeriod === "Weekly" && "Day"}
+                {currentPeriod === "Monthly" && "Week Range"}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -852,17 +854,16 @@ const SalesReportsPage = () => {
                   <td>{item.date || "N/A"}</td>
                   <td>{item.clientName || "Unknown Client"}</td>
                   <td>₱{item.revenue}</td>
-                  {currentPeriod === "Daily" && <td>{item.time}</td>}
-                  {currentPeriod === "Weekly" && <td>{item.day}</td>}
-                  {currentPeriod === "Monthly" && <td>{item.weekRange}</td>}
+                  <td>
+                    {currentPeriod === "Daily" && (item.time || "N/A")}
+                    {currentPeriod === "Weekly" && (item.day || "N/A")}
+                    {currentPeriod === "Monthly" && (item.weekRange || "N/A")}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td
-                  colSpan={currentPeriod === "Daily" ? 4 : 4}
-                  className={styles.noData}
-                >
+                <td colSpan={4} className={styles.noData}>
                   No revenue data available for this period
                 </td>
               </tr>

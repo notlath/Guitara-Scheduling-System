@@ -17,6 +17,7 @@
   width: 100%;
   border-collapse: collapse;
   min-width: 800px;
+  table-layout: fixed; /* Fixed table layout to prevent shifting */
 }
 
 .dataTable th,
@@ -25,6 +26,39 @@
 .data-table td {
   padding: var(--spacing-sm) var(--spacing-sm);
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Define consistent column widths */
+.dataTable th:nth-child(1),
+.dataTable td:nth-child(1),
+.data-table th:nth-child(1),
+.data-table td:nth-child(1) {
+  width: 120px; /* Date column */
+}
+
+.dataTable th:nth-child(2),
+.dataTable td:nth-child(2),
+.data-table th:nth-child(2),
+.data-table td:nth-child(2) {
+  width: 200px; /* Name column (Therapist/Client) */
+}
+
+.dataTable th:nth-child(3),
+.dataTable td:nth-child(3),
+.data-table th:nth-child(3),
+.data-table td:nth-child(3) {
+  width: 120px; /* Amount column (Commission/Revenue) */
+}
+
+.dataTable th:nth-child(4),
+.dataTable td:nth-child(4),
+.data-table th:nth-child(4),
+.data-table td:nth-child(4) {
+  width: auto; /* Time/Day/Range column */
+  min-width: 100px;
 }
 
 .dataTable th,
