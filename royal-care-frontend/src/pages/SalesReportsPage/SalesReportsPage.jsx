@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchAppointments } from "../../features/scheduling/schedulingSlice";
 import pageTitles from "../../constants/pageTitles";
-import "./SalesReportsPage.module.css";
+import { fetchAppointments } from "../../features/scheduling/schedulingSlice";
+import LayoutRow from "../../globals/LayoutRow";
+import PageLayout from "../../globals/PageLayout";
+import "../../globals/TabSwitcher.css";
+import styles from "./SalesReportsPage.module.css";
 
 const SalesReportsPage = () => {
   const dispatch = useDispatch();
@@ -714,16 +717,34 @@ const SalesReportsPage = () => {
     const { currentTotal, items, comparison } = commissionData;
 
     return (
-      <div className="commission-view">
-        <div className="commission-header">
-          <h2>
+      <div className={styles.dataTableWrapper}>
+        <div
+          style={{
+            padding: "var(--spacing-md)",
+            borderBottom: "1px solid var(--background-100)",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 var(--spacing-xs) 0",
+              fontSize: "var(--font-size-xl)",
+              fontWeight: "700",
+            }}
+          >
             ₱
             {currentTotal.toLocaleString("en-US", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}
-          </h2>
-          <p className={`comparison ${comparison}`}>
+          </h3>
+          <p
+            className={`${styles.comparison} ${styles[comparison]}`}
+            style={{
+              margin: "0",
+              fontSize: "var(--font-size-sm)",
+              color: "var(--muted)",
+            }}
+          >
             {comparison === "higher" && "Higher than last period"}
             {comparison === "lower" && "Lower than last period"}
             {comparison === "same" && "Same as last period"}
@@ -731,44 +752,45 @@ const SalesReportsPage = () => {
           </p>
         </div>
 
-        <div className="commission-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Therapist</th>
-                <th>Commission</th>
-                {currentPeriod === "Daily" && <th>Time</th>}
-                {currentPeriod === "Weekly" && <th>Day</th>}
-                {currentPeriod === "Monthly" && <th>Week Range</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {items.length > 0 ? (
-                items.map((item, index) => (
-                  <tr key={index}>
-                    <td>{item.date || "N/A"}</td>
-                    <td>{item.therapistName || "Unknown Therapist"}</td>
-                    <td>₱{item.commission}</td>
-                    {currentPeriod === "Daily" && <td>{item.time}</td>}
-                    {currentPeriod === "Weekly" && (
-                      <td>{item.day || "This Week"}</td>
-                    )}
-                    {currentPeriod === "Monthly" && (
-                      <td>{item.weekRange || "This Month"}</td>
-                    )}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={currentPeriod === "Daily" ? 4 : 4}>
-                    No commission data available for this period
-                  </td>
+        <table className={styles.dataTable}>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Therapist</th>
+              <th>Commission</th>
+              {currentPeriod === "Daily" && <th>Time</th>}
+              {currentPeriod === "Weekly" && <th>Day</th>}
+              {currentPeriod === "Monthly" && <th>Week Range</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {items.length > 0 ? (
+              items.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.date || "N/A"}</td>
+                  <td>{item.therapistName || "Unknown Therapist"}</td>
+                  <td>₱{item.commission}</td>
+                  {currentPeriod === "Daily" && <td>{item.time}</td>}
+                  {currentPeriod === "Weekly" && (
+                    <td>{item.day || "This Week"}</td>
+                  )}
+                  {currentPeriod === "Monthly" && (
+                    <td>{item.weekRange || "This Month"}</td>
+                  )}
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={currentPeriod === "Daily" ? 4 : 4}
+                  className={styles.noData}
+                >
+                  No commission data available for this period
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     );
   };
@@ -777,16 +799,34 @@ const SalesReportsPage = () => {
     const { currentTotal, items, comparison } = revenueData;
 
     return (
-      <div className="revenue-view">
-        <div className="revenue-header">
-          <h2>
+      <div className={styles.dataTableWrapper}>
+        <div
+          style={{
+            padding: "var(--spacing-md)",
+            borderBottom: "1px solid var(--background-100)",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 var(--spacing-xs) 0",
+              fontSize: "var(--font-size-xl)",
+              fontWeight: "700",
+            }}
+          >
             ₱
             {currentTotal.toLocaleString("en-US", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}
-          </h2>
-          <p className={`comparison ${comparison}`}>
+          </h3>
+          <p
+            className={`${styles.comparison} ${styles[comparison]}`}
+            style={{
+              margin: "0",
+              fontSize: "var(--font-size-sm)",
+              color: "var(--muted)",
+            }}
+          >
             {comparison === "higher" && "Higher than last period"}
             {comparison === "lower" && "Lower than last period"}
             {comparison === "same" && "Same as last period"}
@@ -794,40 +834,41 @@ const SalesReportsPage = () => {
           </p>
         </div>
 
-        <div className="revenue-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Client Name</th>
-                <th>Revenue</th>
-                {currentPeriod === "Daily" && <th>Time</th>}
-                {currentPeriod === "Weekly" && <th>Day</th>}
-                {currentPeriod === "Monthly" && <th>Week Range</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {items.length > 0 ? (
-                items.map((item, index) => (
-                  <tr key={index}>
-                    <td>{item.date || "N/A"}</td>
-                    <td>{item.clientName || "Unknown Client"}</td>
-                    <td>₱{item.revenue}</td>
-                    {currentPeriod === "Daily" && <td>{item.time}</td>}
-                    {currentPeriod === "Weekly" && <td>{item.day}</td>}
-                    {currentPeriod === "Monthly" && <td>{item.weekRange}</td>}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={currentPeriod === "Daily" ? 4 : 4}>
-                    No revenue data available for this period
-                  </td>
+        <table className={styles.dataTable}>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Client Name</th>
+              <th>Revenue</th>
+              {currentPeriod === "Daily" && <th>Time</th>}
+              {currentPeriod === "Weekly" && <th>Day</th>}
+              {currentPeriod === "Monthly" && <th>Week Range</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {items.length > 0 ? (
+              items.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.date || "N/A"}</td>
+                  <td>{item.clientName || "Unknown Client"}</td>
+                  <td>₱{item.revenue}</td>
+                  {currentPeriod === "Daily" && <td>{item.time}</td>}
+                  {currentPeriod === "Weekly" && <td>{item.day}</td>}
+                  {currentPeriod === "Monthly" && <td>{item.weekRange}</td>}
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={currentPeriod === "Daily" ? 4 : 4}
+                  className={styles.noData}
+                >
+                  No revenue data available for this period
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     );
   };
@@ -836,10 +877,29 @@ const SalesReportsPage = () => {
     const { items } = customerListData;
 
     return (
-      <div className="customer-list-view">
-        <div className="customer-list-header">
-          <h2>Customer List - {currentPeriod}</h2>
-          <p className="period-info">
+      <div className={styles.dataTableWrapper}>
+        <div
+          style={{
+            padding: "var(--spacing-md)",
+            borderBottom: "1px solid var(--background-100)",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 var(--spacing-xs) 0",
+              fontSize: "var(--font-size-xl)",
+              fontWeight: "700",
+            }}
+          >
+            Customer List - {currentPeriod}
+          </h3>
+          <p
+            style={{
+              margin: "0",
+              fontSize: "var(--font-size-sm)",
+              color: "var(--muted)",
+            }}
+          >
             {currentPeriod === "Daily" &&
               "Showing clients with completed appointments today"}
             {currentPeriod === "Weekly" &&
@@ -849,34 +909,34 @@ const SalesReportsPage = () => {
           </p>
         </div>
 
-        <div className="customer-list-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Address</th>
-                <th>Contact Number</th>
-                <th>Number of Appointments</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length > 0 ? (
-                items.map((item, index) => (
-                  <tr key={index}>
-                    <td>{item.clientName}</td>
-                    <td>{item.address}</td>
-                    <td>{item.contactNumber}</td>
-                    <td>{item.appointmentCount}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4}>No customers found for this period</td>
+        <table className={styles.dataTable}>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Address</th>
+              <th>Contact Number</th>
+              <th>Number of Appointments</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.length > 0 ? (
+              items.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.clientName}</td>
+                  <td>{item.address}</td>
+                  <td>{item.contactNumber}</td>
+                  <td>{item.appointmentCount}</td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className={styles.noData}>
+                  No customers found for this period
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     );
   };
@@ -885,10 +945,29 @@ const SalesReportsPage = () => {
     const { items } = servicesData;
 
     return (
-      <div className="services-view">
-        <div className="services-header">
-          <h2>Services - {currentPeriod}</h2>
-          <p className="period-info">
+      <div className={styles.dataTableWrapper}>
+        <div
+          style={{
+            padding: "var(--spacing-md)",
+            borderBottom: "1px solid var(--background-100)",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 var(--spacing-xs) 0",
+              fontSize: "var(--font-size-xl)",
+              fontWeight: "700",
+            }}
+          >
+            Services - {currentPeriod}
+          </h3>
+          <p
+            style={{
+              margin: "0",
+              fontSize: "var(--font-size-sm)",
+              color: "var(--muted)",
+            }}
+          >
             {currentPeriod === "Daily" && "Showing services booked today"}
             {currentPeriod === "Weekly" && "Showing services booked this week"}
             {currentPeriod === "Monthly" &&
@@ -896,40 +975,37 @@ const SalesReportsPage = () => {
           </p>
         </div>
 
-        <div className="services-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Services</th>
-                <th>Number of Appointments</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length > 0 ? (
-                items.map((item, index) => (
-                  <tr key={index}>
-                    <td>{item.serviceName}</td>
-                    <td>{item.appointmentCount}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={2}>No services found for this period</td>
+        <table className={styles.dataTable}>
+          <thead>
+            <tr>
+              <th>Services</th>
+              <th>Number of Appointments</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.length > 0 ? (
+              items.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.serviceName}</td>
+                  <td>{item.appointmentCount}</td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={2} className={styles.noData}>
+                  No services found for this period
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     );
   };
 
   return (
-    <div className="sales-reports-page">
-      <div className="sales-reports-header">
-        <h1>Sales & Reports Dashboard</h1>
-
-        {/* View Selector */}
+    <PageLayout>
+      <LayoutRow title="Sales & Reports Dashboard">
         <div className="view-selector">
           {views.map((view) => (
             <button
@@ -941,30 +1017,32 @@ const SalesReportsPage = () => {
             </button>
           ))}
         </div>
+      </LayoutRow>
 
-        {/* Period Selector */}
-        <div className="period-selector">
-          {periods.map((period) => (
-            <button
-              key={period}
-              className={`period-btn ${
-                currentPeriod === period ? "active" : ""
-              }`}
-              onClick={() => setCurrentPeriod(period)}
-            >
-              {period}
-            </button>
-          ))}
-        </div>
+      <div
+        className="view-selector"
+        style={{ marginBottom: "var(--spacing-md)" }}
+      >
+        {periods.map((period) => (
+          <button
+            key={period}
+            className={`${styles.periodBtn} ${
+              currentPeriod === period ? "active" : ""
+            }`}
+            onClick={() => setCurrentPeriod(period)}
+          >
+            {period}
+          </button>
+        ))}
       </div>
 
-      <div className="sales-reports-content">
+      <div>
         {currentView === "Commission" && renderCommissionView()}
         {currentView === "Total Revenue" && renderTotalRevenueView()}
         {currentView === "Customer List" && renderCustomerListView()}
         {currentView === "Services" && renderServicesView()}
       </div>
-    </div>
+    </PageLayout>
   );
 };
 
