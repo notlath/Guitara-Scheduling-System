@@ -2,6 +2,8 @@
 
 <div align="center">
 
+![Project Banner](royal-care-frontend/src/assets/images/banner.png)
+
 **A comprehensive web-based scheduling system for Royal Care Home Service Massage**
 
 _Streamlining operations with automated appointment management, staff coordination, and material tracking_
