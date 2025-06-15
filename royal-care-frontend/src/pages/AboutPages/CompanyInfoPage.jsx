@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { MdLocationOn } from "react-icons/md";
-import "../../styles/CompanyInfo.css";
 import pageTitles from "../../constants/pageTitles";
+import "../../styles/CompanyInfo.css";
 
 const CompanyInfoPage = () => {
   useEffect(() => {
@@ -86,7 +86,7 @@ const CompanyInfoPage = () => {
               <div className="team-member">
                 <h3>Finance Manager</h3>
                 <p>
-                  <strong>"" R. Basalatan</strong>
+                  <strong>Denise R. Basalatan</strong>
                 </p>
                 <p>
                   Manages payment remittances, commission tracking, and
