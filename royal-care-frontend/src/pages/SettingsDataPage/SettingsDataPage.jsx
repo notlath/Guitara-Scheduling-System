@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { MdAdd, MdClose } from "react-icons/md";
+import Select from "react-select";
+import MinimalLoadingIndicator from "../../components/common/MinimalLoadingIndicator";
+import DataTable from "../../globals/DataTable";
 import { FormField } from "../../globals/FormField";
 import LayoutRow from "../../globals/LayoutRow";
 import "../../globals/LayoutRow.css";
 import PageLayout from "../../globals/PageLayout";
+import TabSwitcher from "../../globals/TabSwitcher";
 import {
   registerClient,
   registerDriver,
@@ -12,15 +16,11 @@ import {
   registerService,
   registerTherapist,
 } from "../../services/api";
+import "../../styles/LoadingConsistency.css";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
-import "../../styles/LoadingConsistency.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import styles from "./SettingsDataPage.module.css";
-import DataTable from "../../globals/DataTable";
-import Select from "react-select";
-import TabSwitcher from "../../globals/TabSwitcher";
-import MinimalLoadingIndicator from "../../components/common/MinimalLoadingIndicator";
 
 const TABS = [
   "Therapists",
@@ -372,7 +372,7 @@ const SettingsDataPage = () => {
     } finally {
       setIsSubmitting(false);
     }
-    
+
     // Always refresh table after registration, even if there was an error
     setIsLoading(true);
     try {
@@ -449,7 +449,7 @@ const SettingsDataPage = () => {
   // Simple skeleton loader for form
   const renderFormSkeleton = () => {
     let fieldCount = 4; // Default for most forms
-    
+
     switch (activeTab) {
       case "Therapists":
         fieldCount = 6;
@@ -470,7 +470,10 @@ const SettingsDataPage = () => {
     return (
       <div className={styles["form-skeleton"]}>
         {Array.from({ length: fieldCount }, (_, index) => (
-          <div key={`form-skeleton-${index}`} className={styles["form-field-skeleton"]}></div>
+          <div
+            key={`form-skeleton-${index}`}
+            className={styles["form-field-skeleton"]}
+          ></div>
         ))}
         <div className={styles["form-button-skeleton"]}></div>
       </div>
@@ -778,13 +781,13 @@ const SettingsDataPage = () => {
 
   return (
     <PageLayout>
-      <MinimalLoadingIndicator 
-        show={isLoading} 
-        position="top-right" 
+      <MinimalLoadingIndicator
+        show={isLoading}
+        position="top-right"
         operation={`Loading ${activeTab.toLowerCase()}`}
         tooltip={`Fetching ${activeTab.toLowerCase()} data...`}
       />
-      
+
       {showModal && (
         <div className={styles["modal-overlay"]}>
           <div className={styles["modal"]}>
@@ -800,9 +803,9 @@ const SettingsDataPage = () => {
             </div>
             <form className={styles["modal-form"]} onSubmit={handleSubmit}>
               {isSubmitting ? renderFormSkeleton() : renderFormFields()}
-              <button 
-                type="submit" 
-                className="action-btn" 
+              <button
+                type="submit"
+                className="action-btn"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? "Registering..." : "Register"}
@@ -811,17 +814,17 @@ const SettingsDataPage = () => {
           </div>
         </div>
       )}
-      
+
       {successPrompt && (
         <div className={styles["success-prompt"]}>{successPrompt}</div>
       )}
-      
+
       <div className={"global-content" + (showModal ? " faded" : "")}>
         <div className={styles["header-tabs-container"]}>
           <LayoutRow title="Data">
             <div className="action-buttons">
-              <button 
-                className="primary-action-btn" 
+              <button
+                className="primary-action-btn"
                 onClick={handleAddClick}
                 disabled={isLoading}
               >
@@ -838,11 +841,14 @@ const SettingsDataPage = () => {
             onTabChange={setActiveTab}
           />
         </div>
-        
+
         {isLoading ? (
           renderTableSkeleton()
         ) : (
-          <DataTable columns={tableConfig.columns} data={tableData[activeTab]} />
+          <DataTable
+            columns={tableConfig.columns}
+            data={tableData[activeTab]}
+          />
         )}
       </div>
     </PageLayout>

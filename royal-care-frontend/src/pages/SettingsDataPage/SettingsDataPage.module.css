@@ -85,7 +85,8 @@
 
 /* Simple loading state animations */
 @keyframes skeleton-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -214,7 +215,7 @@ button:disabled {
   .skeleton-pulse {
     animation: none !important;
   }
-  
+
   .table-skeleton-cell,
   .form-field-skeleton,
   .form-button-skeleton {
