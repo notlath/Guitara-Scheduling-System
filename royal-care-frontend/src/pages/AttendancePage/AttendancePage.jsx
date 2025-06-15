@@ -15,9 +15,21 @@ import styles from "./AttendancePage.module.css";
 
 const AttendancePage = () => {
   const dispatch = useDispatch();
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+
+  // Initialize with current date in Asia/Manila Time (UTC+08:00)
+  const getCurrentDate = () => {
+    const now = new Date();
+    // Convert to Asia/Manila Time (UTC+08:00)
+    const manilaTime = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Manila",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+    return manilaTime; // Returns YYYY-MM-DD format
+  };
+
+  const [selectedDate, setSelectedDate] = useState(getCurrentDate());
   const [attendanceFilter, setAttendanceFilter] = useState("all");
 
   const {
@@ -315,7 +327,9 @@ const AttendancePage = () => {
       <div className={styles["attendance-page"]}>
         <LayoutRow title="Staff Attendance Tracking">
           <div className={styles["date-selector"]}>
-            <label htmlFor="attendance-date">Select Date:</label>
+            <label htmlFor="attendance-date">
+              Select Date <small>(Asia/Manila Time - UTC+08:00)</small>:
+            </label>
             <input
               id="attendance-date"
               type="date"
@@ -325,6 +339,33 @@ const AttendancePage = () => {
             />
           </div>
         </LayoutRow>
+
+        {/* Show connection error if API is not available */}
+        {attendanceError && attendanceError.includes("Network Error") && (
+          <div className={styles["error-banner"]}>
+            <div className={styles["error-message"]}>
+              ⚠️ <strong>Backend Server Not Available</strong>
+              <p>
+                The Django server is not running. Please start the server to see
+                real attendance data.
+              </p>
+              <p>
+                You can start it by running:{" "}
+                <code>python manage.py runserver</code> in the guitara directory
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Show other errors */}
+        {attendanceError && !attendanceError.includes("Network Error") && (
+          <div className={styles["error-banner"]}>
+            <div className={styles["error-message"]}>
+              ❌ <strong>Error Loading Attendance Data</strong>
+              <p>{attendanceError}</p>
+            </div>
+          </div>
+        )}
 
         <div className={styles["attendance-stats"]}>
           <div className={styles["stat-card"]}>
@@ -362,6 +403,13 @@ const AttendancePage = () => {
           ) : attendanceError ? (
             <div className={styles["error-message"]}>
               <p>❌ Error loading attendance data: {attendanceError}</p>
+              {attendanceError.includes("Connection refused") && (
+                <p>
+                  <em>
+                    🔧 Make sure the Django server is running on localhost:8000
+                  </em>
+                </p>
+              )}
               <button
                 onClick={() => {
                   dispatch(fetchAttendanceRecords({ date: selectedDate }));
