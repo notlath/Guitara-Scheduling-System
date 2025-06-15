@@ -20,7 +20,7 @@ class AttendanceRecord(models.Model):
     staff_member = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="attendance_records"
     )
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=timezone.localdate)
     check_in_time = models.TimeField(null=True, blank=True)
     check_out_time = models.TimeField(null=True, blank=True)
     status = models.CharField(

@@ -309,6 +309,33 @@
   margin: 20px 0;
 }
 
+.error-banner {
+  margin: 20px 0;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.error-message strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 1.1em;
+}
+
+.error-message p {
+  margin: 5px 0;
+  line-height: 1.5;
+}
+
+.error-message code {
+  background: #f1f3f4;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "Courier New", monospace;
+  font-size: 0.9em;
+}
+
 .retry-btn {
   background: #007bff;
   color: white;

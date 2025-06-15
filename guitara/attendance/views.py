@@ -24,14 +24,15 @@ def check_in(request):
     Check in the current user for attendance.
     """
     user = request.user
-    today = timezone.now().date()
-    # Get current time in the configured timezone
-    current_datetime = timezone.now()
-    current_time = timezone.localtime(current_datetime).time()
+    # Use local timezone for consistent date/time handling
+    local_now = timezone.localtime()
+    today = local_now.date()
+    current_time = local_now.time()
 
     # Debug logging
-    print(f"DEBUG - Check-in - Current datetime (UTC): {current_datetime}")
-    print(f"DEBUG - Check-in - Current time (local): {current_time}")
+    print(f"DEBUG - Check-in - Local datetime: {local_now}")
+    print(f"DEBUG - Check-in - Local date: {today}")
+    print(f"DEBUG - Check-in - Local time: {current_time}")
     print(
         f"DEBUG - Check-in - Current time formatted: {current_time.strftime('%H:%M:%S')}"
     )
@@ -62,9 +63,9 @@ def check_in(request):
             attendance_record.is_checked_in = True
             attendance_record.save()
 
-    # Determine status based on check-in time
+    # Determine status based on check-in time (1:15 PM Asia/Manila time)
     cutoff_time = (
-        timezone.now().replace(hour=13, minute=15, second=0, microsecond=0).time()
+        timezone.localtime().replace(hour=13, minute=15, second=0, microsecond=0).time()
     )
     if current_time <= cutoff_time:
         attendance_status = "present"
@@ -98,15 +99,18 @@ def check_out(request):
     Check out the current user for attendance.
     """
     user = request.user
-    today = timezone.now().date()
-    # Get current time in the configured timezone
-    current_datetime = timezone.now()
-    current_time = timezone.localtime(current_datetime).time()
+    # Use local timezone for consistent date/time handling
+    local_now = timezone.localtime()
+    today = local_now.date()
+    current_time = local_now.time()
 
     # Debug logging
-    print(f"DEBUG - Current datetime (UTC): {current_datetime}")
-    print(f"DEBUG - Current time (local): {current_time}")
-    print(f"DEBUG - Current time formatted: {current_time.strftime('%H:%M:%S')}")
+    print(f"DEBUG - Check-out - Local datetime: {local_now}")
+    print(f"DEBUG - Check-out - Local date: {today}")
+    print(f"DEBUG - Check-out - Local time: {current_time}")
+    print(
+        f"DEBUG - Check-out - Current time formatted: {current_time.strftime('%H:%M:%S')}"
+    )
 
     try:
         attendance_record = AttendanceRecord.objects.get(staff_member=user, date=today)
@@ -155,7 +159,7 @@ def today_status(request):
     Get the current user's attendance status for today.
     """
     user = request.user
-    today = timezone.now().date()
+    today = timezone.localtime().date()  # Use local date instead of UTC date
 
     try:
         attendance_record = AttendanceRecord.objects.get(staff_member=user, date=today)
@@ -212,7 +216,7 @@ def attendance_records(request):
             )
     else:
         # Default to today's records
-        today = timezone.now().date()
+        today = timezone.localtime().date()  # Use local date instead of UTC date
         queryset = queryset.filter(date=today)
 
     # Only operators can filter by specific staff_id
@@ -295,7 +299,7 @@ def attendance_summary(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
     else:
-        summary_date = timezone.now().date()
+        summary_date = timezone.localtime().date()  # Use local date instead of UTC date
 
     if is_operator:
         # Operators get full summary
