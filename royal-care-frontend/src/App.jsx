@@ -16,7 +16,6 @@ import DeveloperInfoPage from "./pages/AboutPages/DeveloperInfoPage";
 import SystemInfoPage from "./pages/AboutPages/SystemInfoPage";
 import AttendancePage from "./pages/AttendancePage/AttendancePage";
 import BookingsPage from "./pages/BookingsPage/BookingsPage";
-import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage";
 import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordPage";
 import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
@@ -31,6 +30,7 @@ import SchedulingPage from "./pages/SchedulingPage/SchedulingPage";
 import SettingsAccountPage from "./pages/SettingsAccountPage/SettingsAccountPage";
 import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
+import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import { validateToken } from "./services/auth";
 
@@ -152,7 +152,8 @@ const App = () => {
           />{" "}
           <Route path="scheduling" element={<SchedulingPage />} />
           <Route path="availability" element={<AvailabilityManager />} />{" "}
-          <Route path="bookings" element={<BookingsPage />} />{" "}          <Route
+          <Route path="bookings" element={<BookingsPage />} />{" "}
+          <Route
             path="attendance"
             element={
               user?.role === "therapist" || user?.role === "driver" ? (
