@@ -1,0 +1,460 @@
+/* ========================================
+   LOADING CONSISTENCY HELPER STYLES
+   ======================================== */
+
+/* These styles complement the LoadingComponents for consistent loading UX */
+
+/* ✅ Appointment Card Skeleton Styling */
+.appointment-card-skeleton {
+  margin-bottom: 1rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color, #e1e5e9);
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.driver-appointment-skeleton,
+.therapist-appointment-skeleton,
+.operator-appointment-skeleton {
+  width: 100%;
+}
+
+/* ✅ Refresh Indicator Styling */
+.refresh-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(255, 193, 7, 0.1);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: #856404;
+  margin-bottom: 8px;
+  width: fit-content;
+  animation: subtle-pulse 2s infinite;
+}
+
+@keyframes subtle-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ✅ Appointments Skeleton Container */
+.appointments-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+/* ✅ Error State Styling */
+.error-message {
+  text-align: center;
+  padding: 2rem;
+  border-radius: 8px;
+  background: var(--error-light, #fef2f2);
+  border: 1px solid var(--error, #ef4444);
+  margin: 1rem 0;
+}
+
+.error-content {
+  color: var(--error, #ef4444);
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  font-weight: 500;
+}
+
+.retry-button {
+  margin-top: 0.5rem;
+}
+
+/* ✅ Consistent Form Skeleton */
+.form-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2rem 0;
+}
+
+.form-field-skeleton {
+  height: 2.5rem;
+  background: var(--skeleton-base, #f3f4f6);
+  border-radius: 4px;
+}
+
+.form-button-skeleton {
+  height: 2.75rem;
+  width: 120px;
+  background: var(--skeleton-base, #f3f4f6);
+  border-radius: 6px;
+  margin-left: auto;
+}
+
+/* ✅ Dashboard Stats Skeleton */
+.stats-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card-skeleton {
+  height: 100px;
+  background: var(--skeleton-base, #f3f4f6);
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e1e5e9);
+}
+
+/* ✅ Table Skeleton Enhancement */
+.table-skeleton-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 120px;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+.table-skeleton-cell {
+  height: 1.25rem;
+  background: var(--skeleton-base, #f3f4f6);
+  border-radius: 4px;
+}
+
+/* ✅ Loading State Animations */
+@keyframes subtle-pulse {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading-state-subtle {
+  animation: subtle-pulse 2s ease-in-out infinite;
+}
+
+/* ✅ Mobile Responsiveness */
+@media (max-width: 768px) {
+  .refresh-indicator {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .appointment-card-skeleton {
+    padding: 1rem;
+  }
+
+  .error-message {
+    padding: 1.5rem;
+  }
+
+  .stats-skeleton {
+    grid-template-columns: 1fr;
+  }
+
+  .table-skeleton-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+/* ✅ High Contrast Support */
+@media (prefers-contrast: high) {
+  .appointment-card-skeleton,
+  .stat-card-skeleton {
+    border-width: 2px;
+  }
+
+  .refresh-indicator {
+    border-left-width: 4px;
+  }
+}
+
+/* ✅ Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .loading-state-subtle {
+    animation: none;
+  }
+
+  .refresh-indicator {
+    transition: none;
+  }
+}
+
+/* ✅ Minimal Loading Indicators - Subtle, non-intrusive feedback */
+.minimal-loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(74, 144, 226, 0.05);
+  border-left: 3px solid #4a90e2;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: #666;
+  transition: opacity 0.3s ease;
+}
+
+.minimal-loading-indicator .loading-text {
+  font-weight: 500;
+  color: #4a90e2;
+}
+
+/* Make inline loaders more subtle */
+.inline-loader.subtle {
+  opacity: 0.6;
+}
+
+.inline-loader.subtle .inline-spinner .dot {
+  background-color: #6c757d;
+  animation-duration: 1.5s;
+}
+
+/* ========================================
+   MINIMAL LOADING INDICATORS
+   ======================================== */
+
+/* ✅ Minimal Loading Bar - Top of dashboard */
+.minimal-loading-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.minimal-loading-bar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #007bff, transparent);
+  animation: loading-sweep 2s infinite;
+}
+
+@keyframes loading-sweep {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.loading-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.loading-text {
+  font-weight: 500;
+  color: #495057;
+}
+
+.loading-time {
+  font-size: 0.75rem;
+  color: #868e96;
+  opacity: 0.8;
+}
+
+/* ✅ Error Banner - Minimal error display */
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  border: 1px solid #f5c6cb;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  animation: slide-down 0.3s ease-out;
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.error-banner .error-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.error-banner .error-content i {
+  color: #721c24;
+  font-size: 0.875rem;
+}
+
+.error-banner .error-message {
+  color: #721c24;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.error-banner .retry-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  height: auto;
+}
+
+/* ✅ Loading Progress Animation */
+.loading-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: #007bff;
+  animation: progress-indeterminate 2s infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    width: 0%;
+    left: 0%;
+  }
+  50% {
+    width: 75%;
+    left: 25%;
+  }
+  100% {
+    width: 0%;
+    left: 100%;
+  }
+}
+
+/* ✅ Smart Loading Messages */
+.loading-text.appointments {
+  color: #007bff;
+}
+.loading-text.notifications {
+  color: #28a745;
+}
+.loading-text.stats {
+  color: #ffc107;
+}
+.loading-text.sync {
+  color: #6f42c1;
+}
+
+/* ✅ Loading Bar Variants */
+.minimal-loading-bar.priority {
+  border-left: 4px solid #dc3545;
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+}
+
+.minimal-loading-bar.success {
+  border-left: 4px solid #28a745;
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+}
+
+/* ✅ Loading Pulse Animation for Subtle Indicators */
+.loading-pulse {
+  position: relative;
+}
+
+.loading-pulse::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background: #007bff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+}
+
+/* ✅ Toast-like Loading Notification */
+.loading-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  animation: slide-in-right 0.3s ease-out;
+  max-width: 300px;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.loading-toast .toast-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-toast .toast-message {
+  font-size: 0.875rem;
+  color: #495057;
+  font-weight: 500;
+}
+
+/* ✅ Dashboard-specific Loading Indicators */
+.operator-loading-bar {
+  border-left: 4px solid #6f42c1;
+}
+
+.driver-loading-bar {
+  border-left: 4px solid #fd7e14;
+}
+
+.therapist-loading-bar {
+  border-left: 4px solid #20c997;
+}

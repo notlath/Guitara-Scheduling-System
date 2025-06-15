@@ -7,6 +7,7 @@ import {
   fetchAvailableTherapists,
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/Calendar.css";
+import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
 const Calendar = ({
   onDateSelected,
@@ -25,6 +26,7 @@ const Calendar = ({
     availableDrivers,
     appointments,
     appointmentsByDate,
+    loading, // Add loading state from Redux
   } = useSelector((state) => state.scheduling);
 
   // Initialize with today's data when component mounts
@@ -74,6 +76,68 @@ const Calendar = ({
     return slotDateTime < now;
   };
 
+  // Helper function to check if a driver is available for a specific time slot
+  const isDriverAvailableForTimeSlot = (driver, timeSlot) => {
+    if (!driver.start_time || !driver.end_time) {
+      return false; // No availability data
+    }
+
+    // Convert time slot and driver times to minutes for comparison
+    const timeToMinutes = (timeStr) => {
+      const [hours, minutes] = timeStr.split(":").map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const slotMinutes = timeToMinutes(timeSlot);
+    const driverStartMinutes = timeToMinutes(driver.start_time);
+    const driverEndMinutes = timeToMinutes(driver.end_time);
+
+    // Handle cross-day availability (e.g., 10 PM to 2 AM)
+    if (driverEndMinutes < driverStartMinutes) {
+      // Cross-day: available if slot is after start OR before end
+      return (
+        slotMinutes >= driverStartMinutes || slotMinutes < driverEndMinutes
+      );
+    } else {
+      // Same-day: available if slot is between start and end
+      return (
+        slotMinutes >= driverStartMinutes && slotMinutes < driverEndMinutes
+      );
+    }
+  };
+
+  // Helper function to check if a therapist is available for a specific time slot
+  const isTherapistAvailableForTimeSlot = (therapist, timeSlot) => {
+    if (!therapist.start_time || !therapist.end_time) {
+      return false; // No availability data
+    }
+
+    // Convert time slot and therapist times to minutes for comparison
+    const timeToMinutes = (timeStr) => {
+      const [hours, minutes] = timeStr.split(":").map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const slotMinutes = timeToMinutes(timeSlot);
+    const therapistStartMinutes = timeToMinutes(therapist.start_time);
+    const therapistEndMinutes = timeToMinutes(therapist.end_time);
+
+    // Handle cross-day availability (e.g., 10 PM to 2 AM)
+    if (therapistEndMinutes < therapistStartMinutes) {
+      // Cross-day: available if slot is after start OR before end
+      return (
+        slotMinutes >= therapistStartMinutes ||
+        slotMinutes < therapistEndMinutes
+      );
+    } else {
+      // Same-day: available if slot is between start and end
+      return (
+        slotMinutes >= therapistStartMinutes &&
+        slotMinutes < therapistEndMinutes
+      );
+    }
+  };
+
   // Get availability status for a time slot
   const getTimeSlotStatus = (timeSlot, date) => {
     if (isPastTimeSlot(timeSlot, date)) {
@@ -96,27 +160,50 @@ const Calendar = ({
       });
     }
 
-    // Filter available therapists to exclude those currently in session
-    const actuallyAvailableTherapists =
-      availableTherapists?.filter(
-        (therapist) => !bookedTherapists.includes(therapist.id)
-      ) || [];
+    // CRITICAL FIX: Only use availableTherapists data if it was fetched for the current date
+    // This prevents showing incorrect availability when the data was fetched for a different date/time
+    const currentDateStr = formatDate(date);
+    const isCurrentlySelected =
+      selectedDate && formatDate(selectedDate) === currentDateStr;
 
-    const totalTherapists = availableTherapists?.length || 0;
-    const availableCount = actuallyAvailableTherapists.length;
+    // Only rely on fetched availability data if:
+    // 1. We have therapists data AND
+    // 2. The data was fetched for the currently selected date OR today's date
+    const hasFreshAvailabilityData =
+      availableTherapists &&
+      availableTherapists.length > 0 &&
+      (isCurrentlySelected || currentDateStr === formatDate(new Date()));
 
-    // If no therapists have set availability for this time
-    if (totalTherapists === 0) {
+    if (!hasFreshAvailabilityData) {
+      // No fresh availability data for this date - show neutral status
       return { status: "no-availability", color: "#4b3b06" }; // Orange-brown
     }
 
-    // All slots are booked
+    // Filter therapists who are actually available for this specific time slot
+    const therapistsAvailableForThisSlot = availableTherapists.filter(
+      (therapist) => isTherapistAvailableForTimeSlot(therapist, timeSlot)
+    );
+
+    // Further filter to exclude those currently in session
+    const actuallyAvailableTherapists = therapistsAvailableForThisSlot.filter(
+      (therapist) => !bookedTherapists.includes(therapist.id)
+    );
+
+    const totalAvailableForSlot = therapistsAvailableForThisSlot.length;
+    const availableCount = actuallyAvailableTherapists.length;
+
+    // If no therapists have set availability for this specific time slot
+    if (totalAvailableForSlot === 0) {
+      return { status: "no-availability", color: "#4b3b06" }; // Orange-brown
+    }
+
+    // All available slots are booked
     if (availableCount === 0) {
       return { status: "fully-booked", color: "#dc2626" }; // Red
     }
 
     // Some availability remaining
-    if (availableCount < totalTherapists) {
+    if (availableCount < totalAvailableForSlot) {
       return { status: "limited", color: "#f59e0b" }; // Orange
     }
 
@@ -830,29 +917,35 @@ const Calendar = ({
           <div className="therapists-section">
             <h3>Available Therapists</h3>
             {(() => {
-              // Filter out therapists who are currently in session during the selected time
+              // Start with all available therapists
               let filteredTherapists = availableTherapists || [];
 
-              if (
-                selectedTime &&
-                appointmentsByDate &&
-                Array.isArray(appointmentsByDate)
-              ) {
-                const bookedTherapistIds = [];
-                appointmentsByDate.forEach((appointment) => {
-                  if (
-                    appointment.start_time <= selectedTime &&
-                    appointment.end_time > selectedTime
-                  ) {
-                    if (appointment.therapist_details?.id) {
-                      bookedTherapistIds.push(appointment.therapist_details.id);
-                    }
-                  }
-                });
-
-                filteredTherapists = availableTherapists.filter(
-                  (therapist) => !bookedTherapistIds.includes(therapist.id)
+              // If a specific time is selected, filter by actual availability for that time
+              if (selectedTime) {
+                filteredTherapists = filteredTherapists.filter((therapist) =>
+                  isTherapistAvailableForTimeSlot(therapist, selectedTime)
                 );
+
+                // Then filter out therapists who are currently in session during the selected time
+                if (appointmentsByDate && Array.isArray(appointmentsByDate)) {
+                  const bookedTherapistIds = [];
+                  appointmentsByDate.forEach((appointment) => {
+                    if (
+                      appointment.start_time <= selectedTime &&
+                      appointment.end_time > selectedTime
+                    ) {
+                      if (appointment.therapist_details?.id) {
+                        bookedTherapistIds.push(
+                          appointment.therapist_details.id
+                        );
+                      }
+                    }
+                  });
+
+                  filteredTherapists = filteredTherapists.filter(
+                    (therapist) => !bookedTherapistIds.includes(therapist.id)
+                  );
+                }
               }
 
               return filteredTherapists && filteredTherapists.length > 0 ? (
@@ -882,8 +975,9 @@ const Calendar = ({
                 </ul>
               ) : (
                 <p>
-                  No therapists available for selected time. Try selecting a
-                  different time slot.
+                  {selectedTime
+                    ? `No therapists available for ${selectedTime}. Try selecting a different time slot.`
+                    : "No therapists have set availability for the current view. Try selecting a specific time slot or check the Availability Manager."}
                 </p>
               );
             })()}
@@ -891,28 +985,54 @@ const Calendar = ({
 
           <div className="drivers-section">
             <h3>Available Drivers</h3>
-            {availableDrivers && availableDrivers.length > 0 ? (
-              <ul>
-                {availableDrivers.map((driver) => (
-                  <li key={driver.id || Math.random()}>
-                    <b>
-                      {driver.first_name || ""} {driver.last_name || ""}
-                    </b>{" "}
-                    {driver.motorcycle_plate
-                      ? `- Plate: ${driver.motorcycle_plate}`
-                      : ""}{" "}
-                    {driver.start_time && driver.end_time
-                      ? ` - Available: ${driver.start_time} to ${driver.end_time}`
-                      : ""}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>
-                No drivers available for selected time. Try selecting a
-                different time slot or proceed without a driver.
-              </p>
-            )}
+            {(() => {
+              // Start with all available drivers
+              let filteredDrivers = availableDrivers || [];
+
+              // If a specific time is selected, filter by actual availability for that time
+              if (selectedTime) {
+                filteredDrivers = filteredDrivers.filter((driver) =>
+                  isDriverAvailableForTimeSlot(driver, selectedTime)
+                );
+              }
+
+              // Check if we have valid availability data for drivers
+              const hasFreshDriverData =
+                availableDrivers && availableDrivers.length > 0 && selectedTime; // Only show driver info if a specific time is selected
+
+              if (!hasFreshDriverData) {
+                return (
+                  <p>
+                    Please select a specific time slot to see driver
+                    availability.
+                  </p>
+                );
+              }
+
+              return filteredDrivers && filteredDrivers.length > 0 ? (
+                <ul>
+                  {filteredDrivers.map((driver) => (
+                    <li key={driver.id || Math.random()}>
+                      <b>
+                        {driver.first_name || ""} {driver.last_name || ""}
+                      </b>{" "}
+                      {driver.motorcycle_plate
+                        ? `- Plate: ${driver.motorcycle_plate}`
+                        : ""}{" "}
+                      {driver.start_time && driver.end_time
+                        ? ` - Available: ${driver.start_time} to ${driver.end_time}`
+                        : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>
+                  {selectedTime
+                    ? `No drivers available for ${selectedTime}. Try selecting a different time slot or proceed without a driver.`
+                    : "No drivers have set availability for the current view. Try selecting a specific time slot or check the Availability Manager."}
+                </p>
+              );
+            })()}
           </div>
 
           {/* Display bookings for the selected day */}
@@ -1018,6 +1138,17 @@ const Calendar = ({
           </div>
         </div>
       )}
+
+      {/* Minimal loading indicator for frequent data fetching */}
+      <MinimalLoadingIndicator
+        show={loading}
+        position="bottom-right"
+        size="micro"
+        variant="subtle"
+        tooltip="Loading availability data..."
+        pulse={true}
+        fadeIn={true}
+      />
     </div>
   );
 };

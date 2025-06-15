@@ -1,12 +1,11 @@
 /**
- * Centralized Data Manager to eliminate redundant API polling across dashboards
+ * Simple, Robust DataManager - Rewritten to eliminate errors
  *
- * Key Features:
- * - Single polling source for all dashboards
- * - Smart data caching with TTL
- * - Request deduplication
- * - User activity-based polling intervals
- * - Automatic subscription management
+ * Focus: Reliability over complexity
+ * - No aggressive cancellation
+ * - Simple request deduplication
+ * - Graceful error handling
+ * - Clean React integration
  */
 
 import {
@@ -19,46 +18,60 @@ import store from "../store";
 
 class DataManager {
   constructor() {
-    this.subscribers = new Map(); // Track which components need what data
-    this.cache = new Map(); // Cache data with timestamps
-    this.requestsInFlight = new Map(); // Prevent duplicate requests
+    // Core tracking
+    this.subscribers = new Map();
+    this.cache = new Map();
+    this.requestsInFlight = new Map();
     this.pollingInterval = null;
     this.isPolling = false;
 
-    // Data freshness tracking
-    this.lastFetch = new Map();
+    // Simple configuration
     this.cacheTTL = {
       appointments: 30000, // 30 seconds
-      todayAppointments: 30000,
+      todayAppointments: 30000, // 30 seconds
       upcomingAppointments: 60000, // 1 minute
       notifications: 45000, // 45 seconds
     };
 
-    // Activity tracking for smart polling
+    // Activity tracking
     this.lastUserActivity = Date.now();
+    this.isTabVisible = !document.hidden;
+
+    // Setup activity listeners
     this.setupActivityTracking();
+    this.setupVisibilityTracking();
+
+    // Development mode utilities
+    this.isDevelopment =
+      window.location.hostname === "localhost" ||
+      window.location.hostname.includes("dev") ||
+      window.location.port;
+
+    if (this.isDevelopment) {
+      this.setupDevUtils();
+    }
+
+    console.log("📡 DataManager: Initialized (Simple Mode)");
   }
 
   /**
-   * Subscribe a component to specific data types
-   * @param {string} componentId - Unique identifier for the component
-   * @param {Array} dataTypes - Array of data types ['appointments', 'todayAppointments', etc.]
-   * @param {Object} options - Additional options like user role, filters
+   * Subscribe component to data updates
    */
   subscribe(componentId, dataTypes, options = {}) {
     console.log(`📡 DataManager: ${componentId} subscribing to:`, dataTypes);
 
+    // Store subscription
     this.subscribers.set(componentId, {
       dataTypes: new Set(dataTypes),
       options,
-      lastUpdate: Date.now(),
+      timestamp: Date.now(),
     });
 
-    // Start polling if this is the first subscriber
+    // Start polling if first subscriber
     if (this.subscribers.size === 1) {
       this.startPolling();
     } else {
-      // If polling is already running, fetch needed data immediately for new subscriber
+      // Fetch immediately for new subscriber
       this.fetchNeededData();
     }
 
@@ -67,145 +80,89 @@ class DataManager {
   }
 
   /**
-   * Unsubscribe a component from data updates
-   * @param {string} componentId - Component identifier
+   * Unsubscribe component
    */
   unsubscribe(componentId) {
     console.log(`📡 DataManager: ${componentId} unsubscribing`);
     this.subscribers.delete(componentId);
 
-    // Stop polling if no more subscribers
+    // Stop polling if no subscribers
     if (this.subscribers.size === 0) {
       this.stopPolling();
     }
   }
 
   /**
-   * Start centralized polling
+   * Start polling
    */
   startPolling() {
     if (this.isPolling) return;
 
-    console.log("🔄 DataManager: Starting centralized polling");
+    console.log("🔄 DataManager: Starting polling");
     this.isPolling = true;
 
     // Initial fetch
     this.fetchNeededData();
 
-    // Setup dynamic interval that adjusts based on activity
-    this.setupDynamicPolling();
+    // Setup polling interval
+    this.pollingInterval = setInterval(() => {
+      if (this.subscribers.size > 0) {
+        this.fetchNeededData();
+      }
+    }, this.getPollingInterval());
   }
 
   /**
-   * Setup dynamic polling that adjusts interval based on user activity
-   */
-  setupDynamicPolling() {
-    const pollWithDynamicInterval = () => {
-      if (!this.isPolling) return;
-
-      this.fetchNeededData();
-
-      // Dynamically adjust next polling interval
-      const interval = this.getOptimalPollingInterval();
-      this.pollingInterval = setTimeout(pollWithDynamicInterval, interval);
-    };
-
-    // Start the dynamic polling cycle
-    const initialInterval = this.getOptimalPollingInterval();
-    this.pollingInterval = setTimeout(pollWithDynamicInterval, initialInterval);
-  }
-
-  /**
-   * Stop centralized polling
+   * Stop polling
    */
   stopPolling() {
     if (!this.isPolling) return;
 
-    console.log("⏹️ DataManager: Stopping centralized polling");
+    console.log("⏹️ DataManager: Stopping polling");
     this.isPolling = false;
 
     if (this.pollingInterval) {
-      clearTimeout(this.pollingInterval); // Changed from clearInterval to clearTimeout
+      clearInterval(this.pollingInterval);
       this.pollingInterval = null;
     }
   }
 
   /**
-   * Fetch only the data that subscribers actually need
+   * Fetch data needed by current subscribers
    */
   async fetchNeededData() {
-    const neededDataTypes = new Set();
+    if (this.subscribers.size === 0) return;
 
-    // Collect all data types needed by current subscribers
+    // Collect needed data types
+    const neededTypes = new Set();
     this.subscribers.forEach(({ dataTypes }) => {
-      dataTypes.forEach((type) => neededDataTypes.add(type));
+      dataTypes.forEach((type) => neededTypes.add(type));
     });
-
-    if (neededDataTypes.size === 0) return;
 
     console.log(
       "🔄 DataManager: Fetching needed data:",
-      Array.from(neededDataTypes)
+      Array.from(neededTypes)
     );
 
-    // Batch API calls and deduplicate
-    const promises = [];
+    // Fetch each needed type
+    const promises = Array.from(neededTypes).map((dataType) =>
+      this.fetchDataType(dataType).catch((error) => {
+        console.warn(
+          `⚠️ DataManager: Failed to fetch ${dataType}:`,
+          error.message
+        );
+        return null; // Don't let one failure stop others
+      })
+    );
 
-    for (const dataType of neededDataTypes) {
-      if (this.shouldFetchData(dataType)) {
-        promises.push(this.fetchDataType(dataType));
-      }
-    }
-
-    // Execute all needed fetches in parallel
-    if (promises.length > 0) {
-      try {
-        const results = await Promise.allSettled(promises);
-
-        // Log any failures but don't stop the whole process
-        results.forEach((result, index) => {
-          if (result.status === "rejected") {
-            console.error(
-              `❌ DataManager: Failed to fetch data type ${index}:`,
-              result.reason
-            );
-          }
-        });
-
-        console.log("✅ DataManager: Batch fetch completed");
-      } catch (error) {
-        console.error("❌ DataManager: Batch fetch error:", error);
-      }
-    }
+    await Promise.allSettled(promises);
   }
 
   /**
-   * Check if data should be fetched based on cache TTL
-   * @param {string} dataType - Type of data to check
-   * @returns {boolean} - Whether data should be fetched
-   */
-  shouldFetchData(dataType) {
-    const lastFetch = this.lastFetch.get(dataType);
-    if (!lastFetch) return true;
-
-    const ttl = this.cacheTTL[dataType] || 30000;
-    const isStale = Date.now() - lastFetch > ttl;
-
-    if (isStale) {
-      console.log(
-        `⏰ DataManager: ${dataType} is stale (${Date.now() - lastFetch}ms old)`
-      );
-    }
-
-    return isStale;
-  }
-
-  /**
-   * Fetch specific data type with deduplication
-   * @param {string} dataType - Type of data to fetch
+   * Fetch specific data type with simple deduplication
    */
   async fetchDataType(dataType) {
-    // Prevent duplicate requests
+    // Check if request already in flight
     if (this.requestsInFlight.has(dataType)) {
       console.log(
         `⏳ DataManager: ${dataType} request already in flight, waiting...`
@@ -213,90 +170,109 @@ class DataManager {
       return this.requestsInFlight.get(dataType);
     }
 
-    let fetchPromise;
+    // Check cache first
+    if (this.isCacheValid(dataType)) {
+      console.log(`💾 DataManager: Using cached ${dataType}`);
+      return this.cache.get(dataType);
+    }
+
+    // Create new request
+    const requestPromise = this.createRequest(dataType);
+    this.requestsInFlight.set(dataType, requestPromise);
 
     try {
-      switch (dataType) {
-        case "appointments":
-          fetchPromise = store.dispatch(fetchAppointments());
-          break;
-        case "todayAppointments":
-          fetchPromise = store.dispatch(fetchTodayAppointments());
-          break;
-        case "upcomingAppointments":
-          fetchPromise = store.dispatch(fetchUpcomingAppointments());
-          break;
-        case "notifications":
-          fetchPromise = store.dispatch(fetchNotifications());
-          break;
-        default:
-          console.warn(`⚠️ DataManager: Unknown data type: ${dataType}`);
-          return;
-      }
+      const result = await requestPromise;
 
-      // Track the request
-      this.requestsInFlight.set(dataType, fetchPromise);
+      // Cache the result
+      this.cache.set(dataType, {
+        data: result,
+        timestamp: Date.now(),
+      });
 
-      // Wait for completion
-      const result = await fetchPromise;
-
-      // Update cache and timestamps
-      this.lastFetch.set(dataType, Date.now());
-
-      console.log(`✅ DataManager: ${dataType} fetched successfully`);
       return result;
-    } catch (error) {
-      console.error(`❌ DataManager: Failed to fetch ${dataType}:`, error);
     } finally {
-      // Always remove from in-flight requests
+      // Always cleanup
       this.requestsInFlight.delete(dataType);
     }
   }
 
   /**
-   * Get optimal polling interval based on user activity and subscriber count
+   * Create API request
    */
-  getOptimalPollingInterval() {
-    const timeSinceActivity = Date.now() - this.lastUserActivity;
-    const subscriberCount = this.subscribers.size;
+  async createRequest(dataType) {
+    console.log(`🌐 DataManager: Making API request for ${dataType}`);
 
-    // Base intervals based on user activity
-    let baseInterval;
-
-    if (timeSinceActivity < 60000) {
-      // Very active (last minute) - frequent updates
-      baseInterval = 15000; // 15 seconds
-    } else if (timeSinceActivity < 300000) {
-      // Active (last 5 minutes) - moderate updates
-      baseInterval = 30000; // 30 seconds
-    } else if (timeSinceActivity < 900000) {
-      // Somewhat active (last 15 minutes) - slower updates
-      baseInterval = 60000; // 1 minute
-    } else {
-      // Inactive (over 15 minutes) - very slow updates
-      baseInterval = 120000; // 2 minutes
+    let apiPromise;
+    switch (dataType) {
+      case "appointments":
+        apiPromise = store.dispatch(fetchAppointments());
+        break;
+      case "todayAppointments":
+        apiPromise = store.dispatch(fetchTodayAppointments());
+        break;
+      case "upcomingAppointments":
+        apiPromise = store.dispatch(fetchUpcomingAppointments());
+        break;
+      case "notifications":
+        apiPromise = store.dispatch(fetchNotifications());
+        break;
+      default:
+        throw new Error(`Unknown data type: ${dataType}`);
     }
 
-    // Adjust based on subscriber count (more dashboards = more frequent updates needed)
-    if (subscriberCount > 3) {
-      baseInterval = Math.max(baseInterval * 0.7, 10000); // Min 10 seconds
-    } else if (subscriberCount > 1) {
-      baseInterval = Math.max(baseInterval * 0.85, 12000); // Min 12 seconds
-    }
-
-    // Don't go below 10 seconds to avoid overwhelming the server
-    baseInterval = Math.max(baseInterval, 10000);
-
-    console.log(
-      `⏱️ DataManager: Optimal polling interval: ${baseInterval}ms (activity: ${Math.round(
-        timeSinceActivity / 1000
-      )}s ago, subscribers: ${subscriberCount})`
-    );
-    return baseInterval;
+    const result = await apiPromise;
+    console.log(`✅ DataManager: Successfully fetched ${dataType}`);
+    return result;
   }
 
   /**
-   * Track user activity for smart polling
+   * Check if cached data is valid
+   */
+  isCacheValid(dataType) {
+    const cached = this.cache.get(dataType);
+    if (!cached) return false;
+
+    const ttl = this.cacheTTL[dataType] || 30000;
+    const age = Date.now() - cached.timestamp;
+
+    return age < ttl;
+  }
+
+  /**
+   * Get polling interval based on activity
+   */
+  getPollingInterval() {
+    const timeSinceActivity = Date.now() - this.lastUserActivity;
+    const isRecentActivity = timeSinceActivity < 60000; // 1 minute
+
+    if (!this.isTabVisible) {
+      return 60000; // 1 minute when tab not visible
+    } else if (isRecentActivity) {
+      return 15000; // 15 seconds when recently active
+    } else {
+      return 30000; // 30 seconds when idle
+    }
+  }
+
+  /**
+   * Force refresh data
+   */
+  async forceRefresh(dataTypes = []) {
+    console.log("🔥 DataManager: Force refresh requested");
+
+    // Clear cache for specified types or all
+    if (dataTypes.length === 0) {
+      this.cache.clear();
+    } else {
+      dataTypes.forEach((type) => this.cache.delete(type));
+    }
+
+    // Fetch immediately
+    await this.fetchNeededData();
+  }
+
+  /**
+   * Activity tracking
    */
   setupActivityTracking() {
     const events = [
@@ -305,74 +281,162 @@ class DataManager {
       "keypress",
       "scroll",
       "touchstart",
-      "click",
     ];
+    events.forEach((event) => {
+      document.addEventListener(
+        event,
+        () => {
+          this.lastUserActivity = Date.now();
+        },
+        { passive: true }
+      );
+    });
+  }
 
-    const updateActivity = () => {
-      this.lastUserActivity = Date.now();
+  /**
+   * Visibility tracking
+   */
+  setupVisibilityTracking() {
+    document.addEventListener("visibilitychange", () => {
+      this.isTabVisible = !document.hidden;
+      console.log(
+        `👁️ DataManager: Tab visibility changed - visible: ${this.isTabVisible}`
+      );
+    });
+  }
+
+  /**
+   * Development utilities
+   */
+  setupDevUtils() {
+    window.dataManagerEmergency = {
+      reset: () => this.reset(),
+      status: () => this.getStatus(),
+      diagnose: () => this.diagnose(),
+      clearCache: () => this.cache.clear(),
     };
 
-    events.forEach((event) => {
-      window.addEventListener(event, updateActivity, { passive: true });
-    });
+    console.log(
+      "🛠️ DataManager: Development utilities available on window.dataManagerEmergency"
+    );
   }
 
   /**
-   * Force immediate refresh of specific data types
-   * @param {Array} dataTypes - Data types to refresh immediately
+   * Reset everything
    */
-  async forceRefresh(dataTypes = []) {
-    console.log("🔥 DataManager: Force refresh requested for:", dataTypes);
+  reset() {
+    console.log("🔄 DataManager: Resetting...");
 
-    if (dataTypes.length === 0) {
-      // Refresh all subscribed data types
-      const allNeeded = new Set();
-      this.subscribers.forEach(({ dataTypes }) => {
-        dataTypes.forEach((type) => allNeeded.add(type));
-      });
-      dataTypes = Array.from(allNeeded);
+    this.stopPolling();
+    this.cache.clear();
+    this.requestsInFlight.clear();
+
+    // Restart if we have subscribers
+    if (this.subscribers.size > 0) {
+      setTimeout(() => this.startPolling(), 1000);
     }
 
-    // Clear cache for forced refresh
-    dataTypes.forEach((type) => {
-      this.lastFetch.delete(type);
-      this.requestsInFlight.delete(type);
-    });
-
-    // Fetch immediately
-    const promises = dataTypes.map((type) => this.fetchDataType(type));
-    await Promise.allSettled(promises);
+    console.log("✅ DataManager: Reset complete");
   }
 
   /**
-   * Get current subscriber information (for debugging)
+   * Get current status
+   */
+  getStatus() {
+    return {
+      subscribers: this.subscribers.size,
+      isPolling: this.isPolling,
+      requestsInFlight: Array.from(this.requestsInFlight.keys()),
+      cacheSize: this.cache.size,
+      isTabVisible: this.isTabVisible,
+      lastActivity: new Date(this.lastUserActivity).toLocaleTimeString(),
+    };
+  }
+
+  /**
+   * Simple diagnostics
+   */
+  diagnose() {
+    const status = this.getStatus();
+
+    console.group("🩺 DataManager Diagnostics");
+    console.log("Status:", status);
+
+    if (status.requestsInFlight.length > 0) {
+      console.warn("⚠️ Requests in flight:", status.requestsInFlight);
+    }
+
+    if (status.subscribers === 0 && status.isPolling) {
+      console.warn("⚠️ Polling with no subscribers");
+    }
+
+    console.log("Cache contents:");
+    this.cache.forEach((value, key) => {
+      const age = Date.now() - value.timestamp;
+      console.log(`  ${key}: ${Math.round(age / 1000)}s old`);
+    });
+
+    console.groupEnd();
+
+    return status;
+  }
+
+  /**
+   * Required methods for compatibility
    */
   getSubscriberInfo() {
     const info = {};
-    this.subscribers.forEach((data, componentId) => {
-      info[componentId] = {
+    this.subscribers.forEach((data, id) => {
+      info[id] = {
         dataTypes: Array.from(data.dataTypes),
         options: data.options,
-        lastUpdate: data.lastUpdate,
+        subscribed: new Date(data.timestamp).toLocaleTimeString(),
       };
     });
     return info;
   }
 
-  /**
-   * Clear all caches and reset state
-   */
-  reset() {
-    console.log("🔄 DataManager: Resetting all caches and state");
-    this.cache.clear();
-    this.lastFetch.clear();
-    this.requestsInFlight.clear();
+  getCircuitBreakerStatus() {
+    // Simple implementation - no circuit breaker in this version
+    return {};
+  }
 
-    // Restart polling if we have subscribers
-    if (this.subscribers.size > 0) {
-      this.stopPolling();
-      this.startPolling();
-    }
+  getCacheStatus() {
+    const status = {};
+    this.cache.forEach((value, key) => {
+      const age = Date.now() - value.timestamp;
+      const ttl = this.cacheTTL[key] || 30000;
+      status[key] = {
+        hasData: !!value.data,
+        age: age,
+        ttl: ttl,
+        isValid: age < ttl,
+      };
+    });
+    return status;
+  }
+
+  getPerformanceReport() {
+    return {
+      subscribers: this.getSubscriberInfo(),
+      cache: this.getCacheStatus(),
+      polling: {
+        isPolling: this.isPolling,
+        interval: this.getPollingInterval(),
+        isTabVisible: this.isTabVisible,
+      },
+      requestsInFlight: Array.from(this.requestsInFlight.keys()),
+    };
+  }
+
+  logPerformanceReport() {
+    const report = this.getPerformanceReport();
+    console.group("📊 DataManager Performance Report");
+    console.log("Subscribers:", Object.keys(report.subscribers).length);
+    console.log("Cache status:", report.cache);
+    console.log("Polling:", report.polling);
+    console.log("Requests in flight:", report.requestsInFlight);
+    console.groupEnd();
   }
 }
 

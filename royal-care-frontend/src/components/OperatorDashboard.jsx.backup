@@ -21,13 +21,13 @@ import { useOperatorDashboardData } from "../hooks/useDashboardIntegration";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import syncService from "../services/syncService";
-import { LoadingButton } from "./common/LoadingComponents";
-import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
+import { LoadingButton, LoadingSpinner, PageLoadingState, SkeletonLoader, InlineLoader, TableLoadingState } from "./common/LoadingComponents";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/OperatorDashboard.css";
+import "../styles/LoadingConsistency.css";
 
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
@@ -101,8 +101,7 @@ const OperatorDashboard = () => {
     availableDrivers: [],
     busyDrivers: [],
     pendingPickups: [],
-  });
-  // Get state from Redux store
+  });  // Get state from Redux store
   const {
     rejectedAppointments,
     pendingAppointments,
@@ -118,6 +117,7 @@ const OperatorDashboard = () => {
     notifications,
     loading,
     error,
+    isInitialLoad,
     refreshData,
   } = useOperatorDashboardData();
   // Helper function to get driver task description based on appointment status
@@ -1102,21 +1102,14 @@ const OperatorDashboard = () => {
             >
               Refresh
             </LoadingButton>
-          </div>{" "}
+          </div>
         </div>
 
-        {/* Minimal loading indicator for attendance data */}
-        <MinimalLoadingIndicator
-          show={attendanceLoading}
-          position="center-right"
-          size="micro"
-          variant="ghost"
-          tooltip="Loading attendance records..."
-          pulse={true}
-          fadeIn={true}
-        />
-
-        {attendanceRecords.length === 0 ? (
+        {attendanceLoading ? (
+          <div className="loading-state">
+            <LoadingSpinner text="Loading attendance records..." />
+          </div>
+        ) : attendanceRecords.length === 0 ? (
           <div className="empty-state">
             <i className="fas fa-calendar-check"></i>
             <p>No attendance records found for {selectedDate}</p>
@@ -1245,8 +1238,37 @@ const OperatorDashboard = () => {
     );
   };
 
-  // Render functions for different views
-  const renderRejectedAppointments = () => {
+  // ✅ Helper function for consistent skeleton loading
+  const renderAppointmentSkeleton = (count = 3) => (
+    <div className="appointments-skeleton">
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index} className="appointment-card-skeleton">
+          <SkeletonLoader 
+            lines={6} 
+            avatar={false} 
+            className="operator-appointment-skeleton"
+            width="100%"
+          />
+        </div>
+      ))}
+    </div>
+  );
+
+  // ✅ Helper function for refresh indicator
+  const renderRefreshIndicator = (message = "Updating data...") =>
+    loading && !isInitialLoad && (
+      <div className="refresh-indicator">
+        <InlineLoader size="small" variant="subtle" />
+        <span>{message}</span>
+      </div>
+    );
+
+  // Render functions for different views  const renderRejectedAppointments = () => {  const renderRejectedAppointments = () => {
+    // ✅ Skeleton loading during background refresh
+    if (loading && rejectedAppointments.length === 0) {
+      return renderAppointmentSkeleton(3);
+    }
+
     if (rejectedAppointments.length === 0) {
       return (
         <div className="empty-state">
@@ -1258,6 +1280,8 @@ const OperatorDashboard = () => {
 
     return (
       <div className="appointments-list">
+        {/* ✅ Show refresh indicator for background updates */}
+        {renderRefreshIndicator("Updating rejection reviews...")}
         {rejectedAppointments.map((appointment) => (
           <div key={appointment.id} className="appointment-card rejected">
             <div className="appointment-header">
@@ -1303,8 +1327,12 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderPendingAcceptanceAppointments = () => {
+    // ✅ Skeleton loading during background refresh
+    if (loading && pendingAppointments.length === 0) {
+      return renderAppointmentSkeleton(2);
+    }
+
     if (pendingAppointments.length === 0) {
       return (
         <div className="empty-state">
@@ -1316,6 +1344,8 @@ const OperatorDashboard = () => {
 
     return (
       <div className="appointments-list">
+        {/* ✅ Show refresh indicator for background updates */}
+        {renderRefreshIndicator("Updating pending appointments...")}
         {pendingAppointments.map((appointment) => (
           <div key={appointment.id} className="appointment-card pending">
             <div className="appointment-header">
@@ -1796,8 +1826,7 @@ const OperatorDashboard = () => {
                 <div className="driver-assignment">
                   <select
                     onChange={(e) =>
-                      e.target.value &&
-                      handleAssignDriverPickup(
+                      e.target.value &&                      handleAssignDriverPickup(
                         request.therapist_id,
                         parseInt(e.target.value)
                       )
@@ -1822,17 +1851,16 @@ const OperatorDashboard = () => {
                 </div>
               ) : (
                 <p className="no-drivers">No drivers available</p>
-              )}
-            </div>
+              )}            </div>
           </div>
         ))}
       </div>
     );
   };
-
+  // Main component return - This is the main OperatorDashboard component JSX
   return (
     <PageLayout>
-      <div className={`operator-dashboard`}>
+      <div className="operator-dashboard">
         {" "}
         <LayoutRow title="Operator Dashboard">
           <div className="action-buttons">
@@ -1840,22 +1868,30 @@ const OperatorDashboard = () => {
               Logout
             </button>
           </div>
-        </LayoutRow>{" "}
-        {/* Minimal loading indicator for frequent data fetching */}
-        <MinimalLoadingIndicator
-          show={loading}
-          position="bottom-left"
-          size="small"
-          variant="subtle"
-          tooltip="Loading dashboard data..."
-          pulse={true}
-          fadeIn={true}
-        />
-        {error && (
+        </LayoutRow>        {/* ✅ Consistent initial loading with PageLoadingState */}
+        {loading && isInitialLoad && (
+          <PageLoadingState 
+            title="Loading Operator Dashboard"
+            subtitle="Fetching appointments, notifications, and system data..."
+            showProgress={true}
+          />
+        )}
+        {/* ✅ Consistent error handling with LoadingButton */}
+        {error && !isInitialLoad && (
           <div className="error-message">
-            {typeof error === "object"
-              ? error.message || error.error || JSON.stringify(error)
-              : error}
+            <div className="error-content">
+              {typeof error === "object"
+                ? error.message || error.error || JSON.stringify(error)
+                : error}
+            </div>
+            <LoadingButton
+              onClick={() => refreshData()}
+              variant="primary"
+              size="medium"
+              className="retry-button"
+            >
+              Retry Loading
+            </LoadingButton>
           </div>
         )}{" "}
         {/* Statistics Dashboard */}
@@ -2218,9 +2254,7 @@ const OperatorDashboard = () => {
               </LoadingButton>
             </div>
           </div>
-        </div>
-      )}
-      {/* End of global-content wrapper closing div is above after modals */}
+        </div>      )}      {/* End of global-content wrapper closing div is above after modals */}
       {/* Close PageLayout here */}
     </PageLayout>
   );

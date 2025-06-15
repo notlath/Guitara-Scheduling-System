@@ -12,6 +12,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { markNotificationAsRead } from "../../features/scheduling/schedulingSlice";
 import styles from "../../styles/NotificationCenter.module.css";
+import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
 const NotificationCenter = ({ onClose }) => {
   const [notifications, setNotifications] = useState([]);
@@ -389,6 +390,13 @@ const NotificationCenter = ({ onClose }) => {
       {/* Header */}
       <div className={styles.notificationHeader}>
         <h2>Notifications</h2>
+        <MinimalLoadingIndicator
+          show={loading}
+          position="top-right"
+          size="micro"
+          variant="ghost"
+          tooltip="Loading notifications..."
+        />
         <div className={styles.notificationControls}>
           <label className={styles.toggleSwitch}>
             <span className={styles.toggleLabel}>Show only unread</span>
@@ -405,7 +413,7 @@ const NotificationCenter = ({ onClose }) => {
 
       {/* Content */}
       <div className={styles.notificationsList}>
-        {loading && (
+        {loading && filteredNotifications.length === 0 && (
           <div className={styles.loadingMessage}>Loading notifications...</div>
         )}
 

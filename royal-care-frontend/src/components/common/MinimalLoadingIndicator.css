@@ -1,0 +1,380 @@
+/* ========================================
+   MINIMAL LOADING INDICATOR STYLES
+   ======================================== */
+
+/* Base minimal loading indicator - status dot style */
+.minimal-loading-indicator {
+  position: fixed;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease-in-out;
+  cursor: default;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced positions - more flexible positioning */
+.minimal-loading-indicator.top-right {
+  top: 1rem;
+  right: 1rem;
+}
+
+.minimal-loading-indicator.top-left {
+  top: 1rem;
+  left: 1rem;
+}
+
+.minimal-loading-indicator.bottom-right {
+  bottom: 1rem;
+  right: 1rem;
+}
+
+.minimal-loading-indicator.bottom-left {
+  bottom: 1rem;
+  left: 1rem;
+}
+
+.minimal-loading-indicator.center-right {
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+}
+
+.minimal-loading-indicator.center-left {
+  top: 50%;
+  left: 1rem;
+  transform: translateY(-50%);
+}
+
+/* Size variants - including micro for very subtle loading */
+.minimal-loading-indicator.micro {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.minimal-loading-indicator.small {
+  width: 1rem;
+  height: 1rem;
+}
+
+.minimal-loading-indicator.medium {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.minimal-loading-indicator.large {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* Loading dot - the core animated element */
+.loading-dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+/* Default variant - subtle blue animation */
+.minimal-loading-indicator.default .loading-dot {
+  background-color: #3498db;
+}
+
+/* Primary variant - matches theme primary color */
+.minimal-loading-indicator.primary .loading-dot {
+  background-color: var(--primary, #4a69bd);
+}
+
+/* Accent variant - matches theme accent color */
+.minimal-loading-indicator.accent .loading-dot {
+  background-color: var(--accent, #27ae60);
+}
+
+/* Subtle variant - very minimal, barely noticeable (like status dot) */
+.minimal-loading-indicator.subtle {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.minimal-loading-indicator.subtle .loading-dot {
+  background-color: rgba(59, 130, 246, 0.6); /* Soft blue */
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* Ghost variant - almost invisible */
+.minimal-loading-indicator.ghost {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.minimal-loading-indicator.ghost .loading-dot {
+  background-color: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Custom color support */
+.minimal-loading-indicator .loading-dot {
+  background-color: var(--custom-color, inherit);
+}
+
+/* Animation variants */
+.minimal-loading-indicator.pulse .loading-dot {
+  animation: pulse-gentle 2s infinite;
+}
+
+.minimal-loading-indicator.subtle.pulse .loading-dot {
+  animation: pulse-subtle 3s infinite;
+}
+
+.minimal-loading-indicator.ghost.pulse .loading-dot {
+  animation: pulse-ghost 4s infinite;
+}
+
+/* Static (no animation) */
+.minimal-loading-indicator.static .loading-dot {
+  animation: none;
+  opacity: 0.7;
+}
+
+/* Fade in/out effect */
+.minimal-loading-indicator.fade-in {
+  animation: fade-in 0.3s ease-in-out;
+}
+
+/* Timeout warning styles */
+.minimal-loading-indicator.timeout-warning {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+  animation: gentle-shake 0.5s ease-in-out;
+}
+
+.minimal-loading-indicator.timeout-warning .loading-dot {
+  background-color: #ff6b35;
+  animation: timeout-pulse 1.5s infinite;
+}
+
+.minimal-loading-indicator.warning {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+}
+
+.minimal-loading-indicator.warning .loading-dot {
+  background-color: #ff6b35;
+}
+
+.timeout-message {
+  position: absolute;
+  bottom: -2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 1000;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.timeout-message::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid rgba(0, 0, 0, 0.8);
+}
+
+/* Timeout warning animations */
+@keyframes gentle-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes timeout-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Animations */
+@keyframes pulse-gentle {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-subtle {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-ghost {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Hover effect for accessibility (very subtle) */
+.minimal-loading-indicator:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.minimal-loading-indicator.center-right:hover,
+.minimal-loading-indicator.center-left:hover {
+  transform: translateY(-50%) scale(1.02);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .minimal-loading-indicator.top-right,
+  .minimal-loading-indicator.top-left {
+    top: 0.5rem;
+  }
+
+  .minimal-loading-indicator.top-right {
+    right: 0.5rem;
+  }
+
+  .minimal-loading-indicator.top-left {
+    left: 0.5rem;
+  }
+
+  .minimal-loading-indicator.bottom-right,
+  .minimal-loading-indicator.bottom-left {
+    bottom: 0.5rem;
+  }
+
+  .minimal-loading-indicator.bottom-right {
+    right: 0.5rem;
+  }
+
+  .minimal-loading-indicator.bottom-left {
+    left: 0.5rem;
+  }
+
+  .minimal-loading-indicator.center-right {
+    right: 0.5rem;
+  }
+
+  .minimal-loading-indicator.center-left {
+    left: 0.5rem;
+  }
+
+  /* Make indicators smaller on mobile */
+  .minimal-loading-indicator.small {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .minimal-loading-indicator.medium {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .loading-dot {
+    animation: none !important;
+  }
+
+  .minimal-loading-indicator .loading-dot {
+    opacity: 0.6 !important;
+  }
+
+  .minimal-loading-indicator.fade-in {
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .minimal-loading-indicator {
+    border: 2px solid;
+    background: white;
+  }
+
+  .loading-dot {
+    border: 1px solid;
+    background: black !important;
+  }
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .minimal-loading-indicator.subtle .loading-dot {
+    background-color: rgba(147, 197, 253, 0.6); /* Light blue for dark theme */
+    border: 1px solid rgba(147, 197, 253, 0.3);
+  }
+
+  .minimal-loading-indicator.ghost .loading-dot {
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}

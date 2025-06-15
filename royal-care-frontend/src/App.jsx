@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
+// Import debugger utilities for performance monitoring in development
 import DriverDashboard from "./components/DriverDashboard";
 import MainLayout from "./components/MainLayout";
 import OperatorDashboard from "./components/OperatorDashboard";
@@ -33,6 +34,8 @@ import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import { validateToken } from "./services/auth";
+import "./utils/dataManagerDebugger";
+import "./utils/dataManagerDevTools";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);
