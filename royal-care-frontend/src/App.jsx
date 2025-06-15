@@ -16,6 +16,7 @@ import DeveloperInfoPage from "./pages/AboutPages/DeveloperInfoPage";
 import SystemInfoPage from "./pages/AboutPages/SystemInfoPage";
 import AttendancePage from "./pages/AttendancePage/AttendancePage";
 import BookingsPage from "./pages/BookingsPage/BookingsPage";
+import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage";
 import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordPage";
 import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
@@ -151,12 +152,11 @@ const App = () => {
           />{" "}
           <Route path="scheduling" element={<SchedulingPage />} />
           <Route path="availability" element={<AvailabilityManager />} />{" "}
-          <Route path="bookings" element={<BookingsPage />} />{" "}
-          <Route
+          <Route path="bookings" element={<BookingsPage />} />{" "}          <Route
             path="attendance"
             element={
               user?.role === "therapist" || user?.role === "driver" ? (
-                <Navigate to="/dashboard" replace />
+                <StaffAttendancePage />
               ) : (
                 <AttendancePage />
               )
