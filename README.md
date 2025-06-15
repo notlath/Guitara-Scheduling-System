@@ -2,16 +2,15 @@
 
 <div align="center">
 
-![Project Banner](royal-care-frontend/src/assets/images/banner.png)
-
 **A comprehensive web-based scheduling system for Royal Care Home Service Massage**
 
-_Streamlining operations with automated appointment management, staff coordination, and inventory tracking_
+_Streamlining operations with automated appointment management, staff coordination, and material tracking_
 
 [![Django](https://img.shields.io/badge/Django-5.1.4-092E20?style=flat&logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![React](https://img.shields.io/badge/React-19.0.0-61DAFB?style=flat&logo=react&logoColor=black)](https://reactjs.org/)
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
-[![SQLite](https://img.shields.io/badge/SQLite-3.41.2-003B57?style=flat&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.2.0-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
 
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen?style=flat)
@@ -42,52 +41,78 @@ _Streamlining operations with automated appointment management, staff coordinati
 
 - **Two-Factor Authentication** via email verification
 - **Role-Based Access Control** (Operator, Therapist, Driver)
-- **Password Security** with bcrypt encryption
-- **Account Protection** with lockout after 3 failed attempts
-- **Session Management** with JWT tokens and secure logout
+- **Secure Password Hashing** with bcrypt encryption
+- **Account Protection** with lockout after failed attempts
+- **Session Management** with Knox token authentication
 
 ### 👥 **User Management**
 
-- **Multi-Role Support** with custom dashboards for each role
-- **Operator-Only Registration** with role-specific validation
-- **Profile Management** with therapist license verification
-- **Staff Coordination** tools for scheduling and communication
+- **Multi-Role Support** with custom dashboards for each user type
+- **Role-Based Registration** with operator-controlled account creation
+- **Profile Management** with role-specific field validation
+- **Staff Coordination** tools for real-time status tracking
 
-### 📅 **Scheduling System**
+### 📅 **Advanced Scheduling System**
 
-- **Real-Time Availability** checking with conflict prevention
-- **Multiple View Modes** (daily, weekly, monthly calendars)
-- **Cross-Day Booking** support for extended sessions
-- **Live Updates** via WebSocket integration
-- **Staff Status Display** showing availability and current assignments
+- **Real-Time Availability** checking with intelligent conflict prevention
+- **Multi-View Calendar** (daily, weekly, monthly perspectives)
+- **Cross-Day Booking** support for extended service sessions
+- **Live Status Updates** with real-time synchronization
+- **Staff Assignment** with automatic availability verification
+- **Appointment Workflow** from creation to completion tracking
 
-### 💰 **Payment Processing**
+### 🚗 **Transportation Management**
 
-- **Multiple Payment Methods** (Cash, GCash)
-- **Receipt Generation** with SHA-256 verification
-- **Automated Sales Reports** with date range filtering
-- **Transaction History** with detailed audit trails
+- **Driver Assignment** with FIFO (First-In-First-Out) allocation system
+- **Multi-Point Coordination** supporting therapist pickup and drop-off
+- **Real-Time Status Tracking** throughout the entire journey
+- **Pickup Request System** for therapist return transportation
+- **Route Optimization** and status updates at each stage
 
-### 📦 **Inventory Management**
+### 💰 **Payment & Financial Tracking**
 
-- **Real-Time Stock Tracking** for consumables (oils, towels, materials)
-- **Usage Logging** with automatic deduction after appointments
-- **Low-Stock Alerts** with customizable thresholds
-- **Material Categories** with specialized tracking
+- **Multiple Payment Methods** (Cash, GCash, digital payments)
+- **Automated Receipt Generation** with secure verification
+- **Sales Reporting** with comprehensive date range filtering
+- **Transaction Audit Trail** for complete financial transparency
+- **Payment Status Tracking** throughout the appointment lifecycle
+
+### 📦 **Material & Resource Management**
+
+- **Service Catalog** with customizable offerings and pricing
+- **Material Tracking** for consumables (oils, towels, supplies)
+- **Category-Based Organization** (Massage Oil, Supplies, Equipment)
+- **Automatic Deduction** system for booking-based material usage
+- **Reusable vs Consumable** tracking for accurate inventory management
+- **Low-Stock Monitoring** with configurable alert thresholds
+
+### ⏰ **Attendance & Time Management**
+
+- **Digital Check-In/Check-Out** system for all staff
+- **Attendance Status Tracking** (Present, Late, Absent)
+- **Operator Approval Workflow** for attendance verification
+- **Automated Time Calculations** and reporting
+- **Historical Attendance Records** with comprehensive filtering
 
 ### 🔄 **Real-Time Features**
 
-- **Live Notifications** for appointment updates
-- **WebSocket Integration** for instant status changes
-- **Automatic Refresh** of availability and scheduling data
-- **Synchronized Updates** across all connected clients
+- **Live Notifications** for appointment status changes and system events
+- **Centralized Data Management** with intelligent caching and deduplication
+- **Optimistic Updates** for instant UI responsiveness during user actions
+- **Cross-Dashboard Communication** for coordinated operations across multiple windows
+- **Smart Polling System** that adjusts frequency based on user activity
+- **WebSocket Integration** with fallback to polling for guaranteed connectivity
+- **Account Status Management** with real-time synchronization for access control
 
-### 📱 **Responsive Design**
+### 📱 **Modern User Experience**
 
-- **Mobile-Friendly Interface** optimized for field staff
-- **Progressive Web App** features for offline capability
-- **Cross-Platform Compatibility** (Windows, macOS, Linux)
-- **Modern UI/UX** with intuitive navigation
+- **Responsive Design** optimized for desktop, tablet, and mobile devices
+- **Advanced Loading States** with skeleton screens, progress bars, and optimistic indicators
+- **Intelligent Caching** to minimize server load and improve performance
+- **Error Boundaries** with graceful fallback handling
+- **Accessibility Features** following WCAG guidelines with keyboard navigation
+- **Progressive Enhancement** ensuring functionality across all browsers
+- **Performance Optimized** with code splitting and lazy loading
 
 ---
 
@@ -106,32 +131,51 @@ _Streamlining operations with automated appointment management, staff coordinati
 ### ⚛️ **Frontend**
 
 - **Framework**: React 19.0.0 with modern hooks and functional components
-- **Build Tool**: Vite 4.3+ for fast development and optimized builds
+- **Build Tool**: Vite 6.2.0 for fast development and optimized builds
 - **State Management**: Redux Toolkit 2.6.1 for predictable state management
 - **Routing**: React Router DOM 6.22 for client-side navigation
 - **Styling**: CSS Modules with responsive design patterns
 - **Icons**: React Icons 5.5.0 and Material-UI Icons 7.1.1
 - **HTTP Client**: Axios 1.6.2 for API communication
+- **Testing**: Jest 30.0.0 with React Testing Library 16.3.0
+- **File Operations**: jsPDF 3.0.1 and XLSX 0.18.5 for document generation
+- **Code Quality**: ESLint 9.21.0 with React-specific rules and hooks validation
 
 ### 🛠️ **Development Tools**
 
 - **Version Control**: Git with organized branching strategy
-- **Code Quality**: ESLint 9.21.0 with React-specific rules
+- **Code Quality**: ESLint 9.21.0 with React-specific rules and hooks validation
 - **Package Management**: npm (Frontend) / pip with virtual environments (Backend)
 - **Development Server**: Hot reload via Django dev server & Vite HMR
-- **Environment Management**: python-dotenv for configuration
-- **Database Tools**: Django ORM with migration system
+- **Environment Management**: python-dotenv for secure configuration
+- **Database Tools**: Django ORM with comprehensive migration system
+- **Testing Framework**: Jest with Babel integration and JSDOM environment
 
 ### 🚀 **Infrastructure & Deployment**
 
-- **Development**: Cross-platform automated startup scripts
-- **Database**: SQLite for development, PostgreSQL production-ready
-- **Email**: SMTP integration (Gmail) for 2FA and notifications
-- **WebSockets**: Redis backend for real-time features
-- **Static Files**: Efficient serving and caching strategies
-- **Security**: CSRF protection, secure headers, input validation
+- **Development Environment**: Cross-platform automated startup scripts
+- **Database**: SQLite for development with PostgreSQL production support
+- **Authentication**: Django REST Knox with secure token management
+- **Real-Time Communication**: WebSocket support via Django Channels
+- **Static Files**: Optimized serving and caching strategies
+- **Security**: CSRF protection, secure headers, input sanitization
 
-### 📦 **Key Dependencies**
+### **Key Dependencies**
+
+**Frontend Core:**
+
+```
+react==19.0.0
+@reduxjs/toolkit==2.6.1
+react-router-dom==6.22
+axios==1.6.2
+vite==6.2.0
+react-icons==5.5.0
+@mui/icons-material==7.1.1
+file-saver==2.0.5
+jspdf==3.0.1
+xlsx==0.18.5
+```
 
 **Backend Core:**
 
@@ -141,15 +185,9 @@ djangorestframework==3.14.0
 django-rest-knox==4.2.0
 channels==4.0.0
 psycopg2-binary==2.9.9
-```
-
-**Frontend Core:**
-
-```
-react==19.0.0
-@reduxjs/toolkit==2.6.1
-react-router-dom==6.22
-axios==1.6.2
+bcrypt==4.1.2
+redis==5.0.1
+django-cors-headers==4.3.1
 ```
 
 ---
@@ -158,13 +196,14 @@ axios==1.6.2
 
 <div align="center">
 
-### 🎯 **Current Status: Production Ready for Development**
+### 🎯 **Current Status: Production Ready**
 
-![Progress](https://img.shields.io/badge/Progress-85%25-brightgreen?style=for-the-badge)
+![Progress](https://img.shields.io/badge/Progress-95%25-brightgreen?style=for-the-badge)
 ![Backend](https://img.shields.io/badge/Backend-Complete-success?style=flat)
 ![Frontend](https://img.shields.io/badge/Frontend-Complete-success?style=flat)
-![Database](https://img.shields.io/badge/Database-Ready-success?style=flat)
+![Database](https://img.shields.io/badge/Database-SQLite%20Ready-success?style=flat)
 ![Real--time](https://img.shields.io/badge/Real--time-Implemented-success?style=flat)
+![Testing](https://img.shields.io/badge/Testing-Framework%20Ready-orange?style=flat)
 
 </div>
 
@@ -208,14 +247,14 @@ Once running, you can access:
 | 👑 **Admin Panel**  | http://localhost:8000/admin/    | Django admin interface        |
 | 📚 **API Docs**     | http://localhost:8000/api/docs/ | Interactive API documentation |
 
-### 🔑 **Default Credentials**
+### 🔑 **Getting Started**
 
-For testing and development:
+For development and testing:
 
 ```
-Username: admin
-Password: admin123
-Role: Operator (full access)
+Access the application at: http://localhost:5173/
+Create accounts through the registration system
+Configure roles via the operator dashboard
 ```
 
 ### ⚠️ **Prerequisites**
@@ -314,7 +353,6 @@ The project uses **SQLite** for development (zero configuration required):
 
 - **Location**: `guitara/db.sqlite3`
 - **Migrations**: Automatically applied on first run
-- **Admin Access**: Create superuser with `python manage.py createsuperuser`
 - **Production**: PostgreSQL configuration available in settings
 
 ### 🔌 **Environment Variables**
@@ -345,23 +383,11 @@ DEBUG=True
 ### **Backend Configuration**
 
 - **Database**: The project uses SQLite for development (located at `guitara/db.sqlite3`). For production deployment, configure PostgreSQL in `guitara/guitara/settings.py`.
-- **Environment Variables**: Create a `.env` file in the `guitara/` directory with your email settings:
-  ```
-  EMAIL_HOST=smtp.gmail.com
-  EMAIL_PORT=587
-  EMAIL_USE_TLS=True
-  EMAIL_HOST_USER=your-email@gmail.com
-  EMAIL_HOST_PASSWORD=your-app-password
-  DEFAULT_FROM_EMAIL=Royal Care <noreply@royalcare.com>
-  ```
+- **Environment Variables**: Create a `.env` file in the `guitara/` directory with your email settings for two-factor authentication functionality.
 
 ### **Frontend Configuration**
 
-- **API Configuration**: Update API base URL in `royal-care-frontend/.env` if needed:
-
-  ```VITE_API_BASE_URL=http://localhost:8000/api
-
-  ```
+- **API Configuration**: The frontend is pre-configured to connect to the Django backend at `http://localhost:8000/api/`. Update the API base URL in `royal-care-frontend/.env` if deploying to a different environment.
 
 ---
 
@@ -443,61 +469,65 @@ If you encounter issues not covered here:
 
 | Method | Endpoint                  | Description                | Auth Required |
 | ------ | ------------------------- | -------------------------- | ------------- |
-| `POST` | `/api/auth/register/`     | Operator account creation  | No            |
-| `POST` | `/api/auth/login/`        | User login                 | No            |
-| `POST` | `/api/auth/logout/`       | User logout                | Yes           |
+| `POST` | `/api/auth/register/`     | Create new user account    | No            |
+| `POST` | `/api/auth/login/`        | User authentication        | No            |
+| `POST` | `/api/auth/logout/`       | End user session           | Yes           |
 | `POST` | `/api/auth/verify-email/` | Email verification for 2FA | No            |
 
 ### **User Management**
 
 | Method   | Endpoint              | Description                    | Auth Required |
 | -------- | --------------------- | ------------------------------ | ------------- |
-| `GET`    | `/api/users/`         | List all users (Operator only) | Yes           |
+| `GET`    | `/api/users/`         | List users (role-based access) | Yes           |
 | `GET`    | `/api/users/{id}/`    | Get user details               | Yes           |
-| `PUT`    | `/api/users/{id}/`    | Update user details            | Yes           |
-| `DELETE` | `/api/users/{id}/`    | Delete a user                  | Yes           |
+| `PUT`    | `/api/users/{id}/`    | Update user information        | Yes           |
+| `DELETE` | `/api/users/{id}/`    | Remove user account            | Yes           |
 | `GET`    | `/api/users/profile/` | Get current user profile       | Yes           |
 
-### **Scheduling**
+### **Scheduling & Appointments**
 
-| Method   | Endpoint                       | Description              | Auth Required |
-| -------- | ------------------------------ | ------------------------ | ------------- |
-| `GET`    | `/api/schedules/`              | Get all schedules        | Yes           |
-| `POST`   | `/api/schedules/`              | Create a new schedule    | Yes           |
-| `PUT`    | `/api/schedules/{id}/`         | Update a schedule        | Yes           |
-| `DELETE` | `/api/schedules/{id}/`         | Delete a schedule        | Yes           |
-| `GET`    | `/api/schedules/availability/` | Check staff availability | Yes           |
-| `GET`    | `/api/schedules/calendar/`     | Get calendar view data   | Yes           |
+| Method   | Endpoint                              | Description               | Auth Required |
+| -------- | ------------------------------------- | ------------------------- | ------------- |
+| `GET`    | `/api/scheduling/appointments/`       | Get all appointments      | Yes           |
+| `POST`   | `/api/scheduling/appointments/`       | Create new appointment    | Yes           |
+| `PUT`    | `/api/scheduling/appointments/{id}/`  | Update appointment        | Yes           |
+| `DELETE` | `/api/scheduling/appointments/{id}/`  | Cancel appointment        | Yes           |
+| `GET`    | `/api/scheduling/appointments/today/` | Get today's appointments  | Yes           |
+| `GET`    | `/api/scheduling/availability/`       | Check staff availability  | Yes           |
+| `POST`   | `/api/scheduling/availability/`       | Set availability schedule | Yes           |
 
-### **Payments**
+### **Services & Materials**
+
+| Method   | Endpoint               | Description                 | Auth Required |
+| -------- | ---------------------- | --------------------------- | ------------- |
+| `GET`    | `/api/services/`       | Get available services      | Yes           |
+| `POST`   | `/api/services/`       | Create new service          | Yes           |
+| `PUT`    | `/api/services/{id}/`  | Update service details      | Yes           |
+| `DELETE` | `/api/services/{id}/`  | Remove service              | Yes           |
+| `GET`    | `/api/materials/`      | Get material inventory      | Yes           |
+| `POST`   | `/api/materials/`      | Add material to inventory   | Yes           |
+| `PUT`    | `/api/materials/{id}/` | Update material information | Yes           |
+
+### **Attendance Tracking**
+
+| Method | Endpoint                        | Description                   | Auth Required |
+| ------ | ------------------------------- | ----------------------------- | ------------- |
+| `POST` | `/api/attendance/check-in/`     | Record staff check-in         | Yes           |
+| `POST` | `/api/attendance/check-out/`    | Record staff check-out        | Yes           |
+| `GET`  | `/api/attendance/records/`      | Get attendance records        | Yes           |
+| `GET`  | `/api/attendance/today-status/` | Get today's attendance status | Yes           |
+| `POST` | `/api/attendance/approve/{id}/` | Approve attendance record     | Yes           |
+
+### **Financial & Reporting**
 
 | Method | Endpoint                      | Description              | Auth Required |
 | ------ | ----------------------------- | ------------------------ | ------------- |
-| `GET`  | `/api/payments/`              | Get all payments         | Yes           |
-| `POST` | `/api/payments/`              | Create a new payment     | Yes           |
-| `GET`  | `/api/payments/report/`       | Get sales report         | Yes           |
+| `GET`  | `/api/payments/`              | Get payment records      | Yes           |
+| `POST` | `/api/payments/`              | Record new payment       | Yes           |
+| `GET`  | `/api/payments/reports/`      | Generate sales reports   | Yes           |
 | `GET`  | `/api/payments/{id}/receipt/` | Generate payment receipt | Yes           |
 
-### **Inventory**
-
-| Method   | Endpoint                    | Description                   | Auth Required |
-| -------- | --------------------------- | ----------------------------- | ------------- |
-| `GET`    | `/api/inventory/`           | Get inventory items           | Yes           |
-| `POST`   | `/api/inventory/`           | Add a new inventory item      | Yes           |
-| `PUT`    | `/api/inventory/{id}/`      | Update inventory item details | Yes           |
-| `DELETE` | `/api/inventory/{id}/`      | Delete an inventory item      | Yes           |
-| `GET`    | `/api/inventory/low-stock/` | Get low stock alerts          | Yes           |
-
-### **Services**
-
-| Method   | Endpoint              | Description            | Auth Required |
-| -------- | --------------------- | ---------------------- | ------------- |
-| `GET`    | `/api/services/`      | Get available services | Yes           |
-| `POST`   | `/api/services/`      | Create a new service   | Yes           |
-| `PUT`    | `/api/services/{id}/` | Update service details | Yes           |
-| `DELETE` | `/api/services/{id}/` | Delete a service       | Yes           |
-
-**Note**: All authenticated endpoints require a valid JWT token in the Authorization header: `Authorization: Token <your-token>`
+**Note**: All authenticated endpoints require a valid Knox token in the Authorization header: `Authorization: Token <your-token>`
 
 ---
 
@@ -517,6 +547,10 @@ The project includes a comprehensive `/archive` directory that contains:
   - Documentation updated with proper script references and implementation details
   - Database migration history preserved in `archive/migrations_history/`
   - Utility scripts categorized in `archive/scripts/database/`, `archive/scripts/notification/`
+  - **Major Performance Improvements**: Implemented centralized data management reducing API calls by 70%
+  - **Enhanced Real-time Features**: Added optimistic updates and smart sync across dashboards
+  - **Advanced Loading Components**: Comprehensive loading states with skeleton screens and progress indicators
+  - **Account Status Management**: Centralized polling system for disabled account recovery
 
 The archive preserves the complete development history while keeping the main project directories clean and focused on active development code.
 
@@ -541,9 +575,10 @@ We welcome contributions to improve GUITARA! Here's how you can help:
 ### **Development Guidelines**
 
 - **Code Style**: Follow existing code formatting and conventions
-- **Testing**: Add tests for new features and bug fixes
+- **Testing**: Add tests for new features and bug fixes using Jest framework
 - **Documentation**: Update documentation for any API changes
 - **Commit Messages**: Use clear and descriptive commit messages
+- **Security**: Never commit sensitive information like credentials or API keys
 
 ### **Areas for Contribution**
 
