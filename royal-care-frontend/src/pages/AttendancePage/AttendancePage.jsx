@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import "../../../src/styles/Placeholders.css";
-import { fetchStaffMembers } from "../../features/scheduling/schedulingSlice";
-import styles from "./AttendancePage.module.css";
 import pageTitles from "../../constants/pageTitles";
+import {
+  approveAttendance,
+  fetchAttendanceRecords,
+  generateAttendanceSummary,
+} from "../../features/attendance/attendanceSlice";
 import DataTable from "../../globals/DataTable";
-import PageLayout from "../../globals/PageLayout";
 import LayoutRow from "../../globals/LayoutRow";
+import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
+import styles from "./AttendancePage.module.css";
 
 const AttendancePage = () => {
   const dispatch = useDispatch();
@@ -16,42 +20,164 @@ const AttendancePage = () => {
   );
   const [attendanceFilter, setAttendanceFilter] = useState("all");
 
-  const { staffMembers, loading } = useSelector((state) => state.scheduling);
+  const {
+    attendanceRecords,
+    attendanceSummary,
+    loading: attendanceLoading,
+    approvalLoading,
+    error: attendanceError,
+  } = useSelector((state) => state.attendance);
+
+  // Combined loading state
+  const loading = attendanceLoading;
 
   useEffect(() => {
     document.title = pageTitles.attendance;
-    dispatch(fetchStaffMembers());
-  }, [dispatch]);
+    // Fetch attendance records (which includes staff member information)
+    dispatch(fetchAttendanceRecords({ date: selectedDate }));
+    dispatch(generateAttendanceSummary(selectedDate));
+  }, [dispatch, selectedDate]);
 
-  // Mock attendance data - in real app, this would come from API
-  const generateMockAttendance = (staffMember) => {
-    const today = new Date();
-    const selectedDay = new Date(selectedDate);
-    const isToday = selectedDay.toDateString() === today.toDateString();
-    const isPastDate = selectedDay < today;
+  // Refetch attendance data when date changes
+  useEffect(() => {
+    dispatch(fetchAttendanceRecords({ date: selectedDate }));
+    dispatch(generateAttendanceSummary(selectedDate));
+  }, [dispatch, selectedDate]);
 
-    // Generate realistic attendance data
-    const statuses = ["present", "absent", "late", "on_leave"];
-    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+  // Add debugging for attendance records
+  console.log("AttendancePage - Raw attendance records:", attendanceRecords);
+  console.log(
+    "AttendancePage - Attendance records count:",
+    attendanceRecords?.length || 0
+  );
+
+  // Combine real attendance records with staff information
+  const attendanceData = (attendanceRecords || []).map((record) => {
+    console.log("AttendancePage - Processing attendance record:", record);
+    console.log("AttendancePage - Staff member data:", record.staff_member);
+
+    // Check if we have any attendance records at all
+    if (!attendanceRecords || attendanceRecords.length === 0) {
+      console.log(
+        "AttendancePage - No attendance records found for selected date"
+      );
+    }
+
+    // The staff_member field contains the full staff information from the backend
+    const staffMember = record.staff_member
+      ? {
+          id: record.staff_member.id || "unknown",
+          first_name: record.staff_member.first_name || "Unknown",
+          last_name: record.staff_member.last_name || "Staff",
+          email:
+            record.staff_member.email ||
+            record.staff_member.username ||
+            "unknown@example.com",
+          role: record.staff_member.role || "unknown",
+        }
+      : {
+          id: "unknown",
+          first_name: "Unknown",
+          last_name: "Staff",
+          email: "unknown@example.com",
+          role: "unknown",
+        };
+
+    console.log("AttendancePage - Processed staff member:", staffMember);
+
+    // Helper function to format time from backend
+    const formatTime = (timeString) => {
+      if (!timeString) return null;
+
+      console.log(
+        "AttendancePage - Formatting time:",
+        timeString,
+        "Type:",
+        typeof timeString
+      );
+
+      // If it's already a full datetime string, parse it directly
+      if (timeString.includes("T") || timeString.includes(" ")) {
+        const dateTime = new Date(timeString);
+        console.log("AttendancePage - Parsed datetime:", dateTime);
+        return dateTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+      }
+
+      // If it's just a time string (HH:MM:SS), create a proper date
+      try {
+        const [hours, minutes, seconds] = timeString.split(":").map(Number);
+
+        // Validate the time components
+        if (
+          isNaN(hours) ||
+          isNaN(minutes) ||
+          hours < 0 ||
+          hours > 23 ||
+          minutes < 0 ||
+          minutes > 59
+        ) {
+          console.error("AttendancePage - Invalid time format:", timeString);
+          return timeString; // Return original string if invalid
+        }
+
+        console.log(
+          "AttendancePage - Parsed time components - Hours:",
+          hours,
+          "Minutes:",
+          minutes,
+          "Seconds:",
+          seconds
+        );
+
+        const today = new Date();
+        const dateTime = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate(),
+          hours,
+          minutes,
+          seconds || 0
+        );
+
+        console.log("AttendancePage - Created datetime:", dateTime);
+
+        const formatted = dateTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+        console.log("AttendancePage - Formatted result:", formatted);
+
+        return formatted;
+      } catch (error) {
+        console.error(
+          "AttendancePage - Error formatting time:",
+          timeString,
+          error
+        );
+        return timeString; // Return original string on error
+      }
+    };
 
     return {
-      id: staffMember.id,
+      id: record.id,
       staffMember: staffMember,
-      date: selectedDate,
-      status: isPastDate ? randomStatus : isToday ? "present" : "scheduled",
-      checkInTime: isPastDate && randomStatus === "present" ? "08:30" : null,
-      checkOutTime: isPastDate && randomStatus === "present" ? "17:00" : null,
-      hoursWorked: isPastDate && randomStatus === "present" ? 8.5 : 0,
-      notes:
-        randomStatus === "late"
-          ? "Traffic delay"
-          : randomStatus === "absent"
-          ? "Sick leave"
-          : "",
+      date: record.date,
+      status: record.status,
+      checkInTime: formatTime(record.check_in_time),
+      checkOutTime: formatTime(record.check_out_time),
+      hoursWorked: record.hours_worked || 0,
+      notes: record.notes || "",
+      needsApproval: record.status === "pending_approval",
+      approvedBy: record.approved_by,
+      createdAt: record.created_at,
     };
-  };
-
-  const attendanceData = (staffMembers || []).map(generateMockAttendance);
+  });
 
   const filteredAttendance = attendanceData.filter((record) => {
     if (attendanceFilter === "all") return true;
@@ -65,6 +191,11 @@ const AttendancePage = () => {
       late: { class: "status-late", label: "Late", icon: "⏰" },
       on_leave: { class: "status-leave", label: "On Leave", icon: "🏖️" },
       scheduled: { class: "status-scheduled", label: "Scheduled", icon: "📅" },
+      pending_approval: {
+        class: "status-pending",
+        label: "Pending Approval",
+        icon: "⏳",
+      },
     };
 
     const config = statusConfig[status] || statusConfig.scheduled;
@@ -75,6 +206,17 @@ const AttendancePage = () => {
     );
   };
 
+  // Handle attendance approval
+  const handleApproveAttendance = async (attendanceId) => {
+    try {
+      await dispatch(approveAttendance(attendanceId)).unwrap();
+      // Refetch attendance records to get updated data
+      dispatch(fetchAttendanceRecords({ date: selectedDate }));
+    } catch (error) {
+      console.error("Failed to approve attendance:", error);
+    }
+  };
+
   const getAttendanceStats = () => {
     const total = attendanceData.length;
     const present = attendanceData.filter((r) => r.status === "present").length;
@@ -83,8 +225,11 @@ const AttendancePage = () => {
     const onLeave = attendanceData.filter(
       (r) => r.status === "on_leave"
     ).length;
+    const pendingApproval = attendanceData.filter(
+      (r) => r.status === "pending_approval"
+    ).length;
 
-    return { total, present, absent, late, onLeave };
+    return { total, present, absent, late, onLeave, pendingApproval };
   };
 
   const stats = getAttendanceStats();
@@ -116,7 +261,10 @@ const AttendancePage = () => {
           styles["stat-label"] + " " + (styles[record.staffMember.role] || "")
         }
       >
-        {record.staffMember.role}
+        {record.staffMember.role && record.staffMember.role !== "unknown"
+          ? record.staffMember.role.charAt(0).toUpperCase() +
+            record.staffMember.role.slice(1)
+          : "Unknown"}
       </span>
     ),
     status: getStatusBadge(record.status),
@@ -126,6 +274,16 @@ const AttendancePage = () => {
     notes: record.notes || "-",
     actions: (
       <div className={styles["actions"]}>
+        {record.needsApproval && (
+          <button
+            className={styles["approve-btn"]}
+            title="Approve attendance"
+            onClick={() => handleApproveAttendance(record.id)}
+            disabled={approvalLoading[record.id]}
+          >
+            {approvalLoading[record.id] ? "⏳" : "✅"}
+          </button>
+        )}
         <button className={styles["edit-btn"]} title="Edit attendance">
           ✏️
         </button>
@@ -142,6 +300,14 @@ const AttendancePage = () => {
     { label: `Absent (${stats.absent})`, value: "absent" },
     { label: `Late (${stats.late})`, value: "late" },
     { label: `On Leave (${stats.onLeave})`, value: "on_leave" },
+    ...(stats.pendingApproval > 0
+      ? [
+          {
+            label: `Pending Approval (${stats.pendingApproval})`,
+            value: "pending_approval",
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -193,11 +359,30 @@ const AttendancePage = () => {
         <div className={styles["attendance-content"]}>
           {loading ? (
             <div className={styles["loading-spinner"]}></div>
+          ) : attendanceError ? (
+            <div className={styles["error-message"]}>
+              <p>❌ Error loading attendance data: {attendanceError}</p>
+              <button
+                onClick={() => {
+                  dispatch(fetchAttendanceRecords({ date: selectedDate }));
+                  dispatch(generateAttendanceSummary(selectedDate));
+                }}
+                className={styles["retry-btn"]}
+              >
+                🔄 Retry
+              </button>
+            </div>
           ) : (
             <DataTable
               columns={columns}
               data={tableData}
-              noDataText="No attendance records found."
+              noDataText={
+                attendanceRecords?.length === 0
+                  ? `No attendance records found for ${new Date(
+                      selectedDate
+                    ).toLocaleDateString()}. Staff members need to check in first to appear here.`
+                  : "No attendance records found for this date."
+              }
             />
           )}
         </div>
@@ -214,54 +399,58 @@ const AttendancePage = () => {
                   Attendance Rate:
                 </span>
                 <span className={styles["summary-value"]}>
-                  {stats.total > 0
-                    ? Math.round((stats.present / stats.total) * 100)
-                    : 0}
-                  %
+                  {attendanceSummary?.attendance_rate
+                    ? `${Math.round(attendanceSummary.attendance_rate)}%`
+                    : stats.total > 0
+                    ? `${Math.round((stats.present / stats.total) * 100)}%`
+                    : "0%"}
                 </span>
               </div>
               <div className={styles["summary-item"]}>
                 <span className={styles["summary-label"]}>Total Hours:</span>
                 <span className={styles["summary-value"]}>
-                  {attendanceData.reduce(
-                    (total, record) => total + record.hoursWorked,
-                    0
-                  )}
-                  h
+                  {attendanceSummary?.total_hours
+                    ? `${attendanceSummary.total_hours}h`
+                    : `${attendanceData.reduce(
+                        (total, record) => total + record.hoursWorked,
+                        0
+                      )}h`}
                 </span>
               </div>
               <div className={styles["summary-item"]}>
                 <span className={styles["summary-label"]}>Average Hours:</span>
                 <span className={styles["summary-value"]}>
-                  {stats.present > 0
-                    ? Math.round(
-                        (attendanceData.reduce(
-                          (total, record) => total + record.hoursWorked,
-                          0
-                        ) /
-                          stats.present) *
-                          10
-                      ) / 10
-                    : 0}
-                  h
+                  {attendanceSummary?.average_hours
+                    ? `${
+                        Math.round(attendanceSummary.average_hours * 10) / 10
+                      }h`
+                    : stats.present > 0
+                    ? `${
+                        Math.round(
+                          (attendanceData.reduce(
+                            (total, record) => total + record.hoursWorked,
+                            0
+                          ) /
+                            stats.present) *
+                            10
+                        ) / 10
+                      }h`
+                    : "0h"}
                 </span>
               </div>
+              {attendanceSummary?.pending_approvals > 0 && (
+                <div className={styles["summary-item"]}>
+                  <span className={styles["summary-label"]}>
+                    Pending Approvals:
+                  </span>
+                  <span
+                    className={styles["summary-value"] + " " + styles["urgent"]}
+                  >
+                    {attendanceSummary.pending_approvals}
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
-          <div className={styles["demo-notice"]}>
-            <h4>📊 Demo Data Notice</h4>
-            <p>
-              This page demonstrates the attendance tracking interface with
-              simulated data. In a production environment, this would connect
-              to:
-            </p>
-            <ul>
-              <li>Time clock systems for automatic check-in/out</li>
-              <li>Leave management system for vacation/sick time</li>
-              <li>Integration with payroll systems</li>
-              <li>Real-time attendance notifications</li>
-              <li>Historical attendance reports and analytics</li>
-            </ul>
           </div>
         </div>
       </div>

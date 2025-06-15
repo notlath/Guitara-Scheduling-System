@@ -16,13 +16,14 @@ import { LoadingButton, PageLoadingState } from "./common/LoadingComponents";
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
+import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css";
+import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
 import Calendar from "./scheduling/Calendar";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
-import TabSwitcher from "../globals/TabSwitcher";
 
 const TherapistDashboard = () => {
   const dispatch = useDispatch();
@@ -979,12 +980,13 @@ const TherapistDashboard = () => {
               Retry
             </button>
           </div>
-        )}
+        )}{" "}
         <TabSwitcher
           tabs={[
             { label: "Today's Appointments", value: "today" },
             { label: "Upcoming Appointments", value: "upcoming" },
             { label: "All My Appointments", value: "all" },
+            { label: "Attendance", value: "attendance" },
           ]}
           activeTab={currentView}
           onTabChange={setView}
@@ -1007,7 +1009,7 @@ const TherapistDashboard = () => {
               <h2>All My Appointments</h2>
               {renderAppointmentsList(myAppointments)}
             </div>
-          )}
+          )}{" "}
           {currentView === "calendar" && (
             <div className="calendar-view">
               <h2>Calendar View</h2>{" "}
@@ -1017,6 +1019,11 @@ const TherapistDashboard = () => {
                 onDateSelected={() => {}} // Optional: Add date selection handling
                 onTimeSelected={() => {}} // Optional: Add time selection handling
               />
+            </div>
+          )}
+          {currentView === "attendance" && (
+            <div className="attendance-view">
+              <AttendanceComponent />
             </div>
           )}
         </div>{" "}
