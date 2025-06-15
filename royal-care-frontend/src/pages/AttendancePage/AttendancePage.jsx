@@ -326,9 +326,7 @@ const AttendancePage = () => {
       <div className={styles["attendance-page"]}>
         <LayoutRow title="Staff Attendance Tracking">
           <div className={styles["date-selector"]}>
-            <label htmlFor="attendance-date">
-              Select Date <small>(Asia/Manila Time - UTC+08:00)</small>:
-            </label>
+            <label htmlFor="attendance-date">Select Date: </label>
             <input
               id="attendance-date"
               type="date"

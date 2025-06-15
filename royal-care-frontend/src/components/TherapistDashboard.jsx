@@ -986,7 +986,7 @@ const TherapistDashboard = () => {
             { label: "Today's Appointments", value: "today" },
             { label: "Upcoming Appointments", value: "upcoming" },
             { label: "All My Appointments", value: "all" },
-            { label: "Attendance", value: "attendance" },
+            { label: "My Attendance", value: "attendance" },
           ]}
           activeTab={currentView}
           onTabChange={setView}
@@ -1010,6 +1010,11 @@ const TherapistDashboard = () => {
               {renderAppointmentsList(myAppointments)}
             </div>
           )}{" "}
+          {currentView === "attendance" && (
+            <div className="attendance-view">
+              <AttendanceComponent />
+            </div>
+          )}
           {currentView === "calendar" && (
             <div className="calendar-view">
               <h2>Calendar View</h2>{" "}
@@ -1018,12 +1023,7 @@ const TherapistDashboard = () => {
                 context="therapist"
                 onDateSelected={() => {}} // Optional: Add date selection handling
                 onTimeSelected={() => {}} // Optional: Add time selection handling
-              />
-            </div>
-          )}
-          {currentView === "attendance" && (
-            <div className="attendance-view">
-              <AttendanceComponent />
+              />{" "}
             </div>
           )}
         </div>{" "}
