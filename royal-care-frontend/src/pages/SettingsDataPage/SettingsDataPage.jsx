@@ -14,11 +14,13 @@ import {
 } from "../../services/api";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
+import "../../styles/LoadingConsistency.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import styles from "./SettingsDataPage.module.css";
 import DataTable from "../../globals/DataTable";
 import Select from "react-select";
 import TabSwitcher from "../../globals/TabSwitcher";
+import MinimalLoadingIndicator from "../../components/common/MinimalLoadingIndicator";
 
 const TABS = [
   "Therapists",
@@ -207,6 +209,8 @@ const SettingsDataPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({});
   const [successPrompt, setSuccessPrompt] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [tableData, setTableData] = useState({
     Therapists: [],
     Drivers: [],
@@ -219,12 +223,16 @@ const SettingsDataPage = () => {
   useEffect(() => {
     document.title = `${activeTab} | Royal Care`;
     // Fetch data for the active tab
+    setIsLoading(true);
     fetchers[activeTab]()
       .then((data) => {
         setTableData((prev) => ({ ...prev, [activeTab]: data }));
       })
       .catch(() => {
         setTableData((prev) => ({ ...prev, [activeTab]: [] }));
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
   }, [activeTab]);
 
@@ -260,6 +268,7 @@ const SettingsDataPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     // Sanitize only on submit
     let sanitized = { ...formData };
     if (sanitized.description) {
@@ -360,8 +369,12 @@ const SettingsDataPage = () => {
       );
       setTimeout(() => setSuccessPrompt(""), 3000);
       console.error("[handleSubmit] Registration error:", err);
+    } finally {
+      setIsSubmitting(false);
     }
+    
     // Always refresh table after registration, even if there was an error
+    setIsLoading(true);
     try {
       fetchers[activeTab]()
         .then((data) => {
@@ -374,8 +387,12 @@ const SettingsDataPage = () => {
         .catch((fetchErr) => {
           setTableData((prev) => ({ ...prev, [activeTab]: [] }));
           console.error("[handleSubmit] Fetcher error:", fetchErr);
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
       setTimeout(() => {
+        setIsLoading(true);
         fetchers[activeTab]()
           .then((data) => {
             console.log(
@@ -387,12 +404,77 @@ const SettingsDataPage = () => {
           .catch((fetchErr) => {
             setTableData((prev) => ({ ...prev, [activeTab]: [] }));
             console.error("[handleSubmit] Delayed fetcher error:", fetchErr);
+          })
+          .finally(() => {
+            setIsLoading(false);
           });
       }, 1000);
     } catch (outerErr) {
       console.error("[handleSubmit] Outer fetcher error:", outerErr);
     }
     setTimeout(() => setSuccessPrompt(""), 2000);
+  };
+
+  // Simple skeleton loader for table (like BookingsPage)
+  const renderTableSkeleton = () => {
+    const tableConfig = getTableConfig();
+    const skeletonRows = Array.from({ length: 5 }, (_, index) => (
+      <tr key={`skeleton-${index}`} className={styles["table-skeleton-row"]}>
+        {tableConfig.columns.map((col) => (
+          <td key={`skeleton-${index}-${col.key}`}>
+            <div className={styles["table-skeleton-cell"]}></div>
+          </td>
+        ))}
+      </tr>
+    ));
+
+    return (
+      <div className={styles["data-table-wrapper"]}>
+        <table className={styles["data-table"]}>
+          <thead>
+            <tr className={styles["thead-row"]}>
+              {tableConfig.columns.map((col) => (
+                <th key={col.key} scope="col">
+                  {col.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{skeletonRows}</tbody>
+        </table>
+      </div>
+    );
+  };
+
+  // Simple skeleton loader for form
+  const renderFormSkeleton = () => {
+    let fieldCount = 4; // Default for most forms
+    
+    switch (activeTab) {
+      case "Therapists":
+        fieldCount = 6;
+        break;
+      case "Clients":
+        fieldCount = 6;
+        break;
+      case "Services":
+        fieldCount = 5;
+        break;
+      case "Materials":
+        fieldCount = 2;
+        break;
+      default:
+        fieldCount = 4;
+    }
+
+    return (
+      <div className={styles["form-skeleton"]}>
+        {Array.from({ length: fieldCount }, (_, index) => (
+          <div key={`form-skeleton-${index}`} className={styles["form-field-skeleton"]}></div>
+        ))}
+        <div className={styles["form-button-skeleton"]}></div>
+      </div>
+    );
   };
 
   const renderFormFields = () => {
@@ -696,6 +778,13 @@ const SettingsDataPage = () => {
 
   return (
     <PageLayout>
+      <MinimalLoadingIndicator 
+        show={isLoading} 
+        position="top-right" 
+        operation={`Loading ${activeTab.toLowerCase()}`}
+        tooltip={`Fetching ${activeTab.toLowerCase()} data...`}
+      />
+      
       {showModal && (
         <div className={styles["modal-overlay"]}>
           <div className={styles["modal"]}>
@@ -704,27 +793,38 @@ const SettingsDataPage = () => {
               <button
                 className={styles["close-btn"]}
                 onClick={handleCloseModal}
+                disabled={isSubmitting}
               >
                 <MdClose size={20} />
               </button>
             </div>
             <form className={styles["modal-form"]} onSubmit={handleSubmit}>
-              {renderFormFields()}
-              <button type="submit" className="action-btn">
-                Register
+              {isSubmitting ? renderFormSkeleton() : renderFormFields()}
+              <button 
+                type="submit" 
+                className="action-btn" 
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Registering..." : "Register"}
               </button>
             </form>
           </div>
         </div>
       )}
+      
       {successPrompt && (
         <div className={styles["success-prompt"]}>{successPrompt}</div>
       )}
+      
       <div className={"global-content" + (showModal ? " faded" : "")}>
         <div className={styles["header-tabs-container"]}>
           <LayoutRow title="Data">
             <div className="action-buttons">
-              <button className="primary-action-btn" onClick={handleAddClick}>
+              <button 
+                className="primary-action-btn" 
+                onClick={handleAddClick}
+                disabled={isLoading}
+              >
                 <span className="primary-action-icon">
                   <MdAdd size={20} />
                 </span>{" "}
@@ -738,7 +838,12 @@ const SettingsDataPage = () => {
             onTabChange={setActiveTab}
           />
         </div>
-        <DataTable columns={tableConfig.columns} data={tableData[activeTab]} />
+        
+        {isLoading ? (
+          renderTableSkeleton()
+        ) : (
+          <DataTable columns={tableConfig.columns} data={tableData[activeTab]} />
+        )}
       </div>
     </PageLayout>
   );
