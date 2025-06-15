@@ -7,6 +7,7 @@ import {
   fetchAvailableTherapists,
 } from "../../features/scheduling/schedulingSlice";
 import "../../styles/Calendar.css";
+import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
 const Calendar = ({
   onDateSelected,
@@ -25,6 +26,7 @@ const Calendar = ({
     availableDrivers,
     appointments,
     appointmentsByDate,
+    loading, // Add loading state from Redux
   } = useSelector((state) => state.scheduling);
 
   // Initialize with today's data when component mounts
@@ -1018,6 +1020,17 @@ const Calendar = ({
           </div>
         </div>
       )}
+
+      {/* Minimal loading indicator for frequent data fetching */}
+      <MinimalLoadingIndicator
+        show={loading}
+        position="bottom-right"
+        size="micro"
+        variant="subtle"
+        tooltip="Loading availability data..."
+        pulse={true}
+        fadeIn={true}
+      />
     </div>
   );
 };

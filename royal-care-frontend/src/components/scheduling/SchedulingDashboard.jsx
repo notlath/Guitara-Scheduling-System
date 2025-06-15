@@ -4,7 +4,8 @@ import { useSearchParams } from "react-router-dom";
 import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
 import { useSchedulingDashboardData } from "../../hooks/useDashboardIntegration";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
-import { PageLoadingState, SkeletonLoader } from "../common/LoadingComponents";
+import { SkeletonLoader } from "../common/LoadingComponents";
+import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
 import { MdAdd, MdNotifications } from "react-icons/md";
 import LayoutRow from "../../globals/LayoutRow";
@@ -330,11 +331,18 @@ const SchedulingDashboard = () => {
         />
 
         {loading && (
-          <PageLoadingState
-            title="Loading dashboard..."
-            subtitle="Please wait while we fetch your appointments"
-            className="dashboard-loading"
-          />
+          <div className="minimal-dashboard-loading">
+            {/* Use MinimalLoadingIndicator instead of intrusive PageLoadingState for frequent data fetching */}
+            <MinimalLoadingIndicator
+              show={true}
+              position="top-right"
+              size="small"
+              variant="subtle"
+              tooltip="Loading dashboard data..."
+              pulse={true}
+              fadeIn={true}
+            />
+          </div>
         )}
 
         {error && (
