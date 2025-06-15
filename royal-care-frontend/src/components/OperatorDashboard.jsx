@@ -21,7 +21,8 @@ import { useOperatorDashboardData } from "../hooks/useDashboardIntegration";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import syncService from "../services/syncService";
-import { LoadingButton, LoadingSpinner } from "./common/LoadingComponents";
+import { LoadingButton } from "./common/LoadingComponents";
+import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
 
 import "../globals/TabSwitcher.css";
@@ -1101,14 +1102,20 @@ const OperatorDashboard = () => {
             >
               Refresh
             </LoadingButton>
-          </div>
-        </div>
+          </div>        </div>
 
-        {attendanceLoading ? (
-          <div className="loading-state">
-            <LoadingSpinner text="Loading attendance records..." />
-          </div>
-        ) : attendanceRecords.length === 0 ? (
+        {/* Minimal loading indicator for attendance data */}
+        <MinimalLoadingIndicator
+          show={attendanceLoading}
+          position="center-right"
+          size="micro"
+          variant="ghost"
+          tooltip="Loading attendance records..."
+          pulse={true}
+          fadeIn={true}
+        />
+
+        {attendanceRecords.length === 0 ? (
           <div className="empty-state">
             <i className="fas fa-calendar-check"></i>
             <p>No attendance records found for {selectedDate}</p>
@@ -1832,16 +1839,16 @@ const OperatorDashboard = () => {
               Logout
             </button>
           </div>
-        </LayoutRow>
-        {loading && (
-          <LoadingSpinner
-            size="large"
-            variant="primary"
-            text="Loading dashboard data..."
-            overlay={false}
-            className="operator-dashboard-loader"
-          />
-        )}
+        </LayoutRow>        {/* Minimal loading indicator for frequent data fetching */}
+        <MinimalLoadingIndicator
+          show={loading}
+          position="bottom-left"
+          size="small"
+          variant="subtle"
+          tooltip="Loading dashboard data..."
+          pulse={true}
+          fadeIn={true}
+        />
         {error && (
           <div className="error-message">
             {typeof error === "object"

@@ -10,6 +10,7 @@ import {
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import "../../styles/AvailabilityManager.css";
 import { LoadingButton, TableLoadingState } from "../common/LoadingComponents";
+import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
 // Helper function to safely evaluate is_active field
 // Fixed syntax and improved availability fetching
@@ -77,9 +78,12 @@ const AvailabilityManager = () => {
     const day = today.getDate();
     return new Date(year, month, day); // Create date using local timezone
   });
-  const [selectedStaff, setSelectedStaff] = useState("");
-  const [timeSlots, setTimeSlots] = useState([]);
+  const [selectedStaff, setSelectedStaff] = useState("");  const [timeSlots, setTimeSlots] = useState([]);
   const [selectedStaffData, setSelectedStaffData] = useState(null);
+  // Loading states for MinimalLoadingIndicator
+  const [formLoading, setFormLoading] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState(false);
+  const [accountToggleLoading, setAccountToggleLoading] = useState(false);
   // Helper function to get today's date in YYYY-MM-DD format without timezone issues
   const getTodayString = () => {
     const today = new Date();
@@ -348,8 +352,9 @@ const AvailabilityManager = () => {
       );
       if (!isConfirmed) {
         return;
-      }
-    }
+      }    }
+    
+    setFormLoading(true);
     dispatch(
       createAvailability({
         user: staffId,
@@ -359,6 +364,7 @@ const AvailabilityManager = () => {
         is_available: newAvailabilityForm.isAvailable,
       })
     ).then((result) => {
+      setFormLoading(false);
       if (createAvailability.fulfilled.match(result)) {
         console.log("✅ Availability created successfully:", result.payload); // Success - reset form to selected date (not today)
         const currentFormDate = formatDateToString(selectedDate);
@@ -443,8 +449,8 @@ const AvailabilityManager = () => {
       });
     }
   };
-
   const handleToggleAvailability = (availability) => {
+    setToggleLoading(true);
     dispatch(
       updateAvailability({
         id: availability.id,
@@ -454,6 +460,7 @@ const AvailabilityManager = () => {
         },
       })
     ).then((result) => {
+      setToggleLoading(false);
       if (updateAvailability.fulfilled.match(result)) {
         console.log("✅ Availability updated successfully"); // Force refresh availability to show updated data immediately
         if (selectedStaff) {
@@ -469,10 +476,10 @@ const AvailabilityManager = () => {
         }
       }
     });
-  };
-  const handleToggleAccountStatus = async () => {
+  };  const handleToggleAccountStatus = async () => {
     if (!selectedStaffData) return;
 
+    setAccountToggleLoading(true);
     try {
       const knoxToken = localStorage.getItem("knoxToken");
       const response = await fetch(
@@ -497,14 +504,15 @@ const AvailabilityManager = () => {
         dispatch(fetchStaffMembers());
 
         // Show success message
-        alert(result.message);
-      } else {
+        alert(result.message);      } else {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to toggle account status");
       }
     } catch (error) {
       console.error("Error toggling account status:", error);
       alert(`Failed to update account status: ${error.message}`);
+    } finally {
+      setAccountToggleLoading(false);
     }
   };
   const generateTimeSlots = () => {
@@ -870,21 +878,32 @@ const AvailabilityManager = () => {
                   name="isAvailable"
                   checked={newAvailabilityForm.isAvailable}
                   onChange={handleNewAvailabilityChange}
+                />              </div>{" "}
+              <div className="form-group">
+                <button
+                  className="add-button"
+                  onClick={handleAddAvailability}
+                  disabled={!selectedStaff || formLoading}
+                >
+                  Add Availability
+                </button>
+                <MinimalLoadingIndicator 
+                  show={formLoading} 
+                  position="center-right" 
+                  size="small" 
+                  variant="subtle" 
                 />
-              </div>{" "}
-              <LoadingButton
-                className="add-button"
-                onClick={handleAddAvailability}
-                disabled={!selectedStaff}
-                loading={loading}
-              >
-                Add Availability
-              </LoadingButton>
+              </div>
             </div>
           </div>
-        )}{" "}
-      <div className="availability-list">
+        )}{" "}      <div className="availability-list">
         <h3>Current Availability</h3>
+        <MinimalLoadingIndicator 
+          show={loading} 
+          position="top-right" 
+          size="micro" 
+          variant="ghost" 
+        />
         {/* Account Status Section - Only show for operators when staff is selected */}
         {user.role === "operator" && selectedStaffData && (
           <div className="account-status-section">
@@ -904,15 +923,14 @@ const AvailabilityManager = () => {
                     : "❌ Disabled"}
                 </span>
                 <span className="role-info">({selectedStaffData.role})</span>
-              </div>
-
-              <button
+              </div>              <button
                 className={`toggle-account-button ${
                   isStaffActive(selectedStaffData)
                     ? "disable-btn"
                     : "enable-btn"
                 }`}
                 onClick={handleToggleAccountStatus}
+                disabled={accountToggleLoading}
                 title={
                   isStaffActive(selectedStaffData)
                     ? "Disable this account"
@@ -923,6 +941,12 @@ const AvailabilityManager = () => {
                   ? "Disable Account"
                   : "Enable Account"}
               </button>
+              <MinimalLoadingIndicator 
+                show={accountToggleLoading} 
+                position="center-right" 
+                size="micro" 
+                variant="subtle" 
+              />
             </div>
             {!isStaffActive(selectedStaffData) && (
               <div className="account-disabled-note">
@@ -949,18 +973,13 @@ const AvailabilityManager = () => {
                   : "Your personal availability will be displayed here."}
               </p>
             </div>
-          </div>
-        ) : loading ? (
+          </div>        ) : loading ? (
           <div className="loading-availability">
-            <TableLoadingState
-              columns={["Date", "Start Time", "End Time", "Status", "Actions"]}
-              rows={3}
-            />
             <div className="loading-message">
               <span>
                 Loading availability for {selectedDate.toLocaleDateString()}...
               </span>
-            </div>{" "}
+            </div>
           </div>
         ) : safeAvailabilities.length === 0 ? (
           <div className="no-availability-message">
@@ -1070,35 +1089,43 @@ const AvailabilityManager = () => {
                           <small>{availability.cross_day_note}</small>
                         </div>
                       )}{" "}
-                    </td>
-                    <td>
-                      <button
-                        className={`toggle-button ${
-                          availability.is_available
-                            ? "available-status"
-                            : "unavailable-status"
-                        }`}
-                        onClick={() => handleToggleAvailability(availability)}
-                        title={
-                          availability.is_available
-                            ? "Click to make unavailable"
-                            : "Click to make available"
-                        }
-                      >
-                        <span className="toggle-icon">
-                          {availability.is_available ? "🟢" : "🔴"}
-                        </span>
-                        <span className="toggle-text">
-                          {availability.is_available ? "Disable" : "Enable"}
-                        </span>
-                      </button>
+                    </td>                    <td>
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <button
+                          className={`toggle-button ${
+                            availability.is_available
+                              ? "available-status"
+                              : "unavailable-status"
+                          }`}
+                          onClick={() => handleToggleAvailability(availability)}
+                          disabled={toggleLoading}
+                          title={
+                            availability.is_available
+                              ? "Click to make unavailable"
+                              : "Click to make available"
+                          }
+                        >
+                          <span className="toggle-icon">
+                            {availability.is_available ? "🟢" : "🔴"}
+                          </span>
+                          <span className="toggle-text">
+                            {availability.is_available ? "Disable" : "Enable"}
+                          </span>
+                        </button>
+                        <MinimalLoadingIndicator 
+                          show={toggleLoading} 
+                          position="center-right" 
+                          size="micro" 
+                          variant="ghost" 
+                        />
+                      </div>
                       <button
                         className="delete-button"
                         onClick={() =>
                           handleDeleteAvailability(availability.id)
                         }
                       >
-                        Delete{" "}
+                        Delete
                       </button>
                     </td>
                   </tr>

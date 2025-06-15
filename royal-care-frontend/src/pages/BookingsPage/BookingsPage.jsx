@@ -10,6 +10,7 @@ import {
 import "./BookingsPage.css";
 import pageTitles from "../../constants/pageTitles";
 import TabSwitcher from "../../globals/TabSwitcher";
+import MinimalLoadingIndicator from "../../components/common/MinimalLoadingIndicator";
 
 const BookingsPage = () => {
   const dispatch = useDispatch();
@@ -141,9 +142,15 @@ const BookingsPage = () => {
       </div>
 
       <div className="bookings-content">
-        {loading ? (
+        <MinimalLoadingIndicator 
+          show={loading} 
+          position="top-right" 
+          size="small" 
+          variant="subtle" 
+          tooltip="Loading bookings..."
+        />
+        {loading && filteredAppointments.length === 0 ? (
           <div className="loading-state">
-            <div className="loading-spinner"></div>
             <p>Loading bookings...</p>
           </div>
         ) : filteredAppointments.length === 0 ? (

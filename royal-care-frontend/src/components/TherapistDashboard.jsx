@@ -12,7 +12,8 @@ import {
 } from "../features/scheduling/schedulingSlice";
 import { useTherapistDashboardData } from "../hooks/useDashboardIntegration";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
-import { LoadingButton, PageLoadingState } from "./common/LoadingComponents";
+import { LoadingButton } from "./common/LoadingComponents";
+import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -938,9 +939,17 @@ const TherapistDashboard = () => {
       </div>
     );
   };
-
   return (
     <PageLayout>
+      {/* Minimal loading indicator for background data fetching */}
+      {loading && !isInitialLoad && (
+        <MinimalLoadingIndicator 
+          position="top-right" 
+          size="small" 
+          variant="subtle" 
+          tooltip="Refreshing appointments..."
+        />
+      )}
       <div className="therapist-dashboard">
         <LayoutRow title="Therapist Dashboard">
           <div className="action-buttons">
@@ -951,11 +960,16 @@ const TherapistDashboard = () => {
               Logout
             </button>
           </div>
-        </LayoutRow>
-        {/* Only show loading spinner on initial load, not for background updates */}
-        {loading && isInitialLoad && (
-          <PageLoadingState message="Loading your appointments..." />
-        )}
+        </LayoutRow>        {/* Minimal loading indicator for frequent data fetching */}
+        <MinimalLoadingIndicator
+          show={loading}
+          position="top-right"
+          size="small"
+          variant="subtle"
+          tooltip="Loading appointments..."
+          pulse={true}
+          fadeIn={true}
+        />
         {/* Improved error handling with retry option */}
         {error && !isInitialLoad && (
           <div className="error-message">

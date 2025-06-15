@@ -357,6 +357,15 @@
   color: #166534; /* Even darker green for labels */
 }
 
+/* Minimal loading for initial load */
+.dashboard-loading-minimal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  margin: 2rem 0;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .dashboard-header {
