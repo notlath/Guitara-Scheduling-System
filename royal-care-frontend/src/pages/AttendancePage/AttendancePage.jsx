@@ -50,13 +50,21 @@ const AttendancePage = () => {
     console.log("AttendancePage - Staff member data:", record.staff_member);
 
     // The staff_member field contains the full staff information from the backend
-    const staffMember = record.staff_member || {
-      id: record.staff_member?.id || "unknown",
-      first_name: "Unknown",
-      last_name: "Staff",
-      email: "unknown@example.com",
-      role: "unknown",
-    };
+    const staffMember = record.staff_member
+      ? {
+          id: record.staff_member.id || "unknown",
+          first_name: record.staff_member.first_name || "Unknown",
+          last_name: record.staff_member.last_name || "Staff",
+          email: record.staff_member.email || "unknown@example.com",
+          role: record.staff_member.role || "unknown",
+        }
+      : {
+          id: "unknown",
+          first_name: "Unknown",
+          last_name: "Staff",
+          email: "unknown@example.com",
+          role: "unknown",
+        };
 
     // Helper function to format time from backend
     const formatTime = (timeString) => {
@@ -225,7 +233,6 @@ const AttendancePage = () => {
         <div className={styles["staff-name"]}>
           {record.staffMember.first_name} {record.staffMember.last_name}
         </div>
-        <div className={styles["staff-email"]}>{record.staffMember.email}</div>
       </div>
     ),
     role: (
@@ -234,7 +241,10 @@ const AttendancePage = () => {
           styles["stat-label"] + " " + (styles[record.staffMember.role] || "")
         }
       >
-        {record.staffMember.role}
+        {record.staffMember.role && record.staffMember.role !== "unknown"
+          ? record.staffMember.role.charAt(0).toUpperCase() +
+            record.staffMember.role.slice(1)
+          : "Unknown"}
       </span>
     ),
     status: getStatusBadge(record.status),
@@ -415,23 +425,6 @@ const AttendancePage = () => {
                 </div>
               )}
             </div>
-          </div>
-          <div className={styles["real-data-notice"]}>
-            <h4>✅ Live Attendance Data</h4>
-            <p>This page now displays real attendance data from your system:</p>
-            <ul>
-              <li>✅ Real check-in/check-out times from staff</li>
-              <li>✅ Actual attendance status (Present, Late, Absent)</li>
-              <li>✅ Live approval workflow for attendance records</li>
-              <li>✅ Automatic calculation of hours worked</li>
-              <li>✅ Integration with staff database</li>
-            </ul>
-            {attendanceData.length === 0 && (
-              <p className={styles["no-data-help"]}>
-                <strong>No attendance records yet?</strong> Staff members can
-                check in/out using the Attendance tab in their dashboards.
-              </p>
-            )}
           </div>
         </div>
       </div>

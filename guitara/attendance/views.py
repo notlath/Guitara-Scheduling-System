@@ -193,10 +193,12 @@ def attendance_records(request):
 
     # Base queryset - operators see all, staff see only their own
     if is_operator:
-        queryset = AttendanceRecord.objects.all()
+        queryset = AttendanceRecord.objects.select_related("staff_member").all()
     else:
         # Non-operators can only see their own records
-        queryset = AttendanceRecord.objects.filter(staff_member=user)
+        queryset = AttendanceRecord.objects.select_related("staff_member").filter(
+            staff_member=user
+        )
 
     # Apply filters
     if date_filter:
@@ -217,7 +219,20 @@ def attendance_records(request):
     if staff_id and is_operator:
         queryset = queryset.filter(staff_member__id=staff_id)
 
+    # Debug logging
+    print(f"DEBUG - attendance_records - Query count: {queryset.count()}")
+    for record in queryset[:3]:  # Log first 3 records
+        print(
+            f"DEBUG - Record ID: {record.id}, Staff: {record.staff_member.get_full_name()}, Role: {record.staff_member.role}"
+        )
+
     serializer = AttendanceRecordSerializer(queryset, many=True)
+
+    # Debug serialized data
+    print(
+        f"DEBUG - Serialized data sample: {serializer.data[:1] if serializer.data else 'No data'}"
+    )
+
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
