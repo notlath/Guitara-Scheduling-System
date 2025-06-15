@@ -9,7 +9,6 @@ import {
 } from "../../features/scheduling/schedulingSlice";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import "../../styles/AvailabilityManager.css";
-import { LoadingButton, TableLoadingState } from "../common/LoadingComponents";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
 // Helper function to safely evaluate is_active field
@@ -78,7 +77,8 @@ const AvailabilityManager = () => {
     const day = today.getDate();
     return new Date(year, month, day); // Create date using local timezone
   });
-  const [selectedStaff, setSelectedStaff] = useState("");  const [timeSlots, setTimeSlots] = useState([]);
+  const [selectedStaff, setSelectedStaff] = useState("");
+  const [timeSlots, setTimeSlots] = useState([]);
   const [selectedStaffData, setSelectedStaffData] = useState(null);
   // Loading states for MinimalLoadingIndicator
   const [formLoading, setFormLoading] = useState(false);
@@ -352,8 +352,9 @@ const AvailabilityManager = () => {
       );
       if (!isConfirmed) {
         return;
-      }    }
-    
+      }
+    }
+
     setFormLoading(true);
     dispatch(
       createAvailability({
@@ -476,7 +477,8 @@ const AvailabilityManager = () => {
         }
       }
     });
-  };  const handleToggleAccountStatus = async () => {
+  };
+  const handleToggleAccountStatus = async () => {
     if (!selectedStaffData) return;
 
     setAccountToggleLoading(true);
@@ -504,7 +506,8 @@ const AvailabilityManager = () => {
         dispatch(fetchStaffMembers());
 
         // Show success message
-        alert(result.message);      } else {
+        alert(result.message);
+      } else {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to toggle account status");
       }
@@ -878,7 +881,8 @@ const AvailabilityManager = () => {
                   name="isAvailable"
                   checked={newAvailabilityForm.isAvailable}
                   onChange={handleNewAvailabilityChange}
-                />              </div>{" "}
+                />{" "}
+              </div>{" "}
               <div className="form-group">
                 <button
                   className="add-button"
@@ -887,22 +891,23 @@ const AvailabilityManager = () => {
                 >
                   Add Availability
                 </button>
-                <MinimalLoadingIndicator 
-                  show={formLoading} 
-                  position="center-right" 
-                  size="small" 
-                  variant="subtle" 
+                <MinimalLoadingIndicator
+                  show={formLoading}
+                  position="center-right"
+                  size="small"
+                  variant="subtle"
                 />
               </div>
             </div>
           </div>
-        )}{" "}      <div className="availability-list">
+        )}{" "}
+      <div className="availability-list">
         <h3>Current Availability</h3>
-        <MinimalLoadingIndicator 
-          show={loading} 
-          position="top-right" 
-          size="micro" 
-          variant="ghost" 
+        <MinimalLoadingIndicator
+          show={loading}
+          position="top-right"
+          size="micro"
+          variant="ghost"
         />
         {/* Account Status Section - Only show for operators when staff is selected */}
         {user.role === "operator" && selectedStaffData && (
@@ -923,7 +928,8 @@ const AvailabilityManager = () => {
                     : "❌ Disabled"}
                 </span>
                 <span className="role-info">({selectedStaffData.role})</span>
-              </div>              <button
+              </div>{" "}
+              <button
                 className={`toggle-account-button ${
                   isStaffActive(selectedStaffData)
                     ? "disable-btn"
@@ -941,11 +947,11 @@ const AvailabilityManager = () => {
                   ? "Disable Account"
                   : "Enable Account"}
               </button>
-              <MinimalLoadingIndicator 
-                show={accountToggleLoading} 
-                position="center-right" 
-                size="micro" 
-                variant="subtle" 
+              <MinimalLoadingIndicator
+                show={accountToggleLoading}
+                position="center-right"
+                size="micro"
+                variant="subtle"
               />
             </div>
             {!isStaffActive(selectedStaffData) && (
@@ -973,7 +979,8 @@ const AvailabilityManager = () => {
                   : "Your personal availability will be displayed here."}
               </p>
             </div>
-          </div>        ) : loading ? (
+          </div>
+        ) : loading ? (
           <div className="loading-availability">
             <div className="loading-message">
               <span>
@@ -1089,8 +1096,14 @@ const AvailabilityManager = () => {
                           <small>{availability.cross_day_note}</small>
                         </div>
                       )}{" "}
-                    </td>                    <td>
-                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                    </td>{" "}
+                    <td>
+                      <div
+                        style={{
+                          position: "relative",
+                          display: "inline-block",
+                        }}
+                      >
                         <button
                           className={`toggle-button ${
                             availability.is_available
@@ -1112,11 +1125,11 @@ const AvailabilityManager = () => {
                             {availability.is_available ? "Disable" : "Enable"}
                           </span>
                         </button>
-                        <MinimalLoadingIndicator 
-                          show={toggleLoading} 
-                          position="center-right" 
-                          size="micro" 
-                          variant="ghost" 
+                        <MinimalLoadingIndicator
+                          show={toggleLoading}
+                          position="center-right"
+                          size="micro"
+                          variant="ghost"
                         />
                       </div>
                       <button

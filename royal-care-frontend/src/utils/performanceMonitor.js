@@ -8,7 +8,7 @@ class PerformanceMonitor {
     this.metrics = new Map();
     this.startTimes = new Map();
     this.thresholds = {
-      api_call: 3000, // 3 seconds
+      api_call: 15000, // 15 seconds (increased from 5 seconds for slow backend)
       render_time: 100, // 100ms
       data_processing: 500, // 500ms
     };
@@ -59,8 +59,15 @@ class PerformanceMonitor {
     this.metrics.get(type).push(metric);
     this.startTimes.delete(key);
 
-    // Log performance warning if threshold exceeded
-    if (metric.isSlowPerformance) {
+    // Check for long-running operations and issue warnings
+    const isLongRunning = this.checkForLongRunningOperation(
+      key,
+      type,
+      duration
+    );
+
+    // Enhanced logging based on performance
+    if (isLongRunning) {
       console.warn(
         `🐌 Performance Warning: ${key} took ${duration.toFixed(
           2
@@ -75,6 +82,78 @@ class PerformanceMonitor {
     }
 
     return metric;
+  }
+
+  /**
+   * Check for long-running operations and issue warnings
+   * @param {string} key - Unique identifier for the operation
+   * @param {string} type - Type of operation
+   * @param {number} duration - Duration of the operation in ms
+   */
+  checkForLongRunningOperation(key, type, duration) {
+    const threshold = this.thresholds[type] || 3000;
+
+    if (duration > threshold) {
+      const warningLevel = duration > threshold * 2 ? "error" : "warn";
+      const method = warningLevel === "error" ? console.error : console.warn;
+
+      method(
+        `🐌 Performance ${warningLevel.toUpperCase()}: ${key} took ${Math.round(
+          duration
+        )}ms ` +
+          `(threshold: ${threshold}ms, ${Math.round(
+            (duration / threshold) * 100
+          )}% over)`
+      );
+
+      // Trigger custom event for UI feedback
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("longRunningOperation", {
+            detail: {
+              key,
+              type,
+              duration,
+              threshold,
+              level: warningLevel,
+            },
+          })
+        );
+      }
+    }
+
+    return duration > threshold;
+  }
+
+  /**
+   * Get performance statistics for a given metric type
+   * @param {string} type - Type of metric to analyze
+   * @returns {Object} Statistics including average, min, max, and percentiles
+   */
+  getStatistics(type) {
+    const metrics = this.metrics.get(type) || [];
+    if (metrics.length === 0) {
+      return { count: 0, average: 0, min: 0, max: 0, p95: 0, p99: 0 };
+    }
+
+    const durations = metrics.map((m) => m.duration).sort((a, b) => a - b);
+    const count = durations.length;
+    const sum = durations.reduce((acc, d) => acc + d, 0);
+
+    const p95Index = Math.floor(count * 0.95);
+    const p99Index = Math.floor(count * 0.99);
+
+    return {
+      count,
+      average: Math.round(sum / count),
+      min: Math.round(durations[0]),
+      max: Math.round(durations[count - 1]),
+      p95: Math.round(durations[p95Index] || 0),
+      p99: Math.round(durations[p99Index] || 0),
+      slowOperations: metrics.filter(
+        (m) => m.duration > (this.thresholds[type] || 3000)
+      ).length,
+    };
   }
 
   /**

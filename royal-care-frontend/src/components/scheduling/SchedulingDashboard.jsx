@@ -46,7 +46,6 @@ const SchedulingDashboard = () => {
 
   const dispatch = useDispatch();
   const {
-    appointments,
     todayAppointments,
     upcomingAppointments,
     loading,
@@ -325,6 +324,7 @@ const SchedulingDashboard = () => {
             { label: "Week View", value: "week" },
             { label: "Today's Bookings", value: "today" },
             { label: "Upcoming Bookings", value: "list" },
+            { label: "Availability Manager", value: "availability" },
           ]}
           activeTab={currentView}
           onTabChange={setView}

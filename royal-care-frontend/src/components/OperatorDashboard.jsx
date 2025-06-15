@@ -1102,7 +1102,8 @@ const OperatorDashboard = () => {
             >
               Refresh
             </LoadingButton>
-          </div>        </div>
+          </div>{" "}
+        </div>
 
         {/* Minimal loading indicator for attendance data */}
         <MinimalLoadingIndicator
@@ -1839,7 +1840,8 @@ const OperatorDashboard = () => {
               Logout
             </button>
           </div>
-        </LayoutRow>        {/* Minimal loading indicator for frequent data fetching */}
+        </LayoutRow>{" "}
+        {/* Minimal loading indicator for frequent data fetching */}
         <MinimalLoadingIndicator
           show={loading}
           position="bottom-left"

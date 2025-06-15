@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { NavLink } from "react-router-dom";
 import "../../../src/styles/Placeholders.css";
+import MinimalLoadingIndicator from "../../components/common/MinimalLoadingIndicator";
+import pageTitles from "../../constants/pageTitles";
 import {
   fetchAppointments,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
 } from "../../features/scheduling/schedulingSlice";
-import "./BookingsPage.css";
-import pageTitles from "../../constants/pageTitles";
 import TabSwitcher from "../../globals/TabSwitcher";
-import MinimalLoadingIndicator from "../../components/common/MinimalLoadingIndicator";
+import "./BookingsPage.css";
 
 const BookingsPage = () => {
   const dispatch = useDispatch();
@@ -142,11 +142,11 @@ const BookingsPage = () => {
       </div>
 
       <div className="bookings-content">
-        <MinimalLoadingIndicator 
-          show={loading} 
-          position="top-right" 
-          size="small" 
-          variant="subtle" 
+        <MinimalLoadingIndicator
+          show={loading}
+          position="top-right"
+          size="small"
+          variant="subtle"
           tooltip="Loading bookings..."
         />
         {loading && filteredAppointments.length === 0 ? (

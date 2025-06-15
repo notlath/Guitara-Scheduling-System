@@ -943,10 +943,10 @@ const TherapistDashboard = () => {
     <PageLayout>
       {/* Minimal loading indicator for background data fetching */}
       {loading && !isInitialLoad && (
-        <MinimalLoadingIndicator 
-          position="top-right" 
-          size="small" 
-          variant="subtle" 
+        <MinimalLoadingIndicator
+          position="top-right"
+          size="small"
+          variant="subtle"
           tooltip="Refreshing appointments..."
         />
       )}
@@ -960,7 +960,8 @@ const TherapistDashboard = () => {
               Logout
             </button>
           </div>
-        </LayoutRow>        {/* Minimal loading indicator for frequent data fetching */}
+        </LayoutRow>{" "}
+        {/* Minimal loading indicator for frequent data fetching */}
         <MinimalLoadingIndicator
           show={loading}
           position="top-right"

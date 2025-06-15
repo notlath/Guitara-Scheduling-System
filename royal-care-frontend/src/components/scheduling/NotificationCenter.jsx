@@ -390,11 +390,11 @@ const NotificationCenter = ({ onClose }) => {
       {/* Header */}
       <div className={styles.notificationHeader}>
         <h2>Notifications</h2>
-        <MinimalLoadingIndicator 
-          show={loading} 
-          position="top-right" 
-          size="micro" 
-          variant="ghost" 
+        <MinimalLoadingIndicator
+          show={loading}
+          position="top-right"
+          size="micro"
+          variant="ghost"
           tooltip="Loading notifications..."
         />
         <div className={styles.notificationControls}>
