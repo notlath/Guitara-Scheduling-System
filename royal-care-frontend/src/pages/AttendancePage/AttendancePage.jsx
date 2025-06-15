@@ -264,7 +264,6 @@ const AttendancePage = () => {
         <div className={styles["staff-name"]}>
           {record.staffMember.first_name} {record.staffMember.last_name}
         </div>
-        <div className={styles["staff-email"]}>{record.staffMember.email}</div>
       </div>
     ),
     role: (
