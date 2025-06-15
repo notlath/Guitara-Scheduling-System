@@ -10,7 +10,7 @@ class StaffMemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "first_name", "last_name", "username", "role"]
+        fields = ["id", "first_name", "last_name", "username", "email", "role"]
 
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):

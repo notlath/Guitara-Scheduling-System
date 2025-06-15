@@ -217,13 +217,11 @@ def attendance_records(request):
 
     # Only operators can filter by specific staff_id
     if staff_id and is_operator:
-        queryset = queryset.filter(staff_member__id=staff_id)
-
-    # Debug logging
+        queryset = queryset.filter(staff_member__id=staff_id)  # Debug logging
     print(f"DEBUG - attendance_records - Query count: {queryset.count()}")
     for record in queryset[:3]:  # Log first 3 records
         print(
-            f"DEBUG - Record ID: {record.id}, Staff: {record.staff_member.get_full_name()}, Role: {record.staff_member.role}"
+            f"DEBUG - Record ID: {record.id}, Staff: {record.staff_member.get_full_name()}, Role: {record.staff_member.role}, Email: {record.staff_member.email}"
         )
 
     serializer = AttendanceRecordSerializer(queryset, many=True)
@@ -232,6 +230,11 @@ def attendance_records(request):
     print(
         f"DEBUG - Serialized data sample: {serializer.data[:1] if serializer.data else 'No data'}"
     )
+    if serializer.data and len(serializer.data) > 0:
+        sample_record = serializer.data[0]
+        print(
+            f"DEBUG - Sample staff_member: {sample_record.get('staff_member', 'Missing staff_member field')}"
+        )
 
     return Response(serializer.data, status=status.HTTP_200_OK)
 

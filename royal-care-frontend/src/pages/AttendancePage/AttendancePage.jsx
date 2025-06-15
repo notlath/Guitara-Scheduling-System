@@ -44,10 +44,24 @@ const AttendancePage = () => {
     dispatch(generateAttendanceSummary(selectedDate));
   }, [dispatch, selectedDate]);
 
+  // Add debugging for attendance records
+  console.log("AttendancePage - Raw attendance records:", attendanceRecords);
+  console.log(
+    "AttendancePage - Attendance records count:",
+    attendanceRecords?.length || 0
+  );
+
   // Combine real attendance records with staff information
   const attendanceData = (attendanceRecords || []).map((record) => {
     console.log("AttendancePage - Processing attendance record:", record);
     console.log("AttendancePage - Staff member data:", record.staff_member);
+
+    // Check if we have any attendance records at all
+    if (!attendanceRecords || attendanceRecords.length === 0) {
+      console.log(
+        "AttendancePage - No attendance records found for selected date"
+      );
+    }
 
     // The staff_member field contains the full staff information from the backend
     const staffMember = record.staff_member
@@ -55,7 +69,10 @@ const AttendancePage = () => {
           id: record.staff_member.id || "unknown",
           first_name: record.staff_member.first_name || "Unknown",
           last_name: record.staff_member.last_name || "Staff",
-          email: record.staff_member.email || "unknown@example.com",
+          email:
+            record.staff_member.email ||
+            record.staff_member.username ||
+            "unknown@example.com",
           role: record.staff_member.role || "unknown",
         }
       : {
@@ -65,6 +82,8 @@ const AttendancePage = () => {
           email: "unknown@example.com",
           role: "unknown",
         };
+
+    console.log("AttendancePage - Processed staff member:", staffMember);
 
     // Helper function to format time from backend
     const formatTime = (timeString) => {
@@ -233,6 +252,7 @@ const AttendancePage = () => {
         <div className={styles["staff-name"]}>
           {record.staffMember.first_name} {record.staffMember.last_name}
         </div>
+        <div className={styles["staff-email"]}>{record.staffMember.email}</div>
       </div>
     ),
     role: (
@@ -356,7 +376,13 @@ const AttendancePage = () => {
             <DataTable
               columns={columns}
               data={tableData}
-              noDataText="No attendance records found for this date."
+              noDataText={
+                attendanceRecords?.length === 0
+                  ? `No attendance records found for ${new Date(
+                      selectedDate
+                    ).toLocaleDateString()}. Staff members need to check in first to appear here.`
+                  : "No attendance records found for this date."
+              }
             />
           )}
         </div>
