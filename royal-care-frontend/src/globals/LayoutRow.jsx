@@ -1,4 +1,3 @@
-import React from "react";
 import "../globals/LayoutRow.css";
 
 const LayoutRow = ({ title, children }) => (

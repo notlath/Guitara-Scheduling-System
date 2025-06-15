@@ -106,21 +106,34 @@ const MainLayout = () => {
         </div>
         <nav className="nav-links">
           {isTherapistOrDriver ? (
-            <NavLink
-              to="/dashboard/scheduling"
-              className={({ isActive }) => {
-                console.log("Schedule link active state:", isActive);
-                return isActive ? "active-link" : "";
-              }}
-              onClick={() => {
-                console.log(
-                  "Schedule link clicked, navigating to /dashboard/scheduling"
-                );
-              }}
-            >
-              <MdSchedule style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
-              Schedule
-            </NavLink>
+            <>
+              <NavLink
+                to="/dashboard/scheduling"
+                className={({ isActive }) => {
+                  console.log("Schedule link active state:", isActive);
+                  return isActive ? "active-link" : "";
+                }}
+                onClick={() => {
+                  console.log(
+                    "Schedule link clicked, navigating to /dashboard/scheduling"
+                  );
+                }}
+              >
+                <MdSchedule
+                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
+                />
+                Schedule
+              </NavLink>
+              <NavLink
+                to="/dashboard/attendance"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                <MdAccessTime
+                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
+                />
+                Attendance
+              </NavLink>
+            </>
           ) : (
             <>
               <NavLink

@@ -2243,10 +2243,19 @@ class StaffViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOperator]
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     search_fields = ["first_name", "last_name", "email", "role"]
     filterset_fields = ["role", "is_active"]
+
+    def get_permissions(self):
+        """
+        Allow all authenticated users to read staff info, but only operators to modify
+        """
+        if self.action in ["list", "retrieve"]:
+            permission_classes = [permissions.IsAuthenticated]
+        else:
+            permission_classes = [permissions.IsAuthenticated, IsOperator]
+        return [permission() for permission in permission_classes]
 
     def get_queryset(self):
         """Return all staff members"""

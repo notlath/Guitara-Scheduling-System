@@ -21,6 +21,7 @@ import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css"; // Reuse therapist styles for consistency
+import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
 import Calendar from "./scheduling/Calendar";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
@@ -1646,12 +1647,13 @@ const DriverDashboard = () => {
               </span>
             </div>
           </div>
-        )}
+        )}{" "}
         <TabSwitcher
           tabs={[
             { label: "Today's Transports", value: "today" },
             { label: "Upcoming Transports", value: "upcoming" },
             { label: "All My Transports", value: "all" },
+            { label: "Attendance", value: "attendance" },
           ]}
           activeTab={currentView}
           onTabChange={setView}
@@ -1742,7 +1744,7 @@ const DriverDashboard = () => {
               </div>{" "}
               {renderAppointmentsList(myAllTransports)}
             </div>
-          )}
+          )}{" "}
           {currentView === "calendar" && (
             <div className="calendar-view">
               <h2>Calendar View</h2>{" "}
@@ -1752,6 +1754,11 @@ const DriverDashboard = () => {
                 onDateSelected={() => {}} // Optional: Add date selection handling
                 onTimeSelected={() => {}} // Optional: Add time selection handling
               />
+            </div>
+          )}
+          {currentView === "attendance" && (
+            <div className="attendance-view">
+              <AttendanceComponent />
             </div>
           )}
         </div>
