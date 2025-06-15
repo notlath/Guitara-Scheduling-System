@@ -3,7 +3,7 @@
  * Automatically subscribes/unsubscribes components to prevent redundant API calls
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
 import dataManager from "../services/dataManager";
 
@@ -34,8 +34,8 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
   const safeNotifications = notifications || [];
 
   // Memoize serialized values to prevent unnecessary re-renders
-  const dataTypesKey = JSON.stringify(dataTypes);
-  const optionsKey = JSON.stringify(options);
+  const dataTypesKey = useMemo(() => JSON.stringify(dataTypes), [dataTypes]);
+  const optionsKey = useMemo(() => JSON.stringify(options), [options]);
 
   useEffect(() => {
     if (dataTypes.length === 0) return;
@@ -60,7 +60,7 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
         unsubscribeRef.current();
       }
     };
-  }, [componentName, dataTypes, options, dataTypesKey, optionsKey]);
+  }, [componentName, dataTypes, options, dataTypesKey, optionsKey]); // Keep all dependencies for safety
 
   // Provide force refresh function for components that need it
   const forceRefresh = (specificDataTypes = []) => {
