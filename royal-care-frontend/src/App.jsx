@@ -30,6 +30,7 @@ import SchedulingPage from "./pages/SchedulingPage/SchedulingPage";
 import SettingsAccountPage from "./pages/SettingsAccountPage/SettingsAccountPage";
 import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
+import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import { validateToken } from "./services/auth";
 
@@ -150,9 +151,18 @@ const App = () => {
             }
           />{" "}
           <Route path="scheduling" element={<SchedulingPage />} />
-          <Route path="availability" element={<AvailabilityManager />} />
+          <Route path="availability" element={<AvailabilityManager />} />{" "}
           <Route path="bookings" element={<BookingsPage />} />{" "}
-          <Route path="attendance" element={<AttendancePage />} />
+          <Route
+            path="attendance"
+            element={
+              user?.role === "therapist" || user?.role === "driver" ? (
+                <StaffAttendancePage />
+              ) : (
+                <AttendancePage />
+              )
+            }
+          />
           <Route
             path="sales-reports"
             element={

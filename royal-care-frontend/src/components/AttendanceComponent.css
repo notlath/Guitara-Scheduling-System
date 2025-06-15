@@ -1,5 +1,4 @@
 .attendance-component {
-  padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -351,7 +350,7 @@
 }
 
 .attendance-info {
-  display: flex;
+  display: inline-grid;
   gap: 30px;
   flex: 1;
 }

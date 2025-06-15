@@ -1653,7 +1653,7 @@ const DriverDashboard = () => {
             { label: "Today's Transports", value: "today" },
             { label: "Upcoming Transports", value: "upcoming" },
             { label: "All My Transports", value: "all" },
-            { label: "Attendance", value: "attendance" },
+            { label: "My Attendance", value: "attendance" },
           ]}
           activeTab={currentView}
           onTabChange={setView}
@@ -1745,6 +1745,11 @@ const DriverDashboard = () => {
               {renderAppointmentsList(myAllTransports)}
             </div>
           )}{" "}
+          {currentView === "attendance" && (
+            <div className="attendance-view">
+              <AttendanceComponent />
+            </div>
+          )}
           {currentView === "calendar" && (
             <div className="calendar-view">
               <h2>Calendar View</h2>{" "}
@@ -1753,12 +1758,7 @@ const DriverDashboard = () => {
                 context="driver"
                 onDateSelected={() => {}} // Optional: Add date selection handling
                 onTimeSelected={() => {}} // Optional: Add time selection handling
-              />
-            </div>
-          )}
-          {currentView === "attendance" && (
-            <div className="attendance-view">
-              <AttendanceComponent />
+              />{" "}
             </div>
           )}
         </div>
