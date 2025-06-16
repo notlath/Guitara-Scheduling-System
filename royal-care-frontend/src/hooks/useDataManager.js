@@ -4,7 +4,7 @@
  * Now includes performance monitoring and timeout warnings
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import dataManager from "../services/dataManager";
 import usePerformanceFeedback from "./usePerformanceFeedback";
@@ -46,11 +46,108 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
     error,
   } = useSelector((state) => state.scheduling);
 
-  // Ensure arrays are always defined to prevent loading issues
-  const safeAppointments = appointments || [];
-  const safeTodayAppointments = todayAppointments || [];
-  const safeUpcomingAppointments = upcomingAppointments || [];
-  const safeNotifications = notifications || [];
+  // Ensure arrays are always defined to prevent loading issues - memoized for performance
+  const safeAppointments = useMemo(() => appointments || [], [appointments]);
+  const safeTodayAppointments = useMemo(
+    () => todayAppointments || [],
+    [todayAppointments]
+  );
+  const safeUpcomingAppointments = useMemo(
+    () => upcomingAppointments || [],
+    [upcomingAppointments]
+  );
+  const safeNotifications = useMemo(() => notifications || [], [notifications]);
+
+  // Enhanced immediate data access with cache checking and smart fallbacks
+  const [immediateData, setImmediateData] = useState({
+    appointments: [],
+    todayAppointments: [],
+    upcomingAppointments: [],
+    notifications: [],
+    hasImmediate: false,
+    cacheAge: null,
+    isStale: false,
+  });
+
+  // Memoize dataTypes for stable reference
+  const dataTypesKey = useMemo(() => JSON.stringify(dataTypes), [dataTypes]);
+
+  // Enhanced cache checking with age calculation
+  const getCachedDataWithAge = useCallback(() => {
+    const cachedData = {};
+    let hasAnyCache = false;
+    let oldestCacheAge = 0;
+    let hasStaleData = false;
+
+    dataTypes.forEach((dataType) => {
+      const cached = dataManager.cache.get(dataType);
+      if (cached && cached.data) {
+        const cacheAge = Date.now() - cached.timestamp;
+        const ttl = dataManager.cacheTTL[dataType] || 30000;
+        const isStale = cacheAge > ttl * 0.8; // Consider stale at 80% of TTL
+
+        cachedData[dataType] = Array.isArray(cached.data) ? cached.data : [];
+        hasAnyCache = true;
+        oldestCacheAge = Math.max(oldestCacheAge, cacheAge);
+
+        if (isStale) hasStaleData = true;
+      }
+    });
+
+    return {
+      data: cachedData,
+      hasCache: hasAnyCache,
+      age: oldestCacheAge,
+      isStale: hasStaleData,
+    };
+  }, [dataTypes]);
+
+  // Check for cached data immediately on mount and component updates
+  useEffect(() => {
+    const checkCachedData = () => {
+      const cacheResult = getCachedDataWithAge();
+
+      if (cacheResult.hasCache) {
+        setImmediateData((prev) => ({
+          ...prev,
+          ...cacheResult.data,
+          hasImmediate: true,
+          cacheAge: cacheResult.age,
+          isStale: cacheResult.isStale,
+        }));
+        console.log(
+          `⚡ ${componentName}: Using cached data for immediate display (age: ${Math.round(
+            cacheResult.age / 1000
+          )}s, stale: ${cacheResult.isStale})`
+        );
+      }
+    };
+
+    checkCachedData();
+  }, [componentName, getCachedDataWithAge]);
+
+  // Update immediate data when Redux data changes
+  useEffect(() => {
+    if (
+      safeAppointments.length > 0 ||
+      safeTodayAppointments.length > 0 ||
+      safeUpcomingAppointments.length > 0 ||
+      safeNotifications.length > 0
+    ) {
+      setImmediateData({
+        appointments: safeAppointments,
+        todayAppointments: safeTodayAppointments,
+        upcomingAppointments: safeUpcomingAppointments,
+        notifications: safeNotifications,
+        hasImmediate: true,
+      });
+    }
+  }, [
+    safeAppointments,
+    safeTodayAppointments,
+    safeUpcomingAppointments,
+    safeNotifications,
+  ]);
 
   // Track loading state changes for performance feedback
   useEffect(() => {
@@ -66,8 +163,7 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
     }
   }, [loading, componentName, performanceFeedback]);
 
-  // Memoize serialized values to prevent unnecessary re-renders
-  const dataTypesKey = useMemo(() => JSON.stringify(dataTypes), [dataTypes]);
+  // Memoize serialized values to prevent unnecessary re-renders (moved up to avoid duplication)
   const optionsKey = useMemo(() => JSON.stringify(options), [options]);
 
   useEffect(() => {
@@ -113,13 +209,34 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
   };
 
   return {
-    // Data from Redux store - using safe arrays to prevent undefined issues
-    appointments: safeAppointments,
-    todayAppointments: safeTodayAppointments,
-    upcomingAppointments: safeUpcomingAppointments,
-    notifications: safeNotifications,
-    loading,
+    // Enhanced data access - show cached data immediately, fresh data when available
+    appointments: immediateData.hasImmediate
+      ? immediateData.appointments
+      : safeAppointments,
+    todayAppointments: immediateData.hasImmediate
+      ? immediateData.todayAppointments
+      : safeTodayAppointments,
+    upcomingAppointments: immediateData.hasImmediate
+      ? immediateData.upcomingAppointments
+      : safeUpcomingAppointments,
+    notifications: immediateData.hasImmediate
+      ? immediateData.notifications
+      : safeNotifications,
+
+    // Smart loading states - only show loading if no cached data available
+    loading: loading && !immediateData.hasImmediate,
+    isRefreshing: loading && immediateData.hasImmediate, // Background refresh indicator
+    isStaleData: immediateData.isStale, // Indicates data might be outdated
     error,
+
+    // Data state indicators for conditional rendering
+    hasImmediateData: immediateData.hasImmediate,
+    hasAnyData:
+      immediateData.hasImmediate ||
+      safeAppointments.length > 0 ||
+      safeTodayAppointments.length > 0,
+    cacheAge: immediateData.cacheAge,
+    dataSource: immediateData.hasImmediate ? "cache-enhanced" : "fresh",
 
     // Performance feedback
     ...performanceFeedback.getLoadingProps(),
@@ -129,6 +246,13 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
 
     // Utility functions
     forceRefresh,
+    refreshIfStale: () => {
+      if (immediateData.isStale) {
+        console.log(`🔄 ${componentName}: Auto-refreshing stale data`);
+        return forceRefresh();
+      }
+      return Promise.resolve();
+    },
 
     // Debug info and metrics
     isSubscribed: !!unsubscribeRef.current,
@@ -138,6 +262,8 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
       hasBeenLoading: performanceFeedback.hasBeenLoading,
       isWarningState: performanceFeedback.isWarningState,
       isErrorState: performanceFeedback.isErrorState,
+      cacheAge: immediateData.cacheAge,
+      isStale: immediateData.isStale,
     },
   };
 };

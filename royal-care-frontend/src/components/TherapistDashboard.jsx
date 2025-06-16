@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
@@ -59,18 +59,27 @@ const TherapistDashboard = () => {
       [actionKey]: isLoading,
     }));
   };
-  const { user } = useSelector((state) => state.auth);
-
-  // 🔥 FIXED: Use centralized data manager instead of individual polling
+  const { user } = useSelector((state) => state.auth); // Enhanced data access with immediate display capabilities
   const {
     myAppointments,
     myTodayAppointments,
     myUpcomingAppointments,
     loading,
+    isRefreshing,
+    hasAnyData,
+    isStaleData,
     error,
-    isInitialLoad,
     refreshAppointments,
-  } = useTherapistDashboardData(); // 🔥 FIXED: Replace redundant refreshAppointments with centralized data manager
+    refreshIfStale,
+  } = useTherapistDashboardData();
+
+  // Auto-refresh stale data in background
+  useEffect(() => {
+    if (isStaleData && hasAnyData) {
+      console.log("🔄 TherapistDashboard: Auto-refreshing stale data");
+      refreshIfStale();
+    }
+  }, [isStaleData, hasAnyData, refreshIfStale]); // 🔥 FIXED: Replace redundant refreshAppointments with centralized data manager
   // refreshAppointments is now provided by useTherapistDashboardData hook
 
   // 🔥 REMOVED: All redundant polling and data fetching
@@ -941,15 +950,25 @@ const TherapistDashboard = () => {
   };
   return (
     <PageLayout>
-      {/* Minimal loading indicator for background data fetching */}
-      {loading && !isInitialLoad && (
-        <MinimalLoadingIndicator
-          position="top-right"
-          size="small"
-          variant="subtle"
-          tooltip="Refreshing appointments..."
-        />
-      )}
+      {" "}
+      {/* Enhanced minimal loading indicator with immediate data support */}
+      <MinimalLoadingIndicator
+        show={loading}
+        hasData={hasAnyData}
+        isRefreshing={isRefreshing}
+        position="top-right"
+        size="small"
+        variant={isStaleData ? "warning" : "subtle"}
+        tooltip={
+          isStaleData
+            ? "Data may be outdated, refreshing..."
+            : hasAnyData
+            ? "Refreshing appointments..."
+            : "Loading appointments..."
+        }
+        pulse={true}
+        fadeIn={true}
+      />
       <div className="therapist-dashboard">
         <LayoutRow title="Therapist Dashboard">
           <div className="action-buttons">
@@ -960,19 +979,9 @@ const TherapistDashboard = () => {
               Logout
             </button>
           </div>
-        </LayoutRow>{" "}
-        {/* Minimal loading indicator for frequent data fetching */}
-        <MinimalLoadingIndicator
-          show={loading}
-          position="top-right"
-          size="small"
-          variant="subtle"
-          tooltip="Loading appointments..."
-          pulse={true}
-          fadeIn={true}
-        />
-        {/* Improved error handling with retry option */}
-        {error && !isInitialLoad && (
+        </LayoutRow>
+        {/* Enhanced loading indicator - only show if no cached data available */}
+        {error && !hasAnyData && (
           <div className="error-message">
             <div>
               {typeof error === "object"

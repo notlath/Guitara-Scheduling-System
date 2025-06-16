@@ -37,7 +37,7 @@ class DataManager {
     this.memoryThresholds = {
       maxCacheSize: 1000, // Max items in cache
       maxAge: 1800000, // 30 minutes max age
-      cleanupInterval: 300000 // 5 minutes cleanup interval
+      cleanupInterval: 300000, // 5 minutes cleanup interval
     };
 
     // Performance tracking for enhanced deduplication
@@ -173,7 +173,7 @@ class DataManager {
   }
 
   /**
-   * Fetch specific data type with enhanced deduplication
+   * Fetch specific data type with enhanced deduplication and progressive loading
    */
   async fetchDataType(dataType) {
     // Enhanced deduplication - return existing promise if in flight
@@ -184,29 +184,63 @@ class DataManager {
       return this.requestsInFlight.get(dataType);
     }
 
-    // Check cache first
+    // Check cache first and return immediately if valid
+    const cached = this.cache.get(dataType);
     if (this.isCacheValid(dataType)) {
       console.log(`💾 DataManager: Using cached ${dataType}`);
-      return this.cache.get(dataType).data;
+
+      // For immediate data display, return cached data right away
+      // But also trigger background refresh if cache is getting stale
+      const cacheAge = Date.now() - cached.timestamp;
+      const ttl = this.cacheTTL[dataType] || 30000;
+      const staleThreshold = ttl * 0.7; // Refresh when 70% of TTL elapsed
+
+      if (cacheAge > staleThreshold) {
+        console.log(
+          `🔄 DataManager: Background refresh for ${dataType} (cache aging)`
+        );
+        // Trigger background refresh without blocking current request
+        setTimeout(() => this.performBackgroundRefresh(dataType), 100);
+      }
+
+      return cached.data;
     }
 
-    // Create new request promise
+    // Create new request promise with progressive loading
     const requestPromise = this.createRequest(dataType)
       .then((result) => {
-        // Cache the result
+        // Cache the result with metadata
         this.cache.set(dataType, {
           data: result,
           timestamp: Date.now(),
+          fetchCount: (cached?.fetchCount || 0) + 1,
+          lastError: null,
         });
 
         // Track successful operation
         this.trackOperation(dataType, true);
-        
+
         return result;
       })
       .catch((error) => {
-        // Track failed operation
+        // Track failed operation but preserve last good cache if available
         this.trackOperation(dataType, false, error);
+
+        // If we have stale cached data, use it as fallback
+        if (cached && cached.data) {
+          console.warn(
+            `⚠️ DataManager: API failed for ${dataType}, using stale cache`,
+            error.message
+          );
+          // Update cache with error info but keep data
+          this.cache.set(dataType, {
+            ...cached,
+            lastError: error,
+            errorTimestamp: Date.now(),
+          });
+          return cached.data;
+        }
+
         throw error;
       })
       .finally(() => {
@@ -218,6 +252,30 @@ class DataManager {
     this.requestsInFlight.set(dataType, requestPromise);
 
     return requestPromise;
+  }
+
+  /**
+   * Perform background refresh without blocking UI
+   */
+  async performBackgroundRefresh(dataType) {
+    if (this.requestsInFlight.has(dataType)) {
+      return; // Already refreshing
+    }
+
+    try {
+      console.log(
+        `🔄 DataManager: Background refresh starting for ${dataType}`
+      );
+      await this.fetchDataType(dataType);
+      console.log(
+        `✅ DataManager: Background refresh completed for ${dataType}`
+      );
+    } catch (error) {
+      console.warn(
+        `⚠️ DataManager: Background refresh failed for ${dataType}:`,
+        error.message
+      );
+    }
   }
 
   /**
@@ -268,23 +326,30 @@ class DataManager {
   getPollingInterval() {
     const timeSinceActivity = Date.now() - this.lastUserActivity;
     const errorRate = this.getErrorRate();
-    
+
     let baseInterval = 30000; // 30 seconds base
 
     // Activity-based adjustment
     if (!this.isTabVisible) {
       baseInterval = 120000; // 2 minutes when tab not visible
-    } else if (timeSinceActivity < 30000) { // 30 seconds
+    } else if (timeSinceActivity < 30000) {
+      // 30 seconds
       baseInterval = 10000; // More aggressive when very active
-    } else if (timeSinceActivity < 60000) { // 1 minute
+    } else if (timeSinceActivity < 60000) {
+      // 1 minute
       baseInterval = 15000; // 15 seconds when recently active
     }
-    
+
     // Error-based exponential backoff
-    if (errorRate > 0.2) { // >20% error rate
+    if (errorRate > 0.2) {
+      // >20% error rate
       const backoffMultiplier = Math.min(Math.pow(2, errorRate * 5), 10); // Max 10x
       baseInterval = Math.min(baseInterval * backoffMultiplier, 300000); // Max 5 minutes
-      console.log(`⚠️ DataManager: High error rate (${Math.round(errorRate * 100)}%), backing off to ${baseInterval}ms`);
+      console.log(
+        `⚠️ DataManager: High error rate (${Math.round(
+          errorRate * 100
+        )}%), backing off to ${baseInterval}ms`
+      );
     }
 
     return baseInterval;
@@ -308,11 +373,12 @@ class DataManager {
     }
 
     // Cancel any pending requests for the types being refreshed
-    const typesToCancel = dataTypes.length === 0 ? 
-      Array.from(this.requestsInFlight.keys()) : 
-      dataTypes.filter(type => this.requestsInFlight.has(type));
-    
-    typesToCancel.forEach(type => {
+    const typesToCancel =
+      dataTypes.length === 0
+        ? Array.from(this.requestsInFlight.keys())
+        : dataTypes.filter((type) => this.requestsInFlight.has(type));
+
+    typesToCancel.forEach((type) => {
       console.log(`🚫 DataManager: Cancelling in-flight request for ${type}`);
       this.requestsInFlight.delete(type);
     });
@@ -371,7 +437,7 @@ class DataManager {
         this.cleanupOldMetrics();
       },
       getRecentOperations: () => this.recentOperations,
-      forceRefresh: (types) => this.forceRefresh(types)
+      forceRefresh: (types) => this.forceRefresh(types),
     };
 
     console.log(
@@ -388,7 +454,7 @@ class DataManager {
     this.stopPolling();
     this.cache.clear();
     this.requestsInFlight.clear();
-    
+
     // Clear performance tracking
     this.recentOperations = [];
 
@@ -409,7 +475,7 @@ class DataManager {
       cacheSize: this.cache.size,
       maxCacheSize: this.memoryThresholds.maxCacheSize,
       recentOperations: this.recentOperations.length,
-      maxRecentOperations: this.maxRecentOperations
+      maxRecentOperations: this.maxRecentOperations,
     };
 
     return {
@@ -418,7 +484,7 @@ class DataManager {
       requestsInFlight: Array.from(this.requestsInFlight.keys()),
       memory: memoryUsage,
       performance: {
-        errorRate: Math.round(errorRate * 100) + '%',
+        errorRate: Math.round(errorRate * 100) + "%",
         pollingInterval: this.getPollingInterval(),
       },
       isTabVisible: this.isTabVisible,
@@ -445,13 +511,19 @@ class DataManager {
 
     // Memory analysis
     console.log("Memory Usage:");
-    console.log(`  Cache: ${status.memory.cacheSize}/${status.memory.maxCacheSize} entries`);
-    console.log(`  Recent Operations: ${status.memory.recentOperations}/${status.memory.maxRecentOperations} entries`);
+    console.log(
+      `  Cache: ${status.memory.cacheSize}/${status.memory.maxCacheSize} entries`
+    );
+    console.log(
+      `  Recent Operations: ${status.memory.recentOperations}/${status.memory.maxRecentOperations} entries`
+    );
 
     // Performance analysis
     console.log("Performance:");
     console.log(`  Error Rate: ${status.performance.errorRate}`);
-    console.log(`  Current Polling Interval: ${status.performance.pollingInterval}ms`);
+    console.log(
+      `  Current Polling Interval: ${status.performance.pollingInterval}ms`
+    );
 
     // Cache analysis
     console.log("Cache contents:");
@@ -459,14 +531,20 @@ class DataManager {
       const age = Date.now() - value.timestamp;
       const ttl = this.cacheTTL[key] || 30000;
       const isValid = age < ttl;
-      console.log(`  ${key}: ${Math.round(age / 1000)}s old ${isValid ? '✅' : '❌'}`);
+      console.log(
+        `  ${key}: ${Math.round(age / 1000)}s old ${isValid ? "✅" : "❌"}`
+      );
     });
 
     // Recent operations summary
     if (this.recentOperations.length > 0) {
-      const successCount = this.recentOperations.filter(op => op.success).length;
+      const successCount = this.recentOperations.filter(
+        (op) => op.success
+      ).length;
       const errorCount = this.recentOperations.length - successCount;
-      console.log(`Recent Operations: ${successCount} success, ${errorCount} errors`);
+      console.log(
+        `Recent Operations: ${successCount} success, ${errorCount} errors`
+      );
     }
 
     console.groupEnd();
@@ -533,41 +611,27 @@ class DataManager {
   }
 
   /**
-   * Start memory cleanup interval
+   * Start memory cleanup with enhanced thresholds
    */
   startMemoryCleanup() {
     setInterval(() => {
       this.cleanupExpiredCache();
       this.cleanupOldMetrics();
+      this.checkMemoryPressure();
     }, this.memoryThresholds.cleanupInterval);
+
+    console.log("🧹 DataManager: Memory cleanup started");
   }
 
   /**
-   * Track operation performance for enhanced decision making
-   */
-  trackOperation(dataType, success, error = null) {
-    this.recentOperations.push({
-      dataType,
-      success,
-      error: error?.message || null,
-      timestamp: Date.now()
-    });
-
-    // Keep only recent operations to prevent memory bloat
-    if (this.recentOperations.length > this.maxRecentOperations) {
-      this.recentOperations = this.recentOperations.slice(-this.maxRecentOperations);
-    }
-  }
-
-  /**
-   * Enhanced cache cleanup with size and age limits
+   * Enhanced cache cleanup with selective eviction
    */
   cleanupExpiredCache() {
     const now = Date.now();
     let cleaned = 0;
-    let totalSize = this.cache.size;
+    let forceEvicted = 0;
 
-    // First pass: Remove expired entries
+    // First pass: Remove truly expired entries
     for (const [key, cached] of this.cache.entries()) {
       const age = now - cached.timestamp;
       const ttl = this.cacheTTL[key] || 30000;
@@ -578,50 +642,135 @@ class DataManager {
       }
     }
 
-    // Second pass: If still over size limit, remove oldest entries
+    // Second pass: If cache is still too large, evict LRU entries
     if (this.cache.size > this.memoryThresholds.maxCacheSize) {
-      const entries = Array.from(this.cache.entries())
-        .sort((a, b) => a[1].timestamp - b[1].timestamp);
-      
-      const excess = this.cache.size - this.memoryThresholds.maxCacheSize;
-      for (let i = 0; i < excess; i++) {
+      const entries = Array.from(this.cache.entries()).sort(
+        ([, a], [, b]) => a.timestamp - b.timestamp
+      ); // Oldest first
+
+      const toEvict = this.cache.size - this.memoryThresholds.maxCacheSize;
+      for (let i = 0; i < toEvict; i++) {
         this.cache.delete(entries[i][0]);
+        forceEvicted++;
+      }
+    }
+
+    if (cleaned > 0 || forceEvicted > 0) {
+      console.log(
+        `🧹 DataManager: Cleaned ${cleaned} expired, evicted ${forceEvicted} LRU entries`
+      );
+    }
+  }
+
+  /**
+   * Clean up old performance metrics
+   */
+  cleanupOldMetrics() {
+    const cutoff = Date.now() - 300000; // Keep last 5 minutes
+    const originalLength = this.recentOperations.length;
+
+    this.recentOperations = this.recentOperations.filter(
+      (op) => op.timestamp > cutoff
+    );
+
+    // Keep only the most recent if still too many
+    if (this.recentOperations.length > this.maxRecentOperations) {
+      this.recentOperations = this.recentOperations.slice(
+        -this.maxRecentOperations
+      );
+    }
+
+    const cleaned = originalLength - this.recentOperations.length;
+    if (cleaned > 0) {
+      console.log(`🧹 DataManager: Cleaned ${cleaned} old performance metrics`);
+    }
+  }
+
+  /**
+   * Check for memory pressure and take action
+   */
+  checkMemoryPressure() {
+    const cacheRatio = this.cache.size / this.memoryThresholds.maxCacheSize;
+    const metricsRatio =
+      this.recentOperations.length / this.maxRecentOperations;
+
+    if (cacheRatio > 0.8) {
+      console.warn(
+        `⚠️ DataManager: High cache usage (${Math.round(cacheRatio * 100)}%)`
+      );
+
+      // Force more aggressive cleanup
+      if (cacheRatio > 0.9) {
+        this.aggressiveCleanup();
+      }
+    }
+
+    if (metricsRatio > 0.8) {
+      console.warn(
+        `⚠️ DataManager: High metrics usage (${Math.round(
+          metricsRatio * 100
+        )}%)`
+      );
+    }
+  }
+
+  /**
+   * Aggressive cleanup for memory pressure
+   */
+  aggressiveCleanup() {
+    console.log("🔥 DataManager: Performing aggressive cleanup");
+
+    const now = Date.now();
+    let cleaned = 0;
+
+    // Remove entries older than half their TTL
+    for (const [key, cached] of this.cache.entries()) {
+      const age = now - cached.timestamp;
+      const ttl = this.cacheTTL[key] || 30000;
+
+      if (age > ttl * 0.5) {
+        this.cache.delete(key);
         cleaned++;
       }
     }
 
-    if (cleaned > 0) {
-      console.log(`🧹 DataManager: Cleaned ${cleaned} cache entries (was ${totalSize}, now ${this.cache.size})`);
-    }
-  }
-
-  /**
-   * Clean old operation metrics
-   */
-  cleanupOldMetrics() {
-    const fiveMinutesAgo = Date.now() - 300000; // 5 minutes
-    const originalLength = this.recentOperations.length;
-    
-    this.recentOperations = this.recentOperations.filter(
-      op => op.timestamp > fiveMinutesAgo
+    // Trim metrics more aggressively
+    this.recentOperations = this.recentOperations.slice(
+      -Math.floor(this.maxRecentOperations * 0.5)
     );
 
-    if (this.recentOperations.length < originalLength) {
-      console.log(`🧹 DataManager: Cleaned ${originalLength - this.recentOperations.length} old operation metrics`);
+    console.log(
+      `🔥 DataManager: Aggressively cleaned ${cleaned} cache entries`
+    );
+  }
+
+  /**
+   * Enhanced operation tracking with performance metrics
+   */
+  trackOperation(dataType, success, error = null) {
+    const operation = {
+      dataType,
+      success,
+      error: error?.message || null,
+      timestamp: Date.now(),
+    };
+
+    this.recentOperations.push(operation);
+
+    // Keep only recent operations
+    if (this.recentOperations.length > this.maxRecentOperations) {
+      this.recentOperations.shift();
     }
   }
 
   /**
-   * Get error rate for adaptive behavior
+   * Calculate error rate from recent operations
    */
   getErrorRate() {
     if (this.recentOperations.length === 0) return 0;
-    
-    const recentErrors = this.recentOperations.filter(op => 
-      op.timestamp > Date.now() - 300000 && !op.success
-    ).length;
-    
-    return recentErrors / Math.min(this.recentOperations.length, 10);
+
+    const errors = this.recentOperations.filter((op) => !op.success).length;
+    return errors / this.recentOperations.length;
   }
 }
 
