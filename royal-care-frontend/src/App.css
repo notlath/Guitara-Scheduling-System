@@ -125,6 +125,39 @@ button {
   height: 1em;
 }
 
+/* Secondary action button styles */
+.secondary-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-light, #d1d5db);
+  background: var(--background-25, #fafafa);
+  color: var(--text-600, #6b7280);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondary-action-btn:hover {
+  background: var(--background-50, #f9fafb);
+  border-color: var(--border-medium, #9ca3af);
+  color: var(--text-700, #374151);
+}
+
+.secondary-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Action button spacing */
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .notification-button {
   background-color: var(--background-100);
   color: var(--text);
