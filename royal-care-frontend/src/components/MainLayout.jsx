@@ -272,7 +272,7 @@ const MainLayout = () => {
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
               <MdEmail style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
-              Contact Email Support
+              Email Support
             </NavLink>
           </div>
 
