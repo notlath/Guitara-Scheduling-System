@@ -1,0 +1,218 @@
+/* ========================================
+   SALES CHART COMPONENT STYLES
+   ======================================== */
+
+/* Chart container - main wrapper */
+.chartContainer {
+  background: var(--background);
+  border: 1px solid var(--background-200);
+  border-radius: 12px;
+  margin-bottom: var(--spacing-lg);
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Chart header section */
+.chartHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--background-100);
+  background: var(--background-50);
+}
+
+.chartTitle {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--text);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.chartSubtitle {
+  margin: 0;
+  color: var(--text-500);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+/* Comparison badge styling */
+.comparisonBadge {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.comparisonIndicator {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--background-100);
+  border-radius: 16px;
+  display: inline-block;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.comparisonIndicator:hover {
+  background: var(--background-200);
+}
+
+/* Chart content wrapper */
+.chartWrapper {
+  padding: var(--spacing-md);
+  min-height: 300px;
+  position: relative;
+}
+
+/* Chart legend styling */
+.chartLegend {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-top: 1px solid var(--background-100);
+  background: var(--background-25);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--text-600);
+  font-weight: 500;
+}
+
+.legendColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Enhanced responsive design */
+@media (max-width: 768px) {
+  .chartHeader {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    align-items: flex-start;
+  }
+
+  .comparisonBadge {
+    text-align: left;
+    align-self: stretch;
+  }
+
+  .comparisonIndicator {
+    display: block;
+    text-align: center;
+  }
+
+  .chartWrapper {
+    padding: var(--spacing-sm);
+    min-height: 250px;
+  }
+
+  .chartTitle {
+    font-size: var(--font-size-base);
+  }
+
+  .chartSubtitle {
+    font-size: var(--font-size-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .chartContainer {
+    margin-bottom: var(--spacing-md);
+    border-radius: 8px;
+  }
+
+  .chartHeader {
+    padding: var(--spacing-sm);
+  }
+
+  .chartWrapper {
+    padding: var(--spacing-xs);
+    min-height: 200px;
+  }
+
+  .chartLegend {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .legendItem {
+    font-size: var(--font-size-xs);
+  }
+
+  .legendColor {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+/* Loading state styling */
+.chartContainer.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.chartContainer.loading .chartWrapper::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--background-300);
+  border-top: 2px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Empty state styling */
+.chartContainer.empty .chartWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-400);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+}
+
+/* Accessibility improvements */
+.chartContainer:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .chartContainer {
+    break-inside: avoid;
+    border: 1px solid #ccc;
+    box-shadow: none;
+  }
+
+  .chartHeader {
+    background: #f8f9fa !important;
+  }
+
+  .chartLegend {
+    background: #f8f9fa !important;
+  }
+}

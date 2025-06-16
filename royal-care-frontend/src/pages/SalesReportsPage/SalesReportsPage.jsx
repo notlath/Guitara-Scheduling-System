@@ -11,6 +11,9 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+// Chart components
+import SalesChart from "../../components/charts/SalesChart";
+import { prepareChartData } from "../../utils/chartDataHelpers";
 
 const SalesReportsPage = () => {
   const dispatch = useDispatch();
@@ -1099,6 +1102,11 @@ const SalesReportsPage = () => {
     doc.save(filename);
   };
 
+  // Prepare chart data
+  const chartData = useMemo(() => {
+    return prepareChartData(appointments, currentView, currentPeriod);
+  }, [appointments, currentView, currentPeriod]);
+
   return (
     <PageLayout>
       <LayoutRow title="Sales & Reports Dashboard">
@@ -1119,6 +1127,34 @@ const SalesReportsPage = () => {
           onTabChange={setCurrentPeriod}
         />
       </div>
+
+      {/* Chart Component */}
+      <SalesChart
+        data={chartData}
+        currentView={currentView}
+        currentPeriod={currentPeriod}
+        currentTotal={
+          currentView === "Total Revenue"
+            ? revenueData.currentTotal
+            : currentView === "Commission"
+            ? commissionData.currentTotal
+            : chartData.length
+        }
+        previousTotal={
+          currentView === "Total Revenue"
+            ? revenueData.previousTotal
+            : currentView === "Commission"
+            ? commissionData.previousTotal
+            : 0
+        }
+        comparison={
+          currentView === "Total Revenue"
+            ? revenueData.comparison
+            : currentView === "Commission"
+            ? commissionData.comparison
+            : "no-data"
+        }
+      />
 
       <div>
         {currentView === "Commission" && (
@@ -1195,7 +1231,7 @@ const SalesReportsPage = () => {
               }}
             >
               <h3 style={{ margin: 0, marginBottom: "var(--spacing-xs)" }}>
-                Total Revenue: ₱{revenueData.currentTotal.toFixed(2)}
+                ₱{revenueData.currentTotal.toFixed(2)}
               </h3>
               <p
                 style={{
