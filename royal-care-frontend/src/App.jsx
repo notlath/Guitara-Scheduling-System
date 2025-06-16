@@ -21,7 +21,7 @@ import BookingsPage from "./pages/BookingsPage/BookingsPage";
 import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordPage";
 import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
-import ContactPage from "./pages/HelpPages/ContactPage";
+import ContactPage from "./pages/ContactPage/ContactPage";
 import FAQsPage from "./pages/HelpPages/FAQsPage";
 import UserGuidePage from "./pages/HelpPages/UserGuidePage";
 import InventoryPage from "./pages/InventoryPage/InventoryPage";
@@ -118,12 +118,16 @@ const App = () => {
   // Initialize performance optimization services
   useEffect(() => {
     const initializePerformanceServices = async () => {
-      try {        console.log("🚀 Initializing performance optimization services...");
-        
+      try {
+        console.log("🚀 Initializing performance optimization services...");
+
         // Perform service health check before initialization
         const healthCheck = performServiceHealthCheck();
-        if (healthCheck.overall !== 'healthy') {
-          console.error('⚠️ Service health check failed, proceeding with caution:', healthCheck);
+        if (healthCheck.overall !== "healthy") {
+          console.error(
+            "⚠️ Service health check failed, proceeding with caution:",
+            healthCheck
+          );
         }
 
         // Debug what we imported
@@ -133,22 +137,29 @@ const App = () => {
           crossTabSync: typeof crossTabSync,
           crossTabSyncInit: typeof crossTabSync?.initialize,
           cachePreloader: typeof cachePreloader,
-          cachePreloaderPreload: typeof cachePreloader?.preloadCriticalData
+          cachePreloaderPreload: typeof cachePreloader?.preloadCriticalData,
         });
 
         // Initialize memory manager
-        if (memoryManager && typeof memoryManager.initialize === 'function') {
+        if (memoryManager && typeof memoryManager.initialize === "function") {
           memoryManager.initialize();
-          console.log("✅ Memory Manager initialized");        } else {
-          console.error("❌ Memory Manager initialization failed - method not found", memoryManager);
+          console.log("✅ Memory Manager initialized");
+        } else {
+          console.error(
+            "❌ Memory Manager initialization failed - method not found",
+            memoryManager
+          );
         }
 
         // Initialize cross-tab synchronization
-        if (crossTabSync && typeof crossTabSync.initialize === 'function') {
+        if (crossTabSync && typeof crossTabSync.initialize === "function") {
           crossTabSync.initialize();
           console.log("✅ Cross-tab sync initialized");
         } else {
-          console.error("❌ Cross-tab sync initialization failed - method not found", crossTabSync);
+          console.error(
+            "❌ Cross-tab sync initialization failed - method not found",
+            crossTabSync
+          );
         }
 
         // Initialize cache preloader and start critical data preloading
