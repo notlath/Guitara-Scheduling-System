@@ -2,6 +2,12 @@ import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.http import JsonResponse
 from .supabase_client import get_supabase_client, safe_supabase_operation, init_supabase
 from .serializers import (
     TherapistSerializer,
@@ -13,8 +19,7 @@ from .serializers import (
     CompleteRegistrationSerializer,
 )
 from core.models import CustomUser
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from core.storage_service import storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +166,10 @@ class RegisterTherapist(APIView):
                         {"error": error}, status=status.HTTP_400_BAD_REQUEST
                     )
                 return Response(
-                    {"message": "Therapist registered successfully", "user_id": user.id},
+                    {
+                        "message": "Therapist registered successfully",
+                        "user_id": user.id,
+                    },
                     status=status.HTTP_201_CREATED,
                 )
             except Exception as exc:
@@ -377,7 +385,9 @@ class RegisterOperator(APIView):
                 )
                 # Always create or update CustomUser after Supabase insert
                 try:
-                    logger.warning(f"Attempting to create/update CustomUser for operator: username={data['username']}, email={data['email']}, first_name={data['first_name']}, last_name={data['last_name']}, role=operator")
+                    logger.warning(
+                        f"Attempting to create/update CustomUser for operator: username={data['username']}, email={data['email']}, first_name={data['first_name']}, last_name={data['last_name']}, role=operator"
+                    )
                     user, created = CustomUser.objects.update_or_create(
                         username=data["username"],
                         defaults={
@@ -390,18 +400,47 @@ class RegisterOperator(APIView):
                     )
                 except Exception as cu_error:
                     import traceback
-                    logger.error(f"CustomUser creation failed for operator: {cu_error}\nTraceback: {traceback.format_exc()}")
+
+                    logger.error(
+                        f"CustomUser creation failed for operator: {cu_error}\nTraceback: {traceback.format_exc()}"
+                    )
                     # Check for unique constraint errors
                     cu_error_str = str(cu_error).lower()
-                    if "unique constraint" in cu_error_str or "unique violation" in cu_error_str or "already exists" in cu_error_str:
+                    if (
+                        "unique constraint" in cu_error_str
+                        or "unique violation" in cu_error_str
+                        or "already exists" in cu_error_str
+                    ):
                         if "email" in cu_error_str:
-                            return Response({"error": "An operator with this email already exists (CustomUser)."}, status=400)
+                            return Response(
+                                {
+                                    "error": "An operator with this email already exists (CustomUser)."
+                                },
+                                status=400,
+                            )
                         if "username" in cu_error_str:
-                            return Response({"error": "An operator with this username already exists (CustomUser)."}, status=400)
-                        return Response({"error": "An operator with this information already exists (CustomUser)."}, status=400)
+                            return Response(
+                                {
+                                    "error": "An operator with this username already exists (CustomUser)."
+                                },
+                                status=400,
+                            )
+                        return Response(
+                            {
+                                "error": "An operator with this information already exists (CustomUser)."
+                            },
+                            status=400,
+                        )
                     if "role" in cu_error_str or "null" in cu_error_str:
-                        return Response({"error": "Operator registration failed: missing required field (role or other)."}, status=400)
-                    return Response({"error": f"CustomUser creation failed: {cu_error}"}, status=500)
+                        return Response(
+                            {
+                                "error": "Operator registration failed: missing required field (role or other)."
+                            },
+                            status=400,
+                        )
+                    return Response(
+                        {"error": f"CustomUser creation failed: {cu_error}"}, status=500
+                    )
 
                 if error:
                     error_str = str(error).lower()
@@ -806,16 +845,247 @@ def check_email_exists(request):
     """
     email = request.data.get("email", "").strip().lower()
     if not email:
-        return Response({"exists": False, "eligible": False, "error": "No email provided."}, status=400)
+        return Response(
+            {"exists": False, "eligible": False, "error": "No email provided."},
+            status=400,
+        )
     user = CustomUser.objects.filter(email__iexact=email).first()
     if user:
         # Eligible if user has no password set (i.e., not completed registration)
         eligible = not user.has_usable_password() or user.password in (None, "", "!")
-        return Response({
-            "exists": True,
-            "eligible": eligible,
-            "role": user.role,
+        return Response(
+            {
+                "exists": True,
+                "eligible": eligible,
+                "role": user.role,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+            }
+        )
+    return Response({"exists": False, "eligible": False})
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class ProfilePhotoUploadView(APIView):
+    """
+    API endpoint for uploading profile photos
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Upload a profile photo for the authenticated user
+        """
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # Check if file was uploaded
+        if "photo" not in request.FILES:
+            return Response(
+                {"error": "No photo file provided"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        photo_file = request.FILES["photo"]
+
+        # Validate file size (5MB limit)
+        if photo_file.size > 5 * 1024 * 1024:
+            return Response(
+                {"error": "File too large. Maximum size is 5MB."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate file type
+        allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
+        if photo_file.content_type not in allowed_types:
+            return Response(
+                {"error": "Invalid file type. Please use JPEG, PNG, or WebP."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Upload to Supabase Storage
+            photo_url = storage_service.upload_profile_photo(
+                user_id=request.user.id, image_file=photo_file, filename=photo_file.name
+            )
+
+            if not photo_url:
+                return Response(
+                    {"error": "Failed to upload photo to storage"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            # Update user's profile_photo_url in database
+            request.user.profile_photo_url = photo_url
+            request.user.save(update_fields=["profile_photo_url"])
+
+            logger.info(
+                f"Profile photo updated for user {request.user.id}: {photo_url}"
+            )
+
+            return Response(
+                {
+                    "success": True,
+                    "photo_url": photo_url,
+                    "message": "Profile photo uploaded successfully",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except ValueError as e:
+            # Image processing errors
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Profile photo upload failed for user {request.user.id}: {e}")
+            return Response(
+                {"error": "Failed to upload profile photo"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    def delete(self, request):
+        """
+        Delete the profile photo for the authenticated user
+        """
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        try:
+            # Delete from Supabase Storage
+            success = storage_service.delete_profile_photo(user_id=request.user.id)
+
+            if success:
+                # Clear profile_photo_url in database
+                request.user.profile_photo_url = None
+                request.user.save(update_fields=["profile_photo_url"])
+
+                logger.info(f"Profile photo deleted for user {request.user.id}")
+
+                return Response(
+                    {"success": True, "message": "Profile photo deleted successfully"},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(
+                    {"error": "Failed to delete photo from storage"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+        except Exception as e:
+            logger.error(
+                f"Profile photo deletion failed for user {request.user.id}: {e}"
+            )
+            return Response(
+                {"error": "Failed to delete profile photo"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class UserProfileView(APIView):
+    """
+    API endpoint for getting user profile data
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        Get the current user's profile data
+        """
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        user = request.user
+        profile_data = {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
-        })
-    return Response({"exists": False, "eligible": False})
+            "role": user.role,
+            "profile_photo_url": user.profile_photo_url,
+            "phone_number": user.phone_number,
+            "specialization": user.specialization,
+            "massage_pressure": user.massage_pressure,
+        }
+
+        return Response(profile_data, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class UserProfileUpdateView(APIView):
+    """
+    API endpoint for updating user profile fields
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        """
+        Update specific profile fields for the authenticated user
+        """
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        try:
+            # Get the fields to update from request data
+            update_fields = {}
+
+            # Handle profile photo URL update
+            if "profile_photo_url" in request.data:
+                update_fields["profile_photo_url"] = request.data["profile_photo_url"]
+
+            # Handle other profile fields as needed
+            allowed_fields = [
+                "profile_photo_url",
+                "first_name",
+                "last_name",
+                "phone_number",
+            ]
+            for field in allowed_fields:
+                if field in request.data:
+                    update_fields[field] = request.data[field]
+
+            if not update_fields:
+                return Response(
+                    {"error": "No valid fields provided for update"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Update the user profile
+            for field, value in update_fields.items():
+                setattr(request.user, field, value)
+
+            request.user.save(update_fields=list(update_fields.keys()))
+
+            logger.info(
+                f"Profile updated for user {request.user.id}: {list(update_fields.keys())}"
+            )
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Profile updated successfully",
+                    "updated_fields": list(update_fields.keys()),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            logger.error(f"Profile update failed for user {request.user.id}: {e}")
+            return Response(
+                {"error": "Failed to update profile"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

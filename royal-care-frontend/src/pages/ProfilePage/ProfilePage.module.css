@@ -1,180 +1,316 @@
-/* Profile page styles */
-.profileContainer {
-  padding: 2rem;
+/* ProfilePage.module.css - Using Global Theme System */
+
+/* Main Container using global layout pattern */
+.container {
+  padding: var(--spacing-lg) 0;
 }
 
-.profileContent {
-  max-width: 800px;
+.content {
+  max-width: var(--container-max-width);
   margin: 0 auto;
-  background-color: var(--background);
-  border-radius: 12px;
-  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
+  background: var(--background);
+  border-radius: 8px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
 
-.profileHeader {
+/* Header Section */
+.header {
   background: linear-gradient(
     135deg,
     var(--primary-50) 0%,
     var(--primary-100) 100%
   );
-  padding: 2rem;
+  padding: var(--spacing-lg);
   text-align: center;
   border-bottom: 1px solid var(--background-100);
 }
 
-.profileTitle {
-  margin: 0 0 0.5rem 0;
+.pageTitle {
+  margin: 0 0 var(--spacing-xs) 0;
   color: var(--primary-800);
-  font-size: 2rem;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 
-.profileSubtitle {
+.pageSubtitle {
   color: var(--text-600);
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 0.9rem;
 }
 
-.profileBody {
-  padding: 2rem;
+/* User Profile Header with Photo */
+.userProfileHeader {
+  background: linear-gradient(
+    135deg,
+    var(--primary-50) 0%,
+    var(--primary-100) 100%
+  );
+  border-radius: 8px;
+  padding: var(--spacing-lg);
+  margin: var(--spacing-lg);
+  border: 1px solid var(--primary-200);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.userNameSection {
-  text-align: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--background-100);
+.profilePhotoSection {
+  flex-shrink: 0;
 }
 
-.userName {
-  color: var(--text-800);
-  margin: 0 0 0.5rem 0;
-  font-size: 2.2rem;
+.userInfoSection {
+  flex: 1;
+}
+
+.fullName {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--primary-800);
+  font-size: 1.375rem;
   font-weight: 700;
 }
 
-.userSubtitle {
+.username {
+  font-size: 0.9rem;
   color: var(--text-600);
+  margin: 0 0 var(--spacing-xs) 0;
+  font-weight: 500;
+}
+
+.userRole {
+  background: var(--primary-600);
+  color: var(--background);
+  padding: 0.2rem 0.6rem;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
   margin: 0;
-  font-size: 1.2rem;
-  font-weight: 500;
-}
-
-.profileSection {
-  margin-bottom: 2rem;
-}
-
-.sectionTitle {
-  color: var(--text-800);
-  margin-bottom: 1rem;
-  font-size: 1.3rem;
-  border-bottom: 2px solid var(--primary-100);
-  padding-bottom: 0.5rem;
-}
-
-.infoGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.infoCard {
-  background: var(--background-50);
-  border-radius: 8px;
-  padding: 1.5rem;
-  border-left: 4px solid var(--primary);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.infoCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-}
-
-.infoLabel {
-  font-weight: 600;
-  color: var(--text-600);
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 0.5rem;
-}
-
-.infoValue {
-  color: var(--text-800);
-  font-size: 1.1rem;
-  font-weight: 500;
-}
-
-.roleValue {
-  background: var(--primary-100);
-  color: var(--primary-800);
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-transform: capitalize;
   display: inline-block;
 }
 
+/* Profile Content Sections */
+.profileSection {
+  background: var(--background);
+  border-radius: 8px;
+  padding: var(--spacing-lg);
+  margin: 0 var(--spacing-lg) var(--spacing-lg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--background-100);
+}
+
+.sectionHeader {
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--primary-100);
+}
+
+.sectionTitle {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--text-800);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sectionDescription {
+  color: var(--text-600);
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Info Grid */
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.infoCard {
+  padding: var(--spacing-sm);
+  background: var(--background-50);
+  border: 1px solid var(--background-100);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.infoCard:hover {
+  background: var(--background-25);
+  border-color: var(--background-200);
+}
+
+.infoLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-600);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.infoValue {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-800);
+  word-break: break-word;
+}
+
+.roleValue {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  background: var(--primary-100);
+  color: var(--primary-800);
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Actions Section */
 .actionsSection {
-  border-top: 1px solid var(--background-100);
-  padding-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
 
 .actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.2rem;
   background: var(--error);
-  color: white;
+  color: var(--background);
   border: none;
-  padding: 0.8rem 1.5rem;
   border-radius: 6px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  font-size: 0.9rem;
   font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  min-height: 40px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .actionButton:hover {
-  background: #d32f2f;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 49, 46, 0.3);
+  background: #c0392b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.actionButton:active {
+  transform: translateY(0);
+}
+
+.actionButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1);
+}
+
+.primaryActionButton {
+  background: var(--primary);
+  color: var(--background);
+}
+
+.primaryActionButton:hover {
+  background: var(--primary-600);
+}
+
+.primaryActionButton:focus {
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+/* Loading and Error States */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+.loadingContainer p {
+  margin-top: var(--spacing-md);
+  font-size: var(--font-size-md);
+  color: var(--text-600);
 }
 
 .noDataMessage {
   text-align: center;
-  color: var(--text-500);
-  font-style: italic;
-  padding: 2rem;
-  background: var(--background-50);
-  border-radius: 8px;
-  margin: 1rem 0;
+  padding: var(--spacing-xl);
 }
 
-/* Responsive adjustments */
+.noDataMessage h2 {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--text-800);
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.noDataMessage p {
+  font-size: var(--font-size-md);
+  color: var(--text-600);
+  margin: 0 0 var(--spacing-xl) 0;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-  .profileContainer {
-    padding: 1rem;
+  .container {
+    padding: var(--spacing-md) 0;
   }
 
-  .profileHeader {
-    padding: 1.5rem;
+  .content {
+    margin: 0 var(--spacing-sm);
+    border-radius: 8px;
   }
 
-  .profileTitle {
-    font-size: 1.7rem;
+  .userProfileHeader {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--spacing-md);
+    margin: var(--spacing-md);
+    padding: var(--spacing-md);
   }
 
-  .profileBody {
-    padding: 1.5rem;
+  .pageTitle {
+    font-size: var(--font-size-xl);
+  }
+
+  .fullName {
+    font-size: var(--font-size-lg);
   }
 
   .infoGrid {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: var(--spacing-sm);
   }
 
-  .infoCard {
-    padding: 1rem;
+  .profileSection {
+    margin: 0 var(--spacing-md) var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: var(--spacing-sm) 0;
+  }
+
+  .content {
+    margin: 0 var(--spacing-xs);
+  }
+
+  .pageTitle {
+    font-size: var(--font-size-lg);
+  }
+
+  .fullName {
+    font-size: var(--font-size-md);
+  }
+
+  .profileSection {
+    margin: 0 var(--spacing-xs) var(--spacing-xs);
+    padding: var(--spacing-sm);
   }
 }

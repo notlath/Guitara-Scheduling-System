@@ -34,17 +34,12 @@ import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
+import { validateToken } from "./services/auth";
 import cachePreloader from "./services/cachePreloader";
 import crossTabSync from "./services/crossTabSync";
 import memoryManager from "./services/memoryManager";
-import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
-// Import performance demo components
-import EnhancedTherapistDashboard from "./components/EnhancedTherapistDashboard";
-import PerformanceDemoPage from "./components/PerformanceDemoPage";
-import { validateToken } from "./services/auth";
-import "./utils/dataManagerDebugger";
-import "./utils/dataManagerDevTools";
 import "./utils/performanceTestSuite";
+import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);
@@ -272,19 +267,11 @@ const App = () => {
             <Route path="faqs" element={<FAQsPage />} />
             <Route path="contact" element={<ContactPage />} />
           </Route>{" "}
-          {/* About Pages */}
+          {/* About Pages */}{" "}
           <Route path="about">
             <Route path="company" element={<CompanyInfoPage />} />
             <Route path="system" element={<SystemInfoPage />} />
             <Route path="developers" element={<DeveloperInfoPage />} />
-          </Route>
-          {/* Performance Demo Pages */}
-          <Route path="performance">
-            <Route path="demo" element={<PerformanceDemoPage />} />
-            <Route
-              path="enhanced-dashboard"
-              element={<EnhancedTherapistDashboard />}
-            />
           </Route>
         </Route>
       </Routes>
