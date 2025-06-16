@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
@@ -45,17 +45,30 @@ const SchedulingDashboard = () => {
   };
 
   const dispatch = useDispatch();
+  // Enhanced data access with immediate display capabilities
   const {
     todayAppointments,
     upcomingAppointments,
     loading,
+    isRefreshing,
+    hasAnyData,
+    isStaleData,
     error,
     refreshAfterFormSubmit,
+    refreshIfStale,
   } = useSchedulingDashboardData();
 
   const { user } = useSelector((state) => state.auth);
   const { unreadNotificationCount } = useSelector((state) => state.scheduling);
   const defaultDate = useMemo(() => new Date(), []);
+
+  // Auto-refresh stale data in background
+  useEffect(() => {
+    if (isStaleData && hasAnyData) {
+      console.log("🔄 SchedulingDashboard: Auto-refreshing stale data");
+      refreshIfStale();
+    }
+  }, [isStaleData, hasAnyData, refreshIfStale]);
 
   // 🔥 REMOVED: All redundant polling and data fetching
   // The centralized data manager (useSchedulingDashboardData) handles all polling automatically
@@ -330,15 +343,23 @@ const SchedulingDashboard = () => {
           onTabChange={setView}
         />
 
+        {/* Enhanced loading indicator - only show if no cached data available */}
         {loading && (
           <div className="minimal-dashboard-loading">
-            {/* Use MinimalLoadingIndicator instead of intrusive PageLoadingState for frequent data fetching */}
             <MinimalLoadingIndicator
               show={true}
+              hasData={hasAnyData}
+              isRefreshing={isRefreshing}
               position="top-right"
               size="small"
-              variant="subtle"
-              tooltip="Loading dashboard data..."
+              variant={isStaleData ? "warning" : "subtle"}
+              tooltip={
+                isStaleData
+                  ? "Data may be outdated, refreshing..."
+                  : hasAnyData
+                  ? "Refreshing dashboard data..."
+                  : "Loading dashboard data..."
+              }
               pulse={true}
               fadeIn={true}
             />
