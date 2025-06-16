@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUpload";
 import pageTitles from "../../constants/pageTitles";
-import { logout } from "../../features/auth/authSlice";
+import { logout, updateUserProfile } from "../../features/auth/authSlice";
 import styles from "./ProfilePage.module.css";
 
 const ProfilePage = () => {
@@ -19,18 +19,49 @@ const ProfilePage = () => {
     // Get user data from Redux store or localStorage
     if (user) {
       setUserData(user);
+      setProfilePhoto(user.profile_photo_url);
     } else {
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
           setUserData(parsedUser);
+          setProfilePhoto(parsedUser.profile_photo_url);
         } catch (error) {
           console.error("Error parsing stored user data:", error);
         }
       }
     }
-  }, [user]);
+
+    // Fetch the latest user profile from backend to get current photo URL
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem("knoxToken");
+        if (!token) return;
+
+        const response = await fetch("/api/registration/profile/", {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const profileData = await response.json();
+          setProfilePhoto(profileData.profile_photo_url);
+          // Update local storage with latest profile data
+          const updatedUser = {
+            ...userData,
+            profile_photo_url: profileData.profile_photo_url,
+          };
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+        }
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user, userData]);
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");
@@ -41,7 +72,19 @@ const ProfilePage = () => {
 
   const handlePhotoUpdate = (photoUrl) => {
     setProfilePhoto(photoUrl);
-    // TODO: Update user profile with new photo URL
+
+    // Update user data in localStorage and Redux store
+    if (userData) {
+      const updatedUser = { ...userData, profile_photo_url: photoUrl };
+      setUserData(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      // Update Redux store if available
+      if (user) {
+        dispatch(updateUserProfile({ profile_photo_url: photoUrl }));
+      }
+    }
+
     console.log("Photo updated:", photoUrl);
   };
 

@@ -83,6 +83,7 @@ const SettingsAccountPage = () => {
       if (cachedProfile) {
         // Use cached profile data
         setProfileData(cachedProfile);
+        setProfilePhoto(cachedUserData.profile_photo_url);
         setLoading((prev) => ({ ...prev, initial: false }));
         return;
       } else {
@@ -93,6 +94,7 @@ const SettingsAccountPage = () => {
           email: cachedUserData.email || "",
           phone_number: cachedUserData.phone_number || "",
         });
+        setProfilePhoto(cachedUserData.profile_photo_url);
         setLoading((prev) => ({ ...prev, initial: false }));
         return;
       }
@@ -112,6 +114,7 @@ const SettingsAccountPage = () => {
         };
 
         setProfileData(profileData);
+        setProfilePhoto(userData.profile_photo_url);
 
         // Cache the profile data
         const userId = userData.id || userData.email;
@@ -277,11 +280,23 @@ const SettingsAccountPage = () => {
     [errors.password]
   );
 
-  const handlePhotoUpdate = useCallback((photoUrl) => {
-    setProfilePhoto(photoUrl);
-    // TODO: Update user profile with new photo URL
-    console.log("Photo updated:", photoUrl);
-  }, []);
+  const handlePhotoUpdate = useCallback(
+    (photoUrl) => {
+      setProfilePhoto(photoUrl);
+
+      // Update user data in localStorage and Redux store
+      if (cachedUserData) {
+        const updatedUser = { ...cachedUserData, profile_photo_url: photoUrl };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+
+        // Update Redux store
+        dispatch(updateUserProfile({ profile_photo_url: photoUrl }));
+      }
+
+      console.log("Photo updated:", photoUrl);
+    },
+    [cachedUserData, dispatch]
+  );
 
   const getRoleDisplayName = useCallback((role) => {
     switch (role) {

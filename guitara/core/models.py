@@ -31,6 +31,12 @@ class CustomUser(AbstractUser):
         blank=True,
         help_text="Timestamp when driver became available for FIFO assignment",
     )
+    profile_photo_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="URL to profile photo stored in Supabase Storage",
+    )
 
     def clean(self):
         # Validate driver requirements

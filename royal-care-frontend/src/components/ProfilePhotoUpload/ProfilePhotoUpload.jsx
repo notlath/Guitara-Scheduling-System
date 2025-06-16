@@ -34,14 +34,34 @@ const ProfilePhotoUpload = ({
     setUploading(true);
 
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate upload
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append("photo", file);
 
-      // For now, just use the preview URL
-      onPhotoUpdate?.(preview);
+      // Get auth token (from knox authentication)
+      const token = localStorage.getItem("knoxToken");
+
+      const response = await fetch("/api/registration/profile/photo/", {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Upload failed");
+      }
+
+      const data = await response.json();
+
+      // Update with the returned photo URL
+      onPhotoUpdate?.(data.photo_url);
+      setPreview(data.photo_url);
     } catch (error) {
       console.error("Upload failed:", error);
-      alert("Upload failed. Please try again.");
+      alert(`Upload failed: ${error.message}`);
       setPreview(currentPhoto); // Revert preview
     } finally {
       setUploading(false);
@@ -52,20 +72,37 @@ const ProfilePhotoUpload = ({
     fileInputRef.current?.click();
   };
 
-  const handleRemovePhoto = () => {
-    setPreview(null);
-    onPhotoUpdate?.(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const handleRemovePhoto = async () => {
+    try {
+      const token = localStorage.getItem("knoxToken");
+
+      const response = await fetch("/api/registration/profile/photo/", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Delete failed");
+      }
+
+      // Clear the preview and notify parent
+      setPreview(null);
+      onPhotoUpdate?.(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert(`Delete failed: ${error.message}`);
     }
   };
 
   return (
     <div className={`${styles.photoUpload} ${styles[size]}`}>
-      <div 
-        className={styles.photoContainer}
-        onClick={handleUploadClick}
-      >
+      <div className={styles.photoContainer} onClick={handleUploadClick}>
         <div className={styles.photoPreview}>
           {preview ? (
             <img src={preview} alt="Profile" className={styles.profilePhoto} />

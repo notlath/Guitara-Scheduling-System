@@ -33,5 +33,8 @@ coverage==7.4.1                  # Measures code coverage of tests
 # Scientific computing
 numpy>=1.24.0,<2.1.0             # Fundamental package for numerical computations
 
+# Image processing
+Pillow==10.1.0                   # Python Imaging Library for image processing
+
 # Supabase client
 supabase==2.15.2                 # Python client for Supabase backend services
