@@ -1,0 +1,341 @@
+/* System Information Page Styles */
+.system-info-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+.system-info-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: var(--background);
+  border-radius: 12px;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.system-info-header {
+  position: relative;
+  color: var(--background);
+  padding: 2.5rem;
+  background-color: var(--primary);
+  overflow: hidden;
+}
+
+.system-info-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+  opacity: 0.5;
+}
+
+.system-info-header h1 {
+  position: relative;
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.system-info-header p {
+  position: relative;
+  opacity: 0.9;
+  font-size: 1.1rem;
+}
+
+.system-info-body {
+  padding: 2.5rem;
+}
+
+.info-section {
+  margin-bottom: 3rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+.info-section:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.info-section:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.info-section:nth-child(4) {
+  animation-delay: 0.3s;
+}
+.info-section:nth-child(5) {
+  animation-delay: 0.4s;
+}
+.info-section:nth-child(6) {
+  animation-delay: 0.5s;
+}
+.info-section:nth-child(7) {
+  animation-delay: 0.6s;
+}
+
+.info-section h2 {
+  color: var(--primary);
+  font-size: 1.6rem;
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--background-100);
+}
+
+.info-section h3 {
+  color: var(--primary);
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+}
+
+.info-section h4 {
+  color: var(--primary);
+  font-size: 1.1rem;
+  margin-bottom: 0.8rem;
+  margin-top: 1.2rem;
+}
+
+.info-section p {
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.info-section ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.info-section li {
+  position: relative;
+  padding-left: 1.8rem;
+  margin-bottom: 0.8rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.info-section li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.6rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--primary);
+}
+
+/* Version Info Styling */
+.version-info {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.version-badge {
+  display: inline-block;
+  background-color: var(--primary);
+  color: var(--background);
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Technology Stack Styling */
+.tech-stack {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+
+.stack-group {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.stack-group:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.stack-group h3 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+}
+
+.tech-label {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Architecture Overview Styling */
+.architecture {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.architecture-item {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.architecture-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.architecture-item h4 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 1.2rem;
+  margin-bottom: 0.8rem;
+}
+
+/* Security Information Styling */
+.security-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.security-item {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.security-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.security-item h4 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+/* System Requirements Styling */
+.requirements {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.requirements-group {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.requirements-group:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.requirements-group h4 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+/* Roadmap List Styling */
+.roadmap-list {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.roadmap-list li {
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: 1rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.roadmap-list li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--primary);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+/* Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .system-info-header,
+  .system-info-body {
+    padding: 1.5rem;
+  }
+
+  .tech-stack,
+  .architecture,
+  .security-info,
+  .requirements {
+    grid-template-columns: 1fr;
+  }
+
+  .system-info-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .system-info-header p {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .system-info-container {
+    padding: var(--spacing-sm);
+  }
+
+  .system-info-header,
+  .system-info-body {
+    padding: 1rem;
+  }
+
+  .info-section {
+    margin-bottom: 2rem;
+  }
+}
