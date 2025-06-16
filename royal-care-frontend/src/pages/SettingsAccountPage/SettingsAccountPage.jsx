@@ -366,8 +366,8 @@ const SettingsAccountPage = () => {
           </div>
           <div className={styles.userInfoSection}>
             <h2 className={styles.fullName}>{userDisplayData.fullName}</h2>
-            <p className={styles.userRole}>{userDisplayData.role}</p>
             <p className={styles.userEmail}>{userDisplayData.email}</p>
+            <p className={styles.userRole}>{userDisplayData.role}</p>
           </div>
         </div>
 
