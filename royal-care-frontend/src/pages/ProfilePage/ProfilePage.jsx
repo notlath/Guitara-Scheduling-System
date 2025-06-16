@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { logout } from "../../features/auth/authSlice";
+import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUpload";
 import pageTitles from "../../constants/pageTitles";
+import { logout } from "../../features/auth/authSlice";
 import styles from "./ProfilePage.module.css";
 
 const ProfilePage = () => {
@@ -10,6 +11,7 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const user = useSelector((state) => state.auth.user);
   const [userData, setUserData] = useState(null);
+  const [profilePhoto, setProfilePhoto] = useState(null);
 
   useEffect(() => {
     document.title = pageTitles.profile;
@@ -35,6 +37,12 @@ const ProfilePage = () => {
     localStorage.removeItem("user");
     dispatch(logout());
     navigate("/");
+  };
+
+  const handlePhotoUpdate = (photoUrl) => {
+    setProfilePhoto(photoUrl);
+    // TODO: Update user profile with new photo URL
+    console.log("Photo updated:", photoUrl);
   };
 
   const formatDate = (dateString) => {
@@ -72,8 +80,8 @@ const ProfilePage = () => {
 
   if (!userData) {
     return (
-      <div className={styles.profileContainer}>
-        <div className={styles.profileContent}>
+      <div className={styles.container}>
+        <div className={styles.content}>
           <div className={styles.noDataMessage}>
             <h2>Profile information not available</h2>
             <p>Please log in again to view your profile.</p>
@@ -90,69 +98,89 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className={styles.profileContainer}>
-      <div className={styles.profileContent}>
-        <div className={styles.profileHeader}>
-          <h1 className={styles.profileTitle}>My Profile</h1>
-          <p className={styles.profileSubtitle}>
-            Manage your account information and settings
+    <div className={styles.container}>
+      <div className={styles.content}>
+        <div className={styles.header}>
+          <h1 className={styles.pageTitle}>My Profile</h1>
+          <p className={styles.pageSubtitle}>
+            View your account information and settings
           </p>
         </div>
 
-        <div className={styles.profileBody}>
-          <div className={styles.profileSection}>
-            <div className={styles.userHeaderSection}>
-              <h2 className={styles.userFullName}>
-                {userData.full_name ||
-                  (userData.first_name && userData.last_name
-                    ? `${userData.first_name} ${userData.last_name}`
-                    : "User Profile")}
-              </h2>
-              <h3 className={styles.userUsername}>
-                @{userData.username || "username"}
-              </h3>
+        {/* User Profile Header with Photo */}
+        <div className={styles.userProfileHeader}>
+          <div className={styles.profilePhotoSection}>
+            <ProfilePhotoUpload
+              currentPhoto={profilePhoto}
+              onPhotoUpdate={handlePhotoUpdate}
+              size="large"
+            />
+          </div>
+          <div className={styles.userInfoSection}>
+            <h2 className={styles.fullName}>
+              {userData.full_name ||
+                (userData.first_name && userData.last_name
+                  ? `${userData.first_name} ${userData.last_name}`
+                  : "User Profile")}
+            </h2>
+            <p className={styles.username}>
+              @{userData.username || "username"}
+            </p>
+            <p className={styles.userRole}>
+              {getRoleDisplayName(userData.role || userData.user_type)}
+            </p>
+          </div>
+        </div>
+
+        {/* Profile Information Section */}
+        <div className={styles.profileSection}>
+          <div className={styles.sectionHeader}>
+            <h3 className={styles.sectionTitle}>Account Information</h3>
+            <p className={styles.sectionDescription}>
+              Your personal details and account status
+            </p>
+          </div>
+
+          <div className={styles.infoGrid}>
+            <div className={styles.infoCard}>
+              <div className={styles.infoLabel}>Email Address</div>
+              <div className={styles.infoValue}>
+                {userData.email || "Not provided"}
+              </div>
             </div>
 
-            <div className={styles.infoGrid}>
-              <div className={styles.infoCard}>
-                <div className={styles.infoLabel}>Email Address</div>
-                <div className={styles.infoValue}>
-                  {userData.email || "Not provided"}
-                </div>
+            <div className={styles.infoCard}>
+              <div className={styles.infoLabel}>Role</div>
+              <div className={styles.infoValue}>
+                <span className={styles.roleValue}>
+                  {getRoleDisplayName(userData.role || userData.user_type)}
+                </span>
               </div>
+            </div>
 
-              <div className={styles.infoCard}>
-                <div className={styles.infoLabel}>Role</div>
-                <div className={styles.infoValue}>
-                  <span className={styles.roleValue}>
-                    {getRoleDisplayName(userData.role || userData.user_type)}
-                  </span>
-                </div>
+            <div className={styles.infoCard}>
+              <div className={styles.infoLabel}>Member Since</div>
+              <div className={styles.infoValue}>
+                {formatDate(userData.date_joined || userData.created_at)}
               </div>
+            </div>
 
-              <div className={styles.infoCard}>
-                <div className={styles.infoLabel}>Member Since</div>
-                <div className={styles.infoValue}>
-                  {formatDate(userData.date_joined || userData.created_at)}
-                </div>
-              </div>
-
-              <div className={styles.infoCard}>
-                <div className={styles.infoLabel}>Account Status</div>
-                <div className={styles.infoValue}>
-                  {userData.is_active !== false ? "Active" : "Inactive"}
-                </div>
+            <div className={styles.infoCard}>
+              <div className={styles.infoLabel}>Account Status</div>
+              <div className={styles.infoValue}>
+                {userData.is_active !== false ? "Active" : "Inactive"}
               </div>
             </div>
           </div>
+        </div>
 
-          <div className={styles.profileSection}>
-            <div className={styles.actionsSection}>
-              <h2 className={styles.sectionTitle}>Account Actions</h2>
-              <button className={styles.actionButton} onClick={handleLogout}>
-                Logout
-              </button>
-            </div>
+        {/* Actions Section */}
+        <div className={styles.profileSection}>
+          <div className={styles.actionsSection}>
+            <h3 className={styles.sectionTitle}>Account Actions</h3>
+            <button className={styles.actionButton} onClick={handleLogout}>
+              Logout
+            </button>
           </div>
         </div>
       </div>

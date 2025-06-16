@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUpload";
 import pageTitles from "../../constants/pageTitles";
 import { updateUserProfile } from "../../features/auth/authSlice";
 import {
@@ -29,6 +30,8 @@ const SettingsAccountPage = () => {
     new_password: "",
     confirm_password: "",
   });
+
+  const [profilePhoto, setProfilePhoto] = useState(null);
 
   // UI states
   const [loading, setLoading] = useState({
@@ -274,6 +277,12 @@ const SettingsAccountPage = () => {
     [errors.password]
   );
 
+  const handlePhotoUpdate = useCallback((photoUrl) => {
+    setProfilePhoto(photoUrl);
+    // TODO: Update user profile with new photo URL
+    console.log("Photo updated:", photoUrl);
+  }, []);
+
   const getRoleDisplayName = useCallback((role) => {
     switch (role) {
       case "therapist":
@@ -307,9 +316,11 @@ const SettingsAccountPage = () => {
 
   if (loading.initial) {
     return (
-      <div className="settings-container">
-        <div className="settings-content">
-          <h1>Account Settings</h1>
+      <div className={styles.container}>
+        <div className={styles.content}>
+          <div className={styles.header}>
+            <h1 className={styles.pageTitle}>Account Settings</h1>
+          </div>
           <div className={styles.loadingContainer}>
             <div className="placeholder-loader"></div>
             <p>Loading your account information...</p>
@@ -320,14 +331,26 @@ const SettingsAccountPage = () => {
   }
 
   return (
-    <div className="settings-container">
-      <div className="settings-content">
-        <h1>Account Settings</h1>
+    <div className={styles.container}>
+      <div className={styles.content}>
+        <div className={styles.header}>
+          <h1 className={styles.pageTitle}>Account Settings</h1>
+          <p className={styles.pageSubtitle}>
+            Manage your account information, security, and preferences
+          </p>
+        </div>
 
-        {/* User Info Header */}
-        <div className={styles.userHeader}>
-          <div className={styles.userInfo}>
-            <h2>{userDisplayData.fullName}</h2>
+        {/* User Profile Header */}
+        <div className={styles.userProfileHeader}>
+          <div className={styles.profilePhotoSection}>
+            <ProfilePhotoUpload
+              currentPhoto={profilePhoto}
+              onPhotoUpdate={handlePhotoUpdate}
+              size="large"
+            />
+          </div>
+          <div className={styles.userInfoSection}>
+            <h2 className={styles.fullName}>{userDisplayData.fullName}</h2>
             <p className={styles.userRole}>{userDisplayData.role}</p>
             <p className={styles.userEmail}>{userDisplayData.email}</p>
           </div>
@@ -356,11 +379,18 @@ const SettingsAccountPage = () => {
         {/* Profile Section */}
         {activeSection === "profile" && (
           <div className={styles.section}>
-            <h3>Update Profile Information</h3>
+            <div className={styles.sectionHeader}>
+              <h3>Profile Information</h3>
+              <p className={styles.sectionDescription}>
+                Update your personal information and contact details
+              </p>
+            </div>
             <form onSubmit={handleProfileSubmit} className={styles.form}>
-              <div className={styles.formRow}>
+              <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
-                  <label htmlFor="first_name">First Name</label>
+                  <label htmlFor="first_name" className={styles.label}>
+                    First Name
+                  </label>
                   <input
                     type="text"
                     id="first_name"
@@ -372,7 +402,9 @@ const SettingsAccountPage = () => {
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label htmlFor="last_name">Last Name</label>
+                  <label htmlFor="last_name" className={styles.label}>
+                    Last Name
+                  </label>
                   <input
                     type="text"
                     id="last_name"
@@ -386,7 +418,9 @@ const SettingsAccountPage = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="email">Email Address</label>
+                <label htmlFor="email" className={styles.label}>
+                  Email Address
+                </label>
                 <input
                   type="email"
                   id="email"
@@ -399,7 +433,9 @@ const SettingsAccountPage = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="phone_number">Contact Number</label>
+                <label htmlFor="phone_number" className={styles.label}>
+                  Contact Number
+                </label>
                 <input
                   type="tel"
                   id="phone_number"
@@ -421,13 +457,15 @@ const SettingsAccountPage = () => {
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading.profile}
-                className={styles.submitButton}
-              >
-                {loading.profile ? "Updating..." : "Update Profile"}
-              </button>
+              <div className={styles.formActions}>
+                <button
+                  type="submit"
+                  disabled={loading.profile}
+                  className={styles.primaryButton}
+                >
+                  {loading.profile ? "Updating..." : "Update Profile"}
+                </button>
+              </div>
             </form>
           </div>
         )}
@@ -435,10 +473,17 @@ const SettingsAccountPage = () => {
         {/* Password Section */}
         {activeSection === "password" && (
           <div className={styles.section}>
-            <h3>Change Password</h3>
+            <div className={styles.sectionHeader}>
+              <h3>Change Password</h3>
+              <p className={styles.sectionDescription}>
+                Update your password to keep your account secure
+              </p>
+            </div>
             <form onSubmit={handlePasswordSubmit} className={styles.form}>
               <div className={styles.formGroup}>
-                <label htmlFor="current_password">Current Password</label>
+                <label htmlFor="current_password" className={styles.label}>
+                  Current Password
+                </label>
                 <input
                   type="password"
                   id="current_password"
@@ -451,7 +496,9 @@ const SettingsAccountPage = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="new_password">New Password</label>
+                <label htmlFor="new_password" className={styles.label}>
+                  New Password
+                </label>
                 <input
                   type="password"
                   id="new_password"
@@ -468,7 +515,9 @@ const SettingsAccountPage = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="confirm_password">Confirm New Password</label>
+                <label htmlFor="confirm_password" className={styles.label}>
+                  Confirm New Password
+                </label>
                 <input
                   type="password"
                   id="confirm_password"
@@ -491,13 +540,15 @@ const SettingsAccountPage = () => {
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading.password}
-                className={styles.submitButton}
-              >
-                {loading.password ? "Changing..." : "Change Password"}
-              </button>
+              <div className={styles.formActions}>
+                <button
+                  type="submit"
+                  disabled={loading.password}
+                  className={styles.primaryButton}
+                >
+                  {loading.password ? "Changing..." : "Change Password"}
+                </button>
+              </div>
             </form>
           </div>
         )}

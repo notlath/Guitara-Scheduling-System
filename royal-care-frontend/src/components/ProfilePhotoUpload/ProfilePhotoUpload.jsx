@@ -1,0 +1,119 @@
+import { useRef, useState } from "react";
+import styles from "./ProfilePhotoUpload.module.css";
+
+const ProfilePhotoUpload = ({
+  currentPhoto,
+  onPhotoUpdate,
+  size = "large",
+}) => {
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState(currentPhoto);
+  const fileInputRef = useRef(null);
+
+  const handleFileSelect = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File too large. Maximum size is 5MB.");
+      return;
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Invalid file type. Please use JPEG, PNG, or WebP.");
+      return;
+    }
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = (e) => setPreview(e.target.result);
+    reader.readAsDataURL(file);
+
+    setUploading(true);
+
+    try {
+      // TODO: Replace with actual API call
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate upload
+
+      // For now, just use the preview URL
+      onPhotoUpdate?.(preview);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      alert("Upload failed. Please try again.");
+      setPreview(currentPhoto); // Revert preview
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRemovePhoto = () => {
+    setPreview(null);
+    onPhotoUpdate?.(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className={`${styles.photoUpload} ${styles[size]}`}>
+      <div 
+        className={styles.photoContainer}
+        onClick={handleUploadClick}
+      >
+        <div className={styles.photoPreview}>
+          {preview ? (
+            <img src={preview} alt="Profile" className={styles.profilePhoto} />
+          ) : (
+            <div className={styles.photoPlaceholder}>
+              <div className={styles.placeholderIcon}>👤</div>
+              <p className={styles.placeholderText}>No Photo</p>
+            </div>
+          )}
+          {uploading && (
+            <div className={styles.uploadingOverlay}>
+              <div className={styles.uploadingSpinner}></div>
+              <span>Uploading...</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.photoActions}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleFileSelect}
+          disabled={uploading}
+          style={{ display: "none" }}
+        />
+
+        <button
+          onClick={handleUploadClick}
+          disabled={uploading}
+          className={styles.uploadButton}
+        >
+          {preview ? "Change Photo" : "Upload Photo"}
+        </button>
+
+        {preview && (
+          <button
+            onClick={handleRemovePhoto}
+            disabled={uploading}
+            className={styles.removeButton}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ProfilePhotoUpload;
