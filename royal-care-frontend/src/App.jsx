@@ -11,6 +11,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RouteHandler from "./components/auth/RouteHandler";
 import AvailabilityManager from "./components/scheduling/AvailabilityManager";
 import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
+// Import performance optimization services
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
 import CompanyInfoPage from "./pages/AboutPages/CompanyInfoPage";
 import DeveloperInfoPage from "./pages/AboutPages/DeveloperInfoPage";
@@ -33,14 +34,20 @@ import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
+import cachePreloader from "./services/cachePreloader";
+import crossTabSync from "./services/crossTabSync";
+import memoryManager from "./services/memoryManager";
+// Import performance demo components
+import EnhancedTherapistDashboard from "./components/EnhancedTherapistDashboard";
+import PerformanceDemoPage from "./components/PerformanceDemoPage";
 import { validateToken } from "./services/auth";
 import "./utils/dataManagerDebugger";
 import "./utils/dataManagerDevTools";
+import "./utils/performanceTestSuite";
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-
   useEffect(() => {
     // Check if user data exists in localStorage and validate the token
     const checkStoredAuth = async () => {
@@ -106,6 +113,41 @@ const App = () => {
 
     checkStoredAuth();
   }, [dispatch]);
+
+  // Initialize performance optimization services
+  useEffect(() => {
+    const initializePerformanceServices = async () => {
+      try {
+        console.log("🚀 Initializing performance optimization services...");
+
+        // Initialize memory manager
+        memoryManager.initialize();
+        console.log("✅ Memory Manager initialized");
+
+        // Initialize cross-tab synchronization
+        crossTabSync.initialize();
+        console.log("✅ Cross-tab sync initialized");
+
+        // Initialize cache preloader and start critical data preloading
+        if (user?.role) {
+          await cachePreloader.preloadCriticalData(user.role);
+          console.log("✅ Critical data preloaded for role:", user.role);
+        } else {
+          await cachePreloader.preloadCriticalData();
+          console.log("✅ Basic critical data preloaded");
+        }
+
+        console.log("🎉 All performance services initialized successfully");
+      } catch (error) {
+        console.error("❌ Error initializing performance services:", error);
+      }
+    };
+
+    // Only initialize after authentication is complete
+    if (user || localStorage.getItem("authInitialized")) {
+      initializePerformanceServices();
+    }
+  }, [user]); // Re-run when user changes (login/logout)
 
   // Add debugging to check route matching
   useEffect(() => {
@@ -195,12 +237,20 @@ const App = () => {
             <Route path="user-guide" element={<UserGuidePage />} />
             <Route path="faqs" element={<FAQsPage />} />
             <Route path="contact" element={<ContactPage />} />
-          </Route>
+          </Route>{" "}
           {/* About Pages */}
           <Route path="about">
             <Route path="company" element={<CompanyInfoPage />} />
             <Route path="system" element={<SystemInfoPage />} />
             <Route path="developers" element={<DeveloperInfoPage />} />
+          </Route>
+          {/* Performance Demo Pages */}
+          <Route path="performance">
+            <Route path="demo" element={<PerformanceDemoPage />} />
+            <Route
+              path="enhanced-dashboard"
+              element={<EnhancedTherapistDashboard />}
+            />
           </Route>
         </Route>
       </Routes>
