@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import pageTitles from "../../constants/pageTitles";
 import { updateUserProfile } from "../../features/auth/authSlice";
@@ -9,6 +9,7 @@ import {
 } from "../../services/api";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
+import { profileCache } from "../../utils/profileCache";
 import styles from "./SettingsAccountPage.module.css";
 
 const SettingsAccountPage = () => {
@@ -48,89 +49,81 @@ const SettingsAccountPage = () => {
 
   const [activeSection, setActiveSection] = useState("profile");
 
-  // Debug function to check authentication state
-  const checkAuthState = useCallback(() => {
-    const token = localStorage.getItem("knoxToken");
-    const userData = localStorage.getItem("user");
-    console.log("Auth Debug:", {
-      hasToken: !!token,
-      tokenLength: token ? token.length : 0,
-      hasUserData: !!userData,
-      reduxUser: !!user,
-      tokenPreview: token ? `${token.substring(0, 10)}...` : null,
-    });
+  // Memoized user data extraction to avoid repeated localStorage calls
+  const cachedUserData = useMemo(() => {
+    if (user) return user;
+
+    try {
+      const storedUser = localStorage.getItem("user");
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch (e) {
+      console.error("Failed to parse stored user data:", e);
+      return null;
+    }
   }, [user]);
 
   useEffect(() => {
     document.title = pageTitles.accountSettings;
 
-    // Check authentication state
-    checkAuthState();
-
-    // Check if user is logged in
+    // Fast authentication check - single localStorage call
     const token = localStorage.getItem("knoxToken");
     if (!token) {
-      console.warn("No authentication token found, redirecting to login");
       window.location.href = "/login";
       return;
     }
 
-    // Check if we have user data in Redux store
-    if (!user) {
-      console.warn("No user data in Redux store, but token exists");
-      // Try to get user data from localStorage as fallback
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          const userData = JSON.parse(storedUser);
-          console.log("Using fallback user data from localStorage:", userData);
-          setProfileData({
-            first_name: userData.first_name || "",
-            last_name: userData.last_name || "",
-            email: userData.email || "",
-            phone_number: userData.phone_number || "",
-          });
-          setLoading((prev) => ({ ...prev, initial: false }));
-          return;
-        } catch (e) {
-          console.error("Failed to parse stored user data:", e);
-        }
+    // If we have cached user data, use it immediately to avoid API call
+    if (cachedUserData) {
+      const userId = cachedUserData.id || cachedUserData.email;
+      const cachedProfile = profileCache.get(userId);
+
+      if (cachedProfile) {
+        // Use cached profile data
+        setProfileData(cachedProfile);
+        setLoading((prev) => ({ ...prev, initial: false }));
+        return;
+      } else {
+        // Use user data from storage as immediate fallback
+        setProfileData({
+          first_name: cachedUserData.first_name || "",
+          last_name: cachedUserData.last_name || "",
+          email: cachedUserData.email || "",
+          phone_number: cachedUserData.phone_number || "",
+        });
+        setLoading((prev) => ({ ...prev, initial: false }));
+        return;
       }
     }
 
+    // Only make API call if no cached data is available
     const loadUserProfile = async () => {
       try {
-        setLoading((prev) => ({ ...prev, initial: true }));
         const response = await getUserProfile();
         const userData = response.data;
 
-        setProfileData({
+        const profileData = {
           first_name: userData.first_name || "",
           last_name: userData.last_name || "",
           email: userData.email || "",
           phone_number: userData.phone_number || "",
-        });
+        };
+
+        setProfileData(profileData);
+
+        // Cache the profile data
+        const userId = userData.id || userData.email;
+        if (userId) {
+          profileCache.set(userId, profileData);
+        }
       } catch (error) {
         console.error("Failed to load user profile:", error);
 
         // Handle authentication errors
         if (error.response?.status === 401) {
-          // Token is invalid or expired, redirect to login
-          console.warn("Authentication token is invalid or expired");
           localStorage.removeItem("knoxToken");
           localStorage.removeItem("user");
           window.location.href = "/login";
           return;
-        }
-
-        // Fallback to Redux store data
-        if (user) {
-          setProfileData({
-            first_name: user.first_name || "",
-            last_name: user.last_name || "",
-            email: user.email || "",
-            phone_number: user.phone_number || "",
-          });
         }
       } finally {
         setLoading((prev) => ({ ...prev, initial: false }));
@@ -138,7 +131,7 @@ const SettingsAccountPage = () => {
     };
 
     loadUserProfile();
-  }, [user, checkAuthState]);
+  }, [cachedUserData]);
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
@@ -151,6 +144,16 @@ const SettingsAccountPage = () => {
 
       // Update Redux store
       dispatch(updateUserProfile(response.data));
+
+      // Update cache with new profile data
+      const userId =
+        response.data.id ||
+        response.data.email ||
+        cachedUserData?.id ||
+        cachedUserData?.email;
+      if (userId) {
+        profileCache.set(userId, profileData);
+      }
 
       setSuccess((prev) => ({ ...prev, profile: true }));
 
@@ -247,25 +250,31 @@ const SettingsAccountPage = () => {
     }
   };
 
-  const handleProfileChange = (e) => {
-    const { name, value } = e.target;
-    setProfileData((prev) => ({ ...prev, [name]: value }));
-    // Clear any existing errors when user starts typing
-    if (errors.profile) {
-      setErrors((prev) => ({ ...prev, profile: "" }));
-    }
-  };
+  const handleProfileChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+      setProfileData((prev) => ({ ...prev, [name]: value }));
+      // Clear any existing errors when user starts typing
+      if (errors.profile) {
+        setErrors((prev) => ({ ...prev, profile: "" }));
+      }
+    },
+    [errors.profile]
+  );
 
-  const handlePasswordChange = (e) => {
-    const { name, value } = e.target;
-    setPasswordData((prev) => ({ ...prev, [name]: value }));
-    // Clear any existing errors when user starts typing
-    if (errors.password) {
-      setErrors((prev) => ({ ...prev, password: "" }));
-    }
-  };
+  const handlePasswordChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+      setPasswordData((prev) => ({ ...prev, [name]: value }));
+      // Clear any existing errors when user starts typing
+      if (errors.password) {
+        setErrors((prev) => ({ ...prev, password: "" }));
+      }
+    },
+    [errors.password]
+  );
 
-  const getRoleDisplayName = (role) => {
+  const getRoleDisplayName = useCallback((role) => {
     switch (role) {
       case "therapist":
         return "Therapist";
@@ -276,7 +285,25 @@ const SettingsAccountPage = () => {
       default:
         return role ? role.charAt(0).toUpperCase() + role.slice(1) : "User";
     }
-  };
+  }, []);
+
+  // Memoize the user display data to prevent unnecessary recalculations
+  const userDisplayData = useMemo(
+    () => ({
+      fullName:
+        `${profileData.first_name} ${profileData.last_name}`.trim() || "User",
+      role: getRoleDisplayName(cachedUserData?.role),
+      email: profileData.email || cachedUserData?.email || "No email",
+    }),
+    [
+      profileData.first_name,
+      profileData.last_name,
+      profileData.email,
+      cachedUserData?.role,
+      cachedUserData?.email,
+      getRoleDisplayName,
+    ]
+  );
 
   if (loading.initial) {
     return (
@@ -300,11 +327,9 @@ const SettingsAccountPage = () => {
         {/* User Info Header */}
         <div className={styles.userHeader}>
           <div className={styles.userInfo}>
-            <h2>
-              {profileData.first_name} {profileData.last_name}
-            </h2>
-            <p className={styles.userRole}>{getRoleDisplayName(user?.role)}</p>
-            <p className={styles.userEmail}>{profileData.email}</p>
+            <h2>{userDisplayData.fullName}</h2>
+            <p className={styles.userRole}>{userDisplayData.role}</p>
+            <p className={styles.userEmail}>{userDisplayData.email}</p>
           </div>
         </div>
 
