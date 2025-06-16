@@ -14,6 +14,7 @@ import LayoutRow from "../../globals/LayoutRow";
 import "../../globals/LayoutRow.css";
 import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
+import useSettingsData from "../../hooks/useSettingsData";
 import {
   registerClient,
   registerDriver,
@@ -215,36 +216,51 @@ const SettingsDataPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({});
   const [successPrompt, setSuccessPrompt] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [backupStatus, setBackupStatus] = useState("");
   const [showBackupDropdown, setShowBackupDropdown] = useState(false);
-  const [tableData, setTableData] = useState({
-    Therapists: [],
-    Drivers: [],
-    Operators: [],
-    Clients: [],
-    Services: [],
-    Materials: [],
-  });
 
+  // Use the new settings data hook for immediate data display and caching
+  const {
+    tableData,
+    isTabLoading,
+    getTabError,
+    loadTabData,
+    refreshTabData,
+    hasDataForTab,
+    isTabDataStale,
+    prefetchTabs,
+  } = useSettingsData(fetchers);
+
+  // Track tab switching for immediate data display
   useEffect(() => {
     document.title = `${activeTab} | Royal Care`;
-    // Fetch data for the active tab
-    setIsLoading(true);
-    fetchers[activeTab]()
-      .then((data) => {
-        setTableData((prev) => ({ ...prev, [activeTab]: data }));
-      })
-      .catch(() => {
-        setTableData((prev) => ({ ...prev, [activeTab]: [] }));
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [activeTab]);
+
+    // Load data for active tab with immediate cache display
+    loadTabData(activeTab);
+
+    // Prefetch adjacent tabs for smoother navigation
+    const currentIndex = TABS.indexOf(activeTab);
+    const adjacentTabs = [
+      TABS[currentIndex - 1],
+      TABS[currentIndex + 1],
+    ].filter(Boolean);
+
+    if (adjacentTabs.length > 0) {
+      console.log(`🚀 SettingsData: Prefetching adjacent tabs:`, adjacentTabs);
+      prefetchTabs(adjacentTabs);
+    }
+  }, [activeTab, loadTabData, prefetchTabs]);
+
+  // Auto-refresh stale data in background
+  useEffect(() => {
+    if (isTabDataStale(activeTab) && hasDataForTab(activeTab)) {
+      console.log(`🔄 SettingsData: Auto-refreshing stale ${activeTab} data`);
+      refreshTabData(activeTab);
+    }
+  }, [activeTab, isTabDataStale, hasDataForTab, refreshTabData]);
 
   const handleAddClick = () => {
     setFormData({});
@@ -384,44 +400,10 @@ const SettingsDataPage = () => {
     }
 
     // Always refresh table after registration, even if there was an error
-    setIsLoading(true);
-    try {
-      fetchers[activeTab]()
-        .then((data) => {
-          console.log(
-            "[handleSubmit] Data returned by fetcher after registration:",
-            data
-          );
-          setTableData((prev) => ({ ...prev, [activeTab]: data }));
-        })
-        .catch((fetchErr) => {
-          setTableData((prev) => ({ ...prev, [activeTab]: [] }));
-          console.error("[handleSubmit] Fetcher error:", fetchErr);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-      setTimeout(() => {
-        setIsLoading(true);
-        fetchers[activeTab]()
-          .then((data) => {
-            console.log(
-              "[handleSubmit] Data returned by fetcher after 1s delay:",
-              data
-            );
-            setTableData((prev) => ({ ...prev, [activeTab]: data }));
-          })
-          .catch((fetchErr) => {
-            setTableData((prev) => ({ ...prev, [activeTab]: [] }));
-            console.error("[handleSubmit] Delayed fetcher error:", fetchErr);
-          })
-          .finally(() => {
-            setIsLoading(false);
-          });
-      }, 1000);
-    } catch (outerErr) {
-      console.error("[handleSubmit] Outer fetcher error:", outerErr);
-    }
+    console.log(
+      `🔄 SettingsData: Refreshing ${activeTab} data after registration`
+    );
+    refreshTabData(activeTab);
     setTimeout(() => setSuccessPrompt(""), 2000);
   };
 
@@ -569,8 +551,11 @@ const SettingsDataPage = () => {
             if (TABS.includes(dataType) && Array.isArray(records)) {
               results[dataType] = records.length;
               restoredCount += records.length;
-              // Update table data
-              setTableData((prev) => ({ ...prev, [dataType]: records }));
+              // Note: Direct table data update bypasses the cache
+              // The data will be re-cached on next fetch
+              console.log(
+                `🔄 SettingsData: Restoring ${dataType} with ${records.length} records`
+              );
             }
           }
 
@@ -583,7 +568,10 @@ const SettingsDataPage = () => {
             throw new Error("Invalid data format in backup");
           }
 
-          setTableData((prev) => ({ ...prev, [activeTab]: backupData.data }));
+          console.log(
+            `🔄 SettingsData: Restoring ${activeTab} with ${backupData.data.length} records`
+          );
+          // Note: This bypasses the cache and will be refreshed on next load
           setBackupStatus(
             `✅ Restored ${activeTab}: ${backupData.data.length} records`
           );
@@ -982,13 +970,14 @@ const SettingsDataPage = () => {
     }
   };
 
-  // Cache table config to avoid multiple calls
-  const tableConfig = getTableConfig();
+  // Compute if any loading is happening for UI indicators
+  const currentTabLoading = isTabLoading(activeTab);
+  const currentTabError = getTabError(activeTab);
 
   return (
     <PageLayout>
       <MinimalLoadingIndicator
-        show={isLoading || isBackingUp || isRestoring}
+        show={currentTabLoading || isBackingUp || isRestoring}
         position="top-right"
         operation={
           isBackingUp
@@ -1054,7 +1043,7 @@ const SettingsDataPage = () => {
                 <button
                   className="secondary-action-btn"
                   onClick={() => setShowBackupDropdown(!showBackupDropdown)}
-                  disabled={isLoading || isBackingUp || isRestoring}
+                  disabled={currentTabLoading || isBackingUp || isRestoring}
                   title="Backup and restore options"
                 >
                   <MdBackup size={16} />
@@ -1107,7 +1096,7 @@ const SettingsDataPage = () => {
               <button
                 className="primary-action-btn"
                 onClick={handleAddClick}
-                disabled={isLoading || isBackingUp || isRestoring}
+                disabled={currentTabLoading || isBackingUp || isRestoring}
               >
                 <span className="primary-action-icon">
                   <MdAdd size={20} />
@@ -1123,13 +1112,19 @@ const SettingsDataPage = () => {
           />
         </div>
 
-        {isLoading ? (
+        {/* Show cached data immediately, with skeleton only when no data available */}
+        {!hasDataForTab(activeTab) && currentTabLoading ? (
           renderTableSkeleton()
         ) : (
           <DataTable
-            columns={tableConfig.columns}
+            columns={getTableConfig().columns}
             data={tableData[activeTab]}
           />
+        )}
+
+        {/* Show error message if there's an error and no data */}
+        {currentTabError && !hasDataForTab(activeTab) && (
+          <div className={styles["error-message"]}>{currentTabError}</div>
         )}
       </div>
     </PageLayout>
