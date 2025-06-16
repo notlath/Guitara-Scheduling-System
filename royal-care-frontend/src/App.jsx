@@ -37,6 +37,7 @@ import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import cachePreloader from "./services/cachePreloader";
 import crossTabSync from "./services/crossTabSync";
 import memoryManager from "./services/memoryManager";
+import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
 // Import performance demo components
 import EnhancedTherapistDashboard from "./components/EnhancedTherapistDashboard";
 import PerformanceDemoPage from "./components/PerformanceDemoPage";
@@ -117,16 +118,38 @@ const App = () => {
   // Initialize performance optimization services
   useEffect(() => {
     const initializePerformanceServices = async () => {
-      try {
-        console.log("🚀 Initializing performance optimization services...");
+      try {        console.log("🚀 Initializing performance optimization services...");
+        
+        // Perform service health check before initialization
+        const healthCheck = performServiceHealthCheck();
+        if (healthCheck.overall !== 'healthy') {
+          console.error('⚠️ Service health check failed, proceeding with caution:', healthCheck);
+        }
+
+        // Debug what we imported
+        console.log("Debug imports:", {
+          memoryManager: typeof memoryManager,
+          memoryManagerInit: typeof memoryManager?.initialize,
+          crossTabSync: typeof crossTabSync,
+          crossTabSyncInit: typeof crossTabSync?.initialize,
+          cachePreloader: typeof cachePreloader,
+          cachePreloaderPreload: typeof cachePreloader?.preloadCriticalData
+        });
 
         // Initialize memory manager
-        memoryManager.initialize();
-        console.log("✅ Memory Manager initialized");
+        if (memoryManager && typeof memoryManager.initialize === 'function') {
+          memoryManager.initialize();
+          console.log("✅ Memory Manager initialized");        } else {
+          console.error("❌ Memory Manager initialization failed - method not found", memoryManager);
+        }
 
         // Initialize cross-tab synchronization
-        crossTabSync.initialize();
-        console.log("✅ Cross-tab sync initialized");
+        if (crossTabSync && typeof crossTabSync.initialize === 'function') {
+          crossTabSync.initialize();
+          console.log("✅ Cross-tab sync initialized");
+        } else {
+          console.error("❌ Cross-tab sync initialization failed - method not found", crossTabSync);
+        }
 
         // Initialize cache preloader and start critical data preloading
         if (user?.role) {

@@ -19,9 +19,23 @@ class MemoryManager {
     this.usagePatterns = new Map();
     this.memoryPressureState = "normal"; // normal, warning, critical
     this.cleanupInterval = null;
+    this.isInitialized = false;
 
     this.setupDataTypePriorities();
+  }
+
+  /**
+   * Initialize the memory manager - called from App.jsx
+   */
+  initialize() {
+    if (this.isInitialized) {
+      console.log("🧠 MemoryManager: Already initialized, skipping");
+      return;
+    }
+
     this.startMemoryMonitoring();
+    this.isInitialized = true;
+    console.log("🧠 MemoryManager: Initialized successfully");
   }
 
   /**
@@ -464,5 +478,12 @@ class MemoryManager {
 
 // Create singleton instance
 const memoryManager = new MemoryManager();
+
+// Ensure the object is properly initialized
+if (typeof memoryManager.initialize !== 'function') {
+  console.error('❌ MemoryManager: initialize method not found on instance');
+} else {
+  console.log('✅ MemoryManager: Instance created successfully with initialize method');
+}
 
 export default memoryManager;

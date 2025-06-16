@@ -72,59 +72,47 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
   // Memoize dataTypes for stable reference
   const dataTypesKey = useMemo(() => JSON.stringify(dataTypes), [dataTypes]);
 
-  // Enhanced cache checking with age calculation
-  const getCachedDataWithAge = useCallback(() => {
-    const cachedData = {};
-    let hasAnyCache = false;
-    let oldestCacheAge = 0;
-    let hasStaleData = false;
-
-    dataTypes.forEach((dataType) => {
-      const cached = dataManager.cache.get(dataType);
-      if (cached && cached.data) {
-        const cacheAge = Date.now() - cached.timestamp;
-        const ttl = dataManager.cacheTTL[dataType] || 30000;
-        const isStale = cacheAge > ttl * 0.8; // Consider stale at 80% of TTL
-
-        cachedData[dataType] = Array.isArray(cached.data) ? cached.data : [];
-        hasAnyCache = true;
-        oldestCacheAge = Math.max(oldestCacheAge, cacheAge);
-
-        if (isStale) hasStaleData = true;
-      }
-    });
-
-    return {
-      data: cachedData,
-      hasCache: hasAnyCache,
-      age: oldestCacheAge,
-      isStale: hasStaleData,
-    };
-  }, [dataTypes]);
-
   // Check for cached data immediately on mount and component updates
   useEffect(() => {
     const checkCachedData = () => {
-      const cacheResult = getCachedDataWithAge();
+      const cachedData = {};
+      let hasAnyCache = false;
+      let oldestCacheAge = 0;
+      let hasStaleData = false;
 
-      if (cacheResult.hasCache) {
+      dataTypes.forEach((dataType) => {
+        const cached = dataManager.cache.get(dataType);
+        if (cached && cached.data) {
+          const cacheAge = Date.now() - cached.timestamp;
+          const ttl = dataManager.cacheTTL[dataType] || 30000;
+          const isStale = cacheAge > ttl * 0.8; // Consider stale at 80% of TTL
+
+          cachedData[dataType] = Array.isArray(cached.data) ? cached.data : [];
+          hasAnyCache = true;
+          oldestCacheAge = Math.max(oldestCacheAge, cacheAge);
+
+          if (isStale) hasStaleData = true;
+        }
+      });
+
+      if (hasAnyCache) {
         setImmediateData((prev) => ({
           ...prev,
-          ...cacheResult.data,
+          ...cachedData,
           hasImmediate: true,
-          cacheAge: cacheResult.age,
-          isStale: cacheResult.isStale,
+          cacheAge: oldestCacheAge,
+          isStale: hasStaleData,
         }));
         console.log(
           `⚡ ${componentName}: Using cached data for immediate display (age: ${Math.round(
-            cacheResult.age / 1000
-          )}s, stale: ${cacheResult.isStale})`
+            oldestCacheAge / 1000
+          )}s, stale: ${hasStaleData})`
         );
       }
     };
 
     checkCachedData();
-  }, [componentName, getCachedDataWithAge]);
+  }, [componentName, dataTypes]); // Only depend on stable values
 
   // Update immediate data when Redux data changes
   useEffect(() => {
@@ -149,19 +137,42 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
     safeNotifications,
   ]);
 
-  // Track loading state changes for performance feedback
-  useEffect(() => {
-    if (loading && !performanceFeedback.isLoading) {
-      performanceFeedback.startOperation(`Loading data for ${componentName}`);
-    } else if (!loading && performanceFeedback.isLoading) {
+  // Memoize performance feedback values to prevent infinite loops
+  const isPerformanceLoading = useMemo(() => performanceFeedback.isLoading, [performanceFeedback.isLoading]);
+  
+  // Use direct function calls to avoid circular dependencies
+  const performanceStartOperation = useCallback((name) => {
+    if (performanceFeedback && typeof performanceFeedback.startOperation === 'function') {
+      performanceFeedback.startOperation(name);
+    }
+  }, [performanceFeedback]);
+  
+  const performanceEndOperation = useCallback(() => {
+    if (performanceFeedback && typeof performanceFeedback.endOperation === 'function') {
       performanceFeedback.endOperation();
+    }
+  }, [performanceFeedback]);
+
+  // Track loading state changes for performance feedback
+  const prevPerformanceLoadingRef = useRef(isPerformanceLoading);
+  
+  useEffect(() => {
+    const wasPerformanceLoading = prevPerformanceLoadingRef.current;
+    
+    if (loading && !wasPerformanceLoading) {
+      performanceStartOperation(`Loading data for ${componentName}`);
+    } else if (!loading && wasPerformanceLoading) {
+      performanceEndOperation();
       setSubscriptionMetrics((prev) => ({
         ...prev,
         lastDataFetch: Date.now(),
         fetchCount: prev.fetchCount + 1,
       }));
     }
-  }, [loading, componentName, performanceFeedback]);
+    
+    // Update ref for next render
+    prevPerformanceLoadingRef.current = isPerformanceLoading;
+  }, [loading, isPerformanceLoading, componentName, performanceStartOperation, performanceEndOperation]);
 
   // Memoize serialized values to prevent unnecessary re-renders (moved up to avoid duplication)
   const optionsKey = useMemo(() => JSON.stringify(options), [options]);
