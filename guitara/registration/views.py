@@ -1019,3 +1019,73 @@ class UserProfileView(APIView):
         }
 
         return Response(profile_data, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class UserProfileUpdateView(APIView):
+    """
+    API endpoint for updating user profile fields
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        """
+        Update specific profile fields for the authenticated user
+        """
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        try:
+            # Get the fields to update from request data
+            update_fields = {}
+
+            # Handle profile photo URL update
+            if "profile_photo_url" in request.data:
+                update_fields["profile_photo_url"] = request.data["profile_photo_url"]
+
+            # Handle other profile fields as needed
+            allowed_fields = [
+                "profile_photo_url",
+                "first_name",
+                "last_name",
+                "phone_number",
+            ]
+            for field in allowed_fields:
+                if field in request.data:
+                    update_fields[field] = request.data[field]
+
+            if not update_fields:
+                return Response(
+                    {"error": "No valid fields provided for update"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Update the user profile
+            for field, value in update_fields.items():
+                setattr(request.user, field, value)
+
+            request.user.save(update_fields=list(update_fields.keys()))
+
+            logger.info(
+                f"Profile updated for user {request.user.id}: {list(update_fields.keys())}"
+            )
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Profile updated successfully",
+                    "updated_fields": list(update_fields.keys()),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            logger.error(f"Profile update failed for user {request.user.id}: {e}")
+            return Response(
+                {"error": "Failed to update profile"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

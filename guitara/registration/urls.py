@@ -11,6 +11,7 @@ from .views import (
     check_email_exists,
     ProfilePhotoUploadView,
     UserProfileView,
+    UserProfileUpdateView,
 )
 
 urlpatterns = [
@@ -30,4 +31,7 @@ urlpatterns = [
         "profile/photo/", ProfilePhotoUploadView.as_view(), name="profile_photo_upload"
     ),
     path("profile/", UserProfileView.as_view(), name="user_profile"),
+    path(
+        "profile/update/", UserProfileUpdateView.as_view(), name="user_profile_update"
+    ),
 ]

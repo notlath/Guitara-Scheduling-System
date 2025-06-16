@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUpload";
+import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUploadPure";
 import pageTitles from "../../constants/pageTitles";
 import { logout, updateUserProfile } from "../../features/auth/authSlice";
 import styles from "./ProfilePage.module.css";

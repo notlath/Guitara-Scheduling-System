@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUpload";
+import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUploadPure";
 import pageTitles from "../../constants/pageTitles";
 import { updateUserProfile } from "../../features/auth/authSlice";
 import {
