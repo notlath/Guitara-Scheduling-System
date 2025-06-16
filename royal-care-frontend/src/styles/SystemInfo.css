@@ -108,28 +108,106 @@
   margin-bottom: 1rem;
 }
 
+/* Enhanced List Styling */
 .info-section ul {
   list-style-type: none;
   padding: 0;
+  margin: 1rem 0;
 }
 
 .info-section li {
   position: relative;
-  padding-left: 1.8rem;
-  margin-bottom: 0.8rem;
+  padding-left: 2rem;
+  margin-bottom: 1rem;
   color: var(--text);
-  line-height: 1.6;
+  line-height: 1.7;
+  transition: all 0.2s ease;
+}
+
+.info-section li:hover {
+  padding-left: 2.2rem;
+  color: var(--primary-700);
 }
 
 .info-section li::before {
   content: "";
   position: absolute;
   left: 0;
-  top: 0.6rem;
-  width: 8px;
-  height: 8px;
+  top: 0.7rem;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background-color: var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--primary-600));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.info-section li:hover::before {
+  transform: scale(1.2);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Nested List Support */
+.info-section ul ul {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+}
+
+.info-section ul ul li {
+  padding-left: 1.5rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.95em;
+}
+
+.info-section ul ul li::before {
+  width: 6px;
+  height: 6px;
+  top: 0.8rem;
+  background: var(--primary-400);
+}
+
+.info-section ul ul li:hover::before {
+  background: var(--primary-600);
+}
+
+/* Special List Types */
+.info-section .tech-list li::before {
+  content: "⚡";
+  background: none;
+  color: var(--primary);
+  font-size: 0.9rem;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  top: 0.1rem;
+  left: 0.2rem;
+}
+
+.info-section .feature-list li::before {
+  content: "✓";
+  background: none;
+  color: var(--primary);
+  font-weight: bold;
+  font-size: 1rem;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  top: 0.1rem;
+  left: 0.2rem;
+}
+
+.info-section .roadmap-list li::before {
+  content: "→";
+  background: none;
+  color: var(--primary);
+  font-weight: bold;
+  font-size: 1.1rem;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  top: 0;
+  left: 0.2rem;
 }
 
 /* Version Info Styling */
@@ -264,30 +342,45 @@
   margin-bottom: 1rem;
 }
 
-/* Roadmap List Styling */
+/* Enhanced Roadmap List Styling */
 .roadmap-list {
   background-color: var(--background-50);
   border-radius: 8px;
   padding: 1.5rem;
   margin-top: 1rem;
+  border-left: 4px solid var(--primary);
 }
 
 .roadmap-list li {
   position: relative;
-  padding-left: 2rem;
-  margin-bottom: 1rem;
+  padding-left: 2.2rem;
+  margin-bottom: 1.2rem;
   color: var(--text);
-  line-height: 1.6;
+  line-height: 1.7;
+  transition: all 0.2s ease;
+}
+
+.roadmap-list li:hover {
+  padding-left: 2.5rem;
+  color: var(--primary-700);
 }
 
 .roadmap-list li::before {
-  content: "→";
+  content: "🚀";
   position: absolute;
   left: 0;
   top: 0;
   color: var(--primary);
-  font-weight: bold;
   font-size: 1.1rem;
+  transition: all 0.2s ease;
+}
+
+.roadmap-list li:hover::before {
+  transform: scale(1.1);
+}
+
+.roadmap-list li:last-child {
+  margin-bottom: 0;
 }
 
 /* Animation */
