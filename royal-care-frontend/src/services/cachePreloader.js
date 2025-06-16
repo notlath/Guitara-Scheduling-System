@@ -3,7 +3,7 @@
  * Implements Solution #1: Cache preloading with route-based prefetching
  */
 
-import dataManager from "./dataManager";
+import dataManager from "./dataManager.js";
 
 class CachePreloader {
   constructor() {
@@ -282,6 +282,13 @@ class CachePreloader {
       routePatterns: Object.fromEntries(this.routeDataPatterns),
       userPatterns: Object.fromEntries(this.userRolePatterns),
     };
+  }
+
+  /**
+   * Get cache status - alias for getPreloadStatus for compatibility
+   */
+  getCacheStatus() {
+    return this.getPreloadStatus();
   }
 
   /**

@@ -3,7 +3,7 @@
  * Implements Solution #4: Micro-frontend data sharing between tabs
  */
 
-import dataManager from "./dataManager";
+import dataManager from "./dataManager.js";
 
 class CrossTabSync {
   constructor() {
@@ -19,6 +19,13 @@ class CrossTabSync {
     this.storageListenerActive = false;
     this.heartbeatInterval = null;
 
+    this.initializeCrossTabSync();
+  }
+
+  /**
+   * Initialize cross-tab synchronization
+   */
+  initialize() {
     this.initializeCrossTabSync();
   }
 
@@ -201,6 +208,21 @@ class CrossTabSync {
 
       default:
         console.warn(`🔗 CrossTabSync: Unknown message type: ${type}`);
+    }
+
+    // Call any registered subscribers
+    const handlers = this.messageHandlers.get(type);
+    if (handlers) {
+      handlers.forEach((callback) => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(
+            `🔗 CrossTabSync: Error in subscriber for ${type}:`,
+            error
+          );
+        }
+      });
     }
 
     // Update tab registry
@@ -427,6 +449,13 @@ class CrossTabSync {
   }
 
   /**
+   * Broadcast cache update to other tabs - alias for compatibility
+   */
+  broadcastCacheUpdate(dataType, data) {
+    this.syncDataToOtherTabs(dataType, data);
+  }
+
+  /**
    * Clean up cross-tab sync
    */
   cleanup() {
@@ -446,6 +475,42 @@ class CrossTabSync {
     }
 
     console.log(`🔗 CrossTabSync: Cleaned up for tab ${this.tabId}`);
+  }
+
+  /**
+   * Subscribe to cross-tab messages
+   */
+  subscribe(messageType, callback) {
+    if (!this.messageHandlers.has(messageType)) {
+      this.messageHandlers.set(messageType, new Set());
+    }
+
+    this.messageHandlers.get(messageType).add(callback);
+
+    // Return unsubscribe function
+    return () => {
+      const handlers = this.messageHandlers.get(messageType);
+      if (handlers) {
+        handlers.delete(callback);
+        if (handlers.size === 0) {
+          this.messageHandlers.delete(messageType);
+        }
+      }
+    };
+  }
+
+  /**
+   * Check if current tab is the leader
+   */
+  isLeader() {
+    return this.isLeaderTab;
+  }
+
+  /**
+   * Callback for cache invalidation events
+   */
+  onCacheInvalidation(callback) {
+    return this.subscribe("invalidate_cache", callback);
   }
 }
 

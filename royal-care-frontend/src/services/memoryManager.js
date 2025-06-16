@@ -3,7 +3,7 @@
  * Implements Solution #3: Intelligent cache eviction and memory optimization
  */
 
-import dataManager from "./dataManager";
+import dataManager from "./dataManager.js";
 
 class MemoryManager {
   constructor() {
@@ -42,15 +42,23 @@ class MemoryManager {
    * Setup priority weights for different data types
    */
   setupDataTypePriorities() {
-    this.dataTypePriorities.set("appointments", {
+    // Core scheduling data (highest priority)
+    this.dataTypePriorities.set("emergencyAlerts", {
       weight: 100,
+      description: "Critical emergency alerts",
+      minRetention: 1 * 60 * 1000, // 1 minute minimum
+      maxAge: 5 * 60 * 1000, // 5 minutes maximum
+    });
+
+    this.dataTypePriorities.set("appointments", {
+      weight: 95,
       description: "Critical appointment data",
       minRetention: 5 * 60 * 1000, // 5 minutes minimum
       maxAge: 30 * 60 * 1000, // 30 minutes maximum
     });
 
     this.dataTypePriorities.set("todayAppointments", {
-      weight: 95,
+      weight: 90,
       description: "Today's appointments",
       minRetention: 3 * 60 * 1000, // 3 minutes minimum
       maxAge: 15 * 60 * 1000, // 15 minutes maximum
@@ -63,18 +71,84 @@ class MemoryManager {
       maxAge: 10 * 60 * 1000, // 10 minutes maximum
     });
 
-    this.dataTypePriorities.set("upcomingAppointments", {
+    // Operational data (high priority)
+    this.dataTypePriorities.set("vehicleStatus", {
+      weight: 80,
+      description: "Vehicle tracking data",
+      minRetention: 1 * 60 * 1000, // 1 minute minimum
+      maxAge: 5 * 60 * 1000, // 5 minutes maximum
+    });
+
+    this.dataTypePriorities.set("schedules", {
       weight: 75,
+      description: "Scheduling data",
+      minRetention: 3 * 60 * 1000, // 3 minutes minimum
+      maxAge: 20 * 60 * 1000, // 20 minutes maximum
+    });
+
+    this.dataTypePriorities.set("upcomingAppointments", {
+      weight: 70,
       description: "Future appointments",
       minRetention: 5 * 60 * 1000, // 5 minutes minimum
       maxAge: 60 * 60 * 1000, // 1 hour maximum
     });
 
+    // People and resource data (medium priority)
+    this.dataTypePriorities.set("patients", {
+      weight: 65,
+      description: "Patient information",
+      minRetention: 5 * 60 * 1000, // 5 minutes minimum
+      maxAge: 2 * 60 * 60 * 1000, // 2 hours maximum
+    });
+
+    this.dataTypePriorities.set("therapists", {
+      weight: 60,
+      description: "Therapist information",
+      minRetention: 5 * 60 * 1000, // 5 minutes minimum
+      maxAge: 5 * 60 * 60 * 1000, // 5 hours maximum
+    });
+
+    this.dataTypePriorities.set("drivers", {
+      weight: 55,
+      description: "Driver information",
+      minRetention: 5 * 60 * 1000, // 5 minutes minimum
+      maxAge: 5 * 60 * 60 * 1000, // 5 hours maximum
+    });
+
+    this.dataTypePriorities.set("routes", {
+      weight: 50,
+      description: "Route information",
+      minRetention: 2 * 60 * 1000, // 2 minutes minimum
+      maxAge: 3 * 60 * 60 * 1000, // 3 hours maximum
+    });
+
+    this.dataTypePriorities.set("inventory", {
+      weight: 45,
+      description: "Inventory data",
+      minRetention: 5 * 60 * 1000, // 5 minutes minimum
+      maxAge: 5 * 60 * 60 * 1000, // 5 hours maximum
+    });
+
+    // Analytical and configuration data (lower priority)
     this.dataTypePriorities.set("analytics", {
-      weight: 30,
+      weight: 35,
       description: "Analytics and reports",
+      minRetention: 2 * 60 * 1000, // 2 minutes minimum
+      maxAge: 10 * 60 * 1000, // 10 minutes maximum
+    });
+
+    this.dataTypePriorities.set("reports", {
+      weight: 30,
+      description: "Generated reports",
       minRetention: 1 * 60 * 1000, // 1 minute minimum
       maxAge: 10 * 60 * 1000, // 10 minutes maximum
+    });
+
+    this.dataTypePriorities.set("weatherData", {
+      weight: 25,
+      description: "Weather information",
+      minRetention: 5 * 60 * 1000, // 5 minutes minimum
+      maxAge: 15 * 60 * 1000, // 15 minutes maximum
     });
 
     this.dataTypePriorities.set("settings", {
@@ -408,7 +482,7 @@ class MemoryManager {
         details: Object.fromEntries(this.usagePatterns),
       },
       priorities: Object.fromEntries(this.dataTypePriorities),
-      recommendations: this.getMemoryRecommendations(),
+      // Remove circular dependency - recommendations available via separate method
     };
   }
 
@@ -416,20 +490,23 @@ class MemoryManager {
    * Get memory optimization recommendations
    */
   getMemoryRecommendations() {
-    const stats = this.getMemoryStats();
+    const cacheSize = dataManager.cache?.size || 0;
+    const usagePatternCount = this.usagePatterns.size;
+    const cacheUsage = (cacheSize / this.memoryThresholds.maxCacheSize) * 100;
+
     const recommendations = [];
 
-    if (stats.cache.usage > 90) {
+    if (cacheUsage > 90) {
       recommendations.push(
         "Critical: Consider increasing cache size or reducing data retention times"
       );
-    } else if (stats.cache.usage > 80) {
+    } else if (cacheUsage > 80) {
       recommendations.push(
         "Warning: Monitor cache usage closely, consider cleanup optimization"
       );
     }
 
-    if (stats.patterns.count > 100) {
+    if (usagePatternCount > 100) {
       recommendations.push("Consider more frequent usage pattern cleanup");
     }
 
@@ -480,10 +557,12 @@ class MemoryManager {
 const memoryManager = new MemoryManager();
 
 // Ensure the object is properly initialized
-if (typeof memoryManager.initialize !== 'function') {
-  console.error('❌ MemoryManager: initialize method not found on instance');
+if (typeof memoryManager.initialize !== "function") {
+  console.error("❌ MemoryManager: initialize method not found on instance");
 } else {
-  console.log('✅ MemoryManager: Instance created successfully with initialize method');
+  console.log(
+    "✅ MemoryManager: Instance created successfully with initialize method"
+  );
 }
 
 export default memoryManager;

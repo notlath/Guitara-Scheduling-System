@@ -37,7 +37,7 @@ export const runPerformanceTests = async () => {
     try {
       memoryManager.initialize();
       const stats = memoryManager.getMemoryStats();
-      results.memoryManager = stats && typeof stats.totalSize === "number";
+      results.memoryManager = stats && typeof stats === "object" && stats.cache;
       console.log("✅ Memory Manager test passed");
     } catch (error) {
       console.error("❌ Memory Manager test failed:", error);
