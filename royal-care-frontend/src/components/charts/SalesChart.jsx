@@ -60,15 +60,15 @@ const SalesChart = ({
   const getColor = () => {
     switch (currentView) {
       case "Total Revenue":
-        return "#10b981"; // Green
+        return "var(--success)"; // Use theme success color
       case "Commission":
-        return "#3b82f6"; // Blue
+        return "var(--primary)"; // Use theme primary color
       case "Services":
-        return "#8b5cf6"; // Purple
+        return "var(--accent)"; // Use theme accent color
       case "Customer List":
-        return "#f59e0b"; // Orange
+        return "var(--secondary)"; // Use theme secondary color
       default:
-        return "#6b7280"; // Gray
+        return "var(--background-500)"; // Gray from theme
     }
   };
 
@@ -76,13 +76,13 @@ const SalesChart = ({
   const getComparisonColor = () => {
     switch (comparison) {
       case "higher":
-        return "#10b981"; // Green
+        return "var(--success)"; // Green from theme
       case "lower":
-        return "#ef4444"; // Red
+        return "var(--error)"; // Red from theme
       case "same":
-        return "#6b7280"; // Gray
+        return "var(--background-500)"; // Gray from theme
       default:
-        return "#6b7280";
+        return "var(--background-500)";
     }
   };
 
