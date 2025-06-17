@@ -189,7 +189,19 @@ class RequestPasswordResetAPI(generics.GenericAPIView):
             PasswordResetCode.objects.create(
                 user=user, code=code, expires_at=expires_at
             )
-            print(f"[DEBUG] Password reset code generated: {code}")
+            # Also insert into Supabase for centralized code management
+            supabase_data = {
+                "user_id": user.id,
+                "code": code,
+                "created_at": timezone.now().isoformat(),
+                "expires_at": expires_at.isoformat(),
+                "is_used": False,
+            }
+            try:
+                insert_into_table("authentication_passwordresetcode", supabase_data)
+            except Exception as e:
+                print(f"[ERROR] Supabase insert failed: {e}")
+            logging.getLogger(__name__).debug(f"Password reset code generated: {code}")
             send_mail(
                 "Your Password Reset Code",
                 f"Your password reset code is: {code}",
