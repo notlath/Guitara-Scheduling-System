@@ -1,17 +1,11 @@
 /* ProfilePage.module.css - Using Global Theme System */
 
-/* Main Container using global layout pattern */
-.container {
-  padding: var(--spacing-lg) 0;
-}
+/* Remove or override container/content styles to use PageLayout */
+/* .container and .content are now provided by PageLayout's global-container/global-content */
 
-.content {
-  max-width: var(--container-max-width);
-  margin: 0 auto;
-  background: var(--background);
-  border-radius: 8px;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
+/* If you need to add ProfilePage-specific tweaks, use more specific selectors: */
+.profileContainer {
+  /* Add any ProfilePage-specific padding or margin if needed */
 }
 
 /* Header Section */
@@ -220,6 +214,10 @@
   box-shadow: 0 0 0 3px var(--primary-100);
 }
 
+.actionButtonMarginBottom {
+  margin-bottom: 8px;
+}
+
 /* Loading and Error States */
 .loadingContainer {
   display: flex;
@@ -256,15 +254,6 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .container {
-    padding: var(--spacing-md) 0;
-  }
-
-  .content {
-    margin: 0 var(--spacing-sm);
-    border-radius: 8px;
-  }
-
   .userProfileHeader {
     flex-direction: column;
     text-align: center;
