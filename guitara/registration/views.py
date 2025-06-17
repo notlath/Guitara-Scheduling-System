@@ -889,9 +889,7 @@ class ProfilePhotoUploadView(APIView):
                 {"error": "No photo file provided"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        photo_file = request.FILES["photo"]
-
-        # Validate file size (5MB limit)
+        photo_file = request.FILES["photo"]  # Validate file size (5MB limit)
         if photo_file.size > 5 * 1024 * 1024:
             return Response(
                 {"error": "File too large. Maximum size is 5MB."},
@@ -907,14 +905,22 @@ class ProfilePhotoUploadView(APIView):
             )
 
         try:
-            # Upload to Supabase Storage
+            # Upload to Supabase Storage or local storage as fallback
+            logger.info(
+                f"Attempting to upload profile photo for user {request.user.id}"
+            )
             photo_url = storage_service.upload_profile_photo(
                 user_id=request.user.id, image_file=photo_file, filename=photo_file.name
             )
 
             if not photo_url:
+                logger.error(
+                    f"Storage service returned None for user {request.user.id}"
+                )
                 return Response(
-                    {"error": "Failed to upload photo to storage"},
+                    {
+                        "error": "Failed to upload photo to storage. Please check server logs for details."
+                    },
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
