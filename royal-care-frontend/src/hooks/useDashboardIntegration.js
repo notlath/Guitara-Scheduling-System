@@ -376,18 +376,23 @@ export const useOperatorDashboardData = () => {
     hasAnyData,
   ]);
 
-  // Debug logging to track the loading state
+  // Debug logging to track the loading state (throttled to prevent spam)
   useEffect(() => {
-    console.log("🔍 OperatorDashboard Debug:", {
-      centralLoading,
-      loading,
-      loadingTimeout,
-      appointmentsLength: appointments?.length || 0,
-      appointmentsIsArray: Array.isArray(appointments),
-      hasAppointments: !!appointments,
-      isInitialLoad,
-      appointmentsType: typeof appointments,
-    });
+    const logTimeout = setTimeout(() => {
+      if (import.meta.env.DEV) {
+        console.log("🔍 OperatorDashboard Debug:", {
+          centralLoading,
+          loading,
+          loadingTimeout,
+          appointmentsLength: appointments?.length || 0,
+          appointmentsIsArray: Array.isArray(appointments),
+          hasAppointments: !!appointments,
+          isInitialLoad,
+        });
+      }
+    }, 1000); // Throttle debug logging to once per second
+
+    return () => clearTimeout(logTimeout);
   }, [loading, centralLoading, appointments, isInitialLoad, loadingTimeout]);
 
   // Mark initial load as complete when we have data or loading is complete
@@ -398,127 +403,15 @@ export const useOperatorDashboardData = () => {
     }
   }, [loading, hasAnyData, isInitialLoad]);
 
-  // Memoized filtering for operator-specific views - Fixed to match actual system statuses
-  const rejectedAppointments = useMemo(() => {
-    if (!Array.isArray(appointments)) return [];
-    return appointments.filter(
-      (apt) =>
-        (apt.status === "rejected_by_therapist" ||
-          apt.status === "rejected_by_driver") &&
-        apt.rejection_status !== "reviewed"
-    );
-  }, [appointments]);
+  // 🔥 PERFORMANCE OPTIMIZATION: Removed individual memoized filters
+  // These filters are now handled by useOptimizedAppointmentFilters hook
+  // in the component to prevent cascade re-renders and improve performance
+  //
+  // The old approach caused multiple useMemo hooks to recalculate whenever
+  // appointments changed, leading to performance issues. The new approach
+  // uses a single-pass filtering algorithm that processes all filters at once.
 
-  const pendingAppointments = useMemo(() => {
-    if (!Array.isArray(appointments)) return [];
-    return appointments.filter(
-      (apt) => apt.status === "pending" || apt.status === "therapist_confirmed"
-    );
-  }, [appointments]);
-
-  const awaitingPaymentAppointments = useMemo(() => {
-    if (!Array.isArray(appointments)) return [];
-
-    const paymentAppointments = appointments.filter(
-      (apt) =>
-        // Include appointments with "awaiting_payment" status (new correct status)
-        apt.status === "awaiting_payment" ||
-        // Also include completed appointments that haven't been paid (legacy/fallback)
-        (apt.status === "completed" &&
-          (!apt.payment_status ||
-            apt.payment_status === "pending" ||
-            apt.payment_status === "unpaid"))
-    );
-
-    // Debug logging for payment verification
-    console.log("🔍 Payment Verification Debug:", {
-      totalAppointments: appointments.length,
-      awaitingPaymentCount: paymentAppointments.length,
-      awaitingPaymentStatuses: paymentAppointments.map((apt) => ({
-        id: apt.id,
-        status: apt.status,
-        payment_status: apt.payment_status,
-      })),
-    });
-
-    return paymentAppointments;
-  }, [appointments]);
-
-  // Calculate timeout monitoring based on created_at timestamps
-  const overdueAppointments = useMemo(() => {
-    if (!Array.isArray(appointments)) return [];
-    const now = new Date();
-    const timeoutThreshold = 15 * 60 * 1000; // 15 minutes
-
-    return appointments.filter((apt) => {
-      if (!apt.created_at || apt.status !== "pending") return false;
-      const appointmentAge = now - new Date(apt.created_at);
-      return appointmentAge > timeoutThreshold;
-    });
-  }, [appointments]);
-
-  const approachingDeadlineAppointments = useMemo(() => {
-    if (!Array.isArray(appointments)) return [];
-    const now = new Date();
-    const urgentThreshold = 5 * 60 * 1000; // 5 minutes
-    const timeoutThreshold = 15 * 60 * 1000; // 15 minutes
-
-    return appointments.filter((apt) => {
-      if (!apt.created_at || apt.status !== "pending") return false;
-      const appointmentAge = now - new Date(apt.created_at);
-      return (
-        appointmentAge > urgentThreshold && appointmentAge <= timeoutThreshold
-      );
-    });
-  }, [appointments]);
-
-  const activeSessions = useMemo(() => {
-    if (!Array.isArray(appointments)) return [];
-    return appointments.filter((apt) =>
-      ["in_progress", "journey_started", "arrived", "session_started"].includes(
-        apt.status
-      )
-    );
-  }, [appointments]);
-
-  const pickupRequests = useMemo(() => {
-    if (!Array.isArray(appointments)) return [];
-    return appointments.filter(
-      (apt) =>
-        apt.status === "pickup_requested" ||
-        apt.status === "driver_assigned_pickup"
-    );
-  }, [appointments]);
-
-  // Rejection statistics - Fixed to match actual rejection statuses
-  const rejectionStats = useMemo(() => {
-    if (!Array.isArray(appointments)) {
-      return { total: 0, therapist: 0, driver: 0, pending: 0 };
-    }
-
-    const rejected = appointments.filter(
-      (apt) =>
-        apt.status === "rejected_by_therapist" ||
-        apt.status === "rejected_by_driver"
-    );
-
-    const therapistRejections = rejected.filter(
-      (apt) => apt.status === "rejected_by_therapist"
-    );
-
-    const driverRejections = rejected.filter(
-      (apt) => apt.status === "rejected_by_driver"
-    );
-
-    return {
-      total: rejected.length,
-      therapist: therapistRejections.length,
-      driver: driverRejections.length,
-      pending: rejectedAppointments.length,
-    };
-  }, [appointments, rejectedAppointments]);
-
-  // Optimized refresh function
+  // Optimized refresh function that uses centralized data manager
   const refreshData = useCallback(() => {
     console.log(
       "🔄 OperatorDashboard: Refreshing data via centralized manager"
@@ -527,17 +420,7 @@ export const useOperatorDashboardData = () => {
   }, [forceRefresh]);
 
   return {
-    // Filtered appointment data
-    rejectedAppointments,
-    pendingAppointments,
-    awaitingPaymentAppointments,
-    overdueAppointments,
-    approachingDeadlineAppointments,
-    activeSessions,
-    pickupRequests,
-    rejectionStats,
-
-    // Raw data
+    // Raw data - filtered data now handled by useOptimizedAppointmentFilters in component
     appointments,
     todayAppointments,
     upcomingAppointments,
@@ -613,6 +496,6 @@ export const useSchedulingDashboardData = () => {
     // Actions
     refreshAfterFormSubmit,
     forceRefresh,
-    refreshIfStale, // Auto-refresh if data is stale
+    refreshIfStale,
   };
 };
