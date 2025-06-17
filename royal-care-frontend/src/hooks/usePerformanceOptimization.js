@@ -9,9 +9,52 @@ import { shallowEqual, useSelector } from "react-redux";
 /**
  * Optimized Redux selector with memoization and shallow comparison by default
  * Prevents unnecessary re-renders from Redux state changes
+ * Enhanced to ensure stable references and prevent selector warnings
  */
 export const useOptimizedSelector = (selector, equalityFn = shallowEqual) => {
-  return useSelector(selector, equalityFn);
+  // Create stable empty references that won't change between renders
+  const stableEmptyArray = useMemo(() => [], []);
+  const stableEmptyObject = useMemo(() => ({}), []);
+
+  // Create a more robust memoized selector with deeper stability
+  const memoizedSelector = useMemo(() => {
+    let lastResult = null;
+    let lastState = null;
+
+    return (state) => {
+      // Quick reference check - if state hasn't changed at all, return last result
+      if (state === lastState && lastResult !== null) {
+        return lastResult;
+      }
+
+      const result = selector(state);
+
+      // Ensure we return stable references for objects and arrays
+      if (typeof result === "object" && result !== null) {
+        // For arrays, ensure they're not empty arrays that change reference
+        if (Array.isArray(result) && result.length === 0) {
+          const stableResult = stableEmptyArray;
+          lastResult = stableResult;
+          lastState = state;
+          return stableResult;
+        }
+        // For objects, ensure empty objects are stable
+        if (!Array.isArray(result) && Object.keys(result).length === 0) {
+          const stableResult = stableEmptyObject;
+          lastResult = stableResult;
+          lastState = state;
+          return stableResult;
+        }
+      }
+
+      // Cache the result for next time
+      lastResult = result;
+      lastState = state;
+      return result;
+    };
+  }, [selector, stableEmptyArray, stableEmptyObject]);
+
+  return useSelector(memoizedSelector, equalityFn);
 };
 
 /**

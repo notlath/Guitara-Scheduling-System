@@ -12,6 +12,10 @@ export default defineConfig({
   optimizeDeps: {
     include: ["react-easy-crop", "tslib"],
   },
+  resolve: {
+    // Fix emotion/react duplicate loading issue
+    dedupe: ["@emotion/react", "@emotion/styled"],
+  },
   build: {
     rollupOptions: {
       external: (id) => {

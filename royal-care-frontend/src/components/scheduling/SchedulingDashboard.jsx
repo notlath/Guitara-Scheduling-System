@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { shallowEqual, useDispatch } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
 import { useSchedulingDashboardData } from "../../hooks/useDashboardIntegration";
@@ -59,9 +59,24 @@ const SchedulingDashboard = () => {
     refreshIfStale,
   } = useSchedulingDashboardData();
 
-  const { user } = useOptimizedSelector((state) => state.auth);
+  const { user } = useOptimizedSelector(
+    useCallback(
+      (state) => ({
+        user: state.auth?.user || null,
+      }),
+      []
+    ),
+    shallowEqual
+  );
+
   const { unreadNotificationCount } = useOptimizedSelector(
-    (state) => state.scheduling
+    useCallback(
+      (state) => ({
+        unreadNotificationCount: state.scheduling?.unreadNotificationCount || 0,
+      }),
+      []
+    ),
+    shallowEqual
   );
   const defaultDate = useMemo(() => new Date(), []);
 

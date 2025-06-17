@@ -52,11 +52,11 @@ class DataManager {
       reports: 600000, // 10 minutes - generated reports
     };
 
-    // Enhanced memory management and performance tracking
+    // Enhanced memory management and performance tracking - optimized for memory efficiency
     this.memoryThresholds = {
-      maxCacheSize: 1000, // Max items in cache
-      maxAge: 1800000, // 30 minutes max age
-      cleanupInterval: 300000, // 5 minutes cleanup interval
+      maxCacheSize: 50, // Reduced from 1000 to prevent memory issues
+      maxAge: 900000, // Reduced to 15 minutes from 30 minutes
+      cleanupInterval: 300000, // Increased to 5 minutes to reduce overhead
     };
 
     // Priority levels for different data types
@@ -86,9 +86,11 @@ class DataManager {
       retryDelay: 60000, // 1 minute
     };
 
-    // Performance tracking for enhanced deduplication
+    // Performance tracking for enhanced deduplication - optimized for memory efficiency
     this.recentOperations = [];
-    this.maxRecentOperations = 50;
+    this.maxRecentOperations = 10; // Further reduced from 20 to 10 to prevent constant warnings
+    this.lastMetricsWarning = null; // Track last warning to prevent spam
+    this.lastMemoryCleanup = 0; // Track last cleanup to prevent excessive cleanup
 
     // Activity tracking
     this.lastUserActivity = Date.now();
@@ -129,9 +131,9 @@ class DataManager {
     // Start memory cleanup
     this.startMemoryCleanup();
 
-    // Initialize performance tracking
+    // Initialize performance tracking - optimized for memory efficiency
     this.responseTimeHistory = [];
-    this.maxResponseTimeHistory = 100;
+    this.maxResponseTimeHistory = 25; // Reduced from 100 to 25 to save memory
 
     // Development mode utilities
     this.isDevelopment =
@@ -994,9 +996,17 @@ class DataManager {
   }
 
   /**
-   * Enhanced operation tracking with performance metrics
+   * Enhanced operation tracking with performance metrics - optimized to prevent memory pressure
    */
   trackOperation(dataType, success, error = null, metadata = {}) {
+    // Only track if we're not already at capacity to prevent immediate warnings
+    if (this.recentOperations.length >= this.maxRecentOperations) {
+      // Remove older operations first before adding new ones
+      this.recentOperations = this.recentOperations.slice(
+        -Math.floor(this.maxRecentOperations * 0.6)
+      );
+    }
+
     const operation = {
       dataType,
       success,
@@ -1008,11 +1018,6 @@ class DataManager {
     };
 
     this.recentOperations.push(operation);
-
-    // Keep only recent operations
-    if (this.recentOperations.length > this.maxRecentOperations) {
-      this.recentOperations.shift();
-    }
   }
 
   /**
@@ -1055,31 +1060,33 @@ class DataManager {
   }
 
   /**
-   * Enhanced cache cleanup with selective eviction
+   * Enhanced cache cleanup with selective eviction - optimized for memory efficiency
    */
   cleanupExpiredCache() {
     const now = Date.now();
     let cleaned = 0;
     let forceEvicted = 0;
 
-    // First pass: Remove truly expired entries
+    // First pass: Remove truly expired entries with more aggressive TTL
     for (const [key, cached] of this.cache.entries()) {
       const age = now - cached.timestamp;
       const ttl = this.cacheTTL[key] || 30000;
 
-      if (age > Math.max(ttl * 2, this.memoryThresholds.maxAge)) {
+      // More aggressive expiration - clean after 1.5x TTL instead of 2x
+      if (age > Math.max(ttl * 1.5, this.memoryThresholds.maxAge)) {
         this.cache.delete(key);
         cleaned++;
       }
     }
 
-    // Second pass: If cache is still too large, evict LRU entries
-    if (this.cache.size > this.memoryThresholds.maxCacheSize) {
+    // Second pass: If cache is still too large, evict LRU entries more aggressively
+    const targetSize = Math.floor(this.memoryThresholds.maxCacheSize * 0.8); // Keep at 80% of max
+    if (this.cache.size > targetSize) {
       const entries = Array.from(this.cache.entries()).sort(
         ([, a], [, b]) => a.timestamp - b.timestamp
       ); // Oldest first
 
-      const toEvict = this.cache.size - this.memoryThresholds.maxCacheSize;
+      const toEvict = this.cache.size - targetSize;
       for (let i = 0; i < toEvict; i++) {
         this.cache.delete(entries[i][0]);
         forceEvicted++;
@@ -1094,21 +1101,29 @@ class DataManager {
   }
 
   /**
-   * Clean up old performance metrics
+   * Clean up old performance metrics - optimized for memory efficiency and reduced warnings
    */
   cleanupOldMetrics() {
-    const cutoff = Date.now() - 300000; // Keep last 5 minutes
+    const now = Date.now();
+
+    // Only run cleanup every 60 seconds to reduce overhead
+    if (now - this.lastMemoryCleanup < 60000) {
+      return;
+    }
+
+    this.lastMemoryCleanup = now;
+    const cutoff = now - 300000; // Keep last 5 minutes (increased for stability)
     const originalLength = this.recentOperations.length;
 
+    // More aggressive filtering to reduce memory usage
     this.recentOperations = this.recentOperations.filter(
       (op) => op.timestamp > cutoff
     );
 
-    // Keep only the most recent if still too many
-    if (this.recentOperations.length > this.maxRecentOperations) {
-      this.recentOperations = this.recentOperations.slice(
-        -this.maxRecentOperations
-      );
+    // Keep only the most recent entries - even more aggressive limit to prevent warnings
+    const targetSize = Math.max(5, Math.floor(this.maxRecentOperations * 0.6)); // Keep 60% of max, minimum 5
+    if (this.recentOperations.length > targetSize) {
+      this.recentOperations = this.recentOperations.slice(-targetSize);
     }
 
     const cleaned = originalLength - this.recentOperations.length;
@@ -1118,30 +1133,44 @@ class DataManager {
   }
 
   /**
-   * Check for memory pressure and take action
+   * Check for memory pressure and take action - optimized thresholds with intelligent warning suppression
    */
   checkMemoryPressure() {
+    const now = Date.now();
     const cacheRatio = this.cache.size / this.memoryThresholds.maxCacheSize;
     const metricsRatio =
       this.recentOperations.length / this.maxRecentOperations;
 
-    if (cacheRatio > 0.8) {
-      console.warn(
-        `⚠️ DataManager: High cache usage (${Math.round(cacheRatio * 100)}%)`
-      );
+    // Increased threshold from 0.95 to 0.98 to reduce false warnings
+    if (cacheRatio > 0.98) {
+      // Only warn every 2 minutes to reduce spam
+      if (!this.lastMetricsWarning || now - this.lastMetricsWarning > 120000) {
+        console.warn(
+          `⚠️ DataManager: High cache usage (${Math.round(cacheRatio * 100)}%)`
+        );
+        this.lastMetricsWarning = now;
+      }
 
-      // Force more aggressive cleanup
-      if (cacheRatio > 0.9) {
+      // Force more aggressive cleanup only when critical
+      if (cacheRatio > 0.99) {
         this.aggressiveCleanup();
       }
     }
 
-    if (metricsRatio > 0.8) {
-      console.warn(
-        `⚠️ DataManager: High metrics usage (${Math.round(
-          metricsRatio * 100
-        )}%)`
-      );
+    // Significantly increased threshold and reduced warning frequency
+    if (metricsRatio > 0.9) {
+      // Only warn every 2 minutes and only if it's been a problem for a while
+      if (!this.lastMetricsWarning || now - this.lastMetricsWarning > 120000) {
+        console.warn(
+          `⚠️ DataManager: High metrics usage (${Math.round(
+            metricsRatio * 100
+          )}%) - will auto-cleanup shortly`
+        );
+        this.lastMetricsWarning = now;
+      }
+
+      // Immediately trigger cleanup instead of just warning
+      this.cleanupOldMetrics();
     }
   }
 
