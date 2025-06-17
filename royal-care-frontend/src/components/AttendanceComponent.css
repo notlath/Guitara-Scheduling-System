@@ -7,6 +7,7 @@
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .refresh-btn {
@@ -176,6 +177,13 @@
 .check-out-btn:disabled {
   background-color: #6c757d;
   cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
+}
+
+.check-in-btn.late-checkin:disabled {
+  background-color: #6c757d;
+  color: #ffffff;
 }
 
 .attendance-completed {
@@ -434,46 +442,317 @@
   color: #495057;
 }
 
-/* Mobile responsiveness */
+/* Edit Actions */
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.edit-btn,
+.note-btn,
+.save-btn,
+.cancel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.edit-btn {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.edit-btn:hover:not(:disabled) {
+  background-color: #e0a800;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.note-btn {
+  background-color: #6f42c1;
+  color: white;
+}
+
+.note-btn:hover:not(:disabled) {
+  background-color: #5a32a3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.save-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.save-btn:hover:not(:disabled) {
+  background-color: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.cancel-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background-color: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.edit-btn:disabled,
+.note-btn:disabled,
+.save-btn:disabled,
+.cancel-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading state styles */
+.edit-actions .loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Enhanced form styling */
+.attendance-details .detail-row {
+  transition: background-color 0.2s ease;
+}
+
+.attendance-details .detail-row:hover {
+  background-color: #f8f9fa;
+}
+
+/* Success message styling */
+.attendance-success {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  border: 1px solid #c3e6cb;
+}
+
+/* Edit Form Inputs */
+.time-input {
+  padding: 4px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 120px;
+}
+
+.time-input:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.notes-textarea {
+  padding: 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 60px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.notes-textarea:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.modal-close-btn:hover {
+  background-color: #f8f9fa;
+  color: #495057;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.note-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.note-textarea:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid #e9ecef;
+}
+
+.save-note-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.save-note-btn:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.save-note-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.cancel-note-btn {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancel-note-btn:hover {
+  background-color: #545b62;
+}
+
+/* Enhanced detail rows for editing */
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row .label {
+  font-weight: 500;
+  color: #495057;
+  min-width: 120px;
+}
+
+.detail-row .value {
+  color: #212529;
+  flex: 1;
+  text-align: right;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-  .attendance-component {
-    padding: 15px;
-  }
-
-  .attendance-header {
+  .edit-actions {
     flex-direction: column;
-    gap: 12px;
-    text-align: center;
+    gap: 8px;
   }
 
-  .current-time {
-    font-size: 1em;
-  }
-
-  .current-date {
-    font-size: 0.9em;
-  }
-
-  .status-header {
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
+  .edit-btn,
+  .note-btn,
+  .save-btn,
+  .cancel-btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .detail-row {
     flex-direction: column;
-    gap: 4px;
-    text-align: center;
+    align-items: flex-start;
+    gap: 8px;
   }
 
-  .attendance-info {
-    grid-template-columns: 1fr;
+  .detail-row .value {
+    text-align: left;
+    width: 100%;
   }
 
-  .check-in-btn,
-  .check-out-btn {
-    min-width: 120px;
-    font-size: 1em;
+  .time-input,
+  .notes-textarea {
+    width: 100%;
+    max-width: none;
+  }
+
+  .modal-content {
+    width: 95%;
+    margin: 10px;
   }
 }
 
