@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
@@ -10,7 +10,8 @@ import {
   startSession,
   therapistConfirm,
 } from "../features/scheduling/schedulingSlice";
-import { useTherapistDashboardData } from "../hooks/useDashboardIntegration";
+// OPTIMIZED: Replace old data hooks with optimized versions
+import { useOptimizedDashboardData } from "../hooks/useOptimizedData";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
@@ -61,32 +62,20 @@ const TherapistDashboard = () => {
       [actionKey]: isLoading,
     }));
   };
-  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual); // Enhanced data access with immediate display capabilities
+  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
+  // OPTIMIZED: Use optimized dashboard data hook
   const {
-    myAppointments,
-    myTodayAppointments,
-    myUpcomingAppointments,
+    appointments: myAppointments,
+    todayAppointments: myTodayAppointments,
+    upcomingAppointments: myUpcomingAppointments,
     loading,
-    isRefreshing,
-    hasAnyData,
-    isStaleData,
     error,
-    refreshAppointments,
-    refreshIfStale,
-  } = useTherapistDashboardData();
+    forceRefresh,
+    hasData,
+  } = useOptimizedDashboardData("therapistDashboard", "therapist");
 
-  // Auto-refresh stale data in background
-  useEffect(() => {
-    if (isStaleData && hasAnyData) {
-      console.log("🔄 TherapistDashboard: Auto-refreshing stale data");
-      refreshIfStale();
-    }
-  }, [isStaleData, hasAnyData, refreshIfStale]); // 🔥 FIXED: Replace redundant refreshAppointments with centralized data manager
-  // refreshAppointments is now provided by useTherapistDashboardData hook
-
-  // 🔥 REMOVED: All redundant polling and data fetching
-  // The centralized data manager (useTherapistDashboardData) handles all polling automatically
-  // No need for individual dashboard polling or initial data loading
+  // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
+  // The optimized data manager handles background refreshes automatically
 
   // 🔥 REMOVED: Initial data loading is handled by centralized data manager
 
@@ -106,8 +95,8 @@ const TherapistDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await dispatch(therapistConfirm(appointmentId)).unwrap();
-      // Only refresh current view data to minimize API calls
-      refreshAppointments(true);
+      // OPTIMIZED: Use forceRefresh instead of refreshAppointments
+      forceRefresh();
     } catch (error) {
       // More user-friendly error message
       if (
@@ -144,7 +133,7 @@ const TherapistDashboard = () => {
           rejectionReason: cleanReason,
         })
       ).unwrap();
-      refreshAppointments(true); // Silent background refresh after action
+      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
       // Better error message handling with authentication awareness
@@ -180,7 +169,7 @@ const TherapistDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await dispatch(therapistConfirm(appointmentId)).unwrap();
-      refreshAppointments(true);
+      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
@@ -194,7 +183,7 @@ const TherapistDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await dispatch(startSession(appointmentId)).unwrap();
-      refreshAppointments(true);
+      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
     } catch (error) {
       console.error("Failed to start session:", error);
       alert("Failed to start session. Please try again.");
@@ -208,7 +197,7 @@ const TherapistDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await dispatch(requestPayment(appointmentId)).unwrap();
-      refreshAppointments(true);
+      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
     } catch (error) {
       console.error("Failed to request payment:", error);
       alert("Failed to request payment. Please try again.");
@@ -225,7 +214,7 @@ const TherapistDashboard = () => {
       try {
         setActionLoading(actionKey, true);
         await dispatch(completeAppointment(appointmentId)).unwrap();
-        refreshAppointments(true);
+        forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
       } catch (error) {
         console.error("Failed to complete session:", error);
         alert("Failed to complete session. Please try again.");
@@ -249,7 +238,7 @@ const TherapistDashboard = () => {
               : "Pickup requested by therapist",
         })
       ).unwrap();
-      refreshAppointments(true);
+      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
       alert(
         urgency === "urgent"
           ? "Urgent pickup request sent!"
@@ -953,20 +942,15 @@ const TherapistDashboard = () => {
   return (
     <PageLayout>
       {" "}
-      {/* Enhanced minimal loading indicator with immediate data support */}
+      {/* OPTIMIZED: Simplified loading indicator */}
       <MinimalLoadingIndicator
         show={loading}
-        hasData={hasAnyData}
-        isRefreshing={isRefreshing}
+        hasData={hasData} // OPTIMIZED: Use hasData instead of hasAnyData
         position="top-right"
         size="small"
-        variant={isStaleData ? "warning" : "subtle"}
+        variant="subtle" // OPTIMIZED: Remove stale data check
         tooltip={
-          isStaleData
-            ? "Data may be outdated, refreshing..."
-            : hasAnyData
-            ? "Refreshing appointments..."
-            : "Loading appointments..."
+          hasData ? "Refreshing appointments..." : "Loading appointments..."
         }
         pulse={true}
         fadeIn={true}
@@ -981,17 +965,17 @@ const TherapistDashboard = () => {
               Logout
             </button>
           </div>
-        </LayoutRow>
-        {/* Enhanced loading indicator - only show if no cached data available */}
-        {error && !hasAnyData && (
+        </LayoutRow>{" "}
+        {/* OPTIMIZED: Simplified error handling */}
+        {error && !hasData && (
           <div className="error-message">
             <div>
               {typeof error === "object"
                 ? error.message || error.error || "An error occurred"
                 : error}
-            </div>
+            </div>{" "}
             <button
-              onClick={() => refreshAppointments(false)}
+              onClick={() => forceRefresh()} // OPTIMIZED: Use forceRefresh instead of refreshAppointments
               className="retry-button"
               style={{
                 marginTop: "10px",

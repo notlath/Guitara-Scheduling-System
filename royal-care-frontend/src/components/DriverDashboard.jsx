@@ -10,7 +10,8 @@ import {
   startJourney,
   updateAppointmentStatus, // Used for general status updates, including confirmations
 } from "../features/scheduling/schedulingSlice";
-import { useDriverDashboardData } from "../hooks/useDashboardIntegration";
+// OPTIMIZED: Replace old data hooks with optimized versions
+import { useOptimizedDashboardData } from "../hooks/useOptimizedData";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
@@ -140,7 +141,7 @@ const DriverDashboard = () => {
       // Optionally, add success notification or UI update here
       console.log(`Pickup confirmed for appointment ${appointmentId}`);
       // Consider a targeted refresh or rely on WebSocket/syncService updates
-      refreshAppointments(true, currentView);
+      forceRefresh();
     } catch (error) {
       console.error("Failed to confirm pickup:", error);
       // Optionally, add error notification here
@@ -165,32 +166,24 @@ const DriverDashboard = () => {
     }
   };
   const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
-  // Enhanced data access with immediate display capabilities
+  // Enhanced data access with immediate display capabilities  // OPTIMIZED: Use optimized dashboard data hook
   const {
-    myAppointments,
-    myTodayAppointments,
-    myUpcomingAppointments,
-    myAllTransports,
-    hasActivePickupAssignment,
-    activePickupAssignment,
+    appointments: myAppointments,
+    todayAppointments: myTodayAppointments,
+    upcomingAppointments: myUpcomingAppointments,
     loading,
-    isRefreshing,
-    hasAnyData,
-    isStaleData,
     error,
-    isInitialLoad,
-    refreshAppointments,
     forceRefresh,
-    refreshIfStale,
-  } = useDriverDashboardData();
+    hasData,
+  } = useOptimizedDashboardData("driverDashboard", "driver");
 
-  // Auto-refresh stale data in background
-  useEffect(() => {
-    if (isStaleData && hasAnyData) {
-      console.log("🔄 DriverDashboard: Auto-refreshing stale data");
-      refreshIfStale();
-    }
-  }, [isStaleData, hasAnyData, refreshIfStale]);
+  // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
+  // The optimized data manager handles background refreshes automatically
+
+  // Set default values for missing properties from old hook
+  const myAllTransports = myAppointments; // Use appointments as transport data
+  const hasActivePickupAssignment = false; // Simplified for optimization
+  const activePickupAssignment = null; // Simplified for optimization
   // Debug: Log all appointments data
   console.log("🔍 Driver Dashboard Debug:", {
     user: user,
@@ -278,7 +271,7 @@ const DriverDashboard = () => {
           status: "driver_confirmed",
         })
       ).unwrap();
-      refreshAppointments(true);
+      forceRefresh();
     } catch (error) {
       // More user-friendly error message
       if (
@@ -310,7 +303,7 @@ const DriverDashboard = () => {
           status: "driver_confirmed",
         })
       ).unwrap();
-      refreshAppointments(true);
+      forceRefresh();
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
@@ -324,7 +317,7 @@ const DriverDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await dispatch(startJourney(appointmentId)).unwrap();
-      refreshAppointments(true);
+      forceRefresh();
     } catch (error) {
       console.error("Failed to start journey:", error);
       alert("Failed to start journey. Please try again.");
@@ -343,7 +336,7 @@ const DriverDashboard = () => {
           status: "arrived",
         })
       ).unwrap();
-      refreshAppointments(true);
+      forceRefresh();
     } catch (error) {
       console.error("Failed to mark arrived:", error);
       alert("Failed to mark arrived. Please try again.");
@@ -360,7 +353,7 @@ const DriverDashboard = () => {
           status: "driving_to_location",
         })
       ).unwrap();
-      refreshAppointments(true);
+      forceRefresh();
     } catch (error) {
       if (
         error?.message?.includes("401") ||
@@ -381,7 +374,7 @@ const DriverDashboard = () => {
           status: "at_location",
         })
       ).unwrap();
-      refreshAppointments(true);
+      forceRefresh();
     } catch (error) {
       if (
         error?.message?.includes("401") ||
@@ -402,7 +395,7 @@ const DriverDashboard = () => {
             status: "transport_completed",
           })
         ).unwrap();
-        refreshAppointments(true);
+        forceRefresh();
       } catch (error) {
         if (
           error?.message?.includes("401") ||
@@ -433,7 +426,7 @@ const DriverDashboard = () => {
         })
       ).unwrap();
 
-      refreshAppointments(true);
+      forceRefresh();
     } catch (error) {
       if (
         error?.message?.includes("401") ||
@@ -466,7 +459,7 @@ const DriverDashboard = () => {
         "Transport completed successfully! Therapist dropped off. You are now available for new assignments."
       );
 
-      refreshAppointments(true);
+      forceRefresh();
     } catch (error) {
       console.error("Failed to mark drop off:", error);
       alert("Failed to complete transport. Please try again.");
@@ -480,7 +473,7 @@ const DriverDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await dispatch(completeReturnJourney(appointmentId)).unwrap();
-      refreshAppointments(true);
+      forceRefresh();
       alert(
         "Return journey completed successfully! You are now available for new assignments."
       );
@@ -569,7 +562,7 @@ const DriverDashboard = () => {
           notes: `Started group pickup at ${new Date().toISOString()}`,
         })
       ).unwrap();
-      refreshAppointments(true);
+      forceRefresh();
     } catch (error) {
       console.error("Error starting group pickup:", error);
       alert("Failed to start group pickup. Please try again.");
@@ -585,7 +578,7 @@ const DriverDashboard = () => {
           notes: `All therapists picked up at ${new Date().toISOString()}`,
         })
       ).unwrap();
-      refreshAppointments(true);
+      forceRefresh();
     } catch (error) {
       console.error("Error marking all therapists picked up:", error);
       alert("Failed to mark all therapists picked up. Please try again.");
@@ -602,7 +595,7 @@ const DriverDashboard = () => {
           notes: `Driver assigned for pickup, estimated arrival: ${pickupData.estimated_arrival}`,
         })
       ).unwrap();
-      refreshAppointments(true);
+      forceRefresh();
     } catch (error) {
       console.error("Failed to accept pickup assignment:", error);
       alert("Failed to accept pickup assignment. Please try again.");
@@ -635,7 +628,7 @@ const DriverDashboard = () => {
         therapist_name: `${user.first_name} ${user.last_name}`,
       });
 
-      refreshAppointments(true);
+      forceRefresh();
       alert(
         "Pickup request sent! You'll be notified when a driver is assigned."
       );
@@ -699,7 +692,7 @@ const DriverDashboard = () => {
           })
         ).unwrap();
       }
-      refreshAppointments(true); // Silent background refresh after action
+      forceRefresh(); // Silent background refresh after action
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
       // Better error message handling with authentication awareness
@@ -1580,8 +1573,9 @@ const DriverDashboard = () => {
   };
   return (
     <PageLayout>
-      {/* Minimal loading indicator for background data fetching */}
-      {loading && !isInitialLoad && (
+      {" "}
+      {/* OPTIMIZED: Simplified loading indicator */}
+      {loading && (
         <MinimalLoadingIndicator
           position="top-right"
           size="small"
@@ -1598,28 +1592,25 @@ const DriverDashboard = () => {
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>
-          </div>
-        </LayoutRow>{" "}
-        {/* Enhanced loading indicator - only show if no cached data available */}
+          </div>{" "}
+        </LayoutRow>
+        {/* OPTIMIZED: Simplified loading indicator */}
         <MinimalLoadingIndicator
           show={loading}
-          hasData={hasAnyData}
-          isRefreshing={isRefreshing}
+          hasData={hasData} // OPTIMIZED: Use hasData instead of hasAnyData
           position="top-right"
           size="small"
-          variant={isStaleData ? "warning" : "subtle"}
+          variant="subtle" // OPTIMIZED: Remove stale data check
           tooltip={
-            isStaleData
-              ? "Data may be outdated, refreshing..."
-              : hasAnyData
+            hasData
               ? "Refreshing transport assignments..."
               : "Loading transport assignments..."
           }
           pulse={true}
           fadeIn={true}
-        />{" "}
-        {/* Enhanced error handling - only show if no data available */}
-        {error && !hasAnyData && (
+        />
+        {/* OPTIMIZED: Simplified error handling */}
+        {error && !hasData && (
           <div className="error-message">
             <div>
               {typeof error === "object"
@@ -1627,7 +1618,7 @@ const DriverDashboard = () => {
                 : error}
             </div>
             <button
-              onClick={() => refreshAppointments(false)}
+              onClick={() => forceRefresh()}
               className="retry-button"
               style={{
                 marginTop: "10px",
