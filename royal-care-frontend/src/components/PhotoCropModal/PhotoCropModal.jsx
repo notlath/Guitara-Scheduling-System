@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Cropper from "react-easy-crop";
 import { canvasToFile, getCroppedImg } from "../../utils/cropUtils";
 import styles from "./PhotoCropModal.module.css";
@@ -14,6 +14,7 @@ const PhotoCropModal = ({
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [zoomLimits, setZoomLimits] = useState({ min: 0.2, max: 3 });
 
   const onCropChange = useCallback((crop) => {
     setCrop(crop);
@@ -29,6 +30,55 @@ const PhotoCropModal = ({
     },
     []
   );
+
+  // Calculate zoom limits based on image dimensions to prevent empty space
+  useEffect(() => {
+    if (!imageSrc) return;
+
+    const img = new Image();
+    img.onload = () => {
+      const { naturalWidth, naturalHeight } = img;
+
+      // Wait for container to be rendered, then get actual dimensions
+      setTimeout(() => {
+        const cropContainer = document.querySelector(
+          `.${styles.cropContainer}`
+        );
+        if (!cropContainer) return;
+
+        const containerWidth = cropContainer.clientWidth;
+        const containerHeight = cropContainer.clientHeight;
+
+        // For 1:1 aspect ratio round crop, calculate the minimum zoom needed
+        // to ensure the image completely fills the crop circle without any empty space
+
+        // The crop area is square (1:1 aspect ratio) and takes up most of the container
+        const cropAreaSize = Math.min(containerWidth, containerHeight) * 0.8;
+
+        // Calculate minimum zoom required so image completely covers the crop area
+        // For a square crop area (1:1), we need the image to be at least as large as the crop area
+        const minZoomToFillCrop =
+          cropAreaSize / Math.min(naturalWidth, naturalHeight);
+
+        // This ensures that even the smaller dimension of the image covers the entire crop area
+        // preventing any empty/white space from showing
+        const calculatedMinZoom = Math.max(minZoomToFillCrop, 1.0);
+
+        // Maximum zoom allows for reasonable enlargement
+        const calculatedMaxZoom = Math.max(calculatedMinZoom * 3, 3);
+
+        setZoomLimits({
+          min: calculatedMinZoom,
+          max: calculatedMaxZoom,
+        });
+
+        // Set initial zoom to the minimum to ensure full coverage
+        setZoom(calculatedMinZoom);
+      }, 100); // Small delay to ensure DOM is rendered
+    };
+
+    img.src = imageSrc;
+  }, [imageSrc]);
 
   const handleCropConfirm = async () => {
     if (!croppedAreaPixels) return;
@@ -92,8 +142,8 @@ const PhotoCropModal = ({
             cropShape={cropShape}
             showGrid={true}
             zoomSpeed={0.5}
-            maxZoom={3}
-            minZoom={0.5}
+            maxZoom={zoomLimits.max}
+            minZoom={zoomLimits.min}
             zoomWithScroll={true}
             onCropChange={onCropChange}
             onZoomChange={onZoomChange}
@@ -110,9 +160,9 @@ const PhotoCropModal = ({
             <input
               id="zoom-slider"
               type="range"
-              min={0.5}
-              max={3}
-              step={0.1}
+              min={zoomLimits.min}
+              max={zoomLimits.max}
+              step={0.01}
               value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}
               className={styles.zoomSlider}
