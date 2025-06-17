@@ -71,7 +71,7 @@ class SupabaseStorageService:
             logger.info("Falling back to local file storage")
             return False
 
-    def _process_image(self, image_file, max_size=(400, 400), quality=85):
+    def _process_image(self, image_file, max_size=(800, 800), quality=100):
         """
         Process uploaded image: resize, compress, and convert to JPEG
         """
@@ -134,10 +134,17 @@ class SupabaseStorageService:
                 base_url = getattr(settings, "BASE_URL", "http://localhost:8000")
                 file_url = f"{base_url}{file_url}"
 
+            # Add cache-busting timestamp to the URL
+            import time
+
+            timestamp = int(time.time())
+            cache_buster = f"?v={timestamp}"
+            full_url = f"{file_url}{cache_buster}"
+
             logger.info(
-                f"✅ Profile photo uploaded to local storage for user {user_id}: {file_url}"
+                f"✅ Profile photo uploaded to local storage for user {user_id}: {full_url}"
             )
-            return file_url
+            return full_url
 
         except Exception as e:
             logger.error(f"Local storage upload failed for user {user_id}: {e}")
@@ -156,30 +163,76 @@ class SupabaseStorageService:
                 # Process the image
                 processed_image, image_data = self._process_image(image_file)
 
-                # Create a unique filename
+                # Create a unique filename with timestamp to force cache refresh
+                import time
+
+                timestamp = int(time.time())
                 file_extension = "jpg"  # Always save as JPEG after processing
                 storage_path = f"users/{user_id}/profile.{file_extension}"
 
                 def upload_operation():
-                    # First, try to remove existing file (if any)
-                    try:
-                        self.client.storage.from_(self.bucket_name).remove(
-                            [storage_path]
-                        )
-                    except Exception:
-                        # File might not exist, that's okay
-                        pass
+                    # Upload the new file - ensure we're using bytes
+                    # Some Supabase library versions expect different formats
+                    upload_data = image_data
+                    if isinstance(upload_data, BytesIO):
+                        upload_data = upload_data.getvalue()
 
-                    # Upload the new file using the BytesIO object
-                    result = self.client.storage.from_(self.bucket_name).upload(
-                        path=storage_path,
-                        file=processed_image,
-                        file_options={
-                            "content-type": "image/jpeg",
-                            "cache-control": "3600",
-                        },
-                    )
-                    return result
+                    # Ensure we have bytes
+                    if not isinstance(upload_data, bytes):
+                        logger.error(
+                            f"Upload data is {type(upload_data)}, expected bytes"
+                        )
+                        raise ValueError(
+                            f"Upload data must be bytes, got {type(upload_data)}"
+                        )
+
+                    # Force file replacement by using upsert
+                    try:
+                        # Try upsert first (replace if exists, create if not)
+                        result = self.client.storage.from_(self.bucket_name).upload(
+                            path=storage_path,
+                            file=upload_data,
+                            file_options={
+                                "content-type": "image/jpeg",
+                                "cache-control": "no-cache, must-revalidate",  # Force no caching
+                                "upsert": "true",  # Replace if exists
+                            },
+                        )
+                        logger.info(
+                            f"✅ Used upsert for file replacement at {storage_path}"
+                        )
+                        return result
+                    except Exception as upsert_error:
+                        logger.warning(
+                            f"Upsert failed, trying delete+upload: {upsert_error}"
+                        )
+
+                        # Fallback: Delete existing file first, then upload new one
+                        try:
+                            # First, try to remove existing file (if any)
+                            remove_result = self.client.storage.from_(
+                                self.bucket_name
+                            ).remove([storage_path])
+                            logger.info(f"Removed existing file: {remove_result}")
+                        except Exception as delete_error:
+                            # File might not exist, that's okay
+                            logger.info(
+                                f"No existing file to delete (or delete failed): {delete_error}"
+                            )
+
+                        # Now upload the new file
+                        result = self.client.storage.from_(self.bucket_name).upload(
+                            path=storage_path,
+                            file=upload_data,
+                            file_options={
+                                "content-type": "image/jpeg",
+                                "cache-control": "no-cache, must-revalidate",  # Force no caching
+                            },
+                        )
+                        logger.info(
+                            f"✅ Used delete+upload for file replacement at {storage_path}"
+                        )
+                        return result
 
                 # Execute upload operation safely
                 result, error = safe_supabase_operation(upload_operation, timeout=30)
@@ -206,10 +259,15 @@ class SupabaseStorageService:
                     public_url = self.client.storage.from_(
                         self.bucket_name
                     ).get_public_url(storage_path)
+
+                    # Add cache-busting timestamp to the URL
+                    cache_buster = f"?v={timestamp}"
+                    full_url = f"{public_url}{cache_buster}"
+
                     logger.info(
-                        f"✅ Profile photo uploaded successfully for user {user_id}: {public_url}"
+                        f"✅ Profile photo uploaded successfully for user {user_id}: {full_url}"
                     )
-                    return public_url
+                    return full_url
                 else:
                     logger.error(
                         f"❌ Upload failed for user {user_id} - no result or path: {result}"
