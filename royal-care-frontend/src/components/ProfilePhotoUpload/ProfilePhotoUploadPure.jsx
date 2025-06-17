@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateUserProfile } from "../../features/auth/authSlice";
+import PhotoCropModal from "../PhotoCropModal/PhotoCropModal";
 import styles from "./ProfilePhotoUpload.module.css";
 
 const ProfilePhotoUploadPure = ({
@@ -10,6 +11,8 @@ const ProfilePhotoUploadPure = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(currentPhoto);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState(null);
   const fileInputRef = useRef(null);
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
@@ -30,17 +33,27 @@ const ProfilePhotoUploadPure = ({
       return;
     }
 
-    // Show preview immediately
+    // Show the image in crop modal
     const reader = new FileReader();
-    reader.onload = (e) => setPreview(e.target.result);
+    reader.onload = (e) => {
+      setSelectedImageSrc(e.target.result);
+      setShowCropModal(true);
+    };
     reader.readAsDataURL(file);
+  };
 
+  const handleCropComplete = async (croppedFile, croppedImageUrl) => {
+    setShowCropModal(false);
+    setSelectedImageSrc(null);
+
+    // Show preview immediately
+    setPreview(croppedImageUrl);
     setUploading(true);
 
     try {
       // Create FormData for file upload
       const formData = new FormData();
-      formData.append("photo", file);
+      formData.append("photo", croppedFile);
 
       // Get auth token
       const token = localStorage.getItem("knoxToken");
@@ -84,6 +97,15 @@ const ProfilePhotoUploadPure = ({
       setPreview(currentPhoto); // Revert preview
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setSelectedImageSrc(null);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -135,55 +157,72 @@ const ProfilePhotoUploadPure = ({
   };
 
   return (
-    <div className={`${styles.photoUpload} ${styles[size]}`}>
-      <div className={styles.photoContainer} onClick={handleUploadClick}>
-        <div className={styles.photoPreview}>
-          {preview ? (
-            <img src={preview} alt="Profile" className={styles.profilePhoto} />
-          ) : (
-            <div className={styles.photoPlaceholder}>
-              <div className={styles.placeholderIcon}>👤</div>
-              <p className={styles.placeholderText}>No Photo</p>
-            </div>
-          )}
-          {uploading && (
-            <div className={styles.uploadingOverlay}>
-              <div className={styles.uploadingSpinner}></div>
-              <span>Uploading...</span>
-            </div>
+    <>
+      <div className={`${styles.photoUpload} ${styles[size]}`}>
+        <div className={styles.photoContainer} onClick={handleUploadClick}>
+          <div className={styles.photoPreview}>
+            {preview ? (
+              <img
+                src={preview}
+                alt="Profile"
+                className={styles.profilePhoto}
+              />
+            ) : (
+              <div className={styles.photoPlaceholder}>
+                <div className={styles.placeholderIcon}>👤</div>
+                <p className={styles.placeholderText}>No Photo</p>
+              </div>
+            )}
+            {uploading && (
+              <div className={styles.uploadingOverlay}>
+                <div className={styles.uploadingSpinner}></div>
+                <span>Uploading...</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.photoActions}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleFileSelect}
+            disabled={uploading}
+            style={{ display: "none" }}
+          />
+
+          <button
+            onClick={handleUploadClick}
+            disabled={uploading}
+            className={styles.uploadButton}
+          >
+            {preview ? "Change Photo" : "Upload Photo"}
+          </button>
+
+          {preview && (
+            <button
+              onClick={handleRemovePhoto}
+              disabled={uploading}
+              className={styles.removeButton}
+            >
+              Remove
+            </button>
           )}
         </div>
       </div>
 
-      <div className={styles.photoActions}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={handleFileSelect}
-          disabled={uploading}
-          style={{ display: "none" }}
+      {/* Crop Modal */}
+      {showCropModal && selectedImageSrc && (
+        <PhotoCropModal
+          imageSrc={selectedImageSrc}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+          aspectRatio={1}
+          cropShape="round"
         />
-
-        <button
-          onClick={handleUploadClick}
-          disabled={uploading}
-          className={styles.uploadButton}
-        >
-          {preview ? "Change Photo" : "Upload Photo"}
-        </button>
-
-        {preview && (
-          <button
-            onClick={handleRemovePhoto}
-            disabled={uploading}
-            className={styles.removeButton}
-          >
-            Remove
-          </button>
-        )}
-      </div>
-    </div>
+      )}
+    </>
   );
 };
 
