@@ -60,11 +60,27 @@ def insert_into_table(table_name, data):
 class RegisterTherapist(APIView):
     def get(self, request):
         supabase = get_supabase_client()
-        # Fetch all therapists from Supabase
-        result = supabase.table("registration_therapist").select("*").execute()
+        # Pagination parameters
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 20))
+        offset = (page - 1) * page_size
+        # Revert to select all fields
+        result = supabase.table("registration_therapist").select("*").range(offset, offset + page_size - 1).execute()
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
         data = result.data if hasattr(result, "data") else []
+
+        # Fetch phone_number from CustomUser for each therapist
+        from core.models import CustomUser
+        for therapist in data:
+            username = therapist.get("username")
+            phone_number = None
+            try:
+                user = CustomUser.objects.get(username=username)
+                phone_number = user.phone_number
+            except CustomUser.DoesNotExist:
+                phone_number = None
+            therapist["phone_number"] = phone_number
         return Response(data)
 
     def post(self, request):
@@ -186,29 +202,39 @@ class RegisterTherapist(APIView):
 
 class RegisterDriver(APIView):
     def get(self, request):
-        # Fetch all drivers from Supabase with timeout handling
         supabase = get_supabase_client()
         if not supabase:
             return Response({"error": "Supabase client not available"}, status=500)
-
+        # Pagination parameters
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 20))
+        offset = (page - 1) * page_size
         def operation():
-            return supabase.table("registration_driver").select("*").execute()
-
+            # Revert to select all fields
+            return supabase.table("registration_driver").select("*").range(offset, offset + page_size - 1).execute()
         result, error = safe_supabase_operation(operation, timeout=10)
-
         if error:
             logger.error(f"Failed to fetch drivers: {error}")
             return Response(
                 {"error": f"Database connection failed: {error}"}, status=500
             )
-
         if not result:
             return Response({"error": "No response from database"}, status=500)
-
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
-
         data = result.data if hasattr(result, "data") else []
+
+        # Fetch phone_number from CustomUser for each driver
+        from core.models import CustomUser
+        for driver in data:
+            username = driver.get("username")
+            phone_number = None
+            try:
+                user = CustomUser.objects.get(username=username)
+                phone_number = user.phone_number
+            except CustomUser.DoesNotExist:
+                phone_number = None
+            driver["phone_number"] = phone_number
         return Response(data)
 
     def post(self, request):
@@ -356,11 +382,24 @@ class RegisterOperator(APIView):
         supabase = get_supabase_client()
         if not supabase:
             return Response({"error": "Supabase client not available"}, status=500)
-        # Fetch all operators from Supabase
-        result = supabase.table("registration_operator").select("*").execute()
+        # Pagination parameters
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 20))
+        offset = (page - 1) * page_size
+        # Revert to select all fields
+        result = supabase.table("registration_operator").select("*").range(offset, offset + page_size - 1).execute()
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
         data = result.data if hasattr(result, "data") else []
+
+        # Optimize: bulk fetch CustomUser phone numbers
+        from core.models import CustomUser
+        usernames = [op.get("username") for op in data if op.get("username")]
+        users = CustomUser.objects.filter(username__in=usernames)
+        user_map = {u.username: u.phone_number for u in users}
+        for operator in data:
+            username = operator.get("username")
+            operator["phone_number"] = user_map.get(username)
         return Response(data)
 
     def post(self, request):
@@ -562,8 +601,11 @@ class RegisterClient(APIView):
     def get(self, request):
         # Fetch all clients from scheduling app
         from scheduling.models import Client
-
-        clients = Client.objects.all()
+        # Pagination parameters
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 20))
+        offset = (page - 1) * page_size
+        clients = Client.objects.all().order_by('id')[offset:offset+page_size]
         # Map to frontend table fields
         data = []
         for client in clients:
@@ -624,8 +666,12 @@ class RegisterMaterial(APIView):
         supabase = get_supabase_client()
         if not supabase:
             return Response({"error": "Supabase client not available"}, status=500)
-        # Fetch all materials from Supabase
-        result = supabase.table("registration_material").select("*").execute()
+        # Pagination parameters
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 20))
+        offset = (page - 1) * page_size
+        # Fetch paginated materials from Supabase
+        result = supabase.table("registration_material").select("*").range(offset, offset + page_size - 1).execute()
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
         data = result.data if hasattr(result, "data") else []
@@ -653,8 +699,12 @@ class RegisterService(APIView):
         supabase = get_supabase_client()
         if not supabase:
             return Response({"error": "Supabase client not available"}, status=500)
-        # Fetch all services from Supabase
-        result = supabase.table("registration_service").select("*").execute()
+        # Pagination parameters
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 20))
+        offset = (page - 1) * page_size
+        # Fetch paginated services from Supabase
+        result = supabase.table("registration_service").select("*").range(offset, offset + page_size - 1).execute()
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
         data = result.data if hasattr(result, "data") else []
@@ -669,9 +719,7 @@ class RegisterService(APIView):
             else None
         )
         materials_data = (
-            materials_result.data
-            if materials_result and hasattr(materials_result, "data")
-            else []
+            materials_result.data if materials_result and hasattr(materials_result, "data") else []
         )
         # Group materials by service_id
         from collections import defaultdict

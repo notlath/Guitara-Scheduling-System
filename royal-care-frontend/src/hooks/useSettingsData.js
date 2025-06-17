@@ -326,6 +326,7 @@ export const useSettingsData = (fetchers = {}) => {
   return {
     // Data
     tableData,
+    setTableData, // Expose setTableData for infinite scroll
 
     // Loading states
     isTabLoading,
