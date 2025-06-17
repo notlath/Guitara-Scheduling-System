@@ -32,6 +32,14 @@ const AttendancePage = () => {
 
   const [selectedDate, setSelectedDate] = useState(getCurrentDate());
   const [attendanceFilter, setAttendanceFilter] = useState("all");
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [noteModal, setNoteModal] = useState({
+    isOpen: false,
+    recordId: null,
+    currentNote: "",
+  });
+  const [noteText, setNoteText] = useState("");
 
   const attendanceState = useOptimizedSelector(
     (state) => state.attendance,

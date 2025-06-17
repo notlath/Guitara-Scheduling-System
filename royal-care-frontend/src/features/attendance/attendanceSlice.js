@@ -241,6 +241,56 @@ export const markAsAbsent = createAsyncThunk(
   }
 );
 
+// Update attendance record (for editing)
+export const updateAttendanceRecord = createAsyncThunk(
+  "attendance/updateAttendanceRecord",
+  async ({ attendanceId, updateData }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue("Authentication required");
+    }
+
+    try {
+      const response = await axios.patch(
+        `${API_URL}records/${attendanceId}/`,
+        updateData,
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        handleApiError(error, "Failed to update attendance record")
+      );
+    }
+  }
+);
+
+// Add note to attendance record
+export const addAttendanceNote = createAsyncThunk(
+  "attendance/addAttendanceNote",
+  async ({ attendanceId, notes }, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue("Authentication required");
+    }
+
+    try {
+      const response = await axios.patch(
+        `${API_URL}records/${attendanceId}/`,
+        { notes },
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(handleApiError(error, "Failed to add note"));
+    }
+  }
+);
+
 // Initial state
 const initialState = {
   // Current user's attendance status
@@ -258,11 +308,15 @@ const initialState = {
   checkInLoading: false,
   checkOutLoading: false,
   approvalLoading: {},
+  updateLoading: {},
+  noteLoading: {},
 
   // Error states
   error: null,
   checkInError: null,
   checkOutError: null,
+  updateError: null,
+  noteError: null,
 
   // UI states
   lastRefresh: null,
@@ -277,6 +331,8 @@ const attendanceSlice = createSlice({
       state.error = null;
       state.checkInError = null;
       state.checkOutError = null;
+      state.updateError = null;
+      state.noteError = null;
     },
     resetAttendanceState: () => {
       return { ...initialState };
@@ -284,6 +340,14 @@ const attendanceSlice = createSlice({
     setApprovalLoading: (state, action) => {
       const { attendanceId, isLoading } = action.payload;
       state.approvalLoading[attendanceId] = isLoading;
+    },
+    setUpdateLoading: (state, action) => {
+      const { attendanceId, isLoading } = action.payload;
+      state.updateLoading[attendanceId] = isLoading;
+    },
+    setNoteLoading: (state, action) => {
+      const { attendanceId, isLoading } = action.payload;
+      state.noteLoading[attendanceId] = isLoading;
     },
   },
   extraReducers: (builder) => {
@@ -380,6 +444,54 @@ const attendanceSlice = createSlice({
       .addCase(generateAttendanceSummary.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      // Update attendance record
+      .addCase(updateAttendanceRecord.pending, (state, action) => {
+        const attendanceId = action.meta.arg.attendanceId;
+        state.updateLoading[attendanceId] = true;
+        state.updateError = null;
+      })
+      .addCase(updateAttendanceRecord.fulfilled, (state, action) => {
+        const updatedRecord = action.payload;
+        state.updateLoading[updatedRecord.id] = false;
+
+        // Update the record in attendanceRecords if it exists
+        const index = state.attendanceRecords.findIndex(
+          (record) => record.id === updatedRecord.id
+        );
+        if (index !== -1) {
+          state.attendanceRecords[index] = updatedRecord;
+        }
+      })
+      .addCase(updateAttendanceRecord.rejected, (state, action) => {
+        const attendanceId = action.meta.arg.attendanceId;
+        state.updateLoading[attendanceId] = false;
+        state.updateError = action.payload;
+      })
+
+      // Add attendance note
+      .addCase(addAttendanceNote.pending, (state, action) => {
+        const attendanceId = action.meta.arg.attendanceId;
+        state.noteLoading[attendanceId] = true;
+        state.noteError = null;
+      })
+      .addCase(addAttendanceNote.fulfilled, (state, action) => {
+        const updatedRecord = action.payload;
+        state.noteLoading[updatedRecord.id] = false;
+
+        // Update the record in attendanceRecords if it exists
+        const index = state.attendanceRecords.findIndex(
+          (record) => record.id === updatedRecord.id
+        );
+        if (index !== -1) {
+          state.attendanceRecords[index] = updatedRecord;
+        }
+      })
+      .addCase(addAttendanceNote.rejected, (state, action) => {
+        const attendanceId = action.meta.arg.attendanceId;
+        state.noteLoading[attendanceId] = false;
+        state.noteError = action.payload;
       });
   },
 });
@@ -388,6 +500,8 @@ export const {
   clearAttendanceError,
   resetAttendanceState,
   setApprovalLoading,
+  setUpdateLoading,
+  setNoteLoading,
 } = attendanceSlice.actions;
 
 export default attendanceSlice.reducer;

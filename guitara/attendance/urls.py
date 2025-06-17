@@ -9,6 +9,11 @@ urlpatterns = [
     # Operator endpoints
     path("records/", views.attendance_records, name="attendance_records"),
     path(
+        "records/<int:attendance_id>/",
+        views.update_attendance_record,
+        name="update_attendance_record",
+    ),
+    path(
         "approve/<int:attendance_id>/",
         views.approve_attendance,
         name="approve_attendance",

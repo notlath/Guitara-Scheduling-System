@@ -413,3 +413,80 @@ def mark_absent(request):
 
     serializer = AttendanceRecordSerializer(attendance_record)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def update_attendance_record(request, attendance_id):
+    """
+    Update an attendance record. Staff can update their own records, operators can update any.
+    """
+    user = request.user
+    is_operator = user.role == "operator"
+
+    try:
+        attendance_record = AttendanceRecord.objects.get(id=attendance_id)
+    except AttendanceRecord.DoesNotExist:
+        return Response(
+            {"error": "Attendance record not found."}, status=status.HTTP_404_NOT_FOUND
+        )
+
+    # Check permissions - staff can only update their own records
+    if not is_operator and attendance_record.staff_member != user:
+        return Response(
+            {
+                "error": "Permission denied. You can only update your own attendance records."
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Get the fields to update
+    update_data = request.data
+
+    # Validate and update allowed fields
+    allowed_fields = ["notes", "check_in_time", "check_out_time"]
+
+    for field in allowed_fields:
+        if field in update_data:
+            if field == "notes":
+                attendance_record.notes = update_data[field]
+            elif field == "check_in_time":
+                try:
+                    # Parse time string (HH:MM format)
+                    time_str = update_data[field]
+                    if time_str:
+                        hours, minutes = time_str.split(":")
+                        new_time = timezone.datetime.strptime(
+                            f"{hours}:{minutes}", "%H:%M"
+                        ).time()
+                        attendance_record.check_in_time = new_time
+                except (ValueError, AttributeError):
+                    return Response(
+                        {"error": "Invalid check-in time format. Use HH:MM."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            elif field == "check_out_time":
+                try:
+                    # Parse time string (HH:MM format)
+                    time_str = update_data[field]
+                    if time_str:
+                        hours, minutes = time_str.split(":")
+                        new_time = timezone.datetime.strptime(
+                            f"{hours}:{minutes}", "%H:%M"
+                        ).time()
+                        attendance_record.check_out_time = new_time
+                except (ValueError, AttributeError):
+                    return Response(
+                        {"error": "Invalid check-out time format. Use HH:MM."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+    try:
+        attendance_record.save()
+        serializer = AttendanceRecordSerializer(attendance_record)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to update attendance record: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

@@ -308,7 +308,7 @@ const AttendanceComponent = () => {
       return `${hours.toString().padStart(2, "0")}:${minutes
         .toString()
         .padStart(2, "0")}`;
-    } catch {
+    } catch (error) {
       return "";
     }
   };
@@ -330,43 +330,42 @@ const AttendanceComponent = () => {
     return now > cutoffTime;
   };
 
-  const hasCheckedInToday = () => {
-    // Check multiple sources to determine if user has checked in today
-    return !!(
-      isCheckedIn ||
-      checkInTime ||
-      todayStatus?.check_in_time ||
-      todayStatus?.is_checked_in
-    );
-  };
+  const canCheckOut = () => {
+    // If already checked out, can't check out again
+    if (checkOutTime) return false;
 
-  const canCheckOutToday = () => {
     // Must be checked in first
-    if (!hasCheckedInToday()) return false;
+    if (!isCheckedIn) return false;
 
-    // If already checked out, need to verify it's not for today
-    if ((checkOutTime || todayStatus?.check_out_time) && todayStatus?.date) {
-      const now = new Date();
-      const today = now.toDateString();
-      const statusDate = new Date(todayStatus.date).toDateString();
+    // Check if it's still the same day
+    const now = new Date();
+    const today = now.toDateString();
 
-      // If the status date is today and there's a check-out time, can't check out again
-      if (today === statusDate) {
-        return false; // Already checked out today
-      }
-    }
-
-    // Check if it's still the same day as check-in
-    if ((checkInTime || todayStatus?.check_in_time) && todayStatus?.date) {
-      const now = new Date();
-      const today = now.toDateString();
+    // If there's a check-in time and status, compare dates
+    if (checkInTime && todayStatus?.date) {
       const checkInDate = new Date(todayStatus.date).toDateString();
-
-      // Can only check out on the same day as check-in
       return today === checkInDate;
     }
 
     return true;
+  };
+
+  const canCheckOutToday = () => {
+    // If already checked out today, cannot check out again
+    if (checkOutTime) {
+      const now = new Date();
+      const today = now.toDateString();
+
+      // If there's a check-out time and status, compare dates
+      if (todayStatus?.date) {
+        const statusDate = new Date(todayStatus.date).toDateString();
+        if (today === statusDate) {
+          return false; // Already checked out today
+        }
+      }
+    }
+
+    return canCheckOut();
   };
 
   return (
@@ -526,7 +525,7 @@ const AttendanceComponent = () => {
           </div>
 
           <div className="attendance-actions-panel">
-            {!hasCheckedInToday() && isWithinCheckInWindow() ? (
+            {!isCheckedIn && isWithinCheckInWindow() ? (
               <div className="check-in-section">
                 {isLateCheckIn() && (
                   <div className="late-warning">
@@ -541,13 +540,13 @@ const AttendanceComponent = () => {
                   className={`check-in-btn ${
                     isLateCheckIn() ? "late-checkin" : ""
                   }`}
-                  disabled={!isWithinCheckInWindow() || hasCheckedInToday()}
+                  disabled={!isWithinCheckInWindow()}
                 >
                   <MdCheckCircle />
                   {isLateCheckIn() ? "Check In (Late)" : "Check In"}
                 </LoadingButton>
               </div>
-            ) : hasCheckedInToday() && canCheckOutToday() ? (
+            ) : isCheckedIn && canCheckOutToday() ? (
               <LoadingButton
                 onClick={handleCheckOut}
                 loading={checkOutLoading}
@@ -556,12 +555,7 @@ const AttendanceComponent = () => {
                 <MdLogout />
                 Check Out
               </LoadingButton>
-            ) : hasCheckedInToday() && !canCheckOutToday() ? (
-              <div className="attendance-completed">
-                <MdCheckCircle />
-                <span>You have already checked in for today</span>
-              </div>
-            ) : checkOutTime || todayStatus?.check_out_time ? (
+            ) : checkOutTime ? (
               <div className="attendance-completed">
                 <MdCheckCircle />
                 <span>You have already checked out for today</span>
