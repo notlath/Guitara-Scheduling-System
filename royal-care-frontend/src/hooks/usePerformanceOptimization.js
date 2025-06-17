@@ -12,7 +12,7 @@ import { shallowEqual, useSelector } from "react-redux";
  * Enhanced to ensure stable references and prevent selector warnings
  */
 export const useOptimizedSelector = (selector, equalityFn = shallowEqual) => {
-  // Create stable empty references that won't change between renders
+  // Always call hooks in the same order - create stable references first
   const stableEmptyArray = useMemo(() => [], []);
   const stableEmptyObject = useMemo(() => ({}), []);
 
@@ -22,39 +22,56 @@ export const useOptimizedSelector = (selector, equalityFn = shallowEqual) => {
     let lastState = null;
 
     return (state) => {
+      // Handle case where state is null/undefined
+      if (!state) {
+        return null;
+      }
+
       // Quick reference check - if state hasn't changed at all, return last result
       if (state === lastState && lastResult !== null) {
         return lastResult;
       }
 
-      const result = selector(state);
+      try {
+        const result = selector(state);
 
-      // Ensure we return stable references for objects and arrays
-      if (typeof result === "object" && result !== null) {
-        // For arrays, ensure they're not empty arrays that change reference
-        if (Array.isArray(result) && result.length === 0) {
-          const stableResult = stableEmptyArray;
-          lastResult = stableResult;
-          lastState = state;
-          return stableResult;
+        // Ensure we return stable references for objects and arrays
+        if (typeof result === "object" && result !== null) {
+          // For arrays, ensure they're not empty arrays that change reference
+          if (Array.isArray(result) && result.length === 0) {
+            const stableResult = stableEmptyArray;
+            lastResult = stableResult;
+            lastState = state;
+            return stableResult;
+          }
+          // For objects, ensure empty objects are stable
+          if (!Array.isArray(result) && Object.keys(result).length === 0) {
+            const stableResult = stableEmptyObject;
+            lastResult = stableResult;
+            lastState = state;
+            return stableResult;
+          }
         }
-        // For objects, ensure empty objects are stable
-        if (!Array.isArray(result) && Object.keys(result).length === 0) {
-          const stableResult = stableEmptyObject;
-          lastResult = stableResult;
-          lastState = state;
-          return stableResult;
-        }
+
+        // Cache the result for next time
+        lastResult = result;
+        lastState = state;
+        return result;
+      } catch (error) {
+        console.error("Selector execution failed:", error);
+        return lastResult || null;
       }
-
-      // Cache the result for next time
-      lastResult = result;
-      lastState = state;
-      return result;
     };
   }, [selector, stableEmptyArray, stableEmptyObject]);
 
-  return useSelector(memoizedSelector, equalityFn);
+  // Always call useSelector - handle errors within the selector
+  try {
+    return useSelector(memoizedSelector, equalityFn);
+  } catch (error) {
+    console.error("useOptimizedSelector failed:", error);
+    // Return null as fallback to prevent crashes
+    return null;
+  }
 };
 
 /**

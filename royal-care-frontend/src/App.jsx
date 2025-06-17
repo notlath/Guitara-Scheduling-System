@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { shallowEqual, useDispatch } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
@@ -10,8 +10,11 @@ import OperatorDashboard from "./components/OperatorDashboard";
 import TherapistDashboard from "./components/TherapistDashboard";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RouteHandler from "./components/auth/RouteHandler";
+import ReactErrorBoundary from "./components/common/ReactErrorBoundary";
 import AvailabilityManager from "./components/scheduling/AvailabilityManager";
 import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
+// Initialize service worker error suppression early
+import "./utils/serviceWorkerErrorSuppression";
 // Import performance optimization services
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
 import CompanyInfoPage from "./pages/AboutPages/CompanyInfoPage";
@@ -42,9 +45,81 @@ import memoryManager from "./services/memoryManager";
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
 
+// Error Boundary Component
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("App Error Boundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            padding: "20px",
+            textAlign: "center",
+            backgroundColor: "#f8f9fa",
+            minHeight: "100vh",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <h1>Something went wrong</h1>
+          <p>The application encountered an error. Please refresh the page.</p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+            }}
+          >
+            Refresh Page
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Safe App Component
+const SafeApp = () => {
+  // Check if React hooks are properly available
+  if (typeof useEffect !== "function" || typeof useDispatch !== "function") {
+    console.error(
+      "React hooks not available - possible React version mismatch"
+    );
+    return (
+      <div style={{ padding: "20px", textAlign: "center" }}>
+        <h1>Loading...</h1>
+        <p>Initializing application...</p>
+      </div>
+    );
+  }
+
+  return <App />;
+};
+
 const App = () => {
   const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
   const dispatch = useDispatch();
+
   useEffect(() => {
     // Check if user data exists in localStorage and validate the token
     const checkStoredAuth = async () => {
@@ -285,10 +360,19 @@ const App = () => {
             <Route path="system" element={<SystemInfoPage />} />
             <Route path="developers" element={<DeveloperInfoPage />} />
           </Route>
-        </Route>
+        </Route>{" "}
       </Routes>
     </BrowserRouter>
   );
 };
 
-export default App;
+// Export the safe version wrapped in error boundary
+const AppWrapper = () => (
+  <ReactErrorBoundary>
+    <AppErrorBoundary>
+      <SafeApp />
+    </AppErrorBoundary>
+  </ReactErrorBoundary>
+);
+
+export default AppWrapper;

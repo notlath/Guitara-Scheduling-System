@@ -13,8 +13,13 @@ export default defineConfig({
     include: ["react-easy-crop", "tslib"],
   },
   resolve: {
-    // Fix emotion/react duplicate loading issue
-    dedupe: ["@emotion/react", "@emotion/styled"],
+    // Fix emotion/react duplicate loading issue and React duplicate instances
+    dedupe: ["react", "react-dom", "@emotion/react", "@emotion/styled"],
+    alias: {
+      // Ensure single React instance
+      react: "react",
+      "react-dom": "react-dom",
+    },
   },
   build: {
     rollupOptions: {
