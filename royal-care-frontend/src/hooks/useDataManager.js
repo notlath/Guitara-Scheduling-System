@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSelector } from "react-redux";
+import { shallowEqual, useSelector } from "react-redux";
 import dataManager from "../services/dataManager.js";
 import usePerformanceFeedback from "./usePerformanceFeedback";
 
@@ -107,9 +107,9 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
     }
   }, [componentName]);
 
-  // Memoized selectors to prevent unnecessary re-renders
-  const reduxState = useSelector(
-    (state) => ({
+  // Memoized selector to prevent unnecessary re-renders
+  const selector = useMemo(
+    () => (state) => ({
       appointments: state.scheduling?.appointments,
       todayAppointments: state.scheduling?.todayAppointments,
       upcomingAppointments: state.scheduling?.upcomingAppointments,
@@ -131,6 +131,8 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
     }),
     []
   );
+
+  const reduxState = useSelector(selector, shallowEqual);
 
   // Extract individual values from memoized Redux state
   const {
