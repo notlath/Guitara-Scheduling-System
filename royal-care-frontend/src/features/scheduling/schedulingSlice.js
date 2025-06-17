@@ -1562,6 +1562,8 @@ export const markAppointmentPaid = createAsyncThunk(
           payment_method: paymentData?.method || "cash",
           payment_amount: parseFloat(paymentData?.amount) || 0,
           payment_notes: paymentData?.notes || "",
+          receipt_hash: paymentData?.receiptHash || null,
+          receipt_url: paymentData?.receiptUrl || null,
         },
         { headers: { Authorization: `Token ${token}` } }
       );
@@ -1587,6 +1589,9 @@ export const markAppointmentPaid = createAsyncThunk(
             {
               payment_method: paymentData?.method || "cash",
               payment_amount: parseFloat(paymentData?.amount) || 0,
+              payment_notes: paymentData?.notes || "",
+              receipt_hash: paymentData?.receiptHash || null,
+              receipt_url: paymentData?.receiptUrl || null,
             },
             { headers: { Authorization: `Token ${token}` } }
           );

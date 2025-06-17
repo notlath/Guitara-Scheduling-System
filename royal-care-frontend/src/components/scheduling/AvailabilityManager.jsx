@@ -1095,8 +1095,8 @@ const AvailabilityManager = () => {
                         <div className="cross-day-note">
                           <small>{availability.cross_day_note}</small>
                         </div>
-                      )}{" "}
-                    </td>{" "}
+                      )}
+                    </td>
                     <td>
                       <div
                         style={{

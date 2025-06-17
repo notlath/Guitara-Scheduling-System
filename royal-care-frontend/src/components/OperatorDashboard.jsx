@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -18,12 +18,18 @@ import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 import { useOperatorDashboardData } from "../hooks/useDashboardIntegration";
+import {
+  useOptimizedAppointmentFilters,
+  useOptimizedButtonLoading,
+  useOptimizedCountdown,
+} from "../hooks/useOperatorPerformance";
 import { useStableCallback } from "../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
+import PerformanceMonitor from "./PerformanceMonitor";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
@@ -48,7 +54,6 @@ const OperatorDashboard = () => {
     newSearchParams.set("view", newView);
     setSearchParams(newSearchParams);
   });
-
   // Modal states - memoized to prevent unnecessary re-renders
   const [reviewModal, setReviewModal] = useState({
     isOpen: false,
@@ -57,31 +62,6 @@ const OperatorDashboard = () => {
   });
   const [reviewNotes, setReviewNotes] = useState("");
   const [autoCancelLoading, setAutoCancelLoading] = useState(false);
-
-  // Optimized loading states with stable callbacks
-  const [buttonLoading, setButtonLoading] = useState({});
-
-  const setActionLoading = useStableCallback((actionKey, isLoading) => {
-    console.log(`🔄 setActionLoading: ${actionKey} = ${isLoading}`);
-    setButtonLoading((prev) => {
-      const newState = {
-        ...prev,
-        [actionKey]: isLoading,
-      };
-      console.log("🔍 setActionLoading: New button loading state:", newState);
-      return newState;
-    });
-  });
-
-  // Force clear loading state for emergency situations
-  const _forceClearLoading = useStableCallback((actionKey) => {
-    console.log(`🚨 forceClearLoading: Forcing clear for ${actionKey}`);
-    setButtonLoading((prev) => {
-      const newState = { ...prev };
-      delete newState[actionKey];
-      return newState;
-    });
-  });
   // Payment verification modal state
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
@@ -92,6 +72,11 @@ const OperatorDashboard = () => {
     method: "cash",
     amount: "",
     notes: "",
+    receiptFile: null,
+    receiptHash: "",
+    receiptUrl: "",
+    isUploading: false,
+    uploadError: "",
   });
   // Attendance-related state
   const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -106,14 +91,6 @@ const OperatorDashboard = () => {
     pendingPickups: [],
   }); // Enhanced data access with immediate display capabilities
   const {
-    rejectedAppointments,
-    pendingAppointments,
-    awaitingPaymentAppointments,
-    overdueAppointments,
-    approachingDeadlineAppointments,
-    activeSessions,
-    pickupRequests,
-    rejectionStats,
     appointments,
     todayAppointments,
     upcomingAppointments,
@@ -127,6 +104,95 @@ const OperatorDashboard = () => {
     refreshIfStale,
   } = useOperatorDashboardData();
 
+  // 🔥 PERFORMANCE OPTIMIZATION: Use optimized appointment filtering
+  const {
+    rejected: rejectedAppointments,
+    pending: pendingAppointments,
+    awaitingPayment: awaitingPaymentAppointments,
+    overdue: overdueAppointments,
+    approachingDeadline: approachingDeadlineAppointments,
+    activeSessions,
+    pickupRequests,
+    rejectionStats,
+  } = useOptimizedAppointmentFilters(appointments);
+
+  // 🔥 PERFORMANCE OPTIMIZATION: Use optimized countdown timer
+  const isTimeoutViewActive = currentView === "timeout";
+  const { countdowns, manageTimer, stopTimer } = useOptimizedCountdown(
+    pendingAppointments,
+    isTimeoutViewActive
+  );
+
+  // 🔥 PERFORMANCE OPTIMIZATION: Use optimized button loading
+  const { buttonLoading, setActionLoading, forceClearLoading } =
+    useOptimizedButtonLoading();
+
+  // 🔥 PERFORMANCE OPTIMIZATION: Memoize expensive computations
+  const dashboardTabs = useMemo(
+    () => [
+      {
+        id: "rejected",
+        label: "Rejection Reviews",
+        count: rejectedAppointments.length,
+      },
+      {
+        id: "pending",
+        label: "Pending Acceptance",
+        count: pendingAppointments.length,
+      },
+      {
+        id: "timeout",
+        label: "Timeout Monitoring",
+        count:
+          overdueAppointments.length + approachingDeadlineAppointments.length,
+      },
+      {
+        id: "payment",
+        label: "Payment Verification",
+        count: awaitingPaymentAppointments.length,
+      },
+      {
+        id: "all",
+        label: "All Appointments",
+        count: appointments?.length || 0,
+      },
+      {
+        id: "attendance",
+        label: "Attendance",
+        count: attendanceRecords.length,
+      },
+      {
+        id: "notifications",
+        label: "Notifications",
+        count: notifications?.length || 0,
+      },
+      {
+        id: "driver",
+        label: "Driver Coordination",
+        count: driverAssignment.pendingPickups.length,
+      },
+      { id: "workflow", label: "Workflow", count: 0 },
+      {
+        id: "sessions",
+        label: "Active Sessions",
+        count: activeSessions.length,
+      },
+      { id: "pickup", label: "Pickup Requests", count: pickupRequests.length },
+    ],
+    [
+      rejectedAppointments.length,
+      pendingAppointments.length,
+      overdueAppointments.length,
+      approachingDeadlineAppointments.length,
+      awaitingPaymentAppointments.length,
+      appointments?.length,
+      attendanceRecords.length,
+      notifications?.length,
+      driverAssignment.pendingPickups.length,
+      activeSessions.length,
+      pickupRequests.length,
+    ]
+  );
   // Auto-refresh stale data in background
   useEffect(() => {
     if (isStaleData && hasAnyData) {
@@ -134,6 +200,20 @@ const OperatorDashboard = () => {
       refreshIfStale();
     }
   }, [isStaleData, hasAnyData, refreshIfStale]);
+
+  // 🔥 PERFORMANCE OPTIMIZATION: Optimized countdown timer management
+  useEffect(() => {
+    if (isTimeoutViewActive) {
+      manageTimer();
+    } else {
+      stopTimer();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      stopTimer();
+    };
+  }, [isTimeoutViewActive, manageTimer, stopTimer]);
   // Helper function to get driver task description based on appointment status
   const getDriverTaskDescription = (appointment) => {
     if (!appointment) return "On assignment";
@@ -599,7 +679,7 @@ const OperatorDashboard = () => {
         console.log(
           "🚨 handleMarkPaymentPaid: Safety timeout triggered, clearing loading state"
         );
-        _forceClearLoading(actionKey);
+        forceClearLoading(actionKey);
       }, 30000);
 
       // Pass the appointment ID as a number, not an object
@@ -685,7 +765,55 @@ const OperatorDashboard = () => {
       method: "cash",
       amount: "",
       notes: "",
+      receiptFile: null,
+      receiptHash: "",
+      receiptUrl: "",
+      isUploading: false,
+      uploadError: "",
     });
+  };
+
+  // Handle receipt file upload
+  const handleReceiptFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      // Show loading state
+      setPaymentData((prev) => ({
+        ...prev,
+        isUploading: true,
+        uploadError: "",
+      }));
+
+      // Import the receipt service
+      const { receiptService } = await import("../services/receiptService");
+
+      // Upload receipt and get hash
+      const appointmentId = parseInt(paymentModal.appointmentId, 10);
+      const result = await receiptService.uploadGCashReceipt(
+        file,
+        appointmentId
+      );
+
+      console.log("✅ Receipt uploaded successfully:", result);
+
+      // Update payment data with receipt information
+      setPaymentData((prev) => ({
+        ...prev,
+        receiptFile: file,
+        receiptHash: result.hash,
+        receiptUrl: result.publicUrl,
+        isUploading: false,
+      }));
+    } catch (error) {
+      console.error("❌ Receipt upload failed:", error);
+      setPaymentData((prev) => ({
+        ...prev,
+        isUploading: false,
+        uploadError: error.message || "Failed to upload receipt",
+      }));
+    }
   }; // Driver coordination functions - Pure FIFO system (no proximity filtering)
   const handleAssignDriverPickup = useCallback(
     async (therapistId, driverId = null) => {
@@ -1456,11 +1584,28 @@ const OperatorDashboard = () => {
                   <p>
                     <strong>Created:</strong>{" "}
                     {new Date(appointment.created_at).toLocaleString()}
-                  </p>
+                  </p>{" "}
                   {appointment.timeout_deadline && (
                     <p>
                       <strong>Deadline:</strong>{" "}
                       {new Date(appointment.timeout_deadline).toLocaleString()}
+                    </p>
+                  )}
+                  {/* 🔥 PERFORMANCE OPTIMIZATION: Display countdown timer */}
+                  {countdowns && countdowns[appointment.id] !== undefined && (
+                    <p>
+                      <strong>Time Remaining:</strong>{" "}
+                      <span
+                        className={`countdown ${
+                          countdowns[appointment.id] <= 300 ? "urgent" : ""
+                        }`}
+                      >
+                        {Math.floor(countdowns[appointment.id] / 60)}:
+                        {String(countdowns[appointment.id] % 60).padStart(
+                          2,
+                          "0"
+                        )}
+                      </span>
                     </p>
                   )}
                 </div>
@@ -1866,34 +2011,6 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
-  // Define the available tabs for the dashboard, including counts
-  const dashboardTabs = [
-    { value: "rejected", label: `Rejected (${rejectedAppointments.length})` },
-    { value: "pending", label: `Pending (${pendingAppointments.length})` },
-    { value: "timeout", label: `Timeout (${overdueAppointments.length})` },
-    {
-      value: "payment",
-      label: `Payment (${awaitingPaymentAppointments.length})`,
-    },
-    { value: "all", label: `All (${appointments.length})` },
-    { value: "attendance", label: `Attendance (${attendanceRecords.length})` },
-    {
-      value: "notifications",
-      label: `Notifications (${notifications.length})`,
-    },
-    {
-      value: "driver",
-      label: `Driver (${driverAssignment.availableDrivers.length})`,
-    },
-    {
-      value: "workflow",
-      label: `Workflow (${approachingDeadlineAppointments.length})`,
-    },
-    { value: "sessions", label: `Sessions (${activeSessions.length})` },
-    { value: "pickup", label: `Pickup (${pickupRequests.length})` },
-  ];
-
   // Render the tab switcher at the top of the dashboard
   return (
     <PageLayout>
@@ -1962,12 +2079,18 @@ const OperatorDashboard = () => {
             activeTab={currentView}
             onTabChange={setView}
           />
-        </div>
+        </div>{" "}
         <div
           className={`dashboard-content ${
             paymentModal.isOpen || reviewModal.isOpen ? "faded" : ""
           }`}
         >
+          {" "}
+          {/* 🔥 PERFORMANCE MONITOR: Real-time performance tracking */}
+          <PerformanceMonitor
+            componentName="OperatorDashboard"
+            enabled={import.meta.env.DEV || false}
+          />
           {currentView === "rejected" && (
             <div className="rejected-appointments">
               <h2>Rejection Reviews</h2>
@@ -2098,19 +2221,26 @@ const OperatorDashboard = () => {
             </div>
             <div className={styles["modal-form"]}>
               <div className="form-group">
-                <label htmlFor="paymentMethod">Payment Method:</label>
+                <label htmlFor="paymentMethod">Payment Method:</label>{" "}
                 <select
                   id="paymentMethod"
                   value={paymentData.method}
                   onChange={(e) =>
-                    setPaymentData({ ...paymentData, method: e.target.value })
+                    setPaymentData({
+                      ...paymentData,
+                      method: e.target.value,
+                      // Reset receipt data when switching payment methods
+                      receiptFile: null,
+                      receiptHash: "",
+                      receiptUrl: "",
+                      uploadError: "",
+                    })
                   }
                 >
                   <option value="cash">Cash</option>
                   <option value="gcash">GCash</option>
                 </select>
               </div>
-
               <div className="form-group">
                 <label htmlFor="paymentAmount">Amount Received:</label>
                 <input
@@ -2124,8 +2254,124 @@ const OperatorDashboard = () => {
                   min="0"
                   step="0.01"
                 />
-              </div>
-
+              </div>{" "}
+              {/* GCash Receipt Upload */}
+              {paymentData.method === "gcash" && (
+                <div
+                  className="form-group"
+                  style={{
+                    backgroundColor: "#f0f8ff",
+                    border: "2px solid #3498db",
+                    padding: "15px",
+                    borderRadius: "8px",
+                    marginTop: "15px",
+                  }}
+                >
+                  <label
+                    htmlFor="receiptFile"
+                    style={{
+                      color: "#2c3e50",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    }}
+                  >
+                    📄 GCash Receipt Upload{" "}
+                    <span style={{ color: "#e74c3c" }}>*</span>
+                  </label>
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <input
+                      type="file"
+                      id="receiptFile"
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      onChange={handleReceiptFileChange}
+                      disabled={paymentData.isUploading}
+                      required
+                    />
+                    {paymentData.isUploading && (
+                      <div
+                        style={{
+                          marginTop: "0.5rem",
+                          fontSize: "0.9rem",
+                          color: "#555",
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: "inline-block",
+                            width: "16px",
+                            height: "16px",
+                            border: "2px solid rgba(0,0,0,.1)",
+                            borderTopColor: "#3498db",
+                            borderRadius: "50%",
+                            marginRight: "8px",
+                            animation: "spin 1s ease-in-out infinite",
+                          }}
+                        ></span>
+                        Uploading...
+                      </div>
+                    )}
+                    {paymentData.receiptHash && (
+                      <div
+                        style={{
+                          marginTop: "0.5rem",
+                          background: "#f5f5f5",
+                          padding: "8px",
+                          borderRadius: "4px",
+                          fontSize: "0.85rem",
+                        }}
+                      >
+                        <p
+                          style={{
+                            color: "#2ecc71",
+                            marginBottom: "4px",
+                            fontWeight: "500",
+                          }}
+                        >
+                          ✓ Receipt verified
+                        </p>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            color: "#555",
+                            fontFamily: "monospace",
+                            overflow: "hidden",
+                          }}
+                        >
+                          <span
+                            style={{ fontWeight: "500", marginRight: "8px" }}
+                          >
+                            SHA-256:
+                          </span>
+                          <span
+                            style={{
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              cursor: "pointer",
+                            }}
+                            title={paymentData.receiptHash}
+                          >
+                            {paymentData.receiptHash.substring(0, 16)}...
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {paymentData.uploadError && (
+                      <p
+                        style={{
+                          color: "#e74c3c",
+                          marginTop: "4px",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {paymentData.uploadError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="form-group">
                 <label htmlFor="paymentNotes">Notes (optional):</label>
                 <textarea
@@ -2138,7 +2384,6 @@ const OperatorDashboard = () => {
                   rows={3}
                 />
               </div>
-
               <div className="modal-actions">
                 <LoadingButton
                   className="verify-button"

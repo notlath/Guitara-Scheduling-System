@@ -46,6 +46,7 @@
   padding: 40px;
   font-size: 1.1rem;
   color: #7f8c8d;
+  animation: spin 2s linear infinite;
 }
 
 .error-message {
@@ -996,4 +997,14 @@
 
 .notification-panel-wrapper .notificationHeader {
   display: none !important; /* Hide the header since we have our own */
+}
+
+/* Keyframes for spinning animation */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
