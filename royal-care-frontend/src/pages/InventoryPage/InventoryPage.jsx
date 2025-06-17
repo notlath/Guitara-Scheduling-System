@@ -1,10 +1,28 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 import styles from "./InventoryPage.module.css";
 import pageTitles from "../../constants/pageTitles";
 import DataTable from "../../globals/DataTable";
 import PageLayout from "../../globals/PageLayout";
 import LayoutRow from "../../globals/LayoutRow";
 import { MdAdd } from "react-icons/md";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const INVENTORY_API_URL = `${API_BASE_URL}/api/inventory/`;
+
+const getAuthToken = () => {
+  // Adjust this if you store the token elsewhere (e.g., Redux)
+  return localStorage.getItem("token");
+};
+
+const axiosAuth = axios.create();
+axiosAuth.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) {
+    config.headers["Authorization"] = `Token ${token}`;
+  }
+  return config;
+});
 import { Select, MenuItem } from "./MUISelect";
 
 const InventoryPage = () => {
@@ -14,111 +32,156 @@ const InventoryPage = () => {
   const [newItem, setNewItem] = useState({
     name: "",
     category: "",
-    currentStock: 0,
-    minStock: 0,
+    current_stock: 0,
+    min_stock: 0,
     unit: "",
     supplier: "",
-    costPerUnit: 0,
+    cost_per_unit: 0,
   });
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [showUsageLog, setShowUsageLog] = useState(false);
+  const [usageLogs, setUsageLogs] = useState([]);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editItem, setEditItem] = useState(null);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockItem, setRestockItem] = useState(null);
+  const [restockAmount, setRestockAmount] = useState(0);
+  const [restockNotes, setRestockNotes] = useState("");
+  const [activeTab] = useState("inventory"); // Only use activeTab if needed
+  // const [lastAddedId, setLastAddedId] = useState(null); // Unused, remove highlight tracking
 
   useEffect(() => {
     document.title = pageTitles.inventory;
+    fetchInventory();
   }, []);
 
-  // Mock inventory data - in real app, this would come from API
-  const inventoryItems = [
-    {
-      id: 1,
-      name: "Premium Massage Oil (Lavender)",
-      category: "Oils & Lotions",
-      currentStock: 25,
-      minStock: 10,
-      unit: "bottles",
-      supplier: "Wellness Supplies Co.",
-      costPerUnit: 15.99,
-      lastRestocked: "2024-01-15",
-      expiryDate: "2025-06-15",
-    },
-    {
-      id: 2,
-      name: "Premium Massage Oil (Eucalyptus)",
-      category: "Oils & Lotions",
-      currentStock: 8,
-      minStock: 10,
-      unit: "bottles",
-      supplier: "Wellness Supplies Co.",
-      costPerUnit: 15.99,
-      lastRestocked: "2024-01-10",
-      expiryDate: "2025-06-10",
-    },
-    {
-      id: 3,
-      name: "Egyptian Cotton Towels (Large)",
-      category: "Linens",
-      currentStock: 45,
-      minStock: 20,
-      unit: "pieces",
-      supplier: "Comfort Linens Ltd.",
-      costPerUnit: 12.5,
-      lastRestocked: "2024-01-20",
-      expiryDate: null,
-    },
-    {
-      id: 4,
-      name: "Disposable Face Covers",
-      category: "Hygiene",
-      currentStock: 150,
-      minStock: 50,
-      unit: "pieces",
-      supplier: "MedSupply Inc.",
-      costPerUnit: 0.75,
-      lastRestocked: "2024-01-18",
-      expiryDate: null,
-    },
-    {
-      id: 5,
-      name: "Portable Massage Table",
-      category: "Equipment",
-      currentStock: 8,
-      minStock: 5,
-      unit: "units",
-      supplier: "ProTherapy Equipment",
-      costPerUnit: 299.99,
-      lastRestocked: "2023-12-01",
-      expiryDate: null,
-    },
-    {
-      id: 6,
-      name: "Hand Sanitizer (500ml)",
-      category: "Hygiene",
-      currentStock: 12,
-      minStock: 15,
-      unit: "bottles",
-      supplier: "Health Essentials",
-      costPerUnit: 8.99,
-      lastRestocked: "2024-01-12",
-      expiryDate: "2025-12-31",
-    },
-  ];
+  useEffect(() => {
+    if (showUsageLog) {
+      fetchUsageLogs();
+    }
+  }, [showUsageLog]);
+
+  const fetchInventory = async () => {
+    try {
+      const res = await axiosAuth.get(INVENTORY_API_URL);
+      // Ensure inventoryItems is always an array
+      let items = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data.results)
+        ? res.data.results
+        : [];
+      setInventoryItems(items);
+    } catch {
+      setInventoryItems([]); // fallback to empty array
+    }
+  };
+
+  const fetchUsageLogs = async () => {
+    try {
+      const res = await axiosAuth.get(`${INVENTORY_API_URL}usage-log/`);
+      setUsageLogs(Array.isArray(res.data) ? res.data : res.data.results || []);
+    } catch {
+      setUsageLogs([]);
+    }
+  };
+
+  const handleAddItem = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axiosAuth.post(INVENTORY_API_URL, {
+        name: newItem.name,
+        category: newItem.category,
+        current_stock: newItem.current_stock,
+        min_stock: newItem.min_stock,
+        unit: newItem.unit,
+        supplier: newItem.supplier,
+        cost_per_unit: newItem.cost_per_unit,
+      });
+      setInventoryItems([...inventoryItems, res.data]);
+      // setLastAddedId(res.data.id); // Highlight this row
+      setShowAddModal(false);
+      setNewItem({
+        name: "",
+        category: "",
+        current_stock: 0,
+        min_stock: 0,
+        unit: "",
+        supplier: "",
+        cost_per_unit: 0,
+      });
+    } catch {
+      showError("Failed to add item.");
+    }
+  };
+
+  const handleEditClick = (item) => {
+    setEditItem(item);
+    setShowEditModal(true);
+  };
+
+  const handleEditSave = async (updatedItem) => {
+    try {
+      const res = await axiosAuth.put(`${INVENTORY_API_URL}${updatedItem.id}/`, updatedItem);
+      setInventoryItems(inventoryItems.map((item) => (item.id === updatedItem.id ? res.data : item)));
+      setShowEditModal(false);
+      setEditItem(null);
+    } catch {
+      showError("Failed to update item.");
+    }
+  };
+
+  const handleRestockClick = (item) => {
+    setRestockItem(item);
+    setRestockAmount(0);
+    setShowRestockModal(true);
+  };
+
+  const handleRestockSave = async () => {
+    if (!restockItem) return;
+    try {
+      await axiosAuth.post(`${INVENTORY_API_URL}${restockItem.id}/restock/`, {
+        amount: restockAmount,
+        notes: restockNotes || undefined,
+      });
+      fetchInventory();
+      if (showUsageLog) fetchUsageLogs(); // Refresh usage log if visible
+      setShowRestockModal(false);
+      setRestockItem(null);
+      setRestockAmount(0);
+      setRestockNotes("");
+    } catch {
+      showError("Failed to restock item.");
+    }
+  };
 
   const categories = [
     "all",
     ...new Set(inventoryItems.map((item) => item.category)),
   ];
 
-  const filteredItems = inventoryItems.filter((item) => {
-    const matchesCategory =
-      selectedCategory === "all" || item.category === selectedCategory;
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.supplier.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
+  const filteredItems = Array.isArray(inventoryItems)
+    ? inventoryItems.filter((item) => {
+        const matchesCategory =
+          selectedCategory === "all" || item.category === selectedCategory;
+        const matchesSearch =
+          (item.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.supplier || "").toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesCategory && matchesSearch;
+      })
+    : [];
+
+  const sortedFilteredItems = [...filteredItems].sort((a, b) => {
+    if (a.name && b.name) {
+      return a.name.localeCompare(b.name);
+    }
+    return 0;
   });
 
   const getStockStatus = (item) => {
-    if (item.currentStock <= item.minStock) {
+    // Use backend field names
+    if (item.current_stock <= item.min_stock) {
       return { status: "low", label: "Low Stock", class: "stock-low" };
-    } else if (item.currentStock <= item.minStock * 1.5) {
+    } else if (item.current_stock <= item.min_stock * 1.5) {
       return {
         status: "warning",
         label: "Getting Low",
@@ -132,35 +195,18 @@ const InventoryPage = () => {
   const getInventoryStats = () => {
     const totalItems = inventoryItems.length;
     const lowStockItems = inventoryItems.filter(
-      (item) => item.currentStock <= item.minStock
+      (item) => item.current_stock <= item.min_stock
     ).length;
     const totalValue = inventoryItems.reduce(
-      (sum, item) => sum + item.currentStock * item.costPerUnit,
+      (sum, item) => sum + (item.current_stock * item.cost_per_unit),
       0
     );
-    const categories = new Set(inventoryItems.map((item) => item.category))
-      .size;
+    const categories = new Set(inventoryItems.map((item) => item.category)).size;
 
     return { totalItems, lowStockItems, totalValue, categories };
   };
 
   const stats = getInventoryStats();
-
-  const handleAddItem = (e) => {
-    e.preventDefault();
-    // In real app, this would make an API call
-    console.log("Adding new item:", newItem);
-    setShowAddModal(false);
-    setNewItem({
-      name: "",
-      category: "",
-      currentStock: 0,
-      minStock: 0,
-      unit: "",
-      supplier: "",
-      costPerUnit: 0,
-    });
-  };
 
   // Define columns for DataTable
   const columns = [
@@ -175,92 +221,145 @@ const InventoryPage = () => {
     { key: "actions", label: "Actions" },
   ];
 
+  const usageLogColumns = [
+    { key: "date", label: "Date" },
+    { key: "time", label: "Time" },
+    { key: "productName", label: "Product Name" },
+    { key: "quantityRefilled", label: "Quantity Refilled" },
+    { key: "notes", label: "Notes" },
+  ];
+
   // Prepare data for DataTable
-  const tableData = filteredItems.map((item) => {
+  const tableData = sortedFilteredItems.map((item) => {
     const stockStatus = getStockStatus(item);
     return {
       name: (
         <div className={styles["item-name"]}>
           {item.name}
-          {item.expiryDate && (
+          {item.expiry_date && (
             <div className={styles["expiry-date"]}>
-              Expires: {new Date(item.expiryDate).toLocaleDateString()}
+              Expires: {new Date(item.expiry_date).toLocaleDateString()}
             </div>
           )}
         </div>
       ),
       category: item.category,
-      currentStock: `${item.currentStock} ${item.unit}`,
-      minStock: `${item.minStock} ${item.unit}`,
+      currentStock: `${item.current_stock} ${item.unit}`,
+      minStock: `${item.min_stock} ${item.unit}`,
       status: (
         <span className={styles[stockStatus.class]}>{stockStatus.label}</span>
       ),
       supplier: item.supplier,
-      costPerUnit: `$${item.costPerUnit.toFixed(2)}`,
-      totalValue: `$${(item.currentStock * item.costPerUnit).toFixed(2)}`,
+      costPerUnit: item.cost_per_unit !== undefined && item.cost_per_unit !== null ? `₱${Number(item.cost_per_unit).toFixed(2)}` : '',
+      totalValue: item.current_stock !== undefined && item.cost_per_unit !== undefined && item.current_stock !== null && item.cost_per_unit !== null ? `₱${(Number(item.current_stock) * Number(item.cost_per_unit)).toFixed(2)}` : '',
       actions: (
         <div className={styles["item-actions"]}>
-          <button className={styles["edit-button"]}>Edit</button>
-          <button className={styles["delete-button"]}>Restock</button>
+          <button className={styles["edit-button"]} onClick={() => handleEditClick(item)}>Edit</button>
+          <button className={styles["delete-button"]} onClick={() => handleRestockClick(item)}>Restock</button>
         </div>
       ),
     };
   });
 
+  const usageLogTableData = usageLogs.map((log) => {
+    const dateObj = new Date(log.timestamp || log.date || log.created_at || Date.now());
+    let quantity = log.quantity_used;
+    let notes = log.notes && log.notes.trim() !== "" ? log.notes : "-";
+    let action = log.action_type || "usage";
+    let quantityLabel = action === "restock" ? "Quantity Restocked" : "Quantity Used";
+    return {
+      date: dateObj.toISOString().split("T")[0],
+      time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      productName: log.item_name || log.product_name || log.item || "-",
+      quantityRefilled: `${quantity} ${log.unit || ''}`,
+      notes: notes,
+      actionType: action,
+      quantityLabel: quantityLabel
+    };
+  });
+
+  const showError = (msg) => {
+    // Optionally, implement a toast or alert here
+    console.error(msg);
+  };
+
   return (
     <PageLayout>
       <div className={styles["inventory-page"]}>
-        <LayoutRow title="Inventory Management">
+        <LayoutRow title={showUsageLog ? "Usage Logs" : "Inventory Management"}>
           <div className={"action-buttons"}>
-            <button
-              className={"primary-action-btn"}
-              onClick={() => setShowAddModal(true)}
-            >
-              <span className={"primary-action-icon"}>
-                <MdAdd size={20} />
-              </span>{" "}
-              Add
-            </button>
+            {showUsageLog ? (
+              <button
+                className={styles["back-arrow-btn"]}
+                onClick={() => setShowUsageLog(false)}
+                style={{ marginRight: 16 }}
+                aria-label="Back to Inventory List"
+              >
+                &#8592; {/* Unicode left arrow */}
+              </button>
+            ) : (
+              <>
+                <button
+                  className={"secondary-action-btn"}
+                  onClick={() => setShowUsageLog(true)}
+                  style={{ marginRight: 8 }}
+                >
+                  View Usage Log
+                </button>
+                <button
+                  className={"primary-action-btn"}
+                  onClick={() => setShowAddModal(true)}
+                >
+                  <span className={"primary-action-icon"}>
+                    <MdAdd size={20} />
+                  </span>{" "}
+                  Add
+                </button>
+              </>
+            )}
           </div>
         </LayoutRow>
 
         {/* Inventory Statistics */}
-        <div className={styles["inventory-stats"]}>
-          <div className={styles["stat-card"]}>
-            <div className={styles["stat-number"]}>{stats.totalItems}</div>
-            <div className={styles["stat-label"]}>Total Items</div>
-          </div>
-          <div className={styles["stat-card"]}>
-            <div className={styles["stat-number"]}>{stats.categories}</div>
-            <div className={styles["stat-label"]}>Categories</div>
-          </div>
-          <div className={styles["stat-card"] + " " + styles["warning"]}>
-            <div className={styles["stat-number"]}>{stats.lowStockItems}</div>
-            <div className={styles["stat-label"]}>Low Stock Alerts</div>
-          </div>
-          <div className={styles["stat-card"]}>
-            <div className={styles["stat-number"]}>
-              ${stats.totalValue.toFixed(2)}
+        {!showUsageLog && activeTab === "inventory" && (
+          <div className={styles["inventory-stats"]}>
+            <div className={styles["stat-card"]}>
+              <div className={styles["stat-number"]}>{stats.totalItems}</div>
+              <div className={styles["stat-label"]}>Total Items</div>
             </div>
-            <div className={styles["stat-label"]}>Total Inventory Value</div>
+            <div className={styles["stat-card"]}>
+              <div className={styles["stat-number"]}>{stats.categories}</div>
+              <div className={styles["stat-label"]}>Categories</div>
+            </div>
+            <div className={styles["stat-card"] + " " + styles["warning"]}>
+              <div className={styles["stat-number"]}>{stats.lowStockItems}</div>
+              <div className={styles["stat-label"]}>Low Stock Alerts</div>
+            </div>
+            <div className={styles["stat-card"]}>
+              <div className={styles["stat-number"]}>
+                {typeof stats.totalValue === 'number' && !isNaN(stats.totalValue) ? `₱${stats.totalValue.toFixed(2)}` : ''}
+              </div>
+              <div className={styles["stat-label"]}>Total Inventory Value</div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Controls */}
-        <div className={styles["inventory-controls"]}>
-          <input
-            type="text"
-            placeholder="Search items, suppliers..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={styles["search-input"]}
-            style={{ minWidth: 220, marginRight: 12 }}
-          />
-          <Select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className={styles["category-select"]}
-            size="small"
+        {!showUsageLog && activeTab === "inventory" && (
+          <div className={styles["inventory-controls"]}>
+            <input
+              type="text"
+              placeholder="Search items, suppliers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={styles["search-input"]}
+              style={{ minWidth: 220, marginRight: 12 }}
+            />
+            <Select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className={styles["category-select"]}
+              size="small"
             displayEmpty
             sx={{
               minWidth: 180,
@@ -282,23 +381,26 @@ const InventoryPage = () => {
                 alignItems: "center",
               },
             }}
-          >
-            {categories.map((category) => (
-              <MenuItem key={category} value={category}>
-                {category === "all" ? "All Categories" : category}
-              </MenuItem>
-            ))}
-          </Select>
-        </div>
+            >
+              {categories.map((category) => (
+                <MenuItem key={category} value={category}>
+                  {category === "all" ? "All Categories" : category}
+                </MenuItem>
+              ))}
+            </Select>
+          </div>
+        )}
 
         {/* Inventory Table */}
-        <div className={styles["inventory-table-container"]}>
-          <DataTable
-            columns={columns}
-            data={tableData}
-            noDataText="No inventory items found."
-          />
-        </div>
+        {!showUsageLog && activeTab === "inventory" && (
+          <div className={styles["inventory-table-container"]}>
+            <DataTable
+              columns={columns}
+              data={tableData}
+              noDataText="No inventory items found."
+            />
+          </div>
+        )}
 
         {/* Add Item Modal */}
         {showAddModal && (
@@ -353,11 +455,11 @@ const InventoryPage = () => {
                     <label>Current Stock</label>
                     <input
                       type="number"
-                      value={newItem.currentStock}
+                      value={newItem.current_stock}
                       onChange={(e) =>
                         setNewItem({
                           ...newItem,
-                          currentStock: parseInt(e.target.value),
+                          current_stock: parseInt(e.target.value),
                         })
                       }
                       required
@@ -367,11 +469,11 @@ const InventoryPage = () => {
                     <label>Minimum Stock</label>
                     <input
                       type="number"
-                      value={newItem.minStock}
+                      value={newItem.min_stock}
                       onChange={(e) =>
                         setNewItem({
                           ...newItem,
-                          minStock: parseInt(e.target.value),
+                          min_stock: parseInt(e.target.value),
                         })
                       }
                       required
@@ -396,11 +498,11 @@ const InventoryPage = () => {
                     <input
                       type="number"
                       step="0.01"
-                      value={newItem.costPerUnit}
+                      value={newItem.cost_per_unit}
                       onChange={(e) =>
                         setNewItem({
                           ...newItem,
-                          costPerUnit: parseFloat(e.target.value),
+                          cost_per_unit: parseFloat(e.target.value),
                         })
                       }
                       required
@@ -439,6 +541,68 @@ const InventoryPage = () => {
                 </div>
               </form>
             </div>
+          </div>
+        )}
+
+        {/* Edit Item Modal */}
+        {showEditModal && editItem && (
+          <div className={styles["modal-overlay"]}>
+            <div className={styles["modal-content"]}>
+              <h2>Edit Item</h2>
+              <button className={styles["close-modal"]} onClick={() => setShowEditModal(false)}>
+                Close
+              </button>
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  handleEditSave(editItem);
+                }}
+              >
+                <label>Name: <input value={editItem.name} onChange={e => setEditItem({ ...editItem, name: e.target.value })} /></label><br />
+                <label>Category: <input value={editItem.category} onChange={e => setEditItem({ ...editItem, category: e.target.value })} /></label><br />
+                <label>Current Stock: <input type="number" value={editItem.current_stock} onChange={e => setEditItem({ ...editItem, current_stock: Number(e.target.value) })} /></label><br />
+                <label>Min Stock: <input type="number" value={editItem.min_stock} onChange={e => setEditItem({ ...editItem, min_stock: Number(e.target.value) })} /></label><br />
+                <label>Unit: <input value={editItem.unit} onChange={e => setEditItem({ ...editItem, unit: e.target.value })} /></label><br />
+                <label>Supplier: <input value={editItem.supplier} onChange={e => setEditItem({ ...editItem, supplier: e.target.value })} /></label><br />
+                <label>Cost Per Unit: <input type="number" value={editItem.cost_per_unit} onChange={e => setEditItem({ ...editItem, cost_per_unit: Number(e.target.value) })} /></label><br />
+                <button type="submit">Save</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Restock Item Modal */}
+        {showRestockModal && restockItem && (
+          <div className={styles["modal-overlay"]}>
+            <div className={styles["modal-content"]}>
+              <h2>Restock Item</h2>
+              <button className={styles["close-modal"]} onClick={() => setShowRestockModal(false)}>
+                Close
+              </button>
+              <div>Item: {restockItem.name}</div>
+              <div>Current Stock: {restockItem.current_stock} {restockItem.unit}</div>
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  handleRestockSave();
+                }}
+              >
+                <label>Amount to Add: <input type="number" value={restockAmount === 0 ? '' : restockAmount} onChange={e => setRestockAmount(e.target.value === '' ? 0 : Number(e.target.value))} min={1} placeholder="Enter amount" /></label><br />
+                <label>Notes (optional): <input type="text" value={restockNotes} onChange={e => setRestockNotes(e.target.value)} placeholder="Enter notes (optional)" /></label><br />
+                <button type="submit">Restock</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Usage Log Section */}
+        {showUsageLog && (
+          <div className={styles["inventory-table-container"]}>
+            <DataTable
+              columns={usageLogColumns}
+              data={usageLogTableData}
+              noDataText="No usage logs found."
+            />
           </div>
         )}
       </div>

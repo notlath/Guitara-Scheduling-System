@@ -419,3 +419,13 @@
   background: #fff3cd;
   color: #856404;
 }
+
+.highlight-new {
+  animation: highlightFade 2s ease-out;
+  background-color: #ffe066 !important;
+}
+
+@keyframes highlightFade {
+  0% { background-color: #ffe066; }
+  100% { background-color: transparent; }
+}

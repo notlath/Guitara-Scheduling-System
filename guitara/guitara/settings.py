@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "registration",
     "scheduling",
     "attendance",
+    "inventory",  # Added inventory app
 ]
 
 MIDDLEWARE = [
@@ -279,3 +280,5 @@ LOGGING = {
         "level": "INFO",
     },
 }
+
+APPEND_SLASH = True
