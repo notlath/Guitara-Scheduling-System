@@ -24,6 +24,7 @@ import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 import AvailabilityManager from "./scheduling/AvailabilityManager";
+import TabSwitcher from "../globals/TabSwitcher";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
@@ -1841,6 +1842,22 @@ const OperatorDashboard = () => {
     );
   };
 
+  // Define the available tabs for the dashboard, including counts
+  const dashboardTabs = [
+    { value: "rejected", label: `Rejected (${rejectedAppointments.length})` },
+    { value: "pending", label: `Pending (${pendingAppointments.length})` },
+    { value: "timeout", label: `Timeout (${overdueAppointments.length})` },
+    { value: "payment", label: `Payment (${awaitingPaymentAppointments.length})` },
+    { value: "all", label: `All (${appointments.length})` },
+    { value: "attendance", label: `Attendance (${attendanceRecords.length})` },
+    { value: "notifications", label: `Notifications (${notifications.length})` },
+    { value: "driver", label: `Driver (${driverAssignment.availableDrivers.length})` },
+    { value: "workflow", label: `Workflow (${approachingDeadlineAppointments.length})` },
+    { value: "sessions", label: `Sessions (${activeSessions.length})` },
+    { value: "pickup", label: `Pickup (${pickupRequests.length})` },
+  ];
+
+  // Render the tab switcher at the top of the dashboard
   return (
     <PageLayout>
       <div className={`operator-dashboard`}>
@@ -1903,81 +1920,11 @@ const OperatorDashboard = () => {
           </div>
         </div>{" "}
         <div className="tab-switcher">
-          <button
-            className={currentView === "rejected" ? "active" : ""}
-            onClick={() => setView("rejected")}
-          >
-            Pending Reviews ({rejectedAppointments.length})
-          </button>
-          <button
-            className={currentView === "pending" ? "active" : ""}
-            onClick={() => setView("pending")}
-          >
-            Pending Acceptance ({pendingAppointments.length})
-          </button>
-          <button
-            className={currentView === "timeouts" ? "active" : ""}
-            onClick={() => setView("timeouts")}
-          >
-            Timeouts (
-            {overdueAppointments.length +
-              approachingDeadlineAppointments.length}
-            )
-          </button>
-          <button
-            className={currentView === "payment_verification" ? "active" : ""}
-            onClick={() => setView("payment_verification")}
-          >
-            Payment Verification ({awaitingPaymentAppointments.length})
-          </button>
-          <button
-            className={currentView === "all" ? "active" : ""}
-            onClick={() => setView("all")}
-          >
-            All Appointments
-          </button>
-          <button
-            className={currentView === "notifications" ? "active" : ""}
-            onClick={() => setView("notifications")}
-          >
-            Notifications
-          </button>
-          <button
-            className={currentView === "availability" ? "active" : ""}
-            onClick={() => setView("availability")}
-          >
-            Manage Availability
-          </button>
-          <button
-            className={currentView === "drivers" ? "active" : ""}
-            onClick={() => setView("drivers")}
-          >
-            Driver Coordination
-          </button>
-          <button
-            className={currentView === "workflow" ? "active" : ""}
-            onClick={() => setView("workflow")}
-          >
-            Service Workflow
-          </button>
-          <button
-            className={currentView === "active_sessions" ? "active" : ""}
-            onClick={() => setView("active_sessions")}
-          >
-            Active Sessions ({activeSessions.length})
-          </button>{" "}
-          <button
-            className={currentView === "pickup_requests" ? "active" : ""}
-            onClick={() => setView("pickup_requests")}
-          >
-            Pickup Requests ({pickupRequests.length})
-          </button>
-          <button
-            className={currentView === "attendance" ? "active" : ""}
-            onClick={() => setView("attendance")}
-          >
-            Attendance
-          </button>
+          <TabSwitcher
+            tabs={dashboardTabs}
+            activeTab={currentView}
+            onTabChange={setView}
+          />
         </div>
         <div
           className={`dashboard-content ${
@@ -1996,13 +1943,13 @@ const OperatorDashboard = () => {
               {renderPendingAcceptanceAppointments()}
             </div>
           )}{" "}
-          {currentView === "timeouts" && (
+          {currentView === "timeout" && (
             <div className="timeout-monitoring">
               <h2>Timeout Monitoring</h2>
               {renderTimeoutMonitoring()}
             </div>
           )}
-          {currentView === "payment_verification" && (
+          {currentView === "payment" && (
             <div className="payment-verification">
               <h2>Payment Verification</h2>
               {renderPaymentVerificationView()}
@@ -2014,18 +1961,19 @@ const OperatorDashboard = () => {
               {renderAllAppointments()}
             </div>
           )}{" "}
+          {currentView === "attendance" && (
+            <div className="attendance-management">
+              <h2>Attendance Management</h2>
+              {renderAttendanceView()}
+            </div>
+          )}{" "}
           {currentView === "notifications" && (
             <div className="notifications">
               <h2>Notifications</h2>
               {renderNotifications()}
             </div>
           )}{" "}
-          {currentView === "availability" && (
-            <div className="availability-management">
-              <AvailabilityManager />
-            </div>
-          )}
-          {currentView === "drivers" && (
+          {currentView === "driver" && (
             <div className="driver-coordination">
               <h2>Driver Coordination Center</h2>
               {renderDriverCoordinationPanel()}
@@ -2037,24 +1985,18 @@ const OperatorDashboard = () => {
               {renderServiceWorkflowView()}
             </div>
           )}
-          {currentView === "active_sessions" && (
+          {currentView === "sessions" && (
             <div className="active-sessions">
               <h2>Active Therapy Sessions</h2>
               {renderActiveSessionsView()}
             </div>
           )}{" "}
-          {currentView === "pickup_requests" && (
+          {currentView === "pickup" && (
             <div className="pickup-requests">
               <h2>Therapist Pickup Requests</h2>
               {renderPickupRequestsView()}
             </div>
           )}
-          {currentView === "attendance" && (
-            <div className="attendance-management">
-              <h2>Attendance Management</h2>
-              {renderAttendanceView()}
-            </div>
-          )}{" "}
         </div>
       </div>
       {/* End of operator-dashboard */}
