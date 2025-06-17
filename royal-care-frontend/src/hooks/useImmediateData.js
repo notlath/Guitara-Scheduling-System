@@ -1,14 +1,14 @@
 /**
- * Smart hook for immediate data display patterns
- * Provides cached data immediately while fetching fresh data in background
+ * Simple hook for immediate data display
+ * Provides data using the optimized data manager
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { useDataManager } from "./useDataManager";
+import { useOptimizedData } from "./useOptimizedData";
 
 /**
- * Hook for immediate data display with progressive loading
- * Shows cached data instantly, then updates with fresh data
+ * Hook for immediate data display with optimized loading
+ * Shows data immediately from cache or Redux state
  *
  * @param {string} componentName - Component identifier
  * @param {Array} dataTypes - Data types to fetch
@@ -32,7 +32,6 @@ export const useImmediateData = (
   const [progressiveLoading, setProgressiveLoading] = useState({
     initialLoad: true,
     hasShownData: false,
-    backgroundRefresh: false,
   });
 
   const {
@@ -41,14 +40,10 @@ export const useImmediateData = (
     upcomingAppointments,
     notifications,
     loading,
-    isRefreshing,
-    hasImmediateData,
-    hasAnyData,
-    isStaleData,
     error,
     forceRefresh,
-    refreshIfStale,
-  } = useDataManager(componentName, dataTypes, options);
+    hasData,
+  } = useOptimizedData(componentName, dataTypes, options);
 
   // Update display data when new data arrives
   useEffect(() => {
@@ -57,12 +52,12 @@ export const useImmediateData = (
       todayAppointments,
       upcomingAppointments,
       notifications,
-      isComplete: !loading && !isRefreshing,
+      isComplete: !loading,
       lastUpdated: Date.now(),
     };
 
     // Always update display data when we have new data
-    if (hasImmediateData || hasAnyData) {
+    if (hasData) {
       setDisplayData(newData);
 
       if (!progressiveLoading.hasShownData) {
@@ -73,48 +68,23 @@ export const useImmediateData = (
         }));
       }
     }
-
-    // Track background refresh state
-    setProgressiveLoading((prev) => ({
-      ...prev,
-      backgroundRefresh: isRefreshing && hasAnyData,
-    }));
   }, [
     appointments,
     todayAppointments,
     upcomingAppointments,
     notifications,
     loading,
-    isRefreshing,
-    hasImmediateData,
-    hasAnyData,
+    hasData,
     progressiveLoading.hasShownData,
   ]);
 
-  // Auto-refresh stale data in background
-  useEffect(() => {
-    if (isStaleData && hasAnyData) {
-      console.log(
-        `🔄 ${componentName}: Auto-refreshing stale data in background`
-      );
-      refreshIfStale();
-    }
-  }, [isStaleData, hasAnyData, refreshIfStale, componentName]);
-
-  // Smart refresh function with immediate feedback
+  // Smart refresh function
   const smartRefresh = useCallback(
     async (showImmediate = false) => {
-      if (showImmediate) {
-        setProgressiveLoading((prev) => ({ ...prev, backgroundRefresh: true }));
-      }
-
       try {
         await forceRefresh();
-      } finally {
-        setProgressiveLoading((prev) => ({
-          ...prev,
-          backgroundRefresh: false,
-        }));
+      } catch (error) {
+        console.warn("Smart refresh failed:", error);
       }
     },
     [forceRefresh]
@@ -127,14 +97,9 @@ export const useImmediateData = (
     // Smart loading states
     isInitialLoading:
       progressiveLoading.initialLoad && !progressiveLoading.hasShownData,
-    isRefreshing: progressiveLoading.backgroundRefresh,
-    showSkeleton: progressiveLoading.initialLoad && !hasAnyData,
+    showSkeleton: progressiveLoading.initialLoad && !hasData,
     hasData: progressiveLoading.hasShownData,
     isComplete: displayData.isComplete,
-
-    // Data quality indicators
-    isStale: isStaleData,
-    lastUpdated: displayData.lastUpdated,
 
     // Error state
     error,
@@ -144,11 +109,10 @@ export const useImmediateData = (
     forceRefresh,
 
     // Debug info
-    dataSource: hasImmediateData ? "cache" : "fresh",
+    dataSource: hasData ? "optimized" : "loading",
     metrics: {
       hasShownData: progressiveLoading.hasShownData,
       initialLoad: progressiveLoading.initialLoad,
-      backgroundRefresh: progressiveLoading.backgroundRefresh,
     },
   };
 };

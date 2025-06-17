@@ -17,12 +17,13 @@ import {
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
-import { useOperatorDashboardData } from "../hooks/useDashboardIntegration";
+// OPTIMIZED: Replace old data hooks with optimized versions
 import {
   useOptimizedAppointmentFilters,
   useOptimizedButtonLoading,
   useOptimizedCountdown,
 } from "../hooks/useOperatorPerformance";
+import { useOptimizedDashboardData } from "../hooks/useOptimizedData";
 import { useStableCallback } from "../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
@@ -90,19 +91,17 @@ const OperatorDashboard = () => {
     busyDrivers: [],
     pendingPickups: [],
   }); // Enhanced data access with immediate display capabilities
+  // OPTIMIZED: Use optimized dashboard data hook
   const {
     appointments,
     todayAppointments,
     upcomingAppointments,
     notifications,
     loading,
-    isRefreshing,
-    hasAnyData,
-    isStaleData,
     error,
-    refreshData,
-    refreshIfStale,
-  } = useOperatorDashboardData();
+    forceRefresh,
+    hasData,
+  } = useOptimizedDashboardData("operatorDashboard", "operator");
 
   // 🔥 PERFORMANCE OPTIMIZATION: Use optimized appointment filtering
   const {
@@ -192,14 +191,8 @@ const OperatorDashboard = () => {
       activeSessions.length,
       pickupRequests.length,
     ]
-  );
-  // Auto-refresh stale data in background
-  useEffect(() => {
-    if (isStaleData && hasAnyData) {
-      console.log("🔄 OperatorDashboard: Auto-refreshing stale data");
-      refreshIfStale();
-    }
-  }, [isStaleData, hasAnyData, refreshIfStale]);
+  ); // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
+  // The optimized data manager handles background refreshes automatically
 
   // 🔥 PERFORMANCE OPTIMIZATION: Optimized countdown timer management
   useEffect(() => {
@@ -431,11 +424,8 @@ const OperatorDashboard = () => {
 
   // 🔥 REMOVED: Old redundant polling - now handled by centralized DataManager
   // Real-time sync is handled by useSyncEventHandlers hook and centralized data manager
-
-  // Load data on component mount
-  useEffect(() => {
-    refreshData();
-  }, [refreshData]);
+  // OPTIMIZED: Remove manual data loading (handled by optimized data manager)
+  // The optimized data manager handles initial data loading automatically
 
   // Real-time timer for updating countdown displays
   useEffect(() => {
@@ -570,7 +560,7 @@ const OperatorDashboard = () => {
           reviewNotes: reviewNotes,
         })
       ).unwrap();
-      refreshData();
+      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshData
       setReviewModal({
         isOpen: false,
         appointmentId: null,
@@ -599,7 +589,7 @@ const OperatorDashboard = () => {
     setAutoCancelLoading(true);
     try {
       await dispatch(autoCancelOverdueAppointments()).unwrap();
-      refreshData();
+      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshData
       alert("Successfully processed overdue appointments");
     } catch {
       alert("Failed to process overdue appointments. Please try again.");
@@ -617,10 +607,8 @@ const OperatorDashboard = () => {
           status: "in_progress",
           action: "start_appointment",
         })
-      ).unwrap();
-
-      // Refresh dashboard data to get updated status
-      refreshData();
+      ).unwrap(); // Refresh dashboard data to get updated status
+      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshData
     } catch (error) {
       console.error("Failed to start appointment:", error);
       alert("Failed to start appointment. Please try again.");
@@ -718,7 +706,7 @@ const OperatorDashboard = () => {
       });
 
       console.log("🔄 handleMarkPaymentPaid: Refreshing dashboard data");
-      refreshData();
+      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshData
 
       alert("Payment marked as received successfully!");
     } catch (error) {
@@ -945,7 +933,7 @@ const OperatorDashboard = () => {
           estimated_time: estimatedTime,
           assignment_method: "FIFO",
         });
-        refreshData();
+        forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshData
 
         // Show success notification with FIFO details
         alert(
@@ -960,7 +948,7 @@ const OperatorDashboard = () => {
       appointments,
       driverAssignment.availableDrivers,
       dispatch,
-      refreshData,
+      forceRefresh, // OPTIMIZED: Use forceRefresh instead of refreshData
       setDriverAssignment,
     ]
   );
@@ -2023,26 +2011,23 @@ const OperatorDashboard = () => {
             </button>
           </div>
         </LayoutRow>{" "}
-        {/* Enhanced loading indicator - minimal and non-intrusive */}
+        {/* OPTIMIZED: Simplified loading indicator */}
         <MinimalLoadingIndicator
           show={loading}
-          hasData={hasAnyData}
-          isRefreshing={isRefreshing}
+          hasData={hasData} // OPTIMIZED: Use hasData instead of hasAnyData
           position="bottom-left"
           size="small"
-          variant={isStaleData ? "warning" : "subtle"}
+          variant="subtle" // OPTIMIZED: Remove stale data check
           tooltip={
-            isStaleData
-              ? "Data may be outdated, refreshing..."
-              : hasAnyData
+            hasData
               ? "Refreshing dashboard data..."
               : "Loading dashboard data..."
           }
           pulse={true}
           fadeIn={true}
         />
-        {/* Enhanced error handling - only show if no data available */}
-        {error && !hasAnyData && (
+        {/* OPTIMIZED: Simplified error handling */}
+        {error && !hasData && (
           <div className="error-message">
             {typeof error === "object"
               ? error.message || error.error || JSON.stringify(error)

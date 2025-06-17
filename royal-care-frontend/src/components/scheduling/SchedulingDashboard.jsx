@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { shallowEqual, useDispatch } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
-import { useSchedulingDashboardData } from "../../hooks/useDashboardIntegration";
+// OPTIMIZED: Replace old data hooks with optimized versions
+import { useOptimizedDashboardData } from "../../hooks/useOptimizedData";
 import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import { SkeletonLoader } from "../common/LoadingComponents";
@@ -46,18 +47,15 @@ const SchedulingDashboard = () => {
   };
 
   const dispatch = useDispatch();
-  // Enhanced data access with immediate display capabilities
+  // OPTIMIZED: Use optimized dashboard data hook
   const {
     todayAppointments,
     upcomingAppointments,
     loading,
-    isRefreshing,
-    hasAnyData,
-    isStaleData,
     error,
-    refreshAfterFormSubmit,
-    refreshIfStale,
-  } = useSchedulingDashboardData();
+    forceRefresh,
+    hasData,
+  } = useOptimizedDashboardData("schedulingDashboard", "admin");
 
   const { user } = useOptimizedSelector(
     useCallback(
@@ -79,14 +77,8 @@ const SchedulingDashboard = () => {
     shallowEqual
   );
   const defaultDate = useMemo(() => new Date(), []);
-
-  // Auto-refresh stale data in background
-  useEffect(() => {
-    if (isStaleData && hasAnyData) {
-      console.log("🔄 SchedulingDashboard: Auto-refreshing stale data");
-      refreshIfStale();
-    }
-  }, [isStaleData, hasAnyData, refreshIfStale]);
+  // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
+  // The optimized data manager handles background refreshes automatically
 
   // 🔥 REMOVED: All redundant polling and data fetching
   // The centralized data manager (useSchedulingDashboardData) handles all polling automatically
@@ -120,7 +112,7 @@ const SchedulingDashboard = () => {
       try {
         await dispatch(deleteAppointment(appointmentId)).unwrap();
         // 🔥 FIXED: Use centralized data manager refresh instead of individual API calls
-        await refreshAfterFormSubmit();
+        await forceRefresh();
       } catch (error) {
         // Add user feedback
         alert(`Failed to delete appointment: ${error.message || error}`);
@@ -131,7 +123,7 @@ const SchedulingDashboard = () => {
   const handleFormSubmitSuccess = async () => {
     setIsFormVisible(false);
     // 🔥 FIXED: Use centralized data manager refresh instead of individual API calls
-    await refreshAfterFormSubmit();
+    await forceRefresh();
   };
 
   const handleFormCancel = () => {
@@ -359,22 +351,18 @@ const SchedulingDashboard = () => {
           ]}
           activeTab={currentView}
           onTabChange={setView}
-        />
-
-        {/* Enhanced loading indicator - only show if no cached data available */}
+        />{" "}
+        {/* OPTIMIZED: Simplified loading indicator */}
         {loading && (
           <div className="minimal-dashboard-loading">
             <MinimalLoadingIndicator
               show={true}
-              hasData={hasAnyData}
-              isRefreshing={isRefreshing}
+              hasData={hasData} // OPTIMIZED: Use hasData instead of hasAnyData
               position="top-right"
               size="small"
-              variant={isStaleData ? "warning" : "subtle"}
+              variant="subtle" // OPTIMIZED: Remove stale data check
               tooltip={
-                isStaleData
-                  ? "Data may be outdated, refreshing..."
-                  : hasAnyData
+                hasData
                   ? "Refreshing dashboard data..."
                   : "Loading dashboard data..."
               }
@@ -383,7 +371,6 @@ const SchedulingDashboard = () => {
             />
           </div>
         )}
-
         {error && (
           <div className="error-message">
             {typeof error === "object"
@@ -391,7 +378,6 @@ const SchedulingDashboard = () => {
               : error}
           </div>
         )}
-
         {/* Display notifications panel when visible */}
         {isNotificationVisible && (
           <div className="notifications-panel">
@@ -400,7 +386,6 @@ const SchedulingDashboard = () => {
             />
           </div>
         )}
-
         {/* Display different views based on user selection */}
         <div className="dashboard-content">
           {currentView === "calendar" && !isFormVisible && (
@@ -456,7 +441,6 @@ const SchedulingDashboard = () => {
             </ErrorBoundary>
           )}
         </div>
-
         {/* Display WebSocket status notification */}
         <WebSocketStatus />
       </div>
