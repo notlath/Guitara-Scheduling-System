@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
-import { useDispatch, useSelector } from "react-redux";
+import { shallowEqual, useDispatch } from "react-redux";
 import {
   fetchAppointmentsByDate,
   fetchAvailableDrivers,
   fetchAvailableTherapists,
 } from "../../features/scheduling/schedulingSlice";
+import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 import "../../styles/Calendar.css";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
@@ -21,13 +22,17 @@ const Calendar = ({
   const [view, setView] = useState("month"); // 'month' or 'day'
 
   const dispatch = useDispatch();
+  const schedulingState = useOptimizedSelector(
+    (state) => state.scheduling,
+    shallowEqual
+  );
   const {
     availableTherapists,
     availableDrivers,
     appointments,
     appointmentsByDate,
     loading, // Add loading state from Redux
-  } = useSelector((state) => state.scheduling);
+  } = schedulingState;
 
   // Initialize with today's data when component mounts
   useEffect(() => {

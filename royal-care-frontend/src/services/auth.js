@@ -1,7 +1,7 @@
 // src/services/auth.js
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api/auth/";
+const API_URL = `${import.meta.env.VITE_API_BASE_URL}/auth/`;
 
 export const login = async (username, password) => {
   try {
@@ -110,7 +110,7 @@ export const validateToken = async () => {
 // Used to poll account status for recently disabled users
 export const checkAccountStatus = async (username) => {
   try {
-    const response = await axios.post("http://localhost:8000/api/auth/check-account-status/", {
+    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/check-account-status/`, {
       username,
     });
     

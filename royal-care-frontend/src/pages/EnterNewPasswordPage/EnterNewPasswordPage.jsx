@@ -38,7 +38,7 @@ function EnterNewPasswordPage() {
     }
     setLoading(true);
     try {
-      const response = await axios.post("/api/auth/set-new-password/", {
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/set-new-password/`, {
         email,
         code,
         new_password: newPassword,

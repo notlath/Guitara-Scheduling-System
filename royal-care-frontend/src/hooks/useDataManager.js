@@ -108,14 +108,14 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
   }, [componentName]);
 
   // Memoized selector to prevent unnecessary re-renders
-  const selector = useMemo(
-    () => (state) => ({
-      appointments: state.scheduling?.appointments,
-      todayAppointments: state.scheduling?.todayAppointments,
-      upcomingAppointments: state.scheduling?.upcomingAppointments,
-      notifications: state.scheduling?.notifications,
-      loading: state.scheduling?.loading,
-      error: state.scheduling?.error,
+  const selector = useCallback(
+    (state) => ({
+      appointments: state.scheduling?.appointments || [],
+      todayAppointments: state.scheduling?.todayAppointments || [],
+      upcomingAppointments: state.scheduling?.upcomingAppointments || [],
+      notifications: state.scheduling?.notifications || [],
+      loading: state.scheduling?.loading || false,
+      error: state.scheduling?.error || null,
       patients: state.patients?.data || [],
       therapists: state.staff?.therapists || [],
       drivers: state.staff?.drivers || [],

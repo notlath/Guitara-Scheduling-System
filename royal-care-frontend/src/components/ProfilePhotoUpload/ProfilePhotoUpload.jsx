@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import PhotoCropModal from "../PhotoCropModal/PhotoCropModal";
 import styles from "./ProfilePhotoUpload.module.css";
 
 const ProfilePhotoUpload = ({
@@ -8,17 +9,41 @@ const ProfilePhotoUpload = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(currentPhoto);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleFileSelect = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Show preview immediately
-    const reader = new FileReader();
-    reader.onload = (e) => setPreview(e.target.result);
-    reader.readAsDataURL(file);
+    // Validate file
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File too large. Maximum size is 5MB.");
+      return;
+    }
 
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Invalid file type. Please use JPEG, PNG, or WebP.");
+      return;
+    }
+
+    // Show the image in crop modal
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setSelectedImageSrc(e.target.result);
+      setShowCropModal(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (croppedFile, croppedImageUrl) => {
+    setShowCropModal(false);
+    setSelectedImageSrc(null);
+
+    // Show preview immediately
+    setPreview(croppedImageUrl);
     setUploading(true);
 
     try {
@@ -31,7 +56,7 @@ const ProfilePhotoUpload = ({
 
       // Create FormData for file upload
       const formData = new FormData();
-      formData.append("photo", file);
+      formData.append("photo", croppedFile);
 
       const response = await fetch("/api/registration/profile/photo/", {
         method: "POST",
@@ -57,6 +82,15 @@ const ProfilePhotoUpload = ({
       setPreview(currentPhoto); // Revert preview
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setSelectedImageSrc(null);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -141,6 +175,17 @@ const ProfilePhotoUpload = ({
           </button>
         )}
       </div>
+
+      {/* Crop Modal */}
+      {showCropModal && selectedImageSrc && (
+        <PhotoCropModal
+          imageSrc={selectedImageSrc}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+          aspectRatio={1}
+          cropShape="round"
+        />
+      )}
     </div>
   );
 };

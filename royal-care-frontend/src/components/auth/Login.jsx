@@ -110,7 +110,7 @@ const Login = () => {
     try {
       if (!needs2FA) {
         // Initial login request
-        const response = await api.post("/api/auth/login/", formData);
+        const response = await api.post("/auth/login/", formData);
 
         if (response.data.message === "2FA code sent") {
           setNeeds2FA(true); // Show 2FA input        } else {

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { shallowEqual, useDispatch } from "react-redux";
 import pageTitles from "../../constants/pageTitles";
 import { fetchAppointments } from "../../features/scheduling/schedulingSlice";
 import LayoutRow from "../../globals/LayoutRow";
 import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
+import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 import styles from "./SalesReportsPage.module.css";
 // Export dependencies
 import { saveAs } from "file-saver";
@@ -17,7 +18,10 @@ import { prepareChartData } from "../../utils/chartDataHelpers";
 
 const SalesReportsPage = () => {
   const dispatch = useDispatch();
-  const { appointments } = useSelector((state) => state.scheduling);
+  const appointments = useOptimizedSelector(
+    (state) => state.scheduling.appointments,
+    shallowEqual
+  );
 
   const [currentView, setCurrentView] = useState("Total Revenue");
   const [currentPeriod, setCurrentPeriod] = useState("Daily");

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { shallowEqual, useDispatch } from "react-redux";
 import { NavLink } from "react-router-dom";
 import "../../../src/styles/Placeholders.css";
 import MinimalLoadingIndicator from "../../components/common/MinimalLoadingIndicator";
@@ -10,6 +10,7 @@ import {
   fetchUpcomingAppointments,
 } from "../../features/scheduling/schedulingSlice";
 import TabSwitcher from "../../globals/TabSwitcher";
+import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 import "./BookingsPage.css";
 
 const BookingsPage = () => {
@@ -17,8 +18,12 @@ const BookingsPage = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
+  const schedulingState = useOptimizedSelector(
+    (state) => state.scheduling,
+    shallowEqual
+  );
   const { appointments, todayAppointments, upcomingAppointments, loading } =
-    useSelector((state) => state.scheduling);
+    schedulingState;
 
   useEffect(() => {
     document.title = pageTitles.bookings;

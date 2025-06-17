@@ -18,6 +18,7 @@ import {
   fetchUpcomingAppointments,
 } from "../features/scheduling/schedulingSlice.js";
 import store from "../store.js";
+import { isValidToken } from "../utils/authUtils.js";
 
 class DataManager {
   constructor() {
@@ -197,8 +198,14 @@ class DataManager {
     if (this.subscribers.size === 1) {
       this.startPolling();
     } else {
-      // Fetch immediately for new subscriber
-      this.fetchNeededData();
+      // Only fetch immediately for new subscriber if authenticated
+      if (isValidToken()) {
+        this.fetchNeededData();
+      } else {
+        console.log(
+          "⚠️ DataManager: Skipping immediate fetch - user not authenticated"
+        );
+      }
     }
 
     // Return unsubscribe function
@@ -227,13 +234,17 @@ class DataManager {
     console.log("🔄 DataManager: Starting polling");
     this.isPolling = true;
 
-    // Initial fetch
-    this.fetchNeededData();
+    // Initial fetch (only if authenticated)
+    if (isValidToken()) {
+      this.fetchNeededData();
+    }
 
     // Setup polling interval
     this.pollingInterval = setInterval(() => {
-      if (this.subscribers.size > 0) {
+      if (this.subscribers.size > 0 && isValidToken()) {
         this.fetchNeededData();
+      } else if (this.subscribers.size > 0 && !isValidToken()) {
+        console.log("⚠️ DataManager: Skipping poll - user not authenticated");
       }
     }, this.getPollingInterval());
   }
@@ -258,6 +269,14 @@ class DataManager {
    */
   async fetchNeededData() {
     if (this.subscribers.size === 0) return;
+
+    // Check authentication before making any API calls
+    if (!isValidToken()) {
+      console.log(
+        "⚠️ DataManager: Skipping data fetch - user not authenticated"
+      );
+      return;
+    }
 
     // Collect needed data types
     const neededTypes = new Set();
@@ -444,6 +463,11 @@ class DataManager {
   async createRequest(dataType) {
     console.log(`🌐 DataManager: Making API request for ${dataType}`);
 
+    // Check authentication before making any API call
+    if (!isValidToken()) {
+      throw new Error("Authentication required - user not logged in");
+    }
+
     // Check circuit breaker
     if (this.isCircuitBreakerOpen(dataType)) {
       console.warn(`🚫 DataManager: Circuit breaker open for ${dataType}`);
@@ -470,22 +494,33 @@ class DataManager {
         break;
       case "therapists":
         // Filter staff members for therapists
-        apiPromise = store
-          .dispatch(fetchStaffMembers())
-          .then(
-            (result) =>
-              result.payload?.filter((staff) => staff.role === "therapist") ||
-              []
+        apiPromise = store.dispatch(fetchStaffMembers()).then((result) => {
+          // Handle both fulfilled action and direct payload
+          const staffData = result.payload || result;
+          if (Array.isArray(staffData)) {
+            return staffData.filter((staff) => staff.role === "therapist");
+          }
+          console.warn(
+            "DataManager: therapists - staffData is not an array:",
+            staffData
           );
+          return [];
+        });
         break;
       case "drivers":
         // Filter staff members for drivers
-        apiPromise = store
-          .dispatch(fetchStaffMembers())
-          .then(
-            (result) =>
-              result.payload?.filter((staff) => staff.role === "driver") || []
+        apiPromise = store.dispatch(fetchStaffMembers()).then((result) => {
+          // Handle both fulfilled action and direct payload
+          const staffData = result.payload || result;
+          if (Array.isArray(staffData)) {
+            return staffData.filter((staff) => staff.role === "driver");
+          }
+          console.warn(
+            "DataManager: drivers - staffData is not an array:",
+            staffData
           );
+          return [];
+        });
         break;
       case "clients":
         apiPromise = store.dispatch(fetchClients());

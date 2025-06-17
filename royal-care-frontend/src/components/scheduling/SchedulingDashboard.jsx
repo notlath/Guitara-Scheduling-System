@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
 import { useSchedulingDashboardData } from "../../hooks/useDashboardIntegration";
+import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import { SkeletonLoader } from "../common/LoadingComponents";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
@@ -58,8 +59,10 @@ const SchedulingDashboard = () => {
     refreshIfStale,
   } = useSchedulingDashboardData();
 
-  const { user } = useSelector((state) => state.auth);
-  const { unreadNotificationCount } = useSelector((state) => state.scheduling);
+  const { user } = useOptimizedSelector((state) => state.auth);
+  const { unreadNotificationCount } = useOptimizedSelector(
+    (state) => state.scheduling
+  );
   const defaultDate = useMemo(() => new Date(), []);
 
   // Auto-refresh stale data in background

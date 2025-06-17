@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { shallowEqual, useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
@@ -20,6 +20,7 @@ import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
+import { useOptimizedSelector } from "../hooks/usePerformanceOptimization";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css"; // Reuse therapist styles for consistency
 import AttendanceComponent from "./AttendanceComponent";
@@ -163,7 +164,7 @@ const DriverDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-  const { user } = useSelector((state) => state.auth);
+  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
   // Enhanced data access with immediate display capabilities
   const {
     myAppointments,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
@@ -15,10 +15,12 @@ import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 
+import { shallowEqual } from "react-redux";
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
+import { useOptimizedSelector } from "../hooks/usePerformanceOptimization";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css";
 import AttendanceComponent from "./AttendanceComponent";
@@ -59,7 +61,7 @@ const TherapistDashboard = () => {
       [actionKey]: isLoading,
     }));
   };
-  const { user } = useSelector((state) => state.auth); // Enhanced data access with immediate display capabilities
+  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual); // Enhanced data access with immediate display capabilities
   const {
     myAppointments,
     myTodayAppointments,
