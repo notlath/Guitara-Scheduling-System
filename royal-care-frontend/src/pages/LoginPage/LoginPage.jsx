@@ -133,11 +133,10 @@ function LoginPage() {
     setError(""); // Clear any previous errors
     setShowDisabledAlert(false); // Hide disabled alert
 
-    try {
-      if (!needs2FA) {
+    try {      if (!needs2FA) {
         // Initial login request using enhanced auth service
         try {
-          const response = await api.post("/api/auth/login/", formData);
+          const response = await api.post("/auth/login/", formData);
           if (response.data.message === "2FA code sent") {
             setNeeds2FA(true); // Show 2FA input
             setFieldErrors({}); // Clear previous field errors when switching to 2FA
@@ -171,7 +170,7 @@ function LoginPage() {
         }
       } else {
         // Verify 2FA code
-        const response = await api.post("/api/auth/two-factor-verify/", {
+        const response = await api.post("/auth/two-factor-verify/", {
           email: formData.username, // Assuming username is email
           code: verificationCode,
         }); // On success

@@ -1,7 +1,8 @@
 import { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { shallowEqual, useDispatch } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
+import { useOptimizedSelector } from "./hooks/usePerformanceOptimization";
 // Import debugger utilities for performance monitoring in development
 import DriverDashboard from "./components/DriverDashboard";
 import MainLayout from "./components/MainLayout";
@@ -18,10 +19,10 @@ import DeveloperInfoPage from "./pages/AboutPages/DeveloperInfoPage";
 import SystemInfoPage from "./pages/AboutPages/SystemInfoPage";
 import AttendancePage from "./pages/AttendancePage/AttendancePage";
 import BookingsPage from "./pages/BookingsPage/BookingsPage";
+import ContactPage from "./pages/ContactPage/ContactPage";
 import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordPage";
 import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
-import ContactPage from "./pages/ContactPage/ContactPage";
 import FAQsPage from "./pages/HelpPages/FAQsPage";
 import UserGuidePage from "./pages/HelpPages/UserGuidePage";
 import InventoryPage from "./pages/InventoryPage/InventoryPage";
@@ -38,11 +39,11 @@ import { validateToken } from "./services/auth";
 import cachePreloader from "./services/cachePreloader";
 import crossTabSync from "./services/crossTabSync";
 import memoryManager from "./services/memoryManager";
-import "./utils/performanceTestSuite";
+import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
 
 const App = () => {
-  const { user } = useSelector((state) => state.auth);
+  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
   const dispatch = useDispatch();
   useEffect(() => {
     // Check if user data exists in localStorage and validate the token
@@ -155,15 +156,26 @@ const App = () => {
             "❌ Cross-tab sync initialization failed - method not found",
             crossTabSync
           );
-        }
-
-        // Initialize cache preloader and start critical data preloading
+        } // Initialize cache preloader and start critical data preloading
         if (user?.role) {
           await cachePreloader.preloadCriticalData(user.role);
           console.log("✅ Critical data preloaded for role:", user.role);
         } else {
-          await cachePreloader.preloadCriticalData();
-          console.log("✅ Basic critical data preloaded");
+          // Only preload non-authenticated data if there's no user
+          // This prevents API calls that require authentication
+          console.log(
+            "⚠️ Skipping critical data preload - user not authenticated"
+          );
+        }
+
+        // Initialize performance test utilities after user is authenticated
+        if (
+          user?.role &&
+          typeof window !== "undefined" &&
+          window.location.hostname === "localhost"
+        ) {
+          initializePerformanceUtils();
+          console.log("✅ Performance test utilities initialized");
         }
 
         console.log("🎉 All performance services initialized successfully");

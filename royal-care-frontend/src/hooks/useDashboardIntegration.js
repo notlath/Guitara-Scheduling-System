@@ -1,18 +1,19 @@
 /**
  * Integration hooks for dashboard components to use centralized data management
  * These hooks eliminate redundant polling and provide optimized data access
- * Enhanced with immediate data display capabilities
+ * Enhanced with immediate data display capabilities and performance optimizations
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
+import { shallowEqual, useSelector } from "react-redux";
 import { useDashboardData } from "./useDataManager";
+import { useStableValue } from "./usePerformanceOptimization";
 
 /**
  * Enhanced hook for TherapistDashboard with immediate data display
  */
 export const useTherapistDashboardData = () => {
-  const { user } = useSelector((state) => state.auth);
+  const user = useSelector((state) => state.auth.user, shallowEqual);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Enhanced data access with immediate display capabilities
@@ -30,6 +31,9 @@ export const useTherapistDashboardData = () => {
     refreshIfStale,
   } = useDashboardData("therapistDashboard", "therapist");
 
+  // Stable user ID to prevent unnecessary recalculations
+  const stableUserId = useStableValue(user?.id);
+
   // Mark initial load as complete when we first get data
   useEffect(() => {
     if (hasAnyData || (!loading && isInitialLoad)) {
@@ -37,32 +41,35 @@ export const useTherapistDashboardData = () => {
     }
   }, [hasAnyData, loading, isInitialLoad]);
 
-  // Memoized filtering for therapist-specific appointments
+  // Optimized filtering for therapist-specific appointments with stable dependencies
   const myAppointments = useMemo(() => {
+    if (!stableUserId) return [];
     return appointments.filter(
       (apt) =>
-        apt.therapist === user?.id ||
-        (apt.therapists && apt.therapists.includes(user?.id))
+        apt.therapist === stableUserId ||
+        (apt.therapists && apt.therapists.includes(stableUserId))
     );
-  }, [appointments, user?.id]);
+  }, [appointments, stableUserId]);
 
   const myTodayAppointments = useMemo(() => {
+    if (!stableUserId) return [];
     return todayAppointments.filter(
       (apt) =>
-        (apt.therapist === user?.id ||
-          (apt.therapists && apt.therapists.includes(user?.id))) &&
+        (apt.therapist === stableUserId ||
+          (apt.therapists && apt.therapists.includes(stableUserId))) &&
         apt.status !== "transport_completed"
     );
-  }, [todayAppointments, user?.id]);
+  }, [todayAppointments, stableUserId]);
 
   const myUpcomingAppointments = useMemo(() => {
+    if (!stableUserId) return [];
     return upcomingAppointments.filter(
       (apt) =>
-        (apt.therapist === user?.id ||
-          (apt.therapists && apt.therapists.includes(user?.id))) &&
+        (apt.therapist === stableUserId ||
+          (apt.therapists && apt.therapists.includes(stableUserId))) &&
         apt.status !== "transport_completed"
     );
-  }, [upcomingAppointments, user?.id]);
+  }, [upcomingAppointments, stableUserId]);
 
   // Optimized refresh function that uses centralized data manager
   const refreshAppointments = useCallback(
@@ -128,7 +135,7 @@ export const useTherapistDashboardData = () => {
  * Enhanced hook for DriverDashboard with immediate data display
  */
 export const useDriverDashboardData = () => {
-  const { user } = useSelector((state) => state.auth);
+  const user = useSelector((state) => state.auth.user, shallowEqual);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Enhanced data access with immediate display capabilities
@@ -146,6 +153,9 @@ export const useDriverDashboardData = () => {
     refreshIfStale,
   } = useDashboardData("driverDashboard", "driver");
 
+  // Stable user ID to prevent unnecessary recalculations
+  const stableUserId = useStableValue(user?.id);
+
   // Mark initial load as complete when we first get data
   useEffect(() => {
     if (hasAnyData || (!loading && isInitialLoad)) {
@@ -153,76 +163,64 @@ export const useDriverDashboardData = () => {
     }
   }, [hasAnyData, loading, isInitialLoad]);
 
-  // Memoized filtering for driver-specific appointments
+  // Stable visible statuses to prevent array recreation
+  const visibleStatuses = useStableValue([
+    "pending",
+    "therapist_confirmed",
+    "driver_confirmed",
+    "in_progress",
+    "journey_started",
+    "journey",
+    "arrived",
+    "pickup_requested",
+    "driver_assigned_pickup",
+    "return_journey",
+    "dropped_off",
+    "driver_transport_completed",
+    "transport_completed",
+    "payment_completed",
+  ]);
+
+  const todayVisibleStatuses = useStableValue([
+    "pending",
+    "therapist_confirmed",
+    "driver_confirmed",
+    "in_progress",
+    "journey_started",
+    "journey",
+    "arrived",
+    "pickup_requested",
+    "driver_assigned_pickup",
+    "return_journey",
+  ]);
+
+  // Optimized filtering for driver-specific appointments
   const myAppointments = useMemo(() => {
+    if (!stableUserId) return [];
     return appointments.filter((apt) => {
-      const isAssignedDriver = apt.driver === user?.id;
+      const isAssignedDriver = apt.driver === stableUserId;
       if (!isAssignedDriver) return false;
-
-      const visibleStatuses = [
-        "pending",
-        "therapist_confirmed",
-        "driver_confirmed",
-        "in_progress",
-        "journey_started",
-        "journey",
-        "arrived",
-        "pickup_requested",
-        "driver_assigned_pickup",
-        "return_journey",
-        "dropped_off",
-        "driver_transport_completed",
-        "transport_completed",
-        "payment_completed",
-      ];
-
       return visibleStatuses.includes(apt.status);
     });
-  }, [appointments, user?.id]);
+  }, [appointments, stableUserId, visibleStatuses]);
 
   const myTodayAppointments = useMemo(() => {
+    if (!stableUserId) return [];
     return todayAppointments.filter((apt) => {
-      const isAssignedDriver = apt.driver === user?.id;
+      const isAssignedDriver = apt.driver === stableUserId;
       if (!isAssignedDriver) return false;
-
-      const visibleStatuses = [
-        "pending",
-        "therapist_confirmed",
-        "driver_confirmed",
-        "in_progress",
-        "journey_started",
-        "journey",
-        "arrived",
-        "pickup_requested",
-        "driver_assigned_pickup",
-        "return_journey",
-      ];
-
-      return visibleStatuses.includes(apt.status);
+      return todayVisibleStatuses.includes(apt.status);
     });
-  }, [todayAppointments, user?.id]);
+  }, [todayAppointments, stableUserId, todayVisibleStatuses]);
 
   const myUpcomingAppointments = useMemo(() => {
+    if (!stableUserId) return [];
     return upcomingAppointments.filter((apt) => {
-      const isAssignedDriver = apt.driver === user?.id;
+      const isAssignedDriver = apt.driver === stableUserId;
       if (!isAssignedDriver) return false;
-
-      const visibleStatuses = [
-        "pending",
-        "therapist_confirmed",
-        "driver_confirmed",
-        "in_progress",
-        "journey_started",
-        "journey",
-        "arrived",
-        "pickup_requested",
-        "driver_assigned_pickup",
-        "return_journey",
-      ];
-
       return visibleStatuses.includes(apt.status);
     });
-  }, [upcomingAppointments, user?.id]);
+  }, [upcomingAppointments, stableUserId, visibleStatuses]);
 
   // All transports for "All My Transports" view
   const myAllTransports = useMemo(() => {

@@ -3,6 +3,7 @@
  * Implements Solution #1: Cache preloading with route-based prefetching
  */
 
+import { isValidToken } from "../utils/authUtils.js";
 import dataManager from "./dataManager.js";
 
 class CachePreloader {
@@ -80,6 +81,12 @@ class CachePreloader {
    */
   async preloadCriticalData(userRole = null) {
     console.log("📚 CachePreloader: Starting critical data preload");
+
+    // Check if user is authenticated before preloading
+    if (!isValidToken()) {
+      console.log("⚠️ Skipping critical data preload - user not authenticated");
+      return false;
+    }
 
     const criticalDataTypes = new Set(["appointments", "todayAppointments"]);
 

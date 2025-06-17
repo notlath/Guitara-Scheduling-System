@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { shallowEqual, useDispatch } from "react-redux";
 import {
   createAppointment,
   fetchAvailableDrivers,
@@ -9,6 +9,7 @@ import {
   fetchStaffMembers,
   updateAppointment,
 } from "../../features/scheduling/schedulingSlice";
+import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 import "../../styles/AppointmentForm.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import { fuzzyMatch } from "../../utils/searchUtils";
@@ -276,6 +277,10 @@ const AppointmentForm = ({
   const [fetchingAvailability, setFetchingAvailability] = useState(false); // Track availability fetching
 
   const dispatch = useDispatch();
+  const schedulingState = useOptimizedSelector(
+    (state) => state.scheduling,
+    shallowEqual
+  );
   const {
     clients,
     services,
@@ -283,7 +288,7 @@ const AppointmentForm = ({
     staffMembers,
     availableTherapists: fetchedAvailableTherapists,
     availableDrivers: fetchedAvailableDrivers,
-  } = useSelector((state) => state.scheduling);
+  } = schedulingState;
 
   // Track form state for availability checks separately to avoid circular dependencies
   const [availabilityParams, setAvailabilityParams] = useState({

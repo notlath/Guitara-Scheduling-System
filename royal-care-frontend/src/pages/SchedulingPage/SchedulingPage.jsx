@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { useSelector } from "react-redux";
+import { shallowEqual } from "react-redux";
 import SchedulingDashboard from "../../components/scheduling/SchedulingDashboard";
 import pageTitles from "../../constants/pageTitles";
+import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 
 const SchedulingPage = () => {
-  const { user } = useSelector((state) => state.auth);
+  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
 
   useEffect(() => {
     document.title = pageTitles.scheduling;

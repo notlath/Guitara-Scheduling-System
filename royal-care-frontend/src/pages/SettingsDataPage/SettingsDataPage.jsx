@@ -115,7 +115,7 @@ const fetchers = {
     // Operators need to fetch from registration endpoint
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      "http://localhost:8000/api/registration/register/operator/",
+      `${import.meta.env.VITE_API_BASE_URL}/api/registration/register/operator/`,
       {
         headers: {
           Authorization: `Token ${token}`,

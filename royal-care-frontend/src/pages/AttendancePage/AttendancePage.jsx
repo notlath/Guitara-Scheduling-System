@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { shallowEqual, useDispatch } from "react-redux";
 import "../../../src/styles/Placeholders.css";
 import pageTitles from "../../constants/pageTitles";
 import {
@@ -11,6 +11,7 @@ import DataTable from "../../globals/DataTable";
 import LayoutRow from "../../globals/LayoutRow";
 import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
+import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 import styles from "./AttendancePage.module.css";
 
 const AttendancePage = () => {
@@ -32,13 +33,17 @@ const AttendancePage = () => {
   const [selectedDate, setSelectedDate] = useState(getCurrentDate());
   const [attendanceFilter, setAttendanceFilter] = useState("all");
 
+  const attendanceState = useOptimizedSelector(
+    (state) => state.attendance,
+    shallowEqual
+  );
   const {
     attendanceRecords,
     attendanceSummary,
     loading: attendanceLoading,
     approvalLoading,
     error: attendanceError,
-  } = useSelector((state) => state.attendance);
+  } = attendanceState;
 
   // Combined loading state
   const loading = attendanceLoading;

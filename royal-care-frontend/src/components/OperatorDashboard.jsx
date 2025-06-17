@@ -8,7 +8,6 @@ import {
 import { logout } from "../features/auth/authSlice";
 import {
   autoCancelOverdueAppointments,
-  fetchAppointments,
   fetchNotifications,
   fetchStaffMembers,
   markAppointmentPaid,
@@ -17,14 +16,14 @@ import {
 } from "../features/scheduling/schedulingSlice";
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
+import TabSwitcher from "../globals/TabSwitcher";
 import { useOperatorDashboardData } from "../hooks/useDashboardIntegration";
+import { useStableCallback } from "../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
-import AvailabilityManager from "./scheduling/AvailabilityManager";
-import TabSwitcher from "../globals/TabSwitcher";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
@@ -43,12 +42,14 @@ const OperatorDashboard = () => {
   // Get view from URL params, default to 'rejected'
   const currentView = searchParams.get("view") || "rejected";
 
-  // Helper function to update view in URL
-  const setView = (newView) => {
+  // Optimized view setter with stable callback
+  const setView = useStableCallback((newView) => {
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set("view", newView);
     setSearchParams(newSearchParams);
-  };
+  });
+
+  // Modal states - memoized to prevent unnecessary re-renders
   const [reviewModal, setReviewModal] = useState({
     isOpen: false,
     appointmentId: null,
@@ -57,10 +58,10 @@ const OperatorDashboard = () => {
   const [reviewNotes, setReviewNotes] = useState("");
   const [autoCancelLoading, setAutoCancelLoading] = useState(false);
 
-  // Loading states for individual button actions
+  // Optimized loading states with stable callbacks
   const [buttonLoading, setButtonLoading] = useState({});
-  // Helper function to set loading state for specific action
-  const setActionLoading = (actionKey, isLoading) => {
+
+  const setActionLoading = useStableCallback((actionKey, isLoading) => {
     console.log(`🔄 setActionLoading: ${actionKey} = ${isLoading}`);
     setButtonLoading((prev) => {
       const newState = {
@@ -70,16 +71,17 @@ const OperatorDashboard = () => {
       console.log("🔍 setActionLoading: New button loading state:", newState);
       return newState;
     });
-  };
+  });
+
   // Force clear loading state for emergency situations
-  const _forceClearLoading = (actionKey) => {
+  const _forceClearLoading = useStableCallback((actionKey) => {
     console.log(`🚨 forceClearLoading: Forcing clear for ${actionKey}`);
     setButtonLoading((prev) => {
       const newState = { ...prev };
       delete newState[actionKey];
       return newState;
     });
-  };
+  });
   // Payment verification modal state
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
@@ -537,8 +539,8 @@ const OperatorDashboard = () => {
         })
       ).unwrap();
 
-      // Refresh appointments to get updated status
-      dispatch(fetchAppointments());
+      // Refresh dashboard data to get updated status
+      refreshData();
     } catch (error) {
       console.error("Failed to start appointment:", error);
       alert("Failed to start appointment. Please try again.");
@@ -1369,9 +1371,9 @@ const OperatorDashboard = () => {
                   )}
                 </p>
               </div>
-            </div>
+            </div>{" "}
             <div className="appointment-actions">
-              {appointment.both_parties_accepted && (
+              {appointment.status === "driver_confirmed" && (
                 <LoadingButton
                   onClick={() => handleStartAppointment(appointment.id)}
                   loading={buttonLoading[`start_${appointment.id}`]}
@@ -1575,10 +1577,33 @@ const OperatorDashboard = () => {
               <p>
                 <strong>Services:</strong>{" "}
                 {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>
+              </p>{" "}
               <p>
                 <strong>Status:</strong> {appointment.status}
               </p>
+            </div>{" "}
+            <div className="appointment-actions">
+              {/* Show Start Appointment button when status is driver_confirmed */}
+              {appointment.status === "driver_confirmed" && (
+                <LoadingButton
+                  onClick={() => handleStartAppointment(appointment.id)}
+                  loading={buttonLoading[`start_${appointment.id}`]}
+                  className="start-button"
+                >
+                  Start Appointment
+                </LoadingButton>
+              )}
+
+              {/* Show payment verification button for awaiting payment */}
+              {appointment.status === "awaiting_payment" && (
+                <LoadingButton
+                  onClick={() => handlePaymentVerification(appointment)}
+                  loading={buttonLoading[`payment_${appointment.id}`]}
+                  className="payment-button"
+                >
+                  Verify Payment
+                </LoadingButton>
+              )}
             </div>
           </div>
         ))}
@@ -1847,12 +1872,24 @@ const OperatorDashboard = () => {
     { value: "rejected", label: `Rejected (${rejectedAppointments.length})` },
     { value: "pending", label: `Pending (${pendingAppointments.length})` },
     { value: "timeout", label: `Timeout (${overdueAppointments.length})` },
-    { value: "payment", label: `Payment (${awaitingPaymentAppointments.length})` },
+    {
+      value: "payment",
+      label: `Payment (${awaitingPaymentAppointments.length})`,
+    },
     { value: "all", label: `All (${appointments.length})` },
     { value: "attendance", label: `Attendance (${attendanceRecords.length})` },
-    { value: "notifications", label: `Notifications (${notifications.length})` },
-    { value: "driver", label: `Driver (${driverAssignment.availableDrivers.length})` },
-    { value: "workflow", label: `Workflow (${approachingDeadlineAppointments.length})` },
+    {
+      value: "notifications",
+      label: `Notifications (${notifications.length})`,
+    },
+    {
+      value: "driver",
+      label: `Driver (${driverAssignment.availableDrivers.length})`,
+    },
+    {
+      value: "workflow",
+      label: `Workflow (${approachingDeadlineAppointments.length})`,
+    },
     { value: "sessions", label: `Sessions (${activeSessions.length})` },
     { value: "pickup", label: `Pickup (${pickupRequests.length})` },
   ];

@@ -6,12 +6,35 @@
 import cachePreloader from "../services/cachePreloader";
 import crossTabSync from "../services/crossTabSync";
 import memoryManager from "../services/memoryManager";
+import { isValidToken } from "./authUtils";
 
 /**
  * Run integration tests for performance optimization features
  */
 export const runPerformanceTests = async () => {
   console.group("🧪 Performance Optimization Integration Tests");
+
+  // Check if user is authenticated AND not on login page before running tests
+  const isOnLoginPage =
+    window.location.pathname.includes("/login") ||
+    window.location.pathname === "/" ||
+    window.location.pathname.includes("/register") ||
+    window.location.pathname.includes("/forgot-password");
+
+  if (!isValidToken() || isOnLoginPage) {
+    console.log(
+      "⚠️ Skipping performance tests - user not authenticated or on login page"
+    );
+    console.groupEnd();
+    return {
+      cachePreloader: false,
+      memoryManager: false,
+      crossTabSync: false,
+      overall: false,
+      skipped: true,
+      reason: isOnLoginPage ? "On login page" : "Not authenticated",
+    };
+  }
 
   const results = {
     cachePreloader: false,
@@ -24,7 +47,19 @@ export const runPerformanceTests = async () => {
     // Test Cache Preloader
     console.log("Testing Cache Preloader...");
     try {
-      await cachePreloader.preloadCriticalData();
+      // Get user role from localStorage or default to operator
+      const storedUser = localStorage.getItem("user");
+      let userRole = "operator"; // default
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          userRole = parsedUser.role || "operator";
+        } catch {
+          console.warn("Could not parse stored user, using default role");
+        }
+      }
+
+      await cachePreloader.preloadCriticalData(userRole);
       const status = cachePreloader.getCacheStatus();
       results.cachePreloader = status && typeof status === "object";
       console.log("✅ Cache Preloader test passed");
@@ -173,6 +208,19 @@ export const connectionTester = {
 export const runPerformanceDiagnostic = async () => {
   console.group("🔍 Performance Diagnostic");
 
+  // Check authentication first
+  if (!isValidToken()) {
+    console.log("⚠️ Skipping performance diagnostic - user not authenticated");
+    const diagnostic = {
+      skipped: true,
+      reason: "Not authenticated",
+      timestamp: new Date().toISOString(),
+    };
+    console.log("📊 Diagnostic Result:", diagnostic);
+    console.groupEnd();
+    return diagnostic;
+  }
+
   // Test integration
   const integrationResults = await runPerformanceTests();
 
@@ -208,21 +256,67 @@ export const runPerformanceDiagnostic = async () => {
   return diagnostic;
 };
 
-// Auto-run diagnostic in development
-if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-  // Run diagnostic after a short delay to let app initialize
-  setTimeout(() => {
-    runPerformanceDiagnostic();
-  }, 2000);
-
-  // Expose utilities globally for debugging
-  window.performanceUtils = {
-    runTests: runPerformanceTests,
-    monitor: performanceMonitor,
-    memoryTracker,
-    connectionTester,
-    runDiagnostic: runPerformanceDiagnostic,
-  };
+// Initialize performance testing utilities only when needed
+const initializePerformanceUtils = () => {
+  // Make performance utilities available globally for debugging
+  if (typeof window !== "undefined") {
+    window.performanceUtils = {
+      runTests: runPerformanceTests,
+      monitor: performanceMonitor,
+      memoryTracker,
+      connectionTester,
+      runDiagnostic: runPerformanceDiagnostic,
+    };
+  }
 
   console.log("🛠️ Performance utilities available at window.performanceUtils");
-}
+
+  // Listen for login events to auto-run diagnostics
+  const checkForLoginAndRunDiagnostic = () => {
+    // Only run if user is authenticated AND not on login/auth pages
+    const isOnAuthPages =
+      window.location.pathname.includes("/login") ||
+      window.location.pathname === "/" ||
+      window.location.pathname.includes("/register") ||
+      window.location.pathname.includes("/forgot-password") ||
+      window.location.pathname.includes("/enter-new-password") ||
+      window.location.pathname.includes("/2fa");
+
+    if (isValidToken() && !isOnAuthPages) {
+      console.log(
+        "✅ User authenticated and on dashboard - running performance diagnostic"
+      );
+      runPerformanceDiagnostic();
+    } else {
+      console.log(
+        "⚠️ Skipping performance diagnostic - user not authenticated or on auth page"
+      );
+    }
+  };
+
+  // Check periodically for authentication (less intrusive than auto-running)
+  let authCheckInterval = setInterval(() => {
+    const isOnAuthPages =
+      window.location.pathname.includes("/login") ||
+      window.location.pathname === "/" ||
+      window.location.pathname.includes("/register") ||
+      window.location.pathname.includes("/forgot-password") ||
+      window.location.pathname.includes("/enter-new-password") ||
+      window.location.pathname.includes("/2fa");
+
+    if (isValidToken() && !isOnAuthPages) {
+      clearInterval(authCheckInterval);
+      setTimeout(checkForLoginAndRunDiagnostic, 3000); // Run after dashboard loads
+    }
+  }, 1000);
+
+  // Clear interval after 30 seconds to avoid infinite checking
+  setTimeout(() => {
+    if (authCheckInterval) {
+      clearInterval(authCheckInterval);
+    }
+  }, 30000);
+};
+
+// Export the initialization function
+export { initializePerformanceUtils };
