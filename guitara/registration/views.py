@@ -878,8 +878,11 @@ class CompleteRegistrationAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         except Exception as exc:
+            import traceback
+            print("[DEBUG] Registration Exception:", exc)
+            traceback.print_exc()
             return Response(
-                {"error": f"Failed to complete registration: {exc}"},
+                {"error": f"Failed to complete registration: {exc}", "trace": traceback.format_exc()},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
