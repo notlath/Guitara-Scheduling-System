@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./TwoFAForgotPasswordPage.module.css";
 import pageTitles from "../../constants/pageTitles";
-
+import FormBlueprint from "../../globals/FormBlueprint";
+import { FormField } from "../../globals/FormField";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 
 function TwoFAForgotPasswordPage() {
@@ -22,47 +23,62 @@ function TwoFAForgotPasswordPage() {
     e.preventDefault();
     setError("");
     if (!code) {
-      setError("Please enter the verification code.");
+      setError("Please enter the 6-digit verification code.");
       return;
     }
     if (!email) {
-      setError("Missing email. Please restart the reset process.");
+      setError(
+        "We couldn't find your email. Please restart the password reset process."
+      );
       return;
     }
     // Optionally, you could verify the code with the backend here before proceeding
     navigate("/enter-new-password", { state: { email, code } });
   };
 
+  const header = "Check Your Email for a Verification Code";
+  const errorMessage = error ? (
+    <div className={styles.errorText}>{error}</div>
+  ) : null;
+
+  const formFields = (
+    <div className={styles.formGroup}>
+      <FormField
+        label="Verification Code"
+        name="verificationCode"
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        required
+        inputProps={{
+          placeholder: "Enter the 6-digit code",
+          className: styles.formInput,
+          type: "number",
+        }}
+      />
+    </div>
+  );
+
+  const button = (
+    <button type="submit" className="action-btn">
+      Verify Code
+    </button>
+  );
+
   return (
     <div className={styles.loginContainer}>
       <div className={styles.imageSide}>
         <img src={loginSidepic} alt="Background" />
       </div>
-
       <div className={styles.formSide}>
-        <form className={styles.loginForm} onSubmit={handleSubmit}>
-          <div className={styles.formGroup}>
-            <h2 className={styles.formHeading}>
-              Check your email for a verification code
-            </h2>
-            <label htmlFor="verificationCode" className={styles.formLabel}>
-              Code
-            </label>
-            <input
-              type="number"
-              id="verificationCode"
-              placeholder="Enter verification code"
-              className={styles.formInput}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-            {error && <div className={styles.errorText}>{error}</div>}
-          </div>
-
-          <button type="submit" className={styles.formButton}>
-            Verify
-          </button>
-        </form>
+        <FormBlueprint
+          header={header}
+          errorMessage={errorMessage}
+          onSubmit={handleSubmit}
+          button={button}
+          formClass={styles.loginForm}
+        >
+          {formFields}
+        </FormBlueprint>
       </div>
     </div>
   );
