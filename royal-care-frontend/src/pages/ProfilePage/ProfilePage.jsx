@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { logout } from "../../features/auth/authSlice";
+import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUploadPure";
 import pageTitles from "../../constants/pageTitles";
+import { logout, updateUserProfile } from "../../features/auth/authSlice";
 import styles from "./ProfilePage.module.css";
 
 const ProfilePage = () => {
@@ -10,6 +11,7 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const user = useSelector((state) => state.auth.user);
   const [userData, setUserData] = useState(null);
+  const [profilePhoto, setProfilePhoto] = useState(null);
 
   useEffect(() => {
     document.title = pageTitles.profile;
@@ -17,24 +19,73 @@ const ProfilePage = () => {
     // Get user data from Redux store or localStorage
     if (user) {
       setUserData(user);
+      setProfilePhoto(user.profile_photo_url);
     } else {
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
           setUserData(parsedUser);
+          setProfilePhoto(parsedUser.profile_photo_url);
         } catch (error) {
           console.error("Error parsing stored user data:", error);
         }
       }
     }
-  }, [user]);
+
+    // Fetch the latest user profile from backend to get current photo URL
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem("knoxToken");
+        if (!token) return;
+
+        const response = await fetch("/api/registration/profile/", {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const profileData = await response.json();
+          setProfilePhoto(profileData.profile_photo_url);
+          // Update local storage with latest profile data
+          const updatedUser = {
+            ...userData,
+            profile_photo_url: profileData.profile_photo_url,
+          };
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+        }
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user, userData]);
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");
     localStorage.removeItem("user");
     dispatch(logout());
     navigate("/");
+  };
+
+  const handlePhotoUpdate = (photoUrl) => {
+    setProfilePhoto(photoUrl);
+
+    // Update user data in localStorage and Redux store
+    if (userData) {
+      const updatedUser = { ...userData, profile_photo_url: photoUrl };
+      setUserData(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      // Update Redux store if available
+      if (user) {
+        dispatch(updateUserProfile({ profile_photo_url: photoUrl }));
+      }
+    }
+
+    console.log("Photo updated:", photoUrl);
   };
 
   const formatDate = (dateString) => {
@@ -72,8 +123,8 @@ const ProfilePage = () => {
 
   if (!userData) {
     return (
-      <div className={styles.profileContainer}>
-        <div className={styles.profileContent}>
+      <div className={styles.container}>
+        <div className={styles.content}>
           <div className={styles.noDataMessage}>
             <h2>Profile information not available</h2>
             <p>Please log in again to view your profile.</p>
@@ -90,69 +141,89 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className={styles.profileContainer}>
-      <div className={styles.profileContent}>
-        <div className={styles.profileHeader}>
-          <h1 className={styles.profileTitle}>My Profile</h1>
-          <p className={styles.profileSubtitle}>
-            Manage your account information and settings
+    <div className={styles.container}>
+      <div className={styles.content}>
+        <div className={styles.header}>
+          <h1 className={styles.pageTitle}>My Profile</h1>
+          <p className={styles.pageSubtitle}>
+            View your account information and settings
           </p>
         </div>
 
-        <div className={styles.profileBody}>
-          <div className={styles.profileSection}>
-            <div className={styles.userHeaderSection}>
-              <h2 className={styles.userFullName}>
-                {userData.full_name ||
-                  (userData.first_name && userData.last_name
-                    ? `${userData.first_name} ${userData.last_name}`
-                    : "User Profile")}
-              </h2>
-              <h3 className={styles.userUsername}>
-                @{userData.username || "username"}
-              </h3>
+        {/* User Profile Header with Photo */}
+        <div className={styles.userProfileHeader}>
+          <div className={styles.profilePhotoSection}>
+            <ProfilePhotoUpload
+              currentPhoto={profilePhoto}
+              onPhotoUpdate={handlePhotoUpdate}
+              size="large"
+            />
+          </div>
+          <div className={styles.userInfoSection}>
+            <h2 className={styles.fullName}>
+              {userData.full_name ||
+                (userData.first_name && userData.last_name
+                  ? `${userData.first_name} ${userData.last_name}`
+                  : "User Profile")}
+            </h2>
+            <p className={styles.username}>
+              @{userData.username || "username"}
+            </p>
+            <p className={styles.userRole}>
+              {getRoleDisplayName(userData.role || userData.user_type)}
+            </p>
+          </div>
+        </div>
+
+        {/* Profile Information Section */}
+        <div className={styles.profileSection}>
+          <div className={styles.sectionHeader}>
+            <h3 className={styles.sectionTitle}>Account Information</h3>
+            <p className={styles.sectionDescription}>
+              Your personal details and account status
+            </p>
+          </div>
+
+          <div className={styles.infoGrid}>
+            <div className={styles.infoCard}>
+              <div className={styles.infoLabel}>Email Address</div>
+              <div className={styles.infoValue}>
+                {userData.email || "Not provided"}
+              </div>
             </div>
 
-            <div className={styles.infoGrid}>
-              <div className={styles.infoCard}>
-                <div className={styles.infoLabel}>Email Address</div>
-                <div className={styles.infoValue}>
-                  {userData.email || "Not provided"}
-                </div>
+            <div className={styles.infoCard}>
+              <div className={styles.infoLabel}>Role</div>
+              <div className={styles.infoValue}>
+                <span className={styles.roleValue}>
+                  {getRoleDisplayName(userData.role || userData.user_type)}
+                </span>
               </div>
+            </div>
 
-              <div className={styles.infoCard}>
-                <div className={styles.infoLabel}>Role</div>
-                <div className={styles.infoValue}>
-                  <span className={styles.roleValue}>
-                    {getRoleDisplayName(userData.role || userData.user_type)}
-                  </span>
-                </div>
+            <div className={styles.infoCard}>
+              <div className={styles.infoLabel}>Member Since</div>
+              <div className={styles.infoValue}>
+                {formatDate(userData.date_joined || userData.created_at)}
               </div>
+            </div>
 
-              <div className={styles.infoCard}>
-                <div className={styles.infoLabel}>Member Since</div>
-                <div className={styles.infoValue}>
-                  {formatDate(userData.date_joined || userData.created_at)}
-                </div>
-              </div>
-
-              <div className={styles.infoCard}>
-                <div className={styles.infoLabel}>Account Status</div>
-                <div className={styles.infoValue}>
-                  {userData.is_active !== false ? "Active" : "Inactive"}
-                </div>
+            <div className={styles.infoCard}>
+              <div className={styles.infoLabel}>Account Status</div>
+              <div className={styles.infoValue}>
+                {userData.is_active !== false ? "Active" : "Inactive"}
               </div>
             </div>
           </div>
+        </div>
 
-          <div className={styles.profileSection}>
-            <div className={styles.actionsSection}>
-              <h2 className={styles.sectionTitle}>Account Actions</h2>
-              <button className={styles.actionButton} onClick={handleLogout}>
-                Logout
-              </button>
-            </div>
+        {/* Actions Section */}
+        <div className={styles.profileSection}>
+          <div className={styles.actionsSection}>
+            <h3 className={styles.sectionTitle}>Account Actions</h3>
+            <button className={styles.actionButton} onClick={handleLogout}>
+              Logout
+            </button>
           </div>
         </div>
       </div>

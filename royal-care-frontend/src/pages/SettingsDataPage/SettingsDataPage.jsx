@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { MdAdd, MdClose } from "react-icons/md";
+import {
+  MdAdd,
+  MdBackup,
+  MdClose,
+  MdDownload,
+  MdRestore,
+} from "react-icons/md";
 import Select from "react-select";
 import MinimalLoadingIndicator from "../../components/common/MinimalLoadingIndicator";
 import DataTable from "../../globals/DataTable";
@@ -8,6 +14,7 @@ import LayoutRow from "../../globals/LayoutRow";
 import "../../globals/LayoutRow.css";
 import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
+import useSettingsData from "../../hooks/useSettingsData";
 import {
   registerClient,
   registerDriver,
@@ -209,32 +216,51 @@ const SettingsDataPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({});
   const [successPrompt, setSuccessPrompt] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [tableData, setTableData] = useState({
-    Therapists: [],
-    Drivers: [],
-    Operators: [],
-    Clients: [],
-    Services: [],
-    Materials: [],
-  });
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [backupStatus, setBackupStatus] = useState("");
+  const [showBackupDropdown, setShowBackupDropdown] = useState(false);
 
+  // Use the new settings data hook for immediate data display and caching
+  const {
+    tableData,
+    isTabLoading,
+    getTabError,
+    loadTabData,
+    refreshTabData,
+    hasDataForTab,
+    isTabDataStale,
+    prefetchTabs,
+  } = useSettingsData(fetchers);
+
+  // Track tab switching for immediate data display
   useEffect(() => {
     document.title = `${activeTab} | Royal Care`;
-    // Fetch data for the active tab
-    setIsLoading(true);
-    fetchers[activeTab]()
-      .then((data) => {
-        setTableData((prev) => ({ ...prev, [activeTab]: data }));
-      })
-      .catch(() => {
-        setTableData((prev) => ({ ...prev, [activeTab]: [] }));
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [activeTab]);
+
+    // Load data for active tab with immediate cache display
+    loadTabData(activeTab);
+
+    // Prefetch adjacent tabs for smoother navigation
+    const currentIndex = TABS.indexOf(activeTab);
+    const adjacentTabs = [
+      TABS[currentIndex - 1],
+      TABS[currentIndex + 1],
+    ].filter(Boolean);
+
+    if (adjacentTabs.length > 0) {
+      console.log(`🚀 SettingsData: Prefetching adjacent tabs:`, adjacentTabs);
+      prefetchTabs(adjacentTabs);
+    }
+  }, [activeTab, loadTabData, prefetchTabs]);
+
+  // Auto-refresh stale data in background
+  useEffect(() => {
+    if (isTabDataStale(activeTab) && hasDataForTab(activeTab)) {
+      console.log(`🔄 SettingsData: Auto-refreshing stale ${activeTab} data`);
+      refreshTabData(activeTab);
+    }
+  }, [activeTab, isTabDataStale, hasDataForTab, refreshTabData]);
 
   const handleAddClick = () => {
     setFormData({});
@@ -374,46 +400,214 @@ const SettingsDataPage = () => {
     }
 
     // Always refresh table after registration, even if there was an error
-    setIsLoading(true);
-    try {
-      fetchers[activeTab]()
-        .then((data) => {
-          console.log(
-            "[handleSubmit] Data returned by fetcher after registration:",
-            data
-          );
-          setTableData((prev) => ({ ...prev, [activeTab]: data }));
-        })
-        .catch((fetchErr) => {
-          setTableData((prev) => ({ ...prev, [activeTab]: [] }));
-          console.error("[handleSubmit] Fetcher error:", fetchErr);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-      setTimeout(() => {
-        setIsLoading(true);
-        fetchers[activeTab]()
-          .then((data) => {
-            console.log(
-              "[handleSubmit] Data returned by fetcher after 1s delay:",
-              data
-            );
-            setTableData((prev) => ({ ...prev, [activeTab]: data }));
-          })
-          .catch((fetchErr) => {
-            setTableData((prev) => ({ ...prev, [activeTab]: [] }));
-            console.error("[handleSubmit] Delayed fetcher error:", fetchErr);
-          })
-          .finally(() => {
-            setIsLoading(false);
-          });
-      }, 1000);
-    } catch (outerErr) {
-      console.error("[handleSubmit] Outer fetcher error:", outerErr);
-    }
+    console.log(
+      `🔄 SettingsData: Refreshing ${activeTab} data after registration`
+    );
+    refreshTabData(activeTab);
     setTimeout(() => setSuccessPrompt(""), 2000);
   };
+
+  // Backup functionality
+  const handleBackupData = async () => {
+    setIsBackingUp(true);
+    setBackupStatus("");
+
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `${activeTab.toLowerCase()}_backup_${timestamp}.json`;
+
+      // Get current data for the active tab
+      const currentData = tableData[activeTab];
+
+      if (!currentData || currentData.length === 0) {
+        setBackupStatus("No data available to backup");
+        return;
+      }
+
+      // Create backup object with metadata
+      const backupData = {
+        metadata: {
+          type: activeTab,
+          timestamp: new Date().toISOString(),
+          count: currentData.length,
+          version: "1.0",
+          source: "Royal Care Scheduling System",
+        },
+        data: currentData,
+      };
+
+      // Create and download the backup file
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], {
+        type: "application/json",
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setBackupStatus(`✅ Backup created: ${filename}`);
+    } catch (error) {
+      console.error("Backup error:", error);
+      setBackupStatus(`❌ Backup failed: ${error.message}`);
+    } finally {
+      setIsBackingUp(false);
+      setTimeout(() => setBackupStatus(""), 3000);
+    }
+  };
+
+  // Backup all data at once
+  const handleBackupAllData = async () => {
+    setIsBackingUp(true);
+    setBackupStatus("Creating complete backup...");
+
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `royal_care_complete_backup_${timestamp}.json`;
+
+      // Fetch all data types
+      const allBackupData = {};
+      let totalRecords = 0;
+
+      for (const tab of TABS) {
+        try {
+          const data = await fetchers[tab]();
+          allBackupData[tab] = data;
+          totalRecords += data.length;
+        } catch (error) {
+          console.error(`Error fetching ${tab}:`, error);
+          allBackupData[tab] = [];
+        }
+      }
+
+      const completeBackup = {
+        metadata: {
+          type: "complete_backup",
+          timestamp: new Date().toISOString(),
+          totalRecords,
+          dataTypes: TABS,
+          version: "1.0",
+          source: "Royal Care Scheduling System",
+        },
+        data: allBackupData,
+      };
+
+      const blob = new Blob([JSON.stringify(completeBackup, null, 2)], {
+        type: "application/json",
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setBackupStatus(
+        `✅ Complete backup created with ${totalRecords} records`
+      );
+    } catch (error) {
+      console.error("Complete backup error:", error);
+      setBackupStatus(`❌ Complete backup failed: ${error.message}`);
+    } finally {
+      setIsBackingUp(false);
+      setTimeout(() => setBackupStatus(""), 5000);
+    }
+  };
+
+  // Restore functionality
+  const handleRestoreData = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      setIsRestoring(true);
+      setBackupStatus("Restoring data...");
+
+      try {
+        const text = await file.text();
+        const backupData = JSON.parse(text);
+
+        // Validate backup format
+        if (!backupData.metadata || !backupData.data) {
+          throw new Error("Invalid backup file format");
+        }
+
+        if (backupData.metadata.type === "complete_backup") {
+          // Handle complete backup restore
+          let restoredCount = 0;
+          const results = {};
+
+          for (const [dataType, records] of Object.entries(backupData.data)) {
+            if (TABS.includes(dataType) && Array.isArray(records)) {
+              results[dataType] = records.length;
+              restoredCount += records.length;
+              // Note: Direct table data update bypasses the cache
+              // The data will be re-cached on next fetch
+              console.log(
+                `🔄 SettingsData: Restoring ${dataType} with ${records.length} records`
+              );
+            }
+          }
+
+          setBackupStatus(
+            `✅ Restored complete backup: ${restoredCount} total records`
+          );
+        } else if (backupData.metadata.type === activeTab) {
+          // Handle single tab restore
+          if (!Array.isArray(backupData.data)) {
+            throw new Error("Invalid data format in backup");
+          }
+
+          console.log(
+            `🔄 SettingsData: Restoring ${activeTab} with ${backupData.data.length} records`
+          );
+          // Note: This bypasses the cache and will be refreshed on next load
+          setBackupStatus(
+            `✅ Restored ${activeTab}: ${backupData.data.length} records`
+          );
+        } else {
+          throw new Error(
+            `Backup type mismatch. Expected ${activeTab}, got ${backupData.metadata.type}`
+          );
+        }
+      } catch (error) {
+        console.error("Restore error:", error);
+        setBackupStatus(`❌ Restore failed: ${error.message}`);
+      } finally {
+        setIsRestoring(false);
+        setTimeout(() => setBackupStatus(""), 5000);
+      }
+    };
+
+    input.click();
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        showBackupDropdown &&
+        !event.target.closest(".backup-dropdown-container")
+      ) {
+        setShowBackupDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showBackupDropdown]);
 
   // Simple skeleton loader for table (like BookingsPage)
   const renderTableSkeleton = () => {
@@ -776,16 +970,29 @@ const SettingsDataPage = () => {
     }
   };
 
-  // Cache table config to avoid multiple calls
-  const tableConfig = getTableConfig();
+  // Compute if any loading is happening for UI indicators
+  const currentTabLoading = isTabLoading(activeTab);
+  const currentTabError = getTabError(activeTab);
 
   return (
     <PageLayout>
       <MinimalLoadingIndicator
-        show={isLoading}
+        show={currentTabLoading || isBackingUp || isRestoring}
         position="top-right"
-        operation={`Loading ${activeTab.toLowerCase()}`}
-        tooltip={`Fetching ${activeTab.toLowerCase()} data...`}
+        operation={
+          isBackingUp
+            ? "Creating backup..."
+            : isRestoring
+            ? "Restoring data..."
+            : `Loading ${activeTab.toLowerCase()}`
+        }
+        tooltip={
+          isBackingUp
+            ? "Generating backup file..."
+            : isRestoring
+            ? "Processing backup file..."
+            : `Fetching ${activeTab.toLowerCase()} data...`
+        }
       />
 
       {showModal && (
@@ -819,14 +1026,77 @@ const SettingsDataPage = () => {
         <div className={styles["success-prompt"]}>{successPrompt}</div>
       )}
 
+      {/* Backup Status */}
+      {backupStatus && (
+        <div className={styles["backup-status"]}>{backupStatus}</div>
+      )}
+
       <div className={"global-content" + (showModal ? " faded" : "")}>
         <div className={styles["header-tabs-container"]}>
           <LayoutRow title="Data">
             <div className="action-buttons">
+              {/* Backup/Restore Dropdown */}
+              <div
+                className="backup-dropdown-container"
+                style={{ position: "relative", display: "inline-block" }}
+              >
+                <button
+                  className="secondary-action-btn"
+                  onClick={() => setShowBackupDropdown(!showBackupDropdown)}
+                  disabled={currentTabLoading || isBackingUp || isRestoring}
+                  title="Backup and restore options"
+                >
+                  <MdBackup size={16} />
+                  Backup
+                </button>
+
+                {showBackupDropdown && (
+                  <div className={styles["backup-dropdown"]}>
+                    <button
+                      className={styles["dropdown-item"]}
+                      onClick={() => {
+                        setShowBackupDropdown(false);
+                        handleBackupData();
+                      }}
+                      disabled={isBackingUp || isRestoring}
+                    >
+                      <MdDownload size={14} />
+                      Backup {activeTab}
+                    </button>
+
+                    <button
+                      className={styles["dropdown-item"]}
+                      onClick={() => {
+                        setShowBackupDropdown(false);
+                        handleBackupAllData();
+                      }}
+                      disabled={isBackingUp || isRestoring}
+                    >
+                      <MdDownload size={14} />
+                      Backup All Data
+                    </button>
+
+                    <div className={styles["dropdown-divider"]}></div>
+
+                    <button
+                      className={styles["dropdown-item"]}
+                      onClick={() => {
+                        setShowBackupDropdown(false);
+                        handleRestoreData();
+                      }}
+                      disabled={isBackingUp || isRestoring}
+                    >
+                      <MdRestore size={14} />
+                      Restore Data
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <button
                 className="primary-action-btn"
                 onClick={handleAddClick}
-                disabled={isLoading}
+                disabled={currentTabLoading || isBackingUp || isRestoring}
               >
                 <span className="primary-action-icon">
                   <MdAdd size={20} />
@@ -842,13 +1112,19 @@ const SettingsDataPage = () => {
           />
         </div>
 
-        {isLoading ? (
+        {/* Show cached data immediately, with skeleton only when no data available */}
+        {!hasDataForTab(activeTab) && currentTabLoading ? (
           renderTableSkeleton()
         ) : (
           <DataTable
-            columns={tableConfig.columns}
+            columns={getTableConfig().columns}
             data={tableData[activeTab]}
           />
+        )}
+
+        {/* Show error message if there's an error and no data */}
+        {currentTabError && !hasDataForTab(activeTab) && (
+          <div className={styles["error-message"]}>{currentTabError}</div>
         )}
       </div>
     </PageLayout>

@@ -23,6 +23,7 @@ axiosAuth.interceptors.request.use((config) => {
   }
   return config;
 });
+import { Select, MenuItem } from "./MUISelect";
 
 const InventoryPage = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -312,7 +313,7 @@ const InventoryPage = () => {
                   <span className={"primary-action-icon"}>
                     <MdAdd size={20} />
                   </span>{" "}
-                  Add New Item
+                  Add
                 </button>
               </>
             )}
@@ -354,18 +355,39 @@ const InventoryPage = () => {
               className={styles["search-input"]}
               style={{ minWidth: 220, marginRight: 12 }}
             />
-            <select
+            <Select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className={styles["category-select"]}
-              style={{ minWidth: 180 }}
+              size="small"
+            displayEmpty
+            sx={{
+              minWidth: 180,
+              background: "#f7f7fa",
+              borderRadius: "8px",
+              border: "1px solid #e0e0e0",
+              fontSize: "1rem",
+              height: "40px",
+              boxShadow: "none",
+              ".MuiOutlinedInput-notchedOutline": {
+                border: "none",
+              },
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                border: "1px solid #bdbdbd",
+              },
+              ".MuiSelect-select": {
+                padding: "10px 14px",
+                display: "flex",
+                alignItems: "center",
+              },
+            }}
             >
               {categories.map((category) => (
-                <option key={category} value={category}>
+                <MenuItem key={category} value={category}>
                   {category === "all" ? "All Categories" : category}
-                </option>
+                </MenuItem>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 
@@ -407,14 +429,26 @@ const InventoryPage = () => {
                 </div>
                 <div className={styles["form-group"]}>
                   <label>Category</label>
-                  <input
-                    type="text"
+                  <Select
                     value={newItem.category}
                     onChange={(e) =>
                       setNewItem({ ...newItem, category: e.target.value })
                     }
-                    required
-                  />
+                    displayEmpty
+                    size="small"
+                    style={{ width: "100%", background: "#fff" }}
+                  >
+                    <MenuItem value="">
+                      <em>Select Category</em>
+                    </MenuItem>
+                    {categories
+                      .filter((cat) => cat !== "all")
+                      .map((category) => (
+                        <MenuItem key={category} value={category}>
+                          {category}
+                        </MenuItem>
+                      ))}
+                  </Select>
                 </div>
                 <div style={{ display: "flex", gap: 16 }}>
                   <div className={styles["form-group"]}>

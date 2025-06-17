@@ -386,7 +386,7 @@
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(44, 62, 80, 0.07);
-  padding: 0 0 20px 0;
+  /* padding: 0 0 20px 0; */
 }
 
 /* DataTable table row hover effect */

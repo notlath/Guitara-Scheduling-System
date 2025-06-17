@@ -1,6 +1,7 @@
 /**
  * Integration hooks for dashboard components to use centralized data management
  * These hooks eliminate redundant polling and provide optimized data access
+ * Enhanced with immediate data display capabilities
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -8,28 +9,33 @@ import { useSelector } from "react-redux";
 import { useDashboardData } from "./useDataManager";
 
 /**
- * Enhanced hook for TherapistDashboard with role-specific filtering
+ * Enhanced hook for TherapistDashboard with immediate data display
  */
 export const useTherapistDashboardData = () => {
   const { user } = useSelector((state) => state.auth);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Subscribe to centralized data management
+  // Enhanced data access with immediate display capabilities
   const {
     appointments,
     todayAppointments,
     upcomingAppointments,
     loading,
+    isRefreshing,
+    hasImmediateData,
+    hasAnyData,
+    isStaleData,
     error,
     forceRefresh,
+    refreshIfStale,
   } = useDashboardData("therapistDashboard", "therapist");
 
   // Mark initial load as complete when we first get data
   useEffect(() => {
-    if (appointments.length > 0 || (!loading && isInitialLoad)) {
+    if (hasAnyData || (!loading && isInitialLoad)) {
       setIsInitialLoad(false);
     }
-  }, [appointments.length, loading, isInitialLoad]);
+  }, [hasAnyData, loading, isInitialLoad]);
 
   // Memoized filtering for therapist-specific appointments
   const myAppointments = useMemo(() => {
@@ -102,40 +108,50 @@ export const useTherapistDashboardData = () => {
     todayAppointments,
     upcomingAppointments,
 
-    // State
-    loading,
+    // Enhanced state management for immediate display
+    loading: loading && !hasImmediateData, // Only show loading if no cached data
+    isRefreshing: isRefreshing || (loading && hasImmediateData), // Background refresh
+    hasImmediateData, // Whether we have cached data available
+    hasAnyData, // Whether we have any data (cached or fresh)
+    isStaleData, // Whether current data might be outdated
     error,
     isInitialLoad,
 
     // Actions
     refreshAppointments,
     forceRefresh,
+    refreshIfStale, // Auto-refresh if data is stale
   };
 };
 
 /**
- * Enhanced hook for DriverDashboard with role-specific filtering
+ * Enhanced hook for DriverDashboard with immediate data display
  */
 export const useDriverDashboardData = () => {
   const { user } = useSelector((state) => state.auth);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Subscribe to centralized data management
+  // Enhanced data access with immediate display capabilities
   const {
     appointments,
     todayAppointments,
     upcomingAppointments,
     loading,
+    isRefreshing,
+    hasImmediateData,
+    hasAnyData,
+    isStaleData,
     error,
     forceRefresh,
+    refreshIfStale,
   } = useDashboardData("driverDashboard", "driver");
 
   // Mark initial load as complete when we first get data
   useEffect(() => {
-    if (appointments.length > 0 || (!loading && isInitialLoad)) {
+    if (hasAnyData || (!loading && isInitialLoad)) {
       setIsInitialLoad(false);
     }
-  }, [appointments.length, loading, isInitialLoad]);
+  }, [hasAnyData, loading, isInitialLoad]);
 
   // Memoized filtering for driver-specific appointments
   const myAppointments = useMemo(() => {
@@ -275,33 +291,43 @@ export const useDriverDashboardData = () => {
     todayAppointments,
     upcomingAppointments,
 
-    // State
-    loading,
+    // Enhanced state management for immediate display
+    loading: loading && !hasImmediateData, // Only show loading if no cached data
+    isRefreshing: isRefreshing || (loading && hasImmediateData), // Background refresh
+    hasImmediateData, // Whether we have cached data available
+    hasAnyData, // Whether we have any data (cached or fresh)
+    isStaleData, // Whether current data might be outdated
     error,
     isInitialLoad,
 
     // Actions
     refreshAppointments,
     forceRefresh,
+    refreshIfStale, // Auto-refresh if data is stale
   };
 };
 
 /**
- * Enhanced hook for OperatorDashboard with comprehensive data access
+ * Enhanced hook for OperatorDashboard with immediate data display
  */
 export const useOperatorDashboardData = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
 
-  // Subscribe to centralized data management (includes notifications for operator)
+  // Enhanced data access with immediate display capabilities
   const {
     appointments,
     todayAppointments,
     upcomingAppointments,
     notifications,
     loading: centralLoading,
+    isRefreshing,
+    hasImmediateData,
+    hasAnyData,
+    isStaleData,
     error,
     forceRefresh,
+    refreshIfStale,
   } = useDashboardData("operatorDashboard", "operator");
 
   // Timeout mechanism to prevent infinite loading
@@ -320,10 +346,15 @@ export const useOperatorDashboardData = () => {
     }
   }, [centralLoading]);
 
-  // Handle loading state more intelligently
+  // Handle loading state more intelligently with immediate data support
   const loading = useMemo(() => {
     // If timeout reached, don't show loading
     if (loadingTimeout) {
+      return false;
+    }
+
+    // If we have immediate data available, don't show loading
+    if (hasImmediateData || hasAnyData) {
       return false;
     }
 
@@ -337,9 +368,15 @@ export const useOperatorDashboardData = () => {
       return false;
     }
 
-    // Only show loading if centrally loading AND no appointments array yet
-    return centralLoading && !Array.isArray(appointments);
-  }, [centralLoading, appointments, loadingTimeout]);
+    // Only show loading if centrally loading AND no data available
+    return centralLoading && !hasAnyData;
+  }, [
+    centralLoading,
+    appointments,
+    loadingTimeout,
+    hasImmediateData,
+    hasAnyData,
+  ]);
 
   // Debug logging to track the loading state
   useEffect(() => {
@@ -357,11 +394,11 @@ export const useOperatorDashboardData = () => {
 
   // Mark initial load as complete when we have data or loading is complete
   useEffect(() => {
-    if ((!loading || Array.isArray(appointments)) && isInitialLoad) {
+    if ((!loading || hasAnyData) && isInitialLoad) {
       console.log("✅ OperatorDashboard: Marking initial load as complete");
       setIsInitialLoad(false);
     }
-  }, [loading, appointments, isInitialLoad]);
+  }, [loading, hasAnyData, isInitialLoad]);
 
   // Memoized filtering for operator-specific views - Fixed to match actual system statuses
   const rejectedAppointments = useMemo(() => {
@@ -508,39 +545,49 @@ export const useOperatorDashboardData = () => {
     upcomingAppointments,
     notifications,
 
-    // State
-    loading,
+    // Enhanced state management for immediate display
+    loading, // Smart loading that considers immediate data
+    isRefreshing: isRefreshing || (centralLoading && hasAnyData), // Background refresh
+    hasImmediateData, // Whether we have cached data available
+    hasAnyData, // Whether we have any data (cached or fresh)
+    isStaleData, // Whether current data might be outdated
     error,
     isInitialLoad,
 
     // Actions
     refreshData,
     forceRefresh,
+    refreshIfStale, // Auto-refresh if data is stale
   };
 };
 
 /**
- * Hook for SchedulingDashboard with optimized data fetching
+ * Hook for SchedulingDashboard with immediate data display
  */
 export const useSchedulingDashboardData = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Subscribe to centralized data management
+  // Enhanced data access with immediate display capabilities
   const {
     appointments,
     todayAppointments,
     upcomingAppointments,
     loading,
+    isRefreshing,
+    hasImmediateData,
+    hasAnyData,
+    isStaleData,
     error,
     forceRefresh,
+    refreshIfStale,
   } = useDashboardData("schedulingDashboard", "scheduling");
 
   // Mark initial load as complete when we first get data
   useEffect(() => {
-    if (appointments.length > 0 || (!loading && isInitialLoad)) {
+    if (hasAnyData || (!loading && isInitialLoad)) {
       setIsInitialLoad(false);
     }
-  }, [appointments.length, loading, isInitialLoad]);
+  }, [hasAnyData, loading, isInitialLoad]);
 
   // Optimized refresh for form submissions
   const refreshAfterFormSubmit = useCallback(() => {
@@ -555,10 +602,19 @@ export const useSchedulingDashboardData = () => {
     appointments,
     todayAppointments,
     upcomingAppointments,
-    loading,
+
+    // Enhanced state management for immediate display
+    loading: loading && !hasImmediateData, // Only show loading if no cached data
+    isRefreshing: isRefreshing || (loading && hasImmediateData), // Background refresh
+    hasImmediateData, // Whether we have cached data available
+    hasAnyData, // Whether we have any data (cached or fresh)
+    isStaleData, // Whether current data might be outdated
     error,
     isInitialLoad,
+
+    // Actions
     refreshAfterFormSubmit,
     forceRefresh,
+    refreshIfStale, // Auto-refresh if data is stale
   };
 };

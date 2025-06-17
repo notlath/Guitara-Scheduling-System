@@ -171,18 +171,6 @@ const SystemInfoPage = () => {
               </div>
             </div>
           </section>
-
-          <section className="info-section">
-            <h2>Future Updates</h2>
-            <p>The following features are planned for upcoming releases:</p>
-            <ul className="roadmap-list">
-              <li>Advanced reporting and analytics dashboard</li>
-              <li>Mobile application for field staff</li>
-              <li>Expanded inventory management system</li>
-              <li>Customer feedback and rating system</li>
-              <li>Integration with accounting software</li>
-            </ul>
-          </section>
         </div>
       </div>
     </div>

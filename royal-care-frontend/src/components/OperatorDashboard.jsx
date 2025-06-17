@@ -101,8 +101,7 @@ const OperatorDashboard = () => {
     availableDrivers: [],
     busyDrivers: [],
     pendingPickups: [],
-  });
-  // Get state from Redux store
+  }); // Enhanced data access with immediate display capabilities
   const {
     rejectedAppointments,
     pendingAppointments,
@@ -117,9 +116,21 @@ const OperatorDashboard = () => {
     upcomingAppointments,
     notifications,
     loading,
+    isRefreshing,
+    hasAnyData,
+    isStaleData,
     error,
     refreshData,
+    refreshIfStale,
   } = useOperatorDashboardData();
+
+  // Auto-refresh stale data in background
+  useEffect(() => {
+    if (isStaleData && hasAnyData) {
+      console.log("🔄 OperatorDashboard: Auto-refreshing stale data");
+      refreshIfStale();
+    }
+  }, [isStaleData, hasAnyData, refreshIfStale]);
   // Helper function to get driver task description based on appointment status
   const getDriverTaskDescription = (appointment) => {
     if (!appointment) return "On assignment";
@@ -1841,17 +1852,26 @@ const OperatorDashboard = () => {
             </button>
           </div>
         </LayoutRow>{" "}
-        {/* Minimal loading indicator for frequent data fetching */}
+        {/* Enhanced loading indicator - minimal and non-intrusive */}
         <MinimalLoadingIndicator
           show={loading}
+          hasData={hasAnyData}
+          isRefreshing={isRefreshing}
           position="bottom-left"
           size="small"
-          variant="subtle"
-          tooltip="Loading dashboard data..."
+          variant={isStaleData ? "warning" : "subtle"}
+          tooltip={
+            isStaleData
+              ? "Data may be outdated, refreshing..."
+              : hasAnyData
+              ? "Refreshing dashboard data..."
+              : "Loading dashboard data..."
+          }
           pulse={true}
           fadeIn={true}
         />
-        {error && (
+        {/* Enhanced error handling - only show if no data available */}
+        {error && !hasAnyData && (
           <div className="error-message">
             {typeof error === "object"
               ? error.message || error.error || JSON.stringify(error)

@@ -164,8 +164,7 @@ const DriverDashboard = () => {
     }
   };
   const { user } = useSelector((state) => state.auth);
-
-  // 🔥 FIXED: Use centralized data manager instead of individual polling
+  // Enhanced data access with immediate display capabilities
   const {
     myAppointments,
     myTodayAppointments,
@@ -174,11 +173,23 @@ const DriverDashboard = () => {
     hasActivePickupAssignment,
     activePickupAssignment,
     loading,
+    isRefreshing,
+    hasAnyData,
+    isStaleData,
     error,
     isInitialLoad,
     refreshAppointments,
     forceRefresh,
+    refreshIfStale,
   } = useDriverDashboardData();
+
+  // Auto-refresh stale data in background
+  useEffect(() => {
+    if (isStaleData && hasAnyData) {
+      console.log("🔄 DriverDashboard: Auto-refreshing stale data");
+      refreshIfStale();
+    }
+  }, [isStaleData, hasAnyData, refreshIfStale]);
   // Debug: Log all appointments data
   console.log("🔍 Driver Dashboard Debug:", {
     user: user,
@@ -1588,18 +1599,26 @@ const DriverDashboard = () => {
             </button>
           </div>
         </LayoutRow>{" "}
-        {/* Minimal loading indicator for frequent data fetching */}
+        {/* Enhanced loading indicator - only show if no cached data available */}
         <MinimalLoadingIndicator
           show={loading}
+          hasData={hasAnyData}
+          isRefreshing={isRefreshing}
           position="top-right"
           size="small"
-          variant="subtle"
-          tooltip="Loading transport assignments..."
+          variant={isStaleData ? "warning" : "subtle"}
+          tooltip={
+            isStaleData
+              ? "Data may be outdated, refreshing..."
+              : hasAnyData
+              ? "Refreshing transport assignments..."
+              : "Loading transport assignments..."
+          }
           pulse={true}
           fadeIn={true}
-        />
-        {/* Improved error handling with retry option */}
-        {error && !isInitialLoad && (
+        />{" "}
+        {/* Enhanced error handling - only show if no data available */}
+        {error && !hasAnyData && (
           <div className="error-message">
             <div>
               {typeof error === "object"

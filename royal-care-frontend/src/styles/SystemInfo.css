@@ -1,0 +1,434 @@
+/* System Information Page Styles */
+.system-info-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+.system-info-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: var(--background);
+  border-radius: 12px;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.system-info-header {
+  position: relative;
+  color: var(--background);
+  padding: 2.5rem;
+  background-color: var(--primary);
+  overflow: hidden;
+}
+
+.system-info-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+  opacity: 0.5;
+}
+
+.system-info-header h1 {
+  position: relative;
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.system-info-header p {
+  position: relative;
+  opacity: 0.9;
+  font-size: 1.1rem;
+}
+
+.system-info-body {
+  padding: 2.5rem;
+}
+
+.info-section {
+  margin-bottom: 3rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+.info-section:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.info-section:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.info-section:nth-child(4) {
+  animation-delay: 0.3s;
+}
+.info-section:nth-child(5) {
+  animation-delay: 0.4s;
+}
+.info-section:nth-child(6) {
+  animation-delay: 0.5s;
+}
+.info-section:nth-child(7) {
+  animation-delay: 0.6s;
+}
+
+.info-section h2 {
+  color: var(--primary);
+  font-size: 1.6rem;
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--background-100);
+}
+
+.info-section h3 {
+  color: var(--primary);
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+}
+
+.info-section h4 {
+  color: var(--primary);
+  font-size: 1.1rem;
+  margin-bottom: 0.8rem;
+  margin-top: 1.2rem;
+}
+
+.info-section p {
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+/* Enhanced List Styling */
+.info-section ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.info-section li {
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: 1rem;
+  color: var(--text);
+  line-height: 1.7;
+  transition: all 0.2s ease;
+}
+
+.info-section li:hover {
+  padding-left: 2.2rem;
+  color: var(--primary-700);
+}
+
+.info-section li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.7rem;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-600));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.info-section li:hover::before {
+  transform: scale(1.2);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Nested List Support */
+.info-section ul ul {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+}
+
+.info-section ul ul li {
+  padding-left: 1.5rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.95em;
+}
+
+.info-section ul ul li::before {
+  width: 6px;
+  height: 6px;
+  top: 0.8rem;
+  background: var(--primary-400);
+}
+
+.info-section ul ul li:hover::before {
+  background: var(--primary-600);
+}
+
+/* Special List Types */
+.info-section .tech-list li::before {
+  content: "⚡";
+  background: none;
+  color: var(--primary);
+  font-size: 0.9rem;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  top: 0.1rem;
+  left: 0.2rem;
+}
+
+.info-section .feature-list li::before {
+  content: "✓";
+  background: none;
+  color: var(--primary);
+  font-weight: bold;
+  font-size: 1rem;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  top: 0.1rem;
+  left: 0.2rem;
+}
+
+.info-section .roadmap-list li::before {
+  content: "→";
+  background: none;
+  color: var(--primary);
+  font-weight: bold;
+  font-size: 1.1rem;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  top: 0;
+  left: 0.2rem;
+}
+
+/* Version Info Styling */
+.version-info {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.version-badge {
+  display: inline-block;
+  background-color: var(--primary);
+  color: var(--background);
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Technology Stack Styling */
+.tech-stack {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+
+.stack-group {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.stack-group:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.stack-group h3 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+}
+
+.tech-label {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Architecture Overview Styling */
+.architecture {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.architecture-item {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.architecture-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.architecture-item h4 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 1.2rem;
+  margin-bottom: 0.8rem;
+}
+
+/* Security Information Styling */
+.security-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.security-item {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.security-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.security-item h4 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+/* System Requirements Styling */
+.requirements {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.requirements-group {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.requirements-group:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.requirements-group h4 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+/* Enhanced Roadmap List Styling */
+.roadmap-list {
+  background-color: var(--background-50);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  border-left: 4px solid var(--primary);
+}
+
+.roadmap-list li {
+  position: relative;
+  padding-left: 2.2rem;
+  margin-bottom: 1.2rem;
+  color: var(--text);
+  line-height: 1.7;
+  transition: all 0.2s ease;
+}
+
+.roadmap-list li:hover {
+  padding-left: 2.5rem;
+  color: var(--primary-700);
+}
+
+.roadmap-list li::before {
+  content: "🚀";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--primary);
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+}
+
+.roadmap-list li:hover::before {
+  transform: scale(1.1);
+}
+
+.roadmap-list li:last-child {
+  margin-bottom: 0;
+}
+
+/* Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .system-info-header,
+  .system-info-body {
+    padding: 1.5rem;
+  }
+
+  .tech-stack,
+  .architecture,
+  .security-info,
+  .requirements {
+    grid-template-columns: 1fr;
+  }
+
+  .system-info-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .system-info-header p {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .system-info-container {
+    padding: var(--spacing-sm);
+  }
+
+  .system-info-header,
+  .system-info-body {
+    padding: 1rem;
+  }
+
+  .info-section {
+    margin-bottom: 2rem;
+  }
+}
