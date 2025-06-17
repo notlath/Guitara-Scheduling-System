@@ -29,6 +29,7 @@
     "react-router-dom": "6.22",
     "react-select": "^5.10.1",
     "recharts": "^2.15.3",
+    "tslib": "^2.8.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
