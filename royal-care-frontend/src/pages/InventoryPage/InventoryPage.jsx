@@ -8,7 +8,7 @@ import LayoutRow from "../../globals/LayoutRow";
 import { MdAdd } from "react-icons/md";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-const INVENTORY_API_URL = `${API_BASE_URL}/api/inventory/`;
+const INVENTORY_API_URL = `${API_BASE_URL}/inventory/`;
 
 const getAuthToken = () => {
   // Adjust this if you store the token elsewhere (e.g., Redux)

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 import {
   MdAdd,
   MdBackup,
@@ -65,59 +65,15 @@ const TAB_SINGULARS = {
   Materials: "Material",
 };
 
+// Pagination defaults
+const DEFAULT_PAGE_SIZE = 10;
+
 // Add fetch functions for each tab - Updated to use proper data endpoints
 const fetchers = {
-  Therapists: async () => {
-    const token = localStorage.getItem("knoxToken");
-    const res = await fetch("http://localhost:8000/api/scheduling/staff/", {
-      headers: {
-        Authorization: `Token ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    // Filter for therapists only and map to frontend table fields
-    return data
-      .filter((item) => item.role === "therapist")
-      .map((item) => ({
-        Username: item.username,
-        Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
-        Email: item.email,
-        Contact: item.phone_number || "-",
-        Specialization: item.specialization || "-",
-        Pressure: item.massage_pressure || "-",
-      }));
-  },
-  Drivers: async () => {
-    const token = localStorage.getItem("knoxToken");
-    const res = await fetch("http://localhost:8000/api/scheduling/staff/", {
-      headers: {
-        Authorization: `Token ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    // Filter for drivers only and map to frontend table fields
-    return data
-      .filter((item) => item.role === "driver")
-      .map((item) => ({
-        Username: item.username,
-        Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
-        Email: item.email,
-        Contact: item.phone_number || "-",
-        Specialization: item.motorcycle_plate || "N/A",
-        Pressure: "N/A",
-      }));
-  },
-  Operators: async () => {
-    // Operators need to fetch from registration endpoint
+  Therapists: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${
-        import.meta.env.VITE_API_BASE_URL
-      }/api/registration/register/operator/`,
+      `http://localhost:8000/api/registration/register/therapist/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -127,20 +83,65 @@ const fetchers = {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    // Map registration data to frontend table fields
+    return data.map((item) => ({
+      Username: item.username,
+      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
+      Email: item.email,
+      Contact: item.phone_number || "-",
+      Specialization: item.specialization || "-",
+      Pressure: item.pressure
+        ? item.pressure.charAt(0).toUpperCase() + item.pressure.slice(1)
+        : "-",
+    }));
+  },
+  Drivers: async (page = 1) => {
+    const token = localStorage.getItem("knoxToken");
+    const res = await fetch(
+      `http://localhost:8000/api/registration/register/driver/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      {
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map((item) => ({
+      Username: item.username,
+      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
+      Email: item.email,
+      Contact: item.phone_number || "-",
+      Specialization: item.motorcycle_plate || "N/A",
+      Pressure: "N/A",
+    }));
+  },
+  Operators: async (page = 1) => {
+    const token = localStorage.getItem("knoxToken");
+    const res = await fetch(
+      `http://localhost:8000/api/registration/register/operator/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      {
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
     return data.map((item) => ({
       Username: item.username || "-",
       Name: `${item.first_name || ""} ${item.last_name || ""}`.trim() || "-",
       Email: item.email || "-",
-      Contact: "-", // Registration table doesn't have phone numbers
+      Contact: item.phone_number || "-",
       Specialization: "N/A",
       Pressure: "N/A",
     }));
   },
-  Clients: async () => {
+  Clients: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      "http://localhost:8000/api/registration/register/client/",
+      `http://localhost:8000/api/registration/register/client/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -150,7 +151,6 @@ const fetchers = {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    // Map backend fields to frontend table fields
     return data.map((item) => ({
       Name: item.Name || "-",
       Email: item.Email || "-",
@@ -159,17 +159,19 @@ const fetchers = {
       Notes: item.Notes || "-",
     }));
   },
-  Services: async () => {
+  Services: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
-    const res = await fetch("http://localhost:8000/api/scheduling/services/", {
-      headers: {
-        Authorization: `Token ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await fetch(
+      `http://localhost:8000/api/registration/register/service/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      {
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
     if (!res.ok) return [];
     const data = await res.json();
-    // Map backend fields to frontend table fields
     return data.map((item) => ({
       Name: item.name,
       Description: item.description || "-",
@@ -187,12 +189,10 @@ const fetchers = {
           : "-",
     }));
   },
-  Materials: async () => {
-    // Materials might be part of services or a separate endpoint
+  Materials: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
-    // Try to get materials from registration endpoint first as fallback
     const res = await fetch(
-      "http://localhost:8000/api/registration/register/material/",
+      `http://localhost:8000/api/registration/register/material/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -203,12 +203,8 @@ const fetchers = {
     if (!res.ok) return [];
     const data = await res.json();
     return data.map((item) => ({
-      Username: "-",
       Name: item.name,
-      Email: "-",
-      Contact: "-",
-      Specialization: item.description || "-",
-      Pressure: "-",
+      Description: item.description || "-",
     }));
   },
 };
@@ -223,10 +219,28 @@ const SettingsDataPage = () => {
   const [isRestoring, setIsRestoring] = useState(false);
   const [backupStatus, setBackupStatus] = useState("");
   const [showBackupDropdown, setShowBackupDropdown] = useState(false);
+  const [tabPages, setTabPages] = useState({
+    Therapists: 1,
+    Drivers: 1,
+    Operators: 1,
+    Clients: 1,
+    Services: 1,
+    Materials: 1,
+  });
+  const [tabHasMore, setTabHasMore] = useState({
+    Therapists: true,
+    Drivers: true,
+    Operators: true,
+    Clients: true,
+    Services: true,
+    Materials: true,
+  });
+  const tableContainerRef = useRef(null);
 
   // Use the new settings data hook for immediate data display and caching
   const {
     tableData,
+    setTableData, // <-- add this line for infinite scroll
     isTabLoading,
     getTabError,
     loadTabData,
@@ -976,6 +990,39 @@ const SettingsDataPage = () => {
   const currentTabLoading = isTabLoading(activeTab);
   const currentTabError = getTabError(activeTab);
 
+  // Infinite scroll handler with debounce to prevent performance bottlenecks
+  useEffect(() => {
+    let debounceTimer = null;
+    const handleScroll = async () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        const container = tableContainerRef.current;
+        if (!container || isTabLoading(activeTab) || !tabHasMore[activeTab]) return;
+        if (container.scrollTop + container.clientHeight >= container.scrollHeight - 100) {
+          // Near bottom, load next page
+          const nextPage = tabPages[activeTab] + 1;
+          const fetcher = fetchers[activeTab];
+          if (!fetcher) return;
+          const newData = await fetcher(nextPage);
+          setTabHasMore((prev) => ({ ...prev, [activeTab]: newData.length === DEFAULT_PAGE_SIZE }));
+          setTabPages((prev) => ({ ...prev, [activeTab]: nextPage }));
+          setTableData((prev) => ({
+            ...prev,
+            [activeTab]: [...(prev[activeTab] || []), ...newData],
+          }));
+        }
+      }, 150); // 150ms debounce
+    };
+    const container = tableContainerRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      return () => {
+        container.removeEventListener("scroll", handleScroll);
+        if (debounceTimer) clearTimeout(debounceTimer);
+      };
+    }
+  }, [activeTab, tabPages, tabHasMore, isTabLoading, setTableData]);
+
   return (
     <PageLayout>
       <MinimalLoadingIndicator
@@ -1033,7 +1080,10 @@ const SettingsDataPage = () => {
         <div className={styles["backup-status"]}>{backupStatus}</div>
       )}
 
-      <div className={"global-content" + (showModal ? " faded" : "")}>
+      <div
+        className={"global-content no-page-scroll" + (showModal ? " faded" : "")}
+        style={{ overflow: 'hidden', height: '100vh', minHeight: '100vh' }}
+      >
         <div className={styles["header-tabs-container"]}>
           <LayoutRow title="Data">
             <div className="action-buttons">
@@ -1114,16 +1164,20 @@ const SettingsDataPage = () => {
           />
         </div>
 
-        {/* Show cached data immediately, with skeleton only when no data available */}
-        {!hasDataForTab(activeTab) && currentTabLoading ? (
-          renderTableSkeleton()
-        ) : (
-          <DataTable
-            columns={getTableConfig().columns}
-            data={tableData[activeTab]}
-          />
-        )}
-
+        {/* Infinite scroll table container */}
+        <div
+          ref={tableContainerRef}
+          className={`${styles["table-scroll-hide"]} ${styles["table-container"]}`}
+        >
+          {!hasDataForTab(activeTab) && isTabLoading(activeTab) ? (
+            renderTableSkeleton()
+          ) : (
+            <DataTable
+              columns={getTableConfig().columns}
+              data={tableData[activeTab]}
+            />
+          )}
+        </div>
         {/* Show error message if there's an error and no data */}
         {currentTabError && !hasDataForTab(activeTab) && (
           <div className={styles["error-message"]}>{currentTabError}</div>
