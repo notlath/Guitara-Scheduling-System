@@ -61,19 +61,19 @@
 
 /* User Profile Header with Photo */
 .userProfileHeader {
-  background: linear-gradient(
+  /* background: linear-gradient(
     135deg,
     var(--primary-50) 0%,
     var(--primary-100) 100%
-  );
-  border-radius: 8px;
-  padding: var(--spacing-lg);
+  ); */
+  /* border-radius: 8px; */
+  /* padding: var(--spacing-lg); */
   margin: var(--spacing-lg);
-  border: 1px solid var(--primary-200);
+  /* border: 1px solid var(--primary-200); */
   display: flex;
   align-items: center;
   gap: var(--spacing-lg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); */
 }
 
 .profilePhotoSection {
@@ -87,7 +87,7 @@
 .fullName {
   margin: 0 0 var(--spacing-xs) 0;
   color: var(--primary-800);
-  font-size: 1.375rem;
+  font-size: 2rem;
   font-weight: 700;
 }
 

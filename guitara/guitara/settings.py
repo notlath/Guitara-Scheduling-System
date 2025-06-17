@@ -199,6 +199,23 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Add your frontend's origin
 ]
 
+# Allow credentials and additional CORS settings for media files
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False  # Keep this False for security
+
+# Allow common headers that might be needed for media requests
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
 # Security settings
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
