@@ -129,10 +129,16 @@ export const useSettingsData = (fetchers = {}) => {
           const data = await fetcher();
           const fetchTime = Date.now() - startTime;
 
-          // Performance logging
-          if (fetchTime > 3000) {
+          // Performance logging with higher threshold to reduce noise
+          if (fetchTime > 8000) {
+            // Increased from 3000ms to 8000ms
             console.warn(
               `⚠️ SettingsData: Slow fetch for ${tabName}: ${fetchTime}ms`
+            );
+          } else if (fetchTime > 5000) {
+            // Warning for moderately slow fetches
+            console.log(
+              `⏰ SettingsData: ${tabName} fetch took ${fetchTime}ms (acceptable but slow)`
             );
           } else {
             console.log(

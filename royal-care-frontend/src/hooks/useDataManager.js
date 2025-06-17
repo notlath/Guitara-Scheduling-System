@@ -16,6 +16,10 @@ import usePerformanceFeedback from "./usePerformanceFeedback";
  * @param {Object} options - Enhanced options with health monitoring and prefetch settings
  */
 export const useDataManager = (componentName, dataTypes = [], options = {}) => {
+  // Memoize input parameters to ensure stable references
+  const stableDataTypes = useMemo(() => dataTypes, [dataTypes]);
+  const stableOptions = useMemo(() => options, [options]);
+
   const unsubscribeRef = useRef(null);
   const componentIdRef = useRef(`${componentName}_${Date.now()}`);
   const [subscriptionMetrics, setSubscriptionMetrics] = useState({
@@ -29,8 +33,8 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
 
   // Enhanced performance feedback with intelligent thresholds
   const performanceFeedback = usePerformanceFeedback({
-    warningThreshold: options.warningThreshold || 8000, // Optimized threshold
-    errorThreshold: options.errorThreshold || 15000, // Reduced from 20000
+    warningThreshold: stableOptions.warningThreshold || 8000, // Optimized threshold
+    errorThreshold: stableOptions.errorThreshold || 15000, // Reduced from 20000
     onLongRunningOperation: (detail) => {
       console.warn(
         `🐌 ${componentName}: Long-running data operation detected:`,
@@ -107,32 +111,88 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
     }
   }, [componentName]);
 
-  // Memoized selector to prevent unnecessary re-renders
-  const selector = useCallback(
-    (state) => ({
-      appointments: state.scheduling?.appointments || [],
-      todayAppointments: state.scheduling?.todayAppointments || [],
-      upcomingAppointments: state.scheduling?.upcomingAppointments || [],
-      notifications: state.scheduling?.notifications || [],
-      loading: state.scheduling?.loading || false,
-      error: state.scheduling?.error || null,
-      patients: state.patients?.data || [],
-      therapists: state.staff?.therapists || [],
-      drivers: state.staff?.drivers || [],
-      routes: state.routing?.routes || [],
-      schedules: state.scheduling?.schedules || [],
-      analytics: state.analytics?.data || {},
-      settings: state.settings?.data || {},
-      emergencyAlerts: state.alerts?.emergency || [],
-      vehicleStatus: state.vehicles?.status || [],
-      weatherData: state.weather?.data || {},
-      inventory: state.inventory?.data || [],
-      reports: state.reports?.data || [],
-    }),
-    []
-  );
+  // Memoized selector to prevent unnecessary re-renders with stable empty values
+  const emptyArray = useMemo(() => [], []);
+  const emptyObject = useMemo(() => ({}), []);
 
-  const reduxState = useSelector(selector, shallowEqual);
+  // Create a more stable selector with deep memoization and proper caching
+  const stableSelector = useMemo(() => {
+    let lastResult = null;
+    let lastInputs = null;
+
+    return (state) => {
+      // Extract the relevant parts of state efficiently
+      const currentInputs = {
+        schedulingAppointments: state.scheduling?.appointments || emptyArray,
+        schedulingTodayAppointments:
+          state.scheduling?.todayAppointments || emptyArray,
+        schedulingUpcomingAppointments:
+          state.scheduling?.upcomingAppointments || emptyArray,
+        schedulingNotifications: state.scheduling?.notifications || emptyArray,
+        schedulingLoading: state.scheduling?.loading || false,
+        schedulingError: state.scheduling?.error || null,
+        schedulingSchedules: state.scheduling?.schedules || emptyArray,
+        patientsData: state.patients?.data || emptyArray,
+        staffTherapists: state.staff?.therapists || emptyArray,
+        staffDrivers: state.staff?.drivers || emptyArray,
+        routingRoutes: state.routing?.routes || emptyArray,
+        analyticsData: state.analytics?.data || emptyObject,
+        settingsData: state.settings?.data || emptyObject,
+        alertsEmergency: state.alerts?.emergency || emptyArray,
+        vehiclesStatus: state.vehicles?.status || emptyArray,
+        weatherData: state.weather?.data || emptyObject,
+        inventoryData: state.inventory?.data || emptyArray,
+        reportsData: state.reports?.data || emptyArray,
+      };
+
+      // Optimized shallow comparison - only check if references changed
+      if (lastInputs && lastResult) {
+        let hasChanged = false;
+
+        // Use for...in for better performance than Object.keys
+        for (const key in currentInputs) {
+          if (currentInputs[key] !== lastInputs[key]) {
+            hasChanged = true;
+            break;
+          }
+        }
+
+        if (!hasChanged) {
+          return lastResult;
+        }
+      }
+
+      // Create new result object with stable references
+      const result = {
+        appointments: currentInputs.schedulingAppointments,
+        todayAppointments: currentInputs.schedulingTodayAppointments,
+        upcomingAppointments: currentInputs.schedulingUpcomingAppointments,
+        notifications: currentInputs.schedulingNotifications,
+        loading: currentInputs.schedulingLoading,
+        error: currentInputs.schedulingError,
+        patients: currentInputs.patientsData,
+        therapists: currentInputs.staffTherapists,
+        drivers: currentInputs.staffDrivers,
+        routes: currentInputs.routingRoutes,
+        schedules: currentInputs.schedulingSchedules,
+        analytics: currentInputs.analyticsData,
+        settings: currentInputs.settingsData,
+        emergencyAlerts: currentInputs.alertsEmergency,
+        vehicleStatus: currentInputs.vehiclesStatus,
+        weatherData: currentInputs.weatherData,
+        inventory: currentInputs.inventoryData,
+        reports: currentInputs.reportsData,
+      };
+
+      // Cache for next comparison
+      lastInputs = currentInputs;
+      lastResult = result;
+
+      return result;
+    };
+  }, [emptyArray, emptyObject]);
+
+  const reduxState = useSelector(stableSelector, shallowEqual);
 
   // Extract individual values from memoized Redux state
   const {
@@ -193,13 +253,13 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
 
   // Memoize dataTypes for stable reference
   // Use ref to track dataTypes changes without causing re-renders
-  const dataTypesRef = useRef(dataTypes);
-  const dataTypesStringRef = useRef(JSON.stringify(dataTypes));
+  const dataTypesRef = useRef(stableDataTypes);
+  const dataTypesStringRef = useRef(JSON.stringify(stableDataTypes));
 
   // Only update refs when dataTypes actually change
-  const currentDataTypesString = JSON.stringify(dataTypes);
+  const currentDataTypesString = JSON.stringify(stableDataTypes);
   if (currentDataTypesString !== dataTypesStringRef.current) {
-    dataTypesRef.current = dataTypes;
+    dataTypesRef.current = stableDataTypes;
     dataTypesStringRef.current = currentDataTypesString;
   }
 
@@ -386,11 +446,18 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
       performanceStartOperation(`Loading data for ${componentName}`);
     } else if (!loading && wasPerformanceLoading) {
       performanceEndOperation();
-      setSubscriptionMetrics((prev) => ({
-        ...prev,
-        lastDataFetch: Date.now(),
-        fetchCount: prev.fetchCount + 1,
-      }));
+      // Only update metrics occasionally to prevent constant buildup
+      const now = Date.now();
+      if (
+        !subscriptionMetrics.lastDataFetch ||
+        now - subscriptionMetrics.lastDataFetch > 5000
+      ) {
+        setSubscriptionMetrics((prev) => ({
+          ...prev,
+          lastDataFetch: now,
+          fetchCount: prev.fetchCount + 1,
+        }));
+      }
     }
 
     // Update ref for next render
@@ -401,13 +468,21 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
     componentName,
     performanceStartOperation,
     performanceEndOperation,
+    subscriptionMetrics.lastDataFetch,
   ]);
 
   // Memoize serialized values to prevent unnecessary re-renders (moved up to avoid duplication)
-  const optionsKey = useMemo(() => JSON.stringify(options), [options]);
+  const optionsKey = useMemo(
+    () => JSON.stringify(stableOptions),
+    [stableOptions]
+  );
+  const dataTypesKey = useMemo(
+    () => JSON.stringify(stableDataTypes),
+    [stableDataTypes]
+  );
 
   useEffect(() => {
-    if (dataTypes.length === 0) return;
+    if (stableDataTypes.length === 0) return;
 
     // Handle React Strict Mode double execution by checking if already subscribed
     if (unsubscribeRef.current) {
@@ -424,8 +499,8 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
     // Subscribe to data manager
     unsubscribeRef.current = dataManager.subscribe(
       componentIdRef.current,
-      dataTypes,
-      options
+      stableDataTypes,
+      stableOptions
     );
 
     // Update subscription metrics
@@ -442,7 +517,7 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
     const analyticsInterval = setInterval(() => {
       updateAnalytics();
       checkHealthStatus();
-    }, 30000); // Every 30 seconds
+    }, 60000); // Increased to every 60 seconds to reduce overhead
 
     // Cleanup on unmount or re-render
     return () => {
@@ -456,12 +531,18 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
       clearInterval(analyticsInterval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [componentName, optionsKey, updateAnalytics, checkHealthStatus]); // Removed dataTypesKey to prevent infinite loops
+  }, [
+    componentName,
+    dataTypesKey,
+    optionsKey,
+    updateAnalytics,
+    checkHealthStatus,
+  ]); // Added dataTypesKey back with stable reference
 
   // Provide force refresh function for components that need it
   const forceRefresh = (specificDataTypes = []) => {
     return dataManager.forceRefresh(
-      specificDataTypes.length > 0 ? specificDataTypes : dataTypes
+      specificDataTypes.length > 0 ? specificDataTypes : stableDataTypes
     );
   };
 
@@ -577,43 +658,55 @@ export const useDataManager = (componentName, dataTypes = [], options = {}) => {
  * Hook specifically for dashboard components with role-based data
  */
 export const useDashboardData = (dashboardName, userRole = null) => {
-  const roleBasedDataTypes = {
-    operator: [
-      "appointments",
-      "todayAppointments",
-      "upcomingAppointments",
-      "notifications",
-      "emergencyAlerts",
-      "analytics",
-    ],
-    therapist: ["todayAppointments", "patients", "schedules", "notifications"],
-    driver: [
-      "routes",
-      "vehicleStatus",
-      "todayAppointments",
-      "weatherData",
-      "notifications",
-    ],
-    admin: [
-      "appointments",
-      "therapists",
-      "drivers",
-      "analytics",
-      "settings",
-      "reports",
-    ],
-  };
+  const roleBasedDataTypes = useMemo(
+    () => ({
+      operator: [
+        "appointments",
+        "todayAppointments",
+        "upcomingAppointments",
+        "notifications",
+        "emergencyAlerts",
+        "analytics",
+      ],
+      therapist: [
+        "todayAppointments",
+        "patients",
+        "schedules",
+        "notifications",
+      ],
+      driver: [
+        "routes",
+        "vehicleStatus",
+        "todayAppointments",
+        "weatherData",
+        "notifications",
+      ],
+      admin: [
+        "appointments",
+        "therapists",
+        "drivers",
+        "analytics",
+        "settings",
+        "reports",
+      ],
+    }),
+    []
+  );
 
-  const dataTypes = roleBasedDataTypes[dashboardName] ||
-    roleBasedDataTypes[userRole] || [
-      "appointments",
-      "todayAppointments",
-      "notifications",
-    ];
+  const defaultDataTypes = useMemo(
+    () => ["appointments", "todayAppointments", "notifications"],
+    []
+  );
 
-  const options = userRole
-    ? { userRole, priority: "high" }
-    : { priority: "high" };
+  const dataTypes =
+    roleBasedDataTypes[dashboardName] ||
+    roleBasedDataTypes[userRole] ||
+    defaultDataTypes;
+
+  const options = useMemo(
+    () => (userRole ? { userRole, priority: "high" } : { priority: "high" }),
+    [userRole]
+  );
 
   return useDataManager(dashboardName, dataTypes, options);
 };
@@ -622,58 +715,76 @@ export const useDashboardData = (dashboardName, userRole = null) => {
  * Hook for components that need real-time critical data
  */
 export const useRealtimeData = (componentName, criticalTypes = []) => {
-  const realtimeTypes = [
-    "emergencyAlerts",
-    "todayAppointments",
-    "vehicleStatus",
-    "notifications",
-    ...criticalTypes,
-  ];
+  const realtimeTypes = useMemo(
+    () => [
+      "emergencyAlerts",
+      "todayAppointments",
+      "vehicleStatus",
+      "notifications",
+      ...criticalTypes,
+    ],
+    [criticalTypes]
+  );
 
-  return useDataManager(componentName, realtimeTypes, {
-    realtime: true,
-    priority: "critical",
-    warningThreshold: 5000,
-    errorThreshold: 10000,
-  });
+  const options = useMemo(
+    () => ({
+      realtime: true,
+      priority: "critical",
+      warningThreshold: 5000,
+      errorThreshold: 10000,
+    }),
+    []
+  );
+
+  return useDataManager(componentName, realtimeTypes, options);
 };
 
 /**
  * Hook for analytics and reporting components
  */
 export const useAnalyticsData = (componentName, reportTypes = []) => {
-  const analyticsTypes = [
-    "analytics",
-    "reports",
-    "appointments",
-    "patients",
-    ...reportTypes,
-  ];
+  const analyticsTypes = useMemo(
+    () => ["analytics", "reports", "appointments", "patients", ...reportTypes],
+    [reportTypes]
+  );
 
-  return useDataManager(componentName, analyticsTypes, {
-    priority: "low",
-    warningThreshold: 15000,
-    errorThreshold: 30000,
-  });
+  const options = useMemo(
+    () => ({
+      priority: "low",
+      warningThreshold: 15000,
+      errorThreshold: 30000,
+    }),
+    []
+  );
+
+  return useDataManager(componentName, analyticsTypes, options);
 };
 
 /**
  * Hook for scheduling and calendar components
  */
 export const useSchedulingData = (componentName) => {
-  const schedulingTypes = [
-    "appointments",
-    "todayAppointments",
-    "upcomingAppointments",
-    "schedules",
-    "therapists",
-    "patients",
-  ];
+  const schedulingTypes = useMemo(
+    () => [
+      "appointments",
+      "todayAppointments",
+      "upcomingAppointments",
+      "schedules",
+      "therapists",
+      "patients",
+    ],
+    []
+  );
 
-  return useDataManager(componentName, schedulingTypes, {
-    priority: "high",
-    prefetch: true,
-  });
+  const options = useMemo(
+    () => ({
+      priority: "high",
+      prefetch: true,
+    }),
+    []
+  );
+
+  return useDataManager(componentName, schedulingTypes, options);
 };
 
 /**
@@ -683,7 +794,8 @@ export const useAppointmentData = (
   componentName,
   specificTypes = ["appointments"]
 ) => {
-  return useDataManager(componentName, specificTypes);
+  const stableSpecificTypes = useMemo(() => specificTypes, [specificTypes]);
+  return useDataManager(componentName, stableSpecificTypes);
 };
 
 export default useDataManager;
