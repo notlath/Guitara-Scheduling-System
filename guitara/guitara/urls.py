@@ -27,6 +27,7 @@ def default_route(request):
 
 
 urlpatterns = [
+    path("api/inventory/", include("inventory.urls")),
     path("api/auth/", include("authentication.urls")),
     path("api/", include("core.urls")),
     path("", default_route),
