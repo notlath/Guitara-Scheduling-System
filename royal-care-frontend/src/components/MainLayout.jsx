@@ -17,6 +17,7 @@ import {
   MdSchedule,
   MdSettings,
   MdTableChart,
+  MdEventAvailable, // Added for Attendance
 } from "react-icons/md";
 import { useSelector } from "react-redux";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
@@ -128,7 +129,7 @@ const MainLayout = () => {
                 to="/dashboard/attendance"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
-                <MdAccessTime
+                <MdEventAvailable
                   style={{ marginRight: "0.5em", fontSize: "1.2em" }}
                 />
                 Attendance
@@ -157,7 +158,7 @@ const MainLayout = () => {
                 to="/dashboard/attendance"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
-                <MdAccessTime
+                <MdEventAvailable
                   style={{ marginRight: "0.5em", fontSize: "1.2em" }}
                 />
                 Attendance
