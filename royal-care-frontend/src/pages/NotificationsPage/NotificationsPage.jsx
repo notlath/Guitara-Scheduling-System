@@ -186,6 +186,13 @@ const NotificationsPage = () => {
                   {notification.type === "appointment_updated" && "🔄"}
                   {notification.type === "appointment_cancelled" && "❌"}
                   {notification.type === "appointment_reminder" && "⏰"}
+                  {/* Default icon for unknown types */}
+                  {![
+                    "appointment_created",
+                    "appointment_updated",
+                    "appointment_cancelled",
+                    "appointment_reminder",
+                  ].includes(notification.type) && "🔔"}
                 </div>
                 <div className={styles.notificationText}>
                   <div className={styles.notificationTitle}>
