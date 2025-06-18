@@ -17,6 +17,8 @@ from registration.views import insert_into_table  # Use direct import for siblin
 import logging
 import django.conf
 
+logger = logging.getLogger(__name__)
+
 
 class CheckUsernameAPI(APIView):
     permission_classes = [permissions.AllowAny]
@@ -52,7 +54,6 @@ class LoginAPI(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        logger = logging.getLogger(__name__)
         try:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -128,7 +129,14 @@ class TwoFactorVerifyAPI(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        logging.getLogger(__name__).debug("[2FA VERIFY] Incoming data: %s", {k: ('***' if k in ['code', 'password', 'new_password'] else v) for k, v in request.data.items()})
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "[2FA VERIFY] Incoming data: %s",
+                {
+                    k: ("***" if k in ["code", "password", "new_password"] else v)
+                    for k, v in request.data.items()
+                },
+            )
         identifier = request.data.get("email")  # Could be email or username
         code = request.data.get("code")
         user = None
@@ -155,10 +163,10 @@ class TwoFactorVerifyAPI(generics.GenericAPIView):
             .order_by("-created_at")
             .first()
         )
-            logging.getLogger(__name__).warning("[2FA VERIFY] Invalid or expired verification code attempt.")
+        if not tf_code:
+            logger.warning("[2FA VERIFY] Invalid or expired verification code attempt.")
             return Response(
                 {"error": "Invalid or expired verification code"}, status=400
-            )
             )
 
         tf_code.is_used = True
@@ -206,7 +214,7 @@ class RequestPasswordResetAPI(generics.GenericAPIView):
                 insert_into_table("authentication_passwordresetcode", supabase_data)
             except Exception as e:
                 print(f"[ERROR] Supabase insert failed: {e}")
-            logging.getLogger(__name__).debug(f"Password reset code generated: {code}")
+            logger.debug(f"Password reset code generated: {code}")
             send_mail(
                 "Your Password Reset Code",
                 f"Your password reset code is: {code}",
