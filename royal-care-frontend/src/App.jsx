@@ -27,7 +27,7 @@ import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordP
 import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
 import FAQsPage from "./pages/FAQsPage/FAQsPage";
-import UserGuidePage from "./pages/HelpPages/UserGuidePage";
+import UserGuidePage from "./pages/UserGuidePage/UserGuidePage";
 import InventoryPage from "./pages/InventoryPage/InventoryPage";
 import ProfilePage from "./pages/ProfilePage/ProfilePage";
 import RegisterPage from "./pages/RegisterPage/RegisterPage";
