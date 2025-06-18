@@ -11,12 +11,11 @@ const FAQsPage = () => {
 
   return (
     <PageLayout>
-      <LayoutRow title="Frequently Asked Questions"></LayoutRow>
+      <LayoutRow
+        title="Frequently Asked Questions"
+        subtitle="Here are some common questions and answers. If you need more help, please contact support."
+      />
       <div className={styles["placeholder-content"]}>
-        <p className={styles["placeholder-text"]}>
-          Here are some common questions and answers. If you need more help,
-          please contact support.
-        </p>
         <div className={styles["faq-list"]}>
           <div className={styles["faq-item"]}>
             <strong>Q: How do I book an appointment?</strong>

@@ -13,8 +13,14 @@
 }
 
 .header-row {
-  display: flex;
+  /* display: flex; */
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--spacing-mmd);
+}
+
+.header-row-subtitle {
+  font-size: var(--font-size-base);
+  color: var(--muted-200);
+  margin-top: var(--spacing-xm);
 }

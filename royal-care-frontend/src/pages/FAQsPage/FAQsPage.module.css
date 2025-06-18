@@ -24,7 +24,7 @@
 
 .faq-item strong {
   display: block;
-  /* color: var(--primary-700); */
+  /* color: var(--background-700); */
   font-size: var(--font-size-base);
   margin-bottom: var(--spacing-xs);
 }
