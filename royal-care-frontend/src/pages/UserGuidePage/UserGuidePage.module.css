@@ -56,7 +56,7 @@
 }
 
 .userGuideFooter {
-  margin-top: var(--spacing-xl, 40px);
+  margin-top: var(--spacing-md);
   text-align: center;
   color: var(--muted);
   font-size: var(--font-size-sm, 0.98rem);
