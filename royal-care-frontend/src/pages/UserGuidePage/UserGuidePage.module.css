@@ -1,0 +1,91 @@
+@import "../../globals/theme.css";
+
+/* .userGuideSection {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  padding: 32px 24px 24px 24px;
+  margin: 32px auto 0 auto;
+  max-width: 900px;
+} */
+
+/* .userGuideSection {
+  background: var(--background);
+  border-radius: var(--border-radius, 16px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  padding: var(--spacing-md, 32px) var(--spacing-mxs, 24px) var(--spacing-mxs, 24px) var(--spacing-mxs, 24px);
+  margin: var(--spacing-md, 32px) auto 0 auto;
+  max-width: min(var(--container-max-width, 900px), 100vw);
+} */
+
+.userGuideIntro {
+  font-size: var(--font-size-md, 1.15rem);
+  color: var(--text-700, #444);
+  margin-bottom: var(--spacing-mmd, 28px);
+}
+
+.userGuideContent h3 {
+  /* margin-top: var(--spacing-mmd); */
+  /* color: var(--primary-700, #2a4d8f); */
+  font-size: var(--font-size-lg, 1.2rem);
+  font-weight: 600;
+  border-left: solid 4px var(--primary);
+  padding-left: var(--spacing-xm);
+  margin-bottom: var(--spacing-xm);
+}
+
+.userGuideList {
+  margin-left: var(--spacing-mxs);
+  padding: 0;
+  font-size: var(--font-size-base, 1rem);
+  /* color: var(--text-800, #333); */
+  line-height: 1.7;
+}
+
+.userGuideVideos {
+  display: flex;
+  gap: var(--spacing-sm, 20px);
+  margin: var(--spacing-xs, 18px) 0 0 0;
+  flex-wrap: wrap;
+}
+
+.userGuideVideos iframe {
+  border-radius: var(--border-radius, 8px);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  background: var(--background-35, #f8f8f8);
+}
+
+.userGuideFooter {
+  margin-top: var(--spacing-xl, 40px);
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--font-size-sm, 0.98rem);
+}
+
+.userGuideFooter a {
+  color: var(--primary);
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.userGuideFooter a:hover {
+  color: var(--primary-hover);
+}
+
+.headerRowIcon {
+  margin-left: var(--spacing-xs, 12px);
+  font-size: 28px;
+}
+
+.userGuideBlock {
+  /* background: var(--background-35, #f8f8f8); */
+  border-radius: var(--border-radius, 8px);
+  /* box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03); */
+  padding: var(--spacing-mxs, 24px) var(--spacing-mxs, 24px);
+  margin-bottom: var(--spacing-mm);
+  border: solid 1px var(--border-color, #e0e0e0);
+}
+
+.userGuideBlock:last-child {
+  margin-bottom: 0;
+}

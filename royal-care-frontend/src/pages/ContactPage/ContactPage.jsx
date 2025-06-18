@@ -44,7 +44,18 @@ const ContactPage = () => {
               <MdError className={styles.exclamationSvg} />
             </span>
             <span>
-              Make sure to read the user guide and FAQs first.
+              Make sure to read the{" "}
+              <a
+                href="/dashboard/help/user-guide"
+                className={styles.inlineLink}
+              >
+                User Guide
+              </a>{" "}
+              and{" "}
+              <a href="/dashboard/help/faqs" className={styles.inlineLink}>
+                FAQs
+              </a>{" "}
+              first.
               <br />
               If the issue persists, feel free to reach out to the developers
               listed below.

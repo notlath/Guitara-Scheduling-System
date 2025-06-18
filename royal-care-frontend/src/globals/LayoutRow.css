@@ -13,10 +13,13 @@
 }
 
 .header-row {
-  /* display: flex; */
   align-items: center;
-  justify-content: space-between;
   margin-bottom: var(--spacing-mmd);
+}
+
+.header-row-title {
+  display: flex;
+  justify-content: space-between;
 }
 
 .header-row-subtitle {
