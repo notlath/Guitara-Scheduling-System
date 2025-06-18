@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import styles from "./ContactPage.module.css";
 import PageLayout from "../../globals/PageLayout";
+import LayoutRow from "../../globals/LayoutRow";
 import pageTitles from "../../constants/pageTitles";
 import { MdError } from "react-icons/md";
 import jonAvatar from "../../assets/images/jon.jpg";
@@ -35,8 +36,8 @@ const ContactPage = () => {
 
   return (
     <PageLayout>
+      <LayoutRow title="Email Support"></LayoutRow>
       <div className={styles.contactSupportContainer}>
-        <h1 className={styles.header}>Email Support</h1>
         <div className={styles.subtitleRow}>
           <div className={styles.subtitleText}>
             <span className={styles.exclamationIcon} aria-label="Important">
