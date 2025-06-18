@@ -26,15 +26,13 @@
 }
 
 .nav-links,
-.bottom-links,
-.profile-link {
+.bottom-links {
   display: flex;
   flex-direction: column;
 }
 
 .nav-links a,
-.bottom-links a,
-.profile-link a {
+.bottom-links a {
   text-decoration: none;
   color: var(--text);
   padding: var(--spacing-xm) var(--spacing-sm);
@@ -62,16 +60,14 @@
 }
 
 .nav-links a.active-link,
-.bottom-links a.active-link,
-.profile-link a.active-link {
+.bottom-links a.active-link {
   background-color: var(--primary);
   color: var(--background);
   font-weight: 400;
 }
 
 .nav-links a:hover:not(.active-link),
-.bottom-links a:hover:not(.active-link),
-.profile-link a:hover:not(.active-link) {
+.bottom-links a:hover:not(.active-link) {
   background-color: var(--background-100);
 }
 
@@ -211,7 +207,6 @@
   flex: 1;
 }
 
-/* Sidebar link flex alignment for both NavLink and <a> parent links */
 .sidebar-link,
 .sidebar-link-content {
   display: flex;
@@ -234,12 +229,10 @@
   min-width: 0;
 }
 
-/* Sidebar sublink icon size variable */
 :root {
   --sidebar-sublink-icon-size: 1.1em;
 }
 
-/* Fix icon shrinking when text is long in sidebar links */
 .sidebar a svg {
   flex: 0 0 auto;
   min-width: var(--sidebar-sublink-icon-size);

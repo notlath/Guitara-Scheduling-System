@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-  MdAccessTime,
   MdBarChart,
   MdBusiness,
   MdCalendarMonth,
@@ -15,37 +14,21 @@ import {
   MdPerson,
   MdQuestionAnswer,
   MdSchedule,
-  MdSettings,
   MdTableChart,
-  MdEventAvailable, // Added for Attendance
+  MdEventAvailable,
 } from "react-icons/md";
 import { useSelector } from "react-redux";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import rcLogo from "../assets/images/rc_logo.jpg";
 import "../styles/MainLayout.css";
 
 const MainLayout = () => {
-  // Add location tracker for debugging
-  const location = useLocation();
   const [showHelpSublinks, setShowHelpSublinks] = useState(false);
   const [showAboutSublinks, setShowAboutSublinks] = useState(false);
-  // Get current user from Redux store
   const { user } = useSelector((state) => state.auth);
 
-  // Check if user is therapist or driver
   const isTherapistOrDriver =
     user && (user.role === "therapist" || user.role === "driver");
-
-  useEffect(() => {
-    console.log("Current location:", location.pathname);
-
-    // Add extra debugging information
-    console.log("Route params:", location);
-    console.log(
-      "Router matching current location:",
-      location.pathname === "/dashboard/scheduling"
-    );
-  }, [location]);
 
   // Toggle sublink visibility
   const toggleHelpSublinks = (e) => {
@@ -60,38 +43,15 @@ const MainLayout = () => {
     setShowHelpSublinks(false); // Close other sublinks when opening this one
   };
 
-  // Helper function to get the appropriate dashboard route based on user role
-  const getDashboardRoute = () => {
-    if (!user) return "/dashboard";
-
-    switch (user.role) {
-      case "operator":
-        // Operators use the main dashboard (OperatorDashboard)
-        return "/dashboard";
-      case "therapist":
-        // Therapists use the specific TherapistDashboard
-        return "/dashboard";
-      case "driver":
-        // Drivers use the DriverDashboard
-        return "/dashboard";
-      default:
-        return "/dashboard";
-    }
-  };
-
-  const handleLogoClick = () => {
-    const route = getDashboardRoute();
-    console.log(
-      `Logo clicked - User role: ${user?.role}, Redirecting to: ${route}`
-    );
-  };
+  // Get dashboard route based on user role
+  const getDashboardRoute = () => "/dashboard";
 
   return (
     <div className="main-layout">
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="logo">
-          <NavLink to={getDashboardRoute()} onClick={handleLogoClick}>
+          <NavLink to={getDashboardRoute()}>
             <img src={rcLogo} alt="Royal Care Logo" />
           </NavLink>
         </div>
@@ -100,15 +60,7 @@ const MainLayout = () => {
             <>
               <NavLink
                 to="/dashboard/scheduling"
-                className={({ isActive }) => {
-                  console.log("Schedule link active state:", isActive);
-                  return isActive ? "active-link" : "";
-                }}
-                onClick={() => {
-                  console.log(
-                    "Schedule link clicked, navigating to /dashboard/scheduling"
-                  );
-                }}
+                className={({ isActive }) => (isActive ? "active-link" : "")}
               >
                 <MdSchedule
                   style={{ marginRight: "0.5em", fontSize: "1.2em" }}
@@ -129,15 +81,7 @@ const MainLayout = () => {
             <>
               <NavLink
                 to="/dashboard/scheduling"
-                className={({ isActive }) => {
-                  console.log("Bookings link active state:", isActive);
-                  return isActive ? "active-link" : "";
-                }}
-                onClick={() => {
-                  console.log(
-                    "Bookings link clicked, navigating to /dashboard/scheduling"
-                  );
-                }}
+                className={({ isActive }) => (isActive ? "active-link" : "")}
               >
                 <MdCalendarMonth
                   style={{ marginRight: "0.5em", fontSize: "1.2em" }}
@@ -183,11 +127,9 @@ const MainLayout = () => {
               </NavLink>
             </>
           )}
-          {/* {!isTherapistOrDriver && <></>} */}
         </nav>
         <div className="divider"></div>
         <div className="bottom-links">
-          {/* Data now as a main nav-link, Settings sublink-parent and Account sublink removed */}
           <NavLink
             to="/dashboard/profile"
             className={({ isActive }) => (isActive ? "active-link" : "")}
