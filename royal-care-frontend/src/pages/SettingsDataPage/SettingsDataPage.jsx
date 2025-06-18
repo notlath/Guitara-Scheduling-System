@@ -49,11 +49,12 @@ const SPECIALIZATION_OPTIONS = [
 ];
 const PRESSURE_OPTIONS = ["hard", "medium", "soft"];
 const MATERIAL_OPTIONS = [
-  "Oil",
-  "Lavender",
-  "Towel",
-  "Hot Stone",
-  "Ventosa Cup",
+  "Lavender Oil",
+  "Peppermint Oil",
+  "Massage Lotion",
+  "Alcohol Spray",
+  "Ventosa Glass Bottles",
+  "Hot Stone Kit",
 ];
 
 // Map plural tab names to their singular form for modal titles
@@ -265,22 +266,46 @@ const fetchers = {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return data.map((item) => ({
-      Name: item.name,
-      Description: item.description || "-",
-      Duration:
-        item.duration !== undefined && item.duration !== null
-          ? `${item.duration} min`
-          : "-",
-      Price:
-        item.price !== undefined && item.price !== null
-          ? `₱${item.price}`
-          : "-",
-      Materials:
-        Array.isArray(item.materials) && item.materials.length > 0
-          ? item.materials.map((mat) => mat.name || mat).join(", ")
-          : "-",
-    }));
+
+    // Debug: Log the raw response
+    console.log("🔍 Services Response:", data);
+
+    return data.map((item) => {
+      // Debug: Log each item's materials
+      console.log(`🔍 ${item.name} materials:`, item.materials);
+
+      // Handle both Supabase and Django formats
+      let materials = "-";
+
+      if (Array.isArray(item.materials) && item.materials.length > 0) {
+        materials = item.materials
+          .map((mat) => {
+            // Handle both object format { name: "..." } and string format
+            if (typeof mat === "object" && mat.name) {
+              return mat.name;
+            } else if (typeof mat === "string") {
+              return mat;
+            }
+            return null;
+          })
+          .filter(Boolean)
+          .join(", ");
+      }
+
+      return {
+        Name: item.name,
+        Description: item.description || "-",
+        Duration:
+          item.duration !== undefined && item.duration !== null
+            ? `${item.duration} min`
+            : "-",
+        Price:
+          item.price !== undefined && item.price !== null
+            ? `₱${item.price}`
+            : "-",
+        Materials: materials,
+      };
+    });
   },
   Materials: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");

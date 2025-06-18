@@ -61,17 +61,23 @@ class RegisterTherapist(APIView):
     def get(self, request):
         supabase = get_supabase_client()
         # Pagination parameters
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 20))
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 20))
         offset = (page - 1) * page_size
         # Revert to select all fields
-        result = supabase.table("registration_therapist").select("*").range(offset, offset + page_size - 1).execute()
+        result = (
+            supabase.table("registration_therapist")
+            .select("*")
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
         data = result.data if hasattr(result, "data") else []
 
         # Fetch phone_number from CustomUser for each therapist
         from core.models import CustomUser
+
         for therapist in data:
             username = therapist.get("username")
             phone_number = None
@@ -206,12 +212,19 @@ class RegisterDriver(APIView):
         if not supabase:
             return Response({"error": "Supabase client not available"}, status=500)
         # Pagination parameters
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 20))
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 20))
         offset = (page - 1) * page_size
+
         def operation():
             # Revert to select all fields
-            return supabase.table("registration_driver").select("*").range(offset, offset + page_size - 1).execute()
+            return (
+                supabase.table("registration_driver")
+                .select("*")
+                .range(offset, offset + page_size - 1)
+                .execute()
+            )
+
         result, error = safe_supabase_operation(operation, timeout=10)
         if error:
             logger.error(f"Failed to fetch drivers: {error}")
@@ -226,6 +239,7 @@ class RegisterDriver(APIView):
 
         # Fetch phone_number from CustomUser for each driver
         from core.models import CustomUser
+
         for driver in data:
             username = driver.get("username")
             phone_number = None
@@ -383,17 +397,23 @@ class RegisterOperator(APIView):
         if not supabase:
             return Response({"error": "Supabase client not available"}, status=500)
         # Pagination parameters
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 20))
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 20))
         offset = (page - 1) * page_size
         # Revert to select all fields
-        result = supabase.table("registration_operator").select("*").range(offset, offset + page_size - 1).execute()
+        result = (
+            supabase.table("registration_operator")
+            .select("*")
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
         data = result.data if hasattr(result, "data") else []
 
         # Optimize: bulk fetch CustomUser phone numbers
         from core.models import CustomUser
+
         usernames = [op.get("username") for op in data if op.get("username")]
         users = CustomUser.objects.filter(username__in=usernames)
         user_map = {u.username: u.phone_number for u in users}
@@ -601,11 +621,12 @@ class RegisterClient(APIView):
     def get(self, request):
         # Fetch all clients from scheduling app
         from scheduling.models import Client
+
         # Pagination parameters
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 20))
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 20))
         offset = (page - 1) * page_size
-        clients = Client.objects.all().order_by('id')[offset:offset+page_size]
+        clients = Client.objects.all().order_by("id")[offset : offset + page_size]
         # Map to frontend table fields
         data = []
         for client in clients:
@@ -667,11 +688,16 @@ class RegisterMaterial(APIView):
         if not supabase:
             return Response({"error": "Supabase client not available"}, status=500)
         # Pagination parameters
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 20))
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 20))
         offset = (page - 1) * page_size
         # Fetch paginated materials from Supabase
-        result = supabase.table("registration_material").select("*").range(offset, offset + page_size - 1).execute()
+        result = (
+            supabase.table("registration_material")
+            .select("*")
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
         data = result.data if hasattr(result, "data") else []
@@ -696,157 +722,209 @@ class RegisterMaterial(APIView):
 
 class RegisterService(APIView):
     def get(self, request):
+        # Try Supabase first
         supabase = get_supabase_client()
-        if not supabase:
-            return Response({"error": "Supabase client not available"}, status=500)
-        # Pagination parameters
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 20))
-        offset = (page - 1) * page_size
-        # Fetch paginated services from Supabase
-        result = supabase.table("registration_service").select("*").range(offset, offset + page_size - 1).execute()
-        if getattr(result, "error", None):
-            return Response({"error": str(result.error)}, status=500)
-        data = result.data if hasattr(result, "data") else []
-        # Fetch materials for all services
-        service_ids = [svc["id"] for svc in data]
-        materials_result = (
-            supabase.table("registration_material_service")
-            .select("*")
-            .in_("service_id", service_ids)
-            .execute()
-            if service_ids
-            else None
-        )
-        materials_data = (
-            materials_result.data if materials_result and hasattr(materials_result, "data") else []
-        )
-        # Group materials by service_id
-        from collections import defaultdict
+        data = []
 
-        mats_by_service = defaultdict(list)
-        for mat in materials_data:
-            mats_by_service[mat["service_id"]].append(
-                {
-                    "name": mat.get("material_name", ""),
-                    "description": mat.get("material_description", ""),
-                }
-            )
-        # Attach materials to each service
-        for svc in data:
-            svc["materials"] = mats_by_service.get(svc["id"], [])
-        return Response(data)
-
-    def post(self, request):
-        serializer = ServiceSerializer(data=request.data)
-        if serializer.is_valid():
-            data = serializer.validated_data
-            logger.warning(
-                f"Service registration: duration={data['duration']} (type={type(data['duration'])})"
-            )
-            # Accept duration as integer (minutes)
-            duration = data["duration"]
-            if isinstance(duration, str):
-                try:
-                    duration_minutes = int(duration)
-                except Exception:
-                    duration_minutes = 0
-            elif isinstance(duration, int):
-                duration_minutes = duration
-            elif hasattr(duration, "total_seconds"):
-                duration_minutes = int(duration.total_seconds() // 60)
-            else:
-                duration_minutes = 0
-            service_data = {
-                "name": data["name"],
-                "description": data["description"],
-                "duration": duration_minutes,
-                "price": float(data["price"]),
-                "oil": data.get("oil"),
-                "is_active": True,
-            }
-            logger.warning(f"Payload sent to Supabase for service: {service_data}")
+        if supabase:
             try:
-                inserted_service, error = insert_into_table(
-                    "registration_service", service_data
-                )
-                if error:
-                    logger.error(f"Supabase insert error: {error}")
-                    return Response(
-                        {"error": error}, status=status.HTTP_400_BAD_REQUEST
-                    )
-            except Exception as exc:
-                logger.error(f"Exception during Supabase insert: {exc}", exc_info=True)
-                return Response(
-                    {"error": f"Internal server error: {exc}"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
+                # Pagination parameters
+                page = int(request.query_params.get("page", 1))
+                page_size = int(request.query_params.get("page_size", 20))
+                offset = (page - 1) * page_size
 
-            service_id = inserted_service[0].get("id")
-            if not service_id:
-                logger.error("Failed to retrieve service ID after insert")
-                return Response(
-                    {"error": "Failed to retrieve service ID"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                # Fetch from Supabase
+                result = (
+                    supabase.table("registration_service")
+                    .select("*")
+                    .range(offset, offset + page_size - 1)
+                    .execute()
                 )
+                if not getattr(result, "error", None):
+                    data = result.data if hasattr(result, "data") else []
 
-            # Insert materials linked to this service, if any
-            # PATCH: Use request.data for materials, not serializer.validated_data
-            materials = request.data.get("materials", [])
-            if isinstance(materials, str):
-                import json
+                    # Fetch materials for Supabase services
+                    service_ids = [svc["id"] for svc in data]
+                    if service_ids:
+                        materials_result = (
+                            supabase.table("registration_material_service")
+                            .select("*")
+                            .in_("service_id", service_ids)
+                            .execute()
+                        )
+                        materials_data = (
+                            materials_result.data
+                            if materials_result and hasattr(materials_result, "data")
+                            else []
+                        )
 
-                try:
-                    materials = json.loads(materials)
-                except Exception:
-                    materials = []
-            if (
-                isinstance(materials, list)
-                and materials
-                and isinstance(materials[0], str)
-            ):
-                materials = [{"name": m} for m in materials]
-            inserted_material_ids = []
-            supabase = get_supabase_client()
-            if not supabase:
-                logger.error("Supabase client not available for material insertion")
-                return Response(
-                    {"error": "Database client not available"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
-            for mat in materials:
-                material_data = {
-                    "service_id": service_id,
-                    "material_name": mat.get("name"),
-                    "material_description": mat.get("description", ""),
-                }
-                inserted_material, error = insert_into_table(
-                    "registration_material_service", material_data
-                )
-                if error:
-                    logger.error(
-                        f"Material insert failed, rolling back service and materials: {error}"
-                    )
-                    for mid in inserted_material_ids:
-                        supabase.table("registration_material_service").delete().eq(
-                            "id", mid
-                        ).execute()
-                    supabase.table("registration_service").delete().eq(
-                        "id", service_id
-                    ).execute()
-                    return Response(
+                        # Group materials by service_id
+                        from collections import defaultdict
+
+                        mats_by_service = defaultdict(list)
+                        for mat in materials_data:
+                            mats_by_service[mat["service_id"]].append(
+                                {
+                                    "name": mat.get("material_name", ""),
+                                    "description": mat.get("material_description", ""),
+                                }
+                            )
+
+                        # Attach materials to each service
+                        for svc in data:
+                            svc["materials"] = mats_by_service.get(svc["id"], [])
+
+                    logger.info(f"Fetched {len(data)} services from Supabase")
+            except Exception as e:
+                logger.warning(f"Supabase services fetch failed: {e}")
+
+        # Fallback: Fetch from local Django database
+        if not data:
+            try:
+                from registration.models import Service, Material
+
+                # Pagination parameters
+                page = int(request.query_params.get("page", 1))
+                page_size = int(request.query_params.get("page_size", 20))
+                offset = (page - 1) * page_size
+
+                services = Service.objects.all().order_by("id")[
+                    offset : offset + page_size
+                ]
+
+                for service in services:
+                    # Get materials for this service
+                    materials = Material.objects.filter(service=service)
+                    materials_list = [
+                        {"name": mat.name, "description": mat.description}
+                        for mat in materials
+                    ]
+
+                    data.append(
                         {
-                            "error": f"Material insert failed: {error}. Transaction rolled back."
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
+                            "id": service.id,
+                            "name": service.name,
+                            "description": service.description,
+                            "duration": service.duration,  # Already in minutes
+                            "price": float(service.price),
+                            "oil": service.oil,
+                            "is_active": service.is_active,
+                            "materials": materials_list,  # This is the key fix
+                        }
                     )
-                inserted_material_ids.append(inserted_material[0].get("id"))
-            return Response(
-                {"message": "Service registered successfully"},
-                status=status.HTTP_201_CREATED,
-            )
-        logger.warning(f"Service serializer errors: {serializer.errors}")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+                logger.info(f"Fetched {len(data)} services from local Django database")
+            except Exception as e:
+                logger.error(f"Local services fetch failed: {e}")
+                return Response(
+                    {
+                        "error": "Failed to fetch services from both Supabase and local database"
+                    },
+                    status=500,
+                )
+
+        return Response(data)  # Try Supabase first
+        supabase = get_supabase_client()
+        data = []
+
+        if supabase:
+            try:
+                # Pagination parameters
+                page = int(request.query_params.get("page", 1))
+                page_size = int(request.query_params.get("page_size", 20))
+                offset = (page - 1) * page_size
+
+                # Fetch from Supabase
+                result = (
+                    supabase.table("registration_service")
+                    .select("*")
+                    .range(offset, offset + page_size - 1)
+                    .execute()
+                )
+                if not getattr(result, "error", None):
+                    data = result.data if hasattr(result, "data") else []
+
+                    # Fetch materials for Supabase services
+                    service_ids = [svc["id"] for svc in data]
+                    if service_ids:
+                        materials_result = (
+                            supabase.table("registration_material_service")
+                            .select("*")
+                            .in_("service_id", service_ids)
+                            .execute()
+                        )
+                        materials_data = (
+                            materials_result.data
+                            if materials_result and hasattr(materials_result, "data")
+                            else []
+                        )
+
+                        # Group materials by service_id
+                        from collections import defaultdict
+
+                        mats_by_service = defaultdict(list)
+                        for mat in materials_data:
+                            mats_by_service[mat["service_id"]].append(
+                                {
+                                    "name": mat.get("material_name", ""),
+                                    "description": mat.get("material_description", ""),
+                                }
+                            )
+
+                        # Attach materials to each service
+                        for svc in data:
+                            svc["materials"] = mats_by_service.get(svc["id"], [])
+
+                    logger.info(f"Fetched {len(data)} services from Supabase")
+            except Exception as e:
+                logger.warning(f"Supabase services fetch failed: {e}")
+
+        # Fallback: Fetch from local Django database
+        if not data:
+            try:
+                from registration.models import Service, Material
+
+                # Pagination parameters
+                page = int(request.query_params.get("page", 1))
+                page_size = int(request.query_params.get("page_size", 20))
+                offset = (page - 1) * page_size
+
+                services = Service.objects.all().order_by("id")[
+                    offset : offset + page_size
+                ]
+
+                for service in services:
+                    # Get materials for this service
+                    materials = Material.objects.filter(service=service)
+                    materials_list = [
+                        {"name": mat.name, "description": mat.description}
+                        for mat in materials
+                    ]
+
+                    data.append(
+                        {
+                            "id": service.id,
+                            "name": service.name,
+                            "description": service.description,
+                            "duration": service.duration,  # Already in minutes
+                            "price": float(service.price),
+                            "oil": service.oil,
+                            "is_active": service.is_active,
+                            "materials": materials_list,  # This is the key fix
+                        }
+                    )
+
+                logger.info(f"Fetched {len(data)} services from local Django database")
+            except Exception as e:
+                logger.error(f"Local services fetch failed: {e}")
+                return Response(
+                    {
+                        "error": "Failed to fetch services from both Supabase and local database"
+                    },
+                    status=500,
+                )
+
+        return Response(data)
 
 
 class CompleteRegistrationAPIView(APIView):
@@ -879,10 +957,14 @@ class CompleteRegistrationAPIView(APIView):
             )
         except Exception as exc:
             import traceback
+
             print("[DEBUG] Registration Exception:", exc)
             traceback.print_exc()
             return Response(
-                {"error": f"Failed to complete registration: {exc}", "trace": traceback.format_exc()},
+                {
+                    "error": f"Failed to complete registration: {exc}",
+                    "trace": traceback.format_exc(),
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
