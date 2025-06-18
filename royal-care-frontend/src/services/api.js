@@ -195,6 +195,9 @@ export const completeRegistration = (data) =>
 // Check if an email is registered and eligible for completion
 export const checkEmailExists = (email) =>
   api.post("/registration/check-email/", { email });
+// Check if a username is available
+export const checkUsernameAvailable = (username) =>
+  api.get("/auth/check-username/", { params: { username } });
 
 // User profile update functions
 export const updateUserProfile = (data) => api.put("/auth/profile/", data);

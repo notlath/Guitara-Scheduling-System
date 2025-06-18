@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import "./FormField.css";
+import { useEffect, useState } from "react";
 import { MdVisibility, MdVisibilityOff } from "react-icons/md";
+import "./FormField.css";
 
 // Button for toggling password visibility (eye icon)
 export function PasswordVisibilityToggle({
@@ -35,8 +35,11 @@ export function FormField({
   as = "input", // What kind of field: input, select, textarea, or custom
   validate = null, // Optional validation function
   onErrorChange, // Callback to inform parent of error state
+  showError, // Extract showError to prevent it from being passed to DOM
   ...rest
 }) {
+  // Remove showError from rest props to prevent it from being passed to DOM elements
+  const { showError: _extractedShowError, ...filteredRest } = rest;
   // Track if user has interacted with the field
   const [touched, setTouched] = useState(false);
   // Store error message for this field
@@ -47,7 +50,7 @@ export function FormField({
   // Run validation when value, touched, or showError changes
   useEffect(() => {
     let err = "";
-    if (touched || rest.showError) {
+    if (touched || showError) {
       if (validate) {
         err = validate(value); // Use custom validator if provided
       } else if (
@@ -60,7 +63,7 @@ export function FormField({
     setError(err);
     if (onErrorChange) onErrorChange(name, err);
     // eslint-disable-next-line
-  }, [value, touched, rest.showError]);
+  }, [value, touched, showError]);
 
   // Render label with asterisk if required
   const labelContent = (
@@ -119,7 +122,7 @@ export function FormField({
               required={required}
               onBlur={handleBlur}
               {...inputProps}
-              {...rest}
+              {...filteredRest}
             />
             {/* Eye icon for toggling password visibility */}
             <PasswordVisibilityToggle
@@ -141,7 +144,7 @@ export function FormField({
             onChange={onChange}
             required={required}
             onBlur={handleBlur}
-            {...rest}
+            {...filteredRest}
           >
             {children}
           </select>
@@ -156,7 +159,7 @@ export function FormField({
             required={required}
             onBlur={handleBlur}
             {...inputProps}
-            {...rest}
+            {...filteredRest}
           />
         ) : (
           // Default input (text, email, etc)
@@ -170,7 +173,7 @@ export function FormField({
             required={required}
             onBlur={handleBlur}
             {...inputProps}
-            {...rest}
+            {...filteredRest}
           />
         )}
         {/* Render children for extra content (e.g. helper text, icons) */}

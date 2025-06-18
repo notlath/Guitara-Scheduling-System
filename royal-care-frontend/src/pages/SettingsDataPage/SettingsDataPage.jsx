@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MdAdd,
   MdBackup,
@@ -16,6 +16,7 @@ import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
 import useSettingsData from "../../hooks/useSettingsData";
 import {
+  checkUsernameAvailable,
   registerClient,
   registerDriver,
   registerMaterial,
@@ -65,6 +66,81 @@ const TAB_SINGULARS = {
   Materials: "Material",
 };
 
+// Helper function to capitalize names properly
+const capitalizeName = (name) => {
+  if (!name || typeof name !== "string") return "";
+
+  // Split by spaces and capitalize each word
+  return name
+    .trim()
+    .split(/\s+/) // Split by any whitespace (handles multiple spaces)
+    .filter((word) => word.length > 0) // Remove empty strings
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
+// Helper function to generate default username based on role and name
+const generateDefaultUsername = (role, firstName, lastName) => {
+  if (!lastName) return "";
+
+  // Clean and prepare lastName only - prioritize lastName only
+  const cleanLastName =
+    (lastName || "")
+      .trim()
+      .split(/\s+/)[0]
+      ?.replace(/[^a-zA-Z]/g, "")
+      .toLowerCase() || "";
+
+  // Use only lastName - no fallback to firstName
+  const name = cleanLastName;
+
+  const prefixes = {
+    Therapists: "rct",
+    Drivers: "rcd",
+    Operators: "rco",
+  };
+
+  const prefix = prefixes[role];
+  if (!prefix || !name) return "";
+
+  return `${prefix}_${name}`;
+};
+
+// Helper function to generate unique username by checking database
+const generateUniqueUsername = async (role, firstName, lastName) => {
+  const baseUsername = generateDefaultUsername(role, "", lastName); // Only use lastName
+  if (!baseUsername) return "";
+
+  try {
+    // Check if base username is available
+    const response = await checkUsernameAvailable(baseUsername);
+    if (response.data.available) {
+      return baseUsername;
+    }
+
+    // If not available, try with numbers
+    for (let i = 1; i <= 99; i++) {
+      const numberedUsername = `${baseUsername}${i}`;
+      try {
+        const numberResponse = await checkUsernameAvailable(numberedUsername);
+        if (numberResponse.data.available) {
+          return numberedUsername;
+        }
+      } catch (error) {
+        console.warn(`Error checking username ${numberedUsername}:`, error);
+        // Continue trying next number
+      }
+    }
+
+    // If all numbers 1-99 are taken, return base username anyway
+    return baseUsername;
+  } catch (error) {
+    console.warn("Error checking username availability:", error);
+    // Return base username if check fails
+    return baseUsername;
+  }
+};
+
 // Pagination defaults
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -73,7 +149,9 @@ const fetchers = {
   Therapists: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/registration/register/therapist/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${
+        import.meta.env.VITE_API_BASE_URL
+      }/registration/register/therapist/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -85,7 +163,9 @@ const fetchers = {
     const data = await res.json();
     return data.map((item) => ({
       Username: item.username,
-      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
+      Name: `${capitalizeName(item.first_name) || ""} ${
+        capitalizeName(item.last_name) || ""
+      }`.trim(),
       Email: item.email,
       Contact: item.phone_number || "-",
       Specialization: item.specialization || "-",
@@ -97,7 +177,9 @@ const fetchers = {
   Drivers: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/registration/register/driver/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${
+        import.meta.env.VITE_API_BASE_URL
+      }/registration/register/driver/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -109,7 +191,9 @@ const fetchers = {
     const data = await res.json();
     return data.map((item) => ({
       Username: item.username,
-      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim(),
+      Name: `${capitalizeName(item.first_name) || ""} ${
+        capitalizeName(item.last_name) || ""
+      }`.trim(),
       Email: item.email,
       Contact: item.phone_number || "-",
       Specialization: item.motorcycle_plate || "N/A",
@@ -119,7 +203,9 @@ const fetchers = {
   Operators: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/registration/register/operator/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${
+        import.meta.env.VITE_API_BASE_URL
+      }/registration/register/operator/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -131,7 +217,10 @@ const fetchers = {
     const data = await res.json();
     return data.map((item) => ({
       Username: item.username || "-",
-      Name: `${item.first_name || ""} ${item.last_name || ""}`.trim() || "-",
+      Name:
+        `${capitalizeName(item.first_name) || ""} ${
+          capitalizeName(item.last_name) || ""
+        }`.trim() || "-",
       Email: item.email || "-",
       Contact: item.phone_number || "-",
       Specialization: "N/A",
@@ -141,7 +230,9 @@ const fetchers = {
   Clients: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/registration/register/client/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${
+        import.meta.env.VITE_API_BASE_URL
+      }/registration/register/client/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -152,7 +243,7 @@ const fetchers = {
     if (!res.ok) return [];
     const data = await res.json();
     return data.map((item) => ({
-      Name: item.Name || "-",
+      Name: capitalizeName(item.Name) || "-",
       Email: item.Email || "-",
       Address: item.Address || "-",
       Contact: item.Contact || "-",
@@ -162,7 +253,9 @@ const fetchers = {
   Services: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/registration/register/service/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${
+        import.meta.env.VITE_API_BASE_URL
+      }/registration/register/service/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -192,7 +285,9 @@ const fetchers = {
   Materials: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/registration/register/material/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${
+        import.meta.env.VITE_API_BASE_URL
+      }/registration/register/material/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -295,11 +390,59 @@ const SettingsDataPage = () => {
       if (type === "checkbox") {
         return { ...prev, [name]: checked };
       }
-      // Do not trim or sanitize on every keystroke for description
+
+      let newValue = value;
+      let updatedData = { ...prev };
+
+      // Capitalize first and last names automatically
       if (name === "firstName" || name === "lastName") {
-        return { ...prev, [name]: value };
+        newValue = capitalizeName(value);
+        updatedData[name] = newValue;
+
+        // Auto-generate username only when lastName changes (since we only use lastName for username)
+        if (
+          name === "lastName" &&
+          ["Therapists", "Drivers", "Operators"].includes(activeTab)
+        ) {
+          const currentUsername = prev.username || "";
+          const isDefaultUsername = currentUsername.match(/^(rct|rcd|rco)_/);
+
+          // Generate new unique username if current is empty or is a default pattern
+          if (!currentUsername || isDefaultUsername) {
+            const lastName = newValue; // Use the new lastName value
+
+            // Generate unique username asynchronously (only using lastName)
+            generateUniqueUsername(activeTab, "", lastName)
+              .then((uniqueUsername) => {
+                if (uniqueUsername) {
+                  setFormData((currentData) => ({
+                    ...currentData,
+                    username: uniqueUsername,
+                  }));
+                }
+              })
+              .catch((error) => {
+                console.warn("Error generating unique username:", error);
+                // Fallback to basic username generation (only using lastName)
+                const fallbackUsername = generateDefaultUsername(
+                  activeTab,
+                  "",
+                  lastName
+                );
+                if (fallbackUsername) {
+                  setFormData((currentData) => ({
+                    ...currentData,
+                    username: fallbackUsername,
+                  }));
+                }
+              });
+          }
+        }
+      } else {
+        updatedData[name] = newValue;
       }
-      return { ...prev, [name]: value };
+
+      return updatedData;
     });
   };
 
@@ -716,6 +859,11 @@ const SettingsDataPage = () => {
               label="Username"
               value={formData.username || ""}
               onChange={handleInputChange}
+              inputProps={{
+                placeholder:
+                  generateDefaultUsername(activeTab, "", formData.lastName) ||
+                  "rct_lastname",
+              }}
             />
             <FormField
               name="email"
@@ -779,6 +927,11 @@ const SettingsDataPage = () => {
               label="Username"
               value={formData.username || ""}
               onChange={handleInputChange}
+              inputProps={{
+                placeholder:
+                  generateDefaultUsername(activeTab, "", formData.lastName) ||
+                  (activeTab === "Drivers" ? "rcd_lastname" : "rco_lastname"),
+              }}
             />
             <FormField
               name="email"
@@ -997,14 +1150,21 @@ const SettingsDataPage = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(async () => {
         const container = tableContainerRef.current;
-        if (!container || isTabLoading(activeTab) || !tabHasMore[activeTab]) return;
-        if (container.scrollTop + container.clientHeight >= container.scrollHeight - 100) {
+        if (!container || isTabLoading(activeTab) || !tabHasMore[activeTab])
+          return;
+        if (
+          container.scrollTop + container.clientHeight >=
+          container.scrollHeight - 100
+        ) {
           // Near bottom, load next page
           const nextPage = tabPages[activeTab] + 1;
           const fetcher = fetchers[activeTab];
           if (!fetcher) return;
           const newData = await fetcher(nextPage);
-          setTabHasMore((prev) => ({ ...prev, [activeTab]: newData.length === DEFAULT_PAGE_SIZE }));
+          setTabHasMore((prev) => ({
+            ...prev,
+            [activeTab]: newData.length === DEFAULT_PAGE_SIZE,
+          }));
           setTabPages((prev) => ({ ...prev, [activeTab]: nextPage }));
           setTableData((prev) => ({
             ...prev,
@@ -1081,8 +1241,10 @@ const SettingsDataPage = () => {
       )}
 
       <div
-        className={"global-content no-page-scroll" + (showModal ? " faded" : "")}
-        style={{ overflow: 'hidden', height: '100vh', minHeight: '100vh' }}
+        className={
+          "global-content no-page-scroll" + (showModal ? " faded" : "")
+        }
+        style={{ overflow: "hidden", height: "100vh", minHeight: "100vh" }}
       >
         <div className={styles["header-tabs-container"]}>
           <LayoutRow title="Data">
