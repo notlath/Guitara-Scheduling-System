@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import styles from "./ContactPage.module.css";
 import PageLayout from "../../globals/PageLayout";
+import LayoutRow from "../../globals/LayoutRow";
 import pageTitles from "../../constants/pageTitles";
 import { MdError } from "react-icons/md";
 import jonAvatar from "../../assets/images/jon.jpg";
@@ -35,15 +36,26 @@ const ContactPage = () => {
 
   return (
     <PageLayout>
+      <LayoutRow title="Email Support"></LayoutRow>
       <div className={styles.contactSupportContainer}>
-        <h1 className={styles.header}>Email Support</h1>
         <div className={styles.subtitleRow}>
           <div className={styles.subtitleText}>
             <span className={styles.exclamationIcon} aria-label="Important">
               <MdError className={styles.exclamationSvg} />
             </span>
             <span>
-              Make sure to read the user guide and FAQs first.
+              Make sure to read the{" "}
+              <a
+                href="/dashboard/help/user-guide"
+                className={styles.inlineLink}
+              >
+                User Guide
+              </a>{" "}
+              and{" "}
+              <a href="/dashboard/help/faqs" className={styles.inlineLink}>
+                FAQs
+              </a>{" "}
+              first.
               <br />
               If the issue persists, feel free to reach out to the developers
               listed below.
@@ -54,7 +66,7 @@ const ContactPage = () => {
           {developers.map((dev, idx) => (
             <div
               className={styles.contactMember}
-              key={idx}
+              key={dev.email}
               onClick={async () => {
                 await navigator.clipboard.writeText(dev.email);
                 setCopiedIdx(idx);
