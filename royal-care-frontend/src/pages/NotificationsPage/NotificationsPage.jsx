@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { MdDelete, MdMarkAsUnread, MdMoreVert } from "react-icons/md";
 import { markNotificationAsRead } from "../../features/scheduling/schedulingSlice";
@@ -12,7 +12,6 @@ const NotificationsPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
-  const notificationItemsRef = useRef(new Map());
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -75,8 +74,8 @@ const NotificationsPage = () => {
           )
         );
         dispatch(markNotificationAsRead(notificationId));
-      } catch {
-        // Intentionally ignored
+      } catch (error) {
+        console.error("Failed to mark notification as read:", error);
       }
     },
     [dispatch]
@@ -170,10 +169,6 @@ const NotificationsPage = () => {
           filteredNotifications.map((notification) => (
             <div
               key={notification.id}
-              ref={(el) => {
-                if (el) notificationItemsRef.current.set(notification.id, el);
-                else notificationItemsRef.current.delete(notification.id);
-              }}
               className={
                 styles.notificationItem +
                 (!notification.is_read ? ` ${styles.unread}` : "")
@@ -209,6 +204,7 @@ const NotificationsPage = () => {
               <div className={styles.notificationActions}>
                 <button
                   className={styles.menuButton}
+                  aria-label="Open notification actions menu"
                   onClick={(e) => {
                     e.stopPropagation();
                     setOpenMenuId(
