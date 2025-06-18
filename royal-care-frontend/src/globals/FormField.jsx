@@ -38,6 +38,8 @@ export function FormField({
   showError, // Extract showError to prevent it from being passed to DOM
   ...rest
 }) {
+  // Remove showError from rest props to prevent it from being passed to DOM elements
+  const { showError: _extractedShowError, ...filteredRest } = rest;
   // Track if user has interacted with the field
   const [touched, setTouched] = useState(false);
   // Store error message for this field
@@ -120,7 +122,7 @@ export function FormField({
               required={required}
               onBlur={handleBlur}
               {...inputProps}
-              {...rest}
+              {...filteredRest}
             />
             {/* Eye icon for toggling password visibility */}
             <PasswordVisibilityToggle
@@ -142,7 +144,7 @@ export function FormField({
             onChange={onChange}
             required={required}
             onBlur={handleBlur}
-            {...rest}
+            {...filteredRest}
           >
             {children}
           </select>
@@ -157,7 +159,7 @@ export function FormField({
             required={required}
             onBlur={handleBlur}
             {...inputProps}
-            {...rest}
+            {...filteredRest}
           />
         ) : (
           // Default input (text, email, etc)
@@ -171,7 +173,7 @@ export function FormField({
             required={required}
             onBlur={handleBlur}
             {...inputProps}
-            {...rest}
+            {...filteredRest}
           />
         )}
         {/* Render children for extra content (e.g. helper text, icons) */}
