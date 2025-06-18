@@ -66,7 +66,7 @@ const ContactPage = () => {
           {developers.map((dev, idx) => (
             <div
               className={styles.contactMember}
-              key={idx}
+              key={dev.email}
               onClick={async () => {
                 await navigator.clipboard.writeText(dev.email);
                 setCopiedIdx(idx);
