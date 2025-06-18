@@ -62,18 +62,14 @@ const MainLayout = () => {
                 to="/dashboard/scheduling"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
-                <MdSchedule
-                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-                />
+                <MdSchedule className="main-layout__sidebar-icon" />
                 Schedule
               </NavLink>
               <NavLink
                 to="/dashboard/attendance"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
-                <MdEventAvailable
-                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-                />
+                <MdEventAvailable className="main-layout__sidebar-icon" />
                 Attendance
               </NavLink>
             </>
@@ -83,18 +79,14 @@ const MainLayout = () => {
                 to="/dashboard/scheduling"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
-                <MdCalendarMonth
-                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-                />
+                <MdCalendarMonth className="main-layout__sidebar-icon" />
                 Bookings
               </NavLink>
               <NavLink
                 to="/dashboard/attendance"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
-                <MdEventAvailable
-                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-                />
+                <MdEventAvailable className="main-layout__sidebar-icon" />
                 Attendance
               </NavLink>
               <div className="divider"></div>
@@ -102,27 +94,21 @@ const MainLayout = () => {
                 to="/dashboard/sales-reports"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
-                <MdBarChart
-                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-                />
+                <MdBarChart className="main-layout__sidebar-icon" />
                 Sales & Reports
               </NavLink>
               <NavLink
                 to="/dashboard/inventory"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
-                <MdInventory
-                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-                />
+                <MdInventory className="main-layout__sidebar-icon" />
                 Inventory
               </NavLink>
               <NavLink
                 to="/dashboard/settings/data"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
               >
-                <MdTableChart
-                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-                />
+                <MdTableChart className="main-layout__sidebar-icon" />
                 Data
               </NavLink>
             </>
@@ -134,7 +120,7 @@ const MainLayout = () => {
             to="/dashboard/profile"
             className={({ isActive }) => (isActive ? "active-link" : "")}
           >
-            <MdPerson style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
+            <MdPerson className="main-layout__sidebar-icon" />
             Profile
           </NavLink>
           {/* Help Section with Sublinks */}
@@ -144,13 +130,11 @@ const MainLayout = () => {
             onClick={toggleHelpSublinks}
           >
             <span className="sidebar-link-content">
-              <MdHelpOutline
-                style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-              />
+              <MdHelpOutline className="main-layout__sidebar-icon" />
               Help
             </span>
             <span className={`dropdown-icon ${showHelpSublinks ? "open" : ""}`}>
-              <MdKeyboardArrowDown style={{ fontSize: "1.2em" }} />
+              <MdKeyboardArrowDown className="main-layout__dropdown-arrow" />
             </span>
           </a>
           <div className={`sublinks${showHelpSublinks ? " open" : ""}`}>
@@ -158,23 +142,21 @@ const MainLayout = () => {
               to="/dashboard/help/user-guide"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdMenuBook style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
+              <MdMenuBook className="main-layout__sidebar-icon" />
               User Guide
             </NavLink>
             <NavLink
               to="/dashboard/help/faqs"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdQuestionAnswer
-                style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-              />
+              <MdQuestionAnswer className="main-layout__sidebar-icon" />
               FAQs
             </NavLink>
             <NavLink
               to="/dashboard/help/contact"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdEmail style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
+              <MdEmail className="main-layout__sidebar-icon" />
               Email Support
             </NavLink>
           </div>
@@ -186,15 +168,13 @@ const MainLayout = () => {
             onClick={toggleAboutSublinks}
           >
             <span className="sidebar-link-content">
-              <MdInfoOutline
-                style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-              />
+              <MdInfoOutline className="main-layout__sidebar-icon" />
               About
             </span>
             <span
               className={`dropdown-icon ${showAboutSublinks ? "open" : ""}`}
             >
-              <MdKeyboardArrowDown style={{ fontSize: "1.2em" }} />
+              <MdKeyboardArrowDown className="main-layout__dropdown-arrow" />
             </span>
           </a>
           <div className={`sublinks${showAboutSublinks ? " open" : ""}`}>
@@ -202,21 +182,21 @@ const MainLayout = () => {
               to="/dashboard/about/company"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdBusiness style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
+              <MdBusiness className="main-layout__sidebar-icon" />
               Company Information
             </NavLink>
             <NavLink
               to="/dashboard/about/system"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdDevices style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
+              <MdDevices className="main-layout__sidebar-icon" />
               System Information
             </NavLink>
             <NavLink
               to="/dashboard/about/developers"
               className={({ isActive }) => (isActive ? "active-link" : "")}
             >
-              <MdPeople style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
+              <MdPeople className="main-layout__sidebar-icon" />
               Developer Information
             </NavLink>
           </div>

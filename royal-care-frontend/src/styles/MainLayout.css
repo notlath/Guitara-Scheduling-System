@@ -229,6 +229,18 @@
   min-width: 0;
 }
 
+/* Sidebar icon style for all sidebar icons in MainLayout */
+.main-layout__sidebar-icon {
+  margin-right: 0.5em;
+  font-size: 1.2em;
+}
+
+/* Dropdown arrow icon style (no margin) */
+.main-layout__dropdown-arrow {
+  margin-right: 0;
+  font-size: 1.2em;
+}
+
 :root {
   --sidebar-sublink-icon-size: 1.1em;
 }
