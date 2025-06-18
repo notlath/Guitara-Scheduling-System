@@ -44,6 +44,7 @@ import crossTabSync from "./services/crossTabSync";
 import memoryManager from "./services/memoryManager";
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
+import NotificationsPage from "./pages/NotificationsPage/NotificationsPage";
 
 // Error Boundary Component
 class AppErrorBoundary extends React.Component {
@@ -311,6 +312,7 @@ const App = () => {
               )
             }
           />{" "}
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="scheduling" element={<SchedulingPage />} />
           <Route path="availability" element={<AvailabilityManager />} />{" "}
           <Route path="bookings" element={<BookingsPage />} />{" "}

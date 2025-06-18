@@ -20,12 +20,13 @@ const pageTitles = {
   inventory: "Inventory" + BRAND_SUFFIX,
   userGuide: "User Guide" + BRAND_SUFFIX,
   faqs: "FAQs" + BRAND_SUFFIX,
-  contact: "Contact Support" + BRAND_SUFFIX,
+  contact: "Email Support" + BRAND_SUFFIX,
   systemInfo: "System Info" + BRAND_SUFFIX,
   developerInfo: "Developer Info" + BRAND_SUFFIX,
   companyInfo: "About Us" + BRAND_SUFFIX,
   bookings: "Bookings" + BRAND_SUFFIX,
   attendance: "Attendance" + BRAND_SUFFIX,
+  notifications: "Notifications" + BRAND_SUFFIX,
   // Add more as needed
 };
 
