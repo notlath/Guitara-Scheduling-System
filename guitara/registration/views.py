@@ -722,209 +722,146 @@ class RegisterMaterial(APIView):
 
 class RegisterService(APIView):
     def get(self, request):
-        # Try Supabase first
-        supabase = get_supabase_client()
+        # Prioritize local Django database first since it has the material associations
         data = []
 
-        if supabase:
-            try:
-                # Pagination parameters
-                page = int(request.query_params.get("page", 1))
-                page_size = int(request.query_params.get("page_size", 20))
-                offset = (page - 1) * page_size
+        try:
+            from registration.models import Service, Material
 
-                # Fetch from Supabase
-                result = (
-                    supabase.table("registration_service")
-                    .select("*")
-                    .range(offset, offset + page_size - 1)
-                    .execute()
-                )
-                if not getattr(result, "error", None):
-                    data = result.data if hasattr(result, "data") else []
+            # Pagination parameters
+            page = int(request.query_params.get("page", 1))
+            page_size = int(request.query_params.get("page_size", 20))
+            offset = (page - 1) * page_size
 
-                    # Fetch materials for Supabase services
-                    service_ids = [svc["id"] for svc in data]
-                    if service_ids:
-                        materials_result = (
-                            supabase.table("registration_material_service")
-                            .select("*")
-                            .in_("service_id", service_ids)
-                            .execute()
-                        )
-                        materials_data = (
-                            materials_result.data
-                            if materials_result and hasattr(materials_result, "data")
-                            else []
-                        )
+            # Use prefetch_related for optimized query
+            services = (
+                Service.objects.prefetch_related("materials")
+                .all()
+                .order_by("id")[offset : offset + page_size]
+            )
 
-                        # Group materials by service_id
-                        from collections import defaultdict
-
-                        mats_by_service = defaultdict(list)
-                        for mat in materials_data:
-                            mats_by_service[mat["service_id"]].append(
-                                {
-                                    "name": mat.get("material_name", ""),
-                                    "description": mat.get("material_description", ""),
-                                }
-                            )
-
-                        # Attach materials to each service
-                        for svc in data:
-                            svc["materials"] = mats_by_service.get(svc["id"], [])
-
-                    logger.info(f"Fetched {len(data)} services from Supabase")
-            except Exception as e:
-                logger.warning(f"Supabase services fetch failed: {e}")
-
-        # Fallback: Fetch from local Django database
-        if not data:
-            try:
-                from registration.models import Service, Material
-
-                # Pagination parameters
-                page = int(request.query_params.get("page", 1))
-                page_size = int(request.query_params.get("page_size", 20))
-                offset = (page - 1) * page_size
-
-                services = Service.objects.all().order_by("id")[
-                    offset : offset + page_size
+            for service in services:
+                # Get materials for this service using the foreign key relationship
+                materials = service.materials.all()
+                materials_list = [
+                    {"name": mat.name, "description": mat.description}
+                    for mat in materials
                 ]
 
-                for service in services:
-                    # Get materials for this service
-                    materials = Material.objects.filter(service=service)
-                    materials_list = [
-                        {"name": mat.name, "description": mat.description}
-                        for mat in materials
-                    ]
-
-                    data.append(
-                        {
-                            "id": service.id,
-                            "name": service.name,
-                            "description": service.description,
-                            "duration": service.duration,  # Already in minutes
-                            "price": float(service.price),
-                            "oil": service.oil,
-                            "is_active": service.is_active,
-                            "materials": materials_list,  # This is the key fix
-                        }
-                    )
-
-                logger.info(f"Fetched {len(data)} services from local Django database")
-            except Exception as e:
-                logger.error(f"Local services fetch failed: {e}")
-                return Response(
+                data.append(
                     {
-                        "error": "Failed to fetch services from both Supabase and local database"
-                    },
-                    status=500,
+                        "id": service.id,
+                        "name": service.name,
+                        "description": service.description,
+                        "duration": service.duration,  # Already in minutes
+                        "price": float(service.price),
+                        "oil": service.oil,
+                        "is_active": service.is_active,
+                        "materials": materials_list,  # This ensures materials are included
+                    }
                 )
 
-        return Response(data)  # Try Supabase first
-        supabase = get_supabase_client()
-        data = []
+            logger.info(f"Fetched {len(data)} services from local Django database")
 
-        if supabase:
-            try:
-                # Pagination parameters
-                page = int(request.query_params.get("page", 1))
-                page_size = int(request.query_params.get("page_size", 20))
-                offset = (page - 1) * page_size
+        except Exception as e:
+            logger.error(f"Local services fetch failed: {e}")
 
-                # Fetch from Supabase
-                result = (
-                    supabase.table("registration_service")
-                    .select("*")
-                    .range(offset, offset + page_size - 1)
-                    .execute()
-                )
-                if not getattr(result, "error", None):
-                    data = result.data if hasattr(result, "data") else []
+            # Fallback: Try Supabase if local fails
+            supabase = get_supabase_client()
+            if supabase:
+                try:
+                    # Pagination parameters
+                    page = int(request.query_params.get("page", 1))
+                    page_size = int(request.query_params.get("page_size", 20))
+                    offset = (page - 1) * page_size
 
-                    # Fetch materials for Supabase services
-                    service_ids = [svc["id"] for svc in data]
-                    if service_ids:
-                        materials_result = (
-                            supabase.table("registration_material_service")
-                            .select("*")
-                            .in_("service_id", service_ids)
-                            .execute()
-                        )
-                        materials_data = (
-                            materials_result.data
-                            if materials_result and hasattr(materials_result, "data")
-                            else []
-                        )
-
-                        # Group materials by service_id
-                        from collections import defaultdict
-
-                        mats_by_service = defaultdict(list)
-                        for mat in materials_data:
-                            mats_by_service[mat["service_id"]].append(
-                                {
-                                    "name": mat.get("material_name", ""),
-                                    "description": mat.get("material_description", ""),
-                                }
-                            )
-
-                        # Attach materials to each service
-                        for svc in data:
-                            svc["materials"] = mats_by_service.get(svc["id"], [])
-
-                    logger.info(f"Fetched {len(data)} services from Supabase")
-            except Exception as e:
-                logger.warning(f"Supabase services fetch failed: {e}")
-
-        # Fallback: Fetch from local Django database
-        if not data:
-            try:
-                from registration.models import Service, Material
-
-                # Pagination parameters
-                page = int(request.query_params.get("page", 1))
-                page_size = int(request.query_params.get("page_size", 20))
-                offset = (page - 1) * page_size
-
-                services = Service.objects.all().order_by("id")[
-                    offset : offset + page_size
-                ]
-
-                for service in services:
-                    # Get materials for this service
-                    materials = Material.objects.filter(service=service)
-                    materials_list = [
-                        {"name": mat.name, "description": mat.description}
-                        for mat in materials
-                    ]
-
-                    data.append(
-                        {
-                            "id": service.id,
-                            "name": service.name,
-                            "description": service.description,
-                            "duration": service.duration,  # Already in minutes
-                            "price": float(service.price),
-                            "oil": service.oil,
-                            "is_active": service.is_active,
-                            "materials": materials_list,  # This is the key fix
-                        }
+                    # Fetch from Supabase
+                    result = (
+                        supabase.table("registration_service")
+                        .select("*")
+                        .range(offset, offset + page_size - 1)
+                        .execute()
                     )
+                    if not getattr(result, "error", None):
+                        data = result.data if hasattr(result, "data") else []
 
-                logger.info(f"Fetched {len(data)} services from local Django database")
-            except Exception as e:
-                logger.error(f"Local services fetch failed: {e}")
-                return Response(
-                    {
-                        "error": "Failed to fetch services from both Supabase and local database"
-                    },
-                    status=500,
-                )
+                        # Try to fetch materials for Supabase services
+                        service_ids = [svc["id"] for svc in data]
+                        if service_ids:
+                            try:
+                                materials_result = (
+                                    supabase.table("registration_material_service")
+                                    .select("*")
+                                    .in_("service_id", service_ids)
+                                    .execute()
+                                )
+                                materials_data = (
+                                    materials_result.data
+                                    if materials_result
+                                    and hasattr(materials_result, "data")
+                                    else []
+                                )
+
+                                # Group materials by service_id
+                                from collections import defaultdict
+
+                                mats_by_service = defaultdict(list)
+                                for mat in materials_data:
+                                    mats_by_service[mat["service_id"]].append(
+                                        {
+                                            "name": mat.get("material_name", ""),
+                                            "description": mat.get(
+                                                "material_description", ""
+                                            ),
+                                        }
+                                    )
+
+                                # Attach materials to each service
+                                for svc in data:
+                                    svc["materials"] = mats_by_service.get(
+                                        svc["id"], []
+                                    )
+                            except Exception as mat_error:
+                                logger.warning(
+                                    f"Failed to fetch materials from Supabase: {mat_error}"
+                                )
+                                # Set empty materials for all services
+                                for svc in data:
+                                    svc["materials"] = []
+
+                        logger.info(f"Fetched {len(data)} services from Supabase")
+                except Exception as e:
+                    logger.warning(f"Supabase services fetch failed: {e}")
+                    return Response(
+                        {
+                            "error": "Failed to fetch services from both local and Supabase databases"
+                        },
+                        status=500,
+                    )
 
         return Response(data)
+
+    def post(self, request):
+        serializer = ServiceSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            inserted_data, error = insert_into_table(
+                "registration_service",
+                {
+                    "name": data["name"],
+                    "description": data["description"],
+                    "duration": data["duration"],
+                    "price": float(data["price"]),
+                    "materials": data.get("materials", []),
+                },
+            )
+            if error:
+                return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"message": "Service registered successfully"},
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CompleteRegistrationAPIView(APIView):

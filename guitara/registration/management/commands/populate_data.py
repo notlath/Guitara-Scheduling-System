@@ -1,6 +1,5 @@
 from django.core.management.base import BaseCommand
 from registration.models import Service, Material
-from datetime import timedelta
 from decimal import Decimal
 
 
@@ -198,18 +197,89 @@ class Command(BaseCommand):
         ]
 
         self.stdout.write("\n--- Associating Materials with Services ---")
+
+        # First, clear all existing associations to avoid conflicts
+        Material.objects.all().update(service=None)
+
         for service_name, material_names in associations:
             try:
                 service = Service.objects.get(name=service_name)
+                self.stdout.write(f"Processing service: {service_name}")
+
                 for material_name in material_names:
                     try:
-                        material = Material.objects.get(name=material_name)
-                        material.service = service
-                        material.save()
-                        self.stdout.write(
-                            f"✓ Associated {material_name} with {service_name}"
+                        # Handle case where the same material might be used by multiple services
+                        # In this case, we'll create separate instances or update the existing one
+                        material, created = Material.objects.get_or_create(
+                            name=material_name,
+                            service=service,
+                            defaults={
+                                "description": f"Material for {service_name}",
+                                "category": self.get_material_category(material_name),
+                                "unit_of_measure": self.get_material_unit(
+                                    material_name
+                                ),
+                                "stock_quantity": 50,
+                                "auto_deduct": True,
+                                "reusable": material_name
+                                not in [
+                                    "Alcohol Spray"
+                                ],  # Alcohol spray is not reusable
+                            },
                         )
-                    except Material.DoesNotExist:
-                        self.stdout.write(f"✗ Material not found: {material_name}")
+
+                        if created:
+                            self.stdout.write(
+                                f"✓ Created and associated {material_name} with {service_name}"
+                            )
+                        else:
+                            self.stdout.write(
+                                f"✓ Associated existing {material_name} with {service_name}"
+                            )
+
+                    except Exception as e:
+                        self.stdout.write(
+                            f"✗ Error processing material {material_name}: {e}"
+                        )
+
             except Service.DoesNotExist:
                 self.stdout.write(f"✗ Service not found: {service_name}")
+
+        # Show final summary
+        self.stdout.write("\n--- Association Summary ---")
+        for service in Service.objects.all():
+            materials = service.materials.all()
+            material_names = [mat.name for mat in materials]
+            self.stdout.write(
+                f"{service.name}: {', '.join(material_names) if material_names else 'No materials'}"
+            )
+
+    def get_material_category(self, material_name):
+        """Get appropriate category for material"""
+        if "oil" in material_name.lower():
+            return "Massage Oil"
+        elif "lotion" in material_name.lower():
+            return "Massage Supplies"
+        elif "alcohol" in material_name.lower() or "spray" in material_name.lower():
+            return "Hygiene Supplies"
+        elif "bottle" in material_name.lower() or "ventosa" in material_name.lower():
+            return "Ventosa Supplies"
+        elif "kit" in material_name.lower() or "stone" in material_name.lower():
+            return "Equipment"
+        else:
+            return "Other"
+
+    def get_material_unit(self, material_name):
+        """Get appropriate unit for material"""
+        if "oil" in material_name.lower():
+            return "Bottle"
+        elif "lotion" in material_name.lower():
+            return "Tub"
+        elif "spray" in material_name.lower():
+            return "Spray Bottle"
+        elif "kit" in material_name.lower():
+            return "Set"
+        elif "bottle" in material_name.lower():
+            return "Unit"
+        else:
+            return "Unit"
