@@ -23,9 +23,12 @@ function ForgotPasswordPage() {
     setError("");
     setLoading(true);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/request-password-reset/`, {
-        email,
-      });
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/request-password-reset/`,
+        {
+          email,
+        }
+      );
       if (response.data.message) {
         navigate("/2fa-forgot-password", { state: { email } });
       }

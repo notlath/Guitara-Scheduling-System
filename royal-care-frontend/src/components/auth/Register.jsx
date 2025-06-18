@@ -280,7 +280,7 @@ const Register = () => {
       }
       // If no user/token returned, perform automatic login
       try {
-        const loginResponse = await api.post("/api/auth/login/", {
+        const loginResponse = await api.post("/auth/login/", {
           username: formData.email,
           password: formData.password,
         });

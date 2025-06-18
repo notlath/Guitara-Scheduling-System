@@ -179,22 +179,22 @@ api.interceptors.response.use(
 
 // Registration API functions
 export const registerTherapist = (data) =>
-  api.post("/api/registration/register/therapist/", data);
+  api.post("/registration/register/therapist/", data);
 export const registerDriver = (data) =>
-  api.post("/api/registration/register/driver/", data);
+  api.post("/registration/register/driver/", data);
 export const registerOperator = (data) =>
-  api.post("/api/registration/register/operator/", data);
+  api.post("/registration/register/operator/", data);
 export const registerClient = (data) =>
-  api.post("/api/registration/register/client/", data);
+  api.post("/registration/register/client/", data);
 export const registerMaterial = (data) =>
-  api.post("/api/registration/register/material/", data);
+  api.post("/registration/register/material/", data);
 export const registerService = (data) =>
-  api.post("/api/registration/register/service/", data);
+  api.post("/registration/register/service/", data);
 export const completeRegistration = (data) =>
-  api.post("/api/registration/complete-registration/", data);
+  api.post("/registration/complete-registration/", data);
 // Check if an email is registered and eligible for completion
 export const checkEmailExists = (email) =>
-  api.post("/api/registration/check-email/", { email });
+  api.post("/registration/check-email/", { email });
 
 // User profile update functions
 export const updateUserProfile = (data) => api.put("/auth/profile/", data);
