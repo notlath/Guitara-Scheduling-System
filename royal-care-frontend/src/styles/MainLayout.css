@@ -26,13 +26,15 @@
 }
 
 .nav-links,
-.bottom-links {
+.bottom-links,
+.notification-link {
   display: flex;
   flex-direction: column;
 }
 
 .nav-links a,
-.bottom-links a {
+.bottom-links a,
+.notification-link a {
   text-decoration: none;
   color: var(--text);
   padding: var(--spacing-xm) var(--spacing-sm);
@@ -60,14 +62,16 @@
 }
 
 .nav-links a.active-link,
-.bottom-links a.active-link {
+.bottom-links a.active-link,
+.notification-link a.active-link {
   background-color: var(--primary);
   color: var(--background);
   font-weight: 400;
 }
 
 .nav-links a:hover:not(.active-link),
-.bottom-links a:hover:not(.active-link) {
+.bottom-links a:hover:not(.active-link),
+.notification-link a:hover:not(.active-link) {
   background-color: var(--background-100);
 }
 

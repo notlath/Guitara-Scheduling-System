@@ -10,6 +10,7 @@ import {
   MdInventory,
   MdKeyboardArrowDown,
   MdMenuBook,
+  MdNotifications,
   MdPeople,
   MdPerson,
   MdQuestionAnswer,
@@ -55,6 +56,16 @@ const MainLayout = () => {
             <img src={rcLogo} alt="Royal Care Logo" />
           </NavLink>
         </div>
+        <div className="notification-link">
+          <NavLink
+            to="/dashboard/notifications"
+            className={({ isActive }) => (isActive ? "active-link" : "")}
+          >
+            <MdNotifications className="main-layout__sidebar-icon" />
+            Notifications
+          </NavLink>
+        </div>
+        <div className="divider"></div>
         <nav className="nav-links">
           {isTherapistOrDriver ? (
             <>
