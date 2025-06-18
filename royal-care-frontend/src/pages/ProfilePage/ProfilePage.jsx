@@ -40,7 +40,7 @@ const ProfilePage = () => {
         const token = localStorage.getItem("knoxToken");
         if (!token) return;
 
-        const response = await fetch("/api/registration/profile/", {
+        const response = await fetch("/registration/profile/", {
           headers: {
             Authorization: `Token ${token}`,
           },

@@ -73,7 +73,7 @@ const fetchers = {
   Therapists: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `http://localhost:8000/api/registration/register/therapist/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `http://localhost:8000/registration/register/therapist/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -97,7 +97,7 @@ const fetchers = {
   Drivers: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `http://localhost:8000/api/registration/register/driver/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `http://localhost:8000/registration/register/driver/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -119,7 +119,7 @@ const fetchers = {
   Operators: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `http://localhost:8000/api/registration/register/operator/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `http://localhost:8000/registration/register/operator/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -141,7 +141,7 @@ const fetchers = {
   Clients: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `http://localhost:8000/api/registration/register/client/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `http://localhost:8000/registration/register/client/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -162,7 +162,7 @@ const fetchers = {
   Services: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `http://localhost:8000/api/registration/register/service/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `http://localhost:8000/registration/register/service/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -192,7 +192,7 @@ const fetchers = {
   Materials: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `http://localhost:8000/api/registration/register/material/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `http://localhost:8000/registration/register/material/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,

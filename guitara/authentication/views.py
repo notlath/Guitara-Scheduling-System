@@ -90,17 +90,14 @@ class LoginAPI(generics.GenericAPIView):
             if user.two_factor_enabled:
                 code = str(random.randint(100000, 999999))
                 expires_at = timezone.now() + timedelta(minutes=10)
-                supabase_data = {
-                    "user_id": user.id,
-                    "code": code,
-                    "created_at": timezone.now().isoformat(),
-                    "expires_at": expires_at.isoformat(),
-                    "is_used": False,
-                }
-                try:
-                    insert_into_table("authentication_twofactorcode", supabase_data)
-                except Exception as e:
-                    logger.error(f"Supabase insert failed: {e}")
+                # Save code using Django ORM instead of Supabase
+                TwoFactorCode.objects.create(
+                    user=user,
+                    code=code,
+                    created_at=timezone.now(),
+                    expires_at=expires_at,
+                    is_used=False,
+                )
                 print(
                     f"EMAIL_BACKEND: {django.conf.settings.EMAIL_BACKEND} | Sending code {code} to {user.email}"
                 )
@@ -131,6 +128,7 @@ class TwoFactorVerifyAPI(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        logging.getLogger(__name__).debug("[2FA VERIFY] Incoming data: %s", {k: ('***' if k in ['code', 'password', 'new_password'] else v) for k, v in request.data.items()})
         identifier = request.data.get("email")  # Could be email or username
         code = request.data.get("code")
         user = None
@@ -141,7 +139,13 @@ class TwoFactorVerifyAPI(generics.GenericAPIView):
             try:
                 user = CustomUser.objects.get(username=identifier)
             except CustomUser.DoesNotExist:
+                # Debug print removed to avoid leaking identifiers
                 return Response({"error": "Invalid user"}, status=400)
+
+        # Print all codes for this user for debugging
+        # WARNING: The following line exposes sensitive codes and should be disabled in production!
+        # all_codes = list(TwoFactorCode.objects.filter(user=user).order_by("-created_at").values())
+        # print(f"[2FA VERIFY] All codes for user {user.id}:", all_codes)
 
         # Get the latest unused, unexpired code
         tf_code = (
@@ -151,9 +155,10 @@ class TwoFactorVerifyAPI(generics.GenericAPIView):
             .order_by("-created_at")
             .first()
         )
-        if not tf_code:
+            logging.getLogger(__name__).warning("[2FA VERIFY] Invalid or expired verification code attempt.")
             return Response(
                 {"error": "Invalid or expired verification code"}, status=400
+            )
             )
 
         tf_code.is_used = True
