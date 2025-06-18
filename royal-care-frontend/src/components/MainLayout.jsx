@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   MdBarChart,
   MdBusiness,
-  MdCalendarMonth,
+  MdDashboard,
   MdDevices,
   MdEmail,
   MdHelpOutline,
@@ -17,6 +17,7 @@ import {
   MdSchedule,
   MdTableChart,
   MdEventAvailable,
+  MdCalendarMonth,
 } from "react-icons/md";
 import { useSelector } from "react-redux";
 import { NavLink, Outlet } from "react-router-dom";
@@ -27,6 +28,9 @@ const MainLayout = () => {
   const [showHelpSublinks, setShowHelpSublinks] = useState(false);
   const [showAboutSublinks, setShowAboutSublinks] = useState(false);
   const { user } = useSelector((state) => state.auth);
+  const unreadNotificationCount = useSelector(
+    (state) => state.scheduling?.unreadNotificationCount || 0
+  );
 
   const isTherapistOrDriver =
     user && (user.role === "therapist" || user.role === "driver");
@@ -35,13 +39,13 @@ const MainLayout = () => {
   const toggleHelpSublinks = (e) => {
     e.preventDefault();
     setShowHelpSublinks(!showHelpSublinks);
-    setShowAboutSublinks(false); // Close other sublinks when opening this one
+    setShowAboutSublinks(false);
   };
 
   const toggleAboutSublinks = (e) => {
     e.preventDefault();
     setShowAboutSublinks(!showAboutSublinks);
-    setShowHelpSublinks(false); // Close other sublinks when opening this one
+    setShowHelpSublinks(false);
   };
 
   // Get dashboard route based on user role
@@ -63,10 +67,21 @@ const MainLayout = () => {
           >
             <MdNotifications className="main-layout__sidebar-icon" />
             Notifications
+            {unreadNotificationCount > 0 && (
+              <span className="tab-count">{unreadNotificationCount}</span>
+            )}
           </NavLink>
         </div>
         <div className="divider"></div>
         <nav className="nav-links">
+          <NavLink
+            to="/dashboard"
+            end
+            className={({ isActive }) => (isActive ? "active-link" : "")}
+          >
+            <MdDashboard className="main-layout__sidebar-icon" />
+            Dashboard
+          </NavLink>
           {isTherapistOrDriver ? (
             <>
               <NavLink
@@ -171,7 +186,6 @@ const MainLayout = () => {
               Email Support
             </NavLink>
           </div>
-
           {/* About Section with Sublinks */}
           <a
             href="#"
@@ -213,7 +227,6 @@ const MainLayout = () => {
           </div>
         </div>
       </aside>
-
       {/* Main Content */}
       <main className="content">
         <div className="content-body">
