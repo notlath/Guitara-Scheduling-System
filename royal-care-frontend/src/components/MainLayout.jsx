@@ -29,7 +29,6 @@ const MainLayout = () => {
   const location = useLocation();
   const [showHelpSublinks, setShowHelpSublinks] = useState(false);
   const [showAboutSublinks, setShowAboutSublinks] = useState(false);
-  const [showSettingsSublinks, setShowSettingsSublinks] = useState(false); // State for settings sublinks
   // Get current user from Redux store
   const { user } = useSelector((state) => state.auth);
 
@@ -53,21 +52,12 @@ const MainLayout = () => {
     e.preventDefault();
     setShowHelpSublinks(!showHelpSublinks);
     setShowAboutSublinks(false); // Close other sublinks when opening this one
-    setShowSettingsSublinks(false); // Close settings sublinks
   };
 
   const toggleAboutSublinks = (e) => {
     e.preventDefault();
     setShowAboutSublinks(!showAboutSublinks);
     setShowHelpSublinks(false); // Close other sublinks when opening this one
-    setShowSettingsSublinks(false); // Close settings sublinks
-  };
-
-  const toggleSettingsSublinks = (e) => {
-    e.preventDefault();
-    setShowSettingsSublinks(!showSettingsSublinks);
-    setShowHelpSublinks(false);
-    setShowAboutSublinks(false);
   };
 
   // Helper function to get the appropriate dashboard route based on user role
@@ -163,10 +153,7 @@ const MainLayout = () => {
                 />
                 Attendance
               </NavLink>
-            </>
-          )}
-          {!isTherapistOrDriver && (
-            <>
+              <div className="divider"></div>
               <NavLink
                 to="/dashboard/sales-reports"
                 className={({ isActive }) => (isActive ? "active-link" : "")}
@@ -185,11 +172,22 @@ const MainLayout = () => {
                 />
                 Inventory
               </NavLink>
+              <NavLink
+                to="/dashboard/settings/data"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                <MdTableChart
+                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
+                />
+                Data
+              </NavLink>
             </>
           )}
+          {/* {!isTherapistOrDriver && <></>} */}
         </nav>
         <div className="divider"></div>
         <div className="bottom-links">
+          {/* Data now as a main nav-link, Settings sublink-parent and Account sublink removed */}
           <NavLink
             to="/dashboard/profile"
             className={({ isActive }) => (isActive ? "active-link" : "")}
@@ -197,44 +195,6 @@ const MainLayout = () => {
             <MdPerson style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
             Profile
           </NavLink>
-          {/* Settings Section with Sublinks */}
-          <a
-            href="#"
-            className="sidebar-link sublink-parent"
-            onClick={toggleSettingsSublinks}
-          >
-            <span className="sidebar-link-content">
-              <MdSettings style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
-              Settings
-            </span>
-            <span
-              className={`dropdown-icon ${showSettingsSublinks ? "open" : ""}`}
-            >
-              <MdKeyboardArrowDown style={{ fontSize: "1.2em" }} />
-            </span>
-          </a>
-          <div className={`sublinks${showSettingsSublinks ? " open" : ""}`}>
-            <NavLink
-              to="/dashboard/settings/account"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-            >
-              <MdPerson style={{ marginRight: "0.5em", fontSize: "1.2em" }} />
-              Account
-            </NavLink>
-            {!isTherapistOrDriver && (
-              <NavLink
-                to="/dashboard/settings/data"
-                className={({ isActive }) => (isActive ? "active-link" : "")}
-              >
-                {/* Changed icon to MdTableChart for data management */}
-                <MdTableChart
-                  style={{ marginRight: "0.5em", fontSize: "1.2em" }}
-                />
-                Data
-              </NavLink>
-            )}
-          </div>
-
           {/* Help Section with Sublinks */}
           <a
             href="#"
