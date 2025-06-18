@@ -30,12 +30,12 @@ class Command(BaseCommand):
         self.stdout.write(f"Services created in this run: {len(created_services)}")
         self.stdout.write(f"Materials created in this run: {len(created_materials)}")
 
-        # List all services
+        # List all services - FIXED
         self.stdout.write("\n=== Services List ===")
         for service in Service.objects.all():
-            duration_minutes = service.duration.total_seconds() // 60
+            # Duration is already in minutes, no conversion needed
             self.stdout.write(
-                f"• {service.name} - {duration_minutes:.0f} min - ₱{service.price}"
+                f"• {service.name} - {service.duration} min - ₱{service.price}"
             )
 
         # List all materials
@@ -52,49 +52,49 @@ class Command(BaseCommand):
             {
                 "name": "Shiatsu massage",
                 "description": "Traditional Japanese massage technique focusing on pressure points",
-                "duration": timedelta(minutes=60),
+                "duration": 60,  # Integer minutes instead of timedelta
                 "price": Decimal("500.00"),
                 "oil": "Essential oil blend",
             },
             {
                 "name": "Combi massage",
                 "description": "Combination massage therapy with multiple techniques",
-                "duration": timedelta(minutes=60),
+                "duration": 60,
                 "price": Decimal("400.00"),
                 "oil": "Therapeutic massage oil",
             },
             {
                 "name": "Dry massage",
                 "description": "Massage therapy without oils or lotions",
-                "duration": timedelta(minutes=60),
+                "duration": 60,
                 "price": Decimal("500.00"),
                 "oil": None,
             },
             {
                 "name": "Foot massage",
                 "description": "Relaxing foot and lower leg massage therapy",
-                "duration": timedelta(minutes=60),
+                "duration": 60,
                 "price": Decimal("500.00"),
                 "oil": "Peppermint oil blend",
             },
             {
                 "name": "Hotstone service",
                 "description": "Hot stone massage therapy for deep muscle relaxation",
-                "duration": timedelta(minutes=90),
+                "duration": 90,
                 "price": Decimal("675.00"),
                 "oil": "Lavender oil",
             },
             {
                 "name": "Ventosa",
                 "description": "Cupping therapy using glass bottles for circulation",
-                "duration": timedelta(minutes=90),
+                "duration": 90,
                 "price": Decimal("675.00"),
                 "oil": "Light massage oil",
             },
             {
                 "name": "Hand massage",
                 "description": "Therapeutic hand and wrist massage",
-                "duration": timedelta(minutes=60),
+                "duration": 60,
                 "price": Decimal("450.00"),
                 "oil": "Hand cream lotion",
             },
