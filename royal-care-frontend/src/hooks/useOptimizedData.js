@@ -36,26 +36,36 @@ export const useOptimizedData = (
       loading: state.scheduling?.loading || state.attendance?.loading || false,
       error: state.scheduling?.error || state.attendance?.error || null,
     }),
-    // Optimized equality check to prevent unnecessary re-renders
+    // Optimized equality check to prevent unnecessary re-renders - use simple comparison
     (left, right) => {
+      // Quick early return if objects are the same reference
+      if (left === right) return true;
+
+      // Compare primitive values first (fastest)
+      if (left.loading !== right.loading || left.error !== right.error) {
+        return false;
+      }
+
+      // Compare array lengths (faster than deep comparison)
       return (
         left.appointments.length === right.appointments.length &&
         left.todayAppointments.length === right.todayAppointments.length &&
         left.upcomingAppointments.length ===
           right.upcomingAppointments.length &&
         left.notifications.length === right.notifications.length &&
-        left.attendanceRecords.length === right.attendanceRecords.length &&
-        left.loading === right.loading &&
-        left.error === right.error
+        left.attendanceRecords.length === right.attendanceRecords.length
       );
     }
-  );
-
-  // Stabilize data types array to prevent unnecessary re-subscriptions
+  ); // Stabilize data types array to prevent unnecessary re-subscriptions
   const stableDataTypes = useMemo(() => {
     // Create a sorted, deduplicated array for stable comparison
+    if (!Array.isArray(dataTypes) || dataTypes.length === 0) {
+      return [];
+    }
+
+    // Sort and deduplicate to ensure stable reference
     return [...new Set(dataTypes)].sort();
-  }, [dataTypes]); // Keep simple dependency, let React handle it efficiently
+  }, [dataTypes]); // Use dataTypes directly - memoization will handle stability
 
   // Stabilize options object to prevent unnecessary re-subscriptions
   const stableOptions = useMemo(() => {
@@ -217,16 +227,22 @@ export const useOptimizedDashboardData = (dashboardName, userRole = null) => {
       admin: ["appointments", "notifications", "attendanceRecords"],
     };
 
-    return (
-      roleDataMap[dashboardName] ||
-      roleDataMap[userRole] || ["todayAppointments"]
-    );
+    const result = roleDataMap[dashboardName] ||
+      roleDataMap[userRole] || ["todayAppointments"];
+
+    // Sort to ensure stable order
+    return result.sort();
   }, [dashboardName, userRole]);
 
-  return useOptimizedData(dashboardName, dataTypes, {
-    priority: "high",
-    userRole,
-  });
+  const options = useMemo(
+    () => ({
+      priority: "high",
+      userRole,
+    }),
+    [userRole]
+  );
+
+  return useOptimizedData(dashboardName, dataTypes, options);
 };
 
 /**

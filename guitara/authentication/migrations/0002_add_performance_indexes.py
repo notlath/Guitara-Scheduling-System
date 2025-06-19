@@ -17,8 +17,8 @@ class Migration(migrations.Migration):
                 "CREATE INDEX idx_2fa_user_code ON authentication_twofactorcode(user_id, code, is_used);",
                 "CREATE INDEX idx_2fa_code_expires ON authentication_twofactorcode(code, expires_at, is_used) WHERE is_used = false;",
                 "CREATE INDEX idx_2fa_user_active ON authentication_twofactorcode(user_id, expires_at, is_used) WHERE is_used = false;",
-                # Cleanup expired codes
-                "CREATE INDEX idx_2fa_expired_cleanup ON authentication_twofactorcode(expires_at, is_used) WHERE expires_at < NOW();",
+                # Cleanup expired codes - Fixed: Removed NOW() function
+                "CREATE INDEX idx_2fa_expired_cleanup ON authentication_twofactorcode(expires_at, is_used);",
                 # User's active codes
                 "CREATE INDEX idx_2fa_user_valid_codes ON authentication_twofactorcode(user_id, created_at, expires_at) WHERE is_used = false;",
             ],
@@ -37,8 +37,8 @@ class Migration(migrations.Migration):
                 "CREATE INDEX idx_password_reset_user_code ON authentication_passwordresetcode(user_id, code, is_used);",
                 "CREATE INDEX idx_password_reset_code_expires ON authentication_passwordresetcode(code, expires_at, is_used) WHERE is_used = false;",
                 "CREATE INDEX idx_password_reset_user_active ON authentication_passwordresetcode(user_id, expires_at, is_used) WHERE is_used = false;",
-                # Cleanup expired codes
-                "CREATE INDEX idx_password_reset_expired_cleanup ON authentication_passwordresetcode(expires_at, is_used) WHERE expires_at < NOW();",
+                # Cleanup expired codes - Fixed: Removed NOW() function
+                "CREATE INDEX idx_password_reset_expired_cleanup ON authentication_passwordresetcode(expires_at, is_used);",
                 # User's active reset codes
                 "CREATE INDEX idx_password_reset_user_valid_codes ON authentication_passwordresetcode(user_id, created_at, expires_at) WHERE is_used = false;",
             ],
