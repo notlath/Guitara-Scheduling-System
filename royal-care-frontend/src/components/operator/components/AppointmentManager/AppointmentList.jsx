@@ -1,9 +1,4 @@
-import {
-  useMemo,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import AppointmentCard from "./AppointmentCard";
 import "./AppointmentList.module.css";
 
@@ -89,8 +84,7 @@ const AppointmentList = ({
     const totalCount = appointments.length;
     const selectedCount = selectedAppointments.size;
     const isAllSelected = totalCount > 0 && selectedCount === totalCount;
-    const isPartiallySelected =
-      selectedCount > 0 && selectedCount < totalCount;
+    const isPartiallySelected = selectedCount > 0 && selectedCount < totalCount;
 
     return {
       totalCount,

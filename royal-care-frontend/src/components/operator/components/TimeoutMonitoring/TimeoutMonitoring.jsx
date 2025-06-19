@@ -9,24 +9,24 @@ import AppointmentCard from "../AppointmentManager/AppointmentCard";
 import "./TimeoutMonitoring.module.css";
 
 const TimeoutMonitoring = ({ className = "" }) => {
-  const { 
-    overdueAppointments, 
+  const {
+    overdueAppointments,
     approachingDeadlineAppointments,
     countdowns,
     loading,
     handleAutoCancelOverdue,
-    autoCancelLoading 
+    autoCancelLoading,
   } = useOperatorData();
 
   // Group appointments by urgency
   const urgencyGroups = useMemo(() => {
     const groups = {
       critical: [], // > 2 hours overdue
-      urgent: [],   // 30min - 2 hours overdue
-      warning: [],  // approaching deadline (< 30min left)
+      urgent: [], // 30min - 2 hours overdue
+      warning: [], // approaching deadline (< 30min left)
     };
 
-    overdueAppointments?.forEach(appointment => {
+    overdueAppointments?.forEach((appointment) => {
       const overdueMinutes = getOverdueMinutes(appointment);
       if (overdueMinutes > 120) {
         groups.critical.push(appointment);
@@ -35,7 +35,7 @@ const TimeoutMonitoring = ({ className = "" }) => {
       }
     });
 
-    approachingDeadlineAppointments?.forEach(appointment => {
+    approachingDeadlineAppointments?.forEach((appointment) => {
       groups.warning.push(appointment);
     });
 
@@ -44,7 +44,9 @@ const TimeoutMonitoring = ({ className = "" }) => {
 
   // Calculate overdue minutes
   const getOverdueMinutes = (appointment) => {
-    const appointmentTime = new Date(`${appointment.date} ${appointment.start_time}`);
+    const appointmentTime = new Date(
+      `${appointment.date} ${appointment.start_time}`
+    );
     const now = new Date();
     return Math.floor((now - appointmentTime) / (1000 * 60));
   };
@@ -63,13 +65,13 @@ const TimeoutMonitoring = ({ className = "" }) => {
   // Handle individual appointment timeout action
   const handleTimeoutAction = useCallback(async (appointment, action) => {
     switch (action) {
-      case 'cancel':
+      case "cancel":
         // Handle cancel action
         break;
-      case 'extend':
+      case "extend":
         // Handle extend deadline action
         break;
-      case 'escalate':
+      case "escalate":
         // Handle escalate action
         break;
       default:
@@ -78,13 +80,16 @@ const TimeoutMonitoring = ({ className = "" }) => {
   }, []);
 
   // Stats summary
-  const stats = useMemo(() => ({
-    totalOverdue: overdueAppointments?.length || 0,
-    criticalCount: urgencyGroups.critical.length,
-    urgentCount: urgencyGroups.urgent.length,
-    warningCount: urgencyGroups.warning.length,
-    totalApproaching: approachingDeadlineAppointments?.length || 0,
-  }), [overdueAppointments, approachingDeadlineAppointments, urgencyGroups]);
+  const stats = useMemo(
+    () => ({
+      totalOverdue: overdueAppointments?.length || 0,
+      criticalCount: urgencyGroups.critical.length,
+      urgentCount: urgencyGroups.urgent.length,
+      warningCount: urgencyGroups.warning.length,
+      totalApproaching: approachingDeadlineAppointments?.length || 0,
+    }),
+    [overdueAppointments, approachingDeadlineAppointments, urgencyGroups]
+  );
 
   return (
     <div className={`timeout-monitoring ${className}`}>
@@ -130,20 +135,34 @@ const TimeoutMonitoring = ({ className = "" }) => {
               <i className="fas fa-exclamation-triangle"></i>
               Critical - Overdue More Than 2 Hours
             </h3>
-            <span className="section-count">{urgencyGroups.critical.length}</span>
+            <span className="section-count">
+              {urgencyGroups.critical.length}
+            </span>
           </div>
           <div className="appointments-grid">
-            {urgencyGroups.critical.map(appointment => (
+            {urgencyGroups.critical.map((appointment) => (
               <div key={appointment.id} className="timeout-appointment-wrapper">
-                <AppointmentCard 
+                <AppointmentCard
                   appointment={appointment}
                   variant="critical"
                   showCountdown={true}
                   countdown={countdowns?.[appointment.id]}
-                  onAction={(action) => handleTimeoutAction(appointment, action)}
+                  onAction={(action) =>
+                    handleTimeoutAction(appointment, action)
+                  }
                   actions={[
-                    { id: 'cancel', label: 'Cancel', icon: 'fas fa-times', variant: 'danger' },
-                    { id: 'escalate', label: 'Escalate', icon: 'fas fa-arrow-up', variant: 'warning' }
+                    {
+                      id: "cancel",
+                      label: "Cancel",
+                      icon: "fas fa-times",
+                      variant: "danger",
+                    },
+                    {
+                      id: "escalate",
+                      label: "Escalate",
+                      icon: "fas fa-arrow-up",
+                      variant: "warning",
+                    },
                   ]}
                 />
                 <div className="overdue-indicator critical">
@@ -167,17 +186,29 @@ const TimeoutMonitoring = ({ className = "" }) => {
             <span className="section-count">{urgencyGroups.urgent.length}</span>
           </div>
           <div className="appointments-grid">
-            {urgencyGroups.urgent.map(appointment => (
+            {urgencyGroups.urgent.map((appointment) => (
               <div key={appointment.id} className="timeout-appointment-wrapper">
-                <AppointmentCard 
+                <AppointmentCard
                   appointment={appointment}
                   variant="urgent"
                   showCountdown={true}
                   countdown={countdowns?.[appointment.id]}
-                  onAction={(action) => handleTimeoutAction(appointment, action)}
+                  onAction={(action) =>
+                    handleTimeoutAction(appointment, action)
+                  }
                   actions={[
-                    { id: 'extend', label: 'Extend', icon: 'fas fa-clock', variant: 'primary' },
-                    { id: 'cancel', label: 'Cancel', icon: 'fas fa-times', variant: 'danger' }
+                    {
+                      id: "extend",
+                      label: "Extend",
+                      icon: "fas fa-clock",
+                      variant: "primary",
+                    },
+                    {
+                      id: "cancel",
+                      label: "Cancel",
+                      icon: "fas fa-times",
+                      variant: "danger",
+                    },
                   ]}
                 />
                 <div className="overdue-indicator urgent">
@@ -198,25 +229,39 @@ const TimeoutMonitoring = ({ className = "" }) => {
               <i className="fas fa-hourglass-half"></i>
               Approaching Deadlines
             </h3>
-            <span className="section-count">{urgencyGroups.warning.length}</span>
+            <span className="section-count">
+              {urgencyGroups.warning.length}
+            </span>
           </div>
           <div className="appointments-grid">
-            {urgencyGroups.warning.map(appointment => (
+            {urgencyGroups.warning.map((appointment) => (
               <div key={appointment.id} className="timeout-appointment-wrapper">
-                <AppointmentCard 
+                <AppointmentCard
                   appointment={appointment}
                   variant="warning"
                   showCountdown={true}
                   countdown={countdowns?.[appointment.id]}
-                  onAction={(action) => handleTimeoutAction(appointment, action)}
+                  onAction={(action) =>
+                    handleTimeoutAction(appointment, action)
+                  }
                   actions={[
-                    { id: 'remind', label: 'Remind', icon: 'fas fa-bell', variant: 'info' },
-                    { id: 'extend', label: 'Extend', icon: 'fas fa-clock', variant: 'primary' }
+                    {
+                      id: "remind",
+                      label: "Remind",
+                      icon: "fas fa-bell",
+                      variant: "info",
+                    },
+                    {
+                      id: "extend",
+                      label: "Extend",
+                      icon: "fas fa-clock",
+                      variant: "primary",
+                    },
                   ]}
                 />
                 <div className="deadline-countdown warning">
                   <i className="fas fa-hourglass-half"></i>
-                  {countdowns?.[appointment.id]?.display || 'Calculating...'}
+                  {countdowns?.[appointment.id]?.display || "Calculating..."}
                 </div>
               </div>
             ))}

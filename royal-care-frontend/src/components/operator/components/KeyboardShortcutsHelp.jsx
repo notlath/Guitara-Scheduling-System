@@ -2,7 +2,7 @@
  * Keyboard Shortcuts Help Modal
  * Displays available keyboard shortcuts for operators
  */
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import "./KeyboardShortcutsHelp.module.css";
 
 const KeyboardShortcutsHelp = ({ isOpen, onClose, shortcuts = [] }) => {
@@ -10,7 +10,7 @@ const KeyboardShortcutsHelp = ({ isOpen, onClose, shortcuts = [] }) => {
 
   // Filter shortcuts based on search query
   const filteredShortcuts = shortcuts.filter(
-    shortcut =>
+    (shortcut) =>
       shortcut.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       shortcut.key.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -39,12 +39,12 @@ const KeyboardShortcutsHelp = ({ isOpen, onClose, shortcuts = [] }) => {
   const formatKey = (key) => {
     return key
       .split("+")
-      .map(k => {
+      .map((k) => {
         const keyMap = {
           ctrl: "Ctrl",
           shift: "Shift",
           alt: "Alt",
-          meta: "Cmd"
+          meta: "Cmd",
         };
         return keyMap[k] || k.toUpperCase();
       })
@@ -67,7 +67,7 @@ const KeyboardShortcutsHelp = ({ isOpen, onClose, shortcuts = [] }) => {
 
   return (
     <div className="shortcuts-modal-overlay" onClick={onClose}>
-      <div className="shortcuts-modal" onClick={e => e.stopPropagation()}>
+      <div className="shortcuts-modal" onClick={(e) => e.stopPropagation()}>
         <div className="shortcuts-modal-header">
           <h2>
             <i className="fas fa-keyboard"></i>
@@ -99,30 +99,37 @@ const KeyboardShortcutsHelp = ({ isOpen, onClose, shortcuts = [] }) => {
                 <p>No shortcuts found matching "{searchQuery}"</p>
               </div>
             ) : (
-              Object.entries(groupedShortcuts).map(([category, categoryShortcuts]) => (
-                <div key={category} className="shortcuts-category">
-                  <h3 className="category-title">{category}</h3>
-                  <div className="shortcuts-list">
-                    {categoryShortcuts.map((shortcut, index) => (
-                      <div key={index} className="shortcut-item">
-                        <div className="shortcut-keys">
-                          {formatKey(shortcut.key).split(" + ").map((key, keyIndex) => (
-                            <span key={keyIndex}>
-                              <kbd className="key">{key}</kbd>
-                              {keyIndex < formatKey(shortcut.key).split(" + ").length - 1 && (
-                                <span className="key-separator">+</span>
-                              )}
-                            </span>
-                          ))}
+              Object.entries(groupedShortcuts).map(
+                ([category, categoryShortcuts]) => (
+                  <div key={category} className="shortcuts-category">
+                    <h3 className="category-title">{category}</h3>
+                    <div className="shortcuts-list">
+                      {categoryShortcuts.map((shortcut, index) => (
+                        <div key={index} className="shortcut-item">
+                          <div className="shortcut-keys">
+                            {formatKey(shortcut.key)
+                              .split(" + ")
+                              .map((key, keyIndex) => (
+                                <span key={keyIndex}>
+                                  <kbd className="key">{key}</kbd>
+                                  {keyIndex <
+                                    formatKey(shortcut.key).split(" + ")
+                                      .length -
+                                      1 && (
+                                    <span className="key-separator">+</span>
+                                  )}
+                                </span>
+                              ))}
+                          </div>
+                          <div className="shortcut-description">
+                            {shortcut.description}
+                          </div>
                         </div>
-                        <div className="shortcut-description">
-                          {shortcut.description}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              )
             )}
           </div>
         </div>
@@ -130,7 +137,9 @@ const KeyboardShortcutsHelp = ({ isOpen, onClose, shortcuts = [] }) => {
         <div className="shortcuts-modal-footer">
           <div className="shortcuts-tip">
             <i className="fas fa-lightbulb"></i>
-            <span>Tip: Press <kbd>?</kbd> or <kbd>Ctrl + /</kbd> to toggle this help</span>
+            <span>
+              Tip: Press <kbd>?</kbd> or <kbd>Ctrl + /</kbd> to toggle this help
+            </span>
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@
  * Status Overview Component
  * Displays key metrics and system status indicators
  */
-import "./StatusOverview.module.css";
+import styles from "../styles/components/StatusOverview.module.css";
 
 export const StatusCard = ({
   title,
@@ -43,7 +43,9 @@ export const StatusCard = ({
     }
   };
 
-  const cardClass = `status-card status-${status} ${className}`;
+  const cardClass = `${styles.statusCard} ${
+    styles[`status${status.charAt(0).toUpperCase() + status.slice(1)}`]
+  } ${className}`;
   const statusColor = getStatusColor(status);
 
   return (
@@ -54,8 +56,8 @@ export const StatusCard = ({
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={(e) => onClick && e.key === "Enter" && onClick()}
     >
-      <div className="status-card-header">
-        <div className="status-card-icon" style={{ color: statusColor }}>
+      <div className={styles.statusCardHeader}>
+        <div className={styles.statusCardIcon} style={{ color: statusColor }}>
           {loading ? (
             <i className="fas fa-spinner fa-spin" />
           ) : (
@@ -63,23 +65,23 @@ export const StatusCard = ({
           )}
         </div>
         <div
-          className="status-indicator"
+          className={styles.statusIndicator}
           style={{ backgroundColor: statusColor }}
         />
       </div>
 
-      <div className="status-card-content">
-        <h3 className="status-title">{title}</h3>
-        <div className="status-value">
+      <div className={styles.statusCardContent}>
+        <h3 className={styles.statusTitle}>{title}</h3>
+        <div className={styles.statusValue}>
           {loading ? (
-            <div className="loading-placeholder" />
+            <div className={styles.loadingPlaceholder} />
           ) : (
             <>
-              <span className="value-number">{value}</span>
+              <span className={styles.valueNumber}>{value}</span>
               {trend && (
                 <span
-                  className={`trend-indicator ${
-                    trend.startsWith("+") ? "positive" : "negative"
+                  className={`${styles.trendIndicator} ${
+                    trend.startsWith("+") ? styles.positive : styles.negative
                   }`}
                 >
                   <i
@@ -93,7 +95,9 @@ export const StatusCard = ({
             </>
           )}
         </div>
-        {description && <p className="status-description">{description}</p>}
+        {description && (
+          <p className={styles.statusDescription}>{description}</p>
+        )}
       </div>
     </div>
   );
@@ -148,43 +152,39 @@ const StatusOverview = ({
     },
     {
       id: "overdue",
-      title: "Overdue Items",
+      title: "Overdue Appointments",
       value: overdueCount,
       status: overdueCount > 0 ? "critical" : "healthy",
       icon: "fas fa-exclamation-triangle",
-      description: "Require immediate attention",
+      description: "Past scheduled time",
     },
     {
-      id: "payments",
-      title: "Payment Verification",
+      id: "payment",
+      title: "Payment Pending",
       value: paymentPendingCount,
       status: paymentPendingCount > 5 ? "warning" : "normal",
       icon: "fas fa-credit-card",
-      description: "Pending payment verification",
+      description: "Awaiting payment verification",
     },
     {
       id: "drivers",
-      title: "Available Drivers",
-      value: activeDrivers,
-      status:
-        activeDrivers === 0
-          ? "critical"
-          : activeDrivers < 3
-          ? "warning"
-          : "healthy",
+      title: "Active Drivers",
+      value: `${activeDrivers}/${activeDrivers + busyDrivers}`,
+      status: activeDrivers > 0 ? "healthy" : "warning",
       icon: "fas fa-car",
-      description: `${busyDrivers} currently busy`,
+      description: "Available for assignments",
     },
     {
       id: "sessions",
       title: "Active Sessions",
       value: activeSessions,
       status: "normal",
-      icon: "fas fa-user-check",
+      icon: "fas fa-users",
       description: "Currently in progress",
     },
   ];
 
+  // Calculate system health
   const criticalCount = statusCards.filter(
     (card) => card.status === "critical"
   ).length;
@@ -193,22 +193,22 @@ const StatusOverview = ({
   ).length;
 
   return (
-    <div className={`status-overview ${className}`}>
-      <div className="status-overview-header">
-        <h2 className="overview-title">System Status</h2>
-        <div className="system-health">
+    <div className={`${styles.statusOverview} ${className}`}>
+      <div className={styles.statusOverviewHeader}>
+        <h2 className={styles.overviewTitle}>System Status</h2>
+        <div className={styles.systemHealth}>
           {criticalCount > 0 ? (
-            <span className="health-indicator critical">
+            <span className={`${styles.healthIndicator} ${styles.critical}`}>
               <i className="fas fa-exclamation-circle" />
               {criticalCount} Critical
             </span>
           ) : warningCount > 0 ? (
-            <span className="health-indicator warning">
+            <span className={`${styles.healthIndicator} ${styles.warning}`}>
               <i className="fas fa-exclamation-triangle" />
               {warningCount} Warning
             </span>
           ) : (
-            <span className="health-indicator healthy">
+            <span className={`${styles.healthIndicator} ${styles.healthy}`}>
               <i className="fas fa-check-circle" />
               All Systems Good
             </span>
@@ -216,7 +216,7 @@ const StatusOverview = ({
         </div>
       </div>
 
-      <div className="status-grid">
+      <div className={styles.statusGrid}>
         {statusCards.map((card) => (
           <StatusCard
             key={card.id}
@@ -228,8 +228,8 @@ const StatusOverview = ({
       </div>
 
       {(criticalCount > 0 || warningCount > 0) && (
-        <div className="status-summary">
-          <div className="summary-content">
+        <div className={styles.statusSummary}>
+          <div className={styles.summaryContent}>
             <i className="fas fa-info-circle" />
             <span>
               {criticalCount > 0

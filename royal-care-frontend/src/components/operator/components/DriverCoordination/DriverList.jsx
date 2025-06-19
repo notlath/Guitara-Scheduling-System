@@ -1,4 +1,4 @@
-import "./DriverList.module.css";
+import styles from "./DriverList.module.css";
 
 /**
  * DriverList Component
@@ -34,8 +34,8 @@ const DriverList = ({
 
   if (drivers.length === 0) {
     return (
-      <div className={`driver-list empty ${className}`}>
-        <div className="empty-state">
+      <div className={`${styles.driverList} ${styles.empty} ${className}`}>
+        <div className={styles.emptyState}>
           <i className="fas fa-user-slash"></i>
           <p>No {status} drivers</p>
         </div>
@@ -44,19 +44,19 @@ const DriverList = ({
   }
 
   return (
-    <div className={`driver-list ${status} ${className}`}>
+    <div className={`${styles.driverList} ${styles[status]} ${className}`}>
       {drivers.map((driver) => (
         <div
           key={driver.id}
-          className={`driver-card ${
-            selectedDriver?.id === driver.id ? "selected" : ""
-          } ${allowDrop ? "droppable" : ""}`}
+          className={`${styles.driverCard} ${
+            selectedDriver?.id === driver.id ? styles.selected : ""
+          } ${allowDrop ? styles.droppable : ""}`}
           onClick={() => handleDriverClick(driver)}
           onDrop={allowDrop ? (e) => handleDrop(e, driver.id) : undefined}
           onDragOver={allowDrop ? handleDragOver : undefined}
         >
-          <div className="driver-info">
-            <div className="driver-avatar">
+          <div className={styles.driverInfo}>
+            <div className={styles.driverAvatar}>
               <img
                 src={driver.profile_photo || "/default-avatar.png"}
                 alt={driver.name}
@@ -64,14 +64,18 @@ const DriverList = ({
                   e.target.src = "/default-avatar.png";
                 }}
               />
-              <div className={`status-indicator ${driver.status}`}></div>
+              <div
+                className={`${styles.statusIndicator} ${styles[driver.status]}`}
+              ></div>
             </div>
 
-            <div className="driver-details">
-              <h4 className="driver-name">{driver.name}</h4>
-              <p className="driver-phone">{driver.phone}</p>
-              <div className="driver-status">
-                <span className={`status-badge ${driver.status}`}>
+            <div className={styles.driverDetails}>
+              <h4 className={styles.driverName}>{driver.name}</h4>
+              <p className={styles.driverPhone}>{driver.phone}</p>
+              <div className={styles.driverStatus}>
+                <span
+                  className={`${styles.statusBadge} ${styles[driver.status]}`}
+                >
                   {driver.status}
                 </span>
               </div>
@@ -80,15 +84,15 @@ const DriverList = ({
 
           {/* Current assignment info */}
           {driver.current_appointment && (
-            <div className="current-assignment">
-              <div className="assignment-info">
-                <span className="assignment-label">Current:</span>
-                <span className="appointment-id">
+            <div className={styles.currentAssignment}>
+              <div className={styles.assignmentInfo}>
+                <span className={styles.assignmentLabel}>Current:</span>
+                <span className={styles.appointmentId}>
                   #{driver.current_appointment.id}
                 </span>
               </div>
               {showETA && driver.eta && (
-                <div className="eta-info">
+                <div className={styles.etaInfo}>
                   <i className="fas fa-clock"></i>
                   <span>ETA: {driver.eta}</span>
                 </div>
@@ -97,24 +101,26 @@ const DriverList = ({
           )}
 
           {/* Driver metrics */}
-          <div className="driver-metrics">
-            <div className="metric">
-              <span className="metric-value">
+          <div className={styles.driverMetrics}>
+            <div className={styles.metric}>
+              <span className={styles.metricValue}>
                 {driver.completed_today || 0}
               </span>
-              <span className="metric-label">Today</span>
+              <span className={styles.metricLabel}>Today</span>
             </div>
-            <div className="metric">
-              <span className="metric-value">{driver.rating || "N/A"}</span>
-              <span className="metric-label">Rating</span>
+            <div className={styles.metric}>
+              <span className={styles.metricValue}>
+                {driver.rating || "N/A"}
+              </span>
+              <span className={styles.metricLabel}>Rating</span>
             </div>
           </div>
 
           {/* Action buttons */}
-          <div className="driver-actions">
+          <div className={styles.driverActions}>
             {status === "available" && (
               <button
-                className="contact-btn"
+                className={styles.contactBtn}
                 onClick={(e) => {
                   e.stopPropagation();
                   window.open(`tel:${driver.phone}`);
@@ -126,7 +132,7 @@ const DriverList = ({
             )}
             {status === "busy" && driver.current_appointment && (
               <button
-                className="track-btn"
+                className={styles.trackBtn}
                 onClick={(e) => {
                   e.stopPropagation();
                   // TODO: Open tracking modal
@@ -140,7 +146,7 @@ const DriverList = ({
 
           {/* Drop zone indicator */}
           {allowDrop && (
-            <div className="drop-zone-indicator">
+            <div className={styles.dropZoneIndicator}>
               <i className="fas fa-plus"></i>
               <span>Drop appointment here</span>
             </div>

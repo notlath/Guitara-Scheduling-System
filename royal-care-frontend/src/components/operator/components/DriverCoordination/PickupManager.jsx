@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "./PickupManager.module.css";
+import styles from "./PickupManager.module.css";
 
 /**
  * PickupManager Component
@@ -62,11 +62,11 @@ const PickupManager = ({
   if (pickupRequests.length === 0) {
     return (
       <div
-        className={`pickup-manager empty ${
-          compact ? "compact" : ""
+        className={`${styles.pickupManager} ${styles.empty} ${
+          compact ? styles.compact : ""
         } ${className}`}
       >
-        <div className="empty-state">
+        <div className={styles.emptyState}>
           <i className="fas fa-check-circle"></i>
           <h3>All Set!</h3>
           <p>No pickup requests at the moment</p>
@@ -76,42 +76,46 @@ const PickupManager = ({
   }
 
   return (
-    <div className={`pickup-manager ${compact ? "compact" : ""} ${className}`}>
-      <div className="pickup-requests-list">
+    <div
+      className={`${styles.pickupManager} ${
+        compact ? styles.compact : ""
+      } ${className}`}
+    >
+      <div className={styles.pickupRequestsList}>
         {pickupRequests.map((request) => (
           <div
             key={request.id}
-            className={`pickup-request-card ${
-              request.urgency_level || "normal"
+            className={`${styles.pickupRequestCard} ${
+              styles[request.urgency_level] || styles.normal
             }`}
             draggable={!compact}
             onDragStart={(e) => {
               e.dataTransfer.setData("text/plain", request.id);
             }}
           >
-            <div className="request-header">
-              <div className="request-info">
-                <h4 className="appointment-title">
+            <div className={styles.requestHeader}>
+              <div className={styles.requestInfo}>
+                <h4 className={styles.appointmentTitle}>
                   Appointment #{request.id} -{" "}
                   {request.client_details?.first_name}{" "}
                   {request.client_details?.last_name}
                 </h4>
-                <div className="urgency-indicator">
+                <div className={styles.urgencyIndicator}>
                   <div
-                    className="urgency-dot"
+                    className={styles.urgencyDot}
                     style={{
                       backgroundColor: getUrgencyColor(request.urgency_level),
                     }}
                   ></div>
-                  <span className="urgency-text">
+                  <span className={styles.urgencyText}>
                     {request.urgency_level || "normal"} priority
                   </span>
                 </div>
               </div>
               {!compact && (
-                <div className="request-actions">
+                <div className={styles.requestActions}>
                   <button
-                    className="auto-assign-btn"
+                    className={styles.autoAssignBtn}
                     onClick={() => handleAutoAssign(request.id)}
                     disabled={
                       availableDrivers.length === 0 ||
@@ -126,7 +130,7 @@ const PickupManager = ({
                     )}
                   </button>
                   <button
-                    className="manual-assign-btn"
+                    className={styles.manualAssignBtn}
                     onClick={() => setSelectedRequest(request)}
                     title="Manual driver assignment"
                   >
@@ -136,25 +140,27 @@ const PickupManager = ({
               )}
             </div>
 
-            <div className="request-details">
-              <div className="detail-row">
-                <span className="label">Date:</span>
-                <span className="value">{formatDate(request.date)}</span>
+            <div className={styles.requestDetails}>
+              <div className={styles.detailRow}>
+                <span className={styles.label}>Date:</span>
+                <span className={styles.value}>{formatDate(request.date)}</span>
               </div>
-              <div className="detail-row">
-                <span className="label">Time:</span>
-                <span className="value">
+              <div className={styles.detailRow}>
+                <span className={styles.label}>Time:</span>
+                <span className={styles.value}>
                   {formatTime(request.start_time)} -{" "}
                   {formatTime(request.end_time)}
                 </span>
               </div>
-              <div className="detail-row">
-                <span className="label">Location:</span>
-                <span className="value">{request.location || "N/A"}</span>
+              <div className={styles.detailRow}>
+                <span className={styles.label}>Location:</span>
+                <span className={styles.value}>
+                  {request.location || "N/A"}
+                </span>
               </div>
-              <div className="detail-row">
-                <span className="label">Client:</span>
-                <span className="value">
+              <div className={styles.detailRow}>
+                <span className={styles.label}>Client:</span>
+                <span className={styles.value}>
                   {request.client_details?.first_name}{" "}
                   {request.client_details?.last_name}
                   {request.client_details?.phone &&
@@ -164,9 +170,9 @@ const PickupManager = ({
             </div>
 
             {compact && (
-              <div className="compact-actions">
+              <div className={styles.compactActions}>
                 <button
-                  className="assign-btn primary"
+                  className={`${styles.assignBtn} ${styles.primary}`}
                   onClick={() => handleAutoAssign(request.id)}
                   disabled={
                     availableDrivers.length === 0 ||
@@ -183,7 +189,7 @@ const PickupManager = ({
                   )}
                 </button>
                 <button
-                  className="assign-btn secondary"
+                  className={`${styles.assignBtn} ${styles.secondary}`}
                   onClick={() => setSelectedRequest(request)}
                 >
                   <i className="fas fa-user-plus"></i>
@@ -198,25 +204,25 @@ const PickupManager = ({
       {/* Manual Assignment Modal */}
       {selectedRequest && (
         <div
-          className="assignment-modal-overlay"
+          className={styles.assignmentModalOverlay}
           onClick={() => setSelectedRequest(null)}
         >
           <div
-            className="assignment-modal"
+            className={styles.assignmentModal}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header">
+            <div className={styles.modalHeader}>
               <h3>Assign Driver</h3>
               <button
-                className="close-btn"
+                className={styles.closeBtn}
                 onClick={() => setSelectedRequest(null)}
               >
                 <i className="fas fa-times"></i>
               </button>
             </div>
 
-            <div className="modal-content">
-              <div className="appointment-summary">
+            <div className={styles.modalContent}>
+              <div className={styles.appointmentSummary}>
                 <h4>Appointment #{selectedRequest.id}</h4>
                 <p>
                   {selectedRequest.client_details?.first_name}{" "}
@@ -229,35 +235,35 @@ const PickupManager = ({
                 <p>{selectedRequest.location}</p>
               </div>
 
-              <div className="available-drivers">
+              <div className={styles.availableDrivers}>
                 <h4>Available Drivers ({availableDrivers.length})</h4>
                 {availableDrivers.length === 0 ? (
-                  <div className="no-drivers">
+                  <div className={styles.noDrivers}>
                     <p>No drivers available at the moment</p>
                   </div>
                 ) : (
-                  <div className="drivers-list">
+                  <div className={styles.driversList}>
                     {availableDrivers.map((driver) => (
                       <div
                         key={driver.id}
-                        className="driver-option"
+                        className={styles.driverOption}
                         onClick={() =>
                           handleAssignDriver(selectedRequest.id, driver.id)
                         }
                       >
-                        <div className="driver-info">
+                        <div className={styles.driverInfo}>
                           <img
                             src={driver.profile_photo || "/default-avatar.png"}
                             alt={driver.name}
-                            className="driver-avatar"
+                            className={styles.driverAvatar}
                           />
-                          <div className="driver-details">
+                          <div className={styles.driverDetails}>
                             <h5>{driver.name}</h5>
                             <p>{driver.phone}</p>
                             <p>Rating: {driver.rating || "N/A"}</p>
                           </div>
                         </div>
-                        <div className="assign-action">
+                        <div className={styles.assignAction}>
                           {loading[`assign_${selectedRequest.id}`] ? (
                             <i className="fas fa-spinner fa-spin"></i>
                           ) : (

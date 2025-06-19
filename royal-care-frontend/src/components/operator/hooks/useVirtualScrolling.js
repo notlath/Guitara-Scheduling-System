@@ -2,7 +2,7 @@
  * Virtual Scrolling Hook for Large Lists
  * Optimizes rendering performance for large appointment lists
  */
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const ITEM_HEIGHT = 120; // Default item height
 const BUFFER_SIZE = 5; // Items to render outside visible area
@@ -13,7 +13,7 @@ export const useVirtualScrolling = ({
   itemHeight = ITEM_HEIGHT,
   containerHeight = 600,
   bufferSize = BUFFER_SIZE,
-  threshold = VIRTUALIZATION_THRESHOLD
+  threshold = VIRTUALIZATION_THRESHOLD,
 }) => {
   const [scrollTop, setScrollTop] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
@@ -34,7 +34,14 @@ export const useVirtualScrolling = ({
     const end = Math.min(items.length, start + visibleCount + bufferSize * 2);
 
     return { start, end };
-  }, [scrollTop, itemHeight, containerHeight, bufferSize, shouldVirtualize, items.length]);
+  }, [
+    scrollTop,
+    itemHeight,
+    containerHeight,
+    bufferSize,
+    shouldVirtualize,
+    items.length,
+  ]);
 
   // Handle scroll events
   const handleScroll = useCallback((e) => {
@@ -54,12 +61,15 @@ export const useVirtualScrolling = ({
   }, []);
 
   // Scroll to specific item
-  const scrollToItem = useCallback((index) => {
-    if (containerRef.current && shouldVirtualize) {
-      const scrollPosition = index * itemHeight;
-      containerRef.current.scrollTop = scrollPosition;
-    }
-  }, [itemHeight, shouldVirtualize]);
+  const scrollToItem = useCallback(
+    (index) => {
+      if (containerRef.current && shouldVirtualize) {
+        const scrollPosition = index * itemHeight;
+        containerRef.current.scrollTop = scrollPosition;
+      }
+    },
+    [itemHeight, shouldVirtualize]
+  );
 
   // Get visible items
   const visibleItems = useMemo(() => {
@@ -72,12 +82,12 @@ export const useVirtualScrolling = ({
       .map((item, index) => ({
         ...item,
         virtualIndex: visibleRange.start + index,
-        offsetY: (visibleRange.start + index) * itemHeight
+        offsetY: (visibleRange.start + index) * itemHeight,
       }));
   }, [items, visibleRange, itemHeight, shouldVirtualize]);
 
   // Calculate total height
-  const totalHeight = shouldVirtualize ? items.length * itemHeight : 'auto';
+  const totalHeight = shouldVirtualize ? items.length * itemHeight : "auto";
 
   // Cleanup on unmount
   useEffect(() => {
@@ -98,7 +108,7 @@ export const useVirtualScrolling = ({
     handleScroll,
     scrollToItem,
     containerHeight,
-    itemHeight
+    itemHeight,
   };
 };
 
@@ -110,7 +120,7 @@ export const VirtualList = ({
   itemHeight = ITEM_HEIGHT,
   containerHeight = 600,
   renderItem,
-  className = '',
+  className = "",
   ...props
 }) => {
   const {
@@ -118,11 +128,11 @@ export const VirtualList = ({
     visibleItems,
     totalHeight,
     shouldVirtualize,
-    handleScroll
+    handleScroll,
   } = useVirtualScrolling({
     items,
     itemHeight,
-    containerHeight
+    containerHeight,
   });
 
   if (!shouldVirtualize) {
@@ -137,20 +147,20 @@ export const VirtualList = ({
     <div
       ref={containerRef}
       className={`virtual-list virtualized ${className}`}
-      style={{ height: containerHeight, overflow: 'auto' }}
+      style={{ height: containerHeight, overflow: "auto" }}
       onScroll={handleScroll}
       {...props}
     >
-      <div style={{ height: totalHeight, position: 'relative' }}>
+      <div style={{ height: totalHeight, position: "relative" }}>
         {visibleItems.map((item) => (
           <div
             key={item.id || item.virtualIndex}
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: item.offsetY,
               left: 0,
               right: 0,
-              height: itemHeight
+              height: itemHeight,
             }}
           >
             {renderItem(item, item.virtualIndex)}

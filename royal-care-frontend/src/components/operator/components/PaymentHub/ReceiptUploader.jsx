@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import "./ReceiptUploader.module.css";
+import styles from "./ReceiptUploader.module.css";
 
 /**
  * ReceiptUploader Component
@@ -124,21 +124,21 @@ const ReceiptUploader = ({
     }, 0) || 0;
 
   return (
-    <div className="receipt-uploader-overlay" onClick={onClose}>
+    <div className={styles.receiptUploaderOverlay} onClick={onClose}>
       <div
-        className="receipt-uploader-modal"
+        className={styles.receiptUploaderModal}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-header">
+        <div className={styles.modalHeader}>
           <h3>Upload Payment Receipt</h3>
-          <button className="close-btn" onClick={onClose}>
+          <button className={styles.closeBtn} onClick={onClose}>
             <i className="fas fa-times"></i>
           </button>
         </div>
 
-        <div className="modal-content">
+        <div className={styles.modalContent}>
           {/* Appointment summary */}
-          <div className="appointment-summary">
+          <div className={styles.appointmentSummary}>
             <h4>Appointment #{appointment.id}</h4>
             <p>
               <strong>Client:</strong> {appointment.client_details?.first_name}{" "}
@@ -151,9 +151,9 @@ const ReceiptUploader = ({
 
           {/* File upload area */}
           <div
-            className={`upload-area ${dragActive ? "drag-active" : ""} ${
-              selectedFile ? "file-selected" : ""
-            }`}
+            className={`${styles.uploadArea} ${
+              dragActive ? styles.dragActive : ""
+            } ${selectedFile ? styles.fileSelected : ""}`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
@@ -169,29 +169,29 @@ const ReceiptUploader = ({
             />
 
             {!selectedFile ? (
-              <div className="upload-prompt">
+              <div className={styles.uploadPrompt}>
                 <i className="fas fa-cloud-upload-alt"></i>
                 <h4>Drop receipt here or click to browse</h4>
                 <p>Supports JPEG, PNG, WebP, and PDF files</p>
                 <p>Maximum file size: {formatFileSize(maxFileSize)}</p>
               </div>
             ) : (
-              <div className="file-preview">
+              <div className={styles.filePreview}>
                 {previewUrl ? (
-                  <div className="image-preview">
+                  <div className={styles.imagePreview}>
                     <img src={previewUrl} alt="Receipt preview" />
                   </div>
                 ) : (
-                  <div className="file-icon">
+                  <div className={styles.fileIcon}>
                     <i className="fas fa-file-alt"></i>
                   </div>
                 )}
 
-                <div className="file-info">
+                <div className={styles.fileInfo}>
                   <h5>{selectedFile.name}</h5>
                   <p>{formatFileSize(selectedFile.size)}</p>
                   <button
-                    className="remove-file-btn"
+                    className={styles.removeFileBtn}
                     onClick={(e) => {
                       e.stopPropagation();
                       removeFile();
@@ -206,10 +206,10 @@ const ReceiptUploader = ({
             )}
 
             {loading && (
-              <div className="upload-progress">
-                <div className="progress-bar">
+              <div className={styles.uploadProgress}>
+                <div className={styles.progressBar}>
                   <div
-                    className="progress-fill"
+                    className={styles.progressFill}
                     style={{ width: `${progress}%` }}
                   ></div>
                 </div>
@@ -219,7 +219,7 @@ const ReceiptUploader = ({
           </div>
 
           {/* Upload guidelines */}
-          <div className="upload-guidelines">
+          <div className={styles.uploadGuidelines}>
             <h5>Receipt Upload Guidelines:</h5>
             <ul>
               <li>Ensure the receipt is clear and readable</li>
@@ -231,16 +231,16 @@ const ReceiptUploader = ({
         </div>
 
         {/* Modal actions */}
-        <div className="modal-actions">
+        <div className={styles.modalActions}>
           <button
-            className="btn secondary"
+            className={`${styles.btn} ${styles.secondary}`}
             onClick={onClose}
             disabled={loading}
           >
             Cancel
           </button>
           <button
-            className="btn primary"
+            className={`${styles.btn} ${styles.primary}`}
             onClick={handleUpload}
             disabled={!selectedFile || loading}
           >

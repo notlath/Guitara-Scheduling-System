@@ -2,7 +2,7 @@
  * Critical Alerts Panel Component
  * Displays high-priority alerts that require immediate operator attention
  */
-import "./CriticalAlertsPanel.module.css";
+import "../styles/components/CriticalAlertsPanel.css";
 
 export const AlertCard = ({
   type,

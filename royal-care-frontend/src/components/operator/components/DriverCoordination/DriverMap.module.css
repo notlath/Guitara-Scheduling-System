@@ -1,0 +1,524 @@
+.driverMap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.mapContainer {
+  flex: 1;
+  position: relative;
+  min-height: 400px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.mapPlaceholder {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 50%, #90caf9 100%);
+  overflow: hidden;
+}
+
+.mapControls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10;
+}
+
+.mapControl {
+  width: 40px;
+  height: 40px;
+  background: white;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.mapControl:hover {
+  background: #f3f4f6;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.mapContent {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mapMessage {
+  text-align: center;
+  color: #1f2937;
+  z-index: 5;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  margin: 20px;
+}
+
+.mapMessage i {
+  font-size: 3rem;
+  color: #3b82f6;
+  margin-bottom: 16px;
+}
+
+.mapMessage h3 {
+  margin: 0 0 12px 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.mapMessage p {
+  margin: 8px 0;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.implementationNote {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 16px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.implementationNote i {
+  font-size: 1rem !important;
+  margin: 0 !important;
+  color: #d97706;
+}
+
+/* Driver Markers */
+.driverMarkers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.driverMarker {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  transition: all 0.3s ease;
+  z-index: 8;
+}
+
+.driverMarker:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  z-index: 9;
+}
+
+.driverMarker i {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+  padding: 8px;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: white;
+}
+
+.driverMarker.available i {
+  color: #10b981;
+  animation: pulse-available 2s infinite;
+}
+
+.driverMarker.busy i {
+  color: #f59e0b;
+  animation: pulse-busy 2s infinite;
+}
+
+.driverLabel {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.driverMarker:hover .driverLabel {
+  opacity: 1;
+}
+
+/* Appointment Markers */
+.appointmentMarkers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.appointmentMarker {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  transition: all 0.3s ease;
+  z-index: 7;
+}
+
+.appointmentMarker:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  z-index: 8;
+}
+
+.appointmentMarker i {
+  font-size: 1.2rem;
+  color: #dc2626;
+  margin-bottom: 4px;
+  padding: 6px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  animation: bounce 2s infinite;
+}
+
+.appointmentLabel {
+  background: rgba(220, 38, 38, 0.9);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.appointmentMarker:hover .appointmentLabel {
+  opacity: 1;
+}
+
+/* Map Legend */
+.mapLegend {
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  padding: 16px 20px;
+}
+
+.mapLegend h4 {
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.legendItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.legendMarker {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.legendMarker.available {
+  background: #10b981;
+  color: white;
+}
+
+.legendMarker.busy {
+  background: #f59e0b;
+  color: white;
+}
+
+.legendMarker.appointment {
+  background: #dc2626;
+  color: white;
+}
+
+/* Map Stats */
+.mapStats {
+  display: flex;
+  background: #1f2937;
+  color: white;
+}
+
+.statItem {
+  flex: 1;
+  text-align: center;
+  padding: 16px 12px;
+  border-right: 1px solid #374151;
+}
+
+.statItem:last-child {
+  border-right: none;
+}
+
+.statValue {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #3b82f6;
+  margin-bottom: 4px;
+}
+
+.statLabel {
+  display: block;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Animations */
+@keyframes pulse-available {
+  0%,
+  100% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes pulse-busy {
+  0%,
+  100% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 0 8px rgba(245, 158, 11, 0);
+  }
+}
+
+@keyframes bounce {
+  0%,
+  20%,
+  50%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-8px);
+  }
+  60% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .mapContainer {
+    min-height: 300px;
+  }
+
+  .mapControls {
+    top: 12px;
+    right: 12px;
+    gap: 6px;
+  }
+
+  .mapControl {
+    width: 36px;
+    height: 36px;
+    font-size: 0.8rem;
+  }
+
+  .mapMessage {
+    padding: 24px;
+    margin: 16px;
+  }
+
+  .mapMessage h3 {
+    font-size: 1.25rem;
+  }
+
+  .mapMessage i {
+    font-size: 2.5rem;
+  }
+
+  .legendItems {
+    justify-content: center;
+  }
+
+  .mapStats {
+    flex-direction: column;
+  }
+
+  .statItem {
+    border-right: none;
+    border-bottom: 1px solid #374151;
+    padding: 12px;
+  }
+
+  .statItem:last-child {
+    border-bottom: none;
+  }
+
+  .driverMarker i {
+    font-size: 1.2rem;
+    padding: 6px;
+  }
+
+  .appointmentMarker i {
+    font-size: 1rem;
+    padding: 5px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .driverMap {
+    background: #1f2937;
+  }
+
+  .mapLegend {
+    background: #374151;
+    border-top-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .mapLegend h4 {
+    color: #f9fafb;
+  }
+
+  .legendItem {
+    color: #d1d5db;
+  }
+
+  .mapMessage {
+    background: rgba(31, 41, 55, 0.95);
+    color: #f9fafb;
+  }
+
+  .mapMessage h3 {
+    color: #f9fafb;
+  }
+
+  .mapMessage p {
+    color: #d1d5db;
+  }
+
+  .mapControl {
+    background: #374151;
+    color: #f9fafb;
+  }
+
+  .mapControl:hover {
+    background: #4b5563;
+  }
+}
+
+/* Loading state */
+.driverMap.loading {
+  opacity: 0.7;
+}
+
+.driverMap.loading .mapPlaceholder {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Interactive states */
+.driverMarker:focus,
+.mapControl:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.driverMarker:active {
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
+.mapControl:active {
+  transform: scale(0.95);
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .driverMarker,
+  .appointmentMarker,
+  .mapControl {
+    transition: none;
+  }
+
+  .driverMarker i,
+  .appointmentMarker i {
+    animation: none;
+  }
+
+  .driverMap.loading .mapPlaceholder {
+    animation: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .driverMarker i {
+    border: 2px solid currentColor;
+  }
+
+  .mapControl {
+    border: 1px solid #000;
+  }
+
+  .legendMarker {
+    border: 1px solid #000;
+  }
+}

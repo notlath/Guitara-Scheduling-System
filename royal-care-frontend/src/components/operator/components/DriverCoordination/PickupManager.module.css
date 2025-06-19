@@ -1,0 +1,627 @@
+.pickupManager {
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pickupManager.compact {
+  padding: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.pickupManager.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.emptyState {
+  text-align: center;
+  color: #6b7280;
+}
+
+.emptyState i {
+  font-size: 3rem;
+  color: #10b981;
+  margin-bottom: 16px;
+}
+
+.emptyState h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.pickupRequestsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pickupRequestCard {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  cursor: default;
+  position: relative;
+}
+
+.pickupRequestCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.pickupRequestCard[draggable="true"] {
+  cursor: grab;
+}
+
+.pickupRequestCard[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Urgency-based card styling */
+.pickupRequestCard.urgent {
+  border-left: 4px solid #dc3545;
+  background: linear-gradient(to right, #fef2f2, white);
+}
+
+.pickupRequestCard.high {
+  border-left: 4px solid #fd7e14;
+  background: linear-gradient(to right, #fefbf2, white);
+}
+
+.pickupRequestCard.normal {
+  border-left: 4px solid #28a745;
+  background: linear-gradient(to right, #f0fdf4, white);
+}
+
+.requestHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.requestInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.appointmentTitle {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.urgencyIndicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.urgencyDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.urgencyText {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: capitalize;
+}
+
+.requestActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.autoAssignBtn,
+.manualAssignBtn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.autoAssignBtn {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.autoAssignBtn:hover:not(:disabled) {
+  background-color: #2563eb;
+  transform: scale(1.05);
+}
+
+.autoAssignBtn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.manualAssignBtn {
+  background-color: #6b7280;
+  color: white;
+}
+
+.manualAssignBtn:hover:not(:disabled) {
+  background-color: #4b5563;
+  transform: scale(1.05);
+}
+
+.requestDetails {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.detailRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detailRow .label {
+  font-weight: 500;
+  color: #6b7280;
+  min-width: 60px;
+  font-size: 0.9rem;
+}
+
+.detailRow .value {
+  color: #1f2937;
+  font-size: 0.9rem;
+  flex: 1;
+  word-break: break-word;
+}
+
+.compactActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.assignBtn {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.assignBtn.primary {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.assignBtn.primary:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.assignBtn.secondary {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.assignBtn.secondary:hover:not(:disabled) {
+  background-color: #e5e7eb;
+}
+
+.assignBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Modal Styles */
+.assignmentModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.assignmentModal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.closeBtn:hover {
+  color: #374151;
+  background-color: #f3f4f6;
+}
+
+.modalContent {
+  padding: 24px;
+}
+
+.appointmentSummary {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.appointmentSummary h4 {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.appointmentSummary p {
+  margin: 6px 0;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.availableDrivers h4 {
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.noDrivers {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.noDrivers p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.driversList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.driverOption {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.driverOption:hover {
+  background-color: #f3f4f6;
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.driverInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.driverAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e5e7eb;
+}
+
+.driverDetails h5 {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.driverDetails p {
+  margin: 2px 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.assignAction {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 50%;
+  font-size: 0.9rem;
+}
+
+/* Compact mode adjustments */
+.pickupManager.compact .pickupRequestCard {
+  padding: 16px;
+}
+
+.pickupManager.compact .appointmentTitle {
+  font-size: 1rem;
+}
+
+.pickupManager.compact .requestDetails {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.pickupManager.compact .detailRow {
+  font-size: 0.85rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pickupManager {
+    padding: 12px;
+  }
+
+  .pickupRequestCard {
+    padding: 16px;
+  }
+
+  .requestHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .requestActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .requestDetails {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .assignmentModal {
+    width: 95%;
+    margin: 20px;
+    max-height: calc(100vh - 40px);
+  }
+
+  .modalHeader,
+  .modalContent {
+    padding: 16px;
+  }
+
+  .driverOption {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .driverInfo {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .compactActions {
+    flex-direction: column;
+  }
+}
+
+/* Animation for spinner */
+.fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .pickupManager {
+    background: #1f2937;
+    color: #f9fafb;
+  }
+
+  .pickupRequestCard {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .pickupRequestCard.urgent {
+    background: linear-gradient(to right, #450a0a, #374151);
+  }
+
+  .pickupRequestCard.high {
+    background: linear-gradient(to right, #451a03, #374151);
+  }
+
+  .pickupRequestCard.normal {
+    background: linear-gradient(to right, #14532d, #374151);
+  }
+
+  .appointmentTitle {
+    color: #f9fafb;
+  }
+
+  .detailRow .value {
+    color: #e5e7eb;
+  }
+
+  .appointmentSummary {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .appointmentSummary h4 {
+    color: #f9fafb;
+  }
+
+  .appointmentSummary p {
+    color: #d1d5db;
+  }
+
+  .assignmentModal {
+    background: #1f2937;
+    color: #f9fafb;
+  }
+
+  .modalHeader {
+    border-bottom-color: #374151;
+  }
+
+  .modalHeader h3 {
+    color: #f9fafb;
+  }
+
+  .availableDrivers h4 {
+    color: #f9fafb;
+  }
+
+  .driverOption {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .driverOption:hover {
+    background-color: #4b5563;
+  }
+
+  .driverDetails h5 {
+    color: #f9fafb;
+  }
+
+  .driverDetails p {
+    color: #d1d5db;
+  }
+
+  .assignBtn.secondary {
+    background-color: #4b5563;
+    color: #f9fafb;
+    border-color: #6b7280;
+  }
+
+  .assignBtn.secondary:hover:not(:disabled) {
+    background-color: #6b7280;
+  }
+}
+
+/* Loading states */
+.pickupRequestCard.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.assignBtn.loading {
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* Drag and drop states */
+.pickupRequestCard.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+}
+
+.pickupManager.dragOver {
+  background-color: #dbeafe;
+  border: 2px dashed #3b82f6;
+}
+
+/* Focus states for accessibility */
+.autoAssignBtn:focus,
+.manualAssignBtn:focus,
+.assignBtn:focus,
+.closeBtn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.driverOption:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}

@@ -2,7 +2,7 @@
  * Central data management hook for Operator Dashboard
  * Consolidates all data fetching logic and state management
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { useOptimizedData } from "../../../hooks/useOptimizedData";
 import { useOptimizedSelector } from "../../../hooks/usePerformanceOptimization";

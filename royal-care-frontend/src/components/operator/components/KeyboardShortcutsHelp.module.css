@@ -176,7 +176,8 @@
   border: 1px solid #ced4da;
   border-radius: 4px;
   padding: 0.25rem 0.5rem;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+    "Courier New", monospace;
   font-size: 0.8rem;
   font-weight: 600;
   color: #495057;
@@ -242,7 +243,8 @@
   border: 1px solid #ced4da;
   border-radius: 3px;
   padding: 0.125rem 0.25rem;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+    "Courier New", monospace;
   font-size: 0.75rem;
   color: #495057;
 }
@@ -253,33 +255,33 @@
     margin: 1rem;
     max-height: 90vh;
   }
-  
+
   .shortcuts-modal-header {
     padding: 1rem 1.5rem;
   }
-  
+
   .shortcuts-modal-body {
     padding: 1rem 1.5rem;
   }
-  
+
   .shortcuts-modal-footer {
     padding: 1rem 1.5rem;
   }
-  
+
   .shortcut-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .shortcut-keys {
     min-width: auto;
   }
-  
+
   .shortcut-description {
     text-align: left;
   }
-  
+
   .shortcuts-tip {
     font-size: 0.8rem;
   }
@@ -289,24 +291,24 @@
   .shortcuts-modal-overlay {
     padding: 0.5rem;
   }
-  
+
   .shortcuts-modal {
     margin: 0.5rem;
   }
-  
+
   .shortcuts-modal-header h2 {
     font-size: 1.25rem;
   }
-  
+
   .category-title {
     font-size: 1rem;
   }
-  
+
   .key {
     font-size: 0.7rem;
     padding: 0.2rem 0.4rem;
   }
-  
+
   .shortcut-description {
     font-size: 0.875rem;
   }

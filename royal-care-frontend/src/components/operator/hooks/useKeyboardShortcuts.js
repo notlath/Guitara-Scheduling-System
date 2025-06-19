@@ -58,7 +58,9 @@ export const useKeyboardShortcuts = () => {
 
     // Check modifiers
     const hasCtrl = modifiers.includes("ctrl") ? event.ctrlKey : !event.ctrlKey;
-    const hasShift = modifiers.includes("shift") ? event.shiftKey : !event.shiftKey;
+    const hasShift = modifiers.includes("shift")
+      ? event.shiftKey
+      : !event.shiftKey;
     const hasAlt = modifiers.includes("alt") ? event.altKey : !event.altKey;
     const hasMeta = modifiers.includes("meta") ? event.metaKey : !event.metaKey;
 
@@ -126,7 +128,8 @@ export const useOperatorKeyboardShortcuts = ({
   onToggleSearch,
   onExportData,
 }) => {
-  const { registerShortcut, unregisterShortcut, getActiveShortcuts } = useKeyboardShortcuts();
+  const { registerShortcut, unregisterShortcut, getActiveShortcuts } =
+    useKeyboardShortcuts();
 
   useEffect(() => {
     // Selection shortcuts
@@ -139,18 +142,34 @@ export const useOperatorKeyboardShortcuts = ({
 
     // Bulk action shortcuts
     if (onBulkApprove) {
-      registerShortcut("ctrl+shift+a", onBulkApprove, "Approve selected appointments");
+      registerShortcut(
+        "ctrl+shift+a",
+        onBulkApprove,
+        "Approve selected appointments"
+      );
     }
     if (onBulkCancel) {
-      registerShortcut("ctrl+shift+c", onBulkCancel, "Cancel selected appointments");
+      registerShortcut(
+        "ctrl+shift+c",
+        onBulkCancel,
+        "Cancel selected appointments"
+      );
     }
 
     // Modal shortcuts
     if (onOpenDriverAssignment) {
-      registerShortcut("ctrl+shift+d", onOpenDriverAssignment, "Open driver assignment");
+      registerShortcut(
+        "ctrl+shift+d",
+        onOpenDriverAssignment,
+        "Open driver assignment"
+      );
     }
     if (onOpenPaymentModal) {
-      registerShortcut("ctrl+shift+p", onOpenPaymentModal, "Open payment modal");
+      registerShortcut(
+        "ctrl+shift+p",
+        onOpenPaymentModal,
+        "Open payment modal"
+      );
     }
 
     // Navigation shortcuts
@@ -167,32 +186,71 @@ export const useOperatorKeyboardShortcuts = ({
 
     // View switching shortcuts
     if (onSwitchView) {
-      registerShortcut("ctrl+1", () => onSwitchView("overview"), "Switch to Overview");
-      registerShortcut("ctrl+2", () => onSwitchView("appointments"), "Switch to Appointments");
-      registerShortcut("ctrl+3", () => onSwitchView("drivers"), "Switch to Drivers");
-      registerShortcut("ctrl+4", () => onSwitchView("payments"), "Switch to Payments");
-      registerShortcut("ctrl+5", () => onSwitchView("attendance"), "Switch to Attendance");
+      registerShortcut(
+        "ctrl+1",
+        () => onSwitchView("overview"),
+        "Switch to Overview"
+      );
+      registerShortcut(
+        "ctrl+2",
+        () => onSwitchView("appointments"),
+        "Switch to Appointments"
+      );
+      registerShortcut(
+        "ctrl+3",
+        () => onSwitchView("drivers"),
+        "Switch to Drivers"
+      );
+      registerShortcut(
+        "ctrl+4",
+        () => onSwitchView("payments"),
+        "Switch to Payments"
+      );
+      registerShortcut(
+        "ctrl+5",
+        () => onSwitchView("attendance"),
+        "Switch to Attendance"
+      );
     }
 
     // Cleanup function
     return () => {
       const shortcuts = [
-        "ctrl+a", "escape", "ctrl+shift+a", "ctrl+shift+c", 
-        "ctrl+shift+d", "ctrl+shift+p", "f5", "ctrl+r", 
-        "ctrl+f", "ctrl+e", "ctrl+1", "ctrl+2", "ctrl+3", 
-        "ctrl+4", "ctrl+5"
+        "ctrl+a",
+        "escape",
+        "ctrl+shift+a",
+        "ctrl+shift+c",
+        "ctrl+shift+d",
+        "ctrl+shift+p",
+        "f5",
+        "ctrl+r",
+        "ctrl+f",
+        "ctrl+e",
+        "ctrl+1",
+        "ctrl+2",
+        "ctrl+3",
+        "ctrl+4",
+        "ctrl+5",
       ];
       shortcuts.forEach(unregisterShortcut);
     };
   }, [
-    onSelectAll, onClearSelection, onBulkApprove, onBulkCancel,
-    onOpenDriverAssignment, onOpenPaymentModal, onRefreshData,
-    onSwitchView, onToggleSearch, onExportData,
-    registerShortcut, unregisterShortcut
+    onSelectAll,
+    onClearSelection,
+    onBulkApprove,
+    onBulkCancel,
+    onOpenDriverAssignment,
+    onOpenPaymentModal,
+    onRefreshData,
+    onSwitchView,
+    onToggleSearch,
+    onExportData,
+    registerShortcut,
+    unregisterShortcut,
   ]);
 
   return {
-    getActiveShortcuts
+    getActiveShortcuts,
   };
 };
 
@@ -205,7 +263,7 @@ export const useBulkOperations = () => {
 
   // Select all items
   const selectAll = useCallback((items) => {
-    setSelectedItems(new Set(items.map(item => item.id)));
+    setSelectedItems(new Set(items.map((item) => item.id)));
   }, []);
 
   // Clear selection
@@ -215,7 +273,7 @@ export const useBulkOperations = () => {
 
   // Toggle item selection
   const toggleSelection = useCallback((itemId) => {
-    setSelectedItems(prev => {
+    setSelectedItems((prev) => {
       const newSelection = new Set(prev);
       if (newSelection.has(itemId)) {
         newSelection.delete(itemId);
@@ -227,32 +285,40 @@ export const useBulkOperations = () => {
   }, []);
 
   // Get selected items data
-  const getSelectedItems = useCallback((allItems) => {
-    return allItems.filter(item => selectedItems.has(item.id));
-  }, [selectedItems]);
+  const getSelectedItems = useCallback(
+    (allItems) => {
+      return allItems.filter((item) => selectedItems.has(item.id));
+    },
+    [selectedItems]
+  );
 
   // Execute bulk action with optimistic updates
-  const executeBulkAction = useCallback(async (actionId, items, actionFn) => {
-    setBulkActionLoading(prev => ({ ...prev, [actionId]: true }));
-    
-    try {
-      // Execute the bulk action
-      await actionFn(items);
-      
-      // Clear selection after successful action
-      clearSelection();
-      
-      return { success: true };
-    } catch (error) {
-      console.error(`Bulk action ${actionId} failed:`, error);
-      return { success: false, error };
-    } finally {
-      setBulkActionLoading(prev => ({ ...prev, [actionId]: false }));
-    }
-  }, [clearSelection]);
+  const executeBulkAction = useCallback(
+    async (actionId, items, actionFn) => {
+      setBulkActionLoading((prev) => ({ ...prev, [actionId]: true }));
+
+      try {
+        // Execute the bulk action
+        await actionFn(items);
+
+        // Clear selection after successful action
+        clearSelection();
+
+        return { success: true };
+      } catch (error) {
+        console.error(`Bulk action ${actionId} failed:`, error);
+        return { success: false, error };
+      } finally {
+        setBulkActionLoading((prev) => ({ ...prev, [actionId]: false }));
+      }
+    },
+    [clearSelection]
+  );
 
   // Check if any bulk action is loading
-  const isBulkLoading = Object.values(bulkActionLoading).some(loading => loading);
+  const isBulkLoading = Object.values(bulkActionLoading).some(
+    (loading) => loading
+  );
 
   return {
     selectedItems,
@@ -263,6 +329,6 @@ export const useBulkOperations = () => {
     getSelectedItems,
     executeBulkAction,
     bulkActionLoading,
-    isBulkLoading
+    isBulkLoading,
   };
 };

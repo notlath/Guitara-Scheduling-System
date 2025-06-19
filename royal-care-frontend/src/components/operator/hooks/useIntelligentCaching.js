@@ -1,10 +1,9 @@
 /**
  * Intelligent caching system for Operator Dashboard
- * Provides smart invalidation and background sync capabilities
+ * Custom implementation without external dependencies
  */
 
-import { useCallback, useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Cache configuration
 const CACHE_CONFIG = {
@@ -31,104 +30,141 @@ const CACHE_CONFIG = {
 // Query categories and their cache behavior
 const QUERY_CATEGORIES = {
   critical: [
-    'critical-appointments',
-    'overdue-appointments', 
-    'payment-pending',
-    'driver-requests',
-    'active-sessions'
+    "critical-appointments",
+    "overdue-appointments",
+    "payment-pending",
+    "driver-requests",
+    "active-sessions",
   ],
-  standard: [
-    'appointments',
-    'drivers',
-    'notifications',
-    'stats'
-  ],
-  static: [
-    'user-preferences',
-    'system-config',
-    'service-types'
-  ]
+  standard: ["appointments", "drivers", "notifications", "stats"],
+  static: ["user-preferences", "system-config", "service-types"],
 };
+
+// Simple in-memory cache implementation
+class CacheManager {
+  constructor() {
+    this.cache = new Map();
+    this.timestamps = new Map();
+    this.subscribers = new Map();
+  }
+
+  set(key, data) {
+    this.cache.set(key, data);
+    this.timestamps.set(key, Date.now());
+    this.notifySubscribers(key, data);
+  }
+
+  get(key) {
+    return this.cache.get(key);
+  }
+
+  has(key) {
+    return this.cache.has(key);
+  }
+
+  delete(key) {
+    this.cache.delete(key);
+    this.timestamps.delete(key);
+    this.notifySubscribers(key, null);
+  }
+
+  clear() {
+    this.cache.clear();
+    this.timestamps.clear();
+  }
+
+  isStale(key, staleTime) {
+    const timestamp = this.timestamps.get(key);
+    if (!timestamp) return true;
+    return Date.now() - timestamp > staleTime;
+  }
+
+  subscribe(key, callback) {
+    if (!this.subscribers.has(key)) {
+      this.subscribers.set(key, new Set());
+    }
+    this.subscribers.get(key).add(callback);
+
+    // Return unsubscribe function
+    return () => {
+      const keySubscribers = this.subscribers.get(key);
+      if (keySubscribers) {
+        keySubscribers.delete(callback);
+        if (keySubscribers.size === 0) {
+          this.subscribers.delete(key);
+        }
+      }
+    };
+  }
+
+  notifySubscribers(key, data) {
+    const keySubscribers = this.subscribers.get(key);
+    if (keySubscribers) {
+      keySubscribers.forEach((callback) => callback(data));
+    }
+  }
+
+  cleanup(cacheTime) {
+    const now = Date.now();
+    for (const [key, timestamp] of this.timestamps.entries()) {
+      if (now - timestamp > cacheTime) {
+        this.delete(key);
+      }
+    }
+  }
+}
+
+// Global cache instance
+const globalCache = new CacheManager();
 
 /**
  * Intelligent caching hook with smart invalidation
  */
 export const useIntelligentCaching = () => {
-  const queryClient = useQueryClient();
+  const [, forceUpdate] = useState({});
   const backgroundSyncRef = useRef();
+  const subscribersRef = useRef(new Set());
+
+  // Force re-render
+  const triggerUpdate = useCallback(() => {
+    forceUpdate({});
+  }, []);
 
   // Get cache configuration for a query
   const getCacheConfig = useCallback((queryKey) => {
-    const category = Object.entries(QUERY_CATEGORIES).find(([, queries]) => 
-      queries.some(q => queryKey.includes(q))
-    )?.[0] || 'standard';
-    
+    const category =
+      Object.entries(QUERY_CATEGORIES).find(([, queries]) =>
+        queries.some((q) => queryKey.includes(q))
+      )?.[0] || "standard";
+
     return CACHE_CONFIG[category];
   }, []);
 
   // Smart invalidation based on data relationships
-  const invalidateRelatedData = useCallback((type) => {
-    const invalidationMap = {
-      appointment: {
-        queries: ['appointments', 'stats', 'notifications', 'critical-appointments'],
-        condition: (queryKey) => {
-          // Invalidate all appointment-related queries
-          return queryKey.some(key => 
-            typeof key === 'string' && 
-            (key.includes('appointment') || key.includes('stats'))
-          );
-        }
-      },
-      driver: {
-        queries: ['drivers', 'driver-requests', 'pickup-requests'],
-        condition: (queryKey) => {
-          return queryKey.some(key => 
-            typeof key === 'string' && key.includes('driver')
-          );
-        }
-      },
-      payment: {
-        queries: ['payments', 'payment-pending', 'stats'],
-        condition: (queryKey) => {
-          return queryKey.some(key => 
-            typeof key === 'string' && 
-            (key.includes('payment') || key.includes('stats'))
-          );
-        }
-      },
-      notification: {
-        queries: ['notifications'],
-        condition: (queryKey) => {
-          return queryKey.some(key => 
-            typeof key === 'string' && key.includes('notification')
-          );
-        }
-      }
-    };
+  const invalidateRelatedData = useCallback(
+    (type) => {
+      const invalidationMap = {
+        appointment: [
+          "appointments",
+          "stats",
+          "notifications",
+          "critical-appointments",
+        ],
+        driver: ["drivers", "driver-requests", "pickup-requests"],
+        payment: ["payments", "payment-pending", "stats"],
+        notification: ["notifications"],
+      };
 
-    const config = invalidationMap[type];
-    if (!config) return;
+      const queriesToInvalidate = invalidationMap[type] || [];
 
-    // Invalidate specific queries
-    config.queries.forEach(queryKey => {
-      queryClient.invalidateQueries({ queryKey: [queryKey] });
-    });
-
-    // Invalidate queries matching condition
-    const cache = queryClient.getQueryCache();
-    cache.getAll().forEach(query => {
-      if (config.condition(query.queryKey)) {
-        queryClient.invalidateQueries({ queryKey: query.queryKey });
-      }
-    });
-
-    // Trigger immediate refetch for critical data
-    if (QUERY_CATEGORIES.critical.some(q => config.queries.includes(q))) {
-      config.queries.forEach(queryKey => {
-        queryClient.refetchQueries({ queryKey: [queryKey] });
+      queriesToInvalidate.forEach((queryKey) => {
+        globalCache.delete(queryKey);
       });
-    }
-  }, [queryClient]);
+
+      triggerUpdate();
+    },
+    [triggerUpdate]
+  );
 
   // Background sync for critical data
   const startBackgroundSync = useCallback(() => {
@@ -137,13 +173,16 @@ export const useIntelligentCaching = () => {
     }
 
     backgroundSyncRef.current = setInterval(() => {
-      // Prefetch critical data in background
-      QUERY_CATEGORIES.critical.forEach(queryKey => {
-        queryClient.prefetchQuery({
-          queryKey: [queryKey],
-          ...CACHE_CONFIG.critical
-        });
+      // Mark critical data as stale to trigger refetch
+      QUERY_CATEGORIES.critical.forEach((queryKey) => {
+        if (globalCache.has(queryKey)) {
+          const config = getCacheConfig([queryKey]);
+          if (globalCache.isStale(queryKey, config.staleTime)) {
+            globalCache.delete(queryKey);
+          }
+        }
       });
+      triggerUpdate();
     }, CACHE_CONFIG.critical.refetchInterval);
 
     return () => {
@@ -151,7 +190,7 @@ export const useIntelligentCaching = () => {
         clearInterval(backgroundSyncRef.current);
       }
     };
-  }, [queryClient]);
+  }, [getCacheConfig, triggerUpdate]);
 
   // Stop background sync
   const stopBackgroundSync = useCallback(() => {
@@ -162,64 +201,94 @@ export const useIntelligentCaching = () => {
   }, []);
 
   // Optimistic updates with rollback capability
-  const performOptimisticUpdate = useCallback(async (
-    queryKey, 
-    updateFn, 
-    mutationPromise
-  ) => {
-    // Cancel outgoing refetches
-    await queryClient.cancelQueries({ queryKey });
+  const performOptimisticUpdate = useCallback(
+    async (queryKey, updateFn, mutationPromise) => {
+      // Snapshot previous value
+      const previousData = globalCache.get(queryKey);
 
-    // Snapshot previous value
-    const previousData = queryClient.getQueryData(queryKey);
+      try {
+        // Optimistically update
+        if (previousData) {
+          const optimisticData = updateFn(previousData);
+          globalCache.set(queryKey, optimisticData);
+        }
 
-    // Optimistically update
-    queryClient.setQueryData(queryKey, updateFn);
+        // Perform actual mutation
+        const result = await mutationPromise;
 
-    try {
-      // Perform actual mutation
-      const result = await mutationPromise;
-      
-      // Update with real data
-      queryClient.setQueryData(queryKey, result);
-      
-      return result;
-    } catch (error) {
-      // Rollback on error
-      queryClient.setQueryData(queryKey, previousData);
-      throw error;
-    }
-  }, [queryClient]);
+        // Update with real data
+        globalCache.set(queryKey, result);
+
+        return result;
+      } catch (error) {
+        // Rollback on error
+        if (previousData) {
+          globalCache.set(queryKey, previousData);
+        } else {
+          globalCache.delete(queryKey);
+        }
+        throw error;
+      }
+    },
+    []
+  );
 
   // Batch operations to reduce cache thrashing
-  const batchCacheOperations = useCallback((operations) => {
-    return queryClient.getQueryCache().subscribe(() => {
-      operations.forEach(op => op());
-    });
-  }, [queryClient]);
+  const batchCacheOperations = useCallback(
+    (operations) => {
+      // Execute all operations without triggering updates
+      operations.forEach((op) => op());
+      // Trigger single update at the end
+      triggerUpdate();
+    },
+    [triggerUpdate]
+  );
 
   // Memory management - clear stale data
   const clearStaleData = useCallback(() => {
-    const cache = queryClient.getQueryCache();
-    const now = Date.now();
-    
-    cache.getAll().forEach(query => {
-      const config = getCacheConfig(query.queryKey);
-      const isStale = now - query.state.dataUpdatedAt > config.cacheTime;
-      
-      if (isStale && !query.getObserversCount()) {
-        queryClient.removeQueries({ queryKey: query.queryKey });
+    const staleKeys = [];
+
+    for (const [key] of globalCache.cache.entries()) {
+      const config = getCacheConfig([key]);
+      if (globalCache.isStale(key, config.cacheTime)) {
+        staleKeys.push(key);
       }
-    });
-  }, [queryClient, getCacheConfig]);
+    }
+
+    staleKeys.forEach((key) => globalCache.delete(key));
+
+    if (staleKeys.length > 0) {
+      triggerUpdate();
+    }
+  }, [getCacheConfig, triggerUpdate]);
+
+  // Cache data
+  const cacheData = useCallback((key, data) => {
+    globalCache.set(key, data);
+  }, []);
+
+  // Get cached data
+  const getCachedData = useCallback((key) => {
+    return globalCache.get(key);
+  }, []);
+
+  // Check if data is cached and fresh
+  const isFresh = useCallback(
+    (key) => {
+      if (!globalCache.has(key)) return false;
+      const config = getCacheConfig([key]);
+      return !globalCache.isStale(key, config.staleTime);
+    },
+    [getCacheConfig]
+  );
 
   // Auto-cleanup on unmount
   useEffect(() => {
     const cleanup = startBackgroundSync();
-    
+
     // Periodic cleanup of stale data
     const cleanupInterval = setInterval(clearStaleData, 5 * 60 * 1000); // 5 minutes
-    
+
     return () => {
       cleanup?.();
       clearInterval(cleanupInterval);
@@ -235,22 +304,32 @@ export const useIntelligentCaching = () => {
     performOptimisticUpdate,
     batchCacheOperations,
     clearStaleData,
-    
+    cacheData,
+    getCachedData,
+    isFresh,
+
     // Utility functions
     isQueryStale: (queryKey) => {
-      const query = queryClient.getQueryState(queryKey);
       const config = getCacheConfig(queryKey);
-      return query ? Date.now() - query.dataUpdatedAt > config.staleTime : true;
+      return globalCache.isStale(queryKey, config.staleTime);
     },
-    
+
     prefetchCriticalData: () => {
-      QUERY_CATEGORIES.critical.forEach(queryKey => {
-        queryClient.prefetchQuery({
-          queryKey: [queryKey],
-          ...CACHE_CONFIG.critical
-        });
+      // Mark critical queries for refresh
+      QUERY_CATEGORIES.critical.forEach((queryKey) => {
+        if (globalCache.has(queryKey)) {
+          globalCache.delete(queryKey);
+        }
       });
-    }
+      triggerUpdate();
+    },
+
+    // Subscribe to cache changes
+    subscribe: (key, callback) => {
+      const unsubscribe = globalCache.subscribe(key, callback);
+      subscribersRef.current.add(unsubscribe);
+      return unsubscribe;
+    },
   };
 };
 
