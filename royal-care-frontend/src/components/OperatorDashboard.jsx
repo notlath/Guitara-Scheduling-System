@@ -15,7 +15,10 @@ import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 // PERFORMANCE: Ultra-optimized imports
-import { useUltraOptimizedAppointmentFilters, useUltraOptimizedSorting } from "../hooks/useUltraOptimizedFilters";
+import {
+  useUltraOptimizedAppointmentFilters,
+  useUltraOptimizedSorting,
+} from "../hooks/useUltraOptimizedFilters";
 import { useVirtualizedPagination } from "../hooks/useVirtualizedPagination";
 import Pagination from "./Pagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
@@ -40,8 +43,8 @@ import PerformanceMonitor from "./PerformanceMonitor";
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/OperatorDashboard.css";
-import "../styles/UrgencyIndicators.css";
 import "../styles/Performance.css";
+import "../styles/UrgencyIndicators.css";
 
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
@@ -140,7 +143,10 @@ const OperatorDashboard = () => {
   } = useUltraOptimizedAppointmentFilters(appointments);
 
   // � ULTRA-PERFORMANCE: Replace sorting with optimized version
-  const filteredAndSortedAppointments = useUltraOptimizedSorting(appointments, currentFilter);
+  const filteredAndSortedAppointments = useUltraOptimizedSorting(
+    appointments,
+    currentFilter
+  );
 
   // � ULTRA-PERFORMANCE: Replace pagination with virtualized version
   const appointmentsPagination = useVirtualizedPagination(
@@ -149,7 +155,11 @@ const OperatorDashboard = () => {
     800 // Container height in pixels
   );
   // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
-  const { buttonLoading, setButtonLoading: setActionLoading, forceClearLoading } = useOptimizedButtonLoading();
+  const {
+    buttonLoading,
+    setButtonLoading: setActionLoading,
+    forceClearLoading,
+  } = useOptimizedButtonLoading();
   // 🚀 ULTRA-PERFORMANCE: Optimized dashboard tabs with stable memoization
   const dashboardTabs = useMemo(() => {
     // Pre-calculate counts to avoid repeated access
@@ -224,11 +234,14 @@ const OperatorDashboard = () => {
     driverAssignment?.pendingPickups?.length,
     activeSessions?.length,
     pickupRequests?.length,
-  ]);// OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
+  ]); // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
   // The optimized data manager handles background refreshes automatically
   // 🚀 ULTRA-PERFORMANCE: Optimized countdown timer management
   const isTimeoutViewActive = currentView === "timeout";
-  const { countdowns, manageTimer, stopTimer } = useOptimizedCountdown(overdueAppointments, isTimeoutViewActive);
+  const { countdowns, manageTimer, stopTimer } = useOptimizedCountdown(
+    overdueAppointments,
+    isTimeoutViewActive
+  );
 
   // 🔥 PERFORMANCE OPTIMIZATION: Optimized countdown timer management
   useEffect(() => {
@@ -266,7 +279,8 @@ const OperatorDashboard = () => {
         return `Assigned pickup for ${therapistName}`;
       default:
         return `Active with ${therapistName}`;
-    }  }, []); // No dependencies needed as it's a pure function
+    }
+  }, []); // No dependencies needed as it's a pure function
 
   // Load driver data on component mount and refresh
   const initialDriverDataLoaded = useRef(false);
@@ -1532,7 +1546,8 @@ const OperatorDashboard = () => {
           </ul>
         </div>
       </div>
-    );  }; 
+    );
+  };
 
   // � PERFORMANCE: Old implementations removed - using ultra-optimized versions above
 
@@ -1842,18 +1857,30 @@ const OperatorDashboard = () => {
         ))}
       </div>
     );
-  };  const renderAllAppointments = () => {
-    if (!Array.isArray(filteredAndSortedAppointments) || filteredAndSortedAppointments.length === 0) {
+  };
+  const renderAllAppointments = () => {
+    if (
+      !Array.isArray(filteredAndSortedAppointments) ||
+      filteredAndSortedAppointments.length === 0
+    ) {
       return (
         <div className="empty-state">
           <i className="fas fa-calendar"></i>
           <p>No appointments found</p>
-          {error && <p className="error-text">Error: {typeof error === 'string' ? error : JSON.stringify(error)}</p>}
+          {error && (
+            <p className="error-text">
+              Error: {typeof error === "string" ? error : JSON.stringify(error)}
+            </p>
+          )}
         </div>
       );
     }
 
-    const { currentItems: paginatedAppointments, isVirtualized, totalHeight } = appointmentsPagination;
+    const {
+      currentItems: paginatedAppointments,
+      isVirtualized,
+      totalHeight,
+    } = appointmentsPagination;
 
     if (!Array.isArray(paginatedAppointments)) {
       return (
@@ -1875,7 +1902,9 @@ const OperatorDashboard = () => {
               onChange={(e) => setFilter(e.target.value)}
               className="filter-select"
             >
-              <option value="all">All Appointments ({filteredAndSortedAppointments.length})</option>
+              <option value="all">
+                All Appointments ({filteredAndSortedAppointments.length})
+              </option>
               <option value="today">Today</option>
               <option value="upcoming">Upcoming</option>
               <option value="pending">Pending</option>
@@ -1890,8 +1919,14 @@ const OperatorDashboard = () => {
             <div className="performance-controls">
               <button
                 onClick={appointmentsPagination.toggleVirtualization}
-                className={`performance-toggle ${isVirtualized ? "active" : ""}`}
-                title={isVirtualized ? "Switch to Pagination" : "Switch to Virtual Scrolling"}
+                className={`performance-toggle ${
+                  isVirtualized ? "active" : ""
+                }`}
+                title={
+                  isVirtualized
+                    ? "Switch to Pagination"
+                    : "Switch to Virtual Scrolling"
+                }
               >
                 {isVirtualized ? "📄 Pagination" : "⚡ Virtual Scrolling"}
               </button>
@@ -1901,21 +1936,27 @@ const OperatorDashboard = () => {
           <div className="quick-filter-buttons">
             <button
               onClick={() => setFilter("completed")}
-              className={`quick-filter-btn ${currentFilter === "completed" ? "active" : ""}`}
+              className={`quick-filter-btn ${
+                currentFilter === "completed" ? "active" : ""
+              }`}
               title="View only completed appointments"
             >
               📋 View Completed
             </button>
             <button
               onClick={() => setFilter("today")}
-              className={`quick-filter-btn ${currentFilter === "today" ? "active" : ""}`}
+              className={`quick-filter-btn ${
+                currentFilter === "today" ? "active" : ""
+              }`}
               title="View today's appointments"
             >
               📅 Today
             </button>
             <button
               onClick={() => setFilter("pending")}
-              className={`quick-filter-btn ${currentFilter === "pending" ? "active" : ""}`}
+              className={`quick-filter-btn ${
+                currentFilter === "pending" ? "active" : ""
+              }`}
               title="View pending appointments"
             >
               ⏳ Pending
@@ -1927,23 +1968,30 @@ const OperatorDashboard = () => {
           <i className="fas fa-sort-amount-down"></i>
           <span>Sorted by urgency and time (most urgent first)</span>
           <span className="filter-info">
-            • {isVirtualized ? "Virtual scrolling" : `Showing ${paginatedAppointments.length} of ${filteredAndSortedAppointments.length} appointments`}
+            •{" "}
+            {isVirtualized
+              ? "Virtual scrolling"
+              : `Showing ${paginatedAppointments.length} of ${filteredAndSortedAppointments.length} appointments`}
             {currentFilter !== "all" && ` (filtered by: ${currentFilter})`}
           </span>
         </div>
 
         {/* Appointment Cards Container */}
-        <div 
-          className={`appointments-container ${isVirtualized ? "virtualized" : "paginated"}`}
+        <div
+          className={`appointments-container ${
+            isVirtualized ? "virtualized" : "paginated"
+          }`}
           style={isVirtualized ? { height: 800, overflowY: "auto" } : {}}
-          onScroll={isVirtualized ? appointmentsPagination.handleScroll : undefined}
+          onScroll={
+            isVirtualized ? appointmentsPagination.handleScroll : undefined
+          }
           ref={appointmentsPagination.containerRef}
         >
           {isVirtualized && (
             <div style={{ height: totalHeight, position: "relative" }}>
               {paginatedAppointments.map((appointment) => {
                 if (!appointment || !appointment.id) return null;
-                
+
                 const urgencyLevel = getUrgencyLevel(appointment);
                 const urgencyBadge = getUrgencyBadge(urgencyLevel);
                 const status = appointment.status || "";
@@ -1969,22 +2017,47 @@ const OperatorDashboard = () => {
                       <div className="status-badges">
                         <span className={`status-badge ${status || "unknown"}`}>
                           {typeof status === "string" && status.length > 0
-                            ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ")
+                            ? status.charAt(0).toUpperCase() +
+                              status.slice(1).replace(/_/g, " ")
                             : "Unknown Status"}
                         </span>
-                        <span className={`urgency-badge ${urgencyBadge?.className || ""}`}>
+                        <span
+                          className={`urgency-badge ${
+                            urgencyBadge?.className || ""
+                          }`}
+                        >
                           {urgencyBadge?.icon || ""} {urgencyBadge?.label || ""}
                         </span>
                       </div>
                     </div>
 
                     <div className="appointment-details">
-                      <p><strong>Date:</strong> {appointment.date ? new Date(appointment.date).toLocaleDateString() : "N/A"}</p>
-                      <p><strong>Time:</strong> {appointment.start_time || "N/A"} - {appointment.end_time || "N/A"}</p>
-                      <p><strong>Location:</strong> {appointment.location || "N/A"}</p>
+                      <p>
+                        <strong>Date:</strong>{" "}
+                        {appointment.date
+                          ? new Date(appointment.date).toLocaleDateString()
+                          : "N/A"}
+                      </p>
+                      <p>
+                        <strong>Time:</strong> {appointment.start_time || "N/A"}{" "}
+                        - {appointment.end_time || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Location:</strong>{" "}
+                        {appointment.location || "N/A"}
+                      </p>
                       {renderTherapistInfo(appointment)}
-                      <p><strong>Services:</strong> {Array.isArray(appointment.services_details) ? appointment.services_details.map((s) => s.name).join(", ") : "N/A"}</p>
-                      <p><strong>Status:</strong> {status || "N/A"}</p>
+                      <p>
+                        <strong>Services:</strong>{" "}
+                        {Array.isArray(appointment.services_details)
+                          ? appointment.services_details
+                              .map((s) => s.name)
+                              .join(", ")
+                          : "N/A"}
+                      </p>
+                      <p>
+                        <strong>Status:</strong> {status || "N/A"}
+                      </p>
                     </div>
 
                     <div className="appointment-actions">
@@ -2014,66 +2087,94 @@ const OperatorDashboard = () => {
             </div>
           )}
 
-          {!isVirtualized && paginatedAppointments.map((appointment) => {
-            if (!appointment || !appointment.id) return null;
-            
-            const urgencyLevel = getUrgencyLevel(appointment);
-            const urgencyBadge = getUrgencyBadge(urgencyLevel);
-            const status = appointment.status || "";
+          {!isVirtualized &&
+            paginatedAppointments.map((appointment) => {
+              if (!appointment || !appointment.id) return null;
 
-            return (
-              <div key={appointment.id} className={`appointment-card ${urgencyLevel}`}>
-                <div className="appointment-header">
-                  <h3>
-                    Appointment #{appointment.id} -{" "}
-                    {appointment.client_details?.first_name || "Unknown"}{" "}
-                    {appointment.client_details?.last_name || ""}
-                  </h3>
-                  <div className="status-badges">
-                    <span className={`status-badge ${status || "unknown"}`}>
-                      {typeof status === "string" && status.length > 0
-                        ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ")
-                        : "Unknown Status"}
-                    </span>
-                    <span className={`urgency-badge ${urgencyBadge?.className || ""}`}>
-                      {urgencyBadge?.icon || ""} {urgencyBadge?.label || ""}
-                    </span>
+              const urgencyLevel = getUrgencyLevel(appointment);
+              const urgencyBadge = getUrgencyBadge(urgencyLevel);
+              const status = appointment.status || "";
+
+              return (
+                <div
+                  key={appointment.id}
+                  className={`appointment-card ${urgencyLevel}`}
+                >
+                  <div className="appointment-header">
+                    <h3>
+                      Appointment #{appointment.id} -{" "}
+                      {appointment.client_details?.first_name || "Unknown"}{" "}
+                      {appointment.client_details?.last_name || ""}
+                    </h3>
+                    <div className="status-badges">
+                      <span className={`status-badge ${status || "unknown"}`}>
+                        {typeof status === "string" && status.length > 0
+                          ? status.charAt(0).toUpperCase() +
+                            status.slice(1).replace(/_/g, " ")
+                          : "Unknown Status"}
+                      </span>
+                      <span
+                        className={`urgency-badge ${
+                          urgencyBadge?.className || ""
+                        }`}
+                      >
+                        {urgencyBadge?.icon || ""} {urgencyBadge?.label || ""}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="appointment-details">
+                    <p>
+                      <strong>Date:</strong>{" "}
+                      {appointment.date
+                        ? new Date(appointment.date).toLocaleDateString()
+                        : "N/A"}
+                    </p>
+                    <p>
+                      <strong>Time:</strong> {appointment.start_time || "N/A"} -{" "}
+                      {appointment.end_time || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Location:</strong> {appointment.location || "N/A"}
+                    </p>
+                    {renderTherapistInfo(appointment)}
+                    <p>
+                      <strong>Services:</strong>{" "}
+                      {Array.isArray(appointment.services_details)
+                        ? appointment.services_details
+                            .map((s) => s.name)
+                            .join(", ")
+                        : "N/A"}
+                    </p>
+                    <p>
+                      <strong>Status:</strong> {status || "N/A"}
+                    </p>
+                  </div>
+
+                  <div className="appointment-actions">
+                    {status === "driver_confirmed" && (
+                      <LoadingButton
+                        onClick={() => handleStartAppointment(appointment.id)}
+                        loading={buttonLoading[`start_${appointment.id}`]}
+                        className="start-button"
+                      >
+                        Start Appointment
+                      </LoadingButton>
+                    )}
+
+                    {status === "awaiting_payment" && (
+                      <LoadingButton
+                        onClick={() => handlePaymentVerification(appointment)}
+                        loading={buttonLoading[`payment_${appointment.id}`]}
+                        className="payment-button"
+                      >
+                        Verify Payment
+                      </LoadingButton>
+                    )}
                   </div>
                 </div>
-
-                <div className="appointment-details">
-                  <p><strong>Date:</strong> {appointment.date ? new Date(appointment.date).toLocaleDateString() : "N/A"}</p>
-                  <p><strong>Time:</strong> {appointment.start_time || "N/A"} - {appointment.end_time || "N/A"}</p>
-                  <p><strong>Location:</strong> {appointment.location || "N/A"}</p>
-                  {renderTherapistInfo(appointment)}
-                  <p><strong>Services:</strong> {Array.isArray(appointment.services_details) ? appointment.services_details.map((s) => s.name).join(", ") : "N/A"}</p>
-                  <p><strong>Status:</strong> {status || "N/A"}</p>
-                </div>
-
-                <div className="appointment-actions">
-                  {status === "driver_confirmed" && (
-                    <LoadingButton
-                      onClick={() => handleStartAppointment(appointment.id)}
-                      loading={buttonLoading[`start_${appointment.id}`]}
-                      className="start-button"
-                    >
-                      Start Appointment
-                    </LoadingButton>
-                  )}
-
-                  {status === "awaiting_payment" && (
-                    <LoadingButton
-                      onClick={() => handlePaymentVerification(appointment)}
-                      loading={buttonLoading[`payment_${appointment.id}`]}
-                      className="payment-button"
-                    >
-                      Verify Payment
-                    </LoadingButton>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
 
         {/* Pagination Controls - Only show if not virtualized */}
@@ -2759,7 +2860,8 @@ const OperatorDashboard = () => {
                 placeholder="Add any additional notes about your decision..."
                 rows={3}
               />
-            </div>{" "}            <div className="modal-actions">
+            </div>{" "}
+            <div className="modal-actions">
               <LoadingButton
                 className="accept-button"
                 onClick={() => handleReviewSubmit("accept")}

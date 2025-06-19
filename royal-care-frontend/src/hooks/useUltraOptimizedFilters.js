@@ -213,7 +213,7 @@ export const useUltraOptimizedSorting = (appointments, currentFilter) => {
 
     // CRITICAL FIX: Always create a copy before sorting to prevent frozen array mutation
     const sortableArray = [...filtered];
-    
+
     // PERFORMANCE: Optimized sorting with pre-calculated values
     const sorted = sortableArray.sort((a, b) => {
       // Quick null checks

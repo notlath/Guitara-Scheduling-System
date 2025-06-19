@@ -296,33 +296,27 @@ export const useOptimizedAttendance = (selectedDate) => {
   const baseData = useOptimizedData("attendanceProvider", dataTypes, options);
 
   // Fetch attendance for a specific date with optimized caching
-  const fetchAttendanceForDate = useCallback(
-    async (date) => {
-      if (!date) return;
+  const fetchAttendanceForDate = useCallback(async (date) => {
+    if (!date) return;
 
-      const formattedDate =
-        typeof date === "object" ? date.toISOString().split("T")[0] : date;
+    const formattedDate =
+      typeof date === "object" ? date.toISOString().split("T")[0] : date;
 
-      return await optimizedDataManager.fetchAttendanceForDate(formattedDate);
-    },
-    []
-  );
+    return await optimizedDataManager.fetchAttendanceForDate(formattedDate);
+  }, []);
 
   // Get cached attendance for a date without triggering refresh
-  const getCachedAttendanceForDate = useCallback(
-    (date) => {
-      if (!date) return EMPTY_ARRAY;
+  const getCachedAttendanceForDate = useCallback((date) => {
+    if (!date) return EMPTY_ARRAY;
 
-      const formattedDate =
-        typeof date === "object" ? date.toISOString().split("T")[0] : date;
+    const formattedDate =
+      typeof date === "object" ? date.toISOString().split("T")[0] : date;
 
-      return (
-        optimizedDataManager.getCachedAttendanceForDate(formattedDate) ||
-        EMPTY_ARRAY
-      );
-    },
-    []
-  );
+    return (
+      optimizedDataManager.getCachedAttendanceForDate(formattedDate) ||
+      EMPTY_ARRAY
+    );
+  }, []);
 
   // Return enhanced attendance data
   return useMemo(

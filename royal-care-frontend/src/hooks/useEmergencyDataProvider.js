@@ -16,7 +16,12 @@ const EMPTY_OBJECT = Object.freeze({
   approachingDeadline: EMPTY_ARRAY,
   activeSessions: EMPTY_ARRAY,
   pickupRequests: EMPTY_ARRAY,
-  rejectionStats: Object.freeze({ total: 0, therapist: 0, driver: 0, pending: 0 }),
+  rejectionStats: Object.freeze({
+    total: 0,
+    therapist: 0,
+    driver: 0,
+    pending: 0,
+  }),
 });
 
 /**
@@ -42,7 +47,7 @@ export const useEmergencyDataProvider = () => {
     },
     (left, right) => {
       // Simple equality check to prevent unnecessary re-renders
-      return left === right || (left?.length === right?.length);
+      return left === right || left?.length === right?.length;
     }
   );
 
@@ -140,58 +145,55 @@ export const useEmergencyDataProvider = () => {
   );
 
   // Emergency pagination - simple, stable
-  const getPaginatedData = useCallback(
-    (data, page = 1, itemsPerPage = 10) => {
-      if (!Array.isArray(data) || data.length === 0) {
-        return {
-          currentItems: EMPTY_ARRAY,
-          totalPages: 0,
-          totalItems: 0,
-          hasNextPage: false,
-          hasPrevPage: false,
-        };
-      }
+  const getPaginatedData = useCallback((data, page = 1, itemsPerPage = 10) => {
+    if (!Array.isArray(data) || data.length === 0) {
+      return {
+        currentItems: EMPTY_ARRAY,
+        totalPages: 0,
+        totalItems: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      };
+    }
 
-      try {
-        const startIndex = (page - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        const currentItems = data.slice(startIndex, endIndex);
-        const totalPages = Math.ceil(data.length / itemsPerPage);
+    try {
+      const startIndex = (page - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const currentItems = data.slice(startIndex, endIndex);
+      const totalPages = Math.ceil(data.length / itemsPerPage);
 
-        return {
-          currentItems: Object.freeze(currentItems),
-          totalPages,
-          totalItems: data.length,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1,
-          startIndex: startIndex + 1,
-          endIndex: Math.min(endIndex, data.length),
-        };
-      } catch (error) {
-        console.warn("Emergency data provider: Pagination failed", error);
-        return {
-          currentItems: EMPTY_ARRAY,
-          totalPages: 0,
-          totalItems: 0,
-          hasNextPage: false,
-          hasPrevPage: false,
-        };
-      }
-    },
-    []
-  );
+      return {
+        currentItems: Object.freeze(currentItems),
+        totalPages,
+        totalItems: data.length,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+        startIndex: startIndex + 1,
+        endIndex: Math.min(endIndex, data.length),
+      };
+    } catch (error) {
+      console.warn("Emergency data provider: Pagination failed", error);
+      return {
+        currentItems: EMPTY_ARRAY,
+        totalPages: 0,
+        totalItems: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      };
+    }
+  }, []);
 
   return {
     // Raw data
     appointments,
-    
+
     // Filtered data
     ...filteredData,
-    
+
     // Utility functions
     getSortedAppointments,
     getPaginatedData,
-    
+
     // Status
     hasData: Array.isArray(appointments) && appointments.length > 0,
     isReady: true,
