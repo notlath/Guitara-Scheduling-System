@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { fetchClients } from "../../features/scheduling/schedulingSlice";
 import { useAppointmentFormCache } from "../../hooks/useAppointmentFormCache";
+import { filterClients } from "../../utils/searchUtils";
 import "./LazyClientSearch.css";
 
 /**
@@ -28,15 +29,12 @@ const LazyClientSearch = ({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [searchResults, setSearchResults] = useState([]);
+  const [allClients, setAllClients] = useState([]);
 
   // Refs
   const searchInputRef = useRef(null);
   const dropdownRef = useRef(null);
   const scrollContainerRef = useRef(null);
-  const loadingRef = useRef(false);
 
   // Debounced search term
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -50,88 +48,54 @@ const LazyClientSearch = ({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch clients function
-  const fetchClientData = useCallback(
-    async (query, pageNum = 1, append = false) => {
-      if (loadingRef.current) return;
+  // Fetch all clients function
+  const fetchAllClients = useCallback(async () => {
+    if (loading) return;
 
-      loadingRef.current = true;
-      setLoading(true);
+    setLoading(true);
 
-      try {
-        // Check cache first
-        const cached = clientCache.getSearchResults(query, pageNum);
-        if (cached) {
-          if (append) {
-            setSearchResults((prev) => [...prev, ...cached.data]);
-          } else {
-            setSearchResults(cached.data);
-          }
-          setHasMore(cached.hasMore);
-          setLoading(false);
-          loadingRef.current = false;
-          return;
-        }
-
-        // Fetch from API
-        const response = await dispatch(
-          fetchClients({
-            search: query,
-            page: pageNum,
-            limit: 20, // Load 20 items per page
-          })
-        ).unwrap();
-
-        const newClients = response.clients || response.results || response;
-        const hasMoreData = response.hasMore || newClients.length === 20;
-
-        // Cache the results
-        clientCache.setSearchResults(query, pageNum, newClients, hasMoreData);
-
-        // Update local state
-        if (append) {
-          setSearchResults((prev) => [...prev, ...newClients]);
-        } else {
-          setSearchResults(newClients);
-        }
-        setHasMore(hasMoreData);
-      } catch (error) {
-        console.error("Error fetching clients:", error);
-        setSearchResults([]);
-        setHasMore(false);
-      } finally {
+    try {
+      // Check cache first
+      const cached = clientCache.getAll();
+      if (cached && Array.isArray(cached)) {
+        setAllClients(cached);
         setLoading(false);
-        loadingRef.current = false;
+        return;
       }
-    },
-    [dispatch, clientCache]
-  );
 
-  // Reset search when search term changes
-  useEffect(() => {
-    if (debouncedSearchTerm.length >= 2) {
-      setPage(1);
-      setSearchResults([]);
-      setHasMore(true);
-      fetchClientData(debouncedSearchTerm, 1, false);
-    } else {
-      setSearchResults([]);
-      setHasMore(true);
+      // Fetch from API
+      const response = await dispatch(fetchClients()).unwrap();
+      const clients = response.clients || response.results || response || [];
+
+      // Ensure clients is an array
+      const clientsArray = Array.isArray(clients) ? clients : [];
+
+      // Cache the results
+      clientCache.setAll(clientsArray);
+      setAllClients(clientsArray);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      setAllClients([]);
+    } finally {
+      setLoading(false);
     }
-  }, [debouncedSearchTerm, fetchClientData]);
+  }, [dispatch, clientCache, loading]);
 
-  // Filter clients based on search term with fuzzy matching
+  // Load clients on component mount
+  useEffect(() => {
+    fetchAllClients();
+  }, [fetchAllClients]);
+
+  // Filter clients based on search term
   const filteredClients = useMemo(() => {
     if (debouncedSearchTerm.length < 2) {
-      // For very short searches, use cached all clients if available
-      const allClients = clientCache.getAll();
-      if (allClients) {
-        return allClients.slice(0, 10); // Show first 10
-      }
-      return [];
+      // For very short searches, show first 10 clients
+      return allClients.slice(0, 10);
     }
-    return searchResults;
-  }, [searchResults, debouncedSearchTerm, clientCache]);
+
+    // Use the search utility to filter clients
+    return filterClients(allClients, debouncedSearchTerm, 50);
+  }, [allClients, debouncedSearchTerm]);
 
   // Get display text for selected client
   const getSelectedClientText = useCallback(() => {
@@ -200,26 +164,6 @@ const LazyClientSearch = ({
     [isOpen, filteredClients, selectedIndex, handleClientSelect]
   );
 
-  // Handle scroll for infinite loading
-  const handleScroll = useCallback(
-    (e) => {
-      const { scrollTop, scrollHeight, clientHeight } = e.target;
-      const isNearBottom = scrollTop + clientHeight >= scrollHeight - 10;
-
-      if (
-        isNearBottom &&
-        hasMore &&
-        !loading &&
-        debouncedSearchTerm.length >= 2
-      ) {
-        const nextPage = page + 1;
-        setPage(nextPage);
-        fetchClientData(debouncedSearchTerm, nextPage, true);
-      }
-    },
-    [hasMore, loading, debouncedSearchTerm, page, fetchClientData]
-  );
-
   // Handle clicks outside dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -274,54 +218,37 @@ const LazyClientSearch = ({
               Type at least 2 characters to search for clients
             </div>
           ) : (
-            <div
-              className="client-results-scroll"
-              ref={scrollContainerRef}
-              onScroll={handleScroll}
-            >
+            <div className="client-results-scroll" ref={scrollContainerRef}>
               {filteredClients.length > 0 ? (
-                <>
-                  {filteredClients.map((client, index) => (
-                    <div
-                      key={`client-${client.id}`}
-                      className={`client-search-item ${
-                        index === selectedIndex ? "selected" : ""
-                      }`}
-                      onClick={() => handleClientSelect(client)}
-                      onMouseEnter={() => setSelectedIndex(index)}
-                    >
-                      <div className="client-name">
-                        {client.first_name || ""} {client.last_name || ""}
-                      </div>
-                      <div className="client-phone">
-                        {client.phone_number || "No phone number"}
-                      </div>
-                      {client.email && (
-                        <div className="client-email">{client.email}</div>
-                      )}
+                filteredClients.map((client, index) => (
+                  <div
+                    key={`client-${client.id}`}
+                    className={`client-search-item ${
+                      index === selectedIndex ? "selected" : ""
+                    }`}
+                    onClick={() => handleClientSelect(client)}
+                    onMouseEnter={() => setSelectedIndex(index)}
+                  >
+                    <div className="client-name">
+                      {client.first_name || ""} {client.last_name || ""}
                     </div>
-                  ))}
-                  {loading && (
-                    <div className="client-search-loading">
-                      <i className="fas fa-spinner fa-spin"></i>
-                      Loading more clients...
+                    <div className="client-phone">
+                      {client.phone_number || "No phone number"}
                     </div>
-                  )}
-                  {!loading && hasMore && filteredClients.length >= 20 && (
-                    <div className="client-search-load-more">
-                      Scroll for more results
-                    </div>
-                  )}
-                </>
+                    {client.email && (
+                      <div className="client-email">{client.email}</div>
+                    )}
+                  </div>
+                ))
               ) : loading ? (
                 <div className="client-search-loading">
                   <i className="fas fa-spinner fa-spin"></i>
-                  Searching clients...
+                  Loading clients...
                 </div>
               ) : (
                 <div className="client-search-no-results">
-                  {searchTerm
-                    ? `No clients found matching "${searchTerm}"`
+                  {debouncedSearchTerm
+                    ? `No clients found matching "${debouncedSearchTerm}"`
                     : "No clients available"}
                 </div>
               )}
