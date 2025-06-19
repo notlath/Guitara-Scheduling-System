@@ -232,36 +232,26 @@ const SchedulingDashboard = () => {
               </p>
               {appointment.therapists_details &&
               appointment.therapists_details.length > 0 ? (
-                <div>
-                  <strong>Therapists:</strong>
-                  <div className="therapist-list">
-                    {appointment.therapists_details.map((therapist) => (
-                      <div key={therapist.id} className="therapist-name">
-                        {therapist.first_name} {therapist.last_name}
-                        {therapist.specialization && (
-                          <span className="therapist-specialization">
-                            {" "}
-                            ({therapist.specialization})
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <p>
+                  <strong>Therapists:</strong>{" "}
+                  {appointment.therapists_details.map((therapist, index) => (
+                    <span key={therapist.id}>
+                      {therapist.first_name} {therapist.last_name}
+                      {therapist.specialization &&
+                        ` (${therapist.specialization})`}
+                      {index < appointment.therapists_details.length - 1 &&
+                        ", "}
+                    </span>
+                  ))}
+                </p>
               ) : appointment.therapist_details ? (
-                <div>
-                  <strong>Therapist:</strong>
-                  <div className="therapist-name">
-                    {appointment.therapist_details.first_name}{" "}
-                    {appointment.therapist_details.last_name}
-                    {appointment.therapist_details.specialization && (
-                      <span className="therapist-specialization">
-                        {" "}
-                        ({appointment.therapist_details.specialization})
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <p>
+                  <strong>Therapist:</strong>{" "}
+                  {appointment.therapist_details.first_name}{" "}
+                  {appointment.therapist_details.last_name}
+                  {appointment.therapist_details.specialization &&
+                    ` (${appointment.therapist_details.specialization})`}
+                </p>
               ) : (
                 <p>
                   <strong>Therapist:</strong> Not assigned
