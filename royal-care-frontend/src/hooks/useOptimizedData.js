@@ -6,6 +6,7 @@
  * - Leverages Redux state as primary source
  * - Falls back to cache only when Redux state is empty
  * - Minimal re-renders and subscriptions
+ * - Stable dependencies to prevent unnecessary hook re-runs
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -24,7 +25,7 @@ export const useOptimizedData = (
   const unsubscribeRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Get data from Redux state first
+  // Get data from Redux state first with optimized selector
   const reduxData = useSelector(
     (state) => ({
       appointments: state.scheduling?.appointments || [],
@@ -34,8 +35,8 @@ export const useOptimizedData = (
       loading: state.scheduling?.loading || false,
       error: state.scheduling?.error || null,
     }),
+    // Optimized equality check to prevent unnecessary re-renders
     (left, right) => {
-      // Custom equality check to prevent unnecessary re-renders
       return (
         left.appointments.length === right.appointments.length &&
         left.todayAppointments.length === right.todayAppointments.length &&
@@ -48,10 +49,21 @@ export const useOptimizedData = (
     }
   );
 
-  // Memoize data types to prevent subscription churn
-  const stableDataTypes = useMemo(() => dataTypes, [dataTypes]);
+  // Stabilize data types array to prevent unnecessary re-subscriptions
+  const stableDataTypes = useMemo(() => {
+    // Create a sorted, deduplicated array for stable comparison
+    return [...new Set(dataTypes)].sort();
+  }, [dataTypes]); // Keep simple dependency, let React handle it efficiently
 
-  // Subscribe to data manager
+  // Stabilize options object to prevent unnecessary re-subscriptions
+  const stableOptions = useMemo(() => {
+    return {
+      priority: options?.priority || "normal",
+      userRole: options?.userRole,
+    };
+  }, [options?.priority, options?.userRole]);
+
+  // Subscribe to data manager with stable dependencies
   useEffect(() => {
     if (stableDataTypes.length === 0) return;
 
@@ -60,7 +72,7 @@ export const useOptimizedData = (
     unsubscribeRef.current = optimizedDataManager.subscribe(
       componentId.current,
       stableDataTypes,
-      options
+      stableOptions
     );
 
     return () => {
@@ -72,9 +84,9 @@ export const useOptimizedData = (
         unsubscribeRef.current = null;
       }
     };
-  }, [componentName, stableDataTypes, options]);
+  }, [componentName, stableDataTypes, stableOptions]);
 
-  // Force refresh function
+  // Force refresh function with stable reference
   const forceRefresh = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -84,12 +96,12 @@ export const useOptimizedData = (
     }
   }, [stableDataTypes]);
 
-  // Get cached data when Redux state is empty
+  // Get cached data function with stable reference
   const getCachedData = useCallback((dataType) => {
     return optimizedDataManager.getCachedData(dataType);
   }, []);
 
-  // Build final data object with fallbacks
+  // Build final data object with fallbacks - memoized for performance
   const finalData = useMemo(() => {
     const result = {};
 
@@ -99,12 +111,19 @@ export const useOptimizedData = (
       if (reduxValue && reduxValue.length > 0) {
         result[dataType] = reduxValue;
       } else {
-        result[dataType] = getCachedData(dataType);
+        result[dataType] = getCachedData(dataType) || [];
       }
     });
 
     return result;
   }, [stableDataTypes, reduxData, getCachedData]);
+
+  // Check if we have any meaningful data
+  const hasData = useMemo(() => {
+    return Object.values(finalData).some(
+      (data) => Array.isArray(data) && data.length > 0
+    );
+  }, [finalData]);
 
   return {
     // Individual data properties
@@ -123,9 +142,7 @@ export const useOptimizedData = (
     forceRefresh,
 
     // Status indicators
-    hasData: Object.values(finalData).some(
-      (data) => Array.isArray(data) && data.length > 0
-    ),
+    hasData,
     dataSource: reduxData.appointments?.length > 0 ? "redux" : "cache",
   };
 };

@@ -4,7 +4,7 @@
  */
 
 import { isValidToken } from "../utils/authUtils.js";
-import dataManager from "./dataManager.js";
+import optimizedDataManager from "./optimizedDataManager.js";
 
 class CachePreloader {
   constructor() {
@@ -193,7 +193,7 @@ class CachePreloader {
    */
   async preloadDataType(dataType, priority = "normal") {
     // Check if already cached and valid
-    if (dataManager.isCacheValid(dataType)) {
+    if (optimizedDataManager.isCacheValid(dataType)) {
       console.log(`💾 CachePreloader: ${dataType} already cached, skipping`);
       return;
     }
@@ -209,7 +209,7 @@ class CachePreloader {
 
     try {
       console.log(`📡 CachePreloader: Preloading ${dataType} (${priority})`);
-      await dataManager.fetchDataType(dataType);
+      await optimizedDataManager.fetchDataType(dataType);
       console.log(`✅ CachePreloader: Successfully preloaded ${dataType}`);
     } catch (error) {
       console.warn(
