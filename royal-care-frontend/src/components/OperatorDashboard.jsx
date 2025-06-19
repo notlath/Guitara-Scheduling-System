@@ -37,6 +37,7 @@ import PerformanceMonitor from "./PerformanceMonitor";
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/OperatorDashboard.css";
+import "../styles/UrgencyIndicators.css";
 
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
@@ -237,6 +238,92 @@ const OperatorDashboard = () => {
     }
   };
 
+  const sortAppointmentsByTimeAndUrgency = (appointments) => {
+    const getUrgencyScore = (appointment) => {
+      const now = new Date();
+      const appointmentDateTime = new Date(
+        `${appointment.date}T${appointment.start_time}`
+      );
+      const timeDiff = appointmentDateTime - now;
+      const hoursUntilAppointment = timeDiff / (1000 * 60 * 60);
+
+      // Define urgency based on status and time
+      switch (appointment.status) {
+        case "pending":
+          // More urgent if response deadline is approaching
+          if (appointment.response_deadline) {
+            const deadline = new Date(appointment.response_deadline);
+            const timeToDeadline = deadline - now;
+            const minutesToDeadline = timeToDeadline / (1000 * 60);
+
+            if (minutesToDeadline <= 5) return 100; // Critical - deadline very soon
+            if (minutesToDeadline <= 15) return 90; // High urgency
+            if (minutesToDeadline <= 30) return 80; // Medium urgency
+          }
+          return 70; // Normal pending urgency
+
+        case "confirmed":
+        case "driver_confirmed":
+          if (hoursUntilAppointment <= 1) return 85; // Very urgent - starting soon
+          if (hoursUntilAppointment <= 2) return 75; // Urgent - starting in 2 hours
+          if (hoursUntilAppointment <= 4) return 65; // Medium urgency
+          return 50; // Normal confirmed appointment
+
+        case "in_progress":
+        case "session_started":
+        case "journey_started":
+          return 95; // Very high - active appointments
+
+        case "awaiting_payment":
+          return 60; // Medium - needs attention but not time-critical
+
+        case "rejected":
+        case "auto_cancelled":
+          return 20; // Low - already handled
+
+        case "completed":
+          return 10; // Lowest - just for reference
+
+        default:
+          return 40; // Default medium-low priority
+      }
+    };
+
+    const getTimeScore = (appointment) => {
+      const now = new Date();
+      const appointmentDateTime = new Date(
+        `${appointment.date}T${appointment.start_time}`
+      );
+      const timeDiff = appointmentDateTime - now;
+
+      // Score based on how soon the appointment is (higher score = sooner)
+      if (timeDiff < 0) return 1000; // Past appointments at top
+      if (timeDiff <= 60 * 60 * 1000) return 900; // Within 1 hour
+      if (timeDiff <= 2 * 60 * 60 * 1000) return 800; // Within 2 hours
+      if (timeDiff <= 4 * 60 * 60 * 1000) return 700; // Within 4 hours
+      if (timeDiff <= 24 * 60 * 60 * 1000) return 600; // Today
+
+      // Future appointments scored by how many days away (closer = higher score)
+      const daysAway = Math.floor(timeDiff / (24 * 60 * 60 * 1000));
+      return Math.max(100, 500 - daysAway * 50);
+    };
+
+    return appointments.sort((a, b) => {
+      const urgencyA = getUrgencyScore(a);
+      const urgencyB = getUrgencyScore(b);
+
+      // If urgency is significantly different, sort by urgency
+      if (Math.abs(urgencyA - urgencyB) > 10) {
+        return urgencyB - urgencyA; // Higher urgency first
+      }
+
+      // If urgency is similar, sort by time
+      const timeA = getTimeScore(a);
+      const timeB = getTimeScore(b);
+
+      return timeB - timeA; // Sooner appointments first
+    });
+  };
   // Load driver data on component mount and refresh
   useEffect(() => {
     const loadDriverData = async () => {
@@ -521,6 +608,62 @@ const OperatorDashboard = () => {
     return (
       <span className="acceptance-indicator no-therapist">No therapist</span>
     );
+  };
+
+  // Helper function to get urgency level for visual display
+  const getUrgencyLevel = (appointment) => {
+    const now = new Date();
+    const appointmentDateTime = new Date(
+      `${appointment.date}T${appointment.start_time}`
+    );
+    const timeDiff = appointmentDateTime - now;
+    const hoursUntilAppointment = timeDiff / (1000 * 60 * 60);
+
+    // Same logic as in sortAppointmentsByTimeAndUrgency
+    switch (appointment.status) {
+      case "pending":
+        if (appointment.response_deadline) {
+          const deadline = new Date(appointment.response_deadline);
+          const timeToDeadline = deadline - now;
+          const minutesToDeadline = timeToDeadline / (1000 * 60);
+          if (minutesToDeadline <= 5) return "critical";
+          if (minutesToDeadline <= 15) return "high";
+          if (minutesToDeadline <= 30) return "medium";
+        }
+        return "normal";
+
+      case "confirmed":
+      case "driver_confirmed":
+        if (hoursUntilAppointment <= 1) return "high";
+        if (hoursUntilAppointment <= 2) return "medium";
+        return "normal";
+
+      case "in_progress":
+      case "session_started":
+      case "journey_started":
+        return "critical";
+
+      case "awaiting_payment":
+        return "medium";
+
+      default:
+        return "normal";
+    }
+  };
+
+  // Helper function to get urgency badge
+  const getUrgencyBadge = (urgencyLevel) => {
+    const badges = {
+      critical: {
+        icon: "🚨",
+        label: "Critical",
+        className: "urgency-critical",
+      },
+      high: { icon: "🔥", label: "High", className: "urgency-high" },
+      medium: { icon: "⚠️", label: "Medium", className: "urgency-medium" },
+      normal: { icon: "⚪", label: "Normal", className: "urgency-normal" },
+    };
+    return badges[urgencyLevel] || badges.normal;
   };
 
   const handleLogout = () => {
@@ -1371,6 +1514,14 @@ const OperatorDashboard = () => {
     );
   };
 
+  // 🔥 PERFORMANCE OPTIMIZATION: Memoize sorted appointments for "All Appointments" view
+  const sortedAllAppointments = useMemo(() => {
+    if (!appointments || appointments.length === 0) {
+      return [];
+    }
+    return sortAppointmentsByTimeAndUrgency([...appointments]);
+  }, [appointments]);
+
   // Render functions for different views
   const renderRejectedAppointments = () => {
     if (rejectedAppointments.length === 0) {
@@ -1664,9 +1815,8 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderAllAppointments = () => {
-    if (!appointments || appointments.length === 0) {
+    if (!sortedAllAppointments || sortedAllAppointments.length === 0) {
       return (
         <div className="empty-state">
           <i className="fas fa-calendar"></i>
@@ -1677,65 +1827,82 @@ const OperatorDashboard = () => {
 
     return (
       <div className="appointments-list">
-        {appointments.map((appointment) => (
-          <div key={appointment.id} className="appointment-card">
-            <div className="appointment-header">
-              <h3>
-                Appointment #{appointment.id} -{" "}
-                {appointment.client_details?.first_name}{" "}
-                {appointment.client_details?.last_name}
-              </h3>
-              <span className={`status-badge ${appointment.status}`}>
-                {appointment.status.charAt(0).toUpperCase() +
-                  appointment.status.slice(1).replace(/_/g, " ")}
-              </span>
-            </div>
-            <div className="appointment-details">
-              <p>
-                <strong>Date:</strong>{" "}
-                {new Date(appointment.date).toLocaleDateString()}
-              </p>
-              <p>
-                <strong>Time:</strong> {appointment.start_time} -{" "}
-                {appointment.end_time}
-              </p>
-              <p>
-                <strong>Location:</strong> {appointment.location}
-              </p>
-              {renderTherapistInfo(appointment)}
-              <p>
-                <strong>Services:</strong>{" "}
-                {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>{" "}
-              <p>
-                <strong>Status:</strong> {appointment.status}
-              </p>
-            </div>{" "}
-            <div className="appointment-actions">
-              {/* Show Start Appointment button when status is driver_confirmed */}
-              {appointment.status === "driver_confirmed" && (
-                <LoadingButton
-                  onClick={() => handleStartAppointment(appointment.id)}
-                  loading={buttonLoading[`start_${appointment.id}`]}
-                  className="start-button"
-                >
-                  Start Appointment
-                </LoadingButton>
-              )}
+        <div className="sort-indicator">
+          <i className="fas fa-sort-amount-down"></i>
+          <span>Sorted by urgency and time (most urgent first)</span>
+        </div>
+        {sortedAllAppointments.map((appointment) => {
+          const urgencyLevel = getUrgencyLevel(appointment);
+          const urgencyBadge = getUrgencyBadge(urgencyLevel);
 
-              {/* Show payment verification button for awaiting payment */}
-              {appointment.status === "awaiting_payment" && (
-                <LoadingButton
-                  onClick={() => handlePaymentVerification(appointment)}
-                  loading={buttonLoading[`payment_${appointment.id}`]}
-                  className="payment-button"
-                >
-                  Verify Payment
-                </LoadingButton>
-              )}
+          return (
+            <div
+              key={appointment.id}
+              className={`appointment-card ${urgencyLevel}`}
+            >
+              <div className="appointment-header">
+                <h3>
+                  Appointment #{appointment.id} -{" "}
+                  {appointment.client_details?.first_name}{" "}
+                  {appointment.client_details?.last_name}
+                </h3>
+                <div className="status-badges">
+                  <span className={`status-badge ${appointment.status}`}>
+                    {appointment.status.charAt(0).toUpperCase() +
+                      appointment.status.slice(1).replace(/_/g, " ")}
+                  </span>
+                  <span className={`urgency-badge ${urgencyBadge.className}`}>
+                    {urgencyBadge.icon} {urgencyBadge.label}
+                  </span>
+                </div>
+              </div>{" "}
+              <div className="appointment-details">
+                <p>
+                  <strong>Date:</strong>{" "}
+                  {new Date(appointment.date).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>Time:</strong> {appointment.start_time} -{" "}
+                  {appointment.end_time}
+                </p>
+                <p>
+                  <strong>Location:</strong> {appointment.location}
+                </p>
+                {renderTherapistInfo(appointment)}
+                <p>
+                  <strong>Services:</strong>{" "}
+                  {appointment.services_details?.map((s) => s.name).join(", ")}
+                </p>{" "}
+                <p>
+                  <strong>Status:</strong> {appointment.status}
+                </p>
+              </div>{" "}
+              <div className="appointment-actions">
+                {/* Show Start Appointment button when status is driver_confirmed */}
+                {appointment.status === "driver_confirmed" && (
+                  <LoadingButton
+                    onClick={() => handleStartAppointment(appointment.id)}
+                    loading={buttonLoading[`start_${appointment.id}`]}
+                    className="start-button"
+                  >
+                    Start Appointment
+                  </LoadingButton>
+                )}
+
+                {/* Show payment verification button for awaiting payment */}
+                {appointment.status === "awaiting_payment" && (
+                  <LoadingButton
+                    onClick={() => handlePaymentVerification(appointment)}
+                    loading={buttonLoading[`payment_${appointment.id}`]}
+                    className="payment-button"
+                  >
+                    Verify Payment
+                  </LoadingButton>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}{" "}
       </div>
     );
   };
@@ -1995,6 +2162,7 @@ const OperatorDashboard = () => {
       </div>
     );
   };
+
   // Render the tab switcher at the top of the dashboard
   return (
     <PageLayout>
