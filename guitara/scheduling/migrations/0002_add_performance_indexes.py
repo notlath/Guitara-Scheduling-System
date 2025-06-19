@@ -25,11 +25,11 @@ class Migration(migrations.Migration):
                 # Time-range queries for conflict detection
                 "CREATE INDEX idx_appointments_therapist_time_conflicts ON scheduling_appointment(therapist_id, date, start_time, end_time) WHERE status IN ('pending', 'confirmed', 'in_progress');",
                 "CREATE INDEX idx_appointments_driver_time_conflicts ON scheduling_appointment(driver_id, date, start_time, end_time) WHERE status IN ('pending', 'confirmed', 'in_progress');",
-                # Real-time query optimizations
-                "CREATE INDEX idx_appointments_today ON scheduling_appointment(date) WHERE date = CURRENT_DATE;",
-                "CREATE INDEX idx_appointments_upcoming ON scheduling_appointment(date, status) WHERE date >= CURRENT_DATE AND date <= (CURRENT_DATE + INTERVAL '7 days') AND status IN ('pending', 'confirmed');",
-                # Overdue appointments for auto-cancellation
-                "CREATE INDEX idx_appointments_overdue ON scheduling_appointment(status, response_deadline) WHERE status = 'pending' AND response_deadline < NOW();",
+                # Real-time query optimizations - Fixed: Removed CURRENT_DATE functions
+                "CREATE INDEX idx_appointments_today ON scheduling_appointment(date);",
+                "CREATE INDEX idx_appointments_upcoming ON scheduling_appointment(date, status) WHERE status IN ('pending', 'confirmed');",
+                # Overdue appointments for auto-cancellation - Fixed: Removed NOW() function
+                "CREATE INDEX idx_appointments_overdue ON scheduling_appointment(status, response_deadline) WHERE status = 'pending';",
                 # Pickup request optimizations
                 "CREATE INDEX idx_appointments_pickup_requests ON scheduling_appointment(pickup_requested, pickup_request_time, status) WHERE pickup_requested = true;",
                 "CREATE INDEX idx_appointments_pickup_urgency ON scheduling_appointment(pickup_urgency, pickup_request_time) WHERE pickup_requested = true;",

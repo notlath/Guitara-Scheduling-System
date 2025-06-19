@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "channels",
+    # "django_celery_beat",
+    "django_celery_results",
     "core",
     "authentication",
     "registration",
@@ -69,7 +71,12 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.sanitization_middleware.SanitizationMiddleware",
-    "scheduling.services_middleware.ServicesMiddleware",  # Add our services middleware
+    "scheduling.services_middleware.ServicesMiddleware",
+    "scheduling.performance_middleware.PerformanceMonitoringMiddleware",
+    "scheduling.performance_middleware.DatabaseQueryLoggingMiddleware",
+    "scheduling.performance_middleware.CacheHitRateMiddleware",
+    "scheduling.performance_middleware.APIResponseOptimizationMiddleware",
+    "scheduling.performance_middleware.HealthCheckMiddleware",
 ]
 
 ROOT_URLCONF = "guitara.urls"
@@ -95,11 +102,7 @@ ASGI_APPLICATION = "guitara.asgi.application"
 
 # Channels layer configuration
 CHANNEL_LAYERS = {
-    "default": {
-        # Use in-memory channel layer for development/testing
-        # For production, you should install Redis and use channels_redis
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    },
+    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
 }
 
 
@@ -125,6 +128,14 @@ DATABASES = {
         "PASSWORD": env("SUPABASE_DB_PASSWORD", default=None),
         "HOST": env("SUPABASE_DB_HOST", default=None),
         "PORT": "5432",
+        "OPTIONS": {
+            # PostgreSQL-specific connection options
+            "connect_timeout": 10,
+            "application_name": "guitara_scheduling",
+        },
+        "ATOMIC_REQUESTS": False,  # For better performance
+        "CONN_HEALTH_CHECKS": True,
+        "CONN_MAX_AGE": 600,  # 10 minutes - Connection reuse timeout
     }
 }
 
@@ -302,3 +313,58 @@ LOGGING = {
 }
 
 APPEND_SLASH = True
+
+# ======================================
+# CELERY CONFIGURATION FOR BACKGROUND TASKS
+# ======================================
+
+import os
+
+CELERY_BROKER_URL = f"redis://127.0.0.1:6379/0"
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_CACHE_BACKEND = "django-cache"
+
+# Task execution settings
+CELERY_TASK_ALWAYS_EAGER = False  # Set to True for synchronous testing
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+
+# Task routing for performance
+CELERY_TASK_ROUTES = {
+    "scheduling.tasks.process_driver_assignment": {"queue": "high_priority"},
+    "scheduling.tasks.send_appointment_notifications": {"queue": "notifications"},
+    "scheduling.tasks.cleanup_expired_appointments": {"queue": "maintenance"},
+}
+
+# Worker configuration
+CELERY_WORKER_PREFETCH_MULTIPLIER = 4
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
+
+# Beat scheduler for periodic tasks
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+# Results configuration
+CELERY_RESULT_EXPIRES = 3600  # 1 hour
+CELERY_TASK_RESULT_EXPIRES = 3600
+
+# Serialization
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = TIME_ZONE
+
+# Error handling
+CELERY_TASK_SOFT_TIME_LIMIT = 60  # 60 seconds
+CELERY_TASK_TIME_LIMIT = 120  # 2 minutes
+
+# ======================================
+# LOCAL SETTINGS OVERRIDE
+# ======================================
+# Import local settings for mode configuration (Redis vs In-Memory)
+try:
+    from .local_settings import *
+
+    print("[SETTINGS] Local settings loaded successfully")
+except ImportError:
+    print("[SETTINGS] No local settings found, using defaults")
+    pass

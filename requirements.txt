@@ -12,6 +12,10 @@ channels-redis==4.1.0            # Redis backend for Django Channels
 daphne==4.0.0                    # ASGI server for Django Channels
 redis==5.0.1                     # Python client for Redis
 
+# Background task processing
+celery==5.3.4                    # Distributed task queue
+django-celery-results==2.5.0     # Store Celery task results in Django database
+
 # Security and cryptography dependencies
 cryptography==40.0.2             # Required for secure cryptographic operations
 

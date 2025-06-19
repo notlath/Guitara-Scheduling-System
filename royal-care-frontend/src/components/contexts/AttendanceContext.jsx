@@ -18,13 +18,8 @@ export const AttendanceMemoProvider = ({ children }) => {
       selectedDate,
       setSelectedDate, // Provide date setter to child components
     }),
-    [
-      attendanceData.attendanceRecords,
-      attendanceData.loading,
-      attendanceData.error,
-      attendanceData.hasDataForDate,
-      selectedDate,
-    ]
+    [attendanceData, selectedDate]
+    // setSelectedDate is stable as a setState function
   );
 
   return (
@@ -46,8 +41,9 @@ export const useAttendanceContext = () => {
 
 // Custom hook for just the attendance records (most common use case)
 export const useAttendanceRecords = () => {
-  const { attendanceRecords, loading, error } = useAttendanceContext();
-  return { attendanceRecords, loading, error };
+  const { attendanceRecords, loading, error, selectedDate } =
+    useAttendanceContext();
+  return { attendanceRecords, loading, error, selectedDate };
 };
 
 // Custom hook for attendance actions (less common, prevents unnecessary re-renders)
@@ -66,3 +62,5 @@ export const useAttendanceActions = () => {
     setSelectedDate,
   };
 };
+
+export default AttendanceContext;

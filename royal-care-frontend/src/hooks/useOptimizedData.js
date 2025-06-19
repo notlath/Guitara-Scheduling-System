@@ -1,201 +1,240 @@
 /**
- * Optimized React Hook for Data Management
- *
- * Much simpler than the original useDataManager:
- * - Uses longer cache TTL to reduce API calls
- * - Leverages Redux state as primary source
- * - Falls back to cache only when Redux state is empty
- * - Minimal re-renders and subscriptions
- * - Stable dependencies to prevent unnecessary hook re-runs
+ * PERFORMANCE FIX: Enhanced useOptimizedData with aggressive memoization
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import optimizedDataManager from "../services/optimizedDataManager";
 
+// Global stable empty arrays to prevent re-renders
+const EMPTY_ARRAY = Object.freeze([]);
+const EMPTY_OBJECT = Object.freeze({});
+
 /**
- * Simple hook that combines Redux state with intelligent caching
+ * Ultra-optimized Redux selector with structural sharing
  */
+const createOptimizedSelector = () => {
+  let lastResult = null;
+  let lastState = null;
+
+  return (state) => {
+    // Quick reference check first
+    if (state === lastState && lastResult) {
+      return lastResult;
+    }
+
+    const newResult = {
+      appointments: state.scheduling?.appointments || EMPTY_ARRAY,
+      todayAppointments: state.scheduling?.todayAppointments || EMPTY_ARRAY,
+      upcomingAppointments:
+        state.scheduling?.upcomingAppointments || EMPTY_ARRAY,
+      notifications: state.scheduling?.notifications || EMPTY_ARRAY,
+      attendanceRecords: state.attendance?.attendanceRecords || EMPTY_ARRAY,
+      loading: state.scheduling?.loading || state.attendance?.loading || false,
+      error: state.scheduling?.error || state.attendance?.error || null,
+    };
+
+    // Structural comparison for arrays
+    if (
+      lastResult &&
+      lastResult.appointments.length === newResult.appointments.length &&
+      lastResult.todayAppointments.length ===
+        newResult.todayAppointments.length &&
+      lastResult.upcomingAppointments.length ===
+        newResult.upcomingAppointments.length &&
+      lastResult.notifications.length === newResult.notifications.length &&
+      lastResult.attendanceRecords.length ===
+        newResult.attendanceRecords.length &&
+      lastResult.loading === newResult.loading &&
+      lastResult.error === newResult.error
+    ) {
+      return lastResult; // Return cached result to prevent re-renders
+    }
+
+    lastResult = newResult;
+    lastState = state;
+    return newResult;
+  };
+};
+
 export const useOptimizedData = (
   componentName,
   dataTypes = [],
   options = {}
 ) => {
-  const componentId = useRef(`${componentName}_${Date.now()}`);
   const unsubscribeRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Get data from Redux state first with optimized selector
-  const reduxData = useSelector(
-    (state) => ({
-      appointments: state.scheduling?.appointments || [],
-      todayAppointments: state.scheduling?.todayAppointments || [],
-      upcomingAppointments: state.scheduling?.upcomingAppointments || [],
-      notifications: state.scheduling?.notifications || [],
-      attendanceRecords: state.attendance?.attendanceRecords || [],
-      loading: state.scheduling?.loading || state.attendance?.loading || false,
-      error: state.scheduling?.error || state.attendance?.error || null,
-    }),
-    // Optimized equality check to prevent unnecessary re-renders
-    (left, right) => {
-      return (
-        left.appointments.length === right.appointments.length &&
-        left.todayAppointments.length === right.todayAppointments.length &&
-        left.upcomingAppointments.length ===
-          right.upcomingAppointments.length &&
-        left.notifications.length === right.notifications.length &&
-        left.attendanceRecords.length === right.attendanceRecords.length &&
-        left.loading === right.loading &&
-        left.error === right.error
-      );
-    }
-  );
+  // Create optimized selector instance
+  const optimizedSelector = useMemo(createOptimizedSelector, []);
 
-  // Stabilize data types array to prevent unnecessary re-subscriptions
-  const stableDataTypes = useMemo(() => {
-    // Create a sorted, deduplicated array for stable comparison
-    return [...new Set(dataTypes)].sort();
-  }, [dataTypes]); // Keep simple dependency, let React handle it efficiently
-
-  // Stabilize options object to prevent unnecessary re-subscriptions
-  const stableOptions = useMemo(() => {
-    return {
-      priority: options?.priority || "normal",
-      userRole: options?.userRole,
-    };
-  }, [options?.priority, options?.userRole]);
-
-  // Subscribe to data manager with stable dependencies
-  useEffect(() => {
-    if (stableDataTypes.length === 0) return;
-
-    console.log(`🔌 ${componentName}: Subscribing to optimized data manager`);
-
-    unsubscribeRef.current = optimizedDataManager.subscribe(
-      componentId.current,
-      stableDataTypes,
-      stableOptions
-    );
-
-    return () => {
-      if (unsubscribeRef.current) {
-        console.log(
-          `🔌 ${componentName}: Unsubscribing from optimized data manager`
-        );
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-    };
-  }, [componentName, stableDataTypes, stableOptions]);
-
-  // Force refresh function with stable reference
-  const forceRefresh = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await optimizedDataManager.forceRefresh(stableDataTypes);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [stableDataTypes]);
-
-  // Targeted refresh methods - more efficient than forceRefresh
-  const refreshAppointments = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await optimizedDataManager.refreshAppointments();
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // Get data from Redux state with ultra-optimized selector
+  const reduxData = useSelector(optimizedSelector);
 
   const refreshNotifications = useCallback(async () => {
+    if (isLoading) return;
     setIsLoading(true);
     try {
       await optimizedDataManager.refreshNotifications();
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isLoading]);
 
-  const refreshUserData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await optimizedDataManager.refreshUserSpecificData();
-    } finally {
-      setIsLoading(false);
+  // PERFORMANCE: Stabilize data types array aggressively
+  const stableDataTypes = useMemo(() => {
+    if (!Array.isArray(dataTypes) || dataTypes.length === 0) {
+      return EMPTY_ARRAY;
     }
-  }, []);
+    return [...new Set(dataTypes)].sort();
+  }, [dataTypes]); // Include dataTypes dependency
 
-  const quickRefresh = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await optimizedDataManager.quickRefresh();
-    } finally {
-      setIsLoading(false);
+  // PERFORMANCE: Stabilize options object
+  const stableOptions = useMemo(
+    () => ({
+      priority: options?.priority || "normal",
+      userRole: options?.userRole,
+    }),
+    [options?.priority, options?.userRole]
+  );
+
+  // PERFORMANCE: Optimized subscription management
+  useEffect(() => {
+    if (stableDataTypes.length === 0) return;
+
+    const subscriptionKey = `${componentName}_${stableDataTypes.join("_")}_${
+      stableOptions.priority
+    }`;
+
+    // Prevent duplicate subscriptions
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
     }
-  }, []);
 
-  // Get cached data function with stable reference
+    unsubscribeRef.current = optimizedDataManager.subscribe(
+      subscriptionKey,
+      stableDataTypes,
+      stableOptions
+    );
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [componentName, stableDataTypes, stableOptions]);
+
+  // PERFORMANCE: Cached data retrieval with memoization
   const getCachedData = useCallback((dataType) => {
-    return optimizedDataManager.getCachedData(dataType);
+    const cached = optimizedDataManager.getCachedData(dataType);
+    return Array.isArray(cached) ? cached : EMPTY_ARRAY;
   }, []);
 
-  // Build final data object with fallbacks - memoized for performance
+  // PERFORMANCE: Ultra-optimized final data building
   const finalData = useMemo(() => {
     const result = {};
 
     stableDataTypes.forEach((dataType) => {
-      // Use Redux data first, fallback to cache
       const reduxValue = reduxData[dataType];
-      if (reduxValue && reduxValue.length > 0) {
+      // Always ensure we return arrays to prevent downstream errors
+      if (Array.isArray(reduxValue) && reduxValue.length > 0) {
         result[dataType] = reduxValue;
       } else {
-        result[dataType] = getCachedData(dataType) || [];
+        const cached = getCachedData(dataType);
+        result[dataType] = cached.length > 0 ? cached : EMPTY_ARRAY;
       }
     });
 
     return result;
   }, [stableDataTypes, reduxData, getCachedData]);
 
-  // Check if we have any meaningful data
-  const hasData = useMemo(() => {
-    return Object.values(finalData).some(
-      (data) => Array.isArray(data) && data.length > 0
-    );
-  }, [finalData]);
+  // PERFORMANCE: Memoized refresh methods with batch optimization
+  const forceRefresh = useCallback(async () => {
+    if (isLoading) return; // Prevent concurrent refreshes
 
-  return {
-    // Individual data properties
-    appointments: finalData.appointments || reduxData.appointments,
-    todayAppointments:
-      finalData.todayAppointments || reduxData.todayAppointments,
-    upcomingAppointments:
-      finalData.upcomingAppointments || reduxData.upcomingAppointments,
-    notifications: finalData.notifications || reduxData.notifications,
-    attendanceRecords:
-      finalData.attendanceRecords || reduxData.attendanceRecords,
+    setIsLoading(true);
+    try {
+      await optimizedDataManager.forceRefresh(stableDataTypes);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [stableDataTypes, isLoading]);
 
-    // Loading and error states
-    loading: reduxData.loading || isLoading,
-    error: reduxData.error,
+  const refreshAppointments = useCallback(async () => {
+    if (isLoading) return;
 
-    // Utility functions
-    forceRefresh,
-    refreshAppointments,
-    refreshNotifications,
-    refreshUserData,
-    quickRefresh,
+    setIsLoading(true);
+    try {
+      await optimizedDataManager.refreshAppointments();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading]);
 
-    // Status indicators
-    hasData,
-    dataSource: reduxData.appointments?.length > 0 ? "redux" : "cache",
-  };
+  // PERFORMANCE: Stable return object with memoization
+  return useMemo(
+    () => ({
+      // Always return arrays to prevent charAt errors
+      appointments: Array.isArray(finalData.appointments)
+        ? finalData.appointments
+        : Array.isArray(reduxData.appointments)
+        ? reduxData.appointments
+        : EMPTY_ARRAY,
+      todayAppointments: Array.isArray(finalData.todayAppointments)
+        ? finalData.todayAppointments
+        : Array.isArray(reduxData.todayAppointments)
+        ? reduxData.todayAppointments
+        : EMPTY_ARRAY,
+      upcomingAppointments: Array.isArray(finalData.upcomingAppointments)
+        ? finalData.upcomingAppointments
+        : Array.isArray(reduxData.upcomingAppointments)
+        ? reduxData.upcomingAppointments
+        : EMPTY_ARRAY,
+      notifications: Array.isArray(finalData.notifications)
+        ? finalData.notifications
+        : Array.isArray(reduxData.notifications)
+        ? reduxData.notifications
+        : EMPTY_ARRAY,
+      attendanceRecords: Array.isArray(finalData.attendanceRecords)
+        ? finalData.attendanceRecords
+        : Array.isArray(reduxData.attendanceRecords)
+        ? reduxData.attendanceRecords
+        : EMPTY_ARRAY,
+
+      loading: reduxData.loading || isLoading,
+      error: reduxData.error,
+
+      // Stable function references
+      forceRefresh,
+      refreshAppointments,
+      refreshNotifications,
+
+      hasData: Object.values(finalData).some(
+        (data) => Array.isArray(data) && data.length > 0
+      ),
+      dataSource:
+        Array.isArray(reduxData.appointments) &&
+        reduxData.appointments.length > 0
+          ? "redux"
+          : "cache",
+    }),
+    [
+      finalData,
+      reduxData,
+      isLoading,
+      forceRefresh,
+      refreshAppointments,
+      refreshNotifications,
+    ]
+  );
 };
 
 /**
- * Hook for dashboard components with role-based data
+ * PERFORMANCE: Ultra-optimized dashboard data hook
  */
 export const useOptimizedDashboardData = (dashboardName, userRole = null) => {
+  // PERFORMANCE: Stable data types computation
   const dataTypes = useMemo(() => {
     const roleDataMap = {
       operator: [
@@ -220,216 +259,77 @@ export const useOptimizedDashboardData = (dashboardName, userRole = null) => {
     return (
       roleDataMap[dashboardName] ||
       roleDataMap[userRole] || ["todayAppointments"]
-    );
+    ).sort();
   }, [dashboardName, userRole]);
 
-  return useOptimizedData(dashboardName, dataTypes, {
-    priority: "high",
-    userRole,
-  });
-};
-
-/**
- * Hook for scheduling components
- */
-export const useOptimizedSchedulingData = (componentName) => {
-  return useOptimizedData(
-    componentName,
-    ["appointments", "todayAppointments", "upcomingAppointments"],
-    { priority: "high" }
-  );
-};
-
-/**
- * Hook for notification components
- */
-export const useOptimizedNotifications = (componentName) => {
-  return useOptimizedData(componentName, ["notifications"], {
-    priority: "normal",
-  });
-};
-
-/**
- * Hook for attendance management with date-specific caching and optimized re-renders
- */
-export const useOptimizedAttendance = (selectedDate) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [lastFetchedDate, setLastFetchedDate] = useState(null);
-
-  // Memoize the selected date to prevent unnecessary effects
-  const memoizedSelectedDate = useMemo(() => {
-    if (!selectedDate) return new Date().toISOString().split("T")[0];
-    return selectedDate;
-  }, [selectedDate]);
-
-  // Optimized Redux selector with date-specific memoization
-  const attendanceData = useSelector(
-    (state) => ({
-      attendanceRecords: state.attendance?.attendanceRecords || [],
-      loading: state.attendance?.loading || false,
-      error: state.attendance?.error || null,
-      lastUpdated: state.attendance?.lastUpdated || null,
-    }),
-    // Enhanced equality check that considers the selected date context
-    (left, right) => {
-      return (
-        left.attendanceRecords.length === right.attendanceRecords.length &&
-        left.loading === right.loading &&
-        left.error === right.error &&
-        left.lastUpdated === right.lastUpdated
-      );
-    }
-  );
-
-  // Memoize filtered attendance records for the selected date
-  const dateSpecificAttendance = useMemo(() => {
-    const records = attendanceData.attendanceRecords;
-    if (!records || records.length === 0) return [];
-
-    // Filter records for the specific date
-    return records.filter((record) => {
-      const recordDate = new Date(record.date || record.created_at)
-        .toISOString()
-        .split("T")[0];
-      return recordDate === memoizedSelectedDate;
-    });
-  }, [attendanceData.attendanceRecords, memoizedSelectedDate]);
-
-  // Memoize cached data check to prevent repeated cache lookups
-  const cachedDataForDate = useMemo(() => {
-    return optimizedDataManager.getCachedAttendanceForDate(
-      memoizedSelectedDate
-    );
-  }, [memoizedSelectedDate]);
-
-  // Stable function references with useCallback and proper dependencies
-  const fetchAttendanceForDate = useCallback(
-    async (date) => {
-      const targetDate = date || memoizedSelectedDate;
-
-      // Prevent duplicate fetches
-      if (isLoading || lastFetchedDate === targetDate) {
-        return cachedDataForDate;
-      }
-
-      setIsLoading(true);
-      setLastFetchedDate(targetDate);
-
-      try {
-        const data = await optimizedDataManager.fetchAttendanceForDate(
-          targetDate
-        );
-        return data;
-      } catch (error) {
-        console.error("Failed to fetch attendance for date:", error);
-        setLastFetchedDate(null); // Reset on error
-        throw error;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [memoizedSelectedDate, isLoading, lastFetchedDate, cachedDataForDate]
-  );
-
-  const forceRefreshAttendance = useCallback(
-    async (date) => {
-      const targetDate = date || memoizedSelectedDate;
-      setIsLoading(true);
-
-      try {
-        const data = await optimizedDataManager.forceRefreshAttendance(
-          targetDate
-        );
-        setLastFetchedDate(targetDate);
-        return data;
-      } catch (error) {
-        console.error("Failed to force refresh attendance:", error);
-        throw error;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [memoizedSelectedDate]
-  );
-
-  // Memoized cache getter with stable reference
-  const getCachedAttendanceForDate = useCallback(
-    (date) => {
-      const targetDate = date || memoizedSelectedDate;
-      return optimizedDataManager.getCachedAttendanceForDate(targetDate);
-    },
-    [memoizedSelectedDate]
-  );
-
-  // Optimized effect that only runs when necessary
-  useEffect(() => {
-    if (!memoizedSelectedDate) return;
-
-    // Check if we already have data for this date
-    const hasReduxData = dateSpecificAttendance.length > 0;
-    const hasCachedData = cachedDataForDate && cachedDataForDate.length > 0;
-
-    // Only fetch if we don't have any data and haven't recently fetched this date
-    if (
-      !hasReduxData &&
-      !hasCachedData &&
-      lastFetchedDate !== memoizedSelectedDate
-    ) {
-      console.log(`📅 Fetching attendance for ${memoizedSelectedDate}`);
-      fetchAttendanceForDate(memoizedSelectedDate);
-    } else {
-      console.log(`📅 Using existing data for ${memoizedSelectedDate}`);
-    }
-  }, [
-    memoizedSelectedDate,
-    dateSpecificAttendance.length,
-    cachedDataForDate,
-    lastFetchedDate,
-    fetchAttendanceForDate,
-  ]);
-
-  // Memoize the final return object to prevent unnecessary re-renders of consuming components
-  return useMemo(
+  const options = useMemo(
     () => ({
-      // Use date-specific attendance if available, otherwise fall back to cached or Redux data
-      attendanceRecords:
-        dateSpecificAttendance.length > 0
-          ? dateSpecificAttendance
-          : cachedDataForDate || attendanceData.attendanceRecords,
-
-      loading: attendanceData.loading || isLoading,
-      error: attendanceData.error,
-
-      // Function references (already memoized with useCallback)
-      fetchAttendanceForDate,
-      forceRefreshAttendance,
-      getCachedAttendanceForDate,
-
-      // Additional useful data
-      hasDataForDate:
-        dateSpecificAttendance.length > 0 ||
-        (cachedDataForDate && cachedDataForDate.length > 0),
-      selectedDate: memoizedSelectedDate,
-      dataSource:
-        dateSpecificAttendance.length > 0
-          ? "redux"
-          : cachedDataForDate
-          ? "cache"
-          : "none",
+      priority: "high",
+      userRole,
     }),
-    [
-      dateSpecificAttendance,
-      cachedDataForDate,
-      attendanceData.attendanceRecords,
-      attendanceData.loading,
-      attendanceData.error,
-      isLoading,
-      fetchAttendanceForDate,
-      forceRefreshAttendance,
-      getCachedAttendanceForDate,
-      memoizedSelectedDate,
-    ]
+    [userRole]
   );
+
+  return useOptimizedData(dashboardName, dataTypes, options);
 };
 
 export default useOptimizedData;
+
+/**
+ * PERFORMANCE: Ultra-optimized attendance data hook
+ * This hook specifically optimizes attendance data retrieval and caching
+ * @param {string} selectedDate - ISO format date string for attendance records
+ * @returns {Object} Optimized attendance data and utility functions
+ */
+export const useOptimizedAttendance = (selectedDate) => {
+  // PERFORMANCE: Stable data types computation
+  const dataTypes = useMemo(() => ["attendanceRecords"], []);
+
+  const options = useMemo(
+    () => ({
+      priority: "high",
+      dateFilter: selectedDate,
+    }),
+    [selectedDate]
+  );
+
+  const baseData = useOptimizedData("attendanceProvider", dataTypes, options);
+
+  // Fetch attendance for a specific date with optimized caching
+  const fetchAttendanceForDate = useCallback(async (date) => {
+    if (!date) return;
+
+    const formattedDate =
+      typeof date === "object" ? date.toISOString().split("T")[0] : date;
+
+    return await optimizedDataManager.fetchAttendanceForDate(formattedDate);
+  }, []);
+
+  // Get cached attendance for a date without triggering refresh
+  const getCachedAttendanceForDate = useCallback((date) => {
+    if (!date) return EMPTY_ARRAY;
+
+    const formattedDate =
+      typeof date === "object" ? date.toISOString().split("T")[0] : date;
+
+    return (
+      optimizedDataManager.getCachedAttendanceForDate(formattedDate) ||
+      EMPTY_ARRAY
+    );
+  }, []);
+
+  // Return enhanced attendance data
+  return useMemo(
+    () => ({
+      ...baseData,
+      attendanceRecords: baseData.attendanceRecords || EMPTY_ARRAY,
+      fetchAttendanceForDate,
+      getCachedAttendanceForDate,
+      forceRefreshAttendance: baseData.forceRefresh,
+      hasDataForDate:
+        Array.isArray(baseData.attendanceRecords) &&
+        baseData.attendanceRecords.length > 0,
+    }),
+    [baseData, fetchAttendanceForDate, getCachedAttendanceForDate]
+  );
+};
