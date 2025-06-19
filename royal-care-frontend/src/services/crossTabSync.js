@@ -322,6 +322,49 @@ class CrossTabSync {
     }
   }
 
+  shareCacheData(dataType, data, timestamp, targetTab = null) {
+    const message = {
+      type: "data_update",
+      payload: {
+        dataType,
+        data,
+        timestamp,
+      },
+    };
+
+    if (targetTab) {
+      // Send to specific tab
+      console.log(`🔗 CrossTabSync: Sharing ${dataType} with tab ${targetTab}`);
+    } else {
+      // Broadcast to all tabs
+      console.log(`🔗 CrossTabSync: Broadcasting ${dataType} to all tabs`);
+    }
+
+    this.broadcastMessage(message);
+  }
+
+  invalidateCache(dataType, reason = "manual") {
+    this.broadcastMessage({
+      type: "invalidate_cache",
+      payload: {
+        dataType,
+        reason,
+      },
+    });
+  }
+
+  /**
+   * Request data from other tabs
+   */
+  requestData(dataType) {
+    this.broadcastMessage({
+      type: "request_data",
+      payload: {
+        dataType,
+      },
+    });
+  }
+
   syncDataToOtherTabs(dataType, data, timestamp = Date.now()) {
     // Don't sync data that came from other tabs
     const cached = optimizedDataManager.cache?.get(dataType);
