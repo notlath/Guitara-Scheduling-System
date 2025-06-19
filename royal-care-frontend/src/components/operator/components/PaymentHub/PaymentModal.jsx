@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "./PaymentModal.module.css";
+import styles from "./PaymentModal.module.css";
 
 /**
  * PaymentModal Component
@@ -95,20 +95,20 @@ const PaymentModal = ({ appointment, onClose, onProcess, loading = false }) => {
   }, [totalAmount, paymentData.amount]);
 
   return (
-    <div className="payment-modal-overlay" onClick={onClose}>
-      <div className="payment-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+    <div className={styles.paymentModalOverlay} onClick={onClose}>
+      <div className={styles.paymentModal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
           <h3>Process Payment</h3>
-          <button className="close-btn" onClick={onClose}>
+          <button className={styles.closeBtn} onClick={onClose}>
             <i className="fas fa-times"></i>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="payment-form">
+        <form onSubmit={handleSubmit} className={styles.paymentForm}>
           {/* Appointment summary */}
-          <div className="appointment-summary">
+          <div className={styles.appointmentSummary}>
             <h4>Appointment #{appointment.id}</h4>
-            <div className="client-info">
+            <div className={styles.clientInfo}>
               <p>
                 <strong>Client:</strong>{" "}
                 {appointment.client_details?.first_name}{" "}
@@ -118,26 +118,27 @@ const PaymentModal = ({ appointment, onClose, onProcess, loading = false }) => {
                 <strong>Phone:</strong> {appointment.client_details?.phone}
               </p>
             </div>
-            <div className="services-info">
+            <div className={styles.servicesInfo}>
               <p>
                 <strong>Services:</strong>
               </p>
               <ul>
                 {appointment.services_details?.map((service, index) => (
                   <li key={index}>
-                    {service.name} - {formatCurrency(service.price)}
+                    <span>{service.name}</span>
+                    <span>{formatCurrency(service.price)}</span>
                   </li>
                 ))}
               </ul>
-              <p className="total-amount">
+              <p className={styles.totalAmount}>
                 <strong>Total: {formatCurrency(totalAmount)}</strong>
               </p>
             </div>
           </div>
 
           {/* Payment details form */}
-          <div className="payment-details">
-            <div className="form-group">
+          <div className={styles.paymentDetails}>
+            <div className={styles.formGroup}>
               <label htmlFor="payment-method">Payment Method *</label>
               <select
                 id="payment-method"
@@ -153,7 +154,7 @@ const PaymentModal = ({ appointment, onClose, onProcess, loading = false }) => {
               </select>
             </div>
 
-            <div className="form-group">
+            <div className={styles.formGroup}>
               <label htmlFor="payment-amount">Amount *</label>
               <input
                 type="number"
@@ -164,14 +165,14 @@ const PaymentModal = ({ appointment, onClose, onProcess, loading = false }) => {
                 min="0"
                 step="0.01"
                 required
-                className={errors.amount ? "error" : ""}
+                className={errors.amount ? styles.error : ""}
               />
               {errors.amount && (
-                <span className="error-message">{errors.amount}</span>
+                <span className={styles.errorMessage}>{errors.amount}</span>
               )}
             </div>
 
-            <div className="form-group">
+            <div className={styles.formGroup}>
               <label htmlFor="reference-number">Reference Number *</label>
               <input
                 type="text"
@@ -182,14 +183,16 @@ const PaymentModal = ({ appointment, onClose, onProcess, loading = false }) => {
                 }
                 placeholder="Transaction reference number"
                 required
-                className={errors.referenceNumber ? "error" : ""}
+                className={errors.referenceNumber ? styles.error : ""}
               />
               {errors.referenceNumber && (
-                <span className="error-message">{errors.referenceNumber}</span>
+                <span className={styles.errorMessage}>
+                  {errors.referenceNumber}
+                </span>
               )}
             </div>
 
-            <div className="form-group">
+            <div className={styles.formGroup}>
               <label htmlFor="payment-notes">Notes</label>
               <textarea
                 id="payment-notes"
@@ -202,16 +205,20 @@ const PaymentModal = ({ appointment, onClose, onProcess, loading = false }) => {
           </div>
 
           {/* Form actions */}
-          <div className="modal-actions">
+          <div className={styles.modalActions}>
             <button
               type="button"
-              className="btn secondary"
+              className={`${styles.btn} ${styles.secondary}`}
               onClick={onClose}
               disabled={loading}
             >
               Cancel
             </button>
-            <button type="submit" className="btn primary" disabled={loading}>
+            <button
+              type="submit"
+              className={`${styles.btn} ${styles.primary}`}
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <i className="fas fa-spinner fa-spin"></i>

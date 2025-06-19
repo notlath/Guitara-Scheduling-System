@@ -1,0 +1,396 @@
+/* Payment Modal Styles */
+.paymentModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.paymentModal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 1.5rem 0 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  margin-bottom: 1.5rem;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #212529;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.closeBtn:hover {
+  background: #f8f9fa;
+  color: #495057;
+}
+
+.paymentForm {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+.appointmentSummary {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #e9ecef;
+}
+
+.appointmentSummary h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.clientInfo {
+  margin-bottom: 1rem;
+}
+
+.clientInfo p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.servicesInfo {
+  margin-bottom: 0;
+}
+
+.servicesInfo p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.servicesInfo ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.servicesInfo li {
+  padding: 0.25rem 0;
+  font-size: 0.875rem;
+  color: #495057;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.totalAmount {
+  font-weight: 600 !important;
+  color: #28a745 !important;
+  font-size: 1rem !important;
+  padding-top: 0.5rem;
+  border-top: 1px solid #dee2e6;
+  margin-top: 0.5rem;
+}
+
+.paymentDetails {
+  margin-bottom: 1.5rem;
+}
+
+.formGroup {
+  margin-bottom: 1.25rem;
+}
+
+.formGroup label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #495057;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.formGroup input.error,
+.formGroup select.error,
+.formGroup textarea.error {
+  border-color: #dc3545;
+}
+
+.formGroup input.error:focus,
+.formGroup select.error:focus,
+.formGroup textarea.error:focus {
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+}
+
+.errorMessage {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #dc3545;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+  margin-top: 1.5rem;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn.secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn.secondary:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.btn.primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .paymentModalOverlay {
+    padding: 0.5rem;
+  }
+
+  .paymentModal {
+    max-height: 95vh;
+  }
+
+  .modalHeader {
+    padding: 1rem 1rem 0 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .modalHeader h3 {
+    font-size: 1.1rem;
+  }
+
+  .paymentForm {
+    padding: 0 1rem 1rem 1rem;
+  }
+
+  .appointmentSummary {
+    padding: 1rem;
+  }
+
+  .servicesInfo li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .modalActions {
+    flex-direction: column-reverse;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .paymentModalOverlay {
+    padding: 0.25rem;
+  }
+
+  .modalHeader {
+    padding: 0.75rem 0.75rem 0 0.75rem;
+  }
+
+  .paymentForm {
+    padding: 0 0.75rem 0.75rem 0.75rem;
+  }
+
+  .appointmentSummary {
+    padding: 0.75rem;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .paymentModalOverlay {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  .paymentModal {
+    background: #2d3748;
+  }
+
+  .modalHeader {
+    border-bottom-color: #4a5568;
+  }
+
+  .modalHeader h3 {
+    color: #f7fafc;
+  }
+
+  .closeBtn {
+    color: #a0aec0;
+  }
+
+  .closeBtn:hover {
+    background: #4a5568;
+    color: #f7fafc;
+  }
+
+  .appointmentSummary {
+    background: #4a5568;
+    border-color: #718096;
+  }
+
+  .appointmentSummary h4 {
+    color: #e2e8f0;
+  }
+
+  .clientInfo p,
+  .servicesInfo p {
+    color: #a0aec0;
+  }
+
+  .servicesInfo li {
+    color: #e2e8f0;
+  }
+
+  .totalAmount {
+    color: #68d391 !important;
+    border-top-color: #718096;
+  }
+
+  .formGroup label {
+    color: #e2e8f0;
+  }
+
+  .formGroup input,
+  .formGroup select,
+  .formGroup textarea {
+    background: #4a5568;
+    border-color: #718096;
+    color: #f7fafc;
+  }
+
+  .formGroup input:focus,
+  .formGroup select:focus,
+  .formGroup textarea:focus {
+    border-color: #3182ce;
+    box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.25);
+  }
+
+  .formGroup input.error,
+  .formGroup select.error,
+  .formGroup textarea.error {
+    border-color: #f56565;
+  }
+
+  .formGroup input.error:focus,
+  .formGroup select.error:focus,
+  .formGroup textarea.error:focus {
+    box-shadow: 0 0 0 2px rgba(245, 101, 101, 0.25);
+  }
+
+  .errorMessage {
+    color: #f56565;
+  }
+
+  .modalActions {
+    border-top-color: #4a5568;
+  }
+
+  .btn.secondary {
+    background: #718096;
+  }
+
+  .btn.secondary:hover:not(:disabled) {
+    background: #a0aec0;
+  }
+
+  .btn.primary {
+    background: #3182ce;
+  }
+
+  .btn.primary:hover:not(:disabled) {
+    background: #2c5282;
+  }
+}

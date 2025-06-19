@@ -4,7 +4,7 @@
  */
 import { useCallback, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
-import { optimizedDataManager } from "../../../services/optimizedDataManager";
+import optimizedDataManager from "../../../services/optimizedDataManager";
 
 export const useDriverAssignment = (drivers = [], appointments = []) => {
   const dispatch = useDispatch();
@@ -29,26 +29,21 @@ export const useDriverAssignment = (drivers = [], appointments = []) => {
             appointmentId,
             updates: {
               driver_id: driverId,
-              driver_status: "assigned",
-              updatedAt: new Date().toISOString(),
+              status: "assigned",
             },
           },
         });
 
-        // Update driver status
-        dispatch({
-          type: "scheduling/updateDriverStatus",
-          payload: {
-            driverId,
-            status: "assigned",
-            currentAppointment: appointmentId,
-          },
-        });
-
-        return { success: true, data: result };
+        return {
+          success: true,
+          data: result,
+        };
       } catch (error) {
         console.error("Driver assignment failed:", error);
-        return { success: false, error: error.message };
+        return {
+          success: false,
+          error: error.message,
+        };
       } finally {
         setLoading((prev) => ({ ...prev, [loadingKey]: false }));
       }
@@ -56,95 +51,79 @@ export const useDriverAssignment = (drivers = [], appointments = []) => {
     [dispatch]
   );
 
-  // Auto-assign available driver
-  const autoAssignDriver = useCallback(
+  // Unassign driver from appointment
+  const unassignDriver = useCallback(
     async (appointmentId) => {
-      const availableDrivers = drivers.filter(
-        (d) => d.status === "available" && d.is_active
-      );
-
-      if (availableDrivers.length === 0) {
-        return { success: false, error: "No available drivers" };
-      }
-
-      // Simple assignment strategy: first available driver
-      // TODO: Implement proximity-based assignment
-      const selectedDriver = availableDrivers[0];
-
-      return await assignDriver(appointmentId, selectedDriver.id);
-    },
-    [drivers, assignDriver]
-  );
-
-  // Bulk driver assignment
-  const bulkAssignDrivers = useCallback(
-    async (assignments) => {
-      setLoading((prev) => ({ ...prev, bulk_assign: true }));
+      const loadingKey = `unassign_${appointmentId}`;
+      setLoading((prev) => ({ ...prev, [loadingKey]: true }));
 
       try {
-        const results = await Promise.allSettled(
-          assignments.map(({ appointmentId, driverId }) =>
-            assignDriver(appointmentId, driverId)
-          )
-        );
+        const result = await optimizedDataManager.unassignDriver(appointmentId);
 
-        const successful = results.filter(
-          (r) => r.status === "fulfilled" && r.value.success
-        );
-        const failed = results.filter(
-          (r) => r.status === "rejected" || !r.value.success
-        );
+        // Update appointment optimistically
+        dispatch({
+          type: "scheduling/updateAppointment",
+          payload: {
+            appointmentId,
+            updates: {
+              driver_id: null,
+              status: "confirmed",
+            },
+          },
+        });
 
         return {
           success: true,
-          data: {
-            assigned: successful.length,
-            failed: failed.length,
-            total: assignments.length,
-          },
+          data: result,
         };
       } catch (error) {
-        console.error("Bulk driver assignment failed:", error);
-        return { success: false, error: error.message };
+        console.error("Driver unassignment failed:", error);
+        return {
+          success: false,
+          error: error.message,
+        };
       } finally {
-        setLoading((prev) => ({ ...prev, bulk_assign: false }));
+        setLoading((prev) => ({ ...prev, [loadingKey]: false }));
       }
     },
-    [assignDriver]
+    [dispatch]
   );
 
-  // Handle pickup request
-  const handlePickupRequest = useCallback(
-    async (appointmentId, action = "approve") => {
+  // Request pickup for appointment
+  const requestPickup = useCallback(
+    async (appointmentId, pickupDetails) => {
       const loadingKey = `pickup_${appointmentId}`;
       setLoading((prev) => ({ ...prev, [loadingKey]: true }));
 
       try {
-        const result = await optimizedDataManager.handlePickupRequest(
+        const result = await optimizedDataManager.requestPickup(
           appointmentId,
-          action
+          pickupDetails
         );
 
-        // Update appointment status based on action
-        const statusMap = {
-          approve: "pickup_approved",
-          reject: "pickup_rejected",
-          assign: "driver_assigned",
-        };
-
+        // Update appointment with pickup request
         dispatch({
-          type: "scheduling/updateAppointmentStatus",
+          type: "scheduling/updateAppointment",
           payload: {
             appointmentId,
-            status: statusMap[action] || "pickup_processed",
-            updatedAt: new Date().toISOString(),
+            updates: {
+              pickup_requested: true,
+              pickup_time: pickupDetails.pickupTime,
+              pickup_address: pickupDetails.address,
+            },
           },
         });
 
-        return { success: true, data: result };
+        return {
+          success: true,
+          data: result,
+        };
       } catch (error) {
-        console.error("Pickup request handling failed:", error);
-        return { success: false, error: error.message };
+        console.error("Pickup request failed:", error);
+        return {
+          success: false,
+          error: error.message,
+        };
       } finally {
         setLoading((prev) => ({ ...prev, [loadingKey]: false }));
       }
@@ -152,66 +131,132 @@ export const useDriverAssignment = (drivers = [], appointments = []) => {
     [dispatch]
   );
 
-  // Computed driver statistics
-  const driverStats = useMemo(() => {
-    const stats = {
-      total: drivers.length,
-      available: 0,
-      busy: 0,
-      offline: 0,
-      onBreak: 0,
-    };
+  // Update driver status
+  const updateDriverStatus = useCallback(
+    async (driverId, status) => {
+      const loadingKey = `driver_status_${driverId}`;
+      setLoading((prev) => ({ ...prev, [loadingKey]: true }));
 
-    drivers.forEach((driver) => {
-      switch (driver.status) {
-        case "available":
-          stats.available++;
-          break;
-        case "busy":
-        case "driving":
-        case "transporting":
-          stats.busy++;
-          break;
-        case "on_break":
-          stats.onBreak++;
-          break;
-        default:
-          stats.offline++;
+      try {
+        const result = await optimizedDataManager.updateDriverStatus(
+          driverId,
+          status
+        );
+
+        // Update driver status in store
+        dispatch({
+          type: "scheduling/updateDriverStatus",
+          payload: {
+            driverId,
+            status,
+          },
+        });
+
+        return {
+          success: true,
+          data: result,
+        };
+      } catch (error) {
+        console.error("Driver status update failed:", error);
+        return {
+          success: false,
+          error: error.message,
+        };
+      } finally {
+        setLoading((prev) => ({ ...prev, [loadingKey]: false }));
       }
-    });
+    },
+    [dispatch]
+  );
 
-    return stats;
+  // Get available drivers for appointment
+  const getAvailableDrivers = useMemo(() => {
+    return drivers.filter(
+      (driver) =>
+        driver.status === "available" &&
+        driver.is_active &&
+        !driver.current_appointment_id
+    );
   }, [drivers]);
 
-  // Get pickup requests (appointments needing driver assignment)
-  const pickupRequests = useMemo(() => {
-    return appointments.filter(
-      (apt) =>
-        apt.status === "pickup_requested" ||
-        (apt.status === "confirmed" && !apt.driver_id)
+  // Get assigned drivers
+  const getAssignedDrivers = useMemo(() => {
+    return drivers.filter(
+      (driver) => driver.status === "assigned" || driver.current_appointment_id
     );
-  }, [appointments]);
+  }, [drivers]);
+
+  // Get driver workload
+  const getDriverWorkload = useMemo(() => {
+    const workload = {};
+
+    drivers.forEach((driver) => {
+      const assignedAppointments = appointments.filter(
+        (apt) => apt.driver_id === driver.id
+      );
+
+      workload[driver.id] = {
+        total: assignedAppointments.length,
+        today: assignedAppointments.filter((apt) => {
+          const today = new Date().toDateString();
+          return new Date(apt.date).toDateString() === today;
+        }).length,
+        upcoming: assignedAppointments.filter((apt) => {
+          return new Date(apt.date + " " + apt.start_time) > new Date();
+        }).length,
+      };
+    });
+
+    return workload;
+  }, [drivers, appointments]);
+
+  // Get optimal driver for appointment
+  const getOptimalDriver = useCallback(
+    (appointment) => {
+      const availableDrivers = getAvailableDrivers;
+
+      if (availableDrivers.length === 0) {
+        return null;
+      }
+
+      // Sort by workload (ascending) and distance (if available)
+      const rankedDrivers = availableDrivers
+        .map((driver) => ({
+          ...driver,
+          workload: getDriverWorkload[driver.id]?.today || 0,
+        }))
+        .sort((a, b) => {
+          // Primary: workload (fewer appointments first)
+          if (a.workload !== b.workload) {
+            return a.workload - b.workload;
+          }
+
+          // Secondary: availability score (higher is better)
+          const aScore = a.availability_score || 0;
+          const bScore = b.availability_score || 0;
+          return bScore - aScore;
+        });
+
+      return rankedDrivers[0];
+    },
+    [getAvailableDrivers, getDriverWorkload]
+  );
 
   return {
     // Actions
     assignDriver,
-    autoAssignDriver,
-    bulkAssignDrivers,
-    handlePickupRequest,
+    unassignDriver,
+    requestPickup,
+    updateDriverStatus,
 
-    // States
+    // Data
+    availableDrivers: getAvailableDrivers,
+    assignedDrivers: getAssignedDrivers,
+    driverWorkload: getDriverWorkload,
+    getOptimalDriver,
+
+    // State
     loading,
-
-    // Computed data
-    driverStats,
-    pickupRequests,
-
-    // Utilities
-    isLoading: (key) => loading[key] || false,
-    getAvailableDrivers: () =>
-      drivers.filter((d) => d.status === "available" && d.is_active),
-    getBusyDrivers: () =>
-      drivers.filter((d) => d.status === "busy" || d.status === "driving"),
   };
 };
 

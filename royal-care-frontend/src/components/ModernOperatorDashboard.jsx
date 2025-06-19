@@ -41,6 +41,9 @@ const ModernOperatorDashboard = () => {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
 
+  // Selection state for bulk operations
+  const [selectedItems, setSelectedItems] = useState(new Set());
+
   // Smart notifications system
   const {
     notifications: smartNotifications,
@@ -83,12 +86,9 @@ const ModernOperatorDashboard = () => {
     appointments,
 
     // Filtered data
-    awaitingPaymentAppointments,
-    overdueAppointments,
-    pickupRequests,
-    notifications,
+    filteredAppointments,
 
-    // Metrics
+    // Computed stats
     computedStats,
 
     // Status
@@ -98,6 +98,31 @@ const ModernOperatorDashboard = () => {
     // Actions
     refetch,
   } = useOperatorData();
+
+  // Selection management functions
+  const selectAll = useCallback((items = []) => {
+    setSelectedItems(new Set(items.map((item) => item.id)));
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedItems(new Set());
+  }, []);
+
+  const toggleSelection = useCallback((itemId) => {
+    setSelectedItems((prev) => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(itemId)) {
+        newSelection.delete(itemId);
+      } else {
+        newSelection.add(itemId);
+      }
+      return newSelection;
+    });
+  }, []);
+
+  const selectItems = useCallback((itemIds) => {
+    setSelectedItems(new Set(itemIds));
+  }, []);
 
   // Keyboard shortcut handlers
   const keyboardHandlers = useMemo(
@@ -128,272 +153,294 @@ const ModernOperatorDashboard = () => {
 
   const handleBulkAction = useCallback(
     async (actionId, options = {}) => {
-      console.log("Bulk action:", actionId, options);
+      const selectedIds = Array.from(selectedItems);
 
-      const selectedAppointments = getSelectedItems(appointments || []);
-      if (selectedAppointments.length === 0) {
+      if (selectedIds.length === 0) {
+        showNotification({
+          type: "WARNING",
+          title: "No Items Selected",
+          message: "Please select items before performing bulk actions.",
+        });
         return;
       }
 
-      // Execute bulk action with loading state
-      await executeBulkAction(actionId, selectedAppointments, async (items) => {
-        // TODO: Implement actual bulk action logic
-        console.log(`Executing ${actionId} on ${items.length} items`);
+      const selectedAppointments = (appointments || []).filter((apt) =>
+        selectedIds.includes(apt.id)
+      );
 
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      try {
+        let result;
+        switch (actionId) {
+          case "approve":
+            result = await bulkApproveAppointments(selectedAppointments);
+            break;
+          case "cancel":
+            result = await bulkCancelAppointments(selectedAppointments);
+            break;
+          case "mark-paid":
+            result = await bulkMarkAsPaid(selectedAppointments);
+            break;
+          case "assign-drivers":
+            result = await bulkAssignDrivers(selectedAppointments, options);
+            break;
+          default:
+            console.warn("Unknown bulk action:", actionId);
+            return;
+        }
 
-        // Trigger data refresh
+        if (result.success.length > 0) {
+          showNotification({
+            type: "SUCCESS",
+            title: "Bulk Operation Completed",
+            message: `Successfully processed ${result.success.length} items.`,
+          });
+        }
+
+        if (result.errors.length > 0) {
+          showNotification({
+            type: "WARNING",
+            title: "Partial Success",
+            message: `${result.errors.length} items failed to process.`,
+          });
+        }
+
+        // Clear selection after successful operation
+        clearSelection();
+
+        // Refresh data
         refetch();
-      });
-    },
-    [appointments, getSelectedItems, executeBulkAction, refetch]
-  );
-
-  // Quick action handler for critical alerts
-  const handleQuickAction = useCallback(
-    (actionType) => {
-      switch (actionType) {
-        case "view-overdue":
-          setView("timeout");
-          break;
-        case "process-payments":
-          setView("payment-verification");
-          break;
-        case "assign-drivers":
-          setView("driver-coordination");
-          break;
-        default:
-          console.log("Unknown quick action:", actionType);
+      } catch (error) {
+        console.error("Bulk action failed:", error);
+        showNotification({
+          type: "CRITICAL",
+          title: "Bulk Operation Failed",
+          message: error.message || "An unexpected error occurred.",
+        });
       }
     },
-    [setView]
+    [
+      selectedItems,
+      appointments,
+      bulkApproveAppointments,
+      bulkCancelAppointments,
+      bulkMarkAsPaid,
+      bulkAssignDrivers,
+      showNotification,
+      clearSelection,
+      refetch,
+    ]
   );
 
-  // Toggle keyboard shortcuts help
-  const toggleKeyboardHelp = useCallback(() => {
-    setShowKeyboardHelp((prev) => !prev);
-  }, []);
-
-  // Add help shortcut
-  useState(() => {
-    const handleHelpShortcut = (e) => {
-      if (
-        (e.key === "?" || (e.ctrlKey && e.key === "/")) &&
-        e.target.tagName !== "INPUT" &&
-        e.target.tagName !== "TEXTAREA"
-      ) {
-        e.preventDefault();
-        toggleKeyboardHelp();
-      }
-    };
-
-    document.addEventListener("keydown", handleHelpShortcut);
-    return () => document.removeEventListener("keydown", handleHelpShortcut);
-  }, [toggleKeyboardHelp]);
-
-  // Tab configuration - streamlined for new dashboard
-  const dashboardTabs = useMemo(
+  // Tab configuration for different views
+  const tabConfig = useMemo(
     () => [
       {
         id: "overview",
         label: "Overview",
         icon: "fas fa-tachometer-alt",
-        badge: notifications?.length > 0 ? notifications.length : null,
+        badge: computedStats?.criticalIssues || 0,
       },
       {
         id: "appointments",
         label: "Appointments",
         icon: "fas fa-calendar-check",
-        badge: appointments?.length || 0,
-      },
-      {
-        id: "driver-coordination",
-        label: "Drivers",
-        icon: "fas fa-car",
-        badge: pickupRequests?.length > 0 ? pickupRequests.length : null,
+        badge: computedStats?.totalAppointments || 0,
       },
       {
         id: "payment-verification",
         label: "Payments",
         icon: "fas fa-credit-card",
-        badge: awaitingPaymentAppointments?.length || 0,
+        badge: computedStats?.awaitingPayment || 0,
       },
       {
-        id: "timeout",
+        id: "driver-coordination",
+        label: "Drivers",
+        icon: "fas fa-car",
+        badge: computedStats?.pendingPickups || 0,
+      },
+      {
+        id: "timeout-monitoring",
         label: "Timeouts",
         icon: "fas fa-clock",
-        badge:
-          overdueAppointments?.length > 0 ? overdueAppointments.length : null,
-        urgent: overdueAppointments?.length > 0,
+        badge: computedStats?.overdueCount || 0,
       },
     ],
-    [
-      appointments,
-      notifications,
-      pickupRequests,
-      awaitingPaymentAppointments,
-      overdueAppointments,
-    ]
+    [computedStats]
   );
 
-  // Main content renderer
-  const renderMainContent = () => {
-    if (loading.data) {
-      return (
-        <div className="dashboard-loading">
-          <MinimalLoadingIndicator message="Loading dashboard data..." />
-        </div>
-      );
-    }
+  // Helper function to render view content
+  const renderViewContent = () => {
+    const commonProps = {
+      loading,
+      onAction: handleAppointmentAction,
+      selectedItems,
+      onSelectionChange: setSelectedItems,
+      onSelectAll: selectAll,
+      onClearSelection: clearSelection,
+      onItemSelect: toggleSelection,
+    };
 
     switch (currentView) {
       case "overview":
         return (
-          <StatusOverview
-            stats={computedStats}
-            loading={loading}
-            onCardClick={(cardType) => {
-              // Navigate to relevant view when clicking status cards
-              const viewMap = {
-                appointments: "appointments",
-                drivers: "driver-coordination",
-                payments: "payment-verification",
-                overdue: "timeout",
-              };
-              if (viewMap[cardType]) {
-                setView(viewMap[cardType]);
+          <>
+            <StatusOverview
+              stats={computedStats}
+              loading={loading}
+              onCardClick={(card) => setView(card.id)}
+            />
+            <CriticalAlertsPanel
+              alerts={smartNotifications}
+              onAlertClick={(alert) =>
+                handleNotificationAction(alert.id, "view")
               }
-            }}
-          />
+              onQuickAction={(action) => handleBulkAction(action.id)}
+            />
+          </>
         );
 
       case "appointments":
         return (
           <AppointmentManager
             appointments={appointments || []}
-            loading={loading.appointments}
-            onAppointmentAction={handleAppointmentAction}
-            onBulkAction={handleBulkAction}
+            loading={loading}
             selectedAppointments={selectedItems}
             onAppointmentSelect={toggleSelection}
             onSelectAll={selectAll}
             onClearSelection={clearSelection}
-            bulkActionLoading={bulkActionLoading}
-          />
-        );
-
-      case "driver-coordination":
-        return (
-          <DriverCoordination
-            onDriverAssign={handleAppointmentAction}
-            loading={loading}
+            onAppointmentAction={handleAppointmentAction}
+            onBulkAction={handleBulkAction}
           />
         );
 
       case "payment-verification":
         return (
           <PaymentHub
-            appointments={awaitingPaymentAppointments || []}
-            onPaymentProcess={handleAppointmentAction}
-            loading={loading.payments}
+            appointments={filteredAppointments?.awaitingPayment || []}
+            loading={loading}
             selectedPayments={selectedItems}
             onPaymentSelect={toggleSelection}
             onSelectAll={selectAll}
             onClearSelection={clearSelection}
+            onPaymentAction={handleAppointmentAction}
+            onBulkPaymentAction={handleBulkAction}
           />
         );
 
-      case "timeout":
+      case "driver-coordination":
+        return (
+          <DriverCoordination
+            appointments={appointments || []}
+            loading={loading}
+            onDriverAction={handleAppointmentAction}
+            onBulkDriverAction={handleBulkAction}
+          />
+        );
+
+      case "timeout-monitoring":
         return (
           <TimeoutMonitoring
-            overdueAppointments={overdueAppointments || []}
-            onTimeoutAction={handleAppointmentAction}
+            appointments={filteredAppointments?.overdue || []}
             loading={loading}
+            onTimeoutAction={handleAppointmentAction}
           />
         );
 
       default:
         return (
-          <div className="dashboard-error">
-            <h3>View not found</h3>
-            <p>The requested view "{currentView}" is not available.</p>
-            <LoadingButton onClick={() => setView("overview")}>
-              Go to Overview
+          <div className="error-state">
+            <h3>Unknown View</h3>
+            <p>The requested view "{currentView}" was not found.</p>
+            <LoadingButton
+              onClick={() => setView("overview")}
+              className="btn-primary"
+            >
+              Return to Overview
             </LoadingButton>
           </div>
         );
     }
   };
 
+  if (loading && !appointments) {
+    return (
+      <PageLayout title="Operator Dashboard" className="operator-dashboard">
+        <MinimalLoadingIndicator message="Loading dashboard data..." />
+      </PageLayout>
+    );
+  }
+
   return (
-    <PageLayout>
-      <div className="operator-dashboard modern">
-        {/* Header */}
-        <div className="dashboard-header">
-          <div className="header-content">
-            <h1>Operator Dashboard</h1>
-            <p>Modern Interface - Phase 1</p>
-          </div>
-          <div className="header-actions">
+    <PageLayout
+      title="Modern Operator Dashboard"
+      className="operator-dashboard modern"
+      headerActions={
+        <div className="dashboard-header-actions">
+          {/* Selection info */}
+          {selectedItems.size > 0 && (
+            <div className="selection-info">
+              <span className="selection-count">
+                {selectedItems.size} selected
+              </span>
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={clearSelection}
+                title="Clear selection"
+              >
+                <i className="fas fa-times" />
+              </button>
+            </div>
+          )}
+
+          {/* Quick actions */}
+          <div className="quick-actions">
             <button
-              onClick={switchToLegacyDashboard}
-              className="legacy-toggle-button"
-              title="Switch to Legacy Dashboard"
+              className="btn btn-sm btn-outline"
+              onClick={() => setShowKeyboardHelp(true)}
+              title="Keyboard shortcuts (Press ? to open)"
             >
-              <i className="fas fa-arrow-left"></i>
-              Legacy Dashboard
+              <i className="fas fa-keyboard" />
             </button>
+
             <LoadingButton
+              className="btn btn-sm btn-outline"
               onClick={refetch}
-              loading={loading.data}
-              className="refresh-button"
-              title="Refresh all data"
+              loading={loading}
+              title="Refresh data (Ctrl+R)"
             >
-              <i className="fas fa-sync-alt"></i>
-              Refresh
+              <i className="fas fa-sync-alt" />
             </LoadingButton>
+
+            <button
+              className="btn btn-sm btn-secondary"
+              onClick={switchToLegacyDashboard}
+              title="Switch to legacy dashboard"
+            >
+              <i className="fas fa-arrow-left" />
+              Legacy
+            </button>
           </div>
         </div>
+      }
+    >
+      {/* Tab Navigation */}
+      <TabSwitcher
+        tabs={tabConfig}
+        activeTab={currentView}
+        onTabChange={setView}
+        className="operator-tabs"
+      />
 
-        {/* Critical Alerts - Always visible when there are alerts */}
-        <CriticalAlertsPanel
-          overdueAppointments={overdueAppointments || []}
-          awaitingPaymentAppointments={awaitingPaymentAppointments || []}
-          pickupRequests={pickupRequests || []}
-          onQuickAction={handleQuickAction}
-          className="dashboard-alerts"
+      {/* View Content */}
+      <div className="dashboard-content">{renderViewContent()}</div>
+
+      {/* Keyboard Shortcuts Help Modal */}
+      {showKeyboardHelp && (
+        <KeyboardShortcutsHelp
+          shortcuts={getActiveShortcuts()}
+          onClose={() => setShowKeyboardHelp(false)}
         />
-
-        {/* Tab Navigation */}
-        <TabSwitcher
-          activeTab={currentView}
-          onTabChange={setView}
-          tabs={dashboardTabs}
-        />
-
-        {/* Main Content Area */}
-        <div className="dashboard-content">{renderMainContent()}</div>
-
-        {/* Error Display */}
-        {Object.keys(errors).length > 0 && (
-          <div className="dashboard-errors">
-            {Object.entries(errors).map(([key, error]) => (
-              <div key={key} className="error-message">
-                <strong>Error ({key}):</strong> {error?.message || error}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Keyboard Shortcuts Help */}
-        {showKeyboardHelp && (
-          <KeyboardShortcutsHelp
-            shortcuts={getActiveShortcuts()}
-            onClose={toggleKeyboardHelp}
-          />
-        )}
-      </div>
+      )}
     </PageLayout>
   );
 };

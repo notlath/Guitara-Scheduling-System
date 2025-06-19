@@ -2,7 +2,7 @@
  * Critical Alerts Panel Component
  * Displays high-priority alerts that require immediate operator attention
  */
-import "../styles/components/CriticalAlertsPanel.css";
+import styles from "../styles/components/CriticalAlertsPanel.module.css";
 
 export const AlertCard = ({
   type,
@@ -47,10 +47,14 @@ export const AlertCard = ({
     }
   };
 
-  const alertClass = `alert-card alert-${getAlertColor(
-    type,
-    urgent
-  )} ${className}`;
+  const alertClass = `${styles.alertCard} ${
+    styles[
+      `alert${
+        getAlertColor(type, urgent).charAt(0).toUpperCase() +
+        getAlertColor(type, urgent).slice(1)
+      }`
+    ]
+  } ${className}`;
   const shouldShowBadge = count > 0;
 
   return (
@@ -61,20 +65,22 @@ export const AlertCard = ({
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && onClick?.()}
     >
-      <div className="alert-icon">
+      <div className={styles.alertIcon}>
         <i className={getAlertIcon(type)} />
-        {shouldShowBadge && <span className="alert-badge">{count}</span>}
+        {shouldShowBadge && <span className={styles.alertBadge}>{count}</span>}
       </div>
-      <div className="alert-content">
-        <h4 className="alert-title">{title}</h4>
-        {description && <p className="alert-description">{description}</p>}
+      <div className={styles.alertContent}>
+        <h4 className={styles.alertTitle}>{title}</h4>
+        {description && (
+          <p className={styles.alertDescription}>{description}</p>
+        )}
         {count > 0 && (
-          <span className="alert-count">
+          <span className={styles.alertCount}>
             {count} {count === 1 ? "item" : "items"}
           </span>
         )}
       </div>
-      {urgent && <div className="urgent-indicator" />}
+      {urgent && <div className={styles.urgentIndicator} />}
     </div>
   );
 };
@@ -88,7 +94,9 @@ export const QuickActionButton = ({
   variant = "primary",
   className = "",
 }) => {
-  const buttonClass = `quick-action-btn quick-action-${variant} ${className}`;
+  const buttonClass = `${styles.quickActionBtn} ${
+    styles[`quickAction${variant.charAt(0).toUpperCase() + variant.slice(1)}`]
+  } ${className}`;
 
   return (
     <button
@@ -133,14 +141,14 @@ const CriticalAlertsPanel = ({
 
   return (
     <div
-      className={`critical-alerts-panel ${
-        hasUrgentAlerts ? "has-urgent" : ""
+      className={`${styles.criticalAlertsPanel} ${
+        hasUrgentAlerts ? styles.hasUrgent : ""
       } ${className}`}
     >
       {/* Alert Summary */}
       {totalAlertCount > 0 && (
-        <div className="alerts-summary">
-          <h3 className="panel-title">
+        <div className={styles.alertsSummary}>
+          <h3 className={styles.panelTitle}>
             <i className="fas fa-exclamation-triangle" />
             Critical Alerts ({totalAlertCount})
           </h3>
@@ -149,7 +157,7 @@ const CriticalAlertsPanel = ({
 
       {/* Alert Cards */}
       {sortedAlerts.length > 0 && (
-        <div className="alerts-grid">
+        <div className={styles.alertsGrid}>
           {sortedAlerts.map((alert, index) => (
             <AlertCard
               key={alert.type || index}
@@ -162,9 +170,9 @@ const CriticalAlertsPanel = ({
 
       {/* Quick Actions */}
       {quickActions.length > 0 && (
-        <div className="quick-actions-bar">
-          <h4 className="quick-actions-title">Quick Actions</h4>
-          <div className="quick-actions-grid">
+        <div className={styles.quickActionsBar}>
+          <h4 className={styles.quickActionsTitle}>Quick Actions</h4>
+          <div className={styles.quickActionsGrid}>
             {quickActions.map((action, index) => (
               <QuickActionButton
                 key={action.action || index}

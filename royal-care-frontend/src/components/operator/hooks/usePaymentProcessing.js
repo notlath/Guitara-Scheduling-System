@@ -4,7 +4,7 @@
  */
 import { useCallback, useState } from "react";
 import { useDispatch } from "react-redux";
-import { optimizedDataManager } from "../../../services/optimizedDataManager";
+import optimizedDataManager from "../../../services/optimizedDataManager";
 
 export const usePaymentProcessing = () => {
   const dispatch = useDispatch();
@@ -28,15 +28,22 @@ export const usePaymentProcessing = () => {
           type: "scheduling/updateAppointmentStatus",
           payload: {
             appointmentId,
-            status: "payment_completed",
-            updatedAt: new Date().toISOString(),
+            status: "paid",
+            paymentVerified: true,
+            paymentData,
           },
         });
 
-        return { success: true, data: result };
+        return {
+          success: true,
+          data: result,
+        };
       } catch (error) {
         console.error("Payment processing failed:", error);
-        return { success: false, error: error.message };
+        return {
+          success: false,
+          error: error.message,
+        };
       } finally {
         setLoading((prev) => ({ ...prev, [loadingKey]: false }));
       }
@@ -45,77 +52,65 @@ export const usePaymentProcessing = () => {
   );
 
   // Upload receipt
-  const uploadReceipt = useCallback(async (appointmentId, file) => {
-    const uploadKey = `receipt_${appointmentId}`;
-    setLoading((prev) => ({ ...prev, [uploadKey]: true }));
-    setUploadProgress((prev) => ({ ...prev, [uploadKey]: 0 }));
-
-    try {
-      const result = await optimizedDataManager.uploadReceipt(
-        appointmentId,
-        file,
-        {
-          onProgress: (progress) => {
-            setUploadProgress((prev) => ({ ...prev, [uploadKey]: progress }));
-          },
-        }
-      );
-
-      return { success: true, data: result };
-    } catch (error) {
-      console.error("Receipt upload failed:", error);
-      return { success: false, error: error.message };
-    } finally {
-      setLoading((prev) => ({ ...prev, [uploadKey]: false }));
+  const uploadReceipt = useCallback(
+    async (appointmentId, file) => {
+      const uploadKey = `receipt_${appointmentId}`;
+      setLoading((prev) => ({ ...prev, [uploadKey]: true }));
       setUploadProgress((prev) => ({ ...prev, [uploadKey]: 0 }));
-    }
-  }, []);
-
-  // Bulk payment processing
-  const processBulkPayments = useCallback(
-    async (appointmentIds, paymentData) => {
-      setLoading((prev) => ({ ...prev, bulk_payment: true }));
 
       try {
-        const results = await Promise.allSettled(
-          appointmentIds.map((id) => processPayment(id, paymentData))
+        const result = await optimizedDataManager.uploadReceipt(
+          appointmentId,
+          file,
+          (progress) => {
+            setUploadProgress((prev) => ({
+              ...prev,
+              [uploadKey]: progress,
+            }));
+          }
         );
 
-        const successful = results.filter(
-          (r) => r.status === "fulfilled" && r.value.success
-        );
-        const failed = results.filter(
-          (r) => r.status === "rejected" || !r.value.success
-        );
+        // Update appointment with receipt info
+        dispatch({
+          type: "scheduling/updateAppointment",
+          payload: {
+            appointmentId,
+            updates: {
+              receipt_url: result.url,
+              receipt_uploaded: true,
+              receipt_uploaded_at: new Date().toISOString(),
+            },
+          },
+        });
 
         return {
           success: true,
-          data: {
-            processed: successful.length,
-            failed: failed.length,
-            total: appointmentIds.length,
-          },
+          data: result,
         };
       } catch (error) {
-        console.error("Bulk payment processing failed:", error);
-        return { success: false, error: error.message };
+        console.error("Receipt upload failed:", error);
+        return {
+          success: false,
+          error: error.message,
+        };
       } finally {
-        setLoading((prev) => ({ ...prev, bulk_payment: false }));
+        setLoading((prev) => ({ ...prev, [uploadKey]: false }));
+        setUploadProgress((prev) => ({ ...prev, [uploadKey]: 0 }));
       }
     },
-    [processPayment]
+    [dispatch]
   );
 
-  // Request payment from client
-  const requestPayment = useCallback(
-    async (appointmentId, paymentMethod = "gcash") => {
-      const loadingKey = `request_${appointmentId}`;
+  // Mark payment as received
+  const markPaymentReceived = useCallback(
+    async (appointmentId, paymentDetails) => {
+      const loadingKey = `mark_paid_${appointmentId}`;
       setLoading((prev) => ({ ...prev, [loadingKey]: true }));
 
       try {
-        const result = await optimizedDataManager.requestPayment(
+        const result = await optimizedDataManager.markPaymentReceived(
           appointmentId,
-          paymentMethod
+          paymentDetails
         );
 
         // Update appointment status
@@ -123,15 +118,64 @@ export const usePaymentProcessing = () => {
           type: "scheduling/updateAppointmentStatus",
           payload: {
             appointmentId,
-            status: "payment_requested",
-            updatedAt: new Date().toISOString(),
+            status: "paid",
+            paymentReceived: true,
+            paymentReceivedAt: new Date().toISOString(),
+            paymentDetails,
           },
         });
 
-        return { success: true, data: result };
+        return {
+          success: true,
+          data: result,
+        };
       } catch (error) {
-        console.error("Payment request failed:", error);
-        return { success: false, error: error.message };
+        console.error("Mark payment received failed:", error);
+        return {
+          success: false,
+          error: error.message,
+        };
+      } finally {
+        setLoading((prev) => ({ ...prev, [loadingKey]: false }));
+      }
+    },
+    [dispatch]
+  );
+
+  // Request payment reminder
+  const sendPaymentReminder = useCallback(
+    async (appointmentId, reminderType = "sms") => {
+      const loadingKey = `reminder_${appointmentId}`;
+      setLoading((prev) => ({ ...prev, [loadingKey]: true }));
+
+      try {
+        const result = await optimizedDataManager.sendPaymentReminder(
+          appointmentId,
+          reminderType
+        );
+
+        // Update appointment with reminder sent info
+        dispatch({
+          type: "scheduling/updateAppointment",
+          payload: {
+            appointmentId,
+            updates: {
+              last_payment_reminder: new Date().toISOString(),
+              payment_reminder_count: (result.reminderCount || 0) + 1,
+            },
+          },
+        });
+
+        return {
+          success: true,
+          data: result,
+        };
+      } catch (error) {
+        console.error("Payment reminder failed:", error);
+        return {
+          success: false,
+          error: error.message,
+        };
       } finally {
         setLoading((prev) => ({ ...prev, [loadingKey]: false }));
       }
@@ -143,16 +187,12 @@ export const usePaymentProcessing = () => {
     // Actions
     processPayment,
     uploadReceipt,
-    processBulkPayments,
-    requestPayment,
+    markPaymentReceived,
+    sendPaymentReminder,
 
-    // States
+    // State
     loading,
     uploadProgress,
-
-    // Utilities
-    isLoading: (key) => loading[key] || false,
-    getUploadProgress: (key) => uploadProgress[key] || 0,
   };
 };
 

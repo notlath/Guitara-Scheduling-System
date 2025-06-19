@@ -64,7 +64,19 @@ export const useSmartNotifications = () => {
     audioRef.current.volume = 0.3;
   }, []);
 
-  // Show notification
+  // Dismiss notification - Define this FIRST
+  const dismissNotification = useCallback((id) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+
+    // Clear timeout if exists
+    const timeoutId = timeoutRefs.current.get(id);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutRefs.current.delete(id);
+    }
+  }, []);
+
+  // Show notification - Now can safely use dismissNotification
   const showNotification = useCallback(
     ({ type = "INFO", title, message, actions = [], data = {}, id = null }) => {
       const notificationId =
@@ -131,18 +143,6 @@ export const useSmartNotifications = () => {
     [notificationSettings, dismissNotification]
   );
 
-  // Dismiss notification
-  const dismissNotification = useCallback((id) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-
-    // Clear timeout if exists
-    const timeoutId = timeoutRefs.current.get(id);
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-      timeoutRefs.current.delete(id);
-    }
-  }, []);
-
   // Dismiss all notifications
   const dismissAll = useCallback(() => {
     setNotifications([]);
@@ -179,150 +179,221 @@ export const useSmartNotifications = () => {
     return Promise.resolve(Notification.permission);
   }, []);
 
-  // Analyze critical issues and create notifications
-  const analyzeCriticalIssues = useCallback(
-    ({ appointments = [], drivers = [], currentTime = new Date() }) => {
-      const issues = [];
-
-      // Check for overdue appointments
-      const overdueAppointments = appointments.filter((apt) => {
-        if (apt.status !== "pending" && apt.status !== "confirmed")
-          return false;
-
-        const appointmentTime = new Date(`${apt.date} ${apt.start_time}`);
-        const overdueThreshold = new Date(
-          appointmentTime.getTime() + 60 * 60 * 1000
-        ); // 1 hour
-
-        return currentTime > overdueThreshold;
-      });
-
-      if (overdueAppointments.length > 0) {
-        issues.push({
-          type: "CRITICAL",
-          title: "Overdue Appointments",
-          message: `${overdueAppointments.length} appointment(s) are overdue and need immediate attention`,
-          actions: [
-            {
-              id: "view_overdue",
-              label: "View Overdue",
-              handler: () => (window.location.hash = "#overdue"),
-            },
-            {
-              id: "auto_cancel",
-              label: "Auto Cancel",
-              handler: (data) =>
-                console.log("Auto cancel overdue appointments", data),
-            },
-          ],
-          data: { appointments: overdueAppointments },
-        });
-      }
-
-      // Check for driver shortage
-      const availableDrivers = drivers.filter((d) => d.status === "available");
-      const pendingPickups = appointments.filter(
-        (apt) => apt.status === "confirmed" && !apt.driver_id
-      );
-
-      if (pendingPickups.length > 0 && availableDrivers.length === 0) {
-        issues.push({
-          type: "URGENT",
-          title: "Driver Shortage",
-          message: `${pendingPickups.length} appointments need drivers but none are available`,
-          actions: [
-            {
-              id: "contact_drivers",
-              label: "Contact Drivers",
-              handler: () => console.log("Contact offline drivers"),
-            },
-          ],
-          data: { pendingPickups, availableDrivers },
-        });
-      }
-
-      // Check for payment issues
-      const paymentIssues = appointments.filter(
-        (apt) =>
-          apt.status === "awaiting_payment" &&
-          new Date(apt.date) < new Date(currentTime - 24 * 60 * 60 * 1000) // 1 day old
-      );
-
-      if (paymentIssues.length > 0) {
-        issues.push({
-          type: "WARNING",
-          title: "Pending Payments",
-          message: `${paymentIssues.length} payment(s) have been pending for over 24 hours`,
-          actions: [
-            {
-              id: "review_payments",
-              label: "Review Payments",
-              handler: () => (window.location.hash = "#payments"),
-            },
-          ],
-          data: { paymentIssues },
-        });
-      }
-
-      return issues;
-    },
-    []
-  );
-
-  // Monitor for critical issues
-  const monitorCriticalIssues = useCallback(
-    (data) => {
-      const issues = analyzeCriticalIssues(data);
-
-      issues.forEach((issue) => {
-        showNotification({
-          ...issue,
-          id: `critical_${issue.type.toLowerCase()}_${Date.now()}`,
-        });
-      });
-    },
-    [analyzeCriticalIssues, showNotification]
-  );
-
   // Update notification settings
   const updateSettings = useCallback((newSettings) => {
     setNotificationSettings((prev) => ({ ...prev, ...newSettings }));
   }, []);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    const currentTimeoutRefs = timeoutRefs.current;
-    return () => {
-      currentTimeoutRefs.forEach((timeoutId) => clearTimeout(timeoutId));
-      currentTimeoutRefs.clear();
-    };
-  }, []);
+  // Predefined notification helpers
+  const notifyError = useCallback(
+    (title, message, data = {}) => {
+      return showNotification({
+        type: "CRITICAL",
+        title,
+        message,
+        data,
+        actions: [
+          {
+            id: "dismiss",
+            label: "Dismiss",
+            handler: () => {},
+          },
+        ],
+      });
+    },
+    [showNotification]
+  );
+
+  const notifyWarning = useCallback(
+    (title, message, data = {}) => {
+      return showNotification({
+        type: "WARNING",
+        title,
+        message,
+        data,
+      });
+    },
+    [showNotification]
+  );
+
+  const notifySuccess = useCallback(
+    (title, message, data = {}) => {
+      return showNotification({
+        type: "SUCCESS",
+        title,
+        message,
+        data,
+      });
+    },
+    [showNotification]
+  );
+
+  const notifyInfo = useCallback(
+    (title, message, data = {}) => {
+      return showNotification({
+        type: "INFO",
+        title,
+        message,
+        data,
+      });
+    },
+    [showNotification]
+  );
+
+  // Emergency notification with immediate action required
+  const notifyEmergency = useCallback(
+    (title, message, actions = [], data = {}) => {
+      return showNotification({
+        type: "CRITICAL",
+        title,
+        message,
+        actions: [
+          ...actions,
+          {
+            id: "acknowledge",
+            label: "Acknowledge",
+            handler: (notificationData) => {
+              console.log("Emergency acknowledged:", notificationData);
+            },
+          },
+        ],
+        data,
+      });
+    },
+    [showNotification]
+  );
+
+  // Appointment-specific notifications
+  const notifyAppointmentOverdue = useCallback(
+    (appointment) => {
+      return showNotification({
+        type: "URGENT",
+        title: "Appointment Overdue",
+        message: `${appointment.client_name}'s appointment is overdue`,
+        data: { appointment },
+        actions: [
+          {
+            id: "contact_client",
+            label: "Contact Client",
+            handler: (data) => {
+              console.log(
+                "Contacting client for appointment:",
+                data.appointment
+              );
+            },
+          },
+          {
+            id: "reschedule",
+            label: "Reschedule",
+            handler: (data) => {
+              console.log("Rescheduling appointment:", data.appointment);
+            },
+          },
+        ],
+      });
+    },
+    [showNotification]
+  );
+
+  const notifyPaymentPending = useCallback(
+    (appointment) => {
+      return showNotification({
+        type: "WARNING",
+        title: "Payment Pending",
+        message: `Payment verification needed for ${appointment.client_name}`,
+        data: { appointment },
+        actions: [
+          {
+            id: "verify_payment",
+            label: "Verify Payment",
+            handler: (data) => {
+              console.log("Verifying payment for:", data.appointment);
+            },
+          },
+        ],
+      });
+    },
+    [showNotification]
+  );
+
+  const notifyDriverAssigned = useCallback(
+    (appointment, driver) => {
+      return showNotification({
+        type: "SUCCESS",
+        title: "Driver Assigned",
+        message: `${driver.name} assigned to ${appointment.client_name}'s appointment`,
+        data: { appointment, driver },
+      });
+    },
+    [showNotification]
+  );
+
+  // System status notifications
+  const notifySystemStatus = useCallback(
+    (status, message) => {
+      const type =
+        status === "error"
+          ? "CRITICAL"
+          : status === "warning"
+          ? "WARNING"
+          : "INFO";
+
+      return showNotification({
+        type,
+        title: `System ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+        message,
+        data: { status },
+      });
+    },
+    [showNotification]
+  );
+
+  // Get notifications by type
+  const getNotificationsByType = useCallback(
+    (type) => {
+      return notifications.filter((n) => n.type === type);
+    },
+    [notifications]
+  );
+
+  // Get critical notifications count
+  const criticalCount = notifications.filter(
+    (n) => n.type === "CRITICAL"
+  ).length;
+
+  // Get unread notifications count
+  const unreadCount = notifications.length;
 
   return {
-    // Core notification functions
+    // State
+    notifications,
+    criticalCount,
+    unreadCount,
+    notificationSettings,
+
+    // Core actions
     showNotification,
     dismissNotification,
     dismissAll,
     handleNotificationAction,
-
-    // Critical issue monitoring
-    analyzeCriticalIssues,
-    monitorCriticalIssues,
-
-    // Settings and permissions
-    requestNotificationPermission,
     updateSettings,
-    notificationSettings,
+    requestNotificationPermission,
 
-    // State
-    notifications,
-    hasNotifications: notifications.length > 0,
-    criticalCount: notifications.filter((n) => n.type === "CRITICAL").length,
+    // Predefined helpers
+    notifyError,
+    notifyWarning,
+    notifySuccess,
+    notifyInfo,
+    notifyEmergency,
 
-    // Utility functions
-    getNotificationById: (id) => notifications.find((n) => n.id === id),
-    getNotificationsByType: (type) =>
-      notifications.filter((n) => n.type === type),
+    // Domain-specific helpers
+    notifyAppointmentOverdue,
+    notifyPaymentPending,
+    notifyDriverAssigned,
+    notifySystemStatus,
+
+    // Utility
+    getNotificationsByType,
   };
 };
 

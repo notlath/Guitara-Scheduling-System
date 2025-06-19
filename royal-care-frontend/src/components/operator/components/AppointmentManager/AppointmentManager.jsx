@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import AppointmentFilters from "./AppointmentFilters";
 import AppointmentList from "./AppointmentList";
-import "./AppointmentManager.module.css";
+import styles from "./AppointmentManager.module.css";
 import BulkActionBar from "./BulkActionBar";
 
 const AppointmentManager = ({
@@ -263,17 +263,17 @@ const AppointmentManager = ({
   );
 
   return (
-    <div className={`appointment-manager ${className}`}>
+    <div className={`${styles.appointmentManager} ${className}`}>
       {/* Header with stats */}
-      <div className="manager-header">
-        <div className="header-info">
-          <h2 className="manager-title">Appointment Management</h2>
-          <div className="stats-summary">
-            <span className="stat-item">
+      <div className={styles.managerHeader}>
+        <div className={styles.headerInfo}>
+          <h2 className={styles.managerTitle}>Appointment Management</h2>
+          <div className={styles.statsSummary}>
+            <span className={styles.statItem}>
               {stats.filtered} of {stats.total} appointments
             </span>
             {stats.selected > 0 && (
-              <span className="stat-item selected">
+              <span className={`${styles.statItem} ${styles.selected}`}>
                 {stats.selected} selected
               </span>
             )}
@@ -281,17 +281,21 @@ const AppointmentManager = ({
         </div>
 
         {/* View controls */}
-        <div className="view-controls">
-          <div className="view-mode-toggle">
+        <div className={styles.viewControls}>
+          <div className={styles.viewModeToggle}>
             <button
-              className={`view-btn ${viewMode === "list" ? "active" : ""}`}
+              className={`${styles.viewBtn} ${
+                viewMode === "list" ? styles.active : ""
+              }`}
               onClick={() => setViewMode("list")}
               title="List view"
             >
               <i className="fas fa-list" />
             </button>
             <button
-              className={`view-btn ${viewMode === "card" ? "active" : ""}`}
+              className={`${styles.viewBtn} ${
+                viewMode === "card" ? styles.active : ""
+              }`}
               onClick={() => setViewMode("card")}
               title="Card view"
             >
@@ -299,11 +303,11 @@ const AppointmentManager = ({
             </button>
           </div>
 
-          <div className="sort-controls">
+          <div className={styles.sortControls}>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="sort-select"
+              className={styles.sortSelect}
             >
               <option value="date">Sort by Date</option>
               <option value="client">Sort by Client</option>
@@ -311,7 +315,7 @@ const AppointmentManager = ({
               <option value="priority">Sort by Priority</option>
             </select>
             <button
-              className="sort-order-btn"
+              className={styles.sortOrderBtn}
               onClick={() =>
                 setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
               }
