@@ -20,10 +20,7 @@ import {
   useOptimizedButtonLoading,
   useOptimizedCountdown,
 } from "../hooks/useOperatorPerformance";
-import {
-  useOptimizedAttendance,
-  useOptimizedDashboardData,
-} from "../hooks/useOptimizedData";
+import { useOptimizedDashboardData } from "../hooks/useOptimizedData";
 import { useStableCallback } from "../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
@@ -31,6 +28,10 @@ import optimizedDataManager from "../services/optimizedDataManager";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
+import {
+  useAttendanceActions,
+  useAttendanceRecords,
+} from "./contexts/AttendanceContext";
 import PerformanceMonitor from "./PerformanceMonitor";
 
 import "../globals/TabSwitcher.css";
@@ -79,16 +80,15 @@ const OperatorDashboard = () => {
     receiptUrl: "",
     isUploading: false,
     uploadError: "",
-  }); // Attendance-related state
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
-  // ✅ PERFORMANCE FIX: Use optimized attendance with caching
+  });
+  // ✅ PERFORMANCE FIX: Use optimized attendance context with caching
   const {
     attendanceRecords,
     loading: attendanceLoading,
-    forceRefreshAttendance,
-  } = useOptimizedAttendance(selectedDate);
+    selectedDate,
+  } = useAttendanceRecords();
+
+  const { setSelectedDate, forceRefreshAttendance } = useAttendanceActions();
   // Driver coordination state
   const [driverAssignment, setDriverAssignment] = useState({
     availableDrivers: [],
