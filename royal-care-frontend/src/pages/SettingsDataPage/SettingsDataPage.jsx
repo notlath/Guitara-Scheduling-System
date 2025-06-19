@@ -339,6 +339,8 @@ const SettingsDataPage = () => {
   const [isRestoring, setIsRestoring] = useState(false);
   const [backupStatus, setBackupStatus] = useState("");
   const [showBackupDropdown, setShowBackupDropdown] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [tabPages, setTabPages] = useState({
     Therapists: 1,
     Drivers: 1,
@@ -407,6 +409,8 @@ const SettingsDataPage = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setFormData({});
+    setUsernameError("");
+    setIsCheckingUsername(false);
   };
 
   const handleInputChange = (e) => {
@@ -423,52 +427,122 @@ const SettingsDataPage = () => {
       if (name === "firstName" || name === "lastName") {
         newValue = capitalizeName(value);
         updatedData[name] = newValue;
-
-        // Auto-generate username only when lastName changes (since we only use lastName for username)
-        if (
-          name === "lastName" &&
-          ["Therapists", "Drivers", "Operators"].includes(activeTab)
-        ) {
-          const currentUsername = prev.username || "";
-          const isDefaultUsername = currentUsername.match(/^(rct|rcd|rco)_/);
-
-          // Generate new unique username if current is empty or is a default pattern
-          if (!currentUsername || isDefaultUsername) {
-            const lastName = newValue; // Use the new lastName value
-
-            // Generate unique username asynchronously (only using lastName)
-            generateUniqueUsername(activeTab, "", lastName)
-              .then((uniqueUsername) => {
-                if (uniqueUsername) {
-                  setFormData((currentData) => ({
-                    ...currentData,
-                    username: uniqueUsername,
-                  }));
-                }
-              })
-              .catch((error) => {
-                console.warn("Error generating unique username:", error);
-                // Fallback to basic username generation (only using lastName)
-                const fallbackUsername = generateDefaultUsername(
-                  activeTab,
-                  "",
-                  lastName
-                );
-                if (fallbackUsername) {
-                  setFormData((currentData) => ({
-                    ...currentData,
-                    username: fallbackUsername,
-                  }));
-                }
-              });
-          }
-        }
       } else {
         updatedData[name] = newValue;
       }
 
       return updatedData;
     });
+  };
+
+  // Handle lastName field blur to generate username
+  const handleLastNameBlur = async (e) => {
+    const lastName = e.target.value.trim();
+
+    if (
+      !lastName ||
+      !["Therapists", "Drivers", "Operators"].includes(activeTab)
+    ) {
+      return;
+    }
+
+    // Always generate username when lastName loses focus
+    setIsCheckingUsername(true);
+    setUsernameError("");
+
+    try {
+      const baseUsername = generateDefaultUsername(activeTab, "", lastName);
+
+      if (baseUsername) {
+        const response = await checkUsernameAvailable(baseUsername);
+
+        if (response.data.available) {
+          setFormData((prev) => ({
+            ...prev,
+            username: baseUsername,
+          }));
+          setUsernameError("");
+        } else {
+          setUsernameError(`Username "${baseUsername}" is already taken.`);
+          // Try with number suffix
+          let foundAvailable = false;
+          for (let i = 1; i <= 99; i++) {
+            const numberedUsername = `${baseUsername}${i}`;
+            try {
+              const numberResponse = await checkUsernameAvailable(
+                numberedUsername
+              );
+              if (numberResponse.data.available) {
+                setFormData((prev) => ({
+                  ...prev,
+                  username: numberedUsername,
+                }));
+                setUsernameError("");
+                foundAvailable = true;
+                break;
+              }
+            } catch (error) {
+              console.warn(
+                `Error checking username ${numberedUsername}:`,
+                error
+              );
+            }
+          }
+
+          if (!foundAvailable) {
+            setUsernameError(
+              "Unable to generate available username. Please enter manually."
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error checking username:", error);
+      setUsernameError("Error checking username availability.");
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+
+  // Handle username field change to clear errors
+  const handleUsernameChange = async (e) => {
+    const username = e.target.value;
+    setFormData((prev) => ({ ...prev, username }));
+
+    // Clear error when user starts typing
+    if (usernameError) {
+      setUsernameError("");
+    }
+  };
+
+  // Handle username field blur to check availability
+  const handleUsernameBlur = async (e) => {
+    const username = e.target.value.trim();
+
+    if (
+      !username ||
+      !["Therapists", "Drivers", "Operators"].includes(activeTab)
+    ) {
+      return;
+    }
+
+    setIsCheckingUsername(true);
+    setUsernameError("");
+
+    try {
+      const response = await checkUsernameAvailable(username);
+
+      if (!response.data.available) {
+        setUsernameError(`Username "${username}" is already taken.`);
+      } else {
+        setUsernameError("");
+      }
+    } catch (error) {
+      console.error("Error checking username:", error);
+      setUsernameError("Error checking username availability.");
+    } finally {
+      setIsCheckingUsername(false);
+    }
   };
 
   // const handleMultiSelectChange = (e) => {
@@ -478,6 +552,21 @@ const SettingsDataPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Check for username errors before submitting
+    if (usernameError) {
+      setSuccessPrompt("Please fix username errors before submitting.");
+      setTimeout(() => setSuccessPrompt(""), 3000);
+      return;
+    }
+
+    // Check if username checking is in progress
+    if (isCheckingUsername) {
+      setSuccessPrompt("Please wait for username validation to complete.");
+      setTimeout(() => setSuccessPrompt(""), 3000);
+      return;
+    }
+
     setIsSubmitting(true);
     // Sanitize only on submit
     let sanitized = { ...formData };
@@ -876,6 +965,7 @@ const SettingsDataPage = () => {
                 label="Last Name"
                 value={formData.lastName || ""}
                 onChange={handleInputChange}
+                onBlur={handleLastNameBlur}
                 inputProps={{ autoComplete: "off", maxLength: 50 }}
               />
             </div>
@@ -883,12 +973,14 @@ const SettingsDataPage = () => {
               name="username"
               label="Username"
               value={formData.username || ""}
-              onChange={handleInputChange}
+              onChange={handleUsernameChange}
+              onBlur={handleUsernameBlur}
               inputProps={{
-                placeholder:
-                  generateDefaultUsername(activeTab, "", formData.lastName) ||
-                  "rct_lastname",
+                placeholder: "rct_lastname",
+                disabled: isCheckingUsername,
               }}
+              error={usernameError}
+              helperText={isCheckingUsername ? "Checking availability..." : ""}
             />
             <FormField
               name="email"
@@ -944,6 +1036,7 @@ const SettingsDataPage = () => {
                 label="Last Name"
                 value={formData.lastName || ""}
                 onChange={handleInputChange}
+                onBlur={handleLastNameBlur}
                 inputProps={{ autoComplete: "off", maxLength: 50 }}
               />
             </div>
@@ -951,12 +1044,15 @@ const SettingsDataPage = () => {
               name="username"
               label="Username"
               value={formData.username || ""}
-              onChange={handleInputChange}
+              onChange={handleUsernameChange}
+              onBlur={handleUsernameBlur}
               inputProps={{
                 placeholder:
-                  generateDefaultUsername(activeTab, "", formData.lastName) ||
-                  (activeTab === "Drivers" ? "rcd_lastname" : "rco_lastname"),
+                  activeTab === "Drivers" ? "rcd_lastname" : "rco_lastname",
+                disabled: isCheckingUsername,
               }}
+              error={usernameError}
+              helperText={isCheckingUsername ? "Checking availability..." : ""}
             />
             <FormField
               name="email"
@@ -1247,7 +1343,7 @@ const SettingsDataPage = () => {
               <button
                 type="submit"
                 className="action-btn"
-                disabled={isSubmitting}
+                disabled={isSubmitting || usernameError || isCheckingUsername}
               >
                 {isSubmitting ? "Registering..." : "Register"}
               </button>

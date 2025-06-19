@@ -446,49 +446,35 @@ const OperatorDashboard = () => {
       appointment.therapists_details.length > 0
     ) {
       return (
-        <div className="detail-row">
-          <span className="label">Therapists:</span>
-          <div className="therapists-list">
-            {appointment.therapists_details.map((therapist) => (
-              <div key={therapist.id} className="therapist-name">
-                {therapist.first_name} {therapist.last_name}
-                {therapist.specialization && (
-                  <span className="therapist-specialization">
-                    {" "}
-                    ({therapist.specialization})
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        <p>
+          <strong>Therapists:</strong>{" "}
+          {appointment.therapists_details.map((therapist, index) => (
+            <span key={therapist.id}>
+              {therapist.first_name} {therapist.last_name}
+              {therapist.specialization && ` (${therapist.specialization})`}
+              {index < appointment.therapists_details.length - 1 && ", "}
+            </span>
+          ))}
+        </p>
       );
     }
 
     // Handle single therapist (legacy support)
     if (appointment.therapist_details) {
       return (
-        <div className="detail-row">
-          <span className="label">Therapist:</span>
-          <div className="therapist-name">
-            {appointment.therapist_details.first_name}{" "}
-            {appointment.therapist_details.last_name}
-            {appointment.therapist_details.specialization && (
-              <span className="therapist-specialization">
-                {" "}
-                ({appointment.therapist_details.specialization})
-              </span>
-            )}
-          </div>
-        </div>
+        <p>
+          <strong>Therapist:</strong> {appointment.therapist_details.first_name}{" "}
+          {appointment.therapist_details.last_name}
+          {appointment.therapist_details.specialization &&
+            ` (${appointment.therapist_details.specialization})`}
+        </p>
       );
     }
 
     return (
-      <div className="detail-row">
-        <span className="label">Therapist:</span>
-        <span className="no-therapist">No therapist assigned</span>
-      </div>
+      <p>
+        <strong>Therapist:</strong> No therapist assigned
+      </p>
     );
   };
   // Helper function to get therapist acceptance status
