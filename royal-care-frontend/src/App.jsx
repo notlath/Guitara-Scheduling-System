@@ -6,6 +6,7 @@ import { useOptimizedSelector } from "./hooks/usePerformanceOptimization";
 // Import debugger utilities for performance monitoring in development
 import DriverDashboard from "./components/DriverDashboard";
 import MainLayout from "./components/MainLayout";
+import ModernOperatorDashboard from "./components/ModernOperatorDashboard";
 import OperatorDashboard from "./components/OperatorDashboard";
 import TherapistDashboard from "./components/TherapistDashboard";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -14,6 +15,11 @@ import ReactErrorBoundary from "./components/common/ReactErrorBoundary";
 import { AttendanceMemoProvider } from "./components/contexts/AttendanceContext";
 import AvailabilityManager from "./components/scheduling/AvailabilityManager";
 import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
+
+// Feature flag for gradual migration
+const USE_MODERN_DASHBOARD =
+  import.meta.env.VITE_USE_MODERN_DASHBOARD === "true" ||
+  localStorage.getItem("use-modern-dashboard") === "true";
 // Initialize service worker error suppression early
 import "./utils/serviceWorkerErrorSuppression";
 // Import performance optimization services
@@ -303,11 +309,16 @@ const App = () => {
                 </ProtectedRoute>
               }
             >
+              {" "}
               <Route
                 index
                 element={
                   user?.role === "operator" ? (
-                    <OperatorDashboard />
+                    USE_MODERN_DASHBOARD ? (
+                      <ModernOperatorDashboard />
+                    ) : (
+                      <OperatorDashboard />
+                    )
                   ) : user?.role === "therapist" ? (
                     <TherapistDashboard />
                   ) : user?.role === "driver" ? (
