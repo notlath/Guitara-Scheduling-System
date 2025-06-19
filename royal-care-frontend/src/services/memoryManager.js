@@ -3,7 +3,7 @@
  * Implements Solution #3: Intelligent cache eviction and memory optimization
  */
 
-import dataManager from "./dataManager.js";
+import optimizedDataManager from "./optimizedDataManager.js";
 
 class MemoryManager {
   constructor() {
@@ -188,7 +188,7 @@ class MemoryManager {
    * Check current memory pressure and update state
    */
   checkMemoryPressure() {
-    const cacheSize = dataManager.cache?.size || 0;
+    const cacheSize = optimizedDataManager.cache?.size || 0;
     const usage = cacheSize / this.memoryThresholds.maxCacheSize;
 
     let newState = "normal";
@@ -228,7 +228,7 @@ class MemoryManager {
    */
   intelligentCacheEviction() {
     const now = Date.now();
-    const cache = dataManager.cache;
+    const cache = optimizedDataManager.cache;
     const cacheEntries = Array.from(cache.entries());
 
     if (cacheEntries.length === 0) return 0;
@@ -346,7 +346,7 @@ class MemoryManager {
     this.usagePatterns.set(dataType, current);
 
     // Also update cache entry access count
-    const cached = dataManager.cache?.get(dataType);
+    const cached = optimizedDataManager.cache?.get(dataType);
     if (cached) {
       cached.accessCount = (cached.accessCount || 0) + 1;
       cached.lastAccess = now;
@@ -381,12 +381,12 @@ class MemoryManager {
     const now = Date.now();
     let cleaned = 0;
 
-    for (const [key, cached] of dataManager.cache.entries()) {
+    for (const [key, cached] of optimizedDataManager.cache.entries()) {
       const priority = this.dataTypePriorities.get(key);
       const maxAge = priority ? priority.maxAge : 30 * 60 * 1000; // Default 30 minutes
 
       if (now - cached.timestamp > maxAge) {
-        dataManager.cache.delete(key);
+        optimizedDataManager.cache.delete(key);
         cleaned++;
       }
     }
@@ -467,7 +467,7 @@ class MemoryManager {
    * Get memory usage statistics
    */
   getMemoryStats() {
-    const cacheSize = dataManager.cache?.size || 0;
+    const cacheSize = optimizedDataManager.cache?.size || 0;
     const usagePatternCount = this.usagePatterns.size;
 
     return {
@@ -490,7 +490,7 @@ class MemoryManager {
    * Get memory optimization recommendations
    */
   getMemoryRecommendations() {
-    const cacheSize = dataManager.cache?.size || 0;
+    const cacheSize = optimizedDataManager.cache?.size || 0;
     const usagePatternCount = this.usagePatterns.size;
     const cacheUsage = (cacheSize / this.memoryThresholds.maxCacheSize) * 100;
 
@@ -523,11 +523,11 @@ class MemoryManager {
   optimizeCache() {
     console.log("🔧 MemoryManager: Manual cache optimization requested");
 
-    const beforeSize = dataManager.cache?.size || 0;
+    const beforeSize = optimizedDataManager.cache?.size || 0;
 
     this.performIntelligentCleanup();
 
-    const afterSize = dataManager.cache?.size || 0;
+    const afterSize = optimizedDataManager.cache?.size || 0;
     const freed = beforeSize - afterSize;
 
     console.log(

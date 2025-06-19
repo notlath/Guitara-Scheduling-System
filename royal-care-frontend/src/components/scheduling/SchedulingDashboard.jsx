@@ -6,6 +6,7 @@ import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
 import { useOptimizedDashboardData } from "../../hooks/useOptimizedData";
 import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
+import optimizedDataManager from "../../services/optimizedDataManager";
 import { SkeletonLoader } from "../common/LoadingComponents";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
@@ -53,7 +54,7 @@ const SchedulingDashboard = () => {
     upcomingAppointments,
     loading,
     error,
-    forceRefresh,
+    // forceRefresh,
     hasData,
   } = useOptimizedDashboardData("schedulingDashboard", "admin");
 
@@ -112,7 +113,11 @@ const SchedulingDashboard = () => {
       try {
         await dispatch(deleteAppointment(appointmentId)).unwrap();
         // 🔥 FIXED: Use centralized data manager refresh instead of individual API calls
-        await forceRefresh();
+        // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+        await optimizedDataManager.forceRefresh([
+          "appointments",
+          "todayAppointments",
+        ]);
       } catch (error) {
         // Add user feedback
         alert(`Failed to delete appointment: ${error.message || error}`);
@@ -123,7 +128,11 @@ const SchedulingDashboard = () => {
   const handleFormSubmitSuccess = async () => {
     setIsFormVisible(false);
     // 🔥 FIXED: Use centralized data manager refresh instead of individual API calls
-    await forceRefresh();
+    // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+    await optimizedDataManager.forceRefresh([
+      "appointments",
+      "todayAppointments",
+    ]);
   };
 
   const handleFormCancel = () => {

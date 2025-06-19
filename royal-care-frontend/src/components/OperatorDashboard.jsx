@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-  approveAttendance,
-  fetchAttendanceRecords,
-} from "../features/attendance/attendanceSlice";
+import { approveAttendance } from "../features/attendance/attendanceSlice";
 import { logout } from "../features/auth/authSlice";
 import {
   autoCancelOverdueAppointments,
@@ -27,9 +24,14 @@ import { useOptimizedDashboardData } from "../hooks/useOptimizedData";
 import { useStableCallback } from "../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
+import optimizedDataManager from "../services/optimizedDataManager";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
+import {
+  useAttendanceActions,
+  useAttendanceRecords,
+} from "./contexts/AttendanceContext";
 import PerformanceMonitor from "./PerformanceMonitor";
 
 import "../globals/TabSwitcher.css";
@@ -79,12 +81,14 @@ const OperatorDashboard = () => {
     isUploading: false,
     uploadError: "",
   });
-  // Attendance-related state
-  const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [attendanceLoading, setAttendanceLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  // ✅ PERFORMANCE FIX: Use optimized attendance context with caching
+  const {
+    attendanceRecords,
+    loading: attendanceLoading,
+    selectedDate,
+  } = useAttendanceRecords();
+
+  const { setSelectedDate, forceRefreshAttendance } = useAttendanceActions();
   // Driver coordination state
   const [driverAssignment, setDriverAssignment] = useState({
     availableDrivers: [],
@@ -99,7 +103,6 @@ const OperatorDashboard = () => {
     notifications,
     loading,
     error,
-    forceRefresh,
     hasData,
   } = useOptimizedDashboardData("operatorDashboard", "operator");
 
@@ -546,7 +549,11 @@ const OperatorDashboard = () => {
           reviewNotes: reviewNotes,
         })
       ).unwrap();
-      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshData
+      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+      await optimizedDataManager.forceRefresh([
+        "appointments",
+        "todayAppointments",
+      ]);
       setReviewModal({
         isOpen: false,
         appointmentId: null,
@@ -575,7 +582,11 @@ const OperatorDashboard = () => {
     setAutoCancelLoading(true);
     try {
       await dispatch(autoCancelOverdueAppointments()).unwrap();
-      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshData
+      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+      await optimizedDataManager.forceRefresh([
+        "appointments",
+        "todayAppointments",
+      ]);
       alert("Successfully processed overdue appointments");
     } catch {
       alert("Failed to process overdue appointments. Please try again.");
@@ -594,7 +605,11 @@ const OperatorDashboard = () => {
           action: "start_appointment",
         })
       ).unwrap(); // Refresh dashboard data to get updated status
-      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshData
+      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+      await optimizedDataManager.forceRefresh([
+        "appointments",
+        "todayAppointments",
+      ]);
     } catch (error) {
       console.error("Failed to start appointment:", error);
       alert("Failed to start appointment. Please try again.");
@@ -690,9 +705,12 @@ const OperatorDashboard = () => {
         amount: "",
         notes: "",
       });
-
       console.log("🔄 handleMarkPaymentPaid: Refreshing dashboard data");
-      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshData
+      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+      await optimizedDataManager.forceRefresh([
+        "appointments",
+        "todayAppointments",
+      ]);
 
       alert("Payment marked as received successfully!");
     } catch (error) {
@@ -919,7 +937,11 @@ const OperatorDashboard = () => {
           estimated_time: estimatedTime,
           assignment_method: "FIFO",
         });
-        forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshData
+        // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+        await optimizedDataManager.forceRefresh([
+          "appointments",
+          "todayAppointments",
+        ]);
 
         // Show success notification with FIFO details
         alert(
@@ -934,7 +956,6 @@ const OperatorDashboard = () => {
       appointments,
       driverAssignment.availableDrivers,
       dispatch,
-      forceRefresh, // OPTIMIZED: Use forceRefresh instead of refreshData
       setDriverAssignment,
     ]
   );
@@ -1068,21 +1089,14 @@ const OperatorDashboard = () => {
       unsubscribePickup();
     };
   }, [handleAutoAssignPickupRequest]); // Re-subscribe when auto-assignment function changes
-
-  // Attendance handlers
+  // ✅ PERFORMANCE FIX: Use optimized attendance refresh instead of manual fetch
   const handleFetchAttendanceRecords = useCallback(async () => {
     try {
-      setAttendanceLoading(true);
-      const result = await dispatch(
-        fetchAttendanceRecords({ date: selectedDate })
-      ).unwrap();
-      setAttendanceRecords(result);
+      await forceRefreshAttendance(selectedDate);
     } catch (error) {
       console.error("Failed to fetch attendance records:", error);
-    } finally {
-      setAttendanceLoading(false);
     }
-  }, [dispatch, selectedDate]);
+  }, [forceRefreshAttendance, selectedDate]);
 
   const handleApproveAttendance = async (attendanceId) => {
     const actionKey = `approve_${attendanceId}`;
@@ -1102,13 +1116,9 @@ const OperatorDashboard = () => {
   const handleDateChange = (newDate) => {
     setSelectedDate(newDate);
   };
-
-  // Load attendance records when date changes
-  useEffect(() => {
-    if (currentView === "attendance") {
-      handleFetchAttendanceRecords();
-    }
-  }, [currentView, handleFetchAttendanceRecords]);
+  // ✅ PERFORMANCE FIX: No need to manually fetch on tab switch - data is cached
+  // The useOptimizedAttendance hook automatically handles data fetching and caching
+  // Remove the effect that was causing unnecessary refetches
 
   // Render attendance management view
   const renderAttendanceView = () => {

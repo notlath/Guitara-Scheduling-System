@@ -3,7 +3,7 @@
  * Implements Solution #4: Micro-frontend data sharing between tabs
  */
 
-import dataManager from "./dataManager.js";
+import optimizedDataManager from "./optimizedDataManager.js";
 
 class CrossTabSync {
   constructor() {
@@ -259,15 +259,15 @@ class CrossTabSync {
     const { dataType, data, timestamp } = payload;
 
     // Check if we should update our cache
-    const currentCache = dataManager.cache?.get(dataType);
+    const currentCache = optimizedDataManager.cache?.get(dataType);
     if (!currentCache || timestamp > currentCache.timestamp) {
       console.log(
         `🔗 CrossTabSync: Received fresh ${dataType} data from other tab`
       );
 
       // Update our cache
-      if (dataManager.cache) {
-        dataManager.cache.set(dataType, {
+      if (optimizedDataManager.cache) {
+        optimizedDataManager.cache.set(dataType, {
           data,
           timestamp,
           fromCrossTab: true,
@@ -277,14 +277,11 @@ class CrossTabSync {
     }
   }
 
-  /**
-   * Handle cache sync requests
-   */
   handleCacheSync(payload) {
     const { dataType, requestingTab } = payload;
 
     // If we have fresh data, share it
-    const cached = dataManager.cache?.get(dataType);
+    const cached = optimizedDataManager.cache?.get(dataType);
     if (cached && !cached.fromCrossTab) {
       this.shareCacheData(
         dataType,
@@ -295,9 +292,6 @@ class CrossTabSync {
     }
   }
 
-  /**
-   * Handle cache invalidation
-   */
   handleCacheInvalidation(payload) {
     const { dataType, reason } = payload;
 
@@ -306,21 +300,18 @@ class CrossTabSync {
     );
 
     // Remove from our cache
-    if (dataManager.cache) {
-      dataManager.cache.delete(dataType);
+    if (optimizedDataManager.cache) {
+      optimizedDataManager.cache.delete(dataType);
     }
   }
 
-  /**
-   * Handle data requests from other tabs
-   */
   handleDataRequest(requestingTab, payload) {
     const { dataType } = payload;
 
     // Only leader tab should respond to avoid conflicts
     if (!this.isLeaderTab) return;
 
-    const cached = dataManager.cache?.get(dataType);
+    const cached = optimizedDataManager.cache?.get(dataType);
     if (cached) {
       this.shareCacheData(
         dataType,
@@ -331,49 +322,52 @@ class CrossTabSync {
     }
   }
 
-  /**
-   * Share cache data with other tabs
-   */
   shareCacheData(dataType, data, timestamp, targetTab = null) {
-    console.log(`🔗 CrossTabSync: Sharing ${dataType} data with other tabs`);
-
-    this.broadcastMessage({
+    const message = {
       type: "data_update",
-      payload: { dataType, data, timestamp },
-      targetTab,
+      payload: {
+        dataType,
+        data,
+        timestamp,
+      },
+    };
+
+    if (targetTab) {
+      // Send to specific tab
+      console.log(`🔗 CrossTabSync: Sharing ${dataType} with tab ${targetTab}`);
+    } else {
+      // Broadcast to all tabs
+      console.log(`🔗 CrossTabSync: Broadcasting ${dataType} to all tabs`);
+    }
+
+    this.broadcastMessage(message);
+  }
+
+  invalidateCache(dataType, reason = "manual") {
+    this.broadcastMessage({
+      type: "invalidate_cache",
+      payload: {
+        dataType,
+        reason,
+      },
     });
   }
 
   /**
    * Request data from other tabs
    */
-  requestDataFromOtherTabs(dataType) {
-    console.log(`🔗 CrossTabSync: Requesting ${dataType} from other tabs`);
-
+  requestData(dataType) {
     this.broadcastMessage({
       type: "request_data",
-      payload: { dataType, requestingTab: this.tabId },
+      payload: {
+        dataType,
+      },
     });
   }
 
-  /**
-   * Invalidate cache across all tabs
-   */
-  invalidateCacheAcrossTabs(dataType, reason = "Manual invalidation") {
-    console.log(`🔗 CrossTabSync: Invalidating ${dataType} across all tabs`);
-
-    this.broadcastMessage({
-      type: "invalidate_cache",
-      payload: { dataType, reason },
-    });
-  }
-
-  /**
-   * Sync fresh data to other tabs
-   */
   syncDataToOtherTabs(dataType, data, timestamp = Date.now()) {
     // Don't sync data that came from other tabs
-    const cached = dataManager.cache?.get(dataType);
+    const cached = optimizedDataManager.cache?.get(dataType);
     if (cached?.fromCrossTab) return;
 
     console.log(`🔗 CrossTabSync: Syncing fresh ${dataType} to other tabs`);

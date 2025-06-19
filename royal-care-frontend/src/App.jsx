@@ -11,6 +11,7 @@ import TherapistDashboard from "./components/TherapistDashboard";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RouteHandler from "./components/auth/RouteHandler";
 import ReactErrorBoundary from "./components/common/ReactErrorBoundary";
+import { AttendanceMemoProvider } from "./components/contexts/AttendanceContext";
 import AvailabilityManager from "./components/scheduling/AvailabilityManager";
 import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
 // Initialize service worker error suppression early
@@ -24,11 +25,11 @@ import AttendancePage from "./pages/AttendancePage/AttendancePage";
 import BookingsPage from "./pages/BookingsPage/BookingsPage";
 import ContactPage from "./pages/ContactPage/ContactPage";
 import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordPage";
+import FAQsPage from "./pages/FAQsPage/FAQsPage";
 import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
-import FAQsPage from "./pages/FAQsPage/FAQsPage";
-import UserGuidePage from "./pages/UserGuidePage/UserGuidePage";
 import InventoryPage from "./pages/InventoryPage/InventoryPage";
+import NotificationsPage from "./pages/NotificationsPage/NotificationsPage";
 import ProfilePage from "./pages/ProfilePage/ProfilePage";
 import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
@@ -38,13 +39,13 @@ import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage";
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
+import UserGuidePage from "./pages/UserGuidePage/UserGuidePage";
 import { validateToken } from "./services/auth";
 import cachePreloader from "./services/cachePreloader";
 import crossTabSync from "./services/crossTabSync";
 import memoryManager from "./services/memoryManager";
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
-import NotificationsPage from "./pages/NotificationsPage/NotificationsPage";
 
 // Error Boundary Component
 class AppErrorBoundary extends React.Component {
@@ -265,7 +266,6 @@ const App = () => {
       initializePerformanceServices();
     }
   }, [user]); // Re-run when user changes (login/logout)
-
   // Add debugging to check route matching
   useEffect(() => {
     if (window.location.pathname.includes("/dashboard/scheduling")) {
@@ -273,98 +273,108 @@ const App = () => {
       console.log("SchedulingPage component is:", SchedulingPage);
     }
   }, []);
+
   return (
-    <BrowserRouter>
-      {" "}
-      <Routes>
-        <Route path="/" element={<RouteHandler />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/2fa" element={<TwoFactorAuthPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route
-          path="/2fa-forgot-password"
-          element={<TwoFAForgotPasswordPage />}
-        />
-        <Route path="/enter-new-password" element={<EnterNewPasswordPage />} />
-        <Route
-          path="/forgot-password-confirmation"
-          element={<ForgotPasswordConfirmationPage />}
-        />{" "}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route
-            index
-            element={
-              user?.role === "operator" ? (
-                <OperatorDashboard />
-              ) : user?.role === "therapist" ? (
-                <TherapistDashboard />
-              ) : user?.role === "driver" ? (
-                <DriverDashboard />
-              ) : (
-                <Navigate to="/" />
-              )
-            }
-          />{" "}
-          <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="scheduling" element={<SchedulingPage />} />
-          <Route path="availability" element={<AvailabilityManager />} />{" "}
-          <Route path="bookings" element={<BookingsPage />} />{" "}
-          <Route
-            path="attendance"
-            element={
-              user?.role === "therapist" || user?.role === "driver" ? (
-                <StaffAttendancePage />
-              ) : (
-                <AttendancePage />
-              )
-            }
-          />
-          <Route
-            path="sales-reports"
-            element={
-              user?.role === "therapist" || user?.role === "driver" ? (
-                <Navigate to="/dashboard" replace />
-              ) : (
-                <SalesReportsPage />
-              )
-            }
-          />
-          <Route path="inventory" element={<InventoryPage />} />
-          <Route path="profile" element={<ProfilePage />} />{" "}
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="settings/account" element={<SettingsAccountPage />} />
-          <Route
-            path="settings/data"
-            element={
-              user?.role === "therapist" || user?.role === "driver" ? (
-                <Navigate to="/dashboard" replace />
-              ) : (
-                <SettingsDataPage />
-              )
-            }
-          />
-          {/* Help Pages */}
-          <Route path="help">
-            <Route path="user-guide" element={<UserGuidePage />} />
-            <Route path="faqs" element={<FAQsPage />} />
-            <Route path="contact" element={<ContactPage />} />
-          </Route>{" "}
-          {/* About Pages */}{" "}
-          <Route path="about">
-            <Route path="company" element={<CompanyInfoPage />} />
-            <Route path="system" element={<SystemInfoPage />} />
-            <Route path="developers" element={<DeveloperInfoPage />} />
-          </Route>
-        </Route>{" "}
-      </Routes>
-    </BrowserRouter>
+    <AttendanceMemoProvider>
+      <BrowserRouter>
+        <div className="App">
+          <Routes>
+            <Route path="/" element={<RouteHandler />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/2fa" element={<TwoFactorAuthPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route
+              path="/2fa-forgot-password"
+              element={<TwoFAForgotPasswordPage />}
+            />
+            <Route
+              path="/enter-new-password"
+              element={<EnterNewPasswordPage />}
+            />
+            <Route
+              path="/forgot-password-confirmation"
+              element={<ForgotPasswordConfirmationPage />}
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <MainLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route
+                index
+                element={
+                  user?.role === "operator" ? (
+                    <OperatorDashboard />
+                  ) : user?.role === "therapist" ? (
+                    <TherapistDashboard />
+                  ) : user?.role === "driver" ? (
+                    <DriverDashboard />
+                  ) : (
+                    <Navigate to="/" />
+                  )
+                }
+              />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="scheduling" element={<SchedulingPage />} />
+              <Route path="availability" element={<AvailabilityManager />} />
+              <Route path="bookings" element={<BookingsPage />} />
+              <Route
+                path="attendance"
+                element={
+                  user?.role === "therapist" || user?.role === "driver" ? (
+                    <StaffAttendancePage />
+                  ) : (
+                    <AttendancePage />
+                  )
+                }
+              />
+              <Route
+                path="sales-reports"
+                element={
+                  user?.role === "therapist" || user?.role === "driver" ? (
+                    <Navigate to="/dashboard" replace />
+                  ) : (
+                    <SalesReportsPage />
+                  )
+                }
+              />
+              <Route path="inventory" element={<InventoryPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route
+                path="settings/account"
+                element={<SettingsAccountPage />}
+              />
+              <Route
+                path="settings/data"
+                element={
+                  user?.role === "therapist" || user?.role === "driver" ? (
+                    <Navigate to="/dashboard" replace />
+                  ) : (
+                    <SettingsDataPage />
+                  )
+                }
+              />
+              {/* Help Pages */}
+              <Route path="help">
+                <Route path="user-guide" element={<UserGuidePage />} />
+                <Route path="faqs" element={<FAQsPage />} />
+                <Route path="contact" element={<ContactPage />} />
+              </Route>
+              {/* About Pages */}
+              <Route path="about">
+                <Route path="company" element={<CompanyInfoPage />} />
+                <Route path="system" element={<SystemInfoPage />} />
+                <Route path="developers" element={<DeveloperInfoPage />} />
+              </Route>
+            </Route>
+          </Routes>
+        </div>
+      </BrowserRouter>
+    </AttendanceMemoProvider>
   );
 };
 

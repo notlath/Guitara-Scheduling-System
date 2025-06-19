@@ -79,16 +79,13 @@ export const useImmediateData = (
   ]);
 
   // Smart refresh function
-  const smartRefresh = useCallback(
-    async (showImmediate = false) => {
-      try {
-        await forceRefresh();
-      } catch (error) {
-        console.warn("Smart refresh failed:", error);
-      }
-    },
-    [forceRefresh]
-  );
+  const smartRefresh = useCallback(async () => {
+    try {
+      await forceRefresh();
+    } catch (error) {
+      console.warn("Smart refresh failed:", error);
+    }
+  }, [forceRefresh]);
 
   return {
     // Data optimized for immediate display
@@ -178,26 +175,28 @@ export const useOptimisticLoading = (componentName, dataType, options = {}) => {
  */
 export const useRoutePrefetch = () => {
   const prefetchData = useCallback((route, dataTypes = []) => {
-    // Import dataManager dynamically to avoid circular dependencies
-    import("../services/dataManager.js").then(({ default: dataManager }) => {
-      console.log(
-        `🚀 Route prefetch: Prefetching data for ${route}:`,
-        dataTypes
-      );
+    // Import optimizedDataManager dynamically to avoid circular dependencies
+    import("../services/optimizedDataManager.js").then(
+      ({ default: optimizedDataManager }) => {
+        console.log(
+          `🚀 Route prefetch: Prefetching data for ${route}:`,
+          dataTypes
+        );
 
-      dataTypes.forEach((dataType) => {
-        // Check if data is stale or missing
-        const cached = dataManager.cache.get(dataType);
-        if (!cached || !dataManager.isCacheValid(dataType)) {
-          dataManager.fetchDataType(dataType).catch((error) => {
-            console.warn(
-              `⚠️ Route prefetch failed for ${dataType}:`,
-              error.message
-            );
-          });
-        }
-      });
-    });
+        dataTypes.forEach((dataType) => {
+          // Check if data is stale or missing
+          const cached = optimizedDataManager.cache.get(dataType);
+          if (!cached || !optimizedDataManager.isCacheValid(dataType)) {
+            optimizedDataManager.fetchDataType(dataType).catch((error) => {
+              console.warn(
+                `⚠️ Route prefetch failed for ${dataType}:`,
+                error.message
+              );
+            });
+          }
+        });
+      }
+    );
   }, []);
 
   return { prefetchData };

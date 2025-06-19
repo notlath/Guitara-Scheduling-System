@@ -107,40 +107,7 @@ const generateDefaultUsername = (role, firstName, lastName) => {
   return `${prefix}_${name}`;
 };
 
-// Helper function to generate unique username by checking database
-const generateUniqueUsername = async (role, firstName, lastName) => {
-  const baseUsername = generateDefaultUsername(role, "", lastName); // Only use lastName
-  if (!baseUsername) return "";
-
-  try {
-    // Check if base username is available
-    const response = await checkUsernameAvailable(baseUsername);
-    if (response.data.available) {
-      return baseUsername;
-    }
-
-    // If not available, try with numbers
-    for (let i = 1; i <= 99; i++) {
-      const numberedUsername = `${baseUsername}${i}`;
-      try {
-        const numberResponse = await checkUsernameAvailable(numberedUsername);
-        if (numberResponse.data.available) {
-          return numberedUsername;
-        }
-      } catch (error) {
-        console.warn(`Error checking username ${numberedUsername}:`, error);
-        // Continue trying next number
-      }
-    }
-
-    // If all numbers 1-99 are taken, return base username anyway
-    return baseUsername;
-  } catch (error) {
-    console.warn("Error checking username availability:", error);
-    // Return base username if check fails
-    return baseUsername;
-  }
-};
+// (removed unused generateUniqueUsername function)
 
 // Pagination defaults
 const DEFAULT_PAGE_SIZE = 10;
