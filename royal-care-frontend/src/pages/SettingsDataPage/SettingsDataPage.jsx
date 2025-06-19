@@ -181,19 +181,38 @@ const fetchers = {
         },
       }
     );
-    if (!res.ok) return [];
+
+    if (!res.ok) {
+      console.error(
+        `Failed to fetch operators: ${res.status} ${res.statusText}`
+      );
+      return [];
+    }
+
     const data = await res.json();
-    return data.map((item) => ({
-      Username: item.username || "-",
-      Name:
-        `${capitalizeName(item.first_name) || ""} ${
-          capitalizeName(item.last_name) || ""
-        }`.trim() || "-",
-      Email: item.email || "-",
-      Contact: item.phone_number || "-",
-      Specialization: "N/A",
-      Pressure: "N/A",
-    }));
+    console.log("🔍 Raw Operators Response:", data); // Debug log
+
+    // Handle both array and object responses
+    const operatorsArray = Array.isArray(data)
+      ? data
+      : data.results || data.data || [];
+
+    return operatorsArray.map((item) => {
+      // Safely handle name construction
+      const firstName = capitalizeName(item.first_name || "");
+      const lastName = capitalizeName(item.last_name || "");
+      const fullName =
+        [firstName, lastName].filter(Boolean).join(" ") || "Unknown";
+
+      return {
+        Username: item.username || "N/A",
+        Name: fullName,
+        Email: item.email || "N/A",
+        Contact: item.phone_number || "N/A", // This field might not exist
+        Specialization: "N/A",
+        Pressure: "N/A",
+      };
+    });
   },
   Clients: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
