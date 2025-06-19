@@ -20,24 +20,29 @@ export const useOptimizedCountdown = (appointments, isActive) => {
   // Stable appointments reference to prevent unnecessary timer resets
   const stableAppointments = useStableValue(appointments);
 
-  // Batched countdown updates for better performance
+  // Immediate countdown updates for better performance
+  const updateCountdownsImmediately = useCallback(() => {
+    const updates = { ...pendingUpdatesRef.current };
+    pendingUpdatesRef.current = {};
+
+    if (Object.keys(updates).length > 0) {
+      setCountdowns((prev) => ({
+        ...prev,
+        ...updates,
+      }));
+    }
+  }, []);
+
+  // Batched countdown updates for non-critical updates only
   const batchCountdownUpdates = useCallback(() => {
     if (batchTimeoutRef.current) {
       clearTimeout(batchTimeoutRef.current);
     }
 
     batchTimeoutRef.current = setTimeout(() => {
-      const updates = { ...pendingUpdatesRef.current };
-      pendingUpdatesRef.current = {};
-
-      if (Object.keys(updates).length > 0) {
-        setCountdowns((prev) => ({
-          ...prev,
-          ...updates,
-        }));
-      }
-    }, 100); // Batch updates every 100ms
-  }, []);
+      updateCountdownsImmediately();
+    }, 50); // Reduced from 100ms to 50ms for better responsiveness
+  }, [updateCountdownsImmediately]);
 
   const updateCountdowns = useCallback(() => {
     if (!stableAppointments || stableAppointments.length === 0) return;
@@ -310,38 +315,22 @@ export const useOptimizedLoadingState = (
 /**
  * Optimized button loading state manager
  * Prevents unnecessary re-renders when button states change
+ * ✅ PERFORMANCE FIX: Removed batching delay for immediate button responsiveness
  */
 export const useOptimizedButtonLoading = () => {
   const [buttonLoading, setButtonLoading] = useState({});
-  const pendingUpdatesRef = useRef({});
-  const updateTimeoutRef = useRef(null);
 
-  // Batch button loading updates to prevent rapid re-renders
+  // ✅ PERFORMANCE FIX: Immediate button loading updates (removed batching delay)
   const setActionLoading = useCallback((actionKey, isLoading) => {
-    pendingUpdatesRef.current[actionKey] = isLoading;
-
-    // Clear existing timeout
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current);
-    }
-
-    // Batch update after a short delay
-    updateTimeoutRef.current = setTimeout(() => {
-      const updates = pendingUpdatesRef.current;
-      pendingUpdatesRef.current = {};
-
-      setButtonLoading((prev) => {
+    setButtonLoading((prev) => {
+      if (isLoading) {
+        return { ...prev, [actionKey]: true };
+      } else {
         const newState = { ...prev };
-        Object.entries(updates).forEach(([key, value]) => {
-          if (value) {
-            newState[key] = value;
-          } else {
-            delete newState[key];
-          }
-        });
+        delete newState[actionKey];
         return newState;
-      });
-    }, 50); // 50ms batch delay
+      }
+    });
   }, []);
 
   // Force clear loading state for emergency situations

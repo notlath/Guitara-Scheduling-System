@@ -13,6 +13,7 @@ import {
 // OPTIMIZED: Replace old data hooks with optimized versions
 import { useOptimizedDashboardData } from "../hooks/useOptimizedData";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
+import optimizedDataManager from "../services/optimizedDataManager";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 
@@ -62,15 +63,13 @@ const TherapistDashboard = () => {
       [actionKey]: isLoading,
     }));
   };
-  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
-  // OPTIMIZED: Use optimized dashboard data hook
+  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual); // OPTIMIZED: Use optimized dashboard data hook
   const {
     appointments: myAppointments,
     todayAppointments: myTodayAppointments,
     upcomingAppointments: myUpcomingAppointments,
     loading,
     error,
-    forceRefresh,
     hasData,
   } = useOptimizedDashboardData("therapistDashboard", "therapist");
 
@@ -96,7 +95,11 @@ const TherapistDashboard = () => {
       setActionLoading(actionKey, true);
       await dispatch(therapistConfirm(appointmentId)).unwrap();
       // OPTIMIZED: Use forceRefresh instead of refreshAppointments
-      forceRefresh();
+      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+      await optimizedDataManager.forceRefresh([
+        "appointments",
+        "todayAppointments",
+      ]);
     } catch (error) {
       // More user-friendly error message
       if (
@@ -133,7 +136,11 @@ const TherapistDashboard = () => {
           rejectionReason: cleanReason,
         })
       ).unwrap();
-      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
+      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+      await optimizedDataManager.forceRefresh([
+        "appointments",
+        "todayAppointments",
+      ]);
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
       // Better error message handling with authentication awareness
@@ -169,7 +176,11 @@ const TherapistDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await dispatch(therapistConfirm(appointmentId)).unwrap();
-      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
+      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+      await optimizedDataManager.forceRefresh([
+        "appointments",
+        "todayAppointments",
+      ]);
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
@@ -183,7 +194,11 @@ const TherapistDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await dispatch(startSession(appointmentId)).unwrap();
-      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
+      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+      await optimizedDataManager.forceRefresh([
+        "appointments",
+        "todayAppointments",
+      ]);
     } catch (error) {
       console.error("Failed to start session:", error);
       alert("Failed to start session. Please try again.");
@@ -197,7 +212,11 @@ const TherapistDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await dispatch(requestPayment(appointmentId)).unwrap();
-      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
+      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+      await optimizedDataManager.forceRefresh([
+        "appointments",
+        "todayAppointments",
+      ]);
     } catch (error) {
       console.error("Failed to request payment:", error);
       alert("Failed to request payment. Please try again.");
@@ -214,7 +233,11 @@ const TherapistDashboard = () => {
       try {
         setActionLoading(actionKey, true);
         await dispatch(completeAppointment(appointmentId)).unwrap();
-        forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
+        // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+        await optimizedDataManager.forceRefresh([
+          "appointments",
+          "todayAppointments",
+        ]);
       } catch (error) {
         console.error("Failed to complete session:", error);
         alert("Failed to complete session. Please try again.");
@@ -238,7 +261,11 @@ const TherapistDashboard = () => {
               : "Pickup requested by therapist",
         })
       ).unwrap();
-      forceRefresh(); // OPTIMIZED: Use forceRefresh instead of refreshAppointments
+      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+      await optimizedDataManager.forceRefresh([
+        "appointments",
+        "todayAppointments",
+      ]);
       alert(
         urgency === "urgent"
           ? "Urgent pickup request sent!"
@@ -975,7 +1002,12 @@ const TherapistDashboard = () => {
                 : error}
             </div>{" "}
             <button
-              onClick={() => forceRefresh()} // OPTIMIZED: Use forceRefresh instead of refreshAppointments
+              onClick={() =>
+                optimizedDataManager.forceRefresh([
+                  "appointments",
+                  "todayAppointments",
+                ])
+              } // ✅ PERFORMANCE FIX: Use targeted refresh
               className="retry-button"
               style={{
                 marginTop: "10px",

@@ -9,6 +9,7 @@
  * - Memory-efficient design
  */
 
+import { fetchAttendanceRecords } from "../features/attendance/attendanceSlice.js";
 import {
   fetchAppointments,
   fetchClients,
@@ -33,11 +34,11 @@ class OptimizedDataManager {
     // Optimized cache configuration - Much longer TTLs for stable data
     this.cacheTTL = {
       // Critical real-time data
-      todayAppointments: 180000, // 3 minutes (was 2 minutes)
+      todayAppointments: 300000, // 5 minutes
       notifications: 300000, // 5 minutes (was 3 minutes)
 
       // Regular scheduling data
-      appointments: 600000, // 10 minutes (was 5 minutes)
+      appointments: 600000, // 10 minutes
       upcomingAppointments: 600000, // 10 minutes (was 5 minutes)
 
       // Stable data - even longer cache times
@@ -54,6 +55,9 @@ class OptimizedDataManager {
       // Analytics and reports
       analytics: 1800000, // 30 minutes (was 15 minutes)
       reports: 3600000, // 1 hour (was 30 minutes)
+
+      attendanceRecords: 900000, // 15 minutes - attendance changes less frequently
+      "attendanceRecords_*": 900000, // 15 minutes for any date
     };
 
     // Reduced polling configuration - Much less aggressive
@@ -358,6 +362,14 @@ class OptimizedDataManager {
             : [];
         });
         break;
+      case "attendanceRecords": {
+        // For attendance, use today's date as default if no specific date provided
+        const todayDate = new Date().toISOString().split("T")[0];
+        apiPromise = store.dispatch(
+          fetchAttendanceRecords({ date: todayDate })
+        );
+        break;
+      }
       default:
         console.warn(`OptimizedDataManager: Unknown data type: ${dataType}`);
         return [];
@@ -374,10 +386,92 @@ class OptimizedDataManager {
     const cached = this.cache.get(dataType);
     if (!cached) return false;
 
-    const age = Date.now() - cached.timestamp;
-    const ttl = this.cacheTTL[dataType] || this.cacheTTL.appointments;
+    // Handle dynamic keys (like attendanceRecords_2025-06-19)
+    let ttl = this.cacheTTL[dataType];
+    if (!ttl) {
+      // Check for pattern matches
+      for (const [pattern, patternTTL] of Object.entries(this.cacheTTL)) {
+        if (
+          pattern.includes("*") &&
+          dataType.startsWith(pattern.replace("*", ""))
+        ) {
+          ttl = patternTTL;
+          break;
+        }
+      }
+    }
 
-    return age < ttl;
+    if (!ttl) ttl = 300000; // Default 5 minutes
+
+    const isValid = Date.now() - cached.timestamp < ttl;
+
+    if (!isValid) {
+      console.log(`⏰ OptimizedDataManager: Cache expired for ${dataType}`);
+    }
+
+    return isValid;
+  }
+
+  /**
+   * Fetch attendance records for a specific date
+   */
+  async fetchAttendanceForDate(date) {
+    const cacheKey = `attendanceRecords_${date}`;
+
+    // Check for existing request
+    if (this.requestsInFlight.has(cacheKey)) {
+      console.log(
+        `⏳ OptimizedDataManager: ${cacheKey} request in flight, waiting...`
+      );
+      return this.requestsInFlight.get(cacheKey);
+    }
+
+    // Check cache validity
+    if (this.isCacheValid(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      console.log(`💾 OptimizedDataManager: Using cached ${cacheKey}`);
+      return cached.data;
+    }
+
+    // Create new request
+    const requestPromise = store
+      .dispatch(fetchAttendanceRecords({ date }))
+      .then((result) => {
+        // Cache with timestamp
+        this.cache.set(cacheKey, {
+          data: result.payload || result,
+          timestamp: Date.now(),
+          fetchCount: (this.cache.get(cacheKey)?.fetchCount || 0) + 1,
+        });
+
+        console.log(
+          `✅ OptimizedDataManager: Successfully fetched ${cacheKey}`
+        );
+        return result.payload || result;
+      })
+      .catch((error) => {
+        console.error(
+          `❌ OptimizedDataManager: Failed to fetch ${cacheKey}:`,
+          error.message
+        );
+
+        // Return stale cache if available
+        const cached = this.cache.get(cacheKey);
+        if (cached?.data) {
+          console.log(
+            `📦 OptimizedDataManager: Using stale cache for ${cacheKey}`
+          );
+          return cached.data;
+        }
+
+        throw error;
+      })
+      .finally(() => {
+        this.requestsInFlight.delete(cacheKey);
+      });
+
+    this.requestsInFlight.set(cacheKey, requestPromise);
+    return requestPromise;
   }
 
   /**
@@ -386,6 +480,24 @@ class OptimizedDataManager {
   getCachedData(dataType) {
     const cached = this.cache.get(dataType);
     return cached?.data || null;
+  }
+
+  /**
+   * Force refresh attendance records for a specific date
+   */
+  async forceRefreshAttendance(date) {
+    const cacheKey = `attendanceRecords_${date}`;
+
+    // Clear cache for this date
+    this.cache.delete(cacheKey);
+    this.requestsInFlight.delete(cacheKey);
+
+    console.log(
+      `🔥 OptimizedDataManager: Force refreshing attendance for ${date}`
+    );
+
+    // Fetch immediately
+    return await this.fetchAttendanceForDate(date);
   }
 
   /**
@@ -407,6 +519,52 @@ class OptimizedDataManager {
 
     // Fetch immediately
     await this.fetchNeededData();
+  }
+
+  /**
+   * Targeted refresh methods for specific data types
+   * These are more efficient than full forceRefresh
+   */
+  async refreshAppointments() {
+    console.log("🔄 OptimizedDataManager: Refreshing appointments data");
+    await this.forceRefresh([
+      "appointments",
+      "todayAppointments",
+      "upcomingAppointments",
+    ]);
+  }
+
+  async refreshNotifications() {
+    console.log("🔄 OptimizedDataManager: Refreshing notifications");
+    await this.forceRefresh(["notifications"]);
+  }
+
+  async refreshStaffData() {
+    console.log("🔄 OptimizedDataManager: Refreshing staff data");
+    await this.forceRefresh(["staffMembers", "therapists", "drivers"]);
+  }
+
+  async refreshClientsData() {
+    console.log("🔄 OptimizedDataManager: Refreshing clients data");
+    await this.forceRefresh(["clients", "patients"]);
+  }
+
+  async refreshServicesData() {
+    console.log("🔄 OptimizedDataManager: Refreshing services data");
+    await this.forceRefresh(["services"]);
+  }
+
+  async refreshUserSpecificData() {
+    console.log("🔄 OptimizedDataManager: Refreshing user-specific data");
+    await this.forceRefresh(["todayAppointments", "notifications"]);
+  }
+
+  /**
+   * Quick refresh for immediate user actions - only refresh critical data
+   */
+  async quickRefresh() {
+    console.log("⚡ OptimizedDataManager: Quick refresh for user action");
+    await this.forceRefresh(["todayAppointments"]);
   }
 
   /**
@@ -432,6 +590,28 @@ class OptimizedDataManager {
         `🧹 OptimizedDataManager: Cleaned up ${cleanedCount} stale cache entries`
       );
     }
+  }
+
+  /**
+   * Get cached attendance data for a specific date
+   */
+  getCachedAttendanceForDate(date) {
+    if (!date) {
+      date = new Date().toISOString().split("T")[0];
+    }
+
+    const cacheKey = `attendanceRecords_${date}`;
+    const cached = this.cache.get(cacheKey);
+
+    if (cached && this.isCacheValid(cacheKey)) {
+      console.log(
+        `✅ OptimizedDataManager: Using cached attendance for ${date}`
+      );
+      return cached.data;
+    }
+
+    console.log(`⚠️ OptimizedDataManager: No cached attendance for ${date}`);
+    return null;
   }
 
   /**
