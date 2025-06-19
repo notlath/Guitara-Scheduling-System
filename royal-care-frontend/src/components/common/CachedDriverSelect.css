@@ -1,0 +1,384 @@
+/* Cached Driver Select Component Styles */
+.cached-driver-select {
+  position: relative;
+  width: 100%;
+}
+
+/* Driver Select Input */
+.driver-select-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 16px;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.driver-select-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.driver-select-input.error {
+  border-color: #dc3545;
+}
+
+.driver-select-input.error:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.driver-select-input.disabled,
+.driver-select-input:disabled {
+  background-color: #f8f9fa;
+  border-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Dropdown */
+.driver-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 300px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+/* Loading State */
+.driver-loading {
+  padding: 16px;
+  text-align: center;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.driver-loading i {
+  margin-right: 8px;
+  color: #007bff;
+}
+
+/* Error State */
+.driver-error {
+  padding: 16px;
+  text-align: center;
+  color: #dc3545;
+  font-size: 14px;
+}
+
+.driver-error i {
+  margin-right: 8px;
+}
+
+.retry-btn {
+  background-color: #dc3545;
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.retry-btn:hover {
+  background-color: #c82333;
+}
+
+/* Driver List */
+.driver-list {
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.driver-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.driver-list::-webkit-scrollbar-track {
+  background: #f7fafc;
+}
+
+.driver-list::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.driver-list::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Driver Option */
+.driver-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.driver-option:hover {
+  background-color: #f8f9fa;
+}
+
+.driver-option:last-child {
+  border-bottom: none;
+}
+
+.driver-option.selected {
+  background-color: #e3f2fd;
+  border-left: 4px solid #007bff;
+}
+
+/* No Driver Option */
+.driver-option.no-driver {
+  background-color: #f8f9fa;
+  border-left: 4px solid #6c757d;
+}
+
+.driver-option.no-driver:hover {
+  background-color: #e9ecef;
+}
+
+.driver-option.no-driver.selected {
+  background-color: #e2e6ea;
+  border-left-color: #495057;
+}
+
+/* Driver Info */
+.driver-info {
+  flex: 1;
+}
+
+.driver-name {
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.driver-vehicle {
+  color: #6c757d;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.driver-location {
+  color: #6c757d;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.driver-note {
+  color: #6c757d;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Driver Status/Availability */
+.driver-availability,
+.driver-status {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.driver-availability {
+  color: #28a745;
+}
+
+.driver-status {
+  color: #6c757d;
+}
+
+.driver-availability i,
+.driver-status i {
+  margin-right: 6px;
+}
+
+.driver-availability .available {
+  color: #28a745;
+}
+
+/* No Drivers */
+.no-drivers {
+  padding: 16px;
+  text-align: center;
+  color: #6c757d;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.no-drivers i {
+  margin-right: 8px;
+  color: #ffc107;
+  font-size: 16px;
+}
+
+.no-drivers-suggestion {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #495057;
+  background-color: #f8f9fa;
+  padding: 8px;
+  border-radius: 4px;
+  border-left: 3px solid #007bff;
+}
+
+/* Error Message */
+.error-message {
+  color: #dc3545;
+  font-size: 13px;
+  margin-top: 4px;
+  padding-left: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .driver-select-input {
+    padding: 10px 14px;
+    font-size: 15px;
+  }
+
+  .driver-dropdown {
+    max-height: 250px;
+  }
+
+  .driver-list {
+    max-height: 250px;
+  }
+
+  .driver-option {
+    padding: 10px 14px;
+  }
+
+  .driver-name {
+    font-size: 14px;
+  }
+
+  .driver-vehicle,
+  .driver-note {
+    font-size: 12px;
+  }
+
+  .driver-location {
+    font-size: 11px;
+  }
+
+  .driver-availability,
+  .driver-status {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .driver-select-input {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .driver-dropdown {
+    max-height: 200px;
+  }
+
+  .driver-list {
+    max-height: 200px;
+  }
+
+  .driver-option {
+    padding: 8px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .driver-info {
+    width: 100%;
+  }
+
+  .driver-availability,
+  .driver-status {
+    align-self: flex-end;
+  }
+
+  .driver-loading,
+  .driver-error,
+  .no-drivers {
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  .no-drivers-suggestion {
+    font-size: 11px;
+    padding: 6px;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .driver-select-input {
+    border-width: 2px;
+  }
+
+  .driver-dropdown {
+    border-width: 2px;
+  }
+
+  .driver-option.selected {
+    background-color: #000000;
+    color: #ffffff;
+    border-left-color: #ffffff;
+  }
+
+  .driver-option.no-driver.selected {
+    background-color: #333333;
+    color: #ffffff;
+    border-left-color: #ffffff;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .driver-select-input,
+  .driver-option,
+  .retry-btn {
+    transition: none;
+  }
+}
+
+/* Focus Visible Support */
+.driver-option:focus-visible {
+  outline: 2px solid #007bff;
+  outline-offset: -2px;
+}
+
+/* Loading Animation */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.driver-loading .fa-spinner {
+  animation: spin 1s linear infinite;
+}
