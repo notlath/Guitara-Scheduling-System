@@ -33,7 +33,6 @@
 
 .data-table th {
   background: var(--background-50, #f9fafb);
-  padding: 0.75rem 1rem;
   text-align: left;
   font-weight: 600;
   color: var(--text-700, #374151);
@@ -45,6 +44,8 @@
 
 .data-table td {
   vertical-align: top;
+  font-weight: 400;
+  font-size: var(--font-size-sm);
 }
 
 .data-table tbody tr,
@@ -53,9 +54,6 @@
 }
 .data-table tbody tr:last-child {
   border-bottom: none;
-}
-.data-table td {
-  font-weight: 400;
 }
 
 .data-table thead {
