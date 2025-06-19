@@ -203,6 +203,46 @@ button:disabled {
   background: var(--background);
 }
 
+/* Override DataTable styles to match skeleton appearance (Option 1) */
+.table-container :global(.data-table-wrapper) {
+  margin-top: 1rem;
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-light, #e5e7eb);
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.table-container :global(.data-table) {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-container :global(.data-table thead tr th) {
+  background: var(--background-50, #f9fafb);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-700, #374151);
+  border-bottom: 1px solid var(--border-light, #e5e7eb);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.table-container :global(.data-table tbody tr) {
+  transition: background-color 0.2s ease;
+}
+
+.table-container :global(.data-table tbody tr:hover) {
+  background: var(--background-25, #fafafa);
+}
+
+.table-container :global(.data-table td) {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+
 /* Responsive design for mobile */
 @media (max-width: 768px) {
   .table-skeleton-cell {
