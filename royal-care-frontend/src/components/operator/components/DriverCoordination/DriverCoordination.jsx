@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDriverAssignment } from "../../hooks/useDriverAssignment";
 import { useOperatorData } from "../../hooks/useOperatorData";
-import "./DriverCoordination.module.css";
+import styles from "./DriverCoordination.module.css";
 import DriverList from "./DriverList";
 import DriverMap from "./DriverMap";
 import PickupManager from "./PickupManager";
@@ -11,32 +11,51 @@ import PickupManager from "./PickupManager";
  * Manages driver assignments, pickup requests, and driver status
  */
 const DriverCoordination = ({ className = "" }) => {
-  const { drivers, appointments } = useOperatorData();
+  const { drivers = [], appointments = [] } = useOperatorData();
   const {
     assignDriver,
-    autoAssignDriver,
-    bulkAssignDrivers,
+    unassignDriver,
+    requestPickup,
+    updateDriverStatus,
+    availableDrivers,
+    assignedDrivers,
+    driverWorkload,
+    getOptimalDriver,
     loading,
-    driverStats,
-    pickupRequests,
-    getAvailableDrivers,
-    getBusyDrivers,
   } = useDriverAssignment(drivers, appointments);
 
   // Local state
   const [selectedView, setSelectedView] = useState("overview"); // 'overview', 'map', 'requests'
   const [selectedDriver, setSelectedDriver] = useState(null);
 
-  // Available and busy drivers
-  const availableDrivers = getAvailableDrivers();
-  const busyDrivers = getBusyDrivers();
+  // Calculate driver stats
+  const driverStats = useMemo(() => {
+    return {
+      total: drivers.length,
+      available: availableDrivers.length,
+      busy: assignedDrivers.length,
+      offline: drivers.filter((d) => !d.is_active).length,
+    };
+  }, [drivers.length, availableDrivers.length, assignedDrivers.length]);
+
+  // Get pickup requests (appointments that need driver assignment)
+  const pickupRequests = useMemo(() => {
+    return appointments.filter(
+      (apt) =>
+        apt.status === "confirmed" && !apt.driver_id && apt.requires_transport
+    );
+  }, [appointments]);
 
   // Handle driver assignment via drag and drop
   const handleDriverAssignment = useCallback(
     async (appointmentId, driverId) => {
       try {
-        await assignDriver(appointmentId, driverId);
-        // Success feedback will be handled by the hook
+        const result = await assignDriver(appointmentId, driverId);
+        if (result.success) {
+          console.log("Driver assigned successfully");
+        } else {
+          console.error("Failed to assign driver:", result.error);
+        }
       } catch (error) {
         console.error("Failed to assign driver:", error);
       }
@@ -44,25 +63,107 @@ const DriverCoordination = ({ className = "" }) => {
     [assignDriver]
   );
 
+  // Handle auto-assignment for a single appointment
+  const handleAutoAssignDriver = useCallback(
+    async (appointmentId) => {
+      try {
+        const appointment = appointments.find(
+          (apt) => apt.id === appointmentId
+        );
+        if (!appointment) return;
+
+        const optimalDriver = getOptimalDriver(appointment);
+        if (!optimalDriver) {
+          console.warn("No available drivers for auto-assignment");
+          return;
+        }
+
+        const result = await assignDriver(appointmentId, optimalDriver.id);
+        if (result.success) {
+          console.log("Auto-assignment successful");
+        } else {
+          console.error("Auto-assignment failed:", result.error);
+        }
+      } catch (error) {
+        console.error("Auto-assignment failed:", error);
+      }
+    },
+    [appointments, getOptimalDriver, assignDriver]
+  );
+
   // Handle bulk auto-assignment
   const handleBulkAutoAssign = useCallback(async () => {
     if (pickupRequests.length === 0 || availableDrivers.length === 0) {
+      console.warn(
+        "No pickup requests or available drivers for bulk assignment"
+      );
       return;
     }
 
     try {
-      const assignments = pickupRequests
-        .slice(0, availableDrivers.length)
-        .map((appointment, index) => ({
-          appointmentId: appointment.id,
-          driverId: availableDrivers[index]?.id,
-        }));
+      const assignments = [];
+      for (
+        let i = 0;
+        i < Math.min(pickupRequests.length, availableDrivers.length);
+        i++
+      ) {
+        const appointment = pickupRequests[i];
+        const optimalDriver = getOptimalDriver(appointment);
 
-      await bulkAssignDrivers(assignments);
+        if (optimalDriver) {
+          assignments.push({
+            appointmentId: appointment.id,
+            driverId: optimalDriver.id,
+          });
+        }
+      }
+
+      // Execute assignments sequentially to avoid conflicts
+      for (const assignment of assignments) {
+        await assignDriver(assignment.appointmentId, assignment.driverId);
+      }
+
+      console.log(
+        `Bulk assignment completed: ${assignments.length} assignments`
+      );
     } catch (error) {
       console.error("Bulk assignment failed:", error);
     }
-  }, [pickupRequests, availableDrivers, bulkAssignDrivers]);
+  }, [pickupRequests, availableDrivers, getOptimalDriver, assignDriver]);
+
+  // Handle driver status update
+  const handleDriverStatusUpdate = useCallback(
+    async (driverId, newStatus) => {
+      try {
+        const result = await updateDriverStatus(driverId, newStatus);
+        if (result.success) {
+          console.log("Driver status updated successfully");
+        } else {
+          console.error("Failed to update driver status:", result.error);
+        }
+      } catch (error) {
+        console.error("Failed to update driver status:", error);
+      }
+    },
+    [updateDriverStatus]
+  );
+
+  // Handle pickup request
+  const handlePickupRequest = useCallback(
+    async (appointmentId, pickupDetails) => {
+      try {
+        const result = await requestPickup(appointmentId, pickupDetails);
+        if (result.success) {
+          console.log("Pickup request submitted successfully");
+        } else {
+          console.error("Failed to submit pickup request:", result.error);
+        }
+      } catch (error) {
+        console.error("Failed to submit pickup request:", error);
+      }
+    },
+    [requestPickup]
+  );
 
   // Render main content based on selected view
   const renderMainContent = () => {
@@ -82,80 +183,83 @@ const DriverCoordination = ({ className = "" }) => {
             pickupRequests={pickupRequests}
             availableDrivers={availableDrivers}
             onAssignDriver={handleDriverAssignment}
-            onAutoAssign={autoAssignDriver}
+            onAutoAssign={handleAutoAssignDriver}
+            onRequestPickup={handlePickupRequest}
             loading={loading}
           />
         );
-      default:
+      default: // 'overview'
         return (
-          <div className="driver-overview">
-            <div className="driver-panels">
-              <div className="driver-panel available-panel">
-                <div className="panel-header">
-                  <h3>Available Drivers ({availableDrivers.length})</h3>
-                  <div className="panel-actions">
-                    <button
-                      className="auto-assign-btn"
-                      onClick={handleBulkAutoAssign}
-                      disabled={
-                        pickupRequests.length === 0 ||
-                        availableDrivers.length === 0 ||
-                        loading.bulk_assign
-                      }
-                    >
-                      {loading.bulk_assign ? (
-                        <i className="fas fa-spinner fa-spin"></i>
-                      ) : (
-                        <i className="fas fa-magic"></i>
-                      )}
-                      Auto-Assign All
-                    </button>
-                  </div>
+          <div className={styles.overviewGrid}>
+            {/* Driver Stats */}
+            <div className={styles.statsCard}>
+              <h3>Driver Status</h3>
+              <div className={styles.statsGrid}>
+                <div className={styles.statItem}>
+                  <span className={styles.statValue}>{driverStats.total}</span>
+                  <span className={styles.statLabel}>Total</span>
                 </div>
-                <DriverList
-                  drivers={availableDrivers}
-                  status="available"
-                  onDriverSelect={setSelectedDriver}
-                  selectedDriver={selectedDriver}
-                  allowDrop={true}
-                  onAssignmentDrop={handleDriverAssignment}
-                />
-              </div>
-
-              <div className="driver-panel busy-panel">
-                <div className="panel-header">
-                  <h3>Busy Drivers ({busyDrivers.length})</h3>
+                <div className={styles.statItem}>
+                  <span className={styles.statValue}>
+                    {driverStats.available}
+                  </span>
+                  <span className={styles.statLabel}>Available</span>
                 </div>
-                <DriverList
-                  drivers={busyDrivers}
-                  status="busy"
-                  onDriverSelect={setSelectedDriver}
-                  selectedDriver={selectedDriver}
-                  showETA={true}
-                />
+                <div className={styles.statItem}>
+                  <span className={styles.statValue}>{driverStats.busy}</span>
+                  <span className={styles.statLabel}>Busy</span>
+                </div>
+                <div className={styles.statItem}>
+                  <span className={styles.statValue}>
+                    {driverStats.offline}
+                  </span>
+                  <span className={styles.statLabel}>Offline</span>
+                </div>
               </div>
             </div>
 
-            <div className="pickup-requests-panel">
-              <div className="panel-header">
-                <h3>Pickup Requests ({pickupRequests.length})</h3>
-                {pickupRequests.length > 0 && (
-                  <span className="urgent-badge">
-                    {
-                      pickupRequests.filter((r) => r.urgency_level === "urgent")
-                        .length
-                    }{" "}
-                    urgent
-                  </span>
-                )}
+            {/* Quick Actions */}
+            <div className={styles.actionsCard}>
+              <h3>Quick Actions</h3>
+              <div className={styles.actionButtons}>
+                <button
+                  className={styles.actionBtn}
+                  onClick={handleBulkAutoAssign}
+                  disabled={
+                    pickupRequests.length === 0 || availableDrivers.length === 0
+                  }
+                >
+                  <i className="fas fa-magic" />
+                  Auto-Assign All ({pickupRequests.length})
+                </button>
+                <button
+                  className={styles.actionBtn}
+                  onClick={() => setSelectedView("map")}
+                >
+                  <i className="fas fa-map" />
+                  View Map
+                </button>
+                <button
+                  className={styles.actionBtn}
+                  onClick={() => setSelectedView("requests")}
+                >
+                  <i className="fas fa-tasks" />
+                  Manage Requests ({pickupRequests.length})
+                </button>
               </div>
-              <PickupManager
-                pickupRequests={pickupRequests}
+            </div>
+
+            {/* Driver List */}
+            <div className={styles.driverListCard}>
+              <DriverList
+                drivers={drivers}
                 availableDrivers={availableDrivers}
+                assignedDrivers={assignedDrivers}
+                driverWorkload={driverWorkload}
+                onDriverSelect={setSelectedDriver}
+                onStatusUpdate={handleDriverStatusUpdate}
                 onAssignDriver={handleDriverAssignment}
-                onAutoAssign={autoAssignDriver}
                 loading={loading}
-                compact={true}
               />
             </div>
           </div>
@@ -164,97 +268,82 @@ const DriverCoordination = ({ className = "" }) => {
   };
 
   return (
-    <div className={`driver-coordination ${className}`}>
-      {/* Header with stats and view switcher */}
-      <div className="coordination-header">
-        <div className="driver-stats">
-          <div className="stat-card">
-            <span className="stat-value">{driverStats.available}</span>
-            <span className="stat-label">Available</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-value">{driverStats.busy}</span>
-            <span className="stat-label">Busy</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-value">{pickupRequests.length}</span>
-            <span className="stat-label">Requests</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-value">{driverStats.offline}</span>
-            <span className="stat-label">Offline</span>
+    <div className={`${styles.driverCoordination} ${className}`}>
+      {/* Header */}
+      <div className={styles.header}>
+        <div className={styles.headerInfo}>
+          <h2 className={styles.title}>Driver Coordination</h2>
+          <div className={styles.statusSummary}>
+            <span className={styles.statusItem}>
+              {driverStats.available} available
+            </span>
+            <span className={styles.statusItem}>
+              {pickupRequests.length} pending requests
+            </span>
           </div>
         </div>
 
-        <div className="view-switcher">
+        {/* View Selector */}
+        <div className={styles.viewSelector}>
           <button
-            className={`view-btn ${
-              selectedView === "overview" ? "active" : ""
+            className={`${styles.viewBtn} ${
+              selectedView === "overview" ? styles.active : ""
             }`}
             onClick={() => setSelectedView("overview")}
           >
-            <i className="fas fa-th-large"></i>
+            <i className="fas fa-th-large" />
             Overview
           </button>
           <button
-            className={`view-btn ${selectedView === "map" ? "active" : ""}`}
+            className={`${styles.viewBtn} ${
+              selectedView === "map" ? styles.active : ""
+            }`}
             onClick={() => setSelectedView("map")}
           >
-            <i className="fas fa-map"></i>
+            <i className="fas fa-map" />
             Map
           </button>
           <button
-            className={`view-btn ${
-              selectedView === "requests" ? "active" : ""
+            className={`${styles.viewBtn} ${
+              selectedView === "requests" ? styles.active : ""
             }`}
             onClick={() => setSelectedView("requests")}
           >
-            <i className="fas fa-list"></i>
+            <i className="fas fa-tasks" />
             Requests
           </button>
         </div>
       </div>
 
-      {/* Main content area */}
-      <div className="coordination-content">{renderMainContent()}</div>
+      {/* Main Content */}
+      <div className={styles.content}>{renderMainContent()}</div>
 
-      {/* Selected driver details */}
+      {/* Selected Driver Details */}
       {selectedDriver && (
-        <div className="driver-details-panel">
-          <div className="panel-header">
-            <h3>Driver Details</h3>
+        <div className={styles.driverDetails}>
+          <div className={styles.detailsHeader}>
+            <h3>{selectedDriver.name}</h3>
             <button
-              className="close-btn"
+              className={styles.closeBtn}
               onClick={() => setSelectedDriver(null)}
             >
-              <i className="fas fa-times"></i>
+              <i className="fas fa-times" />
             </button>
           </div>
-          <div className="driver-info">
-            <div className="driver-avatar">
-              <img
-                src={selectedDriver.profile_photo || "/default-avatar.png"}
-                alt={selectedDriver.name}
-              />
-              <div
-                className={`status-indicator ${selectedDriver.status}`}
-              ></div>
-            </div>
-            <div className="driver-details">
-              <h4>{selectedDriver.name}</h4>
-              <p>{selectedDriver.phone}</p>
-              <p className="driver-status">
-                Status:{" "}
-                <span className={`status ${selectedDriver.status}`}>
-                  {selectedDriver.status}
-                </span>
-              </p>
-              {selectedDriver.current_appointment && (
-                <p className="current-appointment">
-                  Current: Appointment #{selectedDriver.current_appointment.id}
-                </p>
-              )}
-            </div>
+          <div className={styles.detailsContent}>
+            <p>
+              <strong>Status:</strong> {selectedDriver.status}
+            </p>
+            <p>
+              <strong>Phone:</strong> {selectedDriver.phone}
+            </p>
+            <p>
+              <strong>Vehicle:</strong> {selectedDriver.vehicle_type}
+            </p>
+            <p>
+              <strong>Current Load:</strong>{" "}
+              {driverWorkload[selectedDriver.id]?.today || 0} appointments today
+            </p>
           </div>
         </div>
       )}
