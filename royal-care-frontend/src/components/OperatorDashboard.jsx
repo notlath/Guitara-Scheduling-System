@@ -14,6 +14,8 @@ import {
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
+import { usePagination } from "../hooks/usePagination";
+import Pagination from "./Pagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
 import {
   useOptimizedAppointmentFilters,
@@ -37,6 +39,7 @@ import PerformanceMonitor from "./PerformanceMonitor";
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/OperatorDashboard.css";
+import "../styles/UrgencyIndicators.css";
 
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
@@ -47,14 +50,31 @@ const OperatorDashboard = () => {
 
   // URL search params for view persistence
   const [searchParams, setSearchParams] = useSearchParams();
-
-  // Get view from URL params, default to 'rejected'
+  // Get view and filters from URL params with defaults
   const currentView = searchParams.get("view") || "rejected";
+  const currentFilter = searchParams.get("filter") || "all";
+  const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   // Optimized view setter with stable callback
   const setView = useStableCallback((newView) => {
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set("view", newView);
+    // Reset page when changing views
+    newSearchParams.set("page", "1");
+    setSearchParams(newSearchParams);
+  });
+
+  // Filter and page management
+  const setFilter = useStableCallback((newFilter) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set("filter", newFilter);
+    newSearchParams.set("page", "1"); // Reset to first page
+    setSearchParams(newSearchParams);
+  });
+
+  const setPage = useStableCallback((page) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set("page", page.toString());
     setSearchParams(newSearchParams);
   });
   // Modal states - memoized to prevent unnecessary re-renders
@@ -237,6 +257,92 @@ const OperatorDashboard = () => {
     }
   };
 
+  const sortAppointmentsByTimeAndUrgency = (appointments) => {
+    const getUrgencyScore = (appointment) => {
+      const now = new Date();
+      const appointmentDateTime = new Date(
+        `${appointment.date}T${appointment.start_time}`
+      );
+      const timeDiff = appointmentDateTime - now;
+      const hoursUntilAppointment = timeDiff / (1000 * 60 * 60);
+
+      // Define urgency based on status and time
+      switch (appointment.status) {
+        case "pending":
+          // More urgent if response deadline is approaching
+          if (appointment.response_deadline) {
+            const deadline = new Date(appointment.response_deadline);
+            const timeToDeadline = deadline - now;
+            const minutesToDeadline = timeToDeadline / (1000 * 60);
+
+            if (minutesToDeadline <= 5) return 100; // Critical - deadline very soon
+            if (minutesToDeadline <= 15) return 90; // High urgency
+            if (minutesToDeadline <= 30) return 80; // Medium urgency
+          }
+          return 70; // Normal pending urgency
+
+        case "confirmed":
+        case "driver_confirmed":
+          if (hoursUntilAppointment <= 1) return 85; // Very urgent - starting soon
+          if (hoursUntilAppointment <= 2) return 75; // Urgent - starting in 2 hours
+          if (hoursUntilAppointment <= 4) return 65; // Medium urgency
+          return 50; // Normal confirmed appointment
+
+        case "in_progress":
+        case "session_started":
+        case "journey_started":
+          return 95; // Very high - active appointments
+
+        case "awaiting_payment":
+          return 60; // Medium - needs attention but not time-critical
+
+        case "rejected":
+        case "auto_cancelled":
+          return 20; // Low - already handled
+
+        case "completed":
+          return 10; // Lowest - just for reference
+
+        default:
+          return 40; // Default medium-low priority
+      }
+    };
+
+    const getTimeScore = (appointment) => {
+      const now = new Date();
+      const appointmentDateTime = new Date(
+        `${appointment.date}T${appointment.start_time}`
+      );
+      const timeDiff = appointmentDateTime - now;
+
+      // Score based on how soon the appointment is (higher score = sooner)
+      if (timeDiff < 0) return 1000; // Past appointments at top
+      if (timeDiff <= 60 * 60 * 1000) return 900; // Within 1 hour
+      if (timeDiff <= 2 * 60 * 60 * 1000) return 800; // Within 2 hours
+      if (timeDiff <= 4 * 60 * 60 * 1000) return 700; // Within 4 hours
+      if (timeDiff <= 24 * 60 * 60 * 1000) return 600; // Today
+
+      // Future appointments scored by how many days away (closer = higher score)
+      const daysAway = Math.floor(timeDiff / (24 * 60 * 60 * 1000));
+      return Math.max(100, 500 - daysAway * 50);
+    };
+
+    return appointments.sort((a, b) => {
+      const urgencyA = getUrgencyScore(a);
+      const urgencyB = getUrgencyScore(b);
+
+      // If urgency is significantly different, sort by urgency
+      if (Math.abs(urgencyA - urgencyB) > 10) {
+        return urgencyB - urgencyA; // Higher urgency first
+      }
+
+      // If urgency is similar, sort by time
+      const timeA = getTimeScore(a);
+      const timeB = getTimeScore(b);
+
+      return timeB - timeA; // Sooner appointments first
+    });
+  };
   // Load driver data on component mount and refresh
   useEffect(() => {
     const loadDriverData = async () => {
@@ -521,6 +627,62 @@ const OperatorDashboard = () => {
     return (
       <span className="acceptance-indicator no-therapist">No therapist</span>
     );
+  };
+
+  // Helper function to get urgency level for visual display
+  const getUrgencyLevel = (appointment) => {
+    const now = new Date();
+    const appointmentDateTime = new Date(
+      `${appointment.date}T${appointment.start_time}`
+    );
+    const timeDiff = appointmentDateTime - now;
+    const hoursUntilAppointment = timeDiff / (1000 * 60 * 60);
+
+    // Same logic as in sortAppointmentsByTimeAndUrgency
+    switch (appointment.status) {
+      case "pending":
+        if (appointment.response_deadline) {
+          const deadline = new Date(appointment.response_deadline);
+          const timeToDeadline = deadline - now;
+          const minutesToDeadline = timeToDeadline / (1000 * 60);
+          if (minutesToDeadline <= 5) return "critical";
+          if (minutesToDeadline <= 15) return "high";
+          if (minutesToDeadline <= 30) return "medium";
+        }
+        return "normal";
+
+      case "confirmed":
+      case "driver_confirmed":
+        if (hoursUntilAppointment <= 1) return "high";
+        if (hoursUntilAppointment <= 2) return "medium";
+        return "normal";
+
+      case "in_progress":
+      case "session_started":
+      case "journey_started":
+        return "critical";
+
+      case "awaiting_payment":
+        return "medium";
+
+      default:
+        return "normal";
+    }
+  };
+
+  // Helper function to get urgency badge
+  const getUrgencyBadge = (urgencyLevel) => {
+    const badges = {
+      critical: {
+        icon: "🚨",
+        label: "Critical",
+        className: "urgency-critical",
+      },
+      high: { icon: "🔥", label: "High", className: "urgency-high" },
+      medium: { icon: "⚠️", label: "Medium", className: "urgency-medium" },
+      normal: { icon: "⚪", label: "Normal", className: "urgency-normal" },
+    };
+    return badges[urgencyLevel] || badges.normal;
   };
 
   const handleLogout = () => {
@@ -1369,7 +1531,81 @@ const OperatorDashboard = () => {
         </div>
       </div>
     );
-  };
+  }; // 🔥 PERFORMANCE OPTIMIZATION: Memoize filtered and sorted appointments for "All Appointments" view
+  const filteredAndSortedAppointments = useMemo(() => {
+    if (!appointments || appointments.length === 0) {
+      return [];
+    }
+
+    let filtered = [...appointments];
+
+    // Apply status-based filtering
+    switch (currentFilter) {
+      case "completed": {
+        filtered = filtered.filter((apt) =>
+          ["completed", "payment_completed"].includes(apt.status)
+        );
+        break;
+      }
+      case "pending": {
+        filtered = filtered.filter((apt) => apt.status === "pending");
+        break;
+      }
+      case "confirmed": {
+        filtered = filtered.filter((apt) =>
+          ["confirmed", "driver_confirmed", "therapist_confirmed"].includes(
+            apt.status
+          )
+        );
+        break;
+      }
+      case "in_progress": {
+        filtered = filtered.filter((apt) =>
+          ["in_progress", "journey_started", "arrived"].includes(apt.status)
+        );
+        break;
+      }
+      case "today": {
+        const today = new Date().toISOString().split("T")[0];
+        filtered = filtered.filter((apt) => apt.date === today);
+        break;
+      }
+      case "upcoming": {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split("T")[0];
+        filtered = filtered.filter((apt) => apt.date >= tomorrowStr);
+        break;
+      }
+      case "all":
+      default: {
+        // No additional filtering
+        break;
+      }
+    }
+
+    return sortAppointmentsByTimeAndUrgency(filtered);
+  }, [appointments, currentFilter]);
+
+  // 📄 PAGINATION: Enhanced pagination with URL state synchronization
+  const appointmentsPagination = usePagination(
+    filteredAndSortedAppointments,
+    10
+  );
+
+  // Sync pagination with URL
+  useEffect(() => {
+    if (currentPage !== appointmentsPagination.currentPage) {
+      appointmentsPagination.goToPage(currentPage);
+    }
+  }, [currentPage, appointmentsPagination]);
+
+  // Update URL when pagination changes
+  useEffect(() => {
+    if (appointmentsPagination.currentPage !== currentPage) {
+      setPage(appointmentsPagination.currentPage);
+    }
+  }, [appointmentsPagination.currentPage, currentPage, setPage]);
 
   // Render functions for different views
   const renderRejectedAppointments = () => {
@@ -1664,9 +1900,11 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderAllAppointments = () => {
-    if (!appointments || appointments.length === 0) {
+    if (
+      !filteredAndSortedAppointments ||
+      filteredAndSortedAppointments.length === 0
+    ) {
       return (
         <div className="empty-state">
           <i className="fas fa-calendar"></i>
@@ -1675,67 +1913,154 @@ const OperatorDashboard = () => {
       );
     }
 
+    const { currentItems: paginatedAppointments } = appointmentsPagination;
     return (
       <div className="appointments-list">
-        {appointments.map((appointment) => (
-          <div key={appointment.id} className="appointment-card">
-            <div className="appointment-header">
-              <h3>
-                Appointment #{appointment.id} -{" "}
-                {appointment.client_details?.first_name}{" "}
-                {appointment.client_details?.last_name}
-              </h3>
-              <span className={`status-badge ${appointment.status}`}>
-                {appointment.status.charAt(0).toUpperCase() +
-                  appointment.status.slice(1).replace(/_/g, " ")}
-              </span>
-            </div>
-            <div className="appointment-details">
-              <p>
-                <strong>Date:</strong>{" "}
-                {new Date(appointment.date).toLocaleDateString()}
-              </p>
-              <p>
-                <strong>Time:</strong> {appointment.start_time} -{" "}
-                {appointment.end_time}
-              </p>
-              <p>
-                <strong>Location:</strong> {appointment.location}
-              </p>
-              {renderTherapistInfo(appointment)}
-              <p>
-                <strong>Services:</strong>{" "}
-                {appointment.services_details?.map((s) => s.name).join(", ")}
-              </p>{" "}
-              <p>
-                <strong>Status:</strong> {appointment.status}
-              </p>
-            </div>{" "}
-            <div className="appointment-actions">
-              {/* Show Start Appointment button when status is driver_confirmed */}
-              {appointment.status === "driver_confirmed" && (
-                <LoadingButton
-                  onClick={() => handleStartAppointment(appointment.id)}
-                  loading={buttonLoading[`start_${appointment.id}`]}
-                  className="start-button"
-                >
-                  Start Appointment
-                </LoadingButton>
-              )}
-
-              {/* Show payment verification button for awaiting payment */}
-              {appointment.status === "awaiting_payment" && (
-                <LoadingButton
-                  onClick={() => handlePaymentVerification(appointment)}
-                  loading={buttonLoading[`payment_${appointment.id}`]}
-                  className="payment-button"
-                >
-                  Verify Payment
-                </LoadingButton>
-              )}
-            </div>
+        {/* Filter Controls */}
+        <div className="filter-controls">
+          <div className="filter-section">
+            <label htmlFor="appointment-filter">Filter by:</label>
+            <select
+              id="appointment-filter"
+              value={currentFilter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">
+                All Appointments ({filteredAndSortedAppointments.length})
+              </option>
+              <option value="today">Today</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
           </div>
-        ))}
+          <div className="quick-filter-buttons">
+            <button
+              onClick={() => setFilter("completed")}
+              className={`quick-filter-btn ${
+                currentFilter === "completed" ? "active" : ""
+              }`}
+              title="View only completed appointments"
+            >
+              📋 View Completed
+            </button>
+            <button
+              onClick={() => setFilter("today")}
+              className={`quick-filter-btn ${
+                currentFilter === "today" ? "active" : ""
+              }`}
+              title="View today's appointments"
+            >
+              📅 Today
+            </button>
+            <button
+              onClick={() => setFilter("pending")}
+              className={`quick-filter-btn ${
+                currentFilter === "pending" ? "active" : ""
+              }`}
+              title="View pending appointments"
+            >
+              ⏳ Pending
+            </button>
+          </div>
+        </div>
+
+        <div className="sort-indicator">
+          <i className="fas fa-sort-amount-down"></i>
+          <span>Sorted by urgency and time (most urgent first)</span>
+          <span className="filter-info">
+            • Showing {appointmentsPagination.currentItems.length} of{" "}
+            {filteredAndSortedAppointments.length} appointments
+            {currentFilter !== "all" && ` (filtered by: ${currentFilter})`}
+          </span>
+        </div>
+
+        {/* Appointment Cards */}
+        {paginatedAppointments.map((appointment) => {
+          const urgencyLevel = getUrgencyLevel(appointment);
+          const urgencyBadge = getUrgencyBadge(urgencyLevel);
+
+          return (
+            <div
+              key={appointment.id}
+              className={`appointment-card ${urgencyLevel}`}
+            >
+              <div className="appointment-header">
+                <h3>
+                  Appointment #{appointment.id} -{" "}
+                  {appointment.client_details?.first_name}{" "}
+                  {appointment.client_details?.last_name}
+                </h3>
+                <div className="status-badges">
+                  <span className={`status-badge ${appointment.status}`}>
+                    {appointment.status.charAt(0).toUpperCase() +
+                      appointment.status.slice(1).replace(/_/g, " ")}
+                  </span>
+                  <span className={`urgency-badge ${urgencyBadge.className}`}>
+                    {urgencyBadge.icon} {urgencyBadge.label}
+                  </span>
+                </div>
+              </div>
+
+              <div className="appointment-details">
+                <p>
+                  <strong>Date:</strong>{" "}
+                  {new Date(appointment.date).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>Time:</strong> {appointment.start_time} -{" "}
+                  {appointment.end_time}
+                </p>
+                <p>
+                  <strong>Location:</strong> {appointment.location}
+                </p>
+                {renderTherapistInfo(appointment)}
+                <p>
+                  <strong>Services:</strong>{" "}
+                  {appointment.services_details?.map((s) => s.name).join(", ")}
+                </p>
+                <p>
+                  <strong>Status:</strong> {appointment.status}
+                </p>
+              </div>
+
+              <div className="appointment-actions">
+                {/* Show Start Appointment button when status is driver_confirmed */}
+                {appointment.status === "driver_confirmed" && (
+                  <LoadingButton
+                    onClick={() => handleStartAppointment(appointment.id)}
+                    loading={buttonLoading[`start_${appointment.id}`]}
+                    className="start-button"
+                  >
+                    Start Appointment
+                  </LoadingButton>
+                )}
+
+                {/* Show payment verification button for awaiting payment */}
+                {appointment.status === "awaiting_payment" && (
+                  <LoadingButton
+                    onClick={() => handlePaymentVerification(appointment)}
+                    loading={buttonLoading[`payment_${appointment.id}`]}
+                    className="payment-button"
+                  >
+                    Verify Payment
+                  </LoadingButton>
+                )}
+
+                {/* Add other action buttons as needed */}
+              </div>
+            </div>
+          );
+        })}
+        {/* Pagination Controls */}
+        <Pagination
+          {...appointmentsPagination}
+          itemName="appointments"
+          className="appointments-pagination"
+        />
       </div>
     );
   };
@@ -1995,6 +2320,7 @@ const OperatorDashboard = () => {
       </div>
     );
   };
+
   // Render the tab switcher at the top of the dashboard
   return (
     <PageLayout>

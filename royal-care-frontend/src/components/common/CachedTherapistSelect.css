@@ -1,0 +1,467 @@
+/* Cached Therapist Select Component Styles */
+.cached-therapist-select {
+  position: relative;
+  width: 100%;
+}
+
+/* Single Selection Input */
+.therapist-select-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 16px;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.therapist-select-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.therapist-select-input.error {
+  border-color: #dc3545;
+}
+
+.therapist-select-input.error:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.therapist-select-input.disabled,
+.therapist-select-input:disabled {
+  background-color: #f8f9fa;
+  border-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Multiple Selection Container */
+.therapist-multi-select {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.therapist-multi-select:focus-within {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.therapist-multi-select.error {
+  border-color: #dc3545;
+}
+
+.therapist-multi-select.error:focus-within {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+/* Selected Therapists */
+.selected-therapists {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.placeholder-text {
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Therapist Tags */
+.selected-therapist-tag {
+  display: flex;
+  align-items: center;
+  background-color: #e3f2fd;
+  border: 1px solid #90caf9;
+  border-radius: 16px;
+  padding: 4px 8px 4px 12px;
+  font-size: 14px;
+  color: #1565c0;
+  max-width: 200px;
+}
+
+.selected-therapist-tag span {
+  margin-right: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.remove-therapist {
+  background: none;
+  border: none;
+  color: #1565c0;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.remove-therapist:hover {
+  background-color: #1565c0;
+  color: #ffffff;
+}
+
+.remove-therapist:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Add Therapist Button */
+.add-therapist-btn {
+  background-color: #007bff;
+  border: none;
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-therapist-btn:hover:not(:disabled) {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+}
+
+.add-therapist-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Dropdown */
+.therapist-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 300px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+/* Loading State */
+.therapist-loading {
+  padding: 16px;
+  text-align: center;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.therapist-loading i {
+  margin-right: 8px;
+  color: #007bff;
+}
+
+/* Error State */
+.therapist-error {
+  padding: 16px;
+  text-align: center;
+  color: #dc3545;
+  font-size: 14px;
+}
+
+.therapist-error i {
+  margin-right: 8px;
+}
+
+.retry-btn {
+  background-color: #dc3545;
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.retry-btn:hover {
+  background-color: #c82333;
+}
+
+/* Therapist List */
+.therapist-list {
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.therapist-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.therapist-list::-webkit-scrollbar-track {
+  background: #f7fafc;
+}
+
+.therapist-list::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.therapist-list::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Therapist Option */
+.therapist-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.therapist-option:hover {
+  background-color: #f8f9fa;
+}
+
+.therapist-option:last-child {
+  border-bottom: none;
+}
+
+.therapist-info {
+  flex: 1;
+}
+
+.therapist-name {
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.therapist-specialization {
+  color: #6c757d;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.therapist-pressure {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.therapist-availability {
+  display: flex;
+  align-items: center;
+  color: #28a745;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.therapist-availability i {
+  margin-right: 6px;
+}
+
+.therapist-availability .available {
+  color: #28a745;
+}
+
+/* No Therapists */
+.no-therapists {
+  padding: 16px;
+  text-align: center;
+  color: #6c757d;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.no-therapists i {
+  margin-right: 8px;
+  color: #ffc107;
+}
+
+/* Error Message */
+.error-message {
+  color: #dc3545;
+  font-size: 13px;
+  margin-top: 4px;
+  padding-left: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .therapist-select-input {
+    padding: 10px 14px;
+    font-size: 15px;
+  }
+
+  .therapist-multi-select {
+    min-height: 44px;
+    padding: 6px 10px;
+  }
+
+  .selected-therapist-tag {
+    padding: 3px 6px 3px 10px;
+    font-size: 13px;
+    max-width: 150px;
+  }
+
+  .add-therapist-btn {
+    min-width: 28px;
+    height: 28px;
+    margin-left: 6px;
+  }
+
+  .therapist-dropdown {
+    max-height: 250px;
+  }
+
+  .therapist-list {
+    max-height: 250px;
+  }
+
+  .therapist-option {
+    padding: 10px 14px;
+  }
+
+  .therapist-name {
+    font-size: 14px;
+  }
+
+  .therapist-specialization {
+    font-size: 12px;
+  }
+
+  .therapist-pressure {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .therapist-select-input {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .therapist-multi-select {
+    min-height: 40px;
+    padding: 4px 8px;
+  }
+
+  .selected-therapists {
+    gap: 4px;
+  }
+
+  .selected-therapist-tag {
+    padding: 2px 4px 2px 8px;
+    font-size: 12px;
+    max-width: 120px;
+  }
+
+  .add-therapist-btn {
+    min-width: 24px;
+    height: 24px;
+    margin-left: 4px;
+  }
+
+  .therapist-dropdown {
+    max-height: 200px;
+  }
+
+  .therapist-list {
+    max-height: 200px;
+  }
+
+  .therapist-option {
+    padding: 8px 12px;
+  }
+
+  .therapist-loading,
+  .therapist-error,
+  .no-therapists {
+    padding: 12px;
+    font-size: 13px;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .therapist-select-input,
+  .therapist-multi-select {
+    border-width: 2px;
+  }
+
+  .therapist-dropdown {
+    border-width: 2px;
+  }
+
+  .selected-therapist-tag {
+    background-color: #000000;
+    border-color: #000000;
+    color: #ffffff;
+  }
+
+  .remove-therapist:hover {
+    background-color: #ffffff;
+    color: #000000;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .therapist-select-input,
+  .therapist-multi-select,
+  .therapist-option,
+  .add-therapist-btn,
+  .remove-therapist {
+    transition: none;
+  }
+
+  .add-therapist-btn:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Loading Animation */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.therapist-loading .fa-spinner,
+.add-therapist-btn .fa-spinner {
+  animation: spin 1s linear infinite;
+}

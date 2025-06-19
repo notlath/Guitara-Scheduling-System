@@ -1,0 +1,184 @@
+/* Urgency Indicators for Operator Dashboard */
+
+/* Sort indicator at the top of All Appointments */
+.sort-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #495057;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sort-indicator i {
+  color: #6c757d;
+  font-size: 16px;
+}
+
+/* Status badges container */
+.status-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Urgency badges */
+.urgency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+.urgency-critical {
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+  animation: pulse-critical 2s infinite;
+}
+
+.urgency-high {
+  background-color: #fd7e14;
+  color: white;
+  border-color: #fd7e14;
+}
+
+.urgency-medium {
+  background-color: #ffc107;
+  color: #212529;
+  border-color: #ffc107;
+}
+
+.urgency-normal {
+  background-color: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+
+/* Appointment card urgency styling */
+.appointment-card.critical {
+  border-left: 4px solid #dc3545;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
+}
+
+.appointment-card.high {
+  border-left: 4px solid #fd7e14;
+  box-shadow: 0 4px 12px rgba(253, 126, 20, 0.15);
+}
+
+.appointment-card.medium {
+  border-left: 4px solid #ffc107;
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.15);
+}
+
+.appointment-card.normal {
+  border-left: 4px solid #6c757d;
+}
+
+/* Critical urgency pulse animation */
+@keyframes pulse-critical {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+  }
+}
+
+/* Hover effects for urgency badges */
+.urgency-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .status-badges {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sort-indicator {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    text-align: left;
+  }
+
+  .urgency-badge {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+}
+
+/* Time-based visual cues */
+.appointment-card.critical .appointment-header h3 {
+  color: #dc3545;
+  font-weight: 700;
+}
+
+.appointment-card.high .appointment-header h3 {
+  color: #fd7e14;
+  font-weight: 600;
+}
+
+/* Enhanced visual hierarchy for urgent appointments */
+.appointment-card.critical {
+  position: relative;
+  overflow: hidden;
+}
+
+.appointment-card.critical::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #dc3545, #ff6b6b, #dc3545);
+  animation: urgency-wave 3s ease-in-out infinite;
+}
+
+@keyframes urgency-wave {
+  0%,
+  100% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+}
+
+/* Sorting legend */
+.urgency-legend {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.urgency-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
