@@ -1008,3 +1008,88 @@
     transform: rotate(360deg);
   }
 }
+
+/* Pagination Styles for Appointments */
+.appointments-pagination {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e9ecef;
+}
+
+.appointments-list .appointments-pagination .pagination-info {
+  color: #495057;
+  font-weight: 600;
+}
+
+.appointments-list .sort-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #495057;
+}
+
+.appointments-list .sort-indicator i {
+  color: #007bff;
+}
+
+/* Enhanced appointment card spacing for pagination */
+.appointments-list .appointment-card {
+  margin-bottom: 16px;
+}
+
+.appointments-list .appointment-card:last-of-type {
+  margin-bottom: 0;
+}
+
+/* Responsive pagination for appointments */
+@media (max-width: 768px) {
+  .appointments-pagination {
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+
+  .appointments-list .sort-indicator {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+}
+
+/* Performance indicator for paginated view */
+.appointments-list .pagination-performance-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #6c757d;
+  gap: 8px;
+}
+
+.appointments-list .pagination-performance-indicator .loading-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #007bff;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+}

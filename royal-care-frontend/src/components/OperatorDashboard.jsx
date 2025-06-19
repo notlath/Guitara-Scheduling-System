@@ -14,6 +14,8 @@ import {
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
+import { usePagination } from "../hooks/usePagination";
+import Pagination from "./Pagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
 import {
   useOptimizedAppointmentFilters,
@@ -1513,14 +1515,14 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   // 🔥 PERFORMANCE OPTIMIZATION: Memoize sorted appointments for "All Appointments" view
   const sortedAllAppointments = useMemo(() => {
     if (!appointments || appointments.length === 0) {
       return [];
     }
     return sortAppointmentsByTimeAndUrgency([...appointments]);
-  }, [appointments]);
+  }, [appointments]); // 📄 PAGINATION: Add pagination for "All Appointments" view
+  const appointmentsPagination = usePagination(sortedAllAppointments, 10); // 10 items per page
 
   // Render functions for different views
   const renderRejectedAppointments = () => {
@@ -1825,13 +1827,17 @@ const OperatorDashboard = () => {
       );
     }
 
+    const { currentItems: paginatedAppointments } = appointmentsPagination;
+
     return (
       <div className="appointments-list">
         <div className="sort-indicator">
           <i className="fas fa-sort-amount-down"></i>
           <span>Sorted by urgency and time (most urgent first)</span>
         </div>
-        {sortedAllAppointments.map((appointment) => {
+
+        {/* Appointment Cards */}
+        {paginatedAppointments.map((appointment) => {
           const urgencyLevel = getUrgencyLevel(appointment);
           const urgencyBadge = getUrgencyBadge(urgencyLevel);
 
@@ -1855,7 +1861,8 @@ const OperatorDashboard = () => {
                     {urgencyBadge.icon} {urgencyBadge.label}
                   </span>
                 </div>
-              </div>{" "}
+              </div>
+
               <div className="appointment-details">
                 <p>
                   <strong>Date:</strong>{" "}
@@ -1872,11 +1879,12 @@ const OperatorDashboard = () => {
                 <p>
                   <strong>Services:</strong>{" "}
                   {appointment.services_details?.map((s) => s.name).join(", ")}
-                </p>{" "}
+                </p>
                 <p>
                   <strong>Status:</strong> {appointment.status}
                 </p>
-              </div>{" "}
+              </div>
+
               <div className="appointment-actions">
                 {/* Show Start Appointment button when status is driver_confirmed */}
                 {appointment.status === "driver_confirmed" && (
@@ -1899,10 +1907,18 @@ const OperatorDashboard = () => {
                     Verify Payment
                   </LoadingButton>
                 )}
+
+                {/* Add other action buttons as needed */}
               </div>
             </div>
           );
-        })}{" "}
+        })}
+        {/* Pagination Controls */}
+        <Pagination
+          {...appointmentsPagination}
+          itemName="appointments"
+          className="appointments-pagination"
+        />
       </div>
     );
   };
