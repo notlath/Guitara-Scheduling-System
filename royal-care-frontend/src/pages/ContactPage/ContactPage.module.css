@@ -160,3 +160,53 @@
   visibility: visible;
   opacity: 1;
 }
+
+.contactSupportContainer {
+  max-width: 520px;
+  margin: var(--spacing-lg) auto 0 auto;
+  background: var(--background);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  padding: var(--spacing-ml) var(--spacing-md) var(--spacing-md)
+    var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .contactSupportContainer {
+    max-width: 100%;
+    padding: var(--spacing-md) var(--spacing-xs);
+    margin: var(--spacing-md) 0 0 0;
+  }
+  .subtitleText {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-xs);
+  }
+  .contactList {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    align-items: stretch;
+  }
+  .contactMember {
+    max-width: 100%;
+    width: 100%;
+    margin-bottom: var(--spacing-xs);
+    padding: var(--spacing-md) var(--spacing-xs);
+  }
+  .avatar {
+    width: 96px;
+    height: 96px;
+    margin-bottom: var(--spacing-xs);
+  }
+  .name {
+    font-size: var(--font-size-base);
+  }
+  .email {
+    font-size: var(--font-size-xs);
+  }
+}
