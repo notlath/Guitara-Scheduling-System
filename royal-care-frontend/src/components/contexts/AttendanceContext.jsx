@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState } from "react";
-import { useOptimizedAttendance } from "../hooks/useOptimizedData";
+import { useOptimizedAttendance } from "../../hooks/useOptimizedData";
 
 const AttendanceContext = createContext();
 
