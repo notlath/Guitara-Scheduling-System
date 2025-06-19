@@ -18,13 +18,8 @@ export const AttendanceMemoProvider = ({ children }) => {
       selectedDate,
       setSelectedDate, // Provide date setter to child components
     }),
-    [
-      attendanceData.attendanceRecords,
-      attendanceData.loading,
-      attendanceData.error,
-      attendanceData.hasDataForDate,
-      selectedDate,
-    ]
+    [attendanceData, selectedDate]
+    // setSelectedDate is stable as a setState function
   );
 
   return (

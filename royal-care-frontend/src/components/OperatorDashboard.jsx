@@ -14,11 +14,12 @@ import {
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
-import { usePagination } from "../hooks/usePagination";
+// PERFORMANCE: Ultra-optimized imports
+import { useUltraOptimizedAppointmentFilters, useUltraOptimizedSorting } from "../hooks/useUltraOptimizedFilters";
+import { useVirtualizedPagination } from "../hooks/useVirtualizedPagination";
 import Pagination from "./Pagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
 import {
-  useOptimizedAppointmentFilters,
   useOptimizedButtonLoading,
   useOptimizedCountdown,
 } from "../hooks/useOperatorPerformance";
@@ -40,6 +41,7 @@ import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/OperatorDashboard.css";
 import "../styles/UrgencyIndicators.css";
+import "../styles/Performance.css";
 
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
@@ -125,8 +127,7 @@ const OperatorDashboard = () => {
     error,
     hasData,
   } = useOptimizedDashboardData("operatorDashboard", "operator");
-
-  // 🔥 PERFORMANCE OPTIMIZATION: Use optimized appointment filtering
+  // � ULTRA-PERFORMANCE: Replace all filtering logic with optimized versions
   const {
     rejected: rejectedAppointments,
     pending: pendingAppointments,
@@ -136,86 +137,98 @@ const OperatorDashboard = () => {
     activeSessions,
     pickupRequests,
     rejectionStats,
-  } = useOptimizedAppointmentFilters(appointments);
+  } = useUltraOptimizedAppointmentFilters(appointments);
 
-  // 🔥 PERFORMANCE OPTIMIZATION: Use optimized countdown timer
-  const isTimeoutViewActive = currentView === "timeout";
-  const { countdowns, manageTimer, stopTimer } = useOptimizedCountdown(
-    pendingAppointments,
-    isTimeoutViewActive
+  // � ULTRA-PERFORMANCE: Replace sorting with optimized version
+  const filteredAndSortedAppointments = useUltraOptimizedSorting(appointments, currentFilter);
+
+  // � ULTRA-PERFORMANCE: Replace pagination with virtualized version
+  const appointmentsPagination = useVirtualizedPagination(
+    filteredAndSortedAppointments,
+    10,
+    800 // Container height in pixels
   );
+  // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
+  const { buttonLoading, setButtonLoading: setActionLoading, forceClearLoading } = useOptimizedButtonLoading();
+  // 🚀 ULTRA-PERFORMANCE: Optimized dashboard tabs with stable memoization
+  const dashboardTabs = useMemo(() => {
+    // Pre-calculate counts to avoid repeated access
+    const rejectedCount = rejectedAppointments?.length || 0;
+    const pendingCount = pendingAppointments?.length || 0;
+    const overdueCount = overdueAppointments?.length || 0;
+    const awaitingPaymentCount = awaitingPaymentAppointments?.length || 0;
+    const appointmentsCount = appointments?.length || 0;
+    const attendanceCount = attendanceRecords?.length || 0;
+    const notificationsCount = notifications?.length || 0;
+    const pendingPickupsCount = driverAssignment?.pendingPickups?.length || 0;
+    const activeSessionsCount = activeSessions?.length || 0;
+    const pickupRequestsCount = pickupRequests?.length || 0;
 
-  // 🔥 PERFORMANCE OPTIMIZATION: Use optimized button loading
-  const { buttonLoading, setActionLoading, forceClearLoading } =
-    useOptimizedButtonLoading();
-
-  // 🔥 PERFORMANCE OPTIMIZATION: Memoize expensive computations
-  const dashboardTabs = useMemo(
-    () => [
+    return [
       {
         id: "rejected",
         label: "Rejection Reviews",
-        count: rejectedAppointments.length,
+        count: rejectedCount,
       },
       {
         id: "pending",
         label: "Pending Acceptance",
-        count: pendingAppointments.length,
+        count: pendingCount,
       },
       {
         id: "timeout",
         label: "Timeout Monitoring",
-        count:
-          overdueAppointments.length + approachingDeadlineAppointments.length,
+        count: overdueCount,
       },
       {
         id: "payment",
         label: "Payment Verification",
-        count: awaitingPaymentAppointments.length,
+        count: awaitingPaymentCount,
       },
-      {
-        id: "all",
-        label: "All Appointments",
-        count: appointments?.length || 0,
-      },
+      { id: "all", label: "All Appointments", count: appointmentsCount },
       {
         id: "attendance",
         label: "Attendance",
-        count: attendanceRecords.length,
+        count: attendanceCount,
       },
       {
         id: "notifications",
         label: "Notifications",
-        count: notifications?.length || 0,
+        count: notificationsCount,
       },
       {
         id: "driver",
         label: "Driver Coordination",
-        count: driverAssignment.pendingPickups.length,
+        count: pendingPickupsCount,
       },
-      { id: "workflow", label: "Workflow", count: 0 },
+      {
+        id: "workflow",
+        label: "Service Workflow",
+        count: 0,
+      },
       {
         id: "sessions",
         label: "Active Sessions",
-        count: activeSessions.length,
+        count: activeSessionsCount,
       },
-      { id: "pickup", label: "Pickup Requests", count: pickupRequests.length },
-    ],
-    [
-      rejectedAppointments.length,
-      pendingAppointments.length,
-      overdueAppointments.length,
-      approachingDeadlineAppointments.length,
-      awaitingPaymentAppointments.length,
-      appointments?.length,
-      attendanceRecords.length,
-      notifications?.length,
-      driverAssignment.pendingPickups.length,
-      activeSessions.length,
-      pickupRequests.length,
-    ]
-  ); // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
+      { id: "pickup", label: "Pickup Requests", count: pickupRequestsCount },
+    ];
+  }, [
+    rejectedAppointments?.length,
+    pendingAppointments?.length,
+    overdueAppointments?.length,
+    awaitingPaymentAppointments?.length,
+    appointments?.length,
+    attendanceRecords?.length,
+    notifications?.length,
+    driverAssignment?.pendingPickups?.length,
+    activeSessions?.length,
+    pickupRequests?.length,
+  ]);// OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
   // The optimized data manager handles background refreshes automatically
+  // 🚀 ULTRA-PERFORMANCE: Optimized countdown timer management
+  const isTimeoutViewActive = currentView === "timeout";
+  const { countdowns, manageTimer, stopTimer } = useOptimizedCountdown(overdueAppointments, isTimeoutViewActive);
 
   // 🔥 PERFORMANCE OPTIMIZATION: Optimized countdown timer management
   useEffect(() => {
@@ -253,95 +266,9 @@ const OperatorDashboard = () => {
         return `Assigned pickup for ${therapistName}`;
       default:
         return `Active with ${therapistName}`;
-    }
-  }, []); // No dependencies needed as it's a pure function
+    }  }, []); // No dependencies needed as it's a pure function
 
-  const sortAppointmentsByTimeAndUrgency = (appointments) => {
-    const getUrgencyScore = (appointment) => {
-      const now = new Date();
-      const appointmentDateTime = new Date(
-        `${appointment.date}T${appointment.start_time}`
-      );
-      const timeDiff = appointmentDateTime - now;
-      const hoursUntilAppointment = timeDiff / (1000 * 60 * 60);
-
-      // Define urgency based on status and time
-      switch (appointment.status) {
-        case "pending":
-          // More urgent if response deadline is approaching
-          if (appointment.response_deadline) {
-            const deadline = new Date(appointment.response_deadline);
-            const timeToDeadline = deadline - now;
-            const minutesToDeadline = timeToDeadline / (1000 * 60);
-
-            if (minutesToDeadline <= 5) return 100; // Critical - deadline very soon
-            if (minutesToDeadline <= 15) return 90; // High urgency
-            if (minutesToDeadline <= 30) return 80; // Medium urgency
-          }
-          return 70; // Normal pending urgency
-
-        case "confirmed":
-        case "driver_confirmed":
-          if (hoursUntilAppointment <= 1) return 85; // Very urgent - starting soon
-          if (hoursUntilAppointment <= 2) return 75; // Urgent - starting in 2 hours
-          if (hoursUntilAppointment <= 4) return 65; // Medium urgency
-          return 50; // Normal confirmed appointment
-
-        case "in_progress":
-        case "session_started":
-        case "journey_started":
-          return 95; // Very high - active appointments
-
-        case "awaiting_payment":
-          return 60; // Medium - needs attention but not time-critical
-
-        case "rejected":
-        case "auto_cancelled":
-          return 20; // Low - already handled
-
-        case "completed":
-          return 10; // Lowest - just for reference
-
-        default:
-          return 40; // Default medium-low priority
-      }
-    };
-
-    const getTimeScore = (appointment) => {
-      const now = new Date();
-      const appointmentDateTime = new Date(
-        `${appointment.date}T${appointment.start_time}`
-      );
-      const timeDiff = appointmentDateTime - now;
-
-      // Score based on how soon the appointment is (higher score = sooner)
-      if (timeDiff < 0) return 1000; // Past appointments at top
-      if (timeDiff <= 60 * 60 * 1000) return 900; // Within 1 hour
-      if (timeDiff <= 2 * 60 * 60 * 1000) return 800; // Within 2 hours
-      if (timeDiff <= 4 * 60 * 60 * 1000) return 700; // Within 4 hours
-      if (timeDiff <= 24 * 60 * 60 * 1000) return 600; // Today
-
-      // Future appointments scored by how many days away (closer = higher score)
-      const daysAway = Math.floor(timeDiff / (24 * 60 * 60 * 1000));
-      return Math.max(100, 500 - daysAway * 50);
-    };
-
-    return appointments.sort((a, b) => {
-      const urgencyA = getUrgencyScore(a);
-      const urgencyB = getUrgencyScore(b);
-
-      // If urgency is significantly different, sort by urgency
-      if (Math.abs(urgencyA - urgencyB) > 10) {
-        return urgencyB - urgencyA; // Higher urgency first
-      }
-
-      // If urgency is similar, sort by time
-      const timeA = getTimeScore(a);
-      const timeB = getTimeScore(b);
-
-      return timeB - timeA; // Sooner appointments first
-    });
-  }; // Load driver data on component mount and refresh
+  // Load driver data on component mount and refresh
   const initialDriverDataLoaded = useRef(false);
   const appointmentsLength = appointments?.length || 0;
 
@@ -1605,68 +1532,9 @@ const OperatorDashboard = () => {
           </ul>
         </div>
       </div>
-    );
-  }; // 🔥 PERFORMANCE OPTIMIZATION: Memoize filtered and sorted appointments for "All Appointments" view
-  const filteredAndSortedAppointments = useMemo(() => {
-    if (!appointments || appointments.length === 0) {
-      return [];
-    }
+    );  }; 
 
-    let filtered = [...appointments];
-
-    // Apply status-based filtering
-    switch (currentFilter) {
-      case "completed": {
-        filtered = filtered.filter((apt) =>
-          ["completed", "payment_completed"].includes(apt.status)
-        );
-        break;
-      }
-      case "pending": {
-        filtered = filtered.filter((apt) => apt.status === "pending");
-        break;
-      }
-      case "confirmed": {
-        filtered = filtered.filter((apt) =>
-          ["confirmed", "driver_confirmed", "therapist_confirmed"].includes(
-            apt.status
-          )
-        );
-        break;
-      }
-      case "in_progress": {
-        filtered = filtered.filter((apt) =>
-          ["in_progress", "journey_started", "arrived"].includes(apt.status)
-        );
-        break;
-      }
-      case "today": {
-        const today = new Date().toISOString().split("T")[0];
-        filtered = filtered.filter((apt) => apt.date === today);
-        break;
-      }
-      case "upcoming": {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split("T")[0];
-        filtered = filtered.filter((apt) => apt.date >= tomorrowStr);
-        break;
-      }
-      case "all":
-      default: {
-        // No additional filtering
-        break;
-      }
-    }
-
-    return sortAppointmentsByTimeAndUrgency(filtered);
-  }, [appointments, currentFilter]);
-
-  // 📄 PAGINATION: Enhanced pagination with URL state synchronization
-  const appointmentsPagination = usePagination(
-    filteredAndSortedAppointments,
-    10
-  );
+  // � PERFORMANCE: Old implementations removed - using ultra-optimized versions above
 
   // Sync pagination with URL
   useEffect(() => {
@@ -1974,21 +1842,27 @@ const OperatorDashboard = () => {
         ))}
       </div>
     );
-  };
-  const renderAllAppointments = () => {
-    if (
-      !filteredAndSortedAppointments ||
-      filteredAndSortedAppointments.length === 0
-    ) {
+  };  const renderAllAppointments = () => {
+    if (!Array.isArray(filteredAndSortedAppointments) || filteredAndSortedAppointments.length === 0) {
       return (
         <div className="empty-state">
           <i className="fas fa-calendar"></i>
           <p>No appointments found</p>
+          {error && <p className="error-text">Error: {typeof error === 'string' ? error : JSON.stringify(error)}</p>}
         </div>
       );
     }
 
-    const { currentItems: paginatedAppointments } = appointmentsPagination;
+    const { currentItems: paginatedAppointments, isVirtualized, totalHeight } = appointmentsPagination;
+
+    if (!Array.isArray(paginatedAppointments)) {
+      return (
+        <div className="empty-state">
+          <p>Loading appointments...</p>
+        </div>
+      );
+    }
+
     return (
       <div className="appointments-list">
         {/* Filter Controls */}
@@ -2001,9 +1875,7 @@ const OperatorDashboard = () => {
               onChange={(e) => setFilter(e.target.value)}
               className="filter-select"
             >
-              <option value="all">
-                All Appointments ({filteredAndSortedAppointments.length})
-              </option>
+              <option value="all">All Appointments ({filteredAndSortedAppointments.length})</option>
               <option value="today">Today</option>
               <option value="upcoming">Upcoming</option>
               <option value="pending">Pending</option>
@@ -2012,30 +1884,38 @@ const OperatorDashboard = () => {
               <option value="completed">Completed</option>
             </select>
           </div>
+
+          {/* Performance Mode Toggle */}
+          {appointmentsPagination.shouldVirtualize && (
+            <div className="performance-controls">
+              <button
+                onClick={appointmentsPagination.toggleVirtualization}
+                className={`performance-toggle ${isVirtualized ? "active" : ""}`}
+                title={isVirtualized ? "Switch to Pagination" : "Switch to Virtual Scrolling"}
+              >
+                {isVirtualized ? "📄 Pagination" : "⚡ Virtual Scrolling"}
+              </button>
+            </div>
+          )}
+
           <div className="quick-filter-buttons">
             <button
               onClick={() => setFilter("completed")}
-              className={`quick-filter-btn ${
-                currentFilter === "completed" ? "active" : ""
-              }`}
+              className={`quick-filter-btn ${currentFilter === "completed" ? "active" : ""}`}
               title="View only completed appointments"
             >
               📋 View Completed
             </button>
             <button
               onClick={() => setFilter("today")}
-              className={`quick-filter-btn ${
-                currentFilter === "today" ? "active" : ""
-              }`}
+              className={`quick-filter-btn ${currentFilter === "today" ? "active" : ""}`}
               title="View today's appointments"
             >
               📅 Today
             </button>
             <button
               onClick={() => setFilter("pending")}
-              className={`quick-filter-btn ${
-                currentFilter === "pending" ? "active" : ""
-              }`}
+              className={`quick-filter-btn ${currentFilter === "pending" ? "active" : ""}`}
               title="View pending appointments"
             >
               ⏳ Pending
@@ -2047,95 +1927,163 @@ const OperatorDashboard = () => {
           <i className="fas fa-sort-amount-down"></i>
           <span>Sorted by urgency and time (most urgent first)</span>
           <span className="filter-info">
-            • Showing {appointmentsPagination.currentItems.length} of{" "}
-            {filteredAndSortedAppointments.length} appointments
+            • {isVirtualized ? "Virtual scrolling" : `Showing ${paginatedAppointments.length} of ${filteredAndSortedAppointments.length} appointments`}
             {currentFilter !== "all" && ` (filtered by: ${currentFilter})`}
           </span>
         </div>
 
-        {/* Appointment Cards */}
-        {paginatedAppointments.map((appointment) => {
-          const urgencyLevel = getUrgencyLevel(appointment);
-          const urgencyBadge = getUrgencyBadge(urgencyLevel);
+        {/* Appointment Cards Container */}
+        <div 
+          className={`appointments-container ${isVirtualized ? "virtualized" : "paginated"}`}
+          style={isVirtualized ? { height: 800, overflowY: "auto" } : {}}
+          onScroll={isVirtualized ? appointmentsPagination.handleScroll : undefined}
+          ref={appointmentsPagination.containerRef}
+        >
+          {isVirtualized && (
+            <div style={{ height: totalHeight, position: "relative" }}>
+              {paginatedAppointments.map((appointment) => {
+                if (!appointment || !appointment.id) return null;
+                
+                const urgencyLevel = getUrgencyLevel(appointment);
+                const urgencyBadge = getUrgencyBadge(urgencyLevel);
+                const status = appointment.status || "";
 
-          return (
-            <div
-              key={appointment.id}
-              className={`appointment-card ${urgencyLevel}`}
-            >
-              <div className="appointment-header">
-                <h3>
-                  Appointment #{appointment.id} -{" "}
-                  {appointment.client_details?.first_name}{" "}
-                  {appointment.client_details?.last_name}
-                </h3>
-                <div className="status-badges">
-                  <span className={`status-badge ${appointment.status}`}>
-                    {appointment.status.charAt(0).toUpperCase() +
-                      appointment.status.slice(1).replace(/_/g, " ")}
-                  </span>
-                  <span className={`urgency-badge ${urgencyBadge.className}`}>
-                    {urgencyBadge.icon} {urgencyBadge.label}
-                  </span>
+                return (
+                  <div
+                    key={appointment.id}
+                    className={`appointment-card ${urgencyLevel}`}
+                    style={{
+                      position: "absolute",
+                      top: appointment.offsetY || 0,
+                      left: 0,
+                      right: 0,
+                      height: 200,
+                    }}
+                  >
+                    <div className="appointment-header">
+                      <h3>
+                        Appointment #{appointment.id} -{" "}
+                        {appointment.client_details?.first_name || "Unknown"}{" "}
+                        {appointment.client_details?.last_name || ""}
+                      </h3>
+                      <div className="status-badges">
+                        <span className={`status-badge ${status || "unknown"}`}>
+                          {typeof status === "string" && status.length > 0
+                            ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ")
+                            : "Unknown Status"}
+                        </span>
+                        <span className={`urgency-badge ${urgencyBadge?.className || ""}`}>
+                          {urgencyBadge?.icon || ""} {urgencyBadge?.label || ""}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="appointment-details">
+                      <p><strong>Date:</strong> {appointment.date ? new Date(appointment.date).toLocaleDateString() : "N/A"}</p>
+                      <p><strong>Time:</strong> {appointment.start_time || "N/A"} - {appointment.end_time || "N/A"}</p>
+                      <p><strong>Location:</strong> {appointment.location || "N/A"}</p>
+                      {renderTherapistInfo(appointment)}
+                      <p><strong>Services:</strong> {Array.isArray(appointment.services_details) ? appointment.services_details.map((s) => s.name).join(", ") : "N/A"}</p>
+                      <p><strong>Status:</strong> {status || "N/A"}</p>
+                    </div>
+
+                    <div className="appointment-actions">
+                      {status === "driver_confirmed" && (
+                        <LoadingButton
+                          onClick={() => handleStartAppointment(appointment.id)}
+                          loading={buttonLoading[`start_${appointment.id}`]}
+                          className="start-button"
+                        >
+                          Start Appointment
+                        </LoadingButton>
+                      )}
+
+                      {status === "awaiting_payment" && (
+                        <LoadingButton
+                          onClick={() => handlePaymentVerification(appointment)}
+                          loading={buttonLoading[`payment_${appointment.id}`]}
+                          className="payment-button"
+                        >
+                          Verify Payment
+                        </LoadingButton>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {!isVirtualized && paginatedAppointments.map((appointment) => {
+            if (!appointment || !appointment.id) return null;
+            
+            const urgencyLevel = getUrgencyLevel(appointment);
+            const urgencyBadge = getUrgencyBadge(urgencyLevel);
+            const status = appointment.status || "";
+
+            return (
+              <div key={appointment.id} className={`appointment-card ${urgencyLevel}`}>
+                <div className="appointment-header">
+                  <h3>
+                    Appointment #{appointment.id} -{" "}
+                    {appointment.client_details?.first_name || "Unknown"}{" "}
+                    {appointment.client_details?.last_name || ""}
+                  </h3>
+                  <div className="status-badges">
+                    <span className={`status-badge ${status || "unknown"}`}>
+                      {typeof status === "string" && status.length > 0
+                        ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ")
+                        : "Unknown Status"}
+                    </span>
+                    <span className={`urgency-badge ${urgencyBadge?.className || ""}`}>
+                      {urgencyBadge?.icon || ""} {urgencyBadge?.label || ""}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="appointment-details">
+                  <p><strong>Date:</strong> {appointment.date ? new Date(appointment.date).toLocaleDateString() : "N/A"}</p>
+                  <p><strong>Time:</strong> {appointment.start_time || "N/A"} - {appointment.end_time || "N/A"}</p>
+                  <p><strong>Location:</strong> {appointment.location || "N/A"}</p>
+                  {renderTherapistInfo(appointment)}
+                  <p><strong>Services:</strong> {Array.isArray(appointment.services_details) ? appointment.services_details.map((s) => s.name).join(", ") : "N/A"}</p>
+                  <p><strong>Status:</strong> {status || "N/A"}</p>
+                </div>
+
+                <div className="appointment-actions">
+                  {status === "driver_confirmed" && (
+                    <LoadingButton
+                      onClick={() => handleStartAppointment(appointment.id)}
+                      loading={buttonLoading[`start_${appointment.id}`]}
+                      className="start-button"
+                    >
+                      Start Appointment
+                    </LoadingButton>
+                  )}
+
+                  {status === "awaiting_payment" && (
+                    <LoadingButton
+                      onClick={() => handlePaymentVerification(appointment)}
+                      loading={buttonLoading[`payment_${appointment.id}`]}
+                      className="payment-button"
+                    >
+                      Verify Payment
+                    </LoadingButton>
+                  )}
                 </div>
               </div>
+            );
+          })}
+        </div>
 
-              <div className="appointment-details">
-                <p>
-                  <strong>Date:</strong>{" "}
-                  {new Date(appointment.date).toLocaleDateString()}
-                </p>
-                <p>
-                  <strong>Time:</strong> {appointment.start_time} -{" "}
-                  {appointment.end_time}
-                </p>
-                <p>
-                  <strong>Location:</strong> {appointment.location}
-                </p>
-                {renderTherapistInfo(appointment)}
-                <p>
-                  <strong>Services:</strong>{" "}
-                  {appointment.services_details?.map((s) => s.name).join(", ")}
-                </p>
-                <p>
-                  <strong>Status:</strong> {appointment.status}
-                </p>
-              </div>
-
-              <div className="appointment-actions">
-                {/* Show Start Appointment button when status is driver_confirmed */}
-                {appointment.status === "driver_confirmed" && (
-                  <LoadingButton
-                    onClick={() => handleStartAppointment(appointment.id)}
-                    loading={buttonLoading[`start_${appointment.id}`]}
-                    className="start-button"
-                  >
-                    Start Appointment
-                  </LoadingButton>
-                )}
-
-                {/* Show payment verification button for awaiting payment */}
-                {appointment.status === "awaiting_payment" && (
-                  <LoadingButton
-                    onClick={() => handlePaymentVerification(appointment)}
-                    loading={buttonLoading[`payment_${appointment.id}`]}
-                    className="payment-button"
-                  >
-                    Verify Payment
-                  </LoadingButton>
-                )}
-
-                {/* Add other action buttons as needed */}
-              </div>
-            </div>
-          );
-        })}
-        {/* Pagination Controls */}
-        <Pagination
-          {...appointmentsPagination}
-          itemName="appointments"
-          className="appointments-pagination"
-        />
+        {/* Pagination Controls - Only show if not virtualized */}
+        {!isVirtualized && (
+          <Pagination
+            {...appointmentsPagination}
+            itemName="appointments"
+            className="appointments-pagination"
+          />
+        )}
       </div>
     );
   };
@@ -2811,8 +2759,7 @@ const OperatorDashboard = () => {
                 placeholder="Add any additional notes about your decision..."
                 rows={3}
               />
-            </div>{" "}
-            <div className="modal-actions">
+            </div>{" "}            <div className="modal-actions">
               <LoadingButton
                 className="accept-button"
                 onClick={() => handleReviewSubmit("accept")}
@@ -2830,24 +2777,21 @@ const OperatorDashboard = () => {
                   buttonLoading[`review_${reviewModal.appointmentId}_deny`]
                 }
                 loadingText="Processing..."
-                variant="secondary"
               >
-                Deny Rejection{" "}
-              </LoadingButton>{" "}
+                Deny Rejection
+              </LoadingButton>
               <LoadingButton
                 className="cancel-button"
                 onClick={handleReviewCancel}
                 variant="secondary"
               >
-                {" "}
                 Cancel
               </LoadingButton>
             </div>
           </div>
         </div>
       )}
-      {/* End of global-content wrapper closing div is above after modals */}
-      {/* Close PageLayout here */}
+      {/* End of PageLayout */}
     </PageLayout>
   );
 };

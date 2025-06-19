@@ -1,0 +1,191 @@
+/* PERFORMANCE: GPU-accelerated animations and optimizations */
+.appointments-container {
+  contain: content; /* CSS containment for better performance */
+  will-change: scroll-position; /* Optimize for scrolling */
+}
+
+.appointments-container.virtualized {
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  /* Enable hardware acceleration */
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+}
+
+.appointment-card {
+  contain: layout style paint; /* Isolate card rendering */
+  /* Optimize transforms for virtual positioning */
+  will-change: transform;
+}
+
+.performance-toggle {
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 10px;
+}
+
+.performance-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.performance-toggle.active {
+  background: linear-gradient(45deg, #28a745, #1e7e34);
+}
+
+.performance-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Loading optimizations */
+.appointments-list {
+  /* Prevent layout shifts during loading */
+  min-height: 400px;
+}
+
+/* Reduce paint operations */
+.status-badge,
+.urgency-badge {
+  contain: strict;
+}
+
+.filter-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quick-filter-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.quick-filter-btn {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.quick-filter-btn:hover {
+  background: #f8f9fa;
+  border-color: #007bff;
+}
+
+.quick-filter-btn.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.sort-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+}
+
+.filter-info {
+  color: #6c757d;
+  font-size: 14px;
+  margin-left: auto;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6c757d;
+}
+
+.empty-state i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.error-text {
+  color: #dc3545;
+  font-size: 14px;
+  margin-top: 10px;
+  padding: 10px;
+  background: #f8d7da;
+  border-radius: 4px;
+}
+
+/* Performance optimization for virtual scrolling */
+.appointments-container.virtualized .appointment-card {
+  box-sizing: border-box;
+  padding: 15px;
+  margin-bottom: 0;
+  border-bottom: 1px solid #eee;
+}
+
+/* Ensure smooth scrolling performance */
+@media (prefers-reduced-motion: no-preference) {
+  .appointments-container.virtualized {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Handle reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .performance-toggle,
+  .quick-filter-btn {
+    transition: none;
+  }
+
+  .performance-toggle:hover {
+    transform: none;
+  }
+}
+
+/* Responsive design for performance controls */
+@media (max-width: 768px) {
+  .filter-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .performance-controls {
+    justify-content: center;
+  }
+
+  .quick-filter-buttons {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .sort-indicator {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .filter-info {
+    margin-left: 0;
+  }
+}
