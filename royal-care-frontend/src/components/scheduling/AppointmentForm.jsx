@@ -19,8 +19,13 @@ import {
   LoadingSpinner,
   OptimisticIndicator,
 } from "../common/LoadingComponents";
+// PERFORMANCE: Import cached components for better UX
+import { useAppointmentFormCache } from "../../hooks/useAppointmentFormCache";
+import CachedDriverSelect from "../common/CachedDriverSelect";
+import CachedTherapistSelect from "../common/CachedTherapistSelect";
+import LazyClientSearch from "../common/LazyClientSearch";
 
-// Client Search Component
+// Legacy Client Search Component (kept for fallback)
 const ClientSearchDropdown = ({
   clients,
   selectedClient,
@@ -289,6 +294,9 @@ const AppointmentForm = ({
     availableTherapists: fetchedAvailableTherapists,
     availableDrivers: fetchedAvailableDrivers,
   } = schedulingState;
+
+  // PERFORMANCE: Initialize centralized cache hook (used internally by cached components)
+  useAppointmentFormCache();
 
   // Track form state for availability checks separately to avoid circular dependencies
   const [availabilityParams, setAvailabilityParams] = useState({
@@ -1291,11 +1299,14 @@ const AppointmentForm = ({
       >
         <div className="form-group">
           <label htmlFor="client">Client:</label>
-          <ClientSearchDropdown
-            clients={clients}
-            selectedClient={formData.client}
-            onClientSelect={(clientId) => {
-              setFormData((prev) => ({ ...prev, client: clientId || "" }));
+          <LazyClientSearch
+            selectedClient={
+              formData.client
+                ? clients?.find((c) => c.id === formData.client)
+                : null
+            }
+            onClientSelect={(client) => {
+              setFormData((prev) => ({ ...prev, client: client?.id || "" }));
               // Clear error when client is selected
               setErrors((prev) =>
                 prev.client ? { ...prev, client: "" } : prev
@@ -1303,6 +1314,7 @@ const AppointmentForm = ({
             }}
             error={errors.client}
             disabled={isSubmitting}
+            placeholder="Search client by name or phone..."
           />
           {errors.client && <div className="error-text">{errors.client}</div>}
         </div>
@@ -1351,7 +1363,7 @@ const AppointmentForm = ({
         {!formData.multipleTherapists && (
           <div className="form-group">
             <label htmlFor="therapist">Therapist:</label>
-            <select
+            <CachedTherapistSelect
               id="therapist"
               name="therapist"
               value={formData.therapist}
@@ -1366,40 +1378,7 @@ const AppointmentForm = ({
                   availabilityParams.services &&
                   availableTherapists.length === 0)
               }
-            >
-              <option value="">Select a therapist</option>
-              {fetchingAvailability ? (
-                <option value="" disabled>
-                  Checking availability...
-                </option>
-              ) : !availabilityParams.date ||
-                !availabilityParams.start_time ||
-                !availabilityParams.services ? (
-                <option value="" disabled>
-                  Please select date, time and service first to see available
-                  therapists
-                </option>
-              ) : availableTherapists && availableTherapists.length > 0 ? (
-                availableTherapists.map((therapist) => (
-                  <option
-                    key={`single-therapist-${therapist.id}`}
-                    value={therapist.id}
-                  >
-                    {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
-                    {therapist.specialization || "General"} -{" "}
-                    {therapist.massage_pressure || "Standard"}{" "}
-                    {therapist.start_time && therapist.end_time
-                      ? `(Available: ${therapist.start_time}-${therapist.end_time})`
-                      : ""}
-                  </option>
-                ))
-              ) : (
-                <option value="" disabled>
-                  No therapists available for selected date/time - please choose
-                  a different time
-                </option>
-              )}
-            </select>
+            />
             {/* Show warning when user needs to select prerequisites */}
             {(!availabilityParams.date ||
               !availabilityParams.start_time ||
@@ -1513,7 +1492,7 @@ const AppointmentForm = ({
         )}
         <div className="form-group">
           <label htmlFor="driver">Driver (Optional):</label>
-          <select
+          <CachedDriverSelect
             id="driver"
             name="driver"
             value={formData.driver}
@@ -1523,36 +1502,7 @@ const AppointmentForm = ({
               !availabilityParams.start_time ||
               !availabilityParams.services
             }
-          >
-            <option value="">No driver needed</option>{" "}
-            {fetchingAvailability ? (
-              <option value="" disabled>
-                Checking availability...
-              </option>
-            ) : !availabilityParams.date ||
-              !availabilityParams.start_time ||
-              !availabilityParams.services ? (
-              <option value="" disabled>
-                Please select date, time and service first to see available
-                drivers
-              </option>
-            ) : availableDrivers && availableDrivers.length > 0 ? (
-              availableDrivers.map((driver) => (
-                <option key={`driver-${driver.id}`} value={driver.id}>
-                  {driver.first_name || ""} {driver.last_name || ""} -
-                  {driver.motorcycle_plate || "No plate"}{" "}
-                  {driver.start_time && driver.end_time
-                    ? `(Available: ${driver.start_time}-${driver.end_time})`
-                    : ""}
-                </option>
-              ))
-            ) : (
-              <option value="" disabled>
-                No drivers available for selected date/time - please choose a
-                different time
-              </option>
-            )}
-          </select>
+          />
           {/* Show info for driver selection */}
           {(!availabilityParams.date ||
             !availabilityParams.start_time ||

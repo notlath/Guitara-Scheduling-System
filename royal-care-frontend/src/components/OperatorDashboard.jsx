@@ -50,14 +50,31 @@ const OperatorDashboard = () => {
 
   // URL search params for view persistence
   const [searchParams, setSearchParams] = useSearchParams();
-
-  // Get view from URL params, default to 'rejected'
+  // Get view and filters from URL params with defaults
   const currentView = searchParams.get("view") || "rejected";
+  const currentFilter = searchParams.get("filter") || "all";
+  const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   // Optimized view setter with stable callback
   const setView = useStableCallback((newView) => {
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set("view", newView);
+    // Reset page when changing views
+    newSearchParams.set("page", "1");
+    setSearchParams(newSearchParams);
+  });
+
+  // Filter and page management
+  const setFilter = useStableCallback((newFilter) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set("filter", newFilter);
+    newSearchParams.set("page", "1"); // Reset to first page
+    setSearchParams(newSearchParams);
+  });
+
+  const setPage = useStableCallback((page) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set("page", page.toString());
     setSearchParams(newSearchParams);
   });
   // Modal states - memoized to prevent unnecessary re-renders
@@ -1514,15 +1531,81 @@ const OperatorDashboard = () => {
         </div>
       </div>
     );
-  };
-  // 🔥 PERFORMANCE OPTIMIZATION: Memoize sorted appointments for "All Appointments" view
-  const sortedAllAppointments = useMemo(() => {
+  }; // 🔥 PERFORMANCE OPTIMIZATION: Memoize filtered and sorted appointments for "All Appointments" view
+  const filteredAndSortedAppointments = useMemo(() => {
     if (!appointments || appointments.length === 0) {
       return [];
     }
-    return sortAppointmentsByTimeAndUrgency([...appointments]);
-  }, [appointments]); // 📄 PAGINATION: Add pagination for "All Appointments" view
-  const appointmentsPagination = usePagination(sortedAllAppointments, 10); // 10 items per page
+
+    let filtered = [...appointments];
+
+    // Apply status-based filtering
+    switch (currentFilter) {
+      case "completed": {
+        filtered = filtered.filter((apt) =>
+          ["completed", "payment_completed"].includes(apt.status)
+        );
+        break;
+      }
+      case "pending": {
+        filtered = filtered.filter((apt) => apt.status === "pending");
+        break;
+      }
+      case "confirmed": {
+        filtered = filtered.filter((apt) =>
+          ["confirmed", "driver_confirmed", "therapist_confirmed"].includes(
+            apt.status
+          )
+        );
+        break;
+      }
+      case "in_progress": {
+        filtered = filtered.filter((apt) =>
+          ["in_progress", "journey_started", "arrived"].includes(apt.status)
+        );
+        break;
+      }
+      case "today": {
+        const today = new Date().toISOString().split("T")[0];
+        filtered = filtered.filter((apt) => apt.date === today);
+        break;
+      }
+      case "upcoming": {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split("T")[0];
+        filtered = filtered.filter((apt) => apt.date >= tomorrowStr);
+        break;
+      }
+      case "all":
+      default: {
+        // No additional filtering
+        break;
+      }
+    }
+
+    return sortAppointmentsByTimeAndUrgency(filtered);
+  }, [appointments, currentFilter]);
+
+  // 📄 PAGINATION: Enhanced pagination with URL state synchronization
+  const appointmentsPagination = usePagination(
+    filteredAndSortedAppointments,
+    10
+  );
+
+  // Sync pagination with URL
+  useEffect(() => {
+    if (currentPage !== appointmentsPagination.currentPage) {
+      appointmentsPagination.goToPage(currentPage);
+    }
+  }, [currentPage, appointmentsPagination]);
+
+  // Update URL when pagination changes
+  useEffect(() => {
+    if (appointmentsPagination.currentPage !== currentPage) {
+      setPage(appointmentsPagination.currentPage);
+    }
+  }, [appointmentsPagination.currentPage, currentPage, setPage]);
 
   // Render functions for different views
   const renderRejectedAppointments = () => {
@@ -1818,7 +1901,10 @@ const OperatorDashboard = () => {
     );
   };
   const renderAllAppointments = () => {
-    if (!sortedAllAppointments || sortedAllAppointments.length === 0) {
+    if (
+      !filteredAndSortedAppointments ||
+      filteredAndSortedAppointments.length === 0
+    ) {
       return (
         <div className="empty-state">
           <i className="fas fa-calendar"></i>
@@ -1828,12 +1914,68 @@ const OperatorDashboard = () => {
     }
 
     const { currentItems: paginatedAppointments } = appointmentsPagination;
-
     return (
       <div className="appointments-list">
+        {/* Filter Controls */}
+        <div className="filter-controls">
+          <div className="filter-section">
+            <label htmlFor="appointment-filter">Filter by:</label>
+            <select
+              id="appointment-filter"
+              value={currentFilter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">
+                All Appointments ({filteredAndSortedAppointments.length})
+              </option>
+              <option value="today">Today</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div className="quick-filter-buttons">
+            <button
+              onClick={() => setFilter("completed")}
+              className={`quick-filter-btn ${
+                currentFilter === "completed" ? "active" : ""
+              }`}
+              title="View only completed appointments"
+            >
+              📋 View Completed
+            </button>
+            <button
+              onClick={() => setFilter("today")}
+              className={`quick-filter-btn ${
+                currentFilter === "today" ? "active" : ""
+              }`}
+              title="View today's appointments"
+            >
+              📅 Today
+            </button>
+            <button
+              onClick={() => setFilter("pending")}
+              className={`quick-filter-btn ${
+                currentFilter === "pending" ? "active" : ""
+              }`}
+              title="View pending appointments"
+            >
+              ⏳ Pending
+            </button>
+          </div>
+        </div>
+
         <div className="sort-indicator">
           <i className="fas fa-sort-amount-down"></i>
           <span>Sorted by urgency and time (most urgent first)</span>
+          <span className="filter-info">
+            • Showing {appointmentsPagination.currentItems.length} of{" "}
+            {filteredAndSortedAppointments.length} appointments
+            {currentFilter !== "all" && ` (filtered by: ${currentFilter})`}
+          </span>
         </div>
 
         {/* Appointment Cards */}
