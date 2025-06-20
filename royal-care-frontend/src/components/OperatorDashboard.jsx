@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDebouncedCallback } from "use-debounce";
@@ -49,309 +55,347 @@ import "../styles/UrgencyIndicators.css";
 // 🚀 PERFORMANCE BREAKTHROUGH: Memoized Sub-Components
 // These components prevent unnecessary re-renders and improve performance dramatically
 
-const MemoizedRejectedAppointments = React.memo(({ 
-  appointments, 
-  onReviewRejection, 
-  buttonLoading, 
-  currentPage, 
-  getStatusBadgeClass,
-  getStatusDisplayText,
-  renderTherapistInfo 
-}) => {
-  const paginatedAppointments = useMemo(() => {
-    const startIndex = (currentPage - 1) * 10;
-    return appointments?.slice(startIndex, startIndex + 10) || [];
-  }, [appointments, currentPage]);
+const MemoizedRejectedAppointments = React.memo(
+  ({
+    appointments,
+    onReviewRejection,
+    buttonLoading,
+    currentPage,
+    getStatusBadgeClass,
+    getStatusDisplayText,
+    renderTherapistInfo,
+  }) => {
+    const paginatedAppointments = useMemo(() => {
+      const startIndex = (currentPage - 1) * 10;
+      return appointments?.slice(startIndex, startIndex + 10) || [];
+    }, [appointments, currentPage]);
 
-  if (!appointments?.length) {
-    return (
-      <div className="dashboard-empty-state">
-        <p>No rejected appointments to review.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="dashboard-appointments-list">
-      {paginatedAppointments.map((appointment) => (
-        <div key={appointment.id} className="dashboard-appointment-card">
-          {/* Appointment content */}
-          <div className="appointment-header">
-            <span className={`status-badge ${getStatusBadgeClass(appointment.status)}`}>
-              {getStatusDisplayText(appointment.status)}
-            </span>
-            <span className="appointment-id">#{appointment.id}</span>
-          </div>
-          
-          <div className="appointment-details">
-            {renderTherapistInfo(appointment)}
-            <p><strong>Rejection Reason:</strong> {appointment.rejection_reason || 'No reason provided'}</p>
-            <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
-          </div>
-
-          <div className="appointment-actions">
-            <button
-              className="btn-primary"
-              onClick={() => onReviewRejection(appointment)}
-              disabled={buttonLoading[`review_${appointment.id}`]}
-            >
-              {buttonLoading[`review_${appointment.id}`] ? 'Loading...' : 'Review Rejection'}
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-});
-
-const MemoizedPendingAppointments = React.memo(({ 
-  appointments, 
-  countdowns,
-  onAutoCancelOverdue,
-  autoCancelLoading,
-  getUrgencyLevel,
-  renderTherapistInfo 
-}) => {
-  const sortedAppointments = useMemo(() => {
-    return [...(appointments || [])].sort((a, b) => {
-      const urgencyA = getUrgencyLevel(a);
-      const urgencyB = getUrgencyLevel(b);
-      
-      const urgencyOrder = { critical: 3, high: 2, medium: 1, low: 0 };
-      return urgencyOrder[urgencyB] - urgencyOrder[urgencyA];
-    });
-  }, [appointments, getUrgencyLevel]);
-
-  if (!appointments?.length) {
-    return (
-      <div className="dashboard-empty-state">
-        <p>No pending appointments at this time.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="dashboard-timeout-monitoring">
-      <div className="timeout-header">
-        <h3>Pending Acceptance ({appointments.length})</h3>
-        <button
-          className="btn-danger"
-          onClick={onAutoCancelOverdue}
-          disabled={autoCancelLoading}
-        >
-          {autoCancelLoading ? 'Cancelling...' : 'Auto-Cancel Overdue'}
-        </button>
-      </div>
-
-      <div className="timeout-appointments">
-        {sortedAppointments.map((appointment) => {
-          const countdown = countdowns[appointment.id];
-          const urgency = getUrgencyLevel(appointment);
-          
-          return (
-            <div 
-              key={appointment.id} 
-              className={`timeout-appointment-card urgency-${urgency}`}
-            >
-              <div className="appointment-info">
-                {renderTherapistInfo(appointment)}
-                <div className="countdown-display">
-                  <span className="countdown-time">
-                    {countdown ? `${countdown.minutes}:${countdown.seconds.toString().padStart(2, '0')}` : 'Calculating...'}
-                  </span>
-                  <span className={`urgency-badge urgency-${urgency}`}>
-                    {urgency.toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-});
-
-const MemoizedPaymentVerification = React.memo(({ 
-  appointments,
-  onPaymentVerification,
-  buttonLoading 
-}) => {
-  if (!appointments?.length) {
-    return (
-      <div className="dashboard-empty-state">
-        <p>No payments pending verification.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="dashboard-payment-verification">
-      {appointments.map((appointment) => (
-        <div key={appointment.id} className="payment-card">
-          <div className="payment-header">
-            <h4>Appointment #{appointment.id}</h4>
-            <span className="payment-amount">₱{appointment.service_price}</span>
-          </div>
-          
-          <div className="payment-details">
-            <p><strong>Client:</strong> {appointment.client_name}</p>
-            <p><strong>Service:</strong> {appointment.service_name}</p>
-            <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
-          </div>
-
-          <button
-            className="btn-success"
-            onClick={() => onPaymentVerification(appointment)}
-            disabled={buttonLoading[`payment_${appointment.id}`]}
-          >
-            {buttonLoading[`payment_${appointment.id}`] ? 'Processing...' : 'Verify Payment'}
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-});
-
-const MemoizedDriverCoordination = React.memo(({ 
-  driverAssignment,
-  onAssignDriverPickup,
-  getDriverTaskDescription 
-}) => {
-  const { availableDrivers, busyDrivers } = driverAssignment;
-
-  return (
-    <div className="dashboard-driver-coordination">
-      <div className="driver-sections">
-        <div className="available-drivers">
-          <h3>Available Drivers ({availableDrivers.length})</h3>
-          {availableDrivers.map((driver) => (
-            <div key={driver.id} className="driver-card available">
-              <div className="driver-info">
-                <h4>{driver.first_name} {driver.last_name}</h4>
-                <p>Vehicle: {driver.vehicle_type}</p>
-                <p>Location: {driver.last_location}</p>
-              </div>
-              <div className="driver-actions">
-                <button
-                  className="btn-primary"
-                  onClick={() => onAssignDriverPickup(null, driver.id)}
-                >
-                  Assign Pickup
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="busy-drivers">
-          <h3>Busy Drivers ({busyDrivers.length})</h3>
-          {busyDrivers.map((driver) => (
-            <div key={driver.id} className="driver-card busy">
-              <div className="driver-info">
-                <h4>{driver.first_name} {driver.last_name}</h4>
-                <p>Task: {getDriverTaskDescription(driver.currentAppointment)}</p>
-                <p>ETA: {driver.estimated_completion ? 
-                  new Date(driver.estimated_completion).toLocaleTimeString() : 'Unknown'}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-});
-
-const MemoizedTabSwitcher = React.memo(({ 
-  tabs, 
-  currentView, 
-  onTabChange,
-  counts 
-}) => {
-  return (
-    <div className="dashboard-tabs">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          className={`tab-button ${currentView === tab.id ? 'active' : ''}`}
-          onClick={() => onTabChange(tab.id)}
-        >
-          {tab.label}
-          {counts[tab.id] > 0 && (
-            <span className="tab-count">{counts[tab.id]}</span>
-          )}
-        </button>
-      ))}
-    </div>
-  );
-});
-
-// 🚀 PERFORMANCE: Main content renderer with view switching
-const MemoizedDashboardContent = React.memo(({ 
-  currentView,
-  rejectedAppointments,
-  pendingAppointments,
-  awaitingPaymentAppointments,
-  driverAssignment,
-  countdowns,
-  handlers,
-  states,
-  utils 
-}) => {
-  switch (currentView) {
-    case "rejected":
-      return (
-        <MemoizedRejectedAppointments
-          appointments={rejectedAppointments}
-          onReviewRejection={handlers.handleReviewRejection}
-          buttonLoading={states.buttonLoading}
-          currentPage={states.currentPage}
-          onPageChange={handlers.setPage}
-          getStatusBadgeClass={utils.getStatusBadgeClass}
-          getStatusDisplayText={utils.getStatusDisplayText}
-          renderTherapistInfo={utils.renderTherapistInfo}
-        />
-      );
-      
-    case "pending":
-    case "timeout":
-      return (
-        <MemoizedPendingAppointments
-          appointments={pendingAppointments}
-          countdowns={countdowns}
-          onAutoCancelOverdue={handlers.handleAutoCancelOverdue}
-          autoCancelLoading={states.autoCancelLoading}
-          getUrgencyLevel={utils.getUrgencyLevel}
-          renderTherapistInfo={utils.renderTherapistInfo}
-        />
-      );
-      
-    case "payment":
-      return (
-        <MemoizedPaymentVerification
-          appointments={awaitingPaymentAppointments}
-          onPaymentVerification={handlers.handlePaymentVerification}
-          buttonLoading={states.buttonLoading}
-        />
-      );
-      
-    case "driver":
-      return (
-        <MemoizedDriverCoordination
-          driverAssignment={driverAssignment}
-          onAssignDriverPickup={handlers.handleAssignDriverPickup}
-          getDriverTaskDescription={utils.getDriverTaskDescription}
-        />
-      );
-      
-    default:
+    if (!appointments?.length) {
       return (
         <div className="dashboard-empty-state">
-          <p>Select a tab to view content.</p>
+          <p>No rejected appointments to review.</p>
         </div>
       );
+    }
+
+    return (
+      <div className="dashboard-appointments-list">
+        {paginatedAppointments.map((appointment) => (
+          <div key={appointment.id} className="dashboard-appointment-card">
+            {/* Appointment content */}
+            <div className="appointment-header">
+              <span
+                className={`status-badge ${getStatusBadgeClass(
+                  appointment.status
+                )}`}
+              >
+                {getStatusDisplayText(appointment.status)}
+              </span>
+              <span className="appointment-id">#{appointment.id}</span>
+            </div>
+
+            <div className="appointment-details">
+              {renderTherapistInfo(appointment)}
+              <p>
+                <strong>Rejection Reason:</strong>{" "}
+                {appointment.rejection_reason || "No reason provided"}
+              </p>
+              <p>
+                <strong>Date:</strong>{" "}
+                {new Date(appointment.date).toLocaleDateString()}
+              </p>
+            </div>
+
+            <div className="appointment-actions">
+              <button
+                className="btn-primary"
+                onClick={() => onReviewRejection(appointment)}
+                disabled={buttonLoading[`review_${appointment.id}`]}
+              >
+                {buttonLoading[`review_${appointment.id}`]
+                  ? "Loading..."
+                  : "Review Rejection"}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
-});
+);
+
+const MemoizedPendingAppointments = React.memo(
+  ({
+    appointments,
+    countdowns,
+    onAutoCancelOverdue,
+    autoCancelLoading,
+    getUrgencyLevel,
+    renderTherapistInfo,
+  }) => {
+    const sortedAppointments = useMemo(() => {
+      return [...(appointments || [])].sort((a, b) => {
+        const urgencyA = getUrgencyLevel(a);
+        const urgencyB = getUrgencyLevel(b);
+
+        const urgencyOrder = { critical: 3, high: 2, medium: 1, low: 0 };
+        return urgencyOrder[urgencyB] - urgencyOrder[urgencyA];
+      });
+    }, [appointments, getUrgencyLevel]);
+
+    if (!appointments?.length) {
+      return (
+        <div className="dashboard-empty-state">
+          <p>No pending appointments at this time.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="dashboard-timeout-monitoring">
+        <div className="timeout-header">
+          <h3>Pending Acceptance ({appointments.length})</h3>
+          <button
+            className="btn-danger"
+            onClick={onAutoCancelOverdue}
+            disabled={autoCancelLoading}
+          >
+            {autoCancelLoading ? "Cancelling..." : "Auto-Cancel Overdue"}
+          </button>
+        </div>
+
+        <div className="timeout-appointments">
+          {sortedAppointments.map((appointment) => {
+            const countdown = countdowns[appointment.id];
+            const urgency = getUrgencyLevel(appointment);
+
+            return (
+              <div
+                key={appointment.id}
+                className={`timeout-appointment-card urgency-${urgency}`}
+              >
+                <div className="appointment-info">
+                  {renderTherapistInfo(appointment)}
+                  <div className="countdown-display">
+                    <span className="countdown-time">
+                      {countdown
+                        ? `${countdown.minutes}:${countdown.seconds
+                            .toString()
+                            .padStart(2, "0")}`
+                        : "Calculating..."}
+                    </span>
+                    <span className={`urgency-badge urgency-${urgency}`}>
+                      {urgency.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+);
+
+const MemoizedPaymentVerification = React.memo(
+  ({ appointments, onPaymentVerification, buttonLoading }) => {
+    if (!appointments?.length) {
+      return (
+        <div className="dashboard-empty-state">
+          <p>No payments pending verification.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="dashboard-payment-verification">
+        {appointments.map((appointment) => (
+          <div key={appointment.id} className="payment-card">
+            <div className="payment-header">
+              <h4>Appointment #{appointment.id}</h4>
+              <span className="payment-amount">
+                ₱{appointment.service_price}
+              </span>
+            </div>
+
+            <div className="payment-details">
+              <p>
+                <strong>Client:</strong> {appointment.client_name}
+              </p>
+              <p>
+                <strong>Service:</strong> {appointment.service_name}
+              </p>
+              <p>
+                <strong>Date:</strong>{" "}
+                {new Date(appointment.date).toLocaleDateString()}
+              </p>
+            </div>
+
+            <button
+              className="btn-success"
+              onClick={() => onPaymentVerification(appointment)}
+              disabled={buttonLoading[`payment_${appointment.id}`]}
+            >
+              {buttonLoading[`payment_${appointment.id}`]
+                ? "Processing..."
+                : "Verify Payment"}
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+  }
+);
+
+const MemoizedDriverCoordination = React.memo(
+  ({ driverAssignment, onAssignDriverPickup, getDriverTaskDescription }) => {
+    const { availableDrivers, busyDrivers } = driverAssignment;
+
+    return (
+      <div className="dashboard-driver-coordination">
+        <div className="driver-sections">
+          <div className="available-drivers">
+            <h3>Available Drivers ({availableDrivers.length})</h3>
+            {availableDrivers.map((driver) => (
+              <div key={driver.id} className="driver-card available">
+                <div className="driver-info">
+                  <h4>
+                    {driver.first_name} {driver.last_name}
+                  </h4>
+                  <p>Vehicle: {driver.vehicle_type}</p>
+                  <p>Location: {driver.last_location}</p>
+                </div>
+                <div className="driver-actions">
+                  <button
+                    className="btn-primary"
+                    onClick={() => onAssignDriverPickup(null, driver.id)}
+                  >
+                    Assign Pickup
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="busy-drivers">
+            <h3>Busy Drivers ({busyDrivers.length})</h3>
+            {busyDrivers.map((driver) => (
+              <div key={driver.id} className="driver-card busy">
+                <div className="driver-info">
+                  <h4>
+                    {driver.first_name} {driver.last_name}
+                  </h4>
+                  <p>
+                    Task: {getDriverTaskDescription(driver.currentAppointment)}
+                  </p>
+                  <p>
+                    ETA:{" "}
+                    {driver.estimated_completion
+                      ? new Date(
+                          driver.estimated_completion
+                        ).toLocaleTimeString()
+                      : "Unknown"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+
+const MemoizedTabSwitcher = React.memo(
+  ({ tabs, currentView, onTabChange, counts }) => {
+    return (
+      <div className="dashboard-tabs">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            className={`tab-button ${currentView === tab.id ? "active" : ""}`}
+            onClick={() => onTabChange(tab.id)}
+          >
+            {tab.label}
+            {counts[tab.id] > 0 && (
+              <span className="tab-count">{counts[tab.id]}</span>
+            )}
+          </button>
+        ))}
+      </div>
+    );
+  }
+);
+
+// 🚀 PERFORMANCE: Main content renderer with view switching
+const MemoizedDashboardContent = React.memo(
+  ({
+    currentView,
+    rejectedAppointments,
+    pendingAppointments,
+    awaitingPaymentAppointments,
+    driverAssignment,
+    countdowns,
+    handlers,
+    states,
+    utils,
+  }) => {
+    switch (currentView) {
+      case "rejected":
+        return (
+          <MemoizedRejectedAppointments
+            appointments={rejectedAppointments}
+            onReviewRejection={handlers.handleReviewRejection}
+            buttonLoading={states.buttonLoading}
+            currentPage={states.currentPage}
+            onPageChange={handlers.setPage}
+            getStatusBadgeClass={utils.getStatusBadgeClass}
+            getStatusDisplayText={utils.getStatusDisplayText}
+            renderTherapistInfo={utils.renderTherapistInfo}
+          />
+        );
+
+      case "pending":
+      case "timeout":
+        return (
+          <MemoizedPendingAppointments
+            appointments={pendingAppointments}
+            countdowns={countdowns}
+            onAutoCancelOverdue={handlers.handleAutoCancelOverdue}
+            autoCancelLoading={states.autoCancelLoading}
+            getUrgencyLevel={utils.getUrgencyLevel}
+            renderTherapistInfo={utils.renderTherapistInfo}
+          />
+        );
+
+      case "payment":
+        return (
+          <MemoizedPaymentVerification
+            appointments={awaitingPaymentAppointments}
+            onPaymentVerification={handlers.handlePaymentVerification}
+            buttonLoading={states.buttonLoading}
+          />
+        );
+
+      case "driver":
+        return (
+          <MemoizedDriverCoordination
+            driverAssignment={driverAssignment}
+            onAssignDriverPickup={handlers.handleAssignDriverPickup}
+            getDriverTaskDescription={utils.getDriverTaskDescription}
+          />
+        );
+
+      default:
+        return (
+          <div className="dashboard-empty-state">
+            <p>Select a tab to view content.</p>
+          </div>
+        );
+    }
+  }
+);
 
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
@@ -936,48 +980,53 @@ const OperatorDashboard = () => {
     dispatch(logout());
     navigate("/");
   };
-
-  const handleReviewRejection = (appointment) => {
+  const handleReviewRejection = useCallback((appointment) => {
     setReviewModal({
       isOpen: true,
       appointmentId: appointment.id,
       rejectionReason: appointment.rejection_reason || "",
     });
     setReviewNotes("");
-  };
-  const handleReviewSubmit = async (decision) => {
-    const actionKey = `review_${reviewModal.appointmentId}_${decision}`;
-    try {
-      setActionLoading(actionKey, true);
-      await dispatch(
-        reviewRejection({
-          id: reviewModal.appointmentId,
-          reviewDecision: decision,
-          reviewNotes: reviewNotes,
-        })
-      ).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
-      setReviewModal({
-        isOpen: false,
-        appointmentId: null,
-        rejectionReason: "",
-      });
-      setReviewNotes("");
-    } catch {
-      alert("Failed to review rejection. Please try again.");
-    } finally {
-      setActionLoading(actionKey, false);
-    }
-  };
-  const handleReviewCancel = () => {
+  }, []);
+
+  const handleReviewSubmit = useCallback(
+    async (decision) => {
+      const actionKey = `review_${reviewModal.appointmentId}_${decision}`;
+      try {
+        setActionLoading(actionKey, true);
+        await dispatch(
+          reviewRejection({
+            id: reviewModal.appointmentId,
+            reviewDecision: decision,
+            reviewNotes: reviewNotes,
+          })
+        ).unwrap();
+        // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+        await optimizedDataManager.forceRefresh([
+          "appointments",
+          "todayAppointments",
+        ]);
+        setReviewModal({
+          isOpen: false,
+          appointmentId: null,
+          rejectionReason: "",
+        });
+        setReviewNotes("");
+      } catch {
+        alert("Failed to review rejection. Please try again.");
+      } finally {
+        setActionLoading(actionKey, false);
+      }
+    },
+    [reviewModal.appointmentId, reviewNotes, dispatch, setActionLoading]
+  );
+
+  const handleReviewCancel = useCallback(() => {
     setReviewModal({ isOpen: false, appointmentId: null, rejectionReason: "" });
     setReviewNotes("");
-  };
-  const handleAutoCancelOverdue = async () => {
+  }, []);
+
+  const handleAutoCancelOverdue = useCallback(async () => {
     if (
       !window.confirm(
         "This will auto-cancel all overdue appointments and disable therapists who didn't respond. Continue?"
@@ -1000,31 +1049,37 @@ const OperatorDashboard = () => {
     } finally {
       setAutoCancelLoading(false);
     }
-  };
-  const _handleStartAppointment = async (appointmentId) => {
-    const actionKey = `start_${appointmentId}`;
-    try {
-      setActionLoading(actionKey, true);
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "in_progress",
-          action: "start_appointment",
-        })
-      ).unwrap(); // Refresh dashboard data to get updated status
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
-    } catch (error) {
-      console.error("Failed to start appointment:", error);
-      alert("Failed to start appointment. Please try again.");
-    } finally {
-      setActionLoading(actionKey, false);
-    }
-  }; // Payment verification handler
-  const handlePaymentVerification = (appointment) => {
+  }, [dispatch, setAutoCancelLoading]);
+
+  const _handleStartAppointment = useCallback(
+    async (appointmentId) => {
+      const actionKey = `start_${appointmentId}`;
+      try {
+        setActionLoading(actionKey, true);
+        await dispatch(
+          updateAppointmentStatus({
+            id: appointmentId,
+            status: "in_progress",
+            action: "start_appointment",
+          })
+        ).unwrap(); // Refresh dashboard data to get updated status
+        // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+        await optimizedDataManager.forceRefresh([
+          "appointments",
+          "todayAppointments",
+        ]);
+      } catch (error) {
+        console.error("Failed to start appointment:", error);
+        alert("Failed to start appointment. Please try again.");
+      } finally {
+        setActionLoading(actionKey, false);
+      }
+    },
+    [dispatch, setActionLoading]
+  );
+
+  // Payment verification handler
+  const handlePaymentVerification = useCallback((appointment) => {
     // Calculate total amount from services with proper number handling
     const totalAmount =
       appointment?.services_details?.reduce((total, service) => {
@@ -1042,8 +1097,9 @@ const OperatorDashboard = () => {
       amount: totalAmount.toFixed(2), // totalAmount is guaranteed to be a number
       notes: "",
     });
-  };
-  const handleMarkPaymentPaid = async () => {
+  }, []);
+
+  const handleMarkPaymentPaid = useCallback(async () => {
     const actionKey = `payment_${paymentModal.appointmentId}`;
 
     console.log("🔍 handleMarkPaymentPaid: Starting with data:", {
@@ -1142,7 +1198,15 @@ const OperatorDashboard = () => {
         });
       }, 100);
     }
-  };
+  }, [
+    dispatch,
+    paymentModal.appointmentId,
+    paymentData,
+    buttonLoading,
+    setActionLoading,
+    forceClearLoading,
+  ]);
+
   const handlePaymentModalCancel = () => {
     // Clear any payment-related loading states when modal is cancelled
     const appointmentId = paymentModal.appointmentId;
@@ -1791,62 +1855,68 @@ const OperatorDashboard = () => {
     if (appointmentsPagination.currentPage !== stableCurrentPage) {
       setPage(appointmentsPagination.currentPage);
     }
-  }, [appointmentsPagination.currentPage, stableCurrentPage, setPage]);
+  }, [appointmentsPagination.currentPage, stableCurrentPage, setPage]); // 🚀 PERFORMANCE: Memoized utility functions to prevent recreations
+  const getStatusBadgeClass = useMemo(
+    () => (status) => {
+      const statusMap = {
+        pending: "status-pending",
+        confirmed: "status-confirmed",
+        driver_confirmed: "status-confirmed",
+        therapist_confirmed: "status-confirmed",
+        rejected: "status-rejected",
+        rejected_by_therapist: "status-rejected",
+        rejected_by_driver: "status-rejected",
+        cancelled: "status-cancelled",
+        completed: "status-completed",
+        in_progress: "status-confirmed",
+        awaiting_payment: "status-warning",
+        pickup_requested: "status-pending",
+        overdue: "status-overdue",
+        timeout: "status-overdue",
+        journey_started: "status-confirmed",
+        arrived: "status-confirmed",
+        dropped_off: "status-confirmed",
+        session_started: "status-confirmed",
+        payment_requested: "status-warning",
+        payment_completed: "status-completed",
+      };
+      return statusMap[status] || "status-pending";
+    },
+    []
+  );
 
-  // Helper functions for status badge mapping
-  const getStatusBadgeClass = (status) => {
-    const statusMap = {
-      pending: "status-pending",
-      confirmed: "status-confirmed",
-      driver_confirmed: "status-confirmed",
-      therapist_confirmed: "status-confirmed",
-      rejected: "status-rejected",
-      cancelled: "status-cancelled",
-      completed: "status-completed",
-      in_progress: "status-confirmed",
-      awaiting_payment: "status-warning",
-      pickup_requested: "status-pending",
-      overdue: "status-overdue",
-      timeout: "status-overdue",
-      journey_started: "status-confirmed",
-      arrived: "status-confirmed",
-      dropped_off: "status-confirmed",
-      session_started: "status-confirmed",
-      payment_requested: "status-warning",
-      payment_completed: "status-completed",
-    };
-
-    return statusMap[status] || "status-pending";
-  };
-
-  const getStatusDisplayText = (status) => {
-    const statusTextMap = {
-      pending: "Pending",
-      confirmed: "Confirmed",
-      driver_confirmed: "Driver Confirmed",
-      therapist_confirmed: "Therapist Confirmed",
-      rejected: "Rejected",
-      cancelled: "Cancelled",
-      completed: "Completed",
-      in_progress: "In Progress",
-      awaiting_payment: "Awaiting Payment",
-      pickup_requested: "Pickup Requested",
-      overdue: "Overdue",
-      timeout: "Timeout",
-      journey_started: "Journey Started",
-      arrived: "Arrived",
-      dropped_off: "Dropped Off",
-      session_started: "Session Started",
-      payment_requested: "Payment Requested",
-      payment_completed: "Payment Completed",
-    };
-
-    return (
-      statusTextMap[status] ||
-      status?.charAt(0).toUpperCase() + status?.slice(1).replace(/_/g, " ") ||
-      "Unknown"
-    );
-  };
+  const getStatusDisplayText = useMemo(
+    () => (status) => {
+      const statusTextMap = {
+        pending: "Pending",
+        confirmed: "Confirmed",
+        driver_confirmed: "Driver Confirmed",
+        therapist_confirmed: "Therapist Confirmed",
+        rejected: "Rejected",
+        rejected_by_therapist: "Rejected by Therapist",
+        rejected_by_driver: "Rejected by Driver",
+        cancelled: "Cancelled",
+        completed: "Completed",
+        in_progress: "In Progress",
+        awaiting_payment: "Awaiting Payment",
+        pickup_requested: "Pickup Requested",
+        overdue: "Overdue",
+        timeout: "Timeout",
+        journey_started: "Journey Started",
+        arrived: "Arrived",
+        dropped_off: "Dropped Off",
+        session_started: "Session Started",
+        payment_requested: "Payment Requested",
+        payment_completed: "Payment Completed",
+      };
+      return (
+        statusTextMap[status] ||
+        status?.charAt(0).toUpperCase() + status?.slice(1).replace(/_/g, " ") ||
+        "Unknown"
+      );
+    },
+    []
+  );
   const renderRejectedAppointments = () => {
     if (!rejectedAppointments || rejectedAppointments.length === 0) {
       return (
