@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MdDelete,
   MdEventAvailable,
@@ -12,7 +12,106 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { markNotificationAsRead } from "../../features/scheduling/schedulingSlice";
 import styles from "../../styles/NotificationCenter.module.css";
+import { debounce } from "../../utils/authUtils";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
+
+// Optimized notification item component to prevent unnecessary re-renders
+const NotificationItem = memo(
+  ({
+    notification,
+    openMenuId,
+    setOpenMenuId,
+    handleMenuAction,
+    formatTime,
+    getNotificationIcon,
+    notificationItemsRef,
+  }) => {
+    const isMenuOpen = openMenuId === notification.id;
+
+    return (
+      <div
+        key={notification.id}
+        className={`${styles.notificationItem} ${
+          notification.is_read ? styles.read : styles.unread
+        }`}
+        data-notification-id={notification.id}
+        ref={(el) => {
+          if (el) {
+            notificationItemsRef.current.set(notification.id, el);
+          } else {
+            notificationItemsRef.current.delete(notification.id);
+          }
+        }}
+      >
+        <div className={styles.notificationContent}>
+          <div className={styles.notificationIcon}>
+            {getNotificationIcon(notification.notification_type)}
+          </div>
+          <div className={styles.notificationText}>
+            <p className={styles.notificationMessage}>{notification.message}</p>
+            <span className={styles.notificationTime}>
+              {formatTime(notification.created_at)}
+            </span>
+          </div>
+          <div className={styles.notificationActions}>
+            <button
+              className={styles.menuButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenMenuId(isMenuOpen ? null : notification.id);
+              }}
+              aria-label="Notification options"
+            >
+              <MdMoreVert size={16} />
+            </button>
+            {isMenuOpen && (
+              <div
+                className={styles.menuDropdown}
+                style={{
+                  position: "absolute",
+                  right: "0",
+                  top: "100%",
+                  background: "white",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                  zIndex: 1000,
+                  minWidth: "140px",
+                }}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleMenuAction(
+                      notification.is_read ? "markUnread" : "markRead",
+                      notification.id
+                    );
+                  }}
+                >
+                  <MdMarkAsUnread size={14} />
+                  {notification.is_read ? "Mark as unread" : "Mark as read"}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleMenuAction("delete", notification.id);
+                  }}
+                >
+                  <MdDelete size={14} />
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+
+NotificationItem.displayName = "NotificationItem";
 
 const NotificationCenter = ({ onClose }) => {
   const [notifications, setNotifications] = useState([]);
@@ -27,17 +126,57 @@ const NotificationCenter = ({ onClose }) => {
   // Get user information for role-aware filtering
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-  // Fetch notifications directly from API
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
-    setError(null);
 
-    console.log("🔄 Fetching notifications...");
-    console.log(
-      `👤 User role: ${user?.role || "Unknown"} - ${
-        user?.username || "Unknown user"
-      }`
-    );
+  // Cache management functions for immediate notification display
+  const getCachedNotifications = useCallback(() => {
+    try {
+      const cached = localStorage.getItem(
+        `notifications_cache_${user?.id || "default"}`
+      );
+      if (cached) {
+        const parsedCache = JSON.parse(cached);
+        // Extended cache duration to 10 minutes for better performance
+        if (Date.now() - parsedCache.timestamp < 600000) {
+          return parsedCache.data;
+        }
+      }
+    } catch (error) {
+      console.warn("Error reading notification cache:", error);
+    }
+    return null;
+  }, [user?.id]);
+
+  const cacheNotifications = useCallback(
+    (notificationData) => {
+      try {
+        const cacheData = {
+          data: notificationData,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem(
+          `notifications_cache_${user?.id || "default"}`,
+          JSON.stringify(cacheData)
+        );
+      } catch (error) {
+        console.warn("Error caching notifications:", error);
+      }
+    },
+    [user?.id]
+  );
+
+  // Fetch notifications directly from API with optimized caching
+  const fetchNotifications = useCallback(async () => {
+    // Show cached notifications immediately while fetching fresh data
+    const cachedNotifications = getCachedNotifications();
+    if (cachedNotifications && cachedNotifications.length > 0) {
+      setNotifications(cachedNotifications);
+      // Only show loading for refresh, not initial load with cached data
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    setError(null);
 
     try {
       const token = localStorage.getItem("knoxToken");
@@ -46,8 +185,7 @@ const NotificationCenter = ({ onClose }) => {
         throw new Error("No authentication token found");
       }
 
-      console.log("📡 Making request to notifications API...");
-
+      // Optimized fetch with reduced processing overhead
       const response = await fetch(
         "http://localhost:8000/api/scheduling/notifications/",
         {
@@ -58,92 +196,51 @@ const NotificationCenter = ({ onClose }) => {
         }
       );
 
-      console.log(
-        `📊 Response status: ${response.status} ${response.statusText}`
-      );
-
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error("Authentication failed - please log in again");
         }
-
-        // Try to get error details from response
-        let errorMessage = `Failed to fetch notifications: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          console.log("❌ Error response data:", errorData);
-          if (errorData.error) {
-            errorMessage = errorData.error;
-          } else if (errorData.detail) {
-            errorMessage = errorData.detail;
-          }
-        } catch (parseError) {
-          // If we can't parse the error response, use the status
-          console.warn("Could not parse error response:", parseError);
-        }
-
-        throw new Error(errorMessage);
+        throw new Error(`Failed to fetch notifications: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log("📦 Received data:", data);
 
-      // Handle the new backend response format which may include additional metadata
+      // Streamlined response processing for better performance
       let notificationsList = [];
 
       if (Array.isArray(data)) {
-        // Old format - direct array
         notificationsList = data;
-        console.log("✅ Using legacy array format");
       } else if (data && Array.isArray(data.notifications)) {
-        // New format - object with notifications array
         notificationsList = data.notifications;
-        console.log(
-          `✅ Loaded ${notificationsList.length} notifications (${
-            data.unreadCount || 0
-          } unread) for ${user?.role || "unknown"} user`
-        );
-
-        // Log any warnings from backend
-        if (data.warning) {
-          console.warn("⚠️ Backend warning:", data.warning);
-        }
-        if (data.errors && data.errors > 0) {
-          console.warn(
-            `⚠️ Backend encountered ${data.errors} errors while loading notifications`
-          );
-        }
       } else {
-        // Fallback - treat as empty array
-        console.warn("⚠️ Unexpected response format:", data);
         notificationsList = [];
       }
 
-      // Log notification types for debugging role filtering
-      if (notificationsList.length > 0) {
-        const notificationTypes = notificationsList
-          .map((n) => n.notification_type || n.type)
-          .filter(Boolean);
-        const uniqueTypes = [...new Set(notificationTypes)];
-        console.log(
-          `🏷️ Notification types received for ${user?.role}: ${uniqueTypes.join(
-            ", "
-          )}`
-        );
-      }
-
-      console.log(`🎯 Setting ${notificationsList.length} notifications`);
       setNotifications(notificationsList);
+
+      // Cache the fresh notifications
+      cacheNotifications(notificationsList);
     } catch (err) {
       console.error("Error fetching notifications:", err);
       setError(err.message);
 
-      // Set empty notifications array as fallback
-      setNotifications([]);
+      // If we have cached data and there's an error, keep showing cached data
+      if (cachedNotifications && cachedNotifications.length > 0) {
+        setNotifications(cachedNotifications);
+      } else {
+        // Set empty notifications array as fallback
+        setNotifications([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [user?.role, user?.username]);
+  }, [getCachedNotifications, cacheNotifications]);
+
+  // Debounced version of fetchNotifications to reduce API calls
+  const debouncedFetchNotifications = useMemo(
+    () => debounce(() => fetchNotifications(), 1000),
+    [fetchNotifications]
+  );
 
   // Mark notification as read
   const markAsRead = useCallback(
@@ -337,13 +434,15 @@ const NotificationCenter = ({ onClose }) => {
 
   // Fetch notifications on mount
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    debouncedFetchNotifications();
+  }, [debouncedFetchNotifications]);
 
-  // Filter notifications
-  const filteredNotifications = showAll
-    ? notifications
-    : notifications.filter((notif) => !notif.is_read);
+  // Filter notifications with memoization for performance
+  const filteredNotifications = useMemo(() => {
+    return showAll
+      ? notifications
+      : notifications.filter((notif) => !notif.is_read);
+  }, [notifications, showAll]);
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
@@ -392,12 +491,35 @@ const NotificationCenter = ({ onClose }) => {
         <h2>Notifications</h2>
         <MinimalLoadingIndicator
           show={loading}
+          hasData={notifications.length > 0}
+          isRefreshing={loading && notifications.length > 0}
           position="top-right"
           size="micro"
           variant="ghost"
           tooltip="Loading notifications..."
+          renderThreshold={100}
+          timeoutWarning={5000}
+          errorTimeout={10000}
+          operation="Loading notifications"
         />
         <div className={styles.notificationControls}>
+          <button
+            onClick={fetchNotifications}
+            disabled={loading}
+            className={styles.refreshButton}
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: "12px",
+              color: "#666",
+              cursor: loading ? "not-allowed" : "pointer",
+              marginRight: "12px",
+              opacity: loading ? 0.5 : 1,
+            }}
+            title="Refresh notifications"
+          >
+            ↻ Refresh
+          </button>
           <label className={styles.toggleSwitch}>
             <span className={styles.toggleLabel}>Show only unread</span>
             <input
@@ -417,6 +539,24 @@ const NotificationCenter = ({ onClose }) => {
           <div className={styles.loadingMessage}>Loading notifications...</div>
         )}
 
+        {/* Show subtle refresh indicator when updating cached data */}
+        {loading && filteredNotifications.length > 0 && (
+          <div
+            className={styles.refreshingMessage}
+            style={{
+              fontSize: "12px",
+              color: "#666",
+              textAlign: "center",
+              padding: "8px",
+              background: "#f5f5f5",
+              borderRadius: "4px",
+              margin: "8px 0",
+            }}
+          >
+            Updating notifications...
+          </div>
+        )}
+
         {error && (
           <div className={styles.errorMessage}>
             <p>Error: {error}</p>
@@ -432,111 +572,19 @@ const NotificationCenter = ({ onClose }) => {
           </div>
         )}
 
-        {!loading &&
-          !error &&
+        {/* Show notifications immediately - whether from cache or fresh data */}
+        {filteredNotifications.length > 0 &&
           filteredNotifications.map((notification) => (
-            <div
+            <NotificationItem
               key={notification.id}
-              ref={(el) => {
-                if (el) {
-                  notificationItemsRef.current.set(notification.id, el);
-                } else {
-                  notificationItemsRef.current.delete(notification.id);
-                }
-              }}
-              className={`${styles.notificationItem} ${
-                !notification.is_read ? styles.unread : ""
-              }`}
-              data-notification-id={notification.id}
-              data-type={notification.notification_type || notification.type}
-            >
-              <div className={styles.notificationContent}>
-                <div className={styles.notificationIcon}>
-                  {getNotificationIcon(
-                    notification.notification_type || notification.type
-                  )}
-                </div>
-                <div className={styles.notificationText}>
-                  <div className={styles.notificationTitle}>
-                    {notification.title ||
-                      `${(
-                        notification.notification_type ||
-                        notification.type ||
-                        "notification"
-                      )
-                        .replace(/_/g, " ")
-                        .replace(/\b\w/g, (l) => l.toUpperCase())}`}
-                  </div>
-                  <div className={styles.notificationMessage}>
-                    {notification.message}
-                  </div>
-                  <div className={styles.notificationTime}>
-                    {formatTime(notification.created_at)}
-                  </div>
-                  {/* Show error info if present */}
-                  {notification.error && (
-                    <div
-                      className={styles.notificationError}
-                      style={{
-                        fontSize: "12px",
-                        color: "#ff6b6b",
-                        marginTop: "4px",
-                      }}
-                    >
-                      Error loading notification details
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Three-dot menu */}
-              <div className={styles.notificationActions}>
-                <button
-                  className={styles.menuButton}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const newMenuId =
-                      openMenuId === notification.id ? null : notification.id;
-                    setOpenMenuId(newMenuId);
-                  }}
-                >
-                  <MdMoreVert size={16} />
-                </button>
-
-                {openMenuId === notification.id && (
-                  <div
-                    className={styles.menuDropdown}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        handleMenuAction(
-                          notification.is_read ? "markUnread" : "markRead",
-                          notification.id
-                        );
-                      }}
-                    >
-                      <MdMarkAsUnread size={14} />
-                      {notification.is_read ? "Mark as unread" : "Mark as read"}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        handleMenuAction("delete", notification.id);
-                      }}
-                    >
-                      <MdDelete size={14} />
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+              notification={notification}
+              openMenuId={openMenuId}
+              setOpenMenuId={setOpenMenuId}
+              handleMenuAction={handleMenuAction}
+              formatTime={formatTime}
+              getNotificationIcon={getNotificationIcon}
+              notificationItemsRef={notificationItemsRef}
+            />
           ))}
       </div>
     </div>

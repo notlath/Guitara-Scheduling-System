@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MdAdd,
   MdBackup,
@@ -870,7 +870,6 @@ const SettingsDataPage = () => {
 
   // Simple skeleton loader for table (like BookingsPage)
   const renderTableSkeleton = () => {
-    const tableConfig = getTableConfig();
     const skeletonRows = Array.from({ length: 5 }, (_, index) => (
       <tr key={`skeleton-${index}`} className={styles["table-skeleton-row"]}>
         {tableConfig.columns.map((col) => (
@@ -1191,8 +1190,8 @@ const SettingsDataPage = () => {
     }
   };
 
-  // Helper to get table columns and row data per tab
-  const getTableConfig = () => {
+  // Memoize table configuration to prevent unnecessary recalculations
+  const tableConfig = useMemo(() => {
     switch (activeTab) {
       case "Drivers":
       case "Operators":
@@ -1244,11 +1243,17 @@ const SettingsDataPage = () => {
           ],
         };
     }
-  };
+  }, [activeTab]);
 
-  // Compute if any loading is happening for UI indicators
-  const currentTabLoading = isTabLoading(activeTab);
-  const currentTabError = getTabError(activeTab);
+  // Memoize loading states to prevent unnecessary recalculations
+  const currentTabLoading = useMemo(
+    () => isTabLoading(activeTab),
+    [isTabLoading, activeTab]
+  );
+  const currentTabError = useMemo(
+    () => getTabError(activeTab),
+    [getTabError, activeTab]
+  );
 
   // Infinite scroll handler with debounce to prevent performance bottlenecks
   useEffect(() => {
@@ -1442,7 +1447,7 @@ const SettingsDataPage = () => {
             renderTableSkeleton()
           ) : (
             <DataTable
-              columns={getTableConfig().columns}
+              columns={tableConfig.columns}
               data={tableData[activeTab]}
             />
           )}

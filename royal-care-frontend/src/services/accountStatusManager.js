@@ -20,14 +20,27 @@ class AccountStatusManager {
    * @param {number} intervalMs - Polling interval in ms (default: 5000)
    * @returns {Promise} - Resolves when account becomes active or polling ends
    */
-  startPolling(username, onStatusChange, maxAttempts = 60, intervalMs = 5000) {
+  startPolling(username, onStatusChange, maxAttempts = 60, intervalMs = 60000) {
+    // 🚀 ULTRA-OPTIMIZED: Increased to 60 seconds for disabled accounts to reduce API load and improve OperatorDashboard performance
     // Prevent duplicate polling for the same username
     if (this.activePolls.has(username)) {
-      console.log(`⚠️ AccountStatusManager: Already polling for ${username}`);
+      console.log(
+        `⚠️ AccountStatusManager: Already polling for ${username}, returning existing promise`
+      );
       return this.activePolls.get(username);
     }
 
-    console.log(`🔄 AccountStatusManager: Starting polling for ${username}`);
+    // Additional safety: Check if we have too many active polls
+    if (this.activePolls.size >= 3) {
+      console.warn(
+        `⚠️ AccountStatusManager: Too many active polls (${this.activePolls.size}), rejecting new poll for ${username}`
+      );
+      return Promise.reject(new Error("Too many active polling sessions"));
+    }
+
+    console.log(
+      `🔄 AccountStatusManager: Starting optimized polling for ${username} (${intervalMs}ms interval)`
+    );
 
     const pollPromise = new Promise((resolve, reject) => {
       let attempts = 0;

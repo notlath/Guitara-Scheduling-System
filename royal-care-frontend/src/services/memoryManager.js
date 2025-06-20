@@ -160,16 +160,18 @@ class MemoryManager {
   }
 
   /**
-   * Start memory monitoring and cleanup
+   * Start memory monitoring and cleanup - OPTIMIZED frequency
    */
   startMemoryMonitoring() {
-    // Check memory every 30 seconds
+    // 🚀 ULTRA-OPTIMIZED: Check memory every 15 minutes to minimize OperatorDashboard performance impact
     this.cleanupInterval = setInterval(() => {
       this.checkMemoryPressure();
       this.performIntelligentCleanup();
-    }, 30000);
+    }, 900000); // 15 minutes = 900,000ms - much less aggressive
 
-    console.log("🧠 MemoryManager: Started memory monitoring");
+    console.log(
+      "🧠 MemoryManager: Started ultra-optimized memory monitoring (15min intervals)"
+    );
   }
 
   /**

@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUploadPure";
 import pageTitles from "../../constants/pageTitles";
 import { logout, updateUserProfile } from "../../features/auth/authSlice";
-import styles from "./ProfilePage.module.css";
 import PageLayout from "../../globals/PageLayout";
+import styles from "./ProfilePage.module.css";
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
@@ -40,11 +40,14 @@ const ProfilePage = () => {
         const token = localStorage.getItem("knoxToken");
         if (!token) return;
 
-        const response = await fetch("/registration/profile/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/registration/profile/`,
+          {
+            headers: {
+              Authorization: `Token ${token}`,
+            },
+          }
+        );
 
         if (response.ok) {
           const profileData = await response.json();

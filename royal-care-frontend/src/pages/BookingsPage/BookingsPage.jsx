@@ -151,6 +151,7 @@ const BookingsPage = () => {
           show={loading}
           position="top-right"
           size="small"
+          
           variant="subtle"
           tooltip="Loading bookings..."
         />

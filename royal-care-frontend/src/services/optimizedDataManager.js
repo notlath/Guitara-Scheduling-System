@@ -31,26 +31,26 @@ class OptimizedDataManager {
     this.pollingInterval = null;
     this.isPolling = false;
 
-    // Optimized cache configuration - Much longer TTLs for stable data
+    // 🚀 ULTRA-OPTIMIZED: Extended cache TTLs for maximum performance
     this.cacheTTL = {
-      // Critical real-time data
-      todayAppointments: 300000, // 5 minutes
-      notifications: 300000, // 5 minutes (was 3 minutes)
+      // Critical real-time data - moderately cached
+      todayAppointments: 600000, // 10 minutes (was 5 minutes)
+      notifications: 600000, // 10 minutes (was 5 minutes)
 
-      // Regular scheduling data
-      appointments: 600000, // 10 minutes
-      upcomingAppointments: 600000, // 10 minutes (was 5 minutes)
+      // Regular scheduling data - heavily cached
+      appointments: 1200000, // 20 minutes (was 10 minutes)
+      upcomingAppointments: 1200000, // 20 minutes (was 10 minutes)
 
-      // Stable data - even longer cache times
-      patients: 1200000, // 20 minutes (was 10 minutes)
-      clients: 1200000, // 20 minutes (was 10 minutes)
-      therapists: 3600000, // 1 hour (was 30 minutes)
-      staffMembers: 3600000, // 1 hour (was 30 minutes)
-      drivers: 3600000, // 1 hour (was 30 minutes)
-      services: 7200000, // 2 hours (was 1 hour)
+      // Stable data - very heavily cached
+      patients: 3600000, // 1 hour (was 20 minutes)
+      clients: 3600000, // 1 hour (was 20 minutes)
+      therapists: 7200000, // 2 hours (was 1 hour)
+      staffMembers: 7200000, // 2 hours (was 1 hour)
+      drivers: 7200000, // 2 hours (was 1 hour)
+      services: 14400000, // 4 hours (was 2 hours)
 
-      // Settings and configuration
-      settings: 7200000, // 2 hours (was 1 hour)
+      // Settings and configuration - extremely stable
+      settings: 14400000, // 4 hours (was 2 hours)
 
       // Analytics and reports
       analytics: 1800000, // 30 minutes (was 15 minutes)

@@ -386,28 +386,48 @@ class CrossTabSync {
   }
 
   /**
-   * Broadcast message to other tabs
+   * Broadcast message to other tabs - OPTIMIZED with debouncing
    */
   broadcastMessage(message) {
-    const fullMessage = {
-      ...message,
-      tabId: this.tabId,
-      timestamp: Date.now(),
-    };
+    const messageKey = `${message.type}_${message.dataType || "general"}`;
 
-    if (this.broadcastChannel) {
-      // Use BroadcastChannel
-      this.broadcastChannel.postMessage(fullMessage);
-    } else {
-      // Use localStorage
-      const storageKey = `guitara_sync_${Date.now()}_${Math.random()}`;
-      localStorage.setItem(storageKey, JSON.stringify(fullMessage));
-
-      // Clean up after short time
-      setTimeout(() => {
-        localStorage.removeItem(storageKey);
-      }, 5000);
+    // Initialize debounce timeouts if not exists
+    if (!this.debounceTimeouts) {
+      this.debounceTimeouts = new Map();
     }
+
+    // Clear existing timeout for this message type
+    if (this.debounceTimeouts.has(messageKey)) {
+      clearTimeout(this.debounceTimeouts.get(messageKey));
+    }
+
+    // 🚀 ULTRA-OPTIMIZED: Increased debounce to reduce OperatorDashboard re-renders
+    const timeoutId = setTimeout(() => {
+      const fullMessage = {
+        ...message,
+        tabId: this.tabId,
+        timestamp: Date.now(),
+      };
+
+      if (this.broadcastChannel) {
+        // Use BroadcastChannel
+        this.broadcastChannel.postMessage(fullMessage);
+      } else {
+        // Use localStorage with reduced write frequency
+        const storageKey = `guitara_sync_${messageKey}_${Date.now()}`;
+        localStorage.setItem(storageKey, JSON.stringify(fullMessage));
+
+        // Clean up after short time
+        setTimeout(() => {
+          localStorage.removeItem(storageKey);
+        }, 5000);
+      }
+
+      // Clean up timeout reference
+      this.debounceTimeouts.delete(messageKey);
+    }, 2000); // 🚀 OPTIMIZED: 2-second debounce to dramatically reduce dashboard re-renders
+
+    this.debounceTimeouts.set(messageKey, timeoutId);
   }
 
   /**
@@ -450,9 +470,17 @@ class CrossTabSync {
   }
 
   /**
-   * Clean up cross-tab sync
+   * Clean up cross-tab sync - ENHANCED with timeout cleanup
    */
   cleanup() {
+    // Clean up debounce timeouts
+    if (this.debounceTimeouts) {
+      this.debounceTimeouts.forEach((timeoutId) => {
+        clearTimeout(timeoutId);
+      });
+      this.debounceTimeouts.clear();
+    }
+
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
@@ -468,7 +496,9 @@ class CrossTabSync {
       localStorage.removeItem("guitara_leader_tab");
     }
 
-    console.log(`🔗 CrossTabSync: Cleaned up for tab ${this.tabId}`);
+    console.log(
+      `🔗 CrossTabSync: Enhanced cleanup completed for tab ${this.tabId}`
+    );
   }
 
   /**

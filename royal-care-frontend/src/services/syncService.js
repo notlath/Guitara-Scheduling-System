@@ -12,8 +12,33 @@ class SyncService {
   }
 
   // Setup localStorage event listener for cross-tab communication
+  // 🚀 OPTIMIZED: Setup storage listener with batch processing support
   setupStorageListener() {
     window.addEventListener("storage", (e) => {
+      // Handle batched events
+      if (e.key === "sync_batch") {
+        const batchData = e.newValue ? JSON.parse(e.newValue) : null;
+        if (batchData && batchData.events) {
+          // Process each event in the batch
+          batchData.events.forEach(([eventType, data]) => {
+            if (this.listeners.has(eventType)) {
+              this.listeners.get(eventType).forEach((callback) => {
+                try {
+                  callback(data);
+                } catch (error) {
+                  console.error(
+                    `Error in batched sync listener for ${eventType}:`,
+                    error
+                  );
+                }
+              });
+            }
+          });
+        }
+        return;
+      }
+
+      // Handle legacy single events for backward compatibility
       if (e.key && e.key.startsWith("sync_")) {
         const eventType = e.key.replace("sync_", "");
         const data = e.newValue ? JSON.parse(e.newValue) : null;
@@ -49,20 +74,53 @@ class SyncService {
     return Array.from(this.optimisticUpdates.values());
   }
 
-  // Broadcast an event to all tabs/dashboards
+  // 🚀 OPTIMIZED: Broadcast with batching and debouncing to reduce localStorage writes
   broadcast(eventType, data) {
+    // Initialize broadcast queue if not exists
+    if (!this.broadcastQueue) {
+      this.broadcastQueue = new Map();
+    }
+
     const syncData = {
       ...data,
       timestamp: Date.now(),
       source: window.location.pathname,
     };
 
-    localStorage.setItem(`sync_${eventType}`, JSON.stringify(syncData));
+    // Queue the broadcast instead of immediate write
+    this.broadcastQueue.set(eventType, syncData);
+
+    // Debounce the flush operation
+    if (this.flushBroadcastTimeout) {
+      clearTimeout(this.flushBroadcastTimeout);
+    }
+
+    this.flushBroadcastTimeout = setTimeout(() => {
+      this.flushBroadcastQueue();
+    }, 250); // 250ms batching window
+  }
+
+  // Flush queued broadcasts in batch
+  flushBroadcastQueue() {
+    if (!this.broadcastQueue || this.broadcastQueue.size === 0) {
+      return;
+    }
+
+    // Batch multiple events into single localStorage write
+    const batchedData = {
+      events: Array.from(this.broadcastQueue.entries()),
+      batchTimestamp: Date.now(),
+    };
+
+    localStorage.setItem("sync_batch", JSON.stringify(batchedData));
 
     // Remove after a short delay to prevent storage bloat
     setTimeout(() => {
-      localStorage.removeItem(`sync_${eventType}`);
-    }, 5000);
+      localStorage.removeItem("sync_batch");
+    }, 3000);
+
+    // Clear the queue
+    this.broadcastQueue.clear();
   }
 
   // Enhanced broadcast with immediate local notification

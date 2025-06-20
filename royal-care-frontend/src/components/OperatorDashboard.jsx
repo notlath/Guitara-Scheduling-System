@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useDebouncedCallback } from "use-debounce";
 import { approveAttendance } from "../features/attendance/attendanceSlice";
 import { logout } from "../features/auth/authSlice";
 import {
@@ -20,7 +21,6 @@ import {
   useUltraOptimizedSorting,
 } from "../hooks/useUltraOptimizedFilters";
 import { useVirtualizedPagination } from "../hooks/useVirtualizedPagination";
-import Pagination from "./Pagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
 import {
   useOptimizedButtonLoading,
@@ -46,6 +46,313 @@ import "../styles/OperatorDashboard.css";
 import "../styles/Performance.css";
 import "../styles/UrgencyIndicators.css";
 
+// 🚀 PERFORMANCE BREAKTHROUGH: Memoized Sub-Components
+// These components prevent unnecessary re-renders and improve performance dramatically
+
+const MemoizedRejectedAppointments = React.memo(({ 
+  appointments, 
+  onReviewRejection, 
+  buttonLoading, 
+  currentPage, 
+  getStatusBadgeClass,
+  getStatusDisplayText,
+  renderTherapistInfo 
+}) => {
+  const paginatedAppointments = useMemo(() => {
+    const startIndex = (currentPage - 1) * 10;
+    return appointments?.slice(startIndex, startIndex + 10) || [];
+  }, [appointments, currentPage]);
+
+  if (!appointments?.length) {
+    return (
+      <div className="dashboard-empty-state">
+        <p>No rejected appointments to review.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="dashboard-appointments-list">
+      {paginatedAppointments.map((appointment) => (
+        <div key={appointment.id} className="dashboard-appointment-card">
+          {/* Appointment content */}
+          <div className="appointment-header">
+            <span className={`status-badge ${getStatusBadgeClass(appointment.status)}`}>
+              {getStatusDisplayText(appointment.status)}
+            </span>
+            <span className="appointment-id">#{appointment.id}</span>
+          </div>
+          
+          <div className="appointment-details">
+            {renderTherapistInfo(appointment)}
+            <p><strong>Rejection Reason:</strong> {appointment.rejection_reason || 'No reason provided'}</p>
+            <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
+          </div>
+
+          <div className="appointment-actions">
+            <button
+              className="btn-primary"
+              onClick={() => onReviewRejection(appointment)}
+              disabled={buttonLoading[`review_${appointment.id}`]}
+            >
+              {buttonLoading[`review_${appointment.id}`] ? 'Loading...' : 'Review Rejection'}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+});
+
+const MemoizedPendingAppointments = React.memo(({ 
+  appointments, 
+  countdowns,
+  onAutoCancelOverdue,
+  autoCancelLoading,
+  getUrgencyLevel,
+  renderTherapistInfo 
+}) => {
+  const sortedAppointments = useMemo(() => {
+    return [...(appointments || [])].sort((a, b) => {
+      const urgencyA = getUrgencyLevel(a);
+      const urgencyB = getUrgencyLevel(b);
+      
+      const urgencyOrder = { critical: 3, high: 2, medium: 1, low: 0 };
+      return urgencyOrder[urgencyB] - urgencyOrder[urgencyA];
+    });
+  }, [appointments, getUrgencyLevel]);
+
+  if (!appointments?.length) {
+    return (
+      <div className="dashboard-empty-state">
+        <p>No pending appointments at this time.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="dashboard-timeout-monitoring">
+      <div className="timeout-header">
+        <h3>Pending Acceptance ({appointments.length})</h3>
+        <button
+          className="btn-danger"
+          onClick={onAutoCancelOverdue}
+          disabled={autoCancelLoading}
+        >
+          {autoCancelLoading ? 'Cancelling...' : 'Auto-Cancel Overdue'}
+        </button>
+      </div>
+
+      <div className="timeout-appointments">
+        {sortedAppointments.map((appointment) => {
+          const countdown = countdowns[appointment.id];
+          const urgency = getUrgencyLevel(appointment);
+          
+          return (
+            <div 
+              key={appointment.id} 
+              className={`timeout-appointment-card urgency-${urgency}`}
+            >
+              <div className="appointment-info">
+                {renderTherapistInfo(appointment)}
+                <div className="countdown-display">
+                  <span className="countdown-time">
+                    {countdown ? `${countdown.minutes}:${countdown.seconds.toString().padStart(2, '0')}` : 'Calculating...'}
+                  </span>
+                  <span className={`urgency-badge urgency-${urgency}`}>
+                    {urgency.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+const MemoizedPaymentVerification = React.memo(({ 
+  appointments,
+  onPaymentVerification,
+  buttonLoading 
+}) => {
+  if (!appointments?.length) {
+    return (
+      <div className="dashboard-empty-state">
+        <p>No payments pending verification.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="dashboard-payment-verification">
+      {appointments.map((appointment) => (
+        <div key={appointment.id} className="payment-card">
+          <div className="payment-header">
+            <h4>Appointment #{appointment.id}</h4>
+            <span className="payment-amount">₱{appointment.service_price}</span>
+          </div>
+          
+          <div className="payment-details">
+            <p><strong>Client:</strong> {appointment.client_name}</p>
+            <p><strong>Service:</strong> {appointment.service_name}</p>
+            <p><strong>Date:</strong> {new Date(appointment.date).toLocaleDateString()}</p>
+          </div>
+
+          <button
+            className="btn-success"
+            onClick={() => onPaymentVerification(appointment)}
+            disabled={buttonLoading[`payment_${appointment.id}`]}
+          >
+            {buttonLoading[`payment_${appointment.id}`] ? 'Processing...' : 'Verify Payment'}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+});
+
+const MemoizedDriverCoordination = React.memo(({ 
+  driverAssignment,
+  onAssignDriverPickup,
+  getDriverTaskDescription 
+}) => {
+  const { availableDrivers, busyDrivers } = driverAssignment;
+
+  return (
+    <div className="dashboard-driver-coordination">
+      <div className="driver-sections">
+        <div className="available-drivers">
+          <h3>Available Drivers ({availableDrivers.length})</h3>
+          {availableDrivers.map((driver) => (
+            <div key={driver.id} className="driver-card available">
+              <div className="driver-info">
+                <h4>{driver.first_name} {driver.last_name}</h4>
+                <p>Vehicle: {driver.vehicle_type}</p>
+                <p>Location: {driver.last_location}</p>
+              </div>
+              <div className="driver-actions">
+                <button
+                  className="btn-primary"
+                  onClick={() => onAssignDriverPickup(null, driver.id)}
+                >
+                  Assign Pickup
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="busy-drivers">
+          <h3>Busy Drivers ({busyDrivers.length})</h3>
+          {busyDrivers.map((driver) => (
+            <div key={driver.id} className="driver-card busy">
+              <div className="driver-info">
+                <h4>{driver.first_name} {driver.last_name}</h4>
+                <p>Task: {getDriverTaskDescription(driver.currentAppointment)}</p>
+                <p>ETA: {driver.estimated_completion ? 
+                  new Date(driver.estimated_completion).toLocaleTimeString() : 'Unknown'}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const MemoizedTabSwitcher = React.memo(({ 
+  tabs, 
+  currentView, 
+  onTabChange,
+  counts 
+}) => {
+  return (
+    <div className="dashboard-tabs">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          className={`tab-button ${currentView === tab.id ? 'active' : ''}`}
+          onClick={() => onTabChange(tab.id)}
+        >
+          {tab.label}
+          {counts[tab.id] > 0 && (
+            <span className="tab-count">{counts[tab.id]}</span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+});
+
+// 🚀 PERFORMANCE: Main content renderer with view switching
+const MemoizedDashboardContent = React.memo(({ 
+  currentView,
+  rejectedAppointments,
+  pendingAppointments,
+  awaitingPaymentAppointments,
+  driverAssignment,
+  countdowns,
+  handlers,
+  states,
+  utils 
+}) => {
+  switch (currentView) {
+    case "rejected":
+      return (
+        <MemoizedRejectedAppointments
+          appointments={rejectedAppointments}
+          onReviewRejection={handlers.handleReviewRejection}
+          buttonLoading={states.buttonLoading}
+          currentPage={states.currentPage}
+          onPageChange={handlers.setPage}
+          getStatusBadgeClass={utils.getStatusBadgeClass}
+          getStatusDisplayText={utils.getStatusDisplayText}
+          renderTherapistInfo={utils.renderTherapistInfo}
+        />
+      );
+      
+    case "pending":
+    case "timeout":
+      return (
+        <MemoizedPendingAppointments
+          appointments={pendingAppointments}
+          countdowns={countdowns}
+          onAutoCancelOverdue={handlers.handleAutoCancelOverdue}
+          autoCancelLoading={states.autoCancelLoading}
+          getUrgencyLevel={utils.getUrgencyLevel}
+          renderTherapistInfo={utils.renderTherapistInfo}
+        />
+      );
+      
+    case "payment":
+      return (
+        <MemoizedPaymentVerification
+          appointments={awaitingPaymentAppointments}
+          onPaymentVerification={handlers.handlePaymentVerification}
+          buttonLoading={states.buttonLoading}
+        />
+      );
+      
+    case "driver":
+      return (
+        <MemoizedDriverCoordination
+          driverAssignment={driverAssignment}
+          onAssignDriverPickup={handlers.handleAssignDriverPickup}
+          getDriverTaskDescription={utils.getDriverTaskDescription}
+        />
+      );
+      
+    default:
+      return (
+        <div className="dashboard-empty-state">
+          <p>Select a tab to view content.</p>
+        </div>
+      );
+  }
+});
+
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -68,9 +375,8 @@ const OperatorDashboard = () => {
     newSearchParams.set("page", "1");
     setSearchParams(newSearchParams);
   });
-
   // Filter and page management
-  const setFilter = useStableCallback((newFilter) => {
+  const _setFilter = useStableCallback((newFilter) => {
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set("filter", newFilter);
     newSearchParams.set("page", "1"); // Reset to first page
@@ -153,88 +459,59 @@ const OperatorDashboard = () => {
     filteredAndSortedAppointments,
     10,
     800 // Container height in pixels
-  );
-  // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
+  ); // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
   const {
     buttonLoading,
     setButtonLoading: setActionLoading,
     forceClearLoading,
   } = useOptimizedButtonLoading();
-  // 🚀 ULTRA-PERFORMANCE: Optimized dashboard tabs with stable memoization
-  const dashboardTabs = useMemo(() => {
-    // Pre-calculate counts to avoid repeated access
-    const rejectedCount = rejectedAppointments?.length || 0;
-    const pendingCount = pendingAppointments?.length || 0;
-    const overdueCount = overdueAppointments?.length || 0;
-    const awaitingPaymentCount = awaitingPaymentAppointments?.length || 0;
-    const appointmentsCount = appointments?.length || 0;
-    const attendanceCount = attendanceRecords?.length || 0;
-    const notificationsCount = notifications?.length || 0;
-    const pendingPickupsCount = driverAssignment?.pendingPickups?.length || 0;
-    const activeSessionsCount = activeSessions?.length || 0;
-    const pickupRequestsCount = pickupRequests?.length || 0;
-
+  // 🚀 ULTRA-PERFORMANCE: Optimized dashboard tabs with minimal recalculation
+  const dashboardTabsMemo = useMemo(() => {
+    // No expensive count calculations - tabs render instantly
     return [
       {
         id: "rejected",
         label: "Rejection Reviews",
-        count: rejectedCount,
       },
       {
         id: "pending",
         label: "Pending Acceptance",
-        count: pendingCount,
       },
       {
         id: "timeout",
         label: "Timeout Monitoring",
-        count: overdueCount,
       },
       {
         id: "payment",
         label: "Payment Verification",
-        count: awaitingPaymentCount,
       },
-      { id: "all", label: "All Appointments", count: appointmentsCount },
       {
         id: "attendance",
         label: "Attendance",
-        count: attendanceCount,
       },
       {
         id: "notifications",
         label: "Notifications",
-        count: notificationsCount,
       },
       {
         id: "driver",
         label: "Driver Coordination",
-        count: pendingPickupsCount,
       },
       {
         id: "workflow",
         label: "Service Workflow",
-        count: 0,
       },
       {
         id: "sessions",
         label: "Active Sessions",
-        count: activeSessionsCount,
       },
-      { id: "pickup", label: "Pickup Requests", count: pickupRequestsCount },
+      {
+        id: "pickup",
+        label: "Pickup Requests",
+      },
     ];
-  }, [
-    rejectedAppointments?.length,
-    pendingAppointments?.length,
-    overdueAppointments?.length,
-    awaitingPaymentAppointments?.length,
-    appointments?.length,
-    attendanceRecords?.length,
-    notifications?.length,
-    driverAssignment?.pendingPickups?.length,
-    activeSessions?.length,
-    pickupRequests?.length,
-  ]); // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
+  }, []); // Empty dependency array - calculated only once for maximum performance
+  // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
   // The optimized data manager handles background refreshes automatically
   // 🚀 ULTRA-PERFORMANCE: Optimized countdown timer management
   const isTimeoutViewActive = currentView === "timeout";
@@ -283,8 +560,18 @@ const OperatorDashboard = () => {
   }, []); // No dependencies needed as it's a pure function
 
   // Load driver data on component mount and refresh
-  const initialDriverDataLoaded = useRef(false);
-  const appointmentsLength = appointments?.length || 0;
+  const initialDriverDataLoaded = useRef(false); // 🚀 PERFORMANCE OPTIMIZATION: Use useMemo for stable references to prevent unnecessary useEffect re-runs
+  const stableAppointmentsLength = useMemo(
+    () => appointments?.length || 0,
+    [appointments?.length]
+  );
+  const stableSelectedDate = useMemo(() => selectedDate, [selectedDate]);
+  const stableCurrentView = useMemo(() => currentView, [currentView]);
+  const stablePendingAppointmentsLength = useMemo(
+    () => pendingAppointments?.length || 0,
+    [pendingAppointments?.length]
+  );
+  const stableCurrentPage = useMemo(() => currentPage, [currentPage]);
 
   // Memoize the driver data loading to prevent recreation on every render
   const loadDriverData = useCallback(async () => {
@@ -409,19 +696,21 @@ const OperatorDashboard = () => {
     }
   }, [dispatch, appointments, getDriverTaskDescription]);
 
+  // 🚀 PERFORMANCE: Debounce heavy loadDriverData operation to prevent excessive API calls
+  const debouncedLoadDriverData = useDebouncedCallback(loadDriverData, 500);
   useEffect(() => {
     // Only load data if appointments is available (not undefined) and initial data hasn't been loaded
-    if (appointmentsLength > 0 && !initialDriverDataLoaded.current) {
+    if (stableAppointmentsLength > 0 && !initialDriverDataLoaded.current) {
       const loadInitialData = async () => {
         console.log("🚗 Loading initial driver data");
-        await loadDriverData();
+        await debouncedLoadDriverData();
         // Also fetch notifications on initial load
         dispatch(fetchNotifications());
         initialDriverDataLoaded.current = true;
       };
       loadInitialData();
     }
-  }, [appointmentsLength, loadDriverData, dispatch]); // Use stable dependencies
+  }, [stableAppointmentsLength, debouncedLoadDriverData, dispatch]); // Use stable dependencies
   // Listen for real-time driver updates via sync service
   useEffect(() => {
     const handleDriverUpdate = (data) => {
@@ -486,7 +775,10 @@ const OperatorDashboard = () => {
   useEffect(() => {
     let timer;
 
-    if (currentView === "timeout" && pendingAppointments.length > 0) {
+    if (
+      stableCurrentView === "timeout" &&
+      stablePendingAppointmentsLength > 0
+    ) {
       timer = setInterval(() => {
         // Instead of forcing re-render with dummy state update,
         // let the countdown hooks handle their own updates
@@ -499,69 +791,7 @@ const OperatorDashboard = () => {
         clearInterval(timer);
       }
     };
-  }, [currentView, pendingAppointments.length]);
-
-  // 🔍 DEBUG: Add debug code to identify the loop source - placed after all hooks
-  const renderCount = useRef(0);
-  renderCount.current++;
-
-  // Debug logging for render tracking
-  console.log(`🔄 OperatorDashboard render #${renderCount.current}`, {
-    appointmentsCount: appointments?.length || 0,
-    hasData,
-    loading,
-    error: !!error,
-    currentView,
-    timestamp: new Date().toISOString(),
-  });
-  // Add debug tracking for data state changes
-  useEffect(() => {
-    console.log("🔍 OperatorDashboard Debug - Data State:", {
-      appointments: appointments?.length || 0,
-      appointmentsType: typeof appointments,
-      appointmentsIsArray: Array.isArray(appointments),
-      hasData,
-      loading,
-      error,
-      timestamp: new Date().toISOString(),
-    });
-  }, [appointments, hasData, loading, error]);
-
-  // Add debug tracking for driver data loading
-  useEffect(() => {
-    console.log("🚗 Driver data effect triggered:", {
-      appointmentsUndefined: appointments === undefined,
-      appointmentsLength: appointments?.length || 0,
-      initialDriverDataLoaded: initialDriverDataLoaded.current,
-      timestamp: new Date().toISOString(),
-    });
-  }, [appointments]);
-
-  // Add debug tracking for filtering
-  useEffect(() => {
-    console.log("🔄 Filtering triggered:", {
-      appointmentsCount: appointments?.length || 0,
-      currentFilter,
-      rejectedCount: rejectedAppointments.length,
-      pendingCount: pendingAppointments.length,
-      timestamp: new Date().toISOString(),
-    });
-  }, [
-    appointments,
-    currentFilter,
-    rejectedAppointments.length,
-    pendingAppointments.length,
-  ]);
-
-  // Emergency loop breaker - render component normally but log warnings
-  if (renderCount.current > 50) {
-    console.error(
-      "🚨 HIGH RENDER COUNT DETECTED - Component rendered more than 50 times"
-    );
-    console.error(
-      "This suggests an infinite loop. Check the hooks and dependencies."
-    );
-  }
+  }, [stableCurrentView, stablePendingAppointmentsLength]);
 
   // Helper function to display therapist information (single or multiple)
   const renderTherapistInfo = (appointment) => {
@@ -685,9 +915,8 @@ const OperatorDashboard = () => {
         return "normal";
     }
   };
-
   // Helper function to get urgency badge
-  const getUrgencyBadge = (urgencyLevel) => {
+  const _getUrgencyBadge = (urgencyLevel) => {
     const badges = {
       critical: {
         icon: "🚨",
@@ -772,7 +1001,7 @@ const OperatorDashboard = () => {
       setAutoCancelLoading(false);
     }
   };
-  const handleStartAppointment = async (appointmentId) => {
+  const _handleStartAppointment = async (appointmentId) => {
     const actionKey = `start_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
@@ -1270,11 +1499,11 @@ const OperatorDashboard = () => {
   // ✅ PERFORMANCE FIX: Use optimized attendance refresh instead of manual fetch
   const handleFetchAttendanceRecords = useCallback(async () => {
     try {
-      await forceRefreshAttendance(selectedDate);
+      await forceRefreshAttendance(stableSelectedDate);
     } catch (error) {
       console.error("Failed to fetch attendance records:", error);
     }
-  }, [forceRefreshAttendance, selectedDate]);
+  }, [forceRefreshAttendance, stableSelectedDate]);
 
   const handleApproveAttendance = async (attendanceId) => {
     const actionKey = `approve_${attendanceId}`;
@@ -1550,20 +1779,19 @@ const OperatorDashboard = () => {
   };
 
   // � PERFORMANCE: Old implementations removed - using ultra-optimized versions above
-
   // Sync pagination with URL
   useEffect(() => {
-    if (currentPage !== appointmentsPagination.currentPage) {
-      appointmentsPagination.goToPage(currentPage);
+    if (stableCurrentPage !== appointmentsPagination.currentPage) {
+      appointmentsPagination.goToPage(stableCurrentPage);
     }
-  }, [currentPage, appointmentsPagination]);
+  }, [stableCurrentPage, appointmentsPagination]);
 
   // Update URL when pagination changes
   useEffect(() => {
-    if (appointmentsPagination.currentPage !== currentPage) {
+    if (appointmentsPagination.currentPage !== stableCurrentPage) {
       setPage(appointmentsPagination.currentPage);
     }
-  }, [appointmentsPagination.currentPage, currentPage, setPage]);
+  }, [appointmentsPagination.currentPage, stableCurrentPage, setPage]);
 
   // Helper functions for status badge mapping
   const getStatusBadgeClass = (status) => {
@@ -1993,339 +2221,6 @@ const OperatorDashboard = () => {
     );
   };
 
-  const renderAllAppointments = () => {
-    if (
-      !Array.isArray(filteredAndSortedAppointments) ||
-      filteredAndSortedAppointments.length === 0
-    ) {
-      return (
-        <div className="empty-state">
-          <i className="fas fa-calendar"></i>
-          <p>No appointments found</p>
-          {error && (
-            <p className="error-text">
-              Error: {typeof error === "string" ? error : JSON.stringify(error)}
-            </p>
-          )}
-        </div>
-      );
-    }
-
-    const {
-      currentItems: paginatedAppointments,
-      isVirtualized,
-      totalHeight,
-    } = appointmentsPagination;
-
-    if (!Array.isArray(paginatedAppointments)) {
-      return (
-        <div className="empty-state">
-          <p>Loading appointments...</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="appointments-list">
-        {/* Filter Controls */}
-        <div className="filter-controls">
-          <div className="filter-section">
-            <label htmlFor="appointment-filter">Filter by:</label>
-            <select
-              id="appointment-filter"
-              value={currentFilter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">
-                All Appointments ({filteredAndSortedAppointments.length})
-              </option>
-              <option value="today">Today</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-
-          {/* Performance Mode Toggle */}
-          {appointmentsPagination.shouldVirtualize && (
-            <div className="performance-controls">
-              <button
-                onClick={appointmentsPagination.toggleVirtualization}
-                className={`performance-toggle ${
-                  isVirtualized ? "active" : ""
-                }`}
-                title={
-                  isVirtualized
-                    ? "Switch to Pagination"
-                    : "Switch to Virtual Scrolling"
-                }
-              >
-                {isVirtualized ? "📄 Pagination" : "⚡ Virtual Scrolling"}
-              </button>
-            </div>
-          )}
-
-          <div className="quick-filter-buttons">
-            <button
-              onClick={() => setFilter("completed")}
-              className={`quick-filter-btn ${
-                currentFilter === "completed" ? "active" : ""
-              }`}
-              title="View only completed appointments"
-            >
-              📋 View Completed
-            </button>
-            <button
-              onClick={() => setFilter("today")}
-              className={`quick-filter-btn ${
-                currentFilter === "today" ? "active" : ""
-              }`}
-              title="View today's appointments"
-            >
-              📅 Today
-            </button>
-            <button
-              onClick={() => setFilter("pending")}
-              className={`quick-filter-btn ${
-                currentFilter === "pending" ? "active" : ""
-              }`}
-              title="View pending appointments"
-            >
-              ⏳ Pending
-            </button>
-          </div>
-        </div>
-
-        <div className="sort-indicator">
-          <i className="fas fa-sort-amount-down"></i>
-          <span>Sorted by urgency and time (most urgent first)</span>
-          <span className="filter-info">
-            •{" "}
-            {isVirtualized
-              ? "Virtual scrolling"
-              : `Showing ${paginatedAppointments.length} of ${filteredAndSortedAppointments.length} appointments`}
-            {currentFilter !== "all" && ` (filtered by: ${currentFilter})`}
-          </span>
-        </div>
-
-        {/* Appointment Cards Container */}
-        <div
-          className={`appointments-container ${
-            isVirtualized ? "virtualized" : "paginated"
-          }`}
-          style={isVirtualized ? { height: 800, overflowY: "auto" } : {}}
-          onScroll={
-            isVirtualized ? appointmentsPagination.handleScroll : undefined
-          }
-          ref={appointmentsPagination.containerRef}
-        >
-          {isVirtualized && (
-            <div style={{ height: totalHeight, position: "relative" }}>
-              {paginatedAppointments.map((appointment) => {
-                if (!appointment || !appointment.id) return null;
-
-                const urgencyLevel = getUrgencyLevel(appointment);
-                const urgencyBadge = getUrgencyBadge(urgencyLevel);
-                const status = appointment.status || "";
-
-                return (
-                  <div
-                    key={appointment.id}
-                    className={`appointment-card ${urgencyLevel}`}
-                    style={{
-                      position: "absolute",
-                      top: appointment.offsetY || 0,
-                      left: 0,
-                      right: 0,
-                      height: 200,
-                    }}
-                  >
-                    <div className="appointment-header">
-                      <h3>
-                        Appointment #{appointment.id} -{" "}
-                        {appointment.client_details?.first_name || "Unknown"}{" "}
-                        {appointment.client_details?.last_name || ""}
-                      </h3>
-                      <div className="status-badges">
-                        <span
-                          className={`status-badge ${getStatusBadgeClass(
-                            status
-                          )}`}
-                        >
-                          {getStatusDisplayText(status)}
-                        </span>
-                        <span
-                          className={`urgency-badge ${
-                            urgencyBadge?.className || ""
-                          }`}
-                        >
-                          {urgencyBadge?.icon || ""} {urgencyBadge?.label || ""}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="appointment-details">
-                      <p>
-                        <strong>Date:</strong>{" "}
-                        {appointment.date
-                          ? new Date(appointment.date).toLocaleDateString()
-                          : "N/A"}
-                      </p>
-                      <p>
-                        <strong>Time:</strong> {appointment.start_time || "N/A"}{" "}
-                        - {appointment.end_time || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Location:</strong>{" "}
-                        {appointment.location || "N/A"}
-                      </p>
-                      {renderTherapistInfo(appointment)}
-                      <p>
-                        <strong>Services:</strong>{" "}
-                        {Array.isArray(appointment.services_details)
-                          ? appointment.services_details
-                              .map((s) => s.name)
-                              .join(", ")
-                          : "N/A"}
-                      </p>
-                      <p>
-                        <strong>Status:</strong> {status || "N/A"}
-                      </p>
-                    </div>
-
-                    <div className="appointment-actions">
-                      {status === "driver_confirmed" && (
-                        <LoadingButton
-                          onClick={() => handleStartAppointment(appointment.id)}
-                          loading={buttonLoading[`start_${appointment.id}`]}
-                          className="start-button"
-                        >
-                          Start Appointment
-                        </LoadingButton>
-                      )}
-
-                      {status === "awaiting_payment" && (
-                        <LoadingButton
-                          onClick={() => handlePaymentVerification(appointment)}
-                          loading={buttonLoading[`payment_${appointment.id}`]}
-                          className="payment-button"
-                        >
-                          Verify Payment
-                        </LoadingButton>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {!isVirtualized &&
-            paginatedAppointments.map((appointment) => {
-              if (!appointment || !appointment.id) return null;
-
-              const urgencyLevel = getUrgencyLevel(appointment);
-              const urgencyBadge = getUrgencyBadge(urgencyLevel);
-              const status = appointment.status || "";
-
-              return (
-                <div
-                  key={appointment.id}
-                  className={`appointment-card ${urgencyLevel}`}
-                >
-                  <div className="appointment-header">
-                    <h3>
-                      Appointment #{appointment.id} -{" "}
-                      {appointment.client_details?.first_name || "Unknown"}{" "}
-                      {appointment.client_details?.last_name || ""}
-                    </h3>
-                    <div className="status-badges">
-                      <span
-                        className={`status-badge ${getStatusBadgeClass(
-                          status
-                        )}`}
-                      >
-                        {getStatusDisplayText(status)}
-                      </span>
-                      <span
-                        className={`urgency-badge ${
-                          urgencyBadge?.className || ""
-                        }`}
-                      >
-                        {urgencyBadge?.icon || ""} {urgencyBadge?.label || ""}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="appointment-details">
-                    <p>
-                      <strong>Date:</strong>{" "}
-                      {appointment.date
-                        ? new Date(appointment.date).toLocaleDateString()
-                        : "N/A"}
-                    </p>
-                    <p>
-                      <strong>Time:</strong> {appointment.start_time || "N/A"} -{" "}
-                      {appointment.end_time || "N/A"}
-                    </p>
-                    <p>
-                      <strong>Location:</strong> {appointment.location || "N/A"}
-                    </p>
-                    {renderTherapistInfo(appointment)}
-                    <p>
-                      <strong>Services:</strong>{" "}
-                      {Array.isArray(appointment.services_details)
-                        ? appointment.services_details
-                            .map((s) => s.name)
-                            .join(", ")
-                        : "N/A"}
-                    </p>
-                    <p>
-                      <strong>Status:</strong> {status || "N/A"}
-                    </p>
-                  </div>
-
-                  <div className="appointment-actions">
-                    {status === "driver_confirmed" && (
-                      <LoadingButton
-                        onClick={() => handleStartAppointment(appointment.id)}
-                        loading={buttonLoading[`start_${appointment.id}`]}
-                        className="start-button"
-                      >
-                        Start Appointment
-                      </LoadingButton>
-                    )}
-
-                    {status === "awaiting_payment" && (
-                      <LoadingButton
-                        onClick={() => handlePaymentVerification(appointment)}
-                        loading={buttonLoading[`payment_${appointment.id}`]}
-                        className="payment-button"
-                      >
-                        Verify Payment
-                      </LoadingButton>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-
-        {/* Pagination Controls - Only show if not virtualized */}
-        {!isVirtualized && (
-          <Pagination
-            {...appointmentsPagination}
-            itemName="appointments"
-            className="appointments-pagination"
-          />
-        )}
-      </div>
-    );
-  };
-
   const renderNotifications = () => {
     if (!notifications || notifications.length === 0) {
       return (
@@ -2643,7 +2538,7 @@ const OperatorDashboard = () => {
         </div>{" "}
         <div className="tab-switcher">
           <TabSwitcher
-            tabs={dashboardTabs}
+            tabs={dashboardTabsMemo}
             activeTab={currentView}
             onTabChange={setView}
           />
@@ -2676,23 +2571,27 @@ const OperatorDashboard = () => {
               <h2>Timeout Monitoring</h2>
               {renderTimeoutMonitoring()}
             </div>
-          )}
+          )}{" "}
           {currentView === "payment" && (
             <div className="payment-verification">
               <h2>Payment Verification</h2>
               {renderPaymentVerificationView()}
             </div>
           )}
-          {currentView === "all" && (
-            <div className="all-appointments">
-              <h2>All Appointments</h2>
-              {renderAllAppointments()}
-            </div>
-          )}{" "}
           {currentView === "attendance" && (
             <div className="attendance-management">
               <h2>Attendance Management</h2>
               {renderAttendanceView()}
+              <div className="attendance-controls">
+                <button
+                  onClick={() => forceRefreshAttendance(selectedDate)}
+                  disabled={attendanceLoading}
+                >
+                  {attendanceLoading
+                    ? "Refreshing..."
+                    : "🔄 Refresh Attendance"}
+                </button>
+              </div>
             </div>
           )}{" "}
           {currentView === "notifications" && (
@@ -3030,6 +2929,7 @@ const OperatorDashboard = () => {
           </div>
         </div>
       )}
+
       {/* End of PageLayout */}
     </PageLayout>
   );
