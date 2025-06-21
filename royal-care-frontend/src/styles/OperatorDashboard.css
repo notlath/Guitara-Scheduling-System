@@ -105,72 +105,184 @@
 }
 
 .status-badge {
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 700;
   text-transform: uppercase;
+  display: inline-block;
+  white-space: nowrap;
+  line-height: 1.2;
+  border: 2px solid transparent;
+  min-height: 26px;
+  vertical-align: middle;
+  /* Debug styles - remove after testing */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  position: relative;
+  z-index: 10;
+}
+
+/* ✅ EMERGENCY FIX: Force text visibility in status badges */
+.status-badge {
+  font-family: "Plus Jakarta Sans", Arial, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #000 !important; /* Force black text for visibility */
+  text-shadow: none !important;
+  letter-spacing: 0.5px !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  background: #fff !important; /* Force white background for testing */
+  border: 2px solid #333 !important; /* Add border for visibility */
+}
+
+/* Force all status badge text to be visible */
+.status-badge * {
+  color: #000 !important; /* Force black text */
+  font-size: inherit !important;
+  font-weight: inherit !important;
+}
+
+/* Debug: Add content to empty badges */
+.status-badge:empty::before {
+  content: "EMPTY BADGE";
+  color: red !important;
+  font-weight: bold !important;
+}
+
+/* Ensure status badges have proper contrast */
+.appointment-card .status-badge,
+.booking-card .status-badge,
+.attendance-card .status-badge {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline-block !important;
 }
 
 .status-pending {
-  background-color: #fff3cd;
-  color: #856404;
+  background-color: #fff3cd !important;
+  color: #000 !important; /* Black text for maximum contrast */
+  border-color: #ffecb5 !important;
 }
 
 .status-confirmed {
-  background-color: #d4edda;
-  color: #155724;
+  background-color: #d4edda !important;
+  color: #000 !important; /* Black text for maximum contrast */
+  border-color: #badbcc !important;
 }
 
 .status-rejected {
-  background-color: #f8d7da;
-  color: #721c24;
+  background-color: #f8d7da !important;
+  color: #000 !important; /* Black text for maximum contrast */
+  border-color: #f1aeb5 !important;
 }
 
 .status-cancelled {
-  background-color: #f8d7da;
-  color: #721c24;
+  background-color: #f8d7da !important;
+  color: #000 !important; /* Black text for maximum contrast */
+  border-color: #f1aeb5 !important;
 }
 
 .status-completed {
-  background-color: #d1ecf1;
-  color: #0c5460;
+  background-color: #d1ecf1 !important;
+  color: #000 !important; /* Black text for maximum contrast */
+  border-color: #b6effb !important;
 }
 
 .status-overdue {
-  background-color: #f8d7da;
-  color: #721c24;
+  background-color: #f8d7da !important;
+  color: #000 !important; /* Black text for maximum contrast */
+  border-color: #f1aeb5 !important;
   animation: pulse 2s infinite;
 }
 
 .status-warning {
-  background-color: #fff3cd;
-  color: #856404;
+  background-color: #fff3cd !important;
+  color: #000 !important; /* Black text for maximum contrast */
+  border-color: #ffecb5 !important;
 }
 
 .status-unknown {
   background-color: #e9ecef;
-  color: #495057;
+  color: #212529;
+  border-color: #c9ccce;
 }
 
 .status-in-progress {
   background-color: #cce5ff;
-  color: #004085;
+  color: #003d82;
+  border-color: #9ec5fe;
 }
 
 .status-driver-confirmed {
-  background-color: #d1ecf1;
-  color: #0c5460;
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  border-color: #bbdefb;
 }
 
 .status-therapist-confirmed {
-  background-color: #d4edda;
-  color: #155724;
+  background-color: #f3e5f5;
+  color: #4a148c;
+  border-color: #ce93d8;
 }
 
 .status-pickup-requested {
-  background-color: #fff3cd;
-  color: #856404;
+  background-color: #fff8e1;
+  color: #e65100;
+  border-color: #ffcc02;
+}
+
+.status-journey-started {
+  background-color: #e8f5e9;
+  color: #1b5e20;
+  border-color: #a5d6a7;
+}
+
+.status-arrived {
+  background-color: #e1f5fe;
+  color: #01579b;
+  border-color: #81d4fa;
+}
+
+.status-dropped-off {
+  background-color: #f1f8e9;
+  color: #33691e;
+  border-color: #aed581;
+}
+
+.status-session-started {
+  background-color: #fce4ec;
+  color: #880e4f;
+  border-color: #f48fb1;
+}
+
+.status-payment-requested {
+  background-color: #fff3e0;
+  color: #bf360c;
+  border-color: #ffb74d;
+}
+
+.status-payment-completed {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border-color: #81c784;
+}
+
+.status-timeout {
+  background-color: #ffebee;
+  color: #b71c1c;
+  border-color: #ef9a9a;
+  animation: pulse 2s infinite;
+}
+
+/* Status badges container enhancement */
+.status-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  z-index: 1;
+  position: relative;
 }
 
 @keyframes pulse {
@@ -1281,4 +1393,18 @@
 .appointments-list .empty-state p {
   margin: 0;
   font-size: 16px;
+}
+
+/* ✅ ULTIMATE FALLBACK: Ensure text renders even without fonts */
+.status-badge {
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Arial, sans-serif !important;
+}
+
+/* Test visibility with debug background */
+.status-badge:empty::before {
+  content: "DEBUG: Empty badge!" !important;
+  background: red !important;
+  color: white !important;
+  padding: 2px !important;
 }

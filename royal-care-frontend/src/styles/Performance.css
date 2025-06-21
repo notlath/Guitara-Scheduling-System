@@ -52,10 +52,10 @@
 }
 
 /* Reduce paint operations */
-.status-badge,
+/* .status-badge,
 .urgency-badge {
   contain: strict;
-}
+} */
 
 .filter-controls {
   display: flex;

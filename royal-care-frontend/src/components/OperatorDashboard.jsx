@@ -14,11 +14,11 @@ import {
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
-// PERFORMANCE: Ultra-optimized imports
+// PERFORMANCE: Robust filtering imports
 import {
-  useUltraOptimizedAppointmentFilters,
-  useUltraOptimizedSorting,
-} from "../hooks/useUltraOptimizedFilters";
+  useRobustAppointmentFilters,
+  useRobustAppointmentSorting,
+} from "../hooks/useRobustAppointmentFilters";
 import { useVirtualizedPagination } from "../hooks/useVirtualizedPagination";
 import Pagination from "./Pagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
@@ -129,8 +129,7 @@ const OperatorDashboard = () => {
     loading,
     error,
     hasData,
-  } = useOptimizedDashboardData("operatorDashboard", "operator");
-  // � ULTRA-PERFORMANCE: Replace all filtering logic with optimized versions
+  } = useOptimizedDashboardData("operatorDashboard", "operator"); // ✅ ROBUST FILTERING: Replace ultra-optimized with robust versions
   const {
     rejected: rejectedAppointments,
     pending: pendingAppointments,
@@ -140,10 +139,10 @@ const OperatorDashboard = () => {
     activeSessions,
     pickupRequests,
     rejectionStats,
-  } = useUltraOptimizedAppointmentFilters(appointments);
+  } = useRobustAppointmentFilters(appointments);
 
-  // � ULTRA-PERFORMANCE: Replace sorting with optimized version
-  const filteredAndSortedAppointments = useUltraOptimizedSorting(
+  // ✅ ROBUST SORTING: Replace ultra-optimized with robust version
+  const { items: filteredAndSortedAppointments } = useRobustAppointmentSorting(
     appointments,
     currentFilter
   );
@@ -1590,8 +1589,14 @@ const OperatorDashboard = () => {
 
     return statusMap[status] || "status-pending";
   };
-
   const getStatusDisplayText = (status) => {
+    // Debug logging
+    console.log("📊 Status badge debug - Input status:", status);
+    console.log("📊 Status badge debug - Type:", typeof status);
+    console.log("📊 Status badge debug - Is undefined?", status === undefined);
+    console.log("📊 Status badge debug - Is null?", status === null);
+    console.log("📊 Status badge debug - Is empty string?", status === "");
+
     const statusTextMap = {
       pending: "Pending",
       confirmed: "Confirmed",
@@ -1613,11 +1618,14 @@ const OperatorDashboard = () => {
       payment_completed: "Payment Completed",
     };
 
-    return (
+    const result =
       statusTextMap[status] ||
       status?.charAt(0).toUpperCase() + status?.slice(1).replace(/_/g, " ") ||
-      "Unknown"
-    );
+      "Unknown Status";
+
+    console.log("📊 Status badge debug - Output text:", result);
+    console.log("📊 Status badge debug - Result length:", result.length);
+    return result;
   };
   const renderRejectedAppointments = () => {
     if (!rejectedAppointments || rejectedAppointments.length === 0) {
@@ -2282,7 +2290,7 @@ const OperatorDashboard = () => {
                             .map((s) => s.name)
                             .join(", ")
                         : "N/A"}
-                    </p>
+                    </p>{" "}
                     <p>
                       <strong>Status:</strong> {status || "N/A"}
                     </p>

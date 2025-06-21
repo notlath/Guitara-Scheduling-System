@@ -4,8 +4,30 @@
   max-width: 1200px;
   margin: 0 auto;
 } */
+.status-present {
+  background-color: #d4edda;
+  color: #0f5132;
+  border-color: #badbcc;
+}
 
-.attendance-header {
+.status-absent {
+  background-color: #f8d7da;
+  color: #58151c;
+  border-color: #f1aeb5;
+}
+
+.status-late {
+  background-color: #fff3cd;
+  color: #664d03;
+  border-color: #ffecb5;
+}
+
+.status-leave {
+  background-color: #cfe2ff;
+  color: #084298;
+  border-color: #9ec5fe;
+}
+r {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -134,14 +156,17 @@
 }
 
 .status-badge {
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: 12px;
-  font-size: 12px;
-  font-weight: bold;
+  font-size: 0.875rem;
+  font-weight: 700;
   text-transform: uppercase;
   display: inline-block;
   white-space: nowrap;
   vertical-align: middle;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  min-height: 24px;
 }
 
 .status-present {
