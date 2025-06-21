@@ -1,5 +1,5 @@
-import { createContext, useContext, useMemo, useState } from "react";
-import { useOptimizedAttendance } from "../../hooks/useOptimizedData";
+import { createContext, useMemo, useState } from "react";
+import { useAttendanceData } from "../../hooks/useDashboardQueries";
 
 const AttendanceContext = createContext();
 
@@ -9,7 +9,7 @@ export const AttendanceMemoProvider = ({ children }) => {
     new Date().toISOString().split("T")[0]
   );
 
-  const attendanceData = useOptimizedAttendance(selectedDate);
+  const attendanceData = useAttendanceData(selectedDate);
 
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(
@@ -27,40 +27,6 @@ export const AttendanceMemoProvider = ({ children }) => {
       {children}
     </AttendanceContext.Provider>
   );
-};
-
-export const useAttendanceContext = () => {
-  const context = useContext(AttendanceContext);
-  if (!context) {
-    throw new Error(
-      "useAttendanceContext must be used within AttendanceMemoProvider"
-    );
-  }
-  return context;
-};
-
-// Custom hook for just the attendance records (most common use case)
-export const useAttendanceRecords = () => {
-  const { attendanceRecords, loading, error, selectedDate } =
-    useAttendanceContext();
-  return { attendanceRecords, loading, error, selectedDate };
-};
-
-// Custom hook for attendance actions (less common, prevents unnecessary re-renders)
-export const useAttendanceActions = () => {
-  const {
-    fetchAttendanceForDate,
-    forceRefreshAttendance,
-    getCachedAttendanceForDate,
-    setSelectedDate,
-  } = useAttendanceContext();
-
-  return {
-    fetchAttendanceForDate,
-    forceRefreshAttendance,
-    getCachedAttendanceForDate,
-    setSelectedDate,
-  };
 };
 
 export default AttendanceContext;

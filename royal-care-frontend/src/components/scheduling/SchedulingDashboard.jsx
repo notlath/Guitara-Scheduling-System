@@ -2,11 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { shallowEqual, useDispatch } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
-// OPTIMIZED: Replace old data hooks with optimized versions
-import { useOptimizedDashboardData } from "../../hooks/useOptimizedData";
+// TANSTACK QUERY: Replace legacy data hooks with TanStack Query
+import { useSchedulingDashboardData } from "../../hooks/useDashboardQueries";
 import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
-import optimizedDataManager from "../../services/optimizedDataManager";
 import { SkeletonLoader } from "../common/LoadingComponents";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
@@ -51,17 +50,16 @@ const SchedulingDashboard = () => {
     newSearchParams.set("view", newView);
     setSearchParams(newSearchParams);
   };
-
   const dispatch = useDispatch();
-  // OPTIMIZED: Use optimized dashboard data hook
+  // TANSTACK QUERY: Use TanStack Query dashboard data hook
   const {
     todayAppointments,
     upcomingAppointments,
     loading,
     error,
-    // forceRefresh,
+    forceRefresh,
     hasData,
-  } = useOptimizedDashboardData("schedulingDashboard", "admin");
+  } = useSchedulingDashboardData();
 
   const { user } = useOptimizedSelector(
     useCallback(
@@ -117,27 +115,18 @@ const SchedulingDashboard = () => {
     if (window.confirm("Are you sure you want to delete this booking?")) {
       try {
         await dispatch(deleteAppointment(appointmentId)).unwrap();
-        // 🔥 FIXED: Use centralized data manager refresh instead of individual API calls
-        // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-        await optimizedDataManager.forceRefresh([
-          "appointments",
-          "todayAppointments",
-        ]);
+        // TANSTACK QUERY: Use TanStack Query refetch instead of optimizedDataManager
+        await forceRefresh();
       } catch (error) {
         // Add user feedback
         alert(`Failed to delete appointment: ${error.message || error}`);
       }
     }
   };
-
   const handleFormSubmitSuccess = async () => {
     setIsFormVisible(false);
-    // 🔥 FIXED: Use centralized data manager refresh instead of individual API calls
-    // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-    await optimizedDataManager.forceRefresh([
-      "appointments",
-      "todayAppointments",
-    ]);
+    // TANSTACK QUERY: Use TanStack Query refetch instead of optimizedDataManager
+    await forceRefresh();
   };
 
   const handleFormCancel = () => {

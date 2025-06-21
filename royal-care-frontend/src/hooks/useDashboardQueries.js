@@ -11,6 +11,7 @@ import { useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { fetchAttendanceRecords } from "../features/attendance/attendanceSlice";
 import { updateAppointmentStatus } from "../features/scheduling/schedulingSlice";
+import store from "../store";
 
 // API URL based on environment
 const API_URL =
@@ -249,7 +250,7 @@ export const useOperatorDashboardData = () => {
     queryKey: queryKeys.appointments.today,
     queryFn: fetchTodayAppointmentsAPI,
     staleTime: 0, // Force fresh data for debugging
-    cacheTime: 3 * 60 * 1000, // 3 minutes cache
+    cacheTime: 2 * 60 * 1000, // 2 minutes cache
     refetchInterval: 5 * 60 * 1000, // Background refresh every 5 minutes
     refetchOnWindowFocus: true,
     refetchOnMount: true,
@@ -654,6 +655,198 @@ export const useDriverDashboardData = (driverId) => {
 };
 
 // ==========================================
+// SCHEDULING DASHBOARD HOOKS
+// ==========================================
+
+/**
+ * Scheduling dashboard data optimized for scheduling coordination
+ * Replaces: useOptimizedDashboardData("schedulingDashboard", "admin")
+ */
+export const useSchedulingDashboardData = () => {
+  const queryClient = useQueryClient();
+
+  // All appointments for scheduling overview
+  const appointmentsQuery = useQuery({
+    queryKey: queryKeys.appointments.list,
+    queryFn: fetchAppointmentsAPI,
+    staleTime: staleTime.SHORT,
+    refetchInterval: 3 * 60 * 1000, // 3 minutes for scheduling
+    refetchOnWindowFocus: true,
+    retry: 2,
+    initialData: [],
+  });
+
+  // Today's appointments for immediate attention
+  const todayAppointmentsQuery = useQuery({
+    queryKey: queryKeys.appointments.today,
+    queryFn: fetchTodayAppointmentsAPI,
+    staleTime: staleTime.SHORT,
+    refetchInterval: 2 * 60 * 1000, // 2 minutes for today's data
+    refetchOnWindowFocus: true,
+    retry: 2,
+    initialData: [],
+  });
+
+  // Upcoming appointments for planning
+  const upcomingAppointmentsQuery = useQuery({
+    queryKey: queryKeys.appointments.upcoming,
+    queryFn: fetchUpcomingAppointmentsAPI,
+    staleTime: staleTime.MEDIUM,
+    refetchInterval: 5 * 60 * 1000, // 5 minutes for upcoming
+    refetchOnWindowFocus: true,
+    retry: 2,
+    initialData: [],
+  });
+
+  // Notifications for scheduling alerts
+  const notificationsQuery = useQuery({
+    queryKey: queryKeys.notifications.list,
+    queryFn: fetchNotificationsAPI,
+    staleTime: staleTime.SHORT,
+    refetchInterval: 1 * 60 * 1000, // 1 minute for notifications
+    refetchOnWindowFocus: true,
+    retry: 2,
+    initialData: [],
+  });
+
+  const forceRefresh = useCallback(async () => {
+    console.log("🔄 Force refreshing scheduling dashboard data...");
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
+    ]);
+
+    // Force immediate refetch
+    await Promise.all([
+      appointmentsQuery.refetch(),
+      todayAppointmentsQuery.refetch(),
+      upcomingAppointmentsQuery.refetch(),
+      notificationsQuery.refetch(),
+    ]);
+  }, [
+    queryClient,
+    appointmentsQuery,
+    todayAppointmentsQuery,
+    upcomingAppointmentsQuery,
+    notificationsQuery,
+  ]);
+
+  const isLoading =
+    appointmentsQuery.isLoading ||
+    todayAppointmentsQuery.isLoading ||
+    upcomingAppointmentsQuery.isLoading ||
+    notificationsQuery.isLoading;
+
+  const error =
+    appointmentsQuery.error ||
+    todayAppointmentsQuery.error ||
+    upcomingAppointmentsQuery.error ||
+    notificationsQuery.error;
+
+  const hasData = !!(
+    appointmentsQuery.data?.length ||
+    todayAppointmentsQuery.data?.length ||
+    upcomingAppointmentsQuery.data?.length
+  );
+
+  console.log("📅 useSchedulingDashboardData return:", {
+    appointments: appointmentsQuery.data?.length || 0,
+    todayAppointments: todayAppointmentsQuery.data?.length || 0,
+    upcomingAppointments: upcomingAppointmentsQuery.data?.length || 0,
+    notifications: notificationsQuery.data?.length || 0,
+    isLoading,
+    hasData,
+    dataSource: "tanstack-query",
+  });
+
+  return {
+    // Primary data (exact same interface as legacy hook)
+    appointments: appointmentsQuery.data || [],
+    todayAppointments: todayAppointmentsQuery.data || [],
+    upcomingAppointments: upcomingAppointmentsQuery.data || [],
+    notifications: notificationsQuery.data || [],
+
+    // Loading and error states
+    isLoading,
+    loading: isLoading, // Legacy alias
+    error,
+    hasData,
+
+    // Actions
+    forceRefresh,
+    refetch: forceRefresh, // Legacy alias
+
+    // Data source identifier
+    dataSource: "tanstack-query",
+  };
+};
+
+// ==========================================
+// ATTENDANCE DASHBOARD HOOKS
+// ==========================================
+
+/**
+ * Attendance data hook using TanStack Query
+ * Replaces: useOptimizedAttendance(selectedDate)
+ */
+export const useAttendanceData = (selectedDate) => {
+  // Attendance records for specific date
+  const attendanceQuery = useQuery({
+    queryKey: queryKeys.attendance.byDate
+      ? queryKeys.attendance.byDate(selectedDate)
+      : ["attendance", selectedDate],
+    queryFn: async () => {
+      const data = await fetchAttendanceAPI(selectedDate);
+      return Array.isArray(data) ? data : [];
+    },
+    staleTime: staleTime.MEDIUM,
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    retry: 2,
+    initialData: [],
+    enabled: !!selectedDate,
+  });
+
+  const forceRefresh = useCallback(async () => {
+    await attendanceQuery.refetch();
+  }, [attendanceQuery]);
+
+  return {
+    attendanceRecords: attendanceQuery.data || [],
+    isLoading: attendanceQuery.isLoading,
+    loading: attendanceQuery.isLoading, // Legacy alias
+    error: attendanceQuery.error,
+    hasData: !!attendanceQuery.data?.length,
+    forceRefresh,
+    refetch: forceRefresh, // Legacy alias
+
+    // Legacy method aliases for backward compatibility
+    fetchAttendanceForDate: async () => {
+      // Could implement cache-first lookup here if needed
+      return attendanceQuery.data || [];
+    },
+    getCachedAttendanceForDate: () => {
+      return attendanceQuery.data || [];
+    },
+    forceRefreshAttendance: forceRefresh,
+    hasDataForDate: !!attendanceQuery.data?.length,
+  };
+};
+
+// API function for attendance
+const fetchAttendanceAPI = async (date) => {
+  try {
+    const result = await store
+      .dispatch(fetchAttendanceRecords({ date }))
+      .unwrap();
+    return Array.isArray(result) ? result : [];
+  } catch (error) {
+    console.warn("Failed to fetch attendance records:", error);
+    return [];
+  }
+};
+
+// ==========================================
 // APPOINTMENT STATUS MUTATIONS
 // ==========================================
 
@@ -785,4 +978,6 @@ export default {
   useDriverDashboardData,
   useAppointmentStatusMutation,
   useInvalidateOperatorData,
+  useSchedulingDashboardData,
+  useAttendanceData,
 };

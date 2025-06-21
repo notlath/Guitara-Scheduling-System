@@ -22,6 +22,10 @@ import {
 import { useVirtualizedPagination } from "../hooks/useVirtualizedPagination";
 import Pagination from "./Pagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
+import {
+  useAttendanceActions,
+  useAttendanceRecords,
+} from "../hooks/useAttendanceHooks";
 import { useOperatorDashboardData } from "../hooks/useDashboardQueries";
 import {
   useOptimizedButtonLoading,
@@ -33,12 +37,7 @@ import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
-import {
-  useAttendanceActions,
-  useAttendanceRecords,
-} from "./contexts/AttendanceContext";
 import PerformanceMonitor from "./PerformanceMonitor";
-import TanStackQueryDebugger from "./TanStackQueryDebugger";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
