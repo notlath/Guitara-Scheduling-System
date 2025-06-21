@@ -15,33 +15,6 @@ from asgiref.sync import async_to_sync
 
 logger = logging.getLogger(__name__)
 
-        # Build optimized query
-        queryset = Availability.objects.select_related("user").filter(
-            date=date, is_available=True
-        )
-
-        if role:
-            queryset = queryset.filter(user__role=role)
-
-        if specialization:
-            queryset = queryset.filter(user__specialization=specialization)
-
-        availabilities = list(queryset.order_by("user__last_available_at"))
-        serialized_data = self._serialize_availability(availabilities)
-
-        # Cache for 5 minutes
-        cache.set(cache_key, serialized_data, self.cache_timeout)
-        return serialized_dataport Q, Prefetch, select_related
-from django.utils import timezone
-from datetime import datetime, timedelta
-import logging
-import asyncio
-from typing import List, Dict, Optional, Any
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
-
-logger = logging.getLogger(__name__)
-
 
 class OptimizedDataManager:
     """

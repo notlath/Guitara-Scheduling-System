@@ -1661,7 +1661,7 @@ export const fetchActionableAppointments = createAsyncThunk(
     try {
       // Use the new optimized endpoint from backend
       const response = await axios.get(
-        `${API_URL}appointments/operator-dashboard/`,
+        `${API_URL}appointments/operator_dashboard/`,
         {
           headers: {
             Authorization: `Token ${token}`,

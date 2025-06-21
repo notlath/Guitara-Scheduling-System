@@ -5,10 +5,12 @@ import { approveAttendance } from "../features/attendance/attendanceSlice";
 import { logout } from "../features/auth/authSlice";
 import {
   autoCancelOverdueAppointments,
+  fetchActionableAppointments,
   fetchAppointments,
   fetchNotifications,
   fetchStaffMembers,
   fetchTodayAppointments,
+  fetchUpcomingAppointments,
   markAppointmentPaid,
   reviewRejection,
   updateAppointmentStatus,
@@ -17,6 +19,8 @@ import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 // PERFORMANCE: Ultra-optimized imports
+import { useStableCallback } from "../hooks/usePerformanceOptimization";
+import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import {
   useUltraOptimizedAppointmentFilters,
   useUltraOptimizedSorting,
@@ -28,8 +32,6 @@ import {
   useOptimizedButtonLoading,
   useOptimizedCountdown,
 } from "../hooks/useOperatorPerformance";
-import { useStableCallback } from "../hooks/usePerformanceOptimization";
-import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import optimizedDataManager from "../services/optimizedDataManager";
 import syncService from "../services/syncService";
@@ -39,6 +41,8 @@ import {
   useAttendanceActions,
   useAttendanceRecords,
 } from "./contexts/AttendanceContext";
+import DebugAppointments from "./DebugAppointments";
+import ApiDiagnostic from "./ApiDiagnostic";
 import PerformanceMonitor from "./PerformanceMonitor";
 
 import "../globals/TabSwitcher.css";
@@ -129,13 +133,57 @@ const OperatorDashboard = () => {
     loading,
     error,
   } = useSelector((state) => ({
-    appointments: state.scheduling?.appointments || [],
-    todayAppointments: state.scheduling?.todayAppointments || [],
-    upcomingAppointments: state.scheduling?.upcomingAppointments || [],
-    notifications: state.scheduling?.notifications || [],
+    appointments:
+      state.scheduling?.appointments?.results ||
+      state.scheduling?.appointments ||
+      [],
+    todayAppointments:
+      state.scheduling?.todayAppointments?.results ||
+      state.scheduling?.todayAppointments ||
+      [],
+    upcomingAppointments:
+      state.scheduling?.upcomingAppointments?.results ||
+      state.scheduling?.upcomingAppointments ||
+      [],
+    notifications:
+      state.scheduling?.notifications?.results ||
+      state.scheduling?.notifications ||
+      [],
     loading: state.scheduling?.loading || false,
     error: state.scheduling?.error || null,
   }));
+  // 🔥 CRITICAL FIX: Load appointments data on component mount
+  useEffect(() => {
+    console.log("🔄 OperatorDashboard: Force loading appointments data...");
+
+    const loadData = async () => {
+      try {
+        // Dispatch all necessary data fetches
+        const promises = [
+          dispatch(fetchAppointments()), // Add the main appointments fetch
+          dispatch(fetchActionableAppointments()),
+          dispatch(fetchTodayAppointments()),
+          dispatch(fetchUpcomingAppointments()),
+          dispatch(fetchNotifications()),
+          dispatch(fetchStaffMembers()),
+        ];
+
+        await Promise.allSettled(promises);
+        console.log("✅ OperatorDashboard: Data loading complete");
+      } catch (error) {
+        console.error("❌ OperatorDashboard: Failed to load data:", error);
+      }
+    };
+
+    // Load data immediately
+    loadData();
+
+    // Also set up polling for updates
+    const interval = setInterval(loadData, 30000); // Every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [dispatch]);
+
   // Use Redux appointments as actionable appointments for now
   const actionableAppointments = reduxAppointments;
   const appointments = actionableAppointments;
@@ -165,7 +213,7 @@ const OperatorDashboard = () => {
     800 // Container height in pixels
   ); // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
   const { buttonLoading, setActionLoading, forceClearLoading } =
-    useOptimizedButtonLoading();  // Dashboard tabs with "All Appointments" restored
+    useOptimizedButtonLoading(); // Dashboard tabs with "All Appointments" restored
   const dashboardTabs = useMemo(() => {
     // Pre-calculate counts to avoid repeated access
     const rejectedCount = rejectedAppointments?.length || 0;
@@ -245,7 +293,8 @@ const OperatorDashboard = () => {
         count: 0,
         priority: "low", // Process monitoring
       },
-    ];  }, [
+    ];
+  }, [
     appointments?.length,
     rejectedAppointments?.length,
     pendingAppointments?.length,
@@ -256,7 +305,7 @@ const OperatorDashboard = () => {
     driverAssignment?.pendingPickups?.length,
     activeSessions?.length,
     pickupRequests?.length,
-  ]);// OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
+  ]); // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
   // The optimized data manager handles background refreshes automatically
   // 🚀 ULTRA-PERFORMANCE: Optimized countdown timer management
   const isTimeoutViewActive = currentView === "timeout";
@@ -2594,501 +2643,420 @@ const OperatorDashboard = () => {
           </div>
         ))}
       </div>
-    );
-  };
-
-  // 🚀 CRITICAL FIX: Load appointments on component mount
-  useEffect(() => {
-    const loadAppointments = async () => {
-      console.log("🔄 OperatorDashboard: Loading appointments on mount");
-      try {
-        // Load both all appointments and today's appointments
-        await Promise.all([
-          dispatch(fetchAppointments()).unwrap(),
-          dispatch(fetchTodayAppointments()).unwrap(),
-        ]);
-        console.log("✅ OperatorDashboard: Appointments loaded successfully");
-      } catch (error) {
-        console.error("❌ OperatorDashboard: Failed to load appointments:", error);
-      }
-    };
-
-    // Load appointments if we don't have any data
-    if (!loading && appointments.length === 0) {
-      loadAppointments();
-    }
-  }, [dispatch, loading, appointments.length]);
+    );  };
 
   // Render the tab switcher at the top of the dashboard
   return (
-    <PageLayout>
-      <div className={`operator-dashboard`}>
-        {" "}
-        <LayoutRow title="Operator Dashboard">
-          <div className="action-buttons">
-            <button onClick={handleLogout} className="logout-button">
-              Logout
-            </button>
+  <PageLayout>
+    {/* Debug components - only in development */}
+    {import.meta.env.DEV && <DebugAppointments />}
+    {import.meta.env.DEV && <ApiDiagnostic />}
+
+    <div className={`operator-dashboard`}>
+      {" "}
+      <LayoutRow title="Operator Dashboard">
+        <div className="action-buttons">
+          <button onClick={handleLogout} className="logout-button">
+            Logout
+          </button>
+        </div>
+      </LayoutRow>{" "}
+      {/* OPTIMIZED: Simplified loading indicator */}
+      <MinimalLoadingIndicator
+        show={loading}
+        hasData={hasData} // OPTIMIZED: Use hasData instead of hasAnyData
+        position="bottom-left"
+        size="small"
+        variant="subtle" // OPTIMIZED: Remove stale data check
+        tooltip={
+          hasData ? "Refreshing dashboard data..." : "Loading dashboard data..."
+        }
+        pulse={true}
+        fadeIn={true}
+      />
+      {/* OPTIMIZED: Simplified error handling */}
+      {error && !hasData && (
+        <div className="error-message">
+          {typeof error === "object"
+            ? error.message || error.error || JSON.stringify(error)
+            : error}
+        </div>
+      )}{" "}
+      {/* Statistics Dashboard */}
+      <div className="stats-dashboard">
+        <div className="stats-card">
+          <h4>Rejection Overview</h4>
+          <div className="stats-grid">
+            <div className="stat-item">
+              <span className="stat-number">{rejectionStats.total}</span>
+              <span className="stat-label">Total Rejections</span>
+            </div>
+            <div className="stat-item therapist-stat">
+              <span className="stat-number">{rejectionStats.therapist}</span>
+              <span className="stat-label">Therapist Rejections</span>
+            </div>
+            <div className="stat-item driver-stat">
+              <span className="stat-number">{rejectionStats.driver}</span>
+              <span className="stat-label">Driver Rejections</span>
+            </div>{" "}
+            <div className="stat-item pending-stat">
+              <span className="stat-number">{rejectionStats.pending}</span>
+              <span className="stat-label">Pending Reviews</span>
+            </div>
           </div>
-        </LayoutRow>{" "}
-        {/* OPTIMIZED: Simplified loading indicator */}
-        <MinimalLoadingIndicator
-          show={loading}
-          hasData={hasData} // OPTIMIZED: Use hasData instead of hasAnyData
-          position="bottom-left"
-          size="small"
-          variant="subtle" // OPTIMIZED: Remove stale data check
-          tooltip={
-            hasData
-              ? "Refreshing dashboard data..."
-              : "Loading dashboard data..."
-          }
-          pulse={true}
-          fadeIn={true}
+        </div>
+      </div>{" "}
+      <div className="tab-switcher">
+        <TabSwitcher
+          tabs={dashboardTabs}
+          activeTab={currentView}
+          onTabChange={setView}
         />
-        {/* OPTIMIZED: Simplified error handling */}
-        {error && !hasData && (
-          <div className="error-message">
-            {typeof error === "object"
-              ? error.message || error.error || JSON.stringify(error)
-              : error}
+      </div>
+      <div
+        className={`dashboard-content ${
+          paymentModal.isOpen || reviewModal.isOpen ? "faded" : ""
+        }`}
+      >
+        {" "}
+        {/* 🔥 PERFORMANCE MONITOR: Real-time performance tracking */}
+        <PerformanceMonitor
+          componentName="OperatorDashboard"
+          enabled={import.meta.env.DEV || false}
+        />
+        {currentView === "rejected" && (
+          <div className="rejected-appointments">
+            <h2>Rejection Reviews</h2>
+            {renderRejectedAppointments()}
+          </div>
+        )}
+        {currentView === "pending" && (
+          <div className="pending-appointments">
+            <h2>Pending Acceptance Appointments</h2>
+            {renderPendingAcceptanceAppointments()}
           </div>
         )}{" "}
-        {/* Statistics Dashboard */}
-        <div className="stats-dashboard">
-          <div className="stats-card">
-            <h4>Rejection Overview</h4>
-            <div className="stats-grid">
-              <div className="stat-item">
-                <span className="stat-number">{rejectionStats.total}</span>
-                <span className="stat-label">Total Rejections</span>
-              </div>
-              <div className="stat-item therapist-stat">
-                <span className="stat-number">{rejectionStats.therapist}</span>
-                <span className="stat-label">Therapist Rejections</span>
-              </div>
-              <div className="stat-item driver-stat">
-                <span className="stat-number">{rejectionStats.driver}</span>
-                <span className="stat-label">Driver Rejections</span>
-              </div>{" "}
-              <div className="stat-item pending-stat">
-                <span className="stat-number">{rejectionStats.pending}</span>
-                <span className="stat-label">Pending Reviews</span>
-              </div>
-            </div>
+        {currentView === "timeout" && (
+          <div className="timeout-monitoring">
+            <h2>Timeout Monitoring</h2>
+            {renderTimeoutMonitoring()}
           </div>
-        </div>{" "}        <div className="tab-switcher">
-          <TabSwitcher
-            tabs={dashboardTabs}
-            activeTab={currentView}
-            onTabChange={setView}
-          />
-        </div>
-        <div
-          className={`dashboard-content ${
-            paymentModal.isOpen || reviewModal.isOpen ? "faded" : ""
-          }`}
-        >
-          {" "}
-          {/* 🔥 PERFORMANCE MONITOR: Real-time performance tracking */}
-          <PerformanceMonitor
-            componentName="OperatorDashboard"
-            enabled={import.meta.env.DEV || false}
-          />
-          {currentView === "rejected" && (
-            <div className="rejected-appointments">
-              <h2>Rejection Reviews</h2>
-              {renderRejectedAppointments()}
+        )}
+        {currentView === "payment" && (
+          <div className="payment-verification">
+            <h2>Payment Verification</h2>
+            {renderPaymentVerificationView()}
+          </div>
+        )}{" "}
+        {currentView === "all" && (
+          <div className="all-appointments-view">
+            <div className="performance-warning">
+              <i className="fas fa-info-circle"></i>
+              <span>
+                Loading all appointments. This may take a moment for large
+                datasets...
+              </span>
             </div>
-          )}
-          {currentView === "pending" && (
-            <div className="pending-appointments">
-              <h2>Pending Acceptance Appointments</h2>
-              {renderPendingAcceptanceAppointments()}
-            </div>
-          )}{" "}
-          {currentView === "timeout" && (
-            <div className="timeout-monitoring">
-              <h2>Timeout Monitoring</h2>
-              {renderTimeoutMonitoring()}
-            </div>
-          )}
-          {currentView === "payment" && (
-            <div className="payment-verification">
-              <h2>Payment Verification</h2>
-              {renderPaymentVerificationView()}
-            </div>
-          )}{" "}
-          {currentView === "all" && (
-            <div className="all-appointments-view">
-              <div className="performance-warning">
-                <i className="fas fa-info-circle"></i>
-                <span>
-                  Loading all appointments. This may take a moment for large
-                  datasets...
-                </span>
-              </div>
 
-              <div className="all-appointments-header">
-                <h2>All Appointments ({appointments?.length || 0})</h2>                <div className="filter-controls">
-                  <div className="filter-section">
-                    <label htmlFor="appointment-filter">Filter by:</label>
-                    <select
-                      id="appointment-filter"
-                      value={currentFilter}
-                      onChange={(e) => setFilter(e.target.value)}
-                      className="filter-select"
-                    >
-                      <option value="all">
-                        All Appointments ({appointments?.length || 0})
-                      </option>
-                      <option value="today">Today</option>
-                      <option value="upcoming">Upcoming</option>
-                      <option value="pending">Pending</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  </div>
+            <div className="all-appointments-header">
+              <h2>All Appointments ({appointments?.length || 0})</h2>{" "}
+              <div className="filter-controls">
+                <div className="filter-section">
+                  <label htmlFor="appointment-filter">Filter by:</label>
+                  <select
+                    id="appointment-filter"
+                    value={currentFilter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="all">
+                      All Appointments ({appointments?.length || 0})
+                    </option>
+                    <option value="today">Today</option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
                 </div>
               </div>
+            </div>
 
-              <div className="appointments-list">{renderAllAppointments()}</div>
-            </div>
-          )}{" "}
-          {currentView === "attendance" && (
-            <div className="attendance-management">
-              <h2>Attendance Management</h2>
-              {renderAttendanceView()}
-            </div>
-          )}{" "}
-          {currentView === "notifications" && (
-            <div className="notifications">
-              <h2>Notifications</h2>
-              {renderNotifications()}
-            </div>
-          )}{" "}
-          {currentView === "driver" && (
-            <div className="driver-coordination">
-              <h2>Driver Coordination Center</h2>
-              {renderDriverCoordinationPanel()}
-            </div>
-          )}
-          {currentView === "workflow" && (
-            <div className="service-workflow">
-              <h2>Service Workflow Overview</h2>
-              {renderServiceWorkflowView()}
-            </div>
-          )}
-          {currentView === "sessions" && (
-            <div className="active-sessions">
-              <h2>Active Therapy Sessions</h2>
-              {renderActiveSessionsView()}
-            </div>
-          )}{" "}
-          {currentView === "pickup" && (
-            <div className="pickup-requests">
-              <h2>Therapist Pickup Requests</h2>
-              {renderPickupRequestsView()}
-            </div>
-          )}
-        </div>
+            <div className="appointments-list">{renderAllAppointments()}</div>
+          </div>
+        )}{" "}
+        {currentView === "attendance" && (
+          <div className="attendance-management">
+            <h2>Attendance Management</h2>
+            {renderAttendanceView()}
+          </div>
+        )}{" "}
+        {currentView === "notifications" && (
+          <div className="notifications">
+            <h2>Notifications</h2>
+            {renderNotifications()}
+          </div>
+        )}{" "}
+        {currentView === "driver" && (
+          <div className="driver-coordination">
+            <h2>Driver Coordination Center</h2>
+            {renderDriverCoordinationPanel()}
+          </div>
+        )}
+        {currentView === "workflow" && (
+          <div className="service-workflow">
+            <h2>Service Workflow Overview</h2>
+            {renderServiceWorkflowView()}
+          </div>
+        )}
+        {currentView === "sessions" && (
+          <div className="active-sessions">
+            <h2>Active Therapy Sessions</h2>
+            {renderActiveSessionsView()}
+          </div>
+        )}{" "}
+        {currentView === "pickup" && (
+          <div className="pickup-requests">
+            <h2>Therapist Pickup Requests</h2>
+            {renderPickupRequestsView()}
+          </div>
+        )}
       </div>
-      {/* End of operator-dashboard */}
+    </div>
+    {/* End of operator-dashboard */}
 
-      {/* Payment Verification Modal */}
-      {paymentModal.isOpen && (
-        <div className={styles["modal-overlay"]}>
-          <div className={styles.modal}>
-            <div className={styles["modal-header"]}>
-              <h3>Verify Payment Received</h3>
-              <button
-                className={styles["close-btn"]}
-                onClick={handlePaymentModalCancel}
-                aria-label="Close modal"
+    {/* Payment Verification Modal */}
+    {paymentModal.isOpen && (
+      <div className={styles["modal-overlay"]}>
+        <div className={styles.modal}>
+          <div className={styles["modal-header"]}>
+            <h3>Verify Payment Received</h3>
+            <button
+              className={styles["close-btn"]}
+              onClick={handlePaymentModalCancel}
+              aria-label="Close modal"
+            >
+              ×
+            </button>
+          </div>
+          <div className="appointment-summary">
+            <h4>Appointment #{paymentModal.appointmentId}</h4>
+            <div className="summary-details">
+              <p>
+                <strong>Client:</strong>{" "}
+                {paymentModal.appointmentDetails?.client_details?.first_name
+                  ? `${
+                      paymentModal.appointmentDetails.client_details.first_name
+                    } ${
+                      paymentModal.appointmentDetails.client_details
+                        .last_name || ""
+                    }`.trim()
+                  : paymentModal.appointmentDetails?.client || "Unknown Client"}
+              </p>
+              <p>
+                <strong>Date:</strong>{" "}
+                {new Date(
+                  paymentModal.appointmentDetails?.date
+                ).toLocaleDateString()}
+              </p>
+              <p>
+                <strong>Services:</strong>{" "}
+                {paymentModal.appointmentDetails?.services_details
+                  ?.map((s) => s.name)
+                  .join(", ") || "N/A"}
+              </p>{" "}
+              <p>
+                <strong>Total Amount:</strong> ₱
+                {(() => {
+                  const total =
+                    paymentModal.appointmentDetails?.services_details?.reduce(
+                      (total, service) => {
+                        const price = Number(service.price) || 0;
+                        return total + price;
+                      },
+                      0
+                    ) || 0;
+                  return total.toFixed(2);
+                })()}
+              </p>
+            </div>
+          </div>
+          <div className={styles["modal-form"]}>
+            <div className="form-group">
+              <label htmlFor="paymentMethod">Payment Method:</label>{" "}
+              <select
+                id="paymentMethod"
+                value={paymentData.method}
+                onChange={(e) =>
+                  setPaymentData({
+                    ...paymentData,
+                    method: e.target.value,
+                    // Reset receipt data when switching payment methods
+                    receiptFile: null,
+                    receiptHash: "",
+                    receiptUrl: "",
+                    uploadError: "",
+                  })
+                }
               >
-                ×
-              </button>
+                <option value="cash">Cash</option>
+                <option value="gcash">GCash</option>
+              </select>
             </div>
-            <div className="appointment-summary">
-              <h4>Appointment #{paymentModal.appointmentId}</h4>
-              <div className="summary-details">
-                <p>
-                  <strong>Client:</strong>{" "}
-                  {paymentModal.appointmentDetails?.client_details?.first_name
-                    ? `${
-                        paymentModal.appointmentDetails.client_details
-                          .first_name
-                      } ${
-                        paymentModal.appointmentDetails.client_details
-                          .last_name || ""
-                      }`.trim()
-                    : paymentModal.appointmentDetails?.client ||
-                      "Unknown Client"}
-                </p>
-                <p>
-                  <strong>Date:</strong>{" "}
-                  {new Date(
-                    paymentModal.appointmentDetails?.date
-                  ).toLocaleDateString()}
-                </p>
-                <p>
-                  <strong>Services:</strong>{" "}
-                  {paymentModal.appointmentDetails?.services_details
-                    ?.map((s) => s.name)
-                    .join(", ") || "N/A"}
-                </p>{" "}
-                <p>
-                  <strong>Total Amount:</strong> ₱
-                  {(() => {
-                    const total =
-                      paymentModal.appointmentDetails?.services_details?.reduce(
-                        (total, service) => {
-                          const price = Number(service.price) || 0;
-                          return total + price;
-                        },
-                        0
-                      ) || 0;
-                    return total.toFixed(2);
-                  })()}
-                </p>
-              </div>
-            </div>
-            <div className={styles["modal-form"]}>
-              <div className="form-group">
-                <label htmlFor="paymentMethod">Payment Method:</label>{" "}
-                <select
-                  id="paymentMethod"
-                  value={paymentData.method}
-                  onChange={(e) =>
-                    setPaymentData({
-                      ...paymentData,
-                      method: e.target.value,
-                      // Reset receipt data when switching payment methods
-                      receiptFile: null,
-                      receiptHash: "",
-                      receiptUrl: "",
-                      uploadError: "",
-                    })
-                  }
-                >
-                  <option value="cash">Cash</option>
-                  <option value="gcash">GCash</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label htmlFor="paymentAmount">Amount Received:</label>
-                <input
-                  type="number"
-                  id="paymentAmount"
-                  value={paymentData.amount}
-                  onChange={(e) =>
-                    setPaymentData({ ...paymentData, amount: e.target.value })
-                  }
-                  placeholder="Enter amount received"
-                  min="0"
-                  step="0.01"
-                />
-              </div>{" "}
-              {/* GCash Receipt Upload */}
-              {paymentData.method === "gcash" && (
-                <div
-                  className="form-group"
+            <div className="form-group">
+              <label htmlFor="paymentAmount">Amount Received:</label>
+              <input
+                type="number"
+                id="paymentAmount"
+                value={paymentData.amount}
+                onChange={(e) =>
+                  setPaymentData({ ...paymentData, amount: e.target.value })
+                }
+                placeholder="Enter amount received"
+                min="0"
+                step="0.01"
+              />
+            </div>{" "}
+            {/* GCash Receipt Upload */}
+            {paymentData.method === "gcash" && (
+              <div
+                className="form-group"
+                style={{
+                  backgroundColor: "#f0f8ff",
+                  border: "2px solid #3498db",
+                  padding: "15px",
+                  borderRadius: "8px",
+                  marginTop: "15px",
+                }}
+              >
+                <label
+                  htmlFor="receiptFile"
                   style={{
-                    backgroundColor: "#f0f8ff",
-                    border: "2px solid #3498db",
-                    padding: "15px",
-                    borderRadius: "8px",
-                    marginTop: "15px",
+                    color: "#2c3e50",
+                    fontWeight: "bold",
+                    fontSize: "14px",
                   }}
                 >
-                  <label
-                    htmlFor="receiptFile"
-                    style={{
-                      color: "#2c3e50",
-                      fontWeight: "bold",
-                      fontSize: "14px",
-                    }}
-                  >
-                    📄 GCash Receipt Upload{" "}
-                    <span style={{ color: "#e74c3c" }}>*</span>
-                  </label>
-                  <div style={{ marginTop: "0.5rem" }}>
-                    <input
-                      type="file"
-                      id="receiptFile"
-                      accept="image/jpeg,image/png,image/webp,application/pdf"
-                      onChange={handleReceiptFileChange}
-                      disabled={paymentData.isUploading}
-                      required
-                    />
-                    {paymentData.isUploading && (
-                      <div
+                  📄 GCash Receipt Upload{" "}
+                  <span style={{ color: "#e74c3c" }}>*</span>
+                </label>
+                <div style={{ marginTop: "0.5rem" }}>
+                  <input
+                    type="file"
+                    id="receiptFile"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    onChange={handleReceiptFileChange}
+                    disabled={paymentData.isUploading}
+                    required
+                  />
+                  {paymentData.isUploading && (
+                    <div
+                      style={{
+                        marginTop: "0.5rem",
+                        fontSize: "0.9rem",
+                        color: "#555",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
                         style={{
-                          marginTop: "0.5rem",
-                          fontSize: "0.9rem",
-                          color: "#555",
-                          display: "flex",
-                          alignItems: "center",
+                          display: "inline-block",
+                          width: "16px",
+                          height: "16px",
+                          border: "2px solid rgba(0,0,0,.1)",
+                          borderTopColor: "#3498db",
+                          borderRadius: "50%",
+                          marginRight: "8px",
+                          animation: "spin 1s ease-in-out infinite",
                         }}
-                      >
-                        <span
-                          style={{
-                            display: "inline-block",
-                            width: "16px",
-                            height: "16px",
-                            border: "2px solid rgba(0,0,0,.1)",
-                            borderTopColor: "#3498db",
-                            borderRadius: "50%",
-                            marginRight: "8px",
-                            animation: "spin 1s ease-in-out infinite",
-                          }}
-                        ></span>
-                        Uploading...
-                      </div>
-                    )}
-                    {paymentData.receiptHash && (
-                      <div
-                        style={{
-                          marginTop: "0.5rem",
-                          background: "#f5f5f5",
-                          padding: "8px",
-                          borderRadius: "4px",
-                          fontSize: "0.85rem",
-                        }}
-                      >
-                        <p
-                          style={{
-                            color: "#2ecc71",
-                            marginBottom: "4px",
-                            fontWeight: "500",
-                          }}
-                        >
-                          ✓ Receipt verified
-                        </p>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            color: "#555",
-                            fontFamily: "monospace",
-                            overflow: "hidden",
-                          }}
-                        >
-                          <span
-                            style={{ fontWeight: "500", marginRight: "8px" }}
-                          >
-                            SHA-256:
-                          </span>
-                          <span
-                            style={{
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              cursor: "pointer",
-                            }}
-                            title={paymentData.receiptHash}
-                          >
-                            {paymentData.receiptHash.substring(0, 16)}...
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {paymentData.uploadError && (
+                      ></span>
+                      Uploading...
+                    </div>
+                  )}
+                  {paymentData.receiptHash && (
+                    <div
+                      style={{
+                        marginTop: "0.5rem",
+                        background: "#f5f5f5",
+                        padding: "8px",
+                        borderRadius: "4px",
+                        fontSize: "0.85rem",
+                      }}
+                    >
                       <p
                         style={{
-                          color: "#e74c3c",
-                          marginTop: "4px",
+                          color: "#2ecc71",
+                          marginBottom: "4px",
                           fontWeight: "500",
                         }}
                       >
-                        {paymentData.uploadError}
+                        ✓ Receipt verified
                       </p>
-                    )}
-                  </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          color: "#555",
+                          fontFamily: "monospace",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <span style={{ fontWeight: "500", marginRight: "8px" }}>
+                          SHA-256:
+                        </span>
+                        <span
+                          style={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            cursor: "pointer",
+                          }}
+                          title={paymentData.receiptHash}
+                        >
+                          {paymentData.receiptHash.substring(0, 16)}...
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {paymentData.uploadError && (
+                    <p
+                      style={{
+                        color: "#e74c3c",
+                        marginTop: "4px",
+                        fontWeight: "500",
+                      }}
+                    >
+                      {paymentData.uploadError}
+                    </p>
+                  )}
                 </div>
-              )}
-              <div className="form-group">
-                <label htmlFor="paymentNotes">Notes (optional):</label>
-                <textarea
-                  id="paymentNotes"
-                  value={paymentData.notes}
-                  onChange={(e) =>
-                    setPaymentData({ ...paymentData, notes: e.target.value })
-                  }
-                  placeholder="Add any notes about the payment..."
-                  rows={3}
-                />
               </div>
-              <div className="modal-actions">
-                <LoadingButton
-                  className="verify-button"
-                  onClick={handleMarkPaymentPaid}
-                  loading={
-                    buttonLoading[`payment_${paymentModal.appointmentId}`]
-                  }
-                  loadingText="Processing..."
-                >
-                  Mark as Paid
-                </LoadingButton>
-                <LoadingButton
-                  className="cancel-button"
-                  onClick={handlePaymentModalCancel}
-                  variant="secondary"
-                >
-                  Cancel
-                </LoadingButton>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Review Rejection Modal */}
-      {reviewModal.isOpen && (
-        <div className="modal-overlay">
-          <div className="review-modal">
-            <h3>Review Appointment Rejection</h3>
-            <div className="rejection-details">
-              <p>
-                <strong>Rejection Reason:</strong>
-              </p>
-              <p className="rejection-reason-text">
-                {reviewModal.rejectionReason}
-              </p>
-            </div>
-            <div className="review-notes">
-              <label htmlFor="reviewNotes">Review Notes (optional):</label>
+            )}
+            <div className="form-group">
+              <label htmlFor="paymentNotes">Notes (optional):</label>
               <textarea
-                id="reviewNotes"
-                value={reviewNotes}
-                onChange={(e) => setReviewNotes(e.target.value)}
-                placeholder="Add any additional notes about your decision..."
+                id="paymentNotes"
+                value={paymentData.notes}
+                onChange={(e) =>
+                  setPaymentData({ ...paymentData, notes: e.target.value })
+                }
+                placeholder="Add any notes about the payment..."
                 rows={3}
               />
-            </div>{" "}
+            </div>
             <div className="modal-actions">
               <LoadingButton
-                className="accept-button"
-                onClick={() => handleReviewSubmit("accept")}
-                loading={
-                  buttonLoading[`review_${reviewModal.appointmentId}_accept`]
-                }
+                className="verify-button"
+                onClick={handleMarkPaymentPaid}
+                loading={buttonLoading[`payment_${paymentModal.appointmentId}`]}
                 loadingText="Processing..."
               >
-                Accept Rejection
-              </LoadingButton>
-              <LoadingButton
-                className="deny-button"
-                onClick={() => handleReviewSubmit("deny")}
-                loading={
-                  buttonLoading[`review_${reviewModal.appointmentId}_deny`]
-                }
-                loadingText="Processing..."
-              >
-                Deny Rejection
+                Mark as Paid
               </LoadingButton>
               <LoadingButton
                 className="cancel-button"
-                onClick={handleReviewCancel}
+                onClick={handlePaymentModalCancel}
                 variant="secondary"
               >
                 Cancel
@@ -3096,9 +3064,64 @@ const OperatorDashboard = () => {
             </div>
           </div>
         </div>
-      )}
-      {/* End of PageLayout */}
-    </PageLayout>
+      </div>
+    )}
+    {/* Review Rejection Modal */}
+    {reviewModal.isOpen && (
+      <div className="modal-overlay">
+        <div className="review-modal">
+          <h3>Review Appointment Rejection</h3>
+          <div className="rejection-details">
+            <p>
+              <strong>Rejection Reason:</strong>
+            </p>
+            <p className="rejection-reason-text">
+              {reviewModal.rejectionReason}
+            </p>
+          </div>
+          <div className="review-notes">
+            <label htmlFor="reviewNotes">Review Notes (optional):</label>
+            <textarea
+              id="reviewNotes"
+              value={reviewNotes}
+              onChange={(e) => setReviewNotes(e.target.value)}
+              placeholder="Add any additional notes about your decision..."
+              rows={3}
+            />
+          </div>{" "}
+          <div className="modal-actions">
+            <LoadingButton
+              className="accept-button"
+              onClick={() => handleReviewSubmit("accept")}
+              loading={
+                buttonLoading[`review_${reviewModal.appointmentId}_accept`]
+              }
+              loadingText="Processing..."
+            >
+              Accept Rejection
+            </LoadingButton>
+            <LoadingButton
+              className="deny-button"
+              onClick={() => handleReviewSubmit("deny")}
+              loading={
+                buttonLoading[`review_${reviewModal.appointmentId}_deny`]
+              }
+              loadingText="Processing..."
+            >
+              {" "}
+              Deny Rejection
+            </LoadingButton>            <LoadingButton
+              className="cancel-button"
+              onClick={handleReviewCancel}
+              variant="secondary"
+            >
+              Cancel
+            </LoadingButton>
+          </div>
+        </div>
+      </div>
+    )}
+  </PageLayout>
   );
 };
 
