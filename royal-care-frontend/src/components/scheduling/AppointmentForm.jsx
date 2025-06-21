@@ -10,6 +10,7 @@ import {
   updateAppointment,
 } from "../../features/scheduling/schedulingSlice";
 import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
+import { registerClient } from "../../services/api";
 import "../../styles/AppointmentForm.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import { fuzzyMatch } from "../../utils/searchUtils";
@@ -21,8 +22,7 @@ import {
 } from "../common/LoadingComponents";
 // PERFORMANCE: Import cached components for better UX
 import { useAppointmentFormCache } from "../../hooks/useAppointmentFormCache";
-import CachedDriverSelect from "../common/CachedDriverSelect";
-import CachedTherapistSelect from "../common/CachedTherapistSelect";
+// Removed CachedDriverSelect and CachedTherapistSelect
 import LazyClientSearch from "../common/LazyClientSearch";
 
 // Legacy Client Search Component (kept for fallback)
@@ -277,10 +277,10 @@ const AppointmentForm = ({
 
   const [formData, setFormData] = useState(initialFormState);
   const [clientDetails, setClientDetails] = useState({
-    first_name: '',
-    last_name: '',
-    phone_number: '',
-    email: '',
+    first_name: "",
+    last_name: "",
+    phone_number: "",
+    email: "",
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -379,7 +379,10 @@ const AppointmentForm = ({
       fetchedAvailableDrivers.length > 0
     ) {
       if (import.meta.env && import.meta.env.MODE === "development") {
-        console.log("Using fetched available drivers:", fetchedAvailableDrivers);
+        console.log(
+          "Using fetched available drivers:",
+          fetchedAvailableDrivers
+        );
       }
       return fetchedAvailableDrivers;
     }
@@ -482,7 +485,9 @@ const AppointmentForm = ({
     }
 
     if (import.meta.env && import.meta.env.MODE === "development") {
-      console.log("AppointmentForm - Dispatching fetchClients and fetchServices");
+      console.log(
+        "AppointmentForm - Dispatching fetchClients and fetchServices"
+      );
     }
     dispatch(fetchClients());
     dispatch(fetchServices());
@@ -802,7 +807,14 @@ const AppointmentForm = ({
   }, []);
 
   // Extracted function for registering a new client and retrying to get the client ID
-  const registerAndFetchClientId = async (clientDetails, formData, clients, dispatch, setErrors, setIsSubmitting) => {
+  const registerAndFetchClientId = async (
+    clientDetails,
+    formData,
+    clients,
+    dispatch,
+    setErrors,
+    setIsSubmitting
+  ) => {
     const newClientPayload = {
       first_name: clientDetails.first_name,
       last_name: clientDetails.last_name,
@@ -818,24 +830,32 @@ const AppointmentForm = ({
       // Retry loop to get the new client from the latest clients state
       let foundClient = null;
       for (let i = 0; i < 10; i++) {
-        foundClient = (newClient && newClient.id)
-          ? newClient
-          : clients.find(c =>
-              c.email === clientDetails.email ||
-              c.phone_number === clientDetails.phone_number
-            );
+        foundClient =
+          newClient && newClient.id
+            ? newClient
+            : clients.find(
+                (c) =>
+                  c.email === clientDetails.email ||
+                  c.phone_number === clientDetails.phone_number
+              );
         if (foundClient && foundClient.id) break;
-        await new Promise(res => setTimeout(res, 100));
+        await new Promise((res) => setTimeout(res, 100));
       }
       const clientId = foundClient && foundClient.id ? foundClient.id : null;
       if (!clientId) {
-        setErrors((prev) => ({ ...prev, client: 'Failed to register new client. Please try again.' }));
+        setErrors((prev) => ({
+          ...prev,
+          client: "Failed to register new client. Please try again.",
+        }));
         setIsSubmitting(false);
         return null;
       }
       return clientId;
     } catch {
-      setErrors((prev) => ({ ...prev, client: 'Failed to register new client. Please try again.' }));
+      setErrors((prev) => ({
+        ...prev,
+        client: "Failed to register new client. Please try again.",
+      }));
       setIsSubmitting(false);
       return null;
     }
@@ -879,13 +899,19 @@ const AppointmentForm = ({
     }
 
     setIsSubmitting(true);
-
     try {
       let clientId = formData.client;
 
       // 2. After registering a new client, always use the latest client list from Redux after fetchClients
       if (!clientId) {
-        clientId = await registerAndFetchClientId(clientDetails, formData, clients, dispatch, setErrors, setIsSubmitting);
+        clientId = await registerAndFetchClientId(
+          clientDetails,
+          formData,
+          clients,
+          dispatch,
+          setErrors,
+          setIsSubmitting
+        );
         if (!clientId) {
           return;
         }
@@ -896,15 +922,12 @@ const AppointmentForm = ({
         ...formData,
         client: parseInt(clientId, 10),
         services: formData.services ? [parseInt(formData.services, 10)] : [],
-        start_time: formData.start_time || '',
-        end_time: formData.end_time || '',
-        location: formData.location || '',
-        notes: formData.notes || '',
+        start_time: formData.start_time || "",
+        end_time: formData.end_time || "",
+        location: formData.location || "",
+        notes: formData.notes || "",
         multipleTherapists: formData.multipleTherapists || false,
       };
-
-      // Log the sanitized data for debugging
-      console.log("Sanitized form data:", sanitizedFormData);
 
       // Triple check the therapist field specifically to ensure it's correct for the appointment type
       // For multi-therapist appointments, therapist should remain null
@@ -948,16 +971,14 @@ const AppointmentForm = ({
         }
       }
 
-      // Log the sanitized data for debugging
-      if (import.meta.env && import.meta.env.MODE === "development") {
-        console.log("Pre-sanitized appointment data:", appointmentData);
-      }
-
       // Prepare appointment data with required fields
       const appointmentData = {
         ...sanitizedFormData,
       };
+
+      // Log the sanitized data for debugging (after declaration)
       if (import.meta.env && import.meta.env.MODE === "development") {
+        console.log("Pre-sanitized appointment data:", appointmentData);
         console.log("Final sanitized appointment data:", appointmentData);
         console.log("Data types:", {
           client: typeof appointmentData.client,
@@ -974,28 +995,9 @@ const AppointmentForm = ({
           end_time: typeof appointmentData.end_time,
         });
       }
-      console.log("Pre-sanitized appointment data:", appointmentData);
 
       // Remove usage of sanitizeDataForApi and just use appointmentData directly
       const finalAppointmentData = appointmentData;
-
-      console.log("Final sanitized appointment data:", finalAppointmentData);
-      console.log("Data types:", {
-        client: typeof finalAppointmentData.client,
-        services: Array.isArray(finalAppointmentData.services)
-          ? `Array of ${finalAppointmentData.services.length} items`
-          : typeof finalAppointmentData.services,
-        therapist: typeof finalAppointmentData.therapist,
-        therapists: Array.isArray(finalAppointmentData.therapists)
-          ? `Array of ${finalAppointmentData.therapists.length} items`
-          : typeof finalAppointmentData.therapists,
-        driver: typeof finalAppointmentData.driver,
-        date: typeof finalAppointmentData.date,
-        end_time: typeof finalAppointmentData.end_time,
-      });
-      if (import.meta.env && import.meta.env.MODE === "development") {
-        console.error("Validation failed. Current data:", finalAppointmentData);
-      }
 
       // Final verification of data formats for critical fields
       // For multi-therapist appointments, either therapist OR therapists array should be present
@@ -1013,7 +1015,10 @@ const AppointmentForm = ({
         !finalAppointmentData.services
       ) {
         if (import.meta.env && import.meta.env.MODE === "development") {
-          console.error("Validation failed. Current data:", finalAppointmentData);
+          console.error(
+            "Validation failed. Current data:",
+            finalAppointmentData
+          );
         }
         throw new Error("Missing required fields. Please check your form.");
       }
@@ -1033,7 +1038,12 @@ const AppointmentForm = ({
         onSubmitSuccess();
       }
       setFormData(initialFormState);
-      setClientDetails({ first_name: '', last_name: '', phone_number: '', email: '' });
+      setClientDetails({
+        first_name: "",
+        last_name: "",
+        phone_number: "",
+        email: "",
+      });
       setErrors({});
     } catch (error) {
       if (import.meta.env && import.meta.env.MODE === "development") {
@@ -1163,14 +1173,19 @@ const AppointmentForm = ({
       const selected = clients.find((c) => c.id === formData.client);
       if (selected) {
         setClientDetails({
-          first_name: selected.first_name || '',
-          last_name: selected.last_name || '',
-          phone_number: selected.phone_number || '',
-          email: selected.email || '',
+          first_name: selected.first_name || "",
+          last_name: selected.last_name || "",
+          phone_number: selected.phone_number || "",
+          email: selected.email || "",
         });
       }
     } else {
-      setClientDetails({ first_name: '', last_name: '', phone_number: '', email: '' });
+      setClientDetails({
+        first_name: "",
+        last_name: "",
+        phone_number: "",
+        email: "",
+      });
     }
   }, [formData.client, clients]);
 
@@ -1241,7 +1256,9 @@ const AppointmentForm = ({
             <input
               type="text"
               value={clientDetails.first_name}
-              onChange={e => setClientDetails(d => ({ ...d, first_name: e.target.value }))}
+              onChange={(e) =>
+                setClientDetails((d) => ({ ...d, first_name: e.target.value }))
+              }
               disabled={!!formData.client}
               placeholder="First name"
             />
@@ -1251,7 +1268,9 @@ const AppointmentForm = ({
             <input
               type="text"
               value={clientDetails.last_name}
-              onChange={e => setClientDetails(d => ({ ...d, last_name: e.target.value }))}
+              onChange={(e) =>
+                setClientDetails((d) => ({ ...d, last_name: e.target.value }))
+              }
               disabled={!!formData.client}
               placeholder="Last name"
             />
@@ -1263,7 +1282,12 @@ const AppointmentForm = ({
             <input
               type="text"
               value={clientDetails.phone_number}
-              onChange={e => setClientDetails(d => ({ ...d, phone_number: e.target.value }))}
+              onChange={(e) =>
+                setClientDetails((d) => ({
+                  ...d,
+                  phone_number: e.target.value,
+                }))
+              }
               disabled={!!formData.client}
               placeholder="09XXXXXXXXX"
             />
@@ -1273,7 +1297,9 @@ const AppointmentForm = ({
             <input
               type="email"
               value={clientDetails.email}
-              onChange={e => setClientDetails(d => ({ ...d, email: e.target.value }))}
+              onChange={(e) =>
+                setClientDetails((d) => ({ ...d, email: e.target.value }))
+              }
               disabled={!!formData.client}
               placeholder="email@example.com"
             />
@@ -1324,36 +1350,67 @@ const AppointmentForm = ({
         {!formData.multipleTherapists && (
           <div className="form-group">
             <label htmlFor="therapist">Therapist:</label>
-            <CachedTherapistSelect
+            <select
               id="therapist"
               name="therapist"
-              value={formData.therapist}
+              value={formData.therapist || ""}
               onChange={handleChange}
               className={errors.therapist ? "error" : ""}
               disabled={
-                !availabilityParams.date ||
-                !availabilityParams.start_time ||
-                !availabilityParams.services ||
-                (availabilityParams.date &&
-                  availabilityParams.start_time &&
-                  availabilityParams.services &&
+                isSubmitting ||
+                !formData.date ||
+                !formData.start_time ||
+                !formData.services ||
+                (formData.date &&
+                  formData.start_time &&
+                  formData.services &&
                   availableTherapists.length === 0)
               }
-            />
-            {/* Show warning when user needs to select prerequisites */}
-            {(!availabilityParams.date ||
-              !availabilityParams.start_time ||
-              !availabilityParams.services) &&
+            >
+              {fetchingAvailability ? (
+                <option value="" disabled>
+                  Checking availability...
+                </option>
+              ) : !formData.date ||
+                !formData.start_time ||
+                !formData.services ? (
+                <option value="" disabled>
+                  Please select date, time and service first to see available
+                  therapists
+                </option>
+              ) : availableTherapists && availableTherapists.length > 0 ? (
+                [
+                  <option value="" key="none">
+                    Select a therapist
+                  </option>,
+                  ...availableTherapists.map((therapist) => (
+                    <option key={therapist.id} value={therapist.id}>
+                      {therapist.first_name || ""} {therapist.last_name || ""} -{" "}
+                      {therapist.specialization || "General"} -{" "}
+                      {therapist.massage_pressure || "Standard"}{" "}
+                      {therapist.start_time && therapist.end_time
+                        ? `(Available: ${therapist.start_time}-${therapist.end_time})`
+                        : ""}
+                    </option>
+                  )),
+                ]
+              ) : (
+                <option value="" disabled>
+                  No therapists available for selected date/time - please choose
+                  a different time
+                </option>
+              )}
+            </select>
+            {(!formData.date || !formData.start_time || !formData.services) &&
               !fetchingAvailability && (
                 <small className="info-text">
                   ℹ️ Please select date, time and service first to see available
                   therapists
                 </small>
               )}
-            {/* Show warning when no therapists are available */}
-            {availabilityParams.date &&
-              availabilityParams.start_time &&
-              availabilityParams.services &&
+            {formData.date &&
+              formData.start_time &&
+              formData.services &&
               availableTherapists.length === 0 &&
               !fetchingAvailability && (
                 <small className="warning-text">
@@ -1381,12 +1438,12 @@ const AppointmentForm = ({
               }
               size="5"
               disabled={
-                !availabilityParams.date ||
-                !availabilityParams.start_time ||
-                !availabilityParams.services ||
-                (availabilityParams.date &&
-                  availabilityParams.start_time &&
-                  availabilityParams.services &&
+                !formData.date ||
+                !formData.start_time ||
+                !formData.services ||
+                (formData.date &&
+                  formData.start_time &&
+                  formData.services &&
                   availableTherapists.length === 0)
               }
             >
@@ -1394,9 +1451,9 @@ const AppointmentForm = ({
                 <option value="" disabled>
                   Checking availability...
                 </option>
-              ) : !availabilityParams.date ||
-                !availabilityParams.start_time ||
-                !availabilityParams.services ? (
+              ) : !formData.date ||
+                !formData.start_time ||
+                !formData.services ? (
                 <option value="" disabled>
                   Please select date, time and service first to see available
                   therapists
@@ -1422,20 +1479,16 @@ const AppointmentForm = ({
                 </option>
               )}
             </select>
-            {/* Show warning when user needs to select prerequisites */}
-            {(!availabilityParams.date ||
-              !availabilityParams.start_time ||
-              !availabilityParams.services) &&
+            {(!formData.date || !formData.start_time || !formData.services) &&
               !fetchingAvailability && (
                 <small className="info-text">
                   ℹ️ Please select date, time and service first to see available
                   therapists
                 </small>
               )}
-            {/* Show warning when no therapists are available */}
-            {availabilityParams.date &&
-              availabilityParams.start_time &&
-              availabilityParams.services &&
+            {formData.date &&
+              formData.start_time &&
+              formData.services &&
               availableTherapists.length === 0 &&
               !fetchingAvailability && (
                 <small className="warning-text">
@@ -1453,21 +1506,54 @@ const AppointmentForm = ({
         )}
         <div className="form-group">
           <label htmlFor="driver">Driver (Optional):</label>
-          <CachedDriverSelect
+          <select
             id="driver"
             name="driver"
-            value={formData.driver}
+            value={formData.driver || ""}
             onChange={handleChange}
+            className={errors.driver ? "error" : ""}
             disabled={
-              !availabilityParams.date ||
-              !availabilityParams.start_time ||
-              !availabilityParams.services
+              isSubmitting ||
+              !formData.date ||
+              !formData.start_time ||
+              !formData.services ||
+              (formData.date &&
+                formData.start_time &&
+                formData.services &&
+                availableDrivers.length === 0)
             }
-          />
-          {/* Show info for driver selection */}
-          {(!availabilityParams.date ||
-            !availabilityParams.start_time ||
-            !availabilityParams.services) && (
+          >
+            {fetchingAvailability ? (
+              <option value="" disabled>
+                Checking availability...
+              </option>
+            ) : !formData.date || !formData.start_time || !formData.services ? (
+              <option value="" disabled>
+                Please select date, time and service first to see available
+                drivers
+              </option>
+            ) : availableDrivers && availableDrivers.length > 0 ? (
+              [
+                <option value="" key="none">
+                  Select a driver (optional)
+                </option>,
+                ...availableDrivers.map((driver) => (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.first_name || ""} {driver.last_name || ""}{" "}
+                    {driver.start_time && driver.end_time
+                      ? `(Available: ${driver.start_time}-${driver.end_time})`
+                      : ""}
+                  </option>
+                )),
+              ]
+            ) : (
+              <option value="" disabled>
+                No drivers available for selected date/time - please choose a
+                different time
+              </option>
+            )}
+          </select>
+          {(!formData.date || !formData.start_time || !formData.services) && (
             <small className="info-text">
               ℹ️ Select date, time and service first to see available drivers
             </small>
