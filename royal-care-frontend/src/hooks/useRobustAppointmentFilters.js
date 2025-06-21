@@ -23,25 +23,32 @@ const VALID_FILTER_VALUES = Object.freeze([
 // Comprehensive status validation
 const VALID_STATUSES = Object.freeze([
   "pending",
-  "confirmed",
-  "driver_confirmed",
   "therapist_confirmed",
-  "rejected_by_therapist",
-  "rejected_by_driver",
-  "cancelled",
-  "completed",
+  "driver_confirmed",
   "in_progress",
-  "awaiting_payment",
-  "pickup_requested",
-  "driver_assigned_pickup",
-  "journey_started",
+  "journey",
   "arrived",
   "dropped_off",
-  "session_started",
-  "payment_requested",
-  "payment_completed",
-  "overdue",
-  "timeout",
+  "driver_transport_completed",
+  "session_in_progress",
+  "awaiting_payment",
+  "completed",
+  "pickup_requested",
+  "driver_assigned_pickup",
+  "return_journey",
+  "transport_completed",
+  "cancelled",
+  "rejected",
+  "auto_cancelled",
+  "therapist_confirm",
+  "driver_confirm",
+  "confirmed",
+  "driving_to_location",
+  "at_location",
+  "therapist_dropped_off",
+  "picking_up_therapists",
+  "transporting_group",
+  "driver_assigned",
 ]);
 
 // Stable empty results to prevent re-renders
@@ -88,9 +95,7 @@ const VALIDATORS = Object.freeze({
 const STATUS_CHECKS = Object.freeze({
   isRejected: (status) => {
     try {
-      return (
-        status === "rejected_by_therapist" || status === "rejected_by_driver"
-      );
+      return status === "rejected";
     } catch (error) {
       console.warn("Status check error for isRejected:", error);
       return false;
@@ -99,7 +104,7 @@ const STATUS_CHECKS = Object.freeze({
 
   isPending: (status) => {
     try {
-      return status === "pending" || status === "therapist_confirmed";
+      return status === "pending";
     } catch (error) {
       console.warn("Status check error for isPending:", error);
       return false;
@@ -125,9 +130,19 @@ const STATUS_CHECKS = Object.freeze({
     try {
       return (
         status === "in_progress" ||
+        status === "journey" ||
         status === "journey_started" ||
         status === "arrived" ||
-        status === "session_started"
+        status === "session_started" ||
+        status === "session_in_progress" ||
+        status === "driving_to_location" ||
+        status === "at_location" ||
+        status === "dropped_off" ||
+        status === "driver_transport_completed" ||
+        status === "driver_assigned" ||
+        status === "therapist_dropped_off" ||
+        status === "picking_up_therapists" ||
+        status === "transporting_group"
       );
     } catch (error) {
       console.warn("Status check error for isActiveSession:", error);
@@ -138,7 +153,9 @@ const STATUS_CHECKS = Object.freeze({
   isPickupRequest: (status) => {
     try {
       return (
-        status === "pickup_requested" || status === "driver_assigned_pickup"
+        status === "pickup_requested" ||
+        status === "driver_assigned_pickup" ||
+        status === "return_journey"
       );
     } catch (error) {
       console.warn("Status check error for isPickupRequest:", error);
@@ -173,26 +190,23 @@ export const useRobustAppointmentFilters = (appointments) => {
 
     // Filter and validate each appointment
     const validAppointments = [];
-
+    let skippedCount = 0;
     for (let i = 0; i < rawAppointments.length; i++) {
       const appointment = rawAppointments[i];
-
       try {
         if (!VALIDATORS.isValidAppointment(appointment)) {
           validationErrors.push(
             `Invalid appointment at index ${i}: ${JSON.stringify(appointment)}`
           );
+          skippedCount++;
           continue;
         }
-
-        // Additional date validation
+        // Permissive date validation: log error but include appointment
         if (appointment.date && !VALIDATORS.isValidDate(appointment.date)) {
           validationErrors.push(
             `Invalid date format at index ${i}: ${appointment.date}`
           );
-          // Continue processing but flag the error
         }
-
         if (
           appointment.created_at &&
           !VALIDATORS.isValidDate(appointment.created_at)
@@ -201,30 +215,30 @@ export const useRobustAppointmentFilters = (appointments) => {
             `Invalid created_at format at index ${i}: ${appointment.created_at}`
           );
         }
-
         validAppointments.push(appointment);
       } catch (error) {
         validationErrors.push(
           `Error processing appointment at index ${i}: ${error.message}`
         );
+        skippedCount++;
       }
     }
-
-    return { validAppointments, validationErrors };
+    return { validAppointments, validationErrors, skippedCount };
   }, []);
 
   return useMemo(() => {
     try {
       // Early validation
-      const { validAppointments, validationErrors } =
+      const { validAppointments, validationErrors, skippedCount } =
         validateAndFilterAppointments(appointments);
-
       if (validAppointments.length === 0) {
         return {
           ...EMPTY_FILTER_RESULTS,
           validationErrors: Object.freeze(validationErrors),
           error:
             validationErrors.length > 0 ? "Validation errors occurred" : null,
+          processedCount: 0,
+          skippedCount: skippedCount,
         };
       }
 
@@ -246,7 +260,7 @@ export const useRobustAppointmentFilters = (appointments) => {
         validationErrors: Object.freeze(validationErrors),
         error: null,
         processedCount: 0,
-        skippedCount: 0,
+        skippedCount: skippedCount,
       };
 
       const now = Date.now();
@@ -255,7 +269,6 @@ export const useRobustAppointmentFilters = (appointments) => {
       for (let i = 0; i < validAppointments.length; i++) {
         try {
           const apt = validAppointments[i];
-          result.processedCount++;
 
           const status = apt.status;
           const paymentStatus = apt.payment_status;
@@ -275,6 +288,7 @@ export const useRobustAppointmentFilters = (appointments) => {
             if (apt.operator_review_status === "pending") {
               result.rejectionStats.pending++;
             }
+            result.processedCount++;
             continue;
           }
 
@@ -297,6 +311,7 @@ export const useRobustAppointmentFilters = (appointments) => {
                 );
               }
             }
+            result.processedCount++;
             continue;
           }
 
@@ -308,6 +323,7 @@ export const useRobustAppointmentFilters = (appointments) => {
           } else if (STATUS_CHECKS.isPickupRequest(status)) {
             result.pickupRequests.push(apt);
           }
+          result.processedCount++;
         } catch (processingError) {
           result.skippedCount++;
           console.warn(`Error processing appointment ${i}:`, processingError);
@@ -371,6 +387,18 @@ export const useRobustAppointmentSorting = (appointments, currentFilter) => {
         });
       }
 
+      // ✅ ADD DEBUG LOGGING HERE
+      console.log(`🔍 DEBUG: Filtering with filter "${currentFilter}"`, {
+        appointmentsCount: appointments.length,
+        sampleAppointments: appointments.slice(0, 3).map((apt) => ({
+          id: apt.id,
+          status: apt.status,
+          date: apt.date,
+          created_at: apt.created_at,
+          payment_status: apt.payment_status,
+        })),
+      });
+
       // Filter validation
       let actualFilter = currentFilter;
       if (!VALIDATORS.isValidFilter(currentFilter)) {
@@ -390,6 +418,7 @@ export const useRobustAppointmentSorting = (appointments, currentFilter) => {
 
       // Return cached result if available
       if (sortCacheRef.current.has(cacheKey)) {
+        console.log(`🔍 DEBUG: Using cached result for ${actualFilter}`);
         return sortCacheRef.current.get(cacheKey);
       }
 
@@ -398,6 +427,10 @@ export const useRobustAppointmentSorting = (appointments, currentFilter) => {
 
       // Apply filtering with error handling
       if (actualFilter !== "all") {
+        console.log(
+          `🔍 Applying filter: ${actualFilter} to ${appointments.length} appointments`
+        );
+
         filtered = appointments.filter((apt, index) => {
           try {
             if (!apt) {
@@ -405,84 +438,175 @@ export const useRobustAppointmentSorting = (appointments, currentFilter) => {
               return false;
             }
 
+            let result = false;
             switch (actualFilter) {
               case "pending":
-                return apt.status === "pending";
+                result = apt.status === "pending";
+                // ✅ ADD DEBUG FOR PENDING
+                if (index < 5) {
+                  console.log(`🔍 DEBUG pending check apt ${apt.id}:`, {
+                    status: apt.status,
+                    result: result,
+                  });
+                }
+                break;
               case "confirmed":
-                return (
+                result =
                   apt.status === "confirmed" ||
                   apt.status === "driver_confirmed" ||
-                  apt.status === "therapist_confirmed"
-                );
+                  apt.status === "therapist_confirmed" ||
+                  apt.status === "therapist_confirm" ||
+                  apt.status === "driver_confirm";
+                // ✅ ADD DEBUG FOR CONFIRMED
+                if (index < 5) {
+                  console.log(`🔍 DEBUG confirmed check apt ${apt.id}:`, {
+                    status: apt.status,
+                    result: result,
+                  });
+                }
+                break;
               case "completed":
-                return apt.status === "completed";
+                result = apt.status === "completed";
+                break;
               case "cancelled":
-                return apt.status === "cancelled";
+                result =
+                  apt.status === "cancelled" || apt.status === "auto_cancelled";
+                break;
               case "rejected":
-                return (
-                  apt.status === "rejected_by_therapist" ||
-                  apt.status === "rejected_by_driver"
-                );
+                result = apt.status === "rejected";
+                break;
               case "awaiting_payment":
-                return (
+                result =
                   apt.status === "awaiting_payment" ||
                   (apt.status === "completed" &&
                     (!apt.payment_status ||
                       apt.payment_status === "pending" ||
-                      apt.payment_status === "unpaid"))
-                );
+                      apt.payment_status === "unpaid"));
+                // ✅ ADD DEBUG FOR AWAITING PAYMENT
+                if (index < 5) {
+                  console.log(
+                    `🔍 DEBUG awaiting_payment check apt ${apt.id}:`,
+                    {
+                      status: apt.status,
+                      payment_status: apt.payment_status,
+                      result: result,
+                    }
+                  );
+                }
+                break;
               case "in_progress":
-                return (
+                result =
                   apt.status === "in_progress" ||
+                  apt.status === "journey" ||
                   apt.status === "journey_started" ||
                   apt.status === "arrived" ||
-                  apt.status === "session_started"
-                );
+                  apt.status === "session_started" ||
+                  apt.status === "session_in_progress" ||
+                  apt.status === "driving_to_location" ||
+                  apt.status === "at_location" ||
+                  apt.status === "dropped_off" ||
+                  apt.status === "driver_transport_completed" ||
+                  apt.status === "pickup_requested" ||
+                  apt.status === "driver_assigned_pickup" ||
+                  apt.status === "return_journey" ||
+                  apt.status === "transport_completed" ||
+                  apt.status === "driver_assigned" ||
+                  apt.status === "therapist_dropped_off" ||
+                  apt.status === "picking_up_therapists" ||
+                  apt.status === "transporting_group";
+                break;
               case "overdue": {
                 if (
                   !apt.created_at ||
                   !VALIDATORS.isValidDate(apt.created_at)
                 ) {
-                  return false;
+                  result = false;
+                  break;
                 }
                 const appointmentAge =
                   Date.now() - new Date(apt.created_at).getTime();
-                return (
+                result =
                   appointmentAge > TIMEOUT_THRESHOLD &&
                   (apt.status === "pending" ||
-                    apt.status === "therapist_confirmed")
-                );
+                    apt.status === "therapist_confirmed");
+                break;
               }
               case "today": {
                 if (!apt.date || !VALIDATORS.isValidDate(apt.date)) {
                   filterErrors.push(
                     `Invalid date for today filter at index ${index}: ${apt.date}`
                   );
-                  return false;
+                  result = false;
+                  break;
                 }
-                const today = new Date().toDateString();
-                return new Date(apt.date).toDateString() === today;
+                // Handle both date strings and date objects
+                const appointmentDate = new Date(apt.date);
+                const today = new Date();
+
+                // Compare just the date parts (ignore time)
+                result =
+                  appointmentDate.getFullYear() === today.getFullYear() &&
+                  appointmentDate.getMonth() === today.getMonth() &&
+                  appointmentDate.getDate() === today.getDate();
+
+                // ✅ ADD DEBUG FOR TODAY
+                if (index < 5) {
+                  console.log(`🔍 DEBUG today check apt ${apt.id}:`, {
+                    date: apt.date,
+                    appointmentDate: appointmentDate.toISOString(),
+                    today: today.toISOString(),
+                    result: result,
+                  });
+                }
+                break;
               }
               case "upcoming": {
                 if (!apt.date || !VALIDATORS.isValidDate(apt.date)) {
                   filterErrors.push(
                     `Invalid date for upcoming filter at index ${index}: ${apt.date}`
                   );
-                  return false;
+                  result = false;
+                  break;
                 }
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                return new Date(apt.date) >= tomorrow;
+                const appointmentDate = new Date(apt.date);
+                const today = new Date();
+
+                // Reset today to start of day for proper comparison
+                today.setHours(0, 0, 0, 0);
+                appointmentDate.setHours(0, 0, 0, 0);
+
+                result = appointmentDate > today;
+
+                // ✅ ADD DEBUG FOR UPCOMING
+                if (index < 5) {
+                  console.log(`🔍 DEBUG upcoming check apt ${apt.id}:`, {
+                    date: apt.date,
+                    appointmentDate: appointmentDate.toISOString(),
+                    today: today.toISOString(),
+                    result: result,
+                  });
+                }
+                break;
               }
               default:
-                return true;
+                result = true;
+                break;
             }
+
+            return result;
           } catch (filterError) {
             filterErrors.push(
               `Filter error at index ${index}: ${filterError.message}`
             );
             return false;
           }
+        });
+
+        // ✅ ADD DEBUG FOR FILTERING RESULTS
+        console.log(`🔍 DEBUG: Filter "${actualFilter}" results:`, {
+          originalCount: appointments.length,
+          filteredCount: filtered.length,
+          filterErrors: filterErrors,
         });
       }
 
@@ -499,14 +623,17 @@ export const useRobustAppointmentSorting = (appointments, currentFilter) => {
 
           // Status priority (most urgent first)
           const statusPriority = {
-            rejected_by_therapist: 5,
-            rejected_by_driver: 5,
+            rejected: 5,
             overdue: 4,
             pending: 3,
             therapist_confirmed: 3,
+            driver_confirmed: 2,
             awaiting_payment: 2,
             in_progress: 1,
+            journey: 1,
+            session_in_progress: 1,
             confirmed: 0,
+            completed: 0,
           };
 
           const aPriority = statusPriority[a.status] || 0;

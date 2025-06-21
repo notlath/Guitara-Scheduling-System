@@ -46,19 +46,80 @@ import "../styles/OperatorDashboard.css";
 import "../styles/Performance.css";
 import "../styles/UrgencyIndicators.css";
 
+// ✅ ROBUST FILTERING: Valid values for URL parameters
+const VALID_VIEW_VALUES = Object.freeze([
+  "rejected",
+  "pending",
+  "timeout",
+  "payment",
+  "all",
+  "attendance",
+  "notifications",
+  "driver",
+  "workflow",
+  "sessions",
+  "pickup",
+]);
+
+const VALID_FILTER_VALUES = Object.freeze([
+  "all",
+  "today",
+  "upcoming",
+  "pending",
+  "confirmed",
+  "in_progress",
+  "completed",
+  "cancelled",
+  "rejected",
+  "awaiting_payment",
+  "overdue",
+]);
+
+// ✅ ROBUST FILTERING: Validation helpers
+const validateUrlParam = (param, validValues, defaultValue) => {
+  if (!param || typeof param !== "string") return defaultValue;
+  return validValues.includes(param) ? param : defaultValue;
+};
+
+const validateAppointmentsData = (appointments) => {
+  if (!appointments) return { isValid: false, error: "No appointments data" };
+  if (!Array.isArray(appointments))
+    return { isValid: false, error: "Appointments data is not an array" };
+  return { isValid: true, error: null };
+};
+
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
-
   // URL search params for view persistence
   const [searchParams, setSearchParams] = useSearchParams();
-  // Get view and filters from URL params with defaults
-  const currentView = searchParams.get("view") || "rejected";
-  const currentFilter = searchParams.get("filter") || "all";
-  const currentPage = parseInt(searchParams.get("page") || "1", 10);
+
+  // ✅ ROBUST FILTERING: Validate URL parameters against allowed values
+  const rawView = searchParams.get("view");
+  const rawFilter = searchParams.get("filter");
+  const rawPage = searchParams.get("page");
+
+  const currentView = validateUrlParam(rawView, VALID_VIEW_VALUES, "rejected");
+  const currentFilter = validateUrlParam(rawFilter, VALID_FILTER_VALUES, "all");
+  const currentPage = Math.max(1, parseInt(rawPage || "1", 10));
+
+  // Track validation warnings for user feedback
+  const [validationWarnings, setValidationWarnings] = useState([]);
+
+  // Check for invalid URL parameters and warn user
+  useEffect(() => {
+    const warnings = [];
+    if (rawView && !VALID_VIEW_VALUES.includes(rawView)) {
+      warnings.push(`Invalid view "${rawView}" reset to "rejected"`);
+    }
+    if (rawFilter && !VALID_FILTER_VALUES.includes(rawFilter)) {
+      warnings.push(`Invalid filter "${rawFilter}" reset to "all"`);
+    }
+    setValidationWarnings(warnings);
+  }, [rawView, rawFilter]);
 
   // Optimized view setter with stable callback
   const setView = useStableCallback((newView) => {
@@ -129,7 +190,37 @@ const OperatorDashboard = () => {
     loading,
     error,
     hasData,
-  } = useOptimizedDashboardData("operatorDashboard", "operator"); // ✅ ROBUST FILTERING: Replace ultra-optimized with robust versions
+  } = useOptimizedDashboardData("operatorDashboard", "operator");
+
+  // ✅ ROBUST FILTERING: Validate appointments data before processing
+  const appointmentsValidation = useMemo(() => {
+    return validateAppointmentsData(appointments);
+  }, [appointments]);
+
+  // ✅ ROBUST FILTERING: Replace ultra-optimized with robust versions with error handling
+  const robustFilteringResults = useRobustAppointmentFilters(appointments);
+
+  // Add error state tracking
+  const [filteringErrors, setFilteringErrors] = useState({
+    hasErrors: false,
+    errorMessage: null,
+  });
+
+  // Monitor for filtering errors
+  useEffect(() => {
+    if (!appointmentsValidation.isValid) {
+      setFilteringErrors({
+        hasErrors: true,
+        errorMessage: appointmentsValidation.error,
+      });
+    } else {
+      setFilteringErrors({
+        hasErrors: false,
+        errorMessage: null,
+      });
+    }
+  }, [appointmentsValidation]);
+
   const {
     rejected: rejectedAppointments,
     pending: pendingAppointments,
@@ -139,7 +230,7 @@ const OperatorDashboard = () => {
     activeSessions,
     pickupRequests,
     rejectionStats,
-  } = useRobustAppointmentFilters(appointments);
+  } = robustFilteringResults;
 
   // ✅ ROBUST SORTING: Replace ultra-optimized with robust version
   const { items: filteredAndSortedAppointments } = useRobustAppointmentSorting(
@@ -545,11 +636,27 @@ const OperatorDashboard = () => {
       pendingCount: pendingAppointments.length,
       timestamp: new Date().toISOString(),
     });
+
+    // Debug: Log first few appointments and their statuses
+    if (appointments && appointments.length > 0) {
+      console.log("📋 Sample appointments data:", {
+        totalCount: appointments.length,
+        first5Statuses: appointments.slice(0, 5).map((apt) => ({
+          id: apt.id,
+          status: apt.status,
+          date: apt.date,
+          created_at: apt.created_at,
+        })),
+        allUniqueStatuses: [...new Set(appointments.map((apt) => apt.status))],
+        filteredAndSortedCount: filteredAndSortedAppointments.length,
+      });
+    }
   }, [
     appointments,
     currentFilter,
     rejectedAppointments.length,
     pendingAppointments.length,
+    filteredAndSortedAppointments.length,
   ]);
 
   // Emergency loop breaker - render component normally but log warnings
@@ -902,7 +1009,6 @@ const OperatorDashboard = () => {
         "🔄 handleMarkPaymentPaid: Setting loading state to false for",
         actionKey
       );
-      setActionLoading(actionKey, false);
 
       // Add a small delay to ensure state update completes
       setTimeout(() => {
@@ -2002,37 +2108,13 @@ const OperatorDashboard = () => {
   };
 
   const renderAllAppointments = () => {
-    if (
-      !Array.isArray(filteredAndSortedAppointments) ||
-      filteredAndSortedAppointments.length === 0
-    ) {
-      return (
-        <div className="empty-state">
-          <i className="fas fa-calendar"></i>
-          <p>No appointments found</p>
-          {error && (
-            <p className="error-text">
-              Error: {typeof error === "string" ? error : JSON.stringify(error)}
-            </p>
-          )}
-        </div>
-      );
-    }
-
     const {
       currentItems: paginatedAppointments,
       isVirtualized,
       totalHeight,
     } = appointmentsPagination;
 
-    if (!Array.isArray(paginatedAppointments)) {
-      return (
-        <div className="empty-state">
-          <p>Loading appointments...</p>
-        </div>
-      );
-    }
-
+    // Always show filter controls and sort indicator
     return (
       <div className="appointments-list">
         {/* Filter Controls */}
@@ -2045,18 +2127,16 @@ const OperatorDashboard = () => {
               onChange={(e) => setFilter(e.target.value)}
               className="filter-select"
             >
-              <option value="all">
-                All Appointments ({filteredAndSortedAppointments.length})
-              </option>
-              <option value="today">Today</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
+              {VALID_FILTER_VALUES.map((filterValue) => (
+                <option key={filterValue} value={filterValue}>
+                  {filterValue === "all"
+                    ? `All Appointments (${filteredAndSortedAppointments.length})`
+                    : filterValue.charAt(0).toUpperCase() +
+                      filterValue.slice(1).replace(/_/g, " ")}
+                </option>
+              ))}
             </select>
           </div>
-
           {/* Performance Mode Toggle */}
           {appointmentsPagination.shouldVirtualize && (
             <div className="performance-controls">
@@ -2075,7 +2155,6 @@ const OperatorDashboard = () => {
               </button>
             </div>
           )}
-
           <div className="quick-filter-buttons">
             <button
               onClick={() => setFilter("completed")}
@@ -2114,25 +2193,150 @@ const OperatorDashboard = () => {
             •{" "}
             {isVirtualized
               ? "Virtual scrolling"
-              : `Showing ${paginatedAppointments.length} of ${filteredAndSortedAppointments.length} appointments`}
+              : `Showing ${paginatedAppointments?.length || 0} of ${
+                  filteredAndSortedAppointments.length
+                } appointments`}
             {currentFilter !== "all" && ` (filtered by: ${currentFilter})`}
           </span>
         </div>
 
-        {/* Appointment Cards Container */}
-        <div
-          className={`appointments-container ${
-            isVirtualized ? "virtualized" : "paginated"
-          }`}
-          style={isVirtualized ? { height: 800, overflowY: "auto" } : {}}
-          onScroll={
-            isVirtualized ? appointmentsPagination.handleScroll : undefined
-          }
-          ref={appointmentsPagination.containerRef}
-        >
-          {isVirtualized && (
-            <div style={{ height: totalHeight, position: "relative" }}>
-              {paginatedAppointments.map((appointment) => {
+        {/* Appointment Cards Container or Empty State */}
+        {!Array.isArray(filteredAndSortedAppointments) ||
+        filteredAndSortedAppointments.length === 0 ? (
+          <div className="empty-state">
+            <i className="fas fa-calendar"></i>
+            <p>No appointments found</p>
+            {error && (
+              <p className="error-text">
+                Error:{" "}
+                {typeof error === "string" ? error : JSON.stringify(error)}
+              </p>
+            )}
+          </div>
+        ) : !Array.isArray(paginatedAppointments) ? (
+          <div className="empty-state">
+            <p>Loading appointments...</p>
+          </div>
+        ) : (
+          <div
+            className={`appointments-container ${
+              isVirtualized ? "virtualized" : "paginated"
+            }`}
+            style={isVirtualized ? { height: 800, overflowY: "auto" } : {}}
+            onScroll={
+              isVirtualized ? appointmentsPagination.handleScroll : undefined
+            }
+            ref={appointmentsPagination.containerRef}
+          >
+            {isVirtualized && (
+              <div style={{ height: totalHeight, position: "relative" }}>
+                {paginatedAppointments.map((appointment) => {
+                  if (!appointment || !appointment.id) return null;
+
+                  const urgencyLevel = getUrgencyLevel(appointment);
+                  const urgencyBadge = getUrgencyBadge(urgencyLevel);
+                  const status = appointment.status || "";
+
+                  return (
+                    <div
+                      key={appointment.id}
+                      className={`appointment-card ${urgencyLevel}`}
+                      style={{
+                        position: "absolute",
+                        top: appointment.offsetY || 0,
+                        left: 0,
+                        right: 0,
+                        height: 200,
+                      }}
+                    >
+                      <div className="appointment-header">
+                        <h3>
+                          Appointment #{appointment.id} -{" "}
+                          {appointment.client_details?.first_name || "Unknown"}{" "}
+                          {appointment.client_details?.last_name || ""}
+                        </h3>
+                        <div className="status-badges">
+                          <span
+                            className={`status-badge ${getStatusBadgeClass(
+                              status
+                            )}`}
+                          >
+                            {getStatusDisplayText(status)}
+                          </span>
+                          <span
+                            className={`urgency-badge ${
+                              urgencyBadge?.className || ""
+                            }`}
+                          >
+                            {urgencyBadge?.icon || ""}{" "}
+                            {urgencyBadge?.label || ""}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="appointment-details">
+                        <p>
+                          <strong>Date:</strong>{" "}
+                          {appointment.date
+                            ? new Date(appointment.date).toLocaleDateString()
+                            : "N/A"}
+                        </p>
+                        <p>
+                          <strong>Time:</strong>{" "}
+                          {appointment.start_time || "N/A"} -{" "}
+                          {appointment.end_time || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Location:</strong>{" "}
+                          {appointment.location || "N/A"}
+                        </p>
+                        {renderTherapistInfo(appointment)}
+                        <p>
+                          <strong>Services:</strong>{" "}
+                          {Array.isArray(appointment.services_details)
+                            ? appointment.services_details
+                                .map((s) => s.name)
+                                .join(", ")
+                            : "N/A"}
+                        </p>
+                        <p>
+                          <strong>Status:</strong> {status || "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="appointment-actions">
+                        {status === "driver_confirmed" && (
+                          <LoadingButton
+                            onClick={() =>
+                              handleStartAppointment(appointment.id)
+                            }
+                            loading={buttonLoading[`start_${appointment.id}`]}
+                            className="start-button"
+                          >
+                            Start Appointment
+                          </LoadingButton>
+                        )}
+
+                        {status === "awaiting_payment" && (
+                          <LoadingButton
+                            onClick={() =>
+                              handlePaymentVerification(appointment)
+                            }
+                            loading={buttonLoading[`payment_${appointment.id}`]}
+                            className="payment-button"
+                          >
+                            Verify Payment
+                          </LoadingButton>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {!isVirtualized &&
+              paginatedAppointments.map((appointment) => {
                 if (!appointment || !appointment.id) return null;
 
                 const urgencyLevel = getUrgencyLevel(appointment);
@@ -2143,13 +2347,6 @@ const OperatorDashboard = () => {
                   <div
                     key={appointment.id}
                     className={`appointment-card ${urgencyLevel}`}
-                    style={{
-                      position: "absolute",
-                      top: appointment.offsetY || 0,
-                      left: 0,
-                      right: 0,
-                      height: 200,
-                    }}
                   >
                     <div className="appointment-header">
                       <h3>
@@ -2198,7 +2395,7 @@ const OperatorDashboard = () => {
                               .map((s) => s.name)
                               .join(", ")
                           : "N/A"}
-                      </p>
+                      </p>{" "}
                       <p>
                         <strong>Status:</strong> {status || "N/A"}
                       </p>
@@ -2228,99 +2425,8 @@ const OperatorDashboard = () => {
                   </div>
                 );
               })}
-            </div>
-          )}
-
-          {!isVirtualized &&
-            paginatedAppointments.map((appointment) => {
-              if (!appointment || !appointment.id) return null;
-
-              const urgencyLevel = getUrgencyLevel(appointment);
-              const urgencyBadge = getUrgencyBadge(urgencyLevel);
-              const status = appointment.status || "";
-
-              return (
-                <div
-                  key={appointment.id}
-                  className={`appointment-card ${urgencyLevel}`}
-                >
-                  <div className="appointment-header">
-                    <h3>
-                      Appointment #{appointment.id} -{" "}
-                      {appointment.client_details?.first_name || "Unknown"}{" "}
-                      {appointment.client_details?.last_name || ""}
-                    </h3>
-                    <div className="status-badges">
-                      <span
-                        className={`status-badge ${getStatusBadgeClass(
-                          status
-                        )}`}
-                      >
-                        {getStatusDisplayText(status)}
-                      </span>
-                      <span
-                        className={`urgency-badge ${
-                          urgencyBadge?.className || ""
-                        }`}
-                      >
-                        {urgencyBadge?.icon || ""} {urgencyBadge?.label || ""}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="appointment-details">
-                    <p>
-                      <strong>Date:</strong>{" "}
-                      {appointment.date
-                        ? new Date(appointment.date).toLocaleDateString()
-                        : "N/A"}
-                    </p>
-                    <p>
-                      <strong>Time:</strong> {appointment.start_time || "N/A"} -{" "}
-                      {appointment.end_time || "N/A"}
-                    </p>
-                    <p>
-                      <strong>Location:</strong> {appointment.location || "N/A"}
-                    </p>
-                    {renderTherapistInfo(appointment)}
-                    <p>
-                      <strong>Services:</strong>{" "}
-                      {Array.isArray(appointment.services_details)
-                        ? appointment.services_details
-                            .map((s) => s.name)
-                            .join(", ")
-                        : "N/A"}
-                    </p>{" "}
-                    <p>
-                      <strong>Status:</strong> {status || "N/A"}
-                    </p>
-                  </div>
-
-                  <div className="appointment-actions">
-                    {status === "driver_confirmed" && (
-                      <LoadingButton
-                        onClick={() => handleStartAppointment(appointment.id)}
-                        loading={buttonLoading[`start_${appointment.id}`]}
-                        className="start-button"
-                      >
-                        Start Appointment
-                      </LoadingButton>
-                    )}
-
-                    {status === "awaiting_payment" && (
-                      <LoadingButton
-                        onClick={() => handlePaymentVerification(appointment)}
-                        loading={buttonLoading[`payment_${appointment.id}`]}
-                        className="payment-button"
-                      >
-                        Verify Payment
-                      </LoadingButton>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-        </div>
+          </div>
+        )}
 
         {/* Pagination Controls - Only show if not virtualized */}
         {!isVirtualized && (
@@ -2616,13 +2722,68 @@ const OperatorDashboard = () => {
           }
           pulse={true}
           fadeIn={true}
-        />
+        />{" "}
         {/* OPTIMIZED: Simplified error handling */}
         {error && !hasData && (
           <div className="error-message">
             {typeof error === "object"
               ? error.message || error.error || JSON.stringify(error)
               : error}
+          </div>
+        )}
+        {/* ✅ ROBUST FILTERING: Display validation warnings and errors */}
+        {validationWarnings.length > 0 && (
+          <div
+            className="validation-warnings"
+            style={{
+              backgroundColor: "#fff3cd",
+              border: "1px solid #ffeaa7",
+              borderRadius: "4px",
+              padding: "12px",
+              margin: "10px 0",
+              color: "#856404",
+            }}
+          >
+            <h5 style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
+              ⚠️ Parameter Validation Issues:
+            </h5>
+            <ul style={{ margin: "0", paddingLeft: "20px" }}>
+              {validationWarnings.map((warning, index) => (
+                <li key={index} style={{ fontSize: "13px" }}>
+                  {warning}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {filteringErrors.hasErrors && (
+          <div
+            className="filtering-errors"
+            style={{
+              backgroundColor: "#f8d7da",
+              border: "1px solid #f5c6cb",
+              borderRadius: "4px",
+              padding: "12px",
+              margin: "10px 0",
+              color: "#721c24",
+            }}
+          >
+            <h5 style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
+              ❌ Filtering System Error:
+            </h5>
+            <p style={{ margin: "0", fontSize: "13px" }}>
+              {filteringErrors.errorMessage}
+            </p>
+            <p
+              style={{
+                margin: "8px 0 0 0",
+                fontSize: "12px",
+                fontStyle: "italic",
+              }}
+            >
+              Using fallback data. Please refresh the page or contact support if
+              this persists.
+            </p>
           </div>
         )}{" "}
         {/* Statistics Dashboard */}
