@@ -10,18 +10,22 @@ import { useMemo } from "react";
 import { useDispatch } from "react-redux";
 import {
   completeAppointment,
+  completeReturnJourney,
+  confirmPickup,
   fetchAppointments,
   fetchNotifications,
   fetchStaffMembers,
   fetchTodayAppointments,
   fetchUpcomingAppointments,
   rejectAppointment,
+  rejectPickup,
   requestPickup,
+  startJourney,
   startSession,
   therapistConfirm,
   updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
-import { queryKeys, queryUtils } from "../lib/queryClient";
+import { queryClientUtils, queryKeys, queryUtils } from "../lib/queryClient";
 
 /**
  * Enhanced Dashboard Data Hook - Replaces useOptimizedDashboardData
@@ -34,7 +38,7 @@ export const useEnhancedDashboardData = (userRole, userId) => {
 
   // Core appointment queries with different refresh intervals
   const appointmentsQuery = useQuery({
-    queryKey: queryKeys.appointments,
+    queryKey: queryKeys.appointments.list(),
     queryFn: () => dispatch(fetchAppointments()).unwrap(),
     staleTime: queryUtils.staleTime.MEDIUM,
     refetchInterval: 5 * 60 * 1000, // 5 minutes
@@ -42,7 +46,7 @@ export const useEnhancedDashboardData = (userRole, userId) => {
   });
 
   const todayQuery = useQuery({
-    queryKey: queryKeys.todayAppointments,
+    queryKey: queryKeys.appointments.today(),
     queryFn: () => dispatch(fetchTodayAppointments()).unwrap(),
     staleTime: queryUtils.staleTime.SHORT,
     refetchInterval: 2 * 60 * 1000, // 2 minutes for today's data
@@ -50,7 +54,7 @@ export const useEnhancedDashboardData = (userRole, userId) => {
   });
 
   const upcomingQuery = useQuery({
-    queryKey: queryKeys.upcomingAppointments,
+    queryKey: queryKeys.appointments.upcoming(),
     queryFn: () => dispatch(fetchUpcomingAppointments()).unwrap(),
     staleTime: queryUtils.staleTime.MEDIUM,
     refetchInterval: 10 * 60 * 1000, // 10 minutes for upcoming
@@ -58,7 +62,7 @@ export const useEnhancedDashboardData = (userRole, userId) => {
   });
 
   const notificationsQuery = useQuery({
-    queryKey: queryKeys.notifications,
+    queryKey: queryKeys.notifications.list(),
     queryFn: () => dispatch(fetchNotifications()).unwrap(),
     staleTime: queryUtils.staleTime.SHORT,
     refetchInterval: 30 * 1000, // 30 seconds for notifications
@@ -66,7 +70,7 @@ export const useEnhancedDashboardData = (userRole, userId) => {
   });
 
   const staffQuery = useQuery({
-    queryKey: queryKeys.staffMembers,
+    queryKey: queryKeys.staff.list(),
     queryFn: () => dispatch(fetchStaffMembers()).unwrap(),
     staleTime: queryUtils.staleTime.LONG,
     refetchInterval: 15 * 60 * 1000, // 15 minutes for staff data
@@ -203,10 +207,10 @@ export const useDashboardMutations = () => {
     },
     onMutate: async (appointmentId) => {
       // Cancel ongoing queries
-      await queryClient.cancelQueries({ queryKey: queryKeys.appointments });
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
 
       // Optimistically update appointment status
-      queryClient.setQueryData(queryKeys.appointments, (old) =>
+      queryClient.setQueryData(queryKeys.appointments.list(), (old) =>
         old?.map((apt) =>
           apt.id === appointmentId
             ? { ...apt, status: "therapist_confirmed" }
@@ -215,11 +219,14 @@ export const useDashboardMutations = () => {
       );
     },
     onSuccess: () => {
-      queryUtils.invalidateAppointments();
+      queryClientUtils.invalidateAppointments();
     },
     onError: (err, appointmentId, context) => {
       // Rollback optimistic update on error
-      queryClient.setQueryData(queryKeys.appointments, context?.previousData);
+      queryClient.setQueryData(
+        queryKeys.appointments.list(),
+        context?.previousData
+      );
     },
   });
 
@@ -233,7 +240,7 @@ export const useDashboardMutations = () => {
       return result.payload;
     },
     onSuccess: () => {
-      queryUtils.invalidateAppointments();
+      queryClientUtils.invalidateAppointments();
     },
   });
 
@@ -251,15 +258,15 @@ export const useDashboardMutations = () => {
       return result.payload;
     },
     onMutate: async ({ appointmentId, status }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.appointments });
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
 
       // Optimistic status update
-      queryClient.setQueryData(queryKeys.appointments, (old) =>
+      queryClient.setQueryData(queryKeys.appointments.list(), (old) =>
         old?.map((apt) => (apt.id === appointmentId ? { ...apt, status } : apt))
       );
     },
     onSuccess: () => {
-      queryUtils.invalidateAppointments();
+      queryClientUtils.invalidateAppointments();
     },
   });
 
@@ -271,7 +278,7 @@ export const useDashboardMutations = () => {
       return result.payload;
     },
     onSuccess: () => {
-      queryUtils.invalidateAppointments();
+      queryClientUtils.invalidateAppointments();
     },
   });
 
@@ -283,7 +290,7 @@ export const useDashboardMutations = () => {
       return result.payload;
     },
     onSuccess: () => {
-      queryUtils.invalidateAppointments();
+      queryClientUtils.invalidateAppointments();
     },
   });
 
@@ -294,18 +301,99 @@ export const useDashboardMutations = () => {
       return result.payload;
     },
     onSuccess: () => {
-      queryUtils.invalidateAppointments();
+      queryClientUtils.invalidateAppointments();
+    },
+  });
+
+  // Driver-specific mutations
+  const confirmPickupMutation = useMutation({
+    mutationFn: async (appointmentId) => {
+      const result = await dispatch(confirmPickup(appointmentId));
+      if (result.error) throw new Error(result.error.message);
+      return result.payload;
+    },
+    onMutate: async (appointmentId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.setQueryData(queryKeys.appointments.list(), (old) =>
+        old?.map((apt) =>
+          apt.id === appointmentId
+            ? { ...apt, status: "pickup_confirmed" }
+            : apt
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClientUtils.invalidateAppointments();
+    },
+  });
+
+  const rejectPickupMutation = useMutation({
+    mutationFn: async ({ appointmentId, reason }) => {
+      const result = await dispatch(rejectPickup({ appointmentId, reason }));
+      if (result.error) throw new Error(result.error.message);
+      return result.payload;
+    },
+    onSuccess: () => {
+      queryClientUtils.invalidateAppointments();
+    },
+  });
+
+  const startJourneyMutation = useMutation({
+    mutationFn: async (appointmentId) => {
+      const result = await dispatch(startJourney(appointmentId));
+      if (result.error) throw new Error(result.error.message);
+      return result.payload;
+    },
+    onMutate: async (appointmentId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.setQueryData(queryKeys.appointments.list(), (old) =>
+        old?.map((apt) =>
+          apt.id === appointmentId ? { ...apt, status: "journey_started" } : apt
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClientUtils.invalidateAppointments();
+    },
+  });
+
+  const completeReturnJourneyMutation = useMutation({
+    mutationFn: async (appointmentId) => {
+      const result = await dispatch(completeReturnJourney(appointmentId));
+      if (result.error) throw new Error(result.error.message);
+      return result.payload;
+    },
+    onMutate: async (appointmentId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.setQueryData(queryKeys.appointments.list(), (old) =>
+        old?.map((apt) =>
+          apt.id === appointmentId
+            ? { ...apt, status: "return_journey_completed" }
+            : apt
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClientUtils.invalidateAppointments();
     },
   });
 
   return {
-    // Mutations
+    // Therapist mutations
     confirmAppointment: confirmAppointmentMutation,
     rejectAppointment: rejectAppointmentMutation,
+
+    // General mutations
     updateStatus: updateStatusMutation,
     requestPickup: requestPickupMutation,
     startSession: startSessionMutation,
     completeSession: completeSessionMutation,
+
+    // Driver-specific mutations
+    confirmPickup: confirmPickupMutation,
+    rejectPickup: rejectPickupMutation,
+    startJourney: startJourneyMutation,
+    completeReturnJourney: completeReturnJourneyMutation,
 
     // Loading states
     isConfirming: confirmAppointmentMutation.isPending,
@@ -315,12 +403,24 @@ export const useDashboardMutations = () => {
     isStartingSession: startSessionMutation.isPending,
     isCompletingSession: completeSessionMutation.isPending,
 
+    // Driver loading states
+    isConfirmingPickup: confirmPickupMutation.isPending,
+    isRejectingPickup: rejectPickupMutation.isPending,
+    isStartingJourney: startJourneyMutation.isPending,
+    isCompletingReturn: completeReturnJourneyMutation.isPending,
+
     // Error states
     confirmError: confirmAppointmentMutation.error,
     rejectError: rejectAppointmentMutation.error,
     statusUpdateError: updateStatusMutation.error,
     pickupError: requestPickupMutation.error,
     sessionError: startSessionMutation.error || completeSessionMutation.error,
+
+    // Driver error states
+    pickupConfirmError: confirmPickupMutation.error,
+    pickupRejectError: rejectPickupMutation.error,
+    journeyError: startJourneyMutation.error,
+    returnJourneyError: completeReturnJourneyMutation.error,
   };
 };
 

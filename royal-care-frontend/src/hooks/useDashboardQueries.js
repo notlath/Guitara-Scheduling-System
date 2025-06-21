@@ -21,7 +21,7 @@ const API_URL =
 // Direct API calls (bypassing Redux for TanStack Query)
 const fetchAppointmentsAPI = async () => {
   console.log("🚀 TanStack Query: fetchAppointmentsAPI called!");
-  
+
   const token = localStorage.getItem("knoxToken");
   if (!token) {
     console.error("❌ No authentication token found");
@@ -49,12 +49,15 @@ const fetchAppointmentsAPI = async () => {
     });
 
     console.log("📦 API appointments response (full):", response.data);
-    
+
     if (Array.isArray(response.data)) {
       console.log("✅ Returning appointments array:", response.data.length);
       return response.data;
     } else if (response.data && Array.isArray(response.data.results)) {
-      console.log("✅ Returning appointments.results array:", response.data.results.length);
+      console.log(
+        "✅ Returning appointments.results array:",
+        response.data.results.length
+      );
       return response.data.results;
     } else {
       console.warn("⚠️ API response is not an array, returning empty array");
@@ -93,7 +96,7 @@ const fetchTodayAppointmentsAPI = async () => {
 
 const fetchNotificationsAPI = async () => {
   console.log("🚀 TanStack Query: fetchNotificationsAPI called!");
-  
+
   const token = localStorage.getItem("knoxToken");
   if (!token) {
     console.error("❌ No authentication token found for notifications");
@@ -194,7 +197,7 @@ const staleTime = {
  */
 export const useOperatorDashboardData = () => {
   console.log("🚀 useOperatorDashboardData hook called!");
-  
+
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
 
@@ -232,7 +235,11 @@ export const useOperatorDashboardData = () => {
   });
 
   // If query is not running, force it
-  if (!appointmentsQuery.isFetching && !appointmentsQuery.isLoading && appointmentsQuery.data?.length === 0) {
+  if (
+    !appointmentsQuery.isFetching &&
+    !appointmentsQuery.isLoading &&
+    appointmentsQuery.data?.length === 0
+  ) {
     console.log("🚨 Query not running, manually triggering...");
     appointmentsQuery.refetch();
   }
@@ -546,7 +553,20 @@ export const useTherapistDashboardData = (therapistId) => {
 export const useDriverDashboardData = (driverId) => {
   const queryClient = useQueryClient();
 
-  // Today's appointments for driver
+  // All appointments for driver
+  const appointmentsQuery = useQuery({
+    queryKey: queryKeys.appointments.byDriver(driverId, "all"),
+    queryFn: async () => {
+      const data = await fetchAppointmentsAPI();
+      return data?.filter((apt) => apt.driver === driverId) || [];
+    },
+    staleTime: staleTime.MEDIUM,
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    retry: 2,
+  });
+
+  // Today's appointments for driver (more frequent updates)
   const todayAppointmentsQuery = useQuery({
     queryKey: queryKeys.appointments.byDriver(driverId, "today"),
     queryFn: async () => {
@@ -559,18 +579,77 @@ export const useDriverDashboardData = (driverId) => {
     retry: 2,
   });
 
+  // Upcoming appointments for driver
+  const upcomingAppointmentsQuery = useQuery({
+    queryKey: queryKeys.appointments.byDriver(driverId, "upcoming"),
+    queryFn: async () => {
+      const today = new Date().toISOString().split("T")[0];
+      const data = await fetchAppointmentsAPI();
+      return (
+        data?.filter((apt) => apt.driver === driverId && apt.date > today) || []
+      );
+    },
+    staleTime: staleTime.LONG,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
+  });
+
   const forceRefresh = useCallback(async () => {
-    await queryClient.invalidateQueries({
-      queryKey: queryKeys.appointments.byDriver(driverId),
-    });
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byDriver(driverId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.all,
+      }),
+    ]);
   }, [queryClient, driverId]);
 
+  // Computed states
+  const isLoading =
+    appointmentsQuery.isLoading || todayAppointmentsQuery.isLoading;
+  const isRefetching =
+    appointmentsQuery.isRefetching || todayAppointmentsQuery.isRefetching;
+  const error = appointmentsQuery.error || todayAppointmentsQuery.error;
+  const hasData =
+    appointmentsQuery.data?.length > 0 ||
+    todayAppointmentsQuery.data?.length > 0;
+
+  console.log("🚗 useDriverDashboardData return:", {
+    driverId,
+    appointments: appointmentsQuery.data?.length || 0,
+    todayAppointments: todayAppointmentsQuery.data?.length || 0,
+    upcomingAppointments: upcomingAppointmentsQuery.data?.length || 0,
+    isLoading,
+    hasData,
+    dataSource: "tanstack-query",
+  });
+
   return {
+    // Primary data (exact same interface as legacy hook)
+    appointments: appointmentsQuery.data || [],
     todayAppointments: todayAppointmentsQuery.data || [],
-    loading: todayAppointmentsQuery.isLoading,
-    error: todayAppointmentsQuery.error,
+    upcomingAppointments: upcomingAppointmentsQuery.data || [],
+
+    // Loading and error states
+    isLoading,
+    loading: isLoading, // Legacy alias
+    isRefetching,
+    error,
+    hasData,
+
+    // Actions
+    refetch: useCallback(async () => {
+      await Promise.all([
+        appointmentsQuery.refetch(),
+        todayAppointmentsQuery.refetch(),
+        upcomingAppointmentsQuery.refetch(),
+      ]);
+    }, [appointmentsQuery, todayAppointmentsQuery, upcomingAppointmentsQuery]),
     forceRefresh,
-    hasData: todayAppointmentsQuery.data?.length > 0,
+
+    // Debug info
+    dataSource: "tanstack-query",
   };
 };
 

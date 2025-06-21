@@ -33,12 +33,12 @@ import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
-import TanStackQueryDebugger from "./TanStackQueryDebugger";
 import {
   useAttendanceActions,
   useAttendanceRecords,
 } from "./contexts/AttendanceContext";
 import PerformanceMonitor from "./PerformanceMonitor";
+import TanStackQueryDebugger from "./TanStackQueryDebugger";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
@@ -2683,9 +2683,9 @@ const OperatorDashboard = () => {
   // Render the tab switcher at the top of the dashboard
   return (
     <PageLayout>
-      {/* TanStack Query Debugger - Remove this after debugging */}
-      <TanStackQueryDebugger />
-      
+      {/* TanStack Query Debugger - Remove this after debugging
+      <TanStackQueryDebugger /> */}
+
       <div className={`operator-dashboard`}>
         {" "}
         <LayoutRow title="Operator Dashboard">

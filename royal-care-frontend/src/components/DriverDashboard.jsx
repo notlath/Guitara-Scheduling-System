@@ -1,19 +1,11 @@
 import { useEffect, useState } from "react";
-import { shallowEqual, useDispatch } from "react-redux";
+import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
-import {
-  completeReturnJourney,
-  confirmPickup, // Added for completing return journey
-  rejectAppointment, // Added for pickup confirmation
-  rejectPickup, // General appointment rejection
-  startJourney,
-  updateAppointmentStatus, // Used for general status updates, including confirmations
-} from "../features/scheduling/schedulingSlice";
-// OPTIMIZED: Replace old data hooks with optimized versions
-import { useOptimizedDashboardData } from "../hooks/useOptimizedData";
+// TANSTACK QUERY: Replace optimized data manager with TanStack Query
+import { useDriverDashboardData } from "../hooks/useDashboardQueries";
+import { useDashboardMutations } from "../hooks/useEnhancedDashboardData";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
-import optimizedDataManager from "../services/optimizedDataManager";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
@@ -22,7 +14,6 @@ import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
-import { useOptimizedSelector } from "../hooks/usePerformanceOptimization";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css"; // Reuse therapist styles for consistency
 import AttendanceComponent from "./AttendanceComponent";
@@ -137,10 +128,8 @@ const DriverDashboard = () => {
     const actionKey = `confirm-pickup-${appointmentId}`;
     setActionLoading(actionKey, true);
     try {
-      await dispatch(confirmPickup(appointmentId)).unwrap();
+      await confirmPickup.mutateAsync(appointmentId);
       console.log(`Pickup confirmed for appointment ${appointmentId}`);
-      // ✅ Only refresh specific data, not everything
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
     } catch (error) {
       console.error("Failed to confirm pickup:", error);
       alert(`Failed to confirm pickup: ${error.message || "Unknown error"}`);
@@ -148,31 +137,40 @@ const DriverDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-
   const handleRejectPickup = async (appointmentId, reason) => {
     const actionKey = `reject-pickup-${appointmentId}`;
     setActionLoading(actionKey, true);
     try {
-      await dispatch(rejectPickup({ appointmentId, reason })).unwrap();
-      // Optionally, add success notification or UI update here
+      await rejectPickup.mutateAsync({ appointmentId, reason });
       console.log(`Pickup rejected for appointment ${appointmentId}`);
     } catch (error) {
       console.error("Failed to reject pickup:", error);
-      // Optionally, add error notification here
+      alert(`Failed to reject pickup: ${error.message || "Unknown error"}`);
     } finally {
       setActionLoading(actionKey, false);
     }
   };
-  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
-  // OPTIMIZED: Use optimized dashboard data hook
+
+  const user = useSelector((state) => state.auth.user, shallowEqual);
+  // TANSTACK QUERY: Replace optimized data manager with TanStack Query
   const {
     appointments: myAppointments,
     todayAppointments: myTodayAppointments,
     upcomingAppointments: myUpcomingAppointments,
-    loading,
+    isLoading: loading,
     error,
+    refetch,
     hasData,
-  } = useOptimizedDashboardData("driverDashboard", "driver");
+  } = useDriverDashboardData(user?.id);
+
+  // TANSTACK QUERY: Driver-specific mutations with optimistic updates
+  const {
+    confirmPickup,
+    rejectPickup,
+    startJourney,
+    completeReturnJourney,
+    updateStatus,
+  } = useDashboardMutations();
 
   // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
   // The optimized data manager handles background refreshes automatically
@@ -215,8 +213,7 @@ const DriverDashboard = () => {
     return () => {
       clearInterval(timer);
     };
-  }, [myAppointments]);
-  // Listen for urgent backup requests
+  }, [myAppointments]); // Listen for urgent backup requests
   useEffect(() => {
     const handleUrgentBackupRequest = async (data) => {
       // Show urgent notification to driver
@@ -231,13 +228,8 @@ const DriverDashboard = () => {
             `${message}\n\nWould you like to check the operator dashboard?`
           )
         ) {
-          // 🔥 FIXED: Use centralized data manager instead of direct API calls
-          // For urgent requests, force immediate refresh via data manager
-          // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-          await optimizedDataManager.forceRefresh([
-            "appointments",
-            "todayAppointments",
-          ]);
+          // TANSTACK QUERY: Use refetch instead of optimizedDataManager
+          await refetch();
         }
       }
     };
@@ -251,7 +243,7 @@ const DriverDashboard = () => {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [user]);
+  }, [user, refetch]);
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");
@@ -259,21 +251,14 @@ const DriverDashboard = () => {
     dispatch(logout());
     navigate("/");
   };
-
-  // Handle appointment status changes with optimized refresh and optimistic updates
   const handleAcceptAppointment = async (appointmentId) => {
     const actionKey = `accept_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      // Assuming 'driver_confirmed' is the status after driver accepts initial assignment
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "driver_confirmed",
-        })
-      ).unwrap();
-      // ✅ Only refresh today's appointments
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
+      await updateStatus.mutateAsync({
+        appointmentId,
+        status: "driver_confirmed",
+      });
     } catch (error) {
       // More user-friendly error message
       if (
@@ -290,22 +275,13 @@ const DriverDashboard = () => {
   };
 
   const handleDriverConfirm = async (appointmentId) => {
-    // This seems to be the same as accept? Or a later confirmation.
-    // If it's for confirming readiness before operator starts,
-    // this might also be an updateAppointmentStatus call.
-    // For now, let's assume it's similar to accept for initial flow.
     const actionKey = `confirm_${appointmentId}`;
     try {
-      setActionLoading(actionKey, true); // This status might be 'driver_ready' or similar, depending on backend states
-      // Using 'driver_confirmed' as a placeholder if it's the main confirmation step by driver
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "driver_confirmed",
-        })
-      ).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
+      setActionLoading(actionKey, true);
+      await updateStatus.mutateAsync({
+        appointmentId,
+        status: "driver_confirmed",
+      });
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
@@ -313,13 +289,12 @@ const DriverDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
+
   const handleStartJourney = async (appointmentId) => {
     const actionKey = `journey_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(startJourney(appointmentId)).unwrap();
-      // ✅ Only refresh today's appointments, not everything
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
+      await startJourney.mutateAsync(appointmentId);
     } catch (error) {
       console.error("Failed to start journey:", error);
       alert("Failed to start journey. Please try again.");
@@ -327,19 +302,15 @@ const DriverDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
+
   const handleMarkArrived = async (appointmentId) => {
     const actionKey = `arrived_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      // Use updateAppointmentStatus instead of markArrived to avoid endpoint issues
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "arrived",
-        })
-      ).unwrap();
-      // ✅ Only refresh today's appointments
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
+      await updateStatus.mutateAsync({
+        appointmentId,
+        status: "arrived",
+      });
     } catch (error) {
       console.error("Failed to mark arrived:", error);
       alert("Failed to mark arrived. Please try again.");
@@ -347,18 +318,16 @@ const DriverDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-
   const _handleStartDriving = async (appointmentId) => {
+    const actionKey = `start_driving_${appointmentId}`;
     try {
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "driving_to_location",
-        })
-      ).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
+      setActionLoading(actionKey, true);
+      await updateStatus.mutateAsync({
+        appointmentId,
+        status: "driving_to_location",
+      });
     } catch (error) {
+      console.error("Failed to start driving:", error);
       if (
         error?.message?.includes("401") ||
         error?.message?.includes("Authentication")
@@ -367,20 +336,21 @@ const DriverDashboard = () => {
       } else {
         alert("Failed to start drive. Please try again.");
       }
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
   const handleArriveAtLocation = async (appointmentId) => {
+    const actionKey = `arrive_location_${appointmentId}`;
     try {
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "at_location",
-        })
-      ).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
+      setActionLoading(actionKey, true);
+      await updateStatus.mutateAsync({
+        appointmentId,
+        status: "at_location",
+      });
     } catch (error) {
+      console.error("Failed to mark arrival:", error);
       if (
         error?.message?.includes("401") ||
         error?.message?.includes("Authentication")
@@ -389,20 +359,21 @@ const DriverDashboard = () => {
       } else {
         alert("Failed to mark arrival. Please try again.");
       }
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
   const _handleCompleteTransport = async (appointmentId) => {
     if (window.confirm("Mark transport as completed?")) {
+      const actionKey = `complete_transport_${appointmentId}`;
       try {
-        await dispatch(
-          updateAppointmentStatus({
-            id: appointmentId,
-            status: "transport_completed",
-          })
-        ).unwrap();
-        // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-        await optimizedDataManager.forceRefresh(["todayAppointments"]);
+        setActionLoading(actionKey, true);
+        await updateStatus.mutateAsync({
+          appointmentId,
+          status: "transport_completed",
+        });
       } catch (error) {
+        console.error("Failed to complete transport:", error);
         if (
           error?.message?.includes("401") ||
           error?.message?.includes("Authentication")
@@ -411,10 +382,11 @@ const DriverDashboard = () => {
         } else {
           alert("Failed to complete transport. Please try again.");
         }
+      } finally {
+        setActionLoading(actionKey, false);
       }
     }
-  };
-  // Enhanced drop-off handler for FIFO coordination
+  }; // Enhanced drop-off handler for FIFO coordination
   const handleDropOffComplete = async (appointmentId) => {
     const appointment = myAppointments.find((apt) => apt.id === appointmentId);
     if (!appointment) return;
@@ -422,19 +394,15 @@ const DriverDashboard = () => {
     const actionKey = `dropoff_complete_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "dropped_off",
-          notes: `Transport completed - dropped off at ${
-            appointment.location
-          } at ${new Date().toISOString()}`,
-        })
-      ).unwrap();
-
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
+      await updateStatus.mutateAsync({
+        appointmentId,
+        status: "dropped_off",
+        notes: `Transport completed - dropped off at ${
+          appointment.location
+        } at ${new Date().toISOString()}`,
+      });
     } catch (error) {
+      console.error("Failed to mark drop-off complete:", error);
       if (
         error?.message?.includes("401") ||
         error?.message?.includes("Authentication")
@@ -452,22 +420,17 @@ const DriverDashboard = () => {
     try {
       setActionLoading(actionKey, true);
 
-      // Drop off therapist - use the standard status update
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "dropped_off",
-          notes: `Therapist dropped off at client location at ${new Date().toISOString()}. Transport completed for driver.`,
-        })
-      ).unwrap();
+      // Drop off therapist - use the TanStack Query mutation
+      await updateStatus.mutateAsync({
+        appointmentId,
+        status: "dropped_off",
+        notes: `Therapist dropped off at client location at ${new Date().toISOString()}. Transport completed for driver.`,
+      });
 
       // Show success message indicating transport is complete
       alert(
         "Transport completed successfully! Therapist dropped off. You are now available for new assignments."
       );
-
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
     } catch (error) {
       console.error("Failed to mark drop off:", error);
       alert("Failed to complete transport. Please try again.");
@@ -480,9 +443,7 @@ const DriverDashboard = () => {
     const actionKey = `complete_return_journey_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(completeReturnJourney(appointmentId)).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
+      await completeReturnJourney.mutateAsync(appointmentId);
       alert(
         "Return journey completed successfully! You are now available for new assignments."
       );
@@ -560,57 +521,55 @@ const DriverDashboard = () => {
   const getConfidenceLevel = (routeKey) => {
     return TRAVEL_TIME_MATRIX[routeKey] ? "high" : "medium";
   };
-
   // Group transport handlers
   const _handleStartGroupPickup = async (appointmentId) => {
+    const actionKey = `start_group_pickup_${appointmentId}`;
     try {
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "picking_up_therapists",
-          notes: `Started group pickup at ${new Date().toISOString()}`,
-        })
-      ).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
+      setActionLoading(actionKey, true);
+      await updateStatus.mutateAsync({
+        appointmentId,
+        status: "picking_up_therapists",
+        notes: `Started group pickup at ${new Date().toISOString()}`,
+      });
     } catch (error) {
       console.error("Error starting group pickup:", error);
       alert("Failed to start group pickup. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
   const handleAllTherapistsPickedUp = async (appointmentId) => {
+    const actionKey = `all_therapists_picked_${appointmentId}`;
     try {
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "transporting_group",
-          notes: `All therapists picked up at ${new Date().toISOString()}`,
-        })
-      ).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
+      setActionLoading(actionKey, true);
+      await updateStatus.mutateAsync({
+        appointmentId,
+        status: "transporting_group",
+        notes: `All therapists picked up at ${new Date().toISOString()}`,
+      });
     } catch (error) {
       console.error("Error marking all therapists picked up:", error);
       alert("Failed to mark all therapists picked up. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
-  };
-  // Pickup assignment handler
+  }; // Pickup assignment handler
   const _handlePickupAssignment = async (pickupData) => {
+    const actionKey = `pickup_assignment_${pickupData.appointment_id}`;
     try {
-      await dispatch(
-        updateAppointmentStatus({
-          id: pickupData.appointment_id,
-          status: "driver_assigned_pickup",
-          driver: user.id,
-          notes: `Driver assigned for pickup, estimated arrival: ${pickupData.estimated_arrival}`,
-        })
-      ).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
+      setActionLoading(actionKey, true);
+      await updateStatus.mutateAsync({
+        appointmentId: pickupData.appointment_id,
+        status: "driver_assigned_pickup",
+        driver: user.id,
+        notes: `Driver assigned for pickup, estimated arrival: ${pickupData.estimated_arrival}`,
+      });
     } catch (error) {
       console.error("Failed to accept pickup assignment:", error);
       alert("Failed to accept pickup assignment. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
@@ -619,16 +578,16 @@ const DriverDashboard = () => {
     const appointment = myAppointments.find((apt) => apt.id === appointmentId);
     if (!appointment) return;
 
+    const actionKey = `request_pickup_${appointmentId}`;
     try {
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "pickup_requested",
-          notes: `Pickup requested at ${
-            appointment.location
-          } on ${new Date().toISOString()}`,
-        })
-      ).unwrap();
+      setActionLoading(actionKey, true);
+      await updateStatus.mutateAsync({
+        appointmentId,
+        status: "pickup_requested",
+        notes: `Pickup requested at ${
+          appointment.location
+        } on ${new Date().toISOString()}`,
+      });
 
       // Broadcast pickup request to operators
       syncService.broadcast("pickup_requested", {
@@ -640,14 +599,14 @@ const DriverDashboard = () => {
         therapist_name: `${user.first_name} ${user.last_name}`,
       });
 
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh(["todayAppointments"]);
       alert(
         "Pickup request sent! You'll be notified when a driver is assigned."
       );
     } catch (error) {
       console.error("Failed to request pickup:", error);
       alert("Failed to request pickup. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
@@ -693,20 +652,20 @@ const DriverDashboard = () => {
     const isPickupRejection =
       appointment && appointment.status === "driver_assigned_pickup";
 
+    const actionKey = `reject_${appointmentId}`;
     try {
+      setActionLoading(actionKey, true);
+
       if (isPickupRejection) {
         await handleRejectPickup(appointmentId, cleanReason); // Use the new pickup-specific handler
       } else {
-        await dispatch(
-          rejectAppointment({
-            // General appointment rejection
-            id: appointmentId,
-            rejectionReason: cleanReason,
-          })
-        ).unwrap();
+        // Use TanStack Query mutation for general appointment rejection
+        await rejectPickup.mutateAsync({
+          appointmentId,
+          rejectionReason: cleanReason,
+        });
       }
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh(["todayAppointments"]); // Silent background refresh after action
+
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
       // Better error message handling with authentication awareness
@@ -734,6 +693,8 @@ const DriverDashboard = () => {
 
       alert(`Failed to reject: ${errorMessage}`);
       setRejectionModal({ isOpen: false, appointmentId: null });
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
@@ -1629,12 +1590,10 @@ const DriverDashboard = () => {
             <div>
               {typeof error === "object"
                 ? error.message || error.error || "An error occurred"
-                : error}
+                : error}{" "}
             </div>{" "}
             <button
-              onClick={() =>
-                optimizedDataManager.forceRefresh(["todayAppointments"])
-              }
+              onClick={() => refetch()}
               className="retry-button"
               style={{
                 marginTop: "10px",
