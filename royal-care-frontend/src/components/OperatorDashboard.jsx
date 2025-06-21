@@ -22,18 +22,18 @@ import {
 import { useVirtualizedPagination } from "../hooks/useVirtualizedPagination";
 import Pagination from "./Pagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
+import { useOperatorDashboardData } from "../hooks/useDashboardQueries";
 import {
   useOptimizedButtonLoading,
   useOptimizedCountdown,
 } from "../hooks/useOperatorPerformance";
-import { useOptimizedDashboardData } from "../hooks/useOptimizedData";
 import { useStableCallback } from "../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
-import optimizedDataManager from "../services/optimizedDataManager";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
+import TanStackQueryDebugger from "./TanStackQueryDebugger";
 import {
   useAttendanceActions,
   useAttendanceRecords,
@@ -190,7 +190,8 @@ const OperatorDashboard = () => {
     loading,
     error,
     hasData,
-  } = useOptimizedDashboardData("operatorDashboard", "operator");
+    forceRefresh,
+  } = useOperatorDashboardData();
 
   // ✅ ROBUST FILTERING: Validate appointments data before processing
   const appointmentsValidation = useMemo(() => {
@@ -635,10 +636,8 @@ const OperatorDashboard = () => {
       rejectedCount: rejectedAppointments.length,
       pendingCount: pendingAppointments.length,
       timestamp: new Date().toISOString(),
-    });
-
-    // Debug: Log first few appointments and their statuses
-    if (appointments && appointments.length > 0) {
+    }); // Debug: Log first few appointments and their statuses
+    if (Array.isArray(appointments) && appointments.length > 0) {
       console.log("📋 Sample appointments data:", {
         totalCount: appointments.length,
         first5Statuses: appointments.slice(0, 5).map((apt) => ({
@@ -834,10 +833,7 @@ const OperatorDashboard = () => {
         })
       ).unwrap();
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
+      await forceRefresh();
       setReviewModal({
         isOpen: false,
         appointmentId: null,
@@ -867,10 +863,7 @@ const OperatorDashboard = () => {
     try {
       await dispatch(autoCancelOverdueAppointments()).unwrap();
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
+      await forceRefresh();
       alert("Successfully processed overdue appointments");
     } catch {
       alert("Failed to process overdue appointments. Please try again.");
@@ -890,10 +883,7 @@ const OperatorDashboard = () => {
         })
       ).unwrap(); // Refresh dashboard data to get updated status
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
+      await forceRefresh();
     } catch (error) {
       console.error("Failed to start appointment:", error);
       alert("Failed to start appointment. Please try again.");
@@ -991,10 +981,7 @@ const OperatorDashboard = () => {
       });
       console.log("🔄 handleMarkPaymentPaid: Refreshing dashboard data");
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
+      await forceRefresh();
 
       alert("Payment marked as received successfully!");
     } catch (error) {
@@ -1221,10 +1208,7 @@ const OperatorDashboard = () => {
           assignment_method: "FIFO",
         });
         // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-        await optimizedDataManager.forceRefresh([
-          "appointments",
-          "todayAppointments",
-        ]);
+        await forceRefresh();
 
         // Show success notification with FIFO details
         alert(
@@ -1240,6 +1224,7 @@ const OperatorDashboard = () => {
       driverAssignment.availableDrivers,
       dispatch,
       setDriverAssignment,
+      forceRefresh,
     ]
   );
   const _handleUrgentPickupRequest = async (therapistId) => {
@@ -2695,10 +2680,12 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   // Render the tab switcher at the top of the dashboard
   return (
     <PageLayout>
+      {/* TanStack Query Debugger - Remove this after debugging */}
+      <TanStackQueryDebugger />
+      
       <div className={`operator-dashboard`}>
         {" "}
         <LayoutRow title="Operator Dashboard">

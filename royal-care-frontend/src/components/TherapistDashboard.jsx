@@ -10,10 +10,8 @@ import {
   startSession,
   therapistConfirm,
 } from "../features/scheduling/schedulingSlice";
-// OPTIMIZED: Replace old data hooks with optimized versions
-import { useOptimizedDashboardData } from "../hooks/useOptimizedData";
-import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
-import optimizedDataManager from "../services/optimizedDataManager";
+// TANSTACK QUERY: Replace optimized hooks with TanStack Query
+import { useEnhancedDashboardData } from "../hooks/useEnhancedDashboardData";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 
@@ -33,9 +31,7 @@ import WebSocketStatus from "./scheduling/WebSocketStatus";
 const TherapistDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  // Set up sync event handlers to update Redux state
-  useSyncEventHandlers();
+  // Remove the sync event handlers - TanStack Query handles real-time updates automatically
 
   // URL search params for view persistence
   const [searchParams, setSearchParams] = useSearchParams();
@@ -63,23 +59,21 @@ const TherapistDashboard = () => {
       [actionKey]: isLoading,
     }));
   };
-  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual); // OPTIMIZED: Use optimized dashboard data hook
+  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
+
+  // TANSTACK QUERY: Replace optimized data manager with TanStack Query
   const {
     appointments: myAppointments,
     todayAppointments: myTodayAppointments,
     upcomingAppointments: myUpcomingAppointments,
-    loading,
+    isLoading: loading,
     error,
-    hasData,
-  } = useOptimizedDashboardData("therapistDashboard", "therapist");
+    refetch,
+    isRefetching,
+  } = useEnhancedDashboardData("therapist", user?.id);
 
-  // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
-  // The optimized data manager handles background refreshes automatically
-
-  // 🔥 REMOVED: Initial data loading is handled by centralized data manager
-
-  // 🔥 REMOVED: View changes don't trigger API calls - data is filtered client-side
-  // The centralized data manager provides all needed data, and filtering happens in the component
+  // TANSTACK QUERY: Automatic background refreshes handled by TanStack Query
+  // No manual refresh logic needed - TanStack Query handles it automatically
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");
@@ -88,18 +82,14 @@ const TherapistDashboard = () => {
     navigate("/");
   };
 
-  // Handle appointment status changes with optimized refresh and optimistic updates
+  // Handle appointment status changes with TanStack Query refetch
   const handleAcceptAppointment = async (appointmentId) => {
     const actionKey = `accept_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
       await dispatch(therapistConfirm(appointmentId)).unwrap();
-      // OPTIMIZED: Use forceRefresh instead of refreshAppointments
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
+      // TANSTACK QUERY: Use refetch instead of optimizedDataManager
+      await refetch();
     } catch (error) {
       // More user-friendly error message
       if (
@@ -136,11 +126,8 @@ const TherapistDashboard = () => {
           rejectionReason: cleanReason,
         })
       ).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
+      // TANSTACK QUERY: Use refetch instead of optimizedDataManager
+      await refetch();
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
       // Better error message handling with authentication awareness

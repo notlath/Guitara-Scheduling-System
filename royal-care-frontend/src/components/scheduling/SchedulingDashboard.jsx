@@ -17,7 +17,12 @@ import TabSwitcher from "../../globals/TabSwitcher";
 import "../../globals/TabSwitcher.css";
 import "../../styles/SchedulingDashboard.css";
 import ErrorBoundary from "../common/ErrorBoundary";
-import AppointmentForm from "./AppointmentForm";
+// Legacy forms (comment out when ready)
+// import AppointmentForm from "./AppointmentForm";
+// import AppointmentForm from "./AppointmentFormMigrated";
+
+// TanStack Query integrated form
+import AppointmentForm from "./AppointmentFormTanStackComplete";
 import AvailabilityManager from "./AvailabilityManager";
 import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
