@@ -1642,6 +1642,208 @@ export const completeReturnJourney = createAsyncThunk(
   }
 );
 
+// PERFORMANCE: New optimized appointment fetching actions for OperatorDashboard
+export const fetchActionableAppointments = createAsyncThunk(
+  "scheduling/fetchActionableAppointments",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      console.error(
+        "❌ fetchActionableAppointments: No authentication token found"
+      );
+      return rejectWithValue("Authentication required");
+    }
+
+    console.log(
+      "🔄 fetchActionableAppointments: Starting optimized API call..."
+    );
+
+    try {
+      // Use the new optimized endpoint from backend
+      const response = await axios.get(
+        `${API_URL}appointments/operator-dashboard/`,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
+
+      console.log(
+        "✅ fetchActionableAppointments: Success, received",
+        response.data?.length || 0,
+        "actionable appointments"
+      );
+
+      return response.data || [];
+    } catch (error) {
+      console.error("❌ fetchActionableAppointments: API Error", {
+        status: error.response?.status,
+        message: error.message,
+        data: error.response?.data,
+      });
+
+      return rejectWithValue(
+        handleApiError(error, "Could not fetch actionable appointments")
+      );
+    }
+  }
+);
+
+export const fetchTodayUrgentAppointments = createAsyncThunk(
+  "scheduling/fetchTodayUrgentAppointments",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue("Authentication required");
+    }
+
+    console.log(
+      "🔄 fetchTodayUrgentAppointments: Starting optimized API call..."
+    );
+
+    try {
+      const response = await axios.get(`${API_URL}appointments/today_urgent/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+
+      console.log(
+        "✅ fetchTodayUrgentAppointments: Success, received",
+        response.data?.length || 0,
+        "urgent appointments"
+      );
+
+      return response.data || [];
+    } catch (error) {
+      console.error("❌ fetchTodayUrgentAppointments: API Error", error);
+      return rejectWithValue(
+        handleApiError(error, "Could not fetch today's urgent appointments")
+      );
+    }
+  }
+);
+
+export const fetchUpcomingWeekOptimized = createAsyncThunk(
+  "scheduling/fetchUpcomingWeekOptimized",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      return rejectWithValue("Authentication required");
+    }
+
+    console.log(
+      "🔄 fetchUpcomingWeekOptimized: Starting optimized API call..."
+    );
+
+    try {
+      const response = await axios.get(
+        `${API_URL}appointments/upcoming_week/`,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
+
+      console.log(
+        "✅ fetchUpcomingWeekOptimized: Success, received",
+        response.data?.length || 0,
+        "upcoming appointments"
+      );
+
+      return response.data || [];
+    } catch (error) {
+      console.error("❌ fetchUpcomingWeekOptimized: API Error", error);
+      return rejectWithValue(
+        handleApiError(error, "Could not fetch upcoming week appointments")
+      );
+    }
+  }
+);
+
+export const fetchTodayAppointmentsOptimized = createAsyncThunk(
+  "scheduling/fetchTodayAppointmentsOptimized",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      console.error(
+        "❌ fetchTodayAppointmentsOptimized: No authentication token found"
+      );
+      return rejectWithValue("Authentication required");
+    }
+
+    console.log(
+      "🔄 fetchTodayAppointmentsOptimized: Starting optimized API call..."
+    );
+
+    try {
+      const response = await axios.get(
+        `${API_URL}optimized/appointments/today_appointments/`,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
+
+      console.log(
+        "✅ fetchTodayAppointmentsOptimized: Success, received",
+        response.data.results?.length || response.data.length,
+        "today appointments"
+      );
+      return response.data.results || response.data;
+    } catch (error) {
+      console.error("❌ fetchTodayAppointmentsOptimized: API Error", {
+        status: error.response?.status,
+        message: error.message,
+        data: error.response?.data,
+      });
+
+      return rejectWithValue(
+        handleApiError(error, "Could not fetch today appointments")
+      );
+    }
+  }
+);
+
+export const fetchDashboardSummary = createAsyncThunk(
+  "scheduling/fetchDashboardSummary",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("knoxToken");
+    if (!token) {
+      console.error("❌ fetchDashboardSummary: No authentication token found");
+      return rejectWithValue("Authentication required");
+    }
+
+    console.log("🔄 fetchDashboardSummary: Starting optimized API call...");
+
+    try {
+      const response = await axios.get(`${API_URL}dashboard/summary/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+
+      console.log(
+        "✅ fetchDashboardSummary: Success, received dashboard summary"
+      );
+      return response.data;
+    } catch (error) {
+      console.error("❌ fetchDashboardSummary: API Error", {
+        status: error.response?.status,
+        message: error.message,
+        data: error.response?.data,
+      });
+
+      return rejectWithValue(
+        handleApiError(error, "Could not fetch dashboard summary")
+      );
+    }
+  }
+);
+
 // Initial state
 const initialState = {
   appointments: [],
@@ -1658,6 +1860,9 @@ const initialState = {
   availabilityCache: {}, // Cache for availability data: { "staffId-date": [...availabilities] }
   notifications: [],
   unreadNotificationCount: 0,
+  // PERFORMANCE: New optimized state fields
+  actionableAppointments: [], // Only appointments that need operator attention
+  dashboardSummary: null, // Summary data for quick dashboard overview
   loading: false,
   error: null,
   successMessage: null,
@@ -2602,6 +2807,71 @@ const schedulingSlice = createSlice({
         }
       })
       .addCase(markAppointmentPaid.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // PERFORMANCE: New optimized appointment fetching reducers
+      .addCase(fetchActionableAppointments.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchActionableAppointments.fulfilled, (state, action) => {
+        state.loading = false;
+        state.actionableAppointments = action.payload;
+        // Also update appointments for backward compatibility
+        state.appointments = action.payload;
+      })
+      .addCase(fetchActionableAppointments.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchTodayAppointmentsOptimized.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchTodayAppointmentsOptimized.fulfilled, (state, action) => {
+        state.loading = false;
+        state.todayAppointments = action.payload;
+      })
+      .addCase(fetchTodayAppointmentsOptimized.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchDashboardSummary.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchDashboardSummary.fulfilled, (state, action) => {
+        state.loading = false;
+        state.dashboardSummary = action.payload;
+      })
+      .addCase(fetchDashboardSummary.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // fetchTodayUrgentAppointments
+      .addCase(fetchTodayUrgentAppointments.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchTodayUrgentAppointments.fulfilled, (state, action) => {
+        state.loading = false;
+        state.todayAppointments = action.payload;
+      })
+      .addCase(fetchTodayUrgentAppointments.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // fetchUpcomingWeekOptimized
+      .addCase(fetchUpcomingWeekOptimized.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchUpcomingWeekOptimized.fulfilled, (state, action) => {
+        state.loading = false;
+        state.upcomingAppointments = action.payload;
+      })
+      .addCase(fetchUpcomingWeekOptimized.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

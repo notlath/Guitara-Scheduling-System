@@ -68,15 +68,11 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Performance optimization middleware - must be after AuthenticationMiddleware
+    "scheduling.middleware.performance_middleware.AuthCacheMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.sanitization_middleware.SanitizationMiddleware",
-    "scheduling.services_middleware.ServicesMiddleware",
-    "scheduling.performance_middleware.PerformanceMonitoringMiddleware",
-    "scheduling.performance_middleware.DatabaseQueryLoggingMiddleware",
-    "scheduling.performance_middleware.CacheHitRateMiddleware",
-    "scheduling.performance_middleware.APIResponseOptimizationMiddleware",
-    "scheduling.performance_middleware.HealthCheckMiddleware",
 ]
 
 ROOT_URLCONF = "guitara.urls"
@@ -356,6 +352,74 @@ CELERY_TIMEZONE = TIME_ZONE
 # Error handling
 CELERY_TASK_SOFT_TIME_LIMIT = 60  # 60 seconds
 CELERY_TASK_TIME_LIMIT = 120  # 2 minutes
+
+# ======================================
+# PERFORMANCE OPTIMIZATION SETTINGS
+# ======================================
+
+# Cache configuration - temporarily using local memory cache
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
+        "TIMEOUT": 300,  # 5 minutes default
+    }
+}
+print("[SETTINGS] Local memory cache configured (temporary)")
+
+# Session configuration for performance
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+SESSION_COOKIE_AGE = 86400  # 24 hours
+
+# Database performance optimizations
+DATABASES["default"]["OPTIONS"].update(
+    {
+        "connect_timeout": 10,
+        "application_name": "guitara_scheduling",
+        "sslmode": "require",
+    }
+)
+
+# Query optimization settings
+DATABASES["default"]["CONN_MAX_AGE"] = 600  # 10 minutes
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
+
+# REST Framework performance settings
+REST_FRAMEWORK.update(
+    {
+        "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+        "PAGE_SIZE": 25,  # Reasonable page size for performance
+        "DEFAULT_THROTTLE_CLASSES": [
+            "rest_framework.throttling.AnonRateThrottle",
+            "rest_framework.throttling.UserRateThrottle",
+        ],
+        "DEFAULT_THROTTLE_RATES": {
+            "anon": "100/hour",
+            "user": "1000/hour",
+        },
+        "DEFAULT_RENDERER_CLASSES": [
+            "rest_framework.renderers.JSONRenderer",
+        ],
+        "DEFAULT_FILTER_BACKENDS": [
+            "django_filters.rest_framework.DjangoFilterBackend",
+            "rest_framework.filters.OrderingFilter",
+        ],
+    }
+)
+
+# File upload optimizations
+FILE_UPLOAD_HANDLERS = [
+    "django.core.files.uploadhandler.MemoryFileUploadHandler",
+    "django.core.files.uploadhandler.TemporaryFileUploadHandler",
+]
+
+# Static file serving optimization
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+
+# ======================================
+# END PERFORMANCE OPTIMIZATION SETTINGS
+# ======================================
 
 # ======================================
 # LOCAL SETTINGS OVERRIDE

@@ -1,9 +1,10 @@
 /**
- * PERFORMANCE FIX: Enhanced useOptimizedData with aggressive memoization
+ * PERFORMANCE FIX: Enhanced useOptimizedData with new optimized backend endpoints
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchActionableAppointments } from "../features/scheduling/schedulingSlice";
 import optimizedDataManager from "../services/optimizedDataManager";
 
 // Global stable empty arrays to prevent re-renders
@@ -332,4 +333,169 @@ export const useOptimizedAttendance = (selectedDate) => {
     }),
     [baseData, fetchAttendanceForDate, getCachedAttendanceForDate]
   );
+};
+
+/**
+ * ULTRA-OPTIMIZED OPERATOR DASHBOARD HOOK
+ * Uses the new backend endpoints for maximum performance
+ */
+export const useOperatorDashboardOptimized = () => {
+  const dispatch = useDispatch();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [dashboardData, setDashboardData] = useState(EMPTY_ARRAY);
+  const [dashboardStats, setDashboardStats] = useState(EMPTY_OBJECT);
+
+  // Get data from Redux store (fallback)
+  const {
+    actionableAppointments,
+    todayAppointments,
+    upcomingAppointments,
+    notifications,
+  } = useSelector((state) => ({
+    actionableAppointments:
+      state.scheduling?.actionableAppointments || EMPTY_ARRAY,
+    todayAppointments: state.scheduling?.todayAppointments || EMPTY_ARRAY,
+    upcomingAppointments: state.scheduling?.upcomingAppointments || EMPTY_ARRAY,
+    notifications: state.scheduling?.notifications || EMPTY_ARRAY,
+  }));
+
+  // NEW: Optimized dashboard data fetching using new backend endpoints
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Use the new optimized operator_dashboard endpoint
+      const response = await fetch(
+        "/api/scheduling/appointments/operator_dashboard/",
+        {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("knoxToken")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setDashboardData(data);
+        console.log(
+          "✅ Dashboard data fetched from optimized endpoint:",
+          data.length,
+          "appointments"
+        );
+      } else {
+        throw new Error(`Dashboard API error: ${response.status}`);
+      }
+    } catch (err) {
+      console.error(
+        "❌ useOperatorDashboardOptimized: Failed to fetch dashboard data",
+        err
+      );
+      setError(err);
+      // Fallback to Redux data if API fails
+      await dispatch(fetchActionableAppointments()).unwrap();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dispatch]);
+
+  const fetchDashboardStatistics = useCallback(async () => {
+    try {
+      const response = await fetch(
+        "/api/scheduling/appointments/dashboard_stats/",
+        {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("knoxToken")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const stats = await response.json();
+        setDashboardStats(stats);
+        console.log("✅ Dashboard stats fetched:", stats);
+      }
+    } catch (err) {
+      console.error("❌ Failed to fetch dashboard stats", err);
+      // Fallback to calculated stats
+      const actionableCount = actionableAppointments.length;
+      const urgentCount = todayAppointments.filter(
+        (apt) => apt.priority === "high" || apt.status === "urgent"
+      ).length;
+      const unreadNotifications = notifications.filter(
+        (n) => !n.is_read
+      ).length;
+
+      setDashboardStats({
+        totalActionable: actionableCount,
+        urgent: urgentCount,
+        unreadNotifications,
+        total_today: todayAppointments.length,
+        pending_today: todayAppointments.filter(
+          (apt) => apt.status === "pending"
+        ).length,
+        in_progress_today: todayAppointments.filter((apt) =>
+          ["in_progress", "journey", "arrived", "session_in_progress"].includes(
+            apt.status
+          )
+        ).length,
+        completed_today: todayAppointments.filter(
+          (apt) => apt.status === "completed"
+        ).length,
+        awaiting_payment: actionableAppointments.filter(
+          (apt) => apt.status === "awaiting_payment"
+        ).length,
+        urgent_deadlines: 0,
+      });
+    }
+  }, [actionableAppointments, todayAppointments, notifications]);
+
+  // Auto-fetch dashboard data on mount
+  useEffect(() => {
+    fetchDashboardData();
+    fetchDashboardStatistics();
+  }, [fetchDashboardData, fetchDashboardStatistics]);
+
+  // Return both new optimized data and fallback data
+  const finalDashboardData =
+    dashboardData.length > 0 ? dashboardData : actionableAppointments;
+  const finalStats =
+    Object.keys(dashboardStats).length > 0
+      ? dashboardStats
+      : {
+          totalActionable: actionableAppointments.length,
+          urgent: todayAppointments.filter(
+            (apt) => apt.priority === "high" || apt.status === "urgent"
+          ).length,
+          unreadNotifications: notifications.filter((n) => !n.is_read).length,
+        };
+
+  return {
+    // Optimized data from new endpoints
+    dashboardData: finalDashboardData,
+    dashboardStats: finalStats,
+
+    // Legacy data for backward compatibility
+    actionableAppointments: finalDashboardData,
+    todayAppointments,
+    upcomingAppointments,
+    notifications,
+
+    // State
+    isLoading,
+    error,
+    hasData: finalDashboardData.length > 0,
+
+    // Actions
+    fetchDashboardData,
+    fetchDashboardStatistics,
+
+    // Quick refresh all critical data
+    refreshDashboard: useCallback(async () => {
+      await Promise.all([fetchDashboardData(), fetchDashboardStatistics()]);
+    }, [fetchDashboardData, fetchDashboardStatistics]),
+  };
 };

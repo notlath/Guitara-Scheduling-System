@@ -1,0 +1,522 @@
+/* TransportationHub.css */
+.transportation-hub {
+  display: grid;
+  grid-template-areas:
+    "stats stats"
+    "requests fleet"
+    "queue details";
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 60% 40%;
+  gap: 1rem;
+  height: 100%;
+  min-height: 80vh;
+
+  /* Container query for responsive behavior */
+  container-type: inline-size;
+}
+
+/* Stats Dashboard */
+.transportation-stats {
+  grid-area: stats;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background-color: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+}
+
+.stat-number {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #6c757d;
+  text-align: center;
+}
+
+.stat-trend {
+  font-size: 1.25rem;
+  margin-top: 0.25rem;
+}
+
+/* Specific stat card colors */
+.stat-card.urgent-requests {
+  border-left: 4px solid #dc3545;
+}
+
+.stat-card.normal-requests {
+  border-left: 4px solid #ffc107;
+}
+
+.stat-card.available-drivers {
+  border-left: 4px solid #28a745;
+}
+
+.stat-card.busy-drivers {
+  border-left: 4px solid #17a2b8;
+}
+
+.stat-card.fleet-utilization {
+  border-left: 4px solid #6610f2;
+}
+
+/* Mobile View Selector */
+.transport-view-selector {
+  display: none;
+  margin-bottom: 1rem;
+}
+
+.view-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #dee2e6;
+  background: white;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.view-button:first-child {
+  border-radius: 0.25rem 0 0 0.25rem;
+}
+
+.view-button:last-child {
+  border-radius: 0 0.25rem 0.25rem 0;
+}
+
+.view-button.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+/* Main Grid Layout */
+.transport-main-grid {
+  display: grid;
+  grid-template-columns: 60% 40%;
+  gap: 1rem;
+  grid-area: requests / requests / fleet / fleet;
+}
+
+/* Panel Styles */
+.pickup-requests-panel,
+.fleet-status-panel,
+.assignment-queue-panel,
+.driver-details-panel {
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+}
+
+.pickup-requests-panel {
+  grid-area: requests;
+}
+
+.fleet-status-panel {
+  grid-area: fleet;
+}
+
+.panel-header {
+  padding: 0.75rem 1rem;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.bulk-action-btn {
+  padding: 0.25rem 0.75rem;
+  background-color: #28a745;
+  color: white;
+  font-size: 0.85rem;
+  border-radius: 0.25rem;
+  border: none;
+  cursor: pointer;
+}
+
+/* Pickup Requests */
+.pickup-requests-list {
+  padding: 1rem;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.pickup-request-card {
+  border: 1px solid #dee2e6;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.pickup-request-card:last-child {
+  margin-bottom: 0;
+}
+
+.request-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.request-header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.urgency-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.urgency-badge.urgent {
+  background-color: #ffeeee;
+  color: #dc3545;
+}
+
+.urgency-badge.normal {
+  background-color: #fff8e1;
+  color: #ffa000;
+}
+
+.request-details {
+  margin-bottom: 1rem;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.detail-icon {
+  width: 1.25rem;
+  margin-right: 0.5rem;
+}
+
+.request-actions {
+  border-top: 1px solid #f1f1f1;
+  padding-top: 0.75rem;
+}
+
+.driver-assignment {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.driver-select {
+  flex-grow: 1;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid #ced4da;
+}
+
+.auto-assign-button {
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background-color: #6c757d;
+  color: white;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.no-drivers-warning {
+  color: #dc3545;
+  margin: 0;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+}
+
+.warning-icon {
+  margin-right: 0.5rem;
+}
+
+/* Fleet Status */
+.fleet-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-grow: 1;
+}
+
+.fleet-tabs {
+  display: flex;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.fleet-tab {
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-weight: 500;
+  cursor: pointer;
+  color: #6c757d;
+}
+
+.fleet-tab.active {
+  border-bottom-color: #007bff;
+  color: #007bff;
+}
+
+.driver-columns {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.driver-column {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.driver-column h4 {
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin: 0 0 0.75rem 0;
+}
+
+.driver-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.driver-card {
+  display: flex;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background-color: white;
+  border: 1px solid #dee2e6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.driver-card:hover {
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.driver-card.selected {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.status-indicator {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  margin-right: 0.75rem;
+}
+
+.status-indicator.available {
+  background-color: #28a745;
+}
+
+.status-indicator.busy {
+  background-color: #dc3545;
+}
+
+.driver-info {
+  flex-grow: 1;
+}
+
+.driver-info h4 {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.driver-status {
+  display: flex;
+  align-items: center;
+  margin-right: 0.5rem;
+}
+
+/* Bottom Grid Layout */
+.transport-bottom-grid {
+  display: grid;
+  grid-template-columns: 40% 60%;
+  gap: 1rem;
+  grid-area: queue / queue / details / details;
+}
+
+.assignment-queue-panel {
+  grid-area: queue;
+}
+
+.driver-details-panel {
+  grid-area: details;
+}
+
+.assignment-queue-list {
+  padding: 1rem;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.assignment-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+.assignment-status {
+  margin-right: 0.75rem;
+  font-size: 1.25rem;
+}
+
+.assignment-details {
+  flex-grow: 1;
+  font-size: 0.9rem;
+}
+
+.assignment-time {
+  color: #6c757d;
+  font-size: 0.85rem;
+}
+
+.driver-details-content {
+  padding: 1rem;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+/* Empty States */
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.transportation-hub-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+}
+
+.empty-state-message {
+  text-align: center;
+}
+
+.empty-state-message .icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+/* Loading States */
+.loading {
+  padding: 2rem;
+  text-align: center;
+  color: #6c757d;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+  .transportation-hub {
+    grid-template-areas:
+      "stats stats"
+      "requests requests"
+      "fleet fleet"
+      "queue details";
+    grid-template-columns: 100%;
+  }
+
+  .transport-main-grid {
+    grid-template-columns: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .transport-view-selector {
+    display: flex;
+  }
+
+  .transportation-hub {
+    grid-template-areas:
+      "stats"
+      "view-selector"
+      "content"
+      "bottom";
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-columns: 100%;
+  }
+
+  .transport-bottom-grid {
+    grid-template-columns: 100%;
+    grid-template-rows: auto auto;
+  }
+
+  .transport-main-grid .hidden {
+    display: none;
+  }
+
+  .stat-card {
+    min-width: 110px;
+  }
+}
+
+/* Utility Classes */
+.visible {
+  display: block;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Animation for assignment queue */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.assignment-item {
+  animation: fadeIn 0.3s ease;
+}

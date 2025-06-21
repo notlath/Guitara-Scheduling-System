@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 import { shallowEqual, useDispatch } from "react-redux";
 import {
@@ -27,12 +27,30 @@ const Calendar = ({
     shallowEqual
   );
   const {
-    availableTherapists,
-    availableDrivers,
-    appointments,
-    appointmentsByDate,
+    availableTherapists: rawAvailableTherapists,
+    availableDrivers: rawAvailableDrivers,
+    appointments: rawAppointments,
+    appointmentsByDate: rawAppointmentsByDate,
     loading, // Add loading state from Redux
   } = schedulingState;
+
+  // CRITICAL FIX: Ensure all arrays are always arrays to prevent method errors
+  const appointments = useMemo(
+    () => (Array.isArray(rawAppointments) ? rawAppointments : []),
+    [rawAppointments]
+  );
+  const appointmentsByDate = useMemo(
+    () => (Array.isArray(rawAppointmentsByDate) ? rawAppointmentsByDate : []),
+    [rawAppointmentsByDate]
+  );
+  const availableTherapists = useMemo(
+    () => (Array.isArray(rawAvailableTherapists) ? rawAvailableTherapists : []),
+    [rawAvailableTherapists]
+  );
+  const availableDrivers = useMemo(
+    () => (Array.isArray(rawAvailableDrivers) ? rawAvailableDrivers : []),
+    [rawAvailableDrivers]
+  );
 
   // Initialize with today's data when component mounts
   useEffect(() => {

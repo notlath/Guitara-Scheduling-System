@@ -8,9 +8,19 @@ from django_filters.rest_framework import (
     TimeFilter,
     CharFilter,
 )
-from django.db import models
+from django.db import models, connection
 from datetime import datetime
-from .models import Client, Availability, Appointment, Notification
+from .models import (
+    Client,
+    Availability,
+    Appointment,
+    Notification,
+    AppointmentRejection,
+)
+from django.core.cache import cache
+from django.core.paginator import Paginator
+from django.conf import settings
+import time
 import logging
 
 # Set up logger
@@ -662,23 +672,98 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     ]
 
     def get_queryset(self):
-        from django.db.models import Q
+        from django.db.models import Q, Prefetch
+        from django.utils import timezone
+        from datetime import timedelta
 
         user = self.request.user
 
-        # Operators can see all appointments
+        # Base queryset with critical optimizations
+        base_queryset = (
+            Appointment.objects.select_related(
+                "client", "therapist", "driver", "operator"
+            )
+            .prefetch_related(
+                "services",
+                Prefetch(
+                    "therapists",
+                    queryset=CustomUser.objects.only(
+                        "id", "first_name", "last_name", "role"
+                    ),
+                ),
+            )
+            .only(
+                "id",
+                "status",
+                "date",
+                "start_time",
+                "end_time",
+                "created_at",
+                "client__id",
+                "client__first_name",
+                "client__last_name",
+                "client__phone_number",
+                "therapist__id",
+                "therapist__first_name",
+                "therapist__last_name",
+                "driver__id",
+                "driver__first_name",
+                "driver__last_name",
+                "operator__id",
+                "operator__first_name",
+                "operator__last_name",
+                "location",
+                "payment_status",
+                "response_deadline",
+            )
+        )
+
+        # Operators can see all appointments - but with smart filtering for performance
         if user.role == "operator":
-            return Appointment.objects.all()
+            # For operators, default to actionable appointments (not completed/cancelled)
+            # unless specifically requesting all via query param
+            show_all = self.request.query_params.get("show_all", "").lower() == "true"
+
+            if not show_all:
+                # Only show actionable appointments by default
+                actionable_statuses = [
+                    "pending",
+                    "therapist_confirmed",
+                    "driver_confirmed",
+                    "in_progress",
+                    "journey",
+                    "arrived",
+                    "dropped_off",
+                    "driver_transport_completed",
+                    "session_in_progress",
+                    "awaiting_payment",
+                    "pickup_requested",
+                    "driver_assigned_pickup",
+                    "return_journey",
+                ]
+                base_queryset = base_queryset.filter(status__in=actionable_statuses)
+
+                # Also limit to recent appointments (last 30 days) unless date filter is applied
+                if not any(
+                    param in self.request.query_params
+                    for param in ["date", "date_after", "date_before"]
+                ):
+                    thirty_days_ago = timezone.now().date() - timedelta(days=30)
+                    base_queryset = base_queryset.filter(date__gte=thirty_days_ago)
+
+            return base_queryset.order_by("-date", "-created_at")
 
         # Therapists can see their own appointments (both single and multi-therapist)
         elif user.role == "therapist":
-            return Appointment.objects.filter(
-                Q(therapist=user) | Q(therapists=user)
-            ).distinct()
+            return (
+                base_queryset.filter(Q(therapist=user) | Q(therapists=user))
+                .distinct()
+                .order_by("-date", "-created_at")
+            )
 
         # Drivers can see their own appointments
         elif user.role == "driver":
-            return Appointment.objects.filter(driver=user)
+            return base_queryset.filter(driver=user).order_by("-date", "-created_at")
 
         # Other roles can't see any appointments
         return Appointment.objects.none()
@@ -2207,7 +2292,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     "type": "appointment_started",
                     "appointment_id": appointment.id,
                     "operator_id": request.user.id,
-                    "message": "Appointment started. Ready for service delivery.",
+                    "message": "Appointment started. Ready to service delivery.",
                     "status": appointment.status,
                 },
             },
@@ -2255,10 +2340,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Create notifications
         self._create_notifications(
             appointment,
-            "return_journey_completed",
-            f"✅ Return journey completed by driver {request.user.get_full_name()}. "
-            f"Therapist {appointment.therapist.get_full_name() if appointment.therapist else 'Unknown'} "
-            f"has been safely returned from {appointment.location}.",
         )
 
         # Send WebSocket notification
@@ -2288,7 +2369,171 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             }
         )
 
-    # ...existing helper methods...
+    @action(detail=False, methods=["get"])
+    def operator_dashboard(self, request):
+        """
+        Optimized endpoint for operator dashboard - returns only actionable appointments
+        with minimal data and aggressive caching
+        """
+        from django.core.cache import cache
+        from django.utils import timezone
+        from datetime import timedelta
+
+        # Check cache first for operator dashboard data
+        cache_key = f"operator_dashboard_data_{request.user.id}"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            logger.info(f"Operator dashboard cache hit for user {request.user.id}")
+            return Response(cached_data)
+
+        # Only operators can access this endpoint
+        if request.user.role != "operator":
+            return Response({"error": "Unauthorized"}, status=403)
+
+        # Get only actionable appointments from today and next 7 days
+        today = timezone.now().date()
+        week_later = today + timedelta(days=7)
+
+        actionable_statuses = [
+            "pending",
+            "therapist_confirmed",
+            "driver_confirmed",
+            "in_progress",
+            "journey",
+            "arrived",
+            "dropped_off",
+            "driver_transport_completed",
+            "session_in_progress",
+            "awaiting_payment",
+            "pickup_requested",
+            "driver_assigned_pickup",
+            "return_journey",
+        ]
+
+        # Optimized query with minimal fields
+        appointments = (
+            Appointment.objects.select_related("client", "therapist", "driver")
+            .filter(
+                status__in=actionable_statuses, date__gte=today, date__lte=week_later
+            )
+            .only(
+                "id",
+                "status",
+                "date",
+                "start_time",
+                "end_time",
+                "client__first_name",
+                "client__last_name",
+                "client__phone_number",
+                "therapist__first_name",
+                "therapist__last_name",
+                "driver__first_name",
+                "driver__last_name",
+                "location",
+                "payment_status",
+                "response_deadline",
+            )
+            .order_by("date", "start_time")[:50]
+        )  # Limit to 50 most relevant
+
+        # Minimal serialization for performance
+        data = []
+        for apt in appointments:
+            data.append(
+                {
+                    "id": apt.id,
+                    "status": apt.status,
+                    "date": apt.date,
+                    "start_time": apt.start_time,
+                    "end_time": apt.end_time,
+                    "client_name": (
+                        f"{apt.client.first_name} {apt.client.last_name}"
+                        if apt.client
+                        else None
+                    ),
+                    "client_phone": apt.client.phone_number if apt.client else None,
+                    "therapist_name": (
+                        f"{apt.therapist.first_name} {apt.therapist.last_name}"
+                        if apt.therapist
+                        else None
+                    ),
+                    "driver_name": (
+                        f"{apt.driver.first_name} {apt.driver.last_name}"
+                        if apt.driver
+                        else None
+                    ),
+                    "location": apt.location,
+                    "payment_status": apt.payment_status,
+                    "response_deadline": apt.response_deadline,
+                    "needs_attention": apt.status in ["pending", "awaiting_payment"]
+                    or (
+                        apt.response_deadline and apt.response_deadline < timezone.now()
+                    ),
+                }
+            )
+
+        # Cache for 2 minutes
+        cache.set(cache_key, data, timeout=120)
+        logger.info(
+            f"Operator dashboard cache set for user {request.user.id}, {len(data)} appointments"
+        )
+
+        return Response(data)
+
+    @action(detail=False, methods=["get"])
+    def dashboard_stats(self, request):
+        """
+        Get dashboard statistics with caching
+        """
+        from django.core.cache import cache
+        from django.utils import timezone
+        from datetime import timedelta
+        from django.db.models import Count, Q
+
+        # Check cache first
+        cache_key = f"dashboard_stats_{request.user.id}"
+        cached_stats = cache.get(cache_key)
+        if cached_stats:
+            return Response(cached_stats)
+
+        if request.user.role != "operator":
+            return Response({"error": "Unauthorized"}, status=403)
+
+        today = timezone.now().date()
+
+        # Optimized statistics query
+        stats = Appointment.objects.aggregate(
+            total_today=Count("id", filter=Q(date=today)),
+            pending_today=Count("id", filter=Q(date=today, status="pending")),
+            in_progress_today=Count(
+                "id",
+                filter=Q(
+                    date=today,
+                    status__in=[
+                        "in_progress",
+                        "journey",
+                        "arrived",
+                        "session_in_progress",
+                    ],
+                ),
+            ),
+            completed_today=Count("id", filter=Q(date=today, status="completed")),
+            awaiting_payment=Count("id", filter=Q(status="awaiting_payment")),
+            urgent_deadlines=Count(
+                "id",
+                filter=Q(
+                    response_deadline__lt=timezone.now() + timedelta(hours=1),
+                    status__in=["pending", "therapist_confirmed"],
+                ),
+            ),
+        )
+
+        # Cache for 5 minutes
+        cache.set(cache_key, stats, timeout=300)
+
+        return Response(stats)
+
+    # ...existing code...
 
 
 class StaffViewSet(viewsets.ModelViewSet):

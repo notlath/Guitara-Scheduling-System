@@ -1,0 +1,60 @@
+/* Legacy view warning styles */
+.legacy-view-notice {
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  border-left: 4px solid #ffc107;
+  border-radius: 0.25rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.warning-icon {
+  font-size: 1.5rem;
+}
+
+.warning-text {
+  flex-grow: 1;
+  font-weight: 500;
+  color: #856404;
+}
+
+.switch-view-btn {
+  padding: 0.5rem 0.75rem;
+  background-color: #ffc107;
+  color: #212529;
+  border: none;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.switch-view-btn:hover {
+  background-color: #e0a800;
+}
+
+.transportation-hub-container {
+  margin-bottom: 2rem;
+}
+
+/* Fade animation for tab content */
+.tab-content-enter {
+  opacity: 0;
+}
+
+.tab-content-enter-active {
+  opacity: 1;
+  transition: opacity 300ms ease-in;
+}
+
+.tab-content-exit {
+  opacity: 1;
+}
+
+.tab-content-exit-active {
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}

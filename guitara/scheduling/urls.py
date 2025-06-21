@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 
+# Main router for all endpoints including optimized ones
 router = DefaultRouter()
 router.register(r"clients", views.ClientViewSet, basename="client")
 router.register(r"availabilities", views.AvailabilityViewSet, basename="availability")
@@ -11,5 +12,6 @@ router.register(r"staff", views.StaffViewSet, basename="staff")
 router.register(r"services", views.ServiceViewSet, basename="service")
 
 urlpatterns = [
+    # Standard API endpoints (includes optimized @action methods)
     path("", include(router.urls)),
 ]

@@ -1,491 +1,483 @@
+# scheduling/optimized_views.py
 """
-Optimized API views with built-in performance enhancements
+Optimized views for OperatorDashboard performance improvements
+Addresses the 32-second query time issue
 """
 
-from rest_framework import viewsets, status
+# Critical imports for optimized appointment handling
+from rest_framework import viewsets, serializers, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.db.models import Case, When, Value, IntegerField, Count, Q, Prefetch
 from django.core.cache import cache
-from django.utils import timezone
-from django.db.models import Q, Prefetch
-from datetime import datetime, timedelta
+from django.core.paginator import Paginator
+from django.conf import settings
+from django.db import connection
+from datetime import datetime
 import time
 import logging
-from .optimized_data_manager import data_manager
-from .tasks import process_driver_assignment, send_appointment_notifications
 
+# Import models and existing serializers
+from .models import Appointment, Notification
+from registration.models import Service
+from .serializers import AppointmentSerializer, NotificationSerializer
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+
+User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-class OptimizedAPIViewMixin:
+class OptimizedAppointmentViewSet(viewsets.ModelViewSet):
     """
-    Mixin providing performance optimizations for API views
+    Ultra-optimized Appointment ViewSet for OperatorDashboard
+    Fixes 32-second query time issue with proper indexing and caching
     """
 
-    def get_cache_key(self, action_name, *args):
-        """Generate cache key for this view action"""
-        user_id = (
-            self.request.user.id if self.request.user.is_authenticated else "anonymous"
+    serializer_class = AppointmentSerializer
+
+    def get_queryset(self):
+        """
+        Highly optimized queryset with proper prefetching and field selection
+        Uses the new database indexes for maximum performance
+        """
+        # Base queryset with essential relationships only
+        queryset = (
+            Appointment.objects.select_related(
+                "client", "therapist", "driver", "operator"
+            )
+            .prefetch_related(
+                # Optimize services prefetch with limited fields
+                Prefetch(
+                    "services",
+                    queryset=Service.objects.only("id", "name", "price", "duration"),
+                )
+            )
+            .only(
+                # CRITICAL: Only fetch required fields to reduce data transfer
+                "id",
+                "date",
+                "start_time",
+                "end_time",
+                "status",
+                "location",
+                "client_id",
+                "therapist_id",
+                "driver_id",
+                "operator_id",
+                "created_at",
+                "updated_at",
+                "rejection_reason",
+                "payment_status",
+                "response_deadline",
+                "session_started_at",
+                "session_ended_at",
+                "pickup_request_time",
+                "therapist_accepted",
+                "driver_confirmed_at",
+                "pickup_urgency",
+                "total_amount",
+                "notes",
+            )
         )
-        return f"{self.__class__.__name__}_{action_name}_{user_id}_{'_'.join(str(arg) for arg in args)}"
-
-    def get_cached_response(self, cache_key, timeout=300):
-        """Get cached response if available"""
-        return cache.get(cache_key)
-
-    def set_cached_response(self, cache_key, data, timeout=300):
-        """Cache response data"""
-        cache.set(cache_key, data, timeout)
-
-    def get_optimized_queryset(self):
-        """Get queryset with optimized select_related and prefetch_related"""
-        queryset = self.get_queryset()
-
-        # Add common optimizations
-        if hasattr(self.get_queryset().model, "client"):
-            queryset = queryset.select_related("client")
-        if hasattr(self.get_queryset().model, "therapist"):
-            queryset = queryset.select_related("therapist")
-        if hasattr(self.get_queryset().model, "driver"):
-            queryset = queryset.select_related("driver")
-        if hasattr(self.get_queryset().model, "operator"):
-            queryset = queryset.select_related("operator")
 
         return queryset
 
-    def log_performance(self, action_name, start_time, query_count_start):
-        """Log performance metrics for this action"""
-        from django.db import connection
+    def list(self, request):
+        """
+        Optimized list endpoint with aggressive caching and pagination
+        Prevents the 32-second query time issue
+        """
+        # Create cache key based on user and query parameters
+        cache_key = (
+            f"appointments_list_{request.user.id}_{hash(request.GET.urlencode())}"
+        )
 
-        duration = time.time() - start_time
-        query_count = len(connection.queries) - query_count_start
-
-        if duration > 0.5:  # Log slow actions
-            logger.warning(
-                f"Slow API action: {action_name} took {duration:.3f}s with {query_count} queries"
-            )
-
-        return {"duration": duration, "query_count": query_count}
-
-
-class OptimizedAppointmentViewSet(OptimizedAPIViewMixin, viewsets.ModelViewSet):
-    """
-    Optimized appointment viewset with caching and performance monitoring
-    """
-
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return self.get_optimized_queryset()
-
-    @action(detail=False, methods=["get"])
-    def today(self, request):
-        """Get today's appointments with aggressive caching"""
-        start_time = time.time()
-        from django.db import connection
-
-        query_count_start = len(connection.queries)
-
-        try:
-            appointments = data_manager.get_today_appointments_ultra_fast(request.user)
-
-            performance = self.log_performance("today", start_time, query_count_start)
-
-            return Response(
-                {
-                    "appointments": appointments,
-                    "count": len(appointments),
-                    "performance": performance if request.user.is_staff else None,
-                }
-            )
-
-        except Exception as e:
-            logger.error(f"Error getting today's appointments: {e}")
-            return Response(
-                {"error": "Failed to load appointments"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-    @action(detail=False, methods=["get"])
-    def upcoming(self, request):
-        """Get upcoming appointments with caching"""
-        start_time = time.time()
-        from django.db import connection
-
-        query_count_start = len(connection.queries)
-
-        try:
-            # Get date range from query params
-            days_ahead = int(request.query_params.get("days", 7))
-            end_date = timezone.now().date() + timedelta(days=days_ahead)
-
-            cache_key = self.get_cache_key("upcoming", request.user.id, days_ahead)
-            cached_data = self.get_cached_response(cache_key)
-
+        # Try cache first (5 minute cache for non-debug)
+        if not settings.DEBUG:
+            cached_data = cache.get(cache_key)
             if cached_data:
+                logger.info(
+                    f"Served appointments from cache for user {request.user.id}"
+                )
                 return Response(cached_data)
 
-            appointments = data_manager.get_appointments_optimized(
-                user=request.user,
-                date=None,  # Will get filtered by date range in the manager
-                status=None,
-            )
+        try:
+            # Performance monitoring
+            queries_before = len(connection.queries) if settings.DEBUG else 0
+            start_time = time.time()
 
-            # Filter by date range
-            filtered_appointments = [
-                apt
-                for apt in appointments
-                if datetime.fromisoformat(apt["date"]).date() <= end_date
-            ]
+            queryset = self.get_queryset()
+
+            # Apply filters efficiently using indexed fields
+            status_filter = request.GET.get("status")
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+
+            date_filter = request.GET.get("date")
+            if date_filter:
+                try:
+                    filter_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
+                    queryset = queryset.filter(date=filter_date)
+                except ValueError:
+                    pass
+
+            # Date range filters using indexed compound fields
+            date_from = request.GET.get("date_from")
+            date_to = request.GET.get("date_to")
+            if date_from:
+                try:
+                    from_date = datetime.strptime(date_from, "%Y-%m-%d").date()
+                    queryset = queryset.filter(date__gte=from_date)
+                except ValueError:
+                    pass
+
+            if date_to:
+                try:
+                    to_date = datetime.strptime(date_to, "%Y-%m-%d").date()
+                    queryset = queryset.filter(date__lte=to_date)
+                except ValueError:
+                    pass
+
+            # Use indexed ordering (status + date index)
+            queryset = queryset.order_by("status", "-date", "-created_at")
+
+            # Mandatory pagination to prevent large result sets
+            page_size = min(int(request.GET.get("page_size", 50)), 100)  # Max 100 items
+            paginator = Paginator(queryset, page_size)
+            page_number = request.GET.get("page", 1)
+
+            try:
+                page = paginator.get_page(page_number)
+            except Exception as e:
+                logger.error(f"Pagination error: {e}")
+                page = paginator.get_page(1)
+
+            # Serialize efficiently
+            serializer = self.get_serializer(page, many=True)
+
+            # Performance logging
+            duration = time.time() - start_time
+            if settings.DEBUG:
+                queries_after = len(connection.queries)
+                query_count = queries_after - queries_before
+
+                if duration > 2.0:  # Log slow queries
+                    logger.warning(
+                        f"Slow appointments query: {duration:.2f}s, {query_count} queries"
+                    )
+                else:
+                    logger.info(
+                        f"Appointments query: {duration:.2f}s, {query_count} queries"
+                    )
 
             response_data = {
-                "appointments": filtered_appointments,
-                "count": len(filtered_appointments),
-                "date_range": {
-                    "start": timezone.now().date().isoformat(),
-                    "end": end_date.isoformat(),
-                },
+                "results": serializer.data,
+                "count": paginator.count,
+                "next": page.has_next(),
+                "previous": page.has_previous(),
+                "page_number": page.number,
+                "total_pages": paginator.num_pages,
+                "performance": (
+                    {
+                        "query_time": f"{duration:.2f}s",
+                        "query_count": query_count if settings.DEBUG else 0,
+                        "cached": False,
+                    }
+                    if settings.DEBUG
+                    else {}
+                ),
             }
 
-            # Cache for 5 minutes
-            self.set_cached_response(cache_key, response_data, 300)
-
-            performance = self.log_performance(
-                "upcoming", start_time, query_count_start
-            )
-            if request.user.is_staff:
-                response_data["performance"] = performance
+            # Cache successful responses for 5 minutes
+            if not settings.DEBUG and duration < 5.0:  # Only cache if not too slow
+                cache_data = response_data.copy()
+                cache_data.pop("performance", None)
+                cache.set(cache_key, cache_data, 300)
 
             return Response(response_data)
 
         except Exception as e:
-            logger.error(f"Error getting upcoming appointments: {e}")
-            return Response(
-                {"error": "Failed to load upcoming appointments"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-    @action(detail=False, methods=["post"])
-    def check_conflicts(self, request):
-        """Check for appointment conflicts optimized"""
-        start_time = time.time()
-        from django.db import connection
-
-        query_count_start = len(connection.queries)
-
-        try:
-            appointment_data = request.data
-            conflicts = data_manager.get_appointment_conflicts_optimized(
-                appointment_data
-            )
-
-            performance = self.log_performance(
-                "check_conflicts", start_time, query_count_start
-            )
-
+            logger.error(f"Appointments list error: {str(e)}")
             return Response(
                 {
-                    "conflicts": conflicts,
-                    "has_conflicts": len(conflicts) > 0,
-                    "performance": performance if request.user.is_staff else None,
-                }
+                    "error": "Failed to fetch appointments",
+                    "detail": str(e) if settings.DEBUG else "Internal server error",
+                },
+                status=500,
             )
 
-        except Exception as e:
-            logger.error(f"Error checking conflicts: {e}")
-            return Response(
-                {"error": "Failed to check conflicts"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    @action(detail=False, methods=["get"], url_path="operator-dashboard")
+    def operator_dashboard(self, request):
+        """
+        Specialized endpoint for operator dashboard with actionable items only
+        CRITICAL: This prevents the 32-second query time by limiting data
+        """
+        cache_key = f"operator_dashboard_{request.user.id}"
 
-    @action(detail=True, methods=["post"])
-    def assign_driver(self, request, pk=None):
-        """Assign driver using background task"""
-        try:
-            appointment = self.get_object()
-
-            if appointment.driver:
-                return Response(
-                    {"error": "Driver already assigned"},
-                    status=status.HTTP_400_BAD_REQUEST,
+        # Check cache first (2 minute cache for frequent updates)
+        if not settings.DEBUG:
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                logger.info(
+                    f"Served operator dashboard from cache for user {request.user.id}"
                 )
-
-            # Use background task for heavy FIFO logic
-            task = process_driver_assignment.delay(appointment.id)
-
-            return Response(
-                {
-                    "message": "Driver assignment in progress",
-                    "task_id": task.id,
-                    "appointment_id": appointment.id,
-                }
-            )
-
-        except Exception as e:
-            logger.error(f"Error assigning driver: {e}")
-            return Response(
-                {"error": "Failed to assign driver"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-    @action(detail=True, methods=["post"])
-    def update_status(self, request, pk=None):
-        """Update appointment status with real-time broadcasting"""
-        start_time = time.time()
+                return Response(cached_data)
 
         try:
-            appointment = self.get_object()
-            new_status = request.data.get("status")
+            start_time = time.time()
+            queries_before = len(connection.queries) if settings.DEBUG else 0
 
-            if not new_status:
-                return Response(
-                    {"error": "Status is required"}, status=status.HTTP_400_BAD_REQUEST
+            # CRITICAL: Only fetch actionable appointments (much smaller dataset)
+            actionable_statuses = [
+                "pending",
+                "rejected",
+                "awaiting_payment",
+                "in_progress",
+                "pickup_requested",
+                "overdue",
+                "driver_confirmed",
+                "journey_started",
+                "arrived",
+            ]
+
+            # Limit to recent actionable items (last 7 days) to prevent large datasets
+            from datetime import datetime, timedelta
+
+            week_ago = datetime.now() - timedelta(days=7)
+
+            queryset = (
+                self.get_queryset()
+                .filter(status__in=actionable_statuses, created_at__gte=week_ago)
+                .order_by(
+                    # Order by urgency using indexed fields
+                    Case(
+                        When(status="overdue", then=Value(1)),
+                        When(status="rejected", then=Value(2)),
+                        When(status="pending", then=Value(3)),
+                        When(status="awaiting_payment", then=Value(4)),
+                        default=Value(5),
+                        output_field=IntegerField(),
+                    ),
+                    "response_deadline",
+                    "created_at",
+                )[:100]
+            )  # Hard limit to prevent large responses
+
+            # Use optimized serializer for dashboard
+            serializer = DashboardAppointmentSerializer(queryset, many=True)
+
+            # Get aggregated counts efficiently using single query
+            stats = Appointment.objects.filter(created_at__gte=week_ago).aggregate(
+                total_rejected=Count("id", filter=Q(status="rejected")),
+                total_pending=Count("id", filter=Q(status="pending")),
+                total_overdue=Count("id", filter=Q(status="overdue")),
+                total_awaiting_payment=Count("id", filter=Q(status="awaiting_payment")),
+                total_active=Count(
+                    "id",
+                    filter=Q(status__in=["in_progress", "journey_started", "arrived"]),
+                ),
+                total_pickup_requests=Count("id", filter=Q(status="pickup_requested")),
+            )
+
+            duration = time.time() - start_time
+
+            if settings.DEBUG:
+                queries_after = len(connection.queries)
+                query_count = queries_after - queries_before
+                logger.info(
+                    f"Operator dashboard query: {duration:.2f}s, {query_count} queries"
                 )
 
-            # Validate status
-            from .models import Appointment
-
-            valid_statuses = [choice[0] for choice in Appointment.STATUS_CHOICES]
-            if new_status not in valid_statuses:
-                return Response(
-                    {"error": "Invalid status"}, status=status.HTTP_400_BAD_REQUEST
-                )
-
-            old_status = appointment.status
-            appointment.status = new_status
-            appointment.save(update_fields=["status"])
-
-            # Serialize appointment data for broadcasting
-            appointment_data = {
-                "id": appointment.id,
-                "status": appointment.status,
-                "date": appointment.date.isoformat(),
-                "start_time": appointment.start_time.isoformat(),
-                "end_time": appointment.end_time.isoformat(),
-                "therapist_id": appointment.therapist_id,
-                "driver_id": appointment.driver_id,
-                "updated_by": request.user.id,
+            response_data = {
+                "actionable_appointments": serializer.data,
+                "stats": stats,
+                "performance": (
+                    {
+                        "query_time": f"{duration:.2f}s",
+                        "count": len(serializer.data),
+                        "cached": False,
+                    }
+                    if settings.DEBUG
+                    else {}
+                ),
             }
 
-            # Broadcast update in real-time
-            data_manager.broadcast_appointment_update(appointment_data, "status_update")
+            # Cache for 2 minutes (frequent updates needed for operator dashboard)
+            if not settings.DEBUG and duration < 5.0:
+                cache.set(cache_key, response_data, 120)
 
-            # Send notifications asynchronously
-            send_appointment_notifications.delay(
-                appointment.id,
-                "status_updated",
-                f"Appointment status changed from {old_status} to {new_status}",
-            )
+            return Response(response_data)
 
-            duration = time.time() - start_time
-
+        except Exception as e:
+            logger.error(f"Operator dashboard error: {str(e)}")
             return Response(
                 {
-                    "success": True,
-                    "appointment": appointment_data,
-                    "old_status": old_status,
-                    "performance": (
-                        {"duration": duration} if request.user.is_staff else None
-                    ),
-                }
+                    "error": "Failed to load operator dashboard",
+                    "detail": str(e) if settings.DEBUG else "Internal server error",
+                },
+                status=500,
             )
 
-        except Exception as e:
-            logger.error(f"Error updating appointment status: {e}")
-            return Response(
-                {"error": "Failed to update status"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+    @action(detail=False, methods=["get"], url_path="today")
+    def today_appointments(self, request):
+        """Optimized today's appointments endpoint"""
+        from datetime import date
 
-    def create(self, request, *args, **kwargs):
-        """Optimized appointment creation"""
-        start_time = time.time()
+        cache_key = f"today_appointments_{request.user.id}_{date.today()}"
+
+        # Check cache first (30 minute cache)
+        if not settings.DEBUG:
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data)
 
         try:
-            # Check conflicts before creating
-            conflicts = data_manager.get_appointment_conflicts_optimized(request.data)
+            start_time = time.time()
 
-            if conflicts:
-                return Response(
-                    {"error": "Appointment conflicts detected", "conflicts": conflicts},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            response = super().create(request, *args, **kwargs)
-
-            if response.status_code == status.HTTP_201_CREATED:
-                appointment_data = response.data
-
-                # Broadcast new appointment
-                data_manager.broadcast_appointment_update(appointment_data, "created")
-
-                # Send notifications
-                send_appointment_notifications.delay(
-                    appointment_data["id"],
-                    "appointment_created",
-                    "New appointment has been created",
-                )
-
-            duration = time.time() - start_time
-            if request.user.is_staff:
-                response.data["performance"] = {"duration": duration}
-
-            return response
-
-        except Exception as e:
-            logger.error(f"Error creating appointment: {e}")
-            return Response(
-                {"error": "Failed to create appointment"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            # Use indexed date field for efficient filtering
+            queryset = (
+                self.get_queryset()
+                .filter(date=date.today())
+                .order_by("start_time", "status")
             )
 
+            serializer = self.get_serializer(queryset, many=True)
+            duration = time.time() - start_time
 
-class OptimizedAvailabilityViewSet(OptimizedAPIViewMixin, viewsets.ModelViewSet):
+            response_data = {
+                "results": serializer.data,
+                "date": date.today().isoformat(),
+                "count": len(serializer.data),
+                "performance": (
+                    {"query_time": f"{duration:.2f}s"} if settings.DEBUG else {}
+                ),
+            }
+
+            # Cache for 30 minutes
+            if not settings.DEBUG:
+                cache.set(cache_key, response_data, 1800)
+
+            return Response(response_data)
+
+        except Exception as e:
+            logger.error(f"Today appointments error: {str(e)}")
+            return Response({"error": str(e)}, status=500)
+
+    @action(detail=False, methods=["get"], url_path="upcoming")
+    def upcoming_appointments(self, request):
+        """Optimized upcoming appointments endpoint"""
+        from datetime import date, timedelta
+
+        cache_key = f"upcoming_appointments_{request.user.id}"
+
+        if not settings.DEBUG:
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data)
+
+        try:
+            # Next 7 days using indexed date field
+            today = date.today()
+            next_week = today + timedelta(days=7)
+
+            queryset = (
+                self.get_queryset()
+                .filter(date__gt=today, date__lte=next_week)
+                .order_by("date", "start_time")
+            )
+
+            serializer = self.get_serializer(queryset, many=True)
+
+            response_data = {
+                "results": serializer.data,
+                "date_range": {
+                    "from": (today + timedelta(days=1)).isoformat(),
+                    "to": next_week.isoformat(),
+                },
+                "count": len(serializer.data),
+            }
+
+            # Cache for 1 hour
+            if not settings.DEBUG:
+                cache.set(cache_key, response_data, 3600)
+
+            return Response(response_data)
+
+        except Exception as e:
+            logger.error(f"Upcoming appointments error: {str(e)}")
+            return Response({"error": str(e)}, status=500)
+
+
+# Optimized serializers for better performance
+class DashboardAppointmentSerializer(serializers.ModelSerializer):
     """
-    Optimized availability viewset
+    Minimal serializer for operator dashboard - only essential fields
+    Reduces data transfer and serialization time
     """
 
+    client_name = serializers.CharField(source="client.get_full_name", read_only=True)
+    therapist_name = serializers.CharField(
+        source="therapist.get_full_name", read_only=True
+    )
+    driver_name = serializers.CharField(source="driver.get_full_name", read_only=True)
+
+    class Meta:
+        model = Appointment
+        fields = [
+            "id",
+            "status",
+            "date",
+            "start_time",
+            "end_time",
+            "client_name",
+            "therapist_name",
+            "driver_name",
+            "rejection_reason",
+            "response_deadline",
+            "location",
+            "payment_status",
+            "created_at",
+        ]
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    """
+    Optimized ViewSet for notifications with caching and performance enhancements
+    """
+
+    serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
 
-    @action(detail=False, methods=["get"])
-    def by_date(self, request):
-        """Get availability by date with caching"""
-        start_time = time.time()
-        from django.db import connection
+    def get_queryset(self):
+        """
+        Return notifications for the current user with optimizations
+        """
+        user = self.request.user
+        return (
+            Notification.objects.filter(user=user)
+            .select_related("user")
+            .order_by("-created_at")
+        )
 
-        query_count_start = len(connection.queries)
+    def list(self, request):
+        """
+        List notifications with caching
+        """
+        user = request.user
+        cache_key = f"notifications_user_{user.id}"
 
-        try:
-            date_str = request.query_params.get("date")
-            role = request.query_params.get("role")
-            specialization = request.query_params.get("specialization")
+        # Try to get from cache first
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
 
-            if not date_str:
-                return Response(
-                    {"error": "Date parameter is required"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        queryset = self.get_queryset()[:20]  # Limit to 20 most recent
+        serializer = self.get_serializer(queryset, many=True)
 
-            date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
-            availability_data = data_manager.get_availability_optimized(
-                date_obj, role, specialization
-            )
+        # Cache for 5 minutes
+        cache.set(cache_key, serializer.data, timeout=300)
 
-            performance = self.log_performance("by_date", start_time, query_count_start)
-
-            return Response(
-                {
-                    "availability": availability_data,
-                    "date": date_str,
-                    "role": role,
-                    "count": len(availability_data),
-                    "performance": performance if request.user.is_staff else None,
-                }
-            )
-
-        except ValueError:
-            return Response(
-                {"error": "Invalid date format. Use YYYY-MM-DD"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except Exception as e:
-            logger.error(f"Error getting availability: {e}")
-            return Response(
-                {"error": "Failed to get availability"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-    @action(detail=False, methods=["get"])
-    def next_slot(self, request):
-        """Find next available slot for a user"""
-        try:
-            user_id = request.query_params.get("user_id")
-            date_str = request.query_params.get("date")
-            duration = int(request.query_params.get("duration", 60))
-
-            if not user_id or not date_str:
-                return Response(
-                    {"error": "user_id and date parameters are required"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
-            next_slot = data_manager.get_next_available_slot(
-                user_id, date_obj, duration
-            )
-
-            return Response(
-                {
-                    "next_slot": next_slot,
-                    "user_id": user_id,
-                    "date": date_str,
-                    "duration_minutes": duration,
-                }
-            )
-
-        except ValueError:
-            return Response(
-                {"error": "Invalid date format or duration"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except Exception as e:
-            logger.error(f"Error finding next slot: {e}")
-            return Response(
-                {"error": "Failed to find next available slot"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-
-class OptimizedStaffViewSet(OptimizedAPIViewMixin, viewsets.ModelViewSet):
-    """
-    Optimized staff management viewset
-    """
-
-    permission_classes = [IsAuthenticated]
-
-    @action(detail=False, methods=["get"])
-    def available(self, request):
-        """Get available staff with FIFO ordering"""
-        start_time = time.time()
-
-        try:
-            role = request.query_params.get("role")
-            date_str = request.query_params.get("date")
-            specialization = request.query_params.get("specialization")
-
-            if not role or not date_str:
-                return Response(
-                    {"error": "role and date parameters are required"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
-            available_staff = data_manager.get_available_staff_optimized(
-                role, date_obj, specialization
-            )
-
-            duration = time.time() - start_time
-
-            return Response(
-                {
-                    "staff": available_staff,
-                    "role": role,
-                    "date": date_str,
-                    "count": len(available_staff),
-                    "performance": (
-                        {"duration": duration} if request.user.is_staff else None
-                    ),
-                }
-            )
-
-        except ValueError:
-            return Response(
-                {"error": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST
-            )
-        except Exception as e:
-            logger.error(f"Error getting available staff: {e}")
-            return Response(
-                {"error": "Failed to get available staff"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        return Response(serializer.data)
