@@ -1,14 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
-  completeAppointment,
+  fetchTherapistDashboardAppointments,
   rejectAppointment,
-  requestPayment,
-  requestPickup,
-  startSession,
   therapistConfirm,
+  updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
 // OPTIMIZED: Replace old data hooks with optimized versions
 import { useOptimizedDashboardData } from "../hooks/useOptimizedData";
@@ -80,6 +78,10 @@ const TherapistDashboard = () => {
 
   // 🔥 REMOVED: View changes don't trigger API calls - data is filtered client-side
   // The centralized data manager provides all needed data, and filtering happens in the component
+
+  useEffect(() => {
+    dispatch(fetchTherapistDashboardAppointments());
+  }, [dispatch]);
 
   const handleLogout = () => {
     localStorage.removeItem("knoxToken");
@@ -188,12 +190,17 @@ const TherapistDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-
   const handleStartSession = async (appointmentId) => {
     const actionKey = `start_session_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(startSession(appointmentId)).unwrap();
+      await dispatch(
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "in_progress",
+          action: "start_session",
+        })
+      ).unwrap();
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
       await optimizedDataManager.forceRefresh([
         "appointments",
@@ -206,12 +213,17 @@ const TherapistDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-
   const handleRequestPayment = async (appointmentId) => {
     const actionKey = `request_payment_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(requestPayment(appointmentId)).unwrap();
+      await dispatch(
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "payment_requested",
+          action: "request_payment",
+        })
+      ).unwrap();
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
       await optimizedDataManager.forceRefresh([
         "appointments",
@@ -224,7 +236,6 @@ const TherapistDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-
   const handleCompleteSession = async (appointmentId) => {
     if (
       window.confirm("Complete this session? This action cannot be undone.")
@@ -232,7 +243,13 @@ const TherapistDashboard = () => {
       const actionKey = `complete_session_${appointmentId}`;
       try {
         setActionLoading(actionKey, true);
-        await dispatch(completeAppointment(appointmentId)).unwrap();
+        await dispatch(
+          updateAppointmentStatus({
+            id: appointmentId,
+            status: "completed",
+            action: "complete_session",
+          })
+        ).unwrap();
         // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
         await optimizedDataManager.forceRefresh([
           "appointments",
@@ -246,14 +263,15 @@ const TherapistDashboard = () => {
       }
     }
   };
-
   const handleRequestPickupNew = async (appointmentId, urgency = "normal") => {
     const actionKey = `request_pickup_${appointmentId}_${urgency}`;
     try {
       setActionLoading(actionKey, true);
       await dispatch(
-        requestPickup({
-          appointmentId,
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "pickup_requested",
+          action: "request_pickup",
           pickup_urgency: urgency,
           pickup_notes:
             urgency === "urgent"

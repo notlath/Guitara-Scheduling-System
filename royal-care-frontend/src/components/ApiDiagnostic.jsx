@@ -29,7 +29,7 @@ const ApiDiagnostic = () => {
       try {
         // Test if backend is reachable - use the root endpoint that returns "Welcome to the API"
         console.log("🔍 Testing backend connection...");
-        await axios.get("http://localhost:8000/", { timeout: 5000 });
+        await axios.get("http://localhost:8000/", { timeout: 3000 });
         newDiagnostics.backendReachable = "Yes";
         console.log("✅ Backend is reachable");
 
@@ -38,7 +38,7 @@ const ApiDiagnostic = () => {
           console.log("🔍 Testing appointments endpoint...");
           const response = await axios.get(`${API_URL}appointments/`, {
             headers: { Authorization: `Token ${token}` },
-            timeout: 10000,
+            timeout: 5000,
           });
           newDiagnostics.appointmentsResponse = {
             status: response.status,
@@ -56,25 +56,51 @@ const ApiDiagnostic = () => {
         }
       } catch (error) {
         console.error("❌ API Diagnostic error:", error);
-        newDiagnostics.error = {
-          message: error.message,
-          status: error.response?.status,
-          data: error.response?.data,
-        };
 
+        // Handle timeout errors specifically
         if (
+          error.code === "ECONNABORTED" &&
+          error.message.includes("timeout")
+        ) {
+          newDiagnostics.backendReachable =
+            "No - Server timeout (not running?)";
+          newDiagnostics.appointmentsResponse = "Server not responding";
+          newDiagnostics.error = {
+            message: "Backend server appears to be down or not responding",
+            suggestion:
+              "Start the Django server with: python manage.py runserver",
+            originalError: error.message,
+          };
+        } else if (
           error.code === "ECONNREFUSED" ||
           error.message.includes("Network Error")
         ) {
           newDiagnostics.backendReachable = "No - Connection refused";
+          newDiagnostics.appointmentsResponse = "Cannot connect to server";
+          newDiagnostics.error = {
+            message: "Backend server is not running",
+            suggestion:
+              "Start the Django server with: python manage.py runserver",
+            originalError: error.message,
+          };
         } else if (error.response?.status === 401) {
           newDiagnostics.backendReachable = "Yes";
           newDiagnostics.appointmentsResponse = "Authentication failed";
+          newDiagnostics.error = {
+            message: "Authentication token is invalid or expired",
+            suggestion: "Please log in again",
+            status: error.response.status,
+          };
         } else {
           newDiagnostics.backendReachable = "Yes";
           newDiagnostics.appointmentsResponse = `Error: ${
             error.response?.status || error.message
           }`;
+          newDiagnostics.error = {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+          };
         }
       }
 
@@ -126,11 +152,36 @@ const ApiDiagnostic = () => {
       </div>
 
       {diagnostics.error && (
-        <div style={{ color: "red", marginTop: "10px" }}>
-          <strong>Error Details:</strong>
-          <pre style={{ fontSize: "10px", whiteSpace: "pre-wrap" }}>
-            {JSON.stringify(diagnostics.error, null, 2)}
-          </pre>
+        <div
+          style={{
+            color: "yellow",
+            marginTop: "10px",
+            padding: "10px",
+            background: "rgba(255,255,0,0.1)",
+            borderRadius: "3px",
+          }}
+        >
+          <strong>⚠️ Issue Detected:</strong>
+          <div style={{ marginTop: "5px" }}>{diagnostics.error.message}</div>
+
+          {diagnostics.error.suggestion && (
+            <div style={{ marginTop: "5px", color: "lightgreen" }}>
+              <strong>💡 Solution:</strong> {diagnostics.error.suggestion}
+            </div>
+          )}
+
+          <details style={{ marginTop: "10px" }}>
+            <summary>Technical Details</summary>
+            <pre
+              style={{
+                fontSize: "10px",
+                whiteSpace: "pre-wrap",
+                color: "lightgray",
+              }}
+            >
+              {JSON.stringify(diagnostics.error, null, 2)}
+            </pre>
+          </details>
         </div>
       )}
 

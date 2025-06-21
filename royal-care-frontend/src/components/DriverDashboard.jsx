@@ -3,11 +3,8 @@ import { shallowEqual, useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
-  completeReturnJourney,
-  confirmPickup, // Added for completing return journey
-  rejectAppointment, // Added for pickup confirmation
-  rejectPickup, // General appointment rejection
-  startJourney,
+  fetchDriverDashboardAppointments, // Added for driver dashboard data fetching
+  rejectAppointment, // Added for appointment rejection
   updateAppointmentStatus, // Used for general status updates, including confirmations
 } from "../features/scheduling/schedulingSlice";
 // OPTIMIZED: Replace old data hooks with optimized versions
@@ -137,7 +134,12 @@ const DriverDashboard = () => {
     const actionKey = `confirm-pickup-${appointmentId}`;
     setActionLoading(actionKey, true);
     try {
-      await dispatch(confirmPickup(appointmentId)).unwrap();
+      await dispatch(
+        updateAppointmentStatus({
+          appointmentId,
+          status: "pickup_confirmed",
+        })
+      ).unwrap();
       console.log(`Pickup confirmed for appointment ${appointmentId}`);
       // ✅ Only refresh specific data, not everything
       await optimizedDataManager.forceRefresh(["todayAppointments"]);
@@ -148,12 +150,16 @@ const DriverDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-
   const handleRejectPickup = async (appointmentId, reason) => {
     const actionKey = `reject-pickup-${appointmentId}`;
     setActionLoading(actionKey, true);
     try {
-      await dispatch(rejectPickup({ appointmentId, reason })).unwrap();
+      await dispatch(
+        rejectAppointment({
+          appointmentId,
+          reason,
+        })
+      ).unwrap();
       // Optionally, add success notification or UI update here
       console.log(`Pickup rejected for appointment ${appointmentId}`);
     } catch (error) {
@@ -317,7 +323,12 @@ const DriverDashboard = () => {
     const actionKey = `journey_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(startJourney(appointmentId)).unwrap();
+      await dispatch(
+        updateAppointmentStatus({
+          appointmentId,
+          status: "journey_started",
+        })
+      ).unwrap();
       // ✅ Only refresh today's appointments, not everything
       await optimizedDataManager.forceRefresh(["todayAppointments"]);
     } catch (error) {
@@ -475,12 +486,16 @@ const DriverDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-
   const handleCompleteReturnJourney = async (appointmentId) => {
     const actionKey = `complete_return_journey_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(completeReturnJourney(appointmentId)).unwrap();
+      await dispatch(
+        updateAppointmentStatus({
+          appointmentId,
+          status: "completed",
+        })
+      ).unwrap();
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
       await optimizedDataManager.forceRefresh(["todayAppointments"]);
       alert(
@@ -1585,6 +1600,9 @@ const DriverDashboard = () => {
       </div>
     );
   };
+  useEffect(() => {
+    dispatch(fetchDriverDashboardAppointments());
+  }, [dispatch]);
   return (
     <PageLayout>
       {" "}
