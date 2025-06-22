@@ -27,7 +27,6 @@ import {
   useOptimizedButtonLoading,
   useOptimizedCountdown,
 } from "../hooks/useOperatorPerformance";
-import { useStableCallback } from "../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import syncService from "../services/syncService";
@@ -109,7 +108,8 @@ const OperatorDashboard = () => {
   const [validationWarnings, setValidationWarnings] = useState([]);
 
   // Check for invalid URL parameters and warn user
-  useEffect(() => {
+  // OPTIMIZATION: useCallback for stable validation, and only update if changed
+  const validateWarnings = useCallback(() => {
     const warnings = [];
     if (rawView && !VALID_VIEW_VALUES.includes(rawView)) {
       warnings.push(`Invalid view "${rawView}" reset to "rejected"`);
@@ -117,31 +117,52 @@ const OperatorDashboard = () => {
     if (rawFilter && !VALID_FILTER_VALUES.includes(rawFilter)) {
       warnings.push(`Invalid filter "${rawFilter}" reset to "all"`);
     }
-    setValidationWarnings(warnings);
+    return warnings;
   }, [rawView, rawFilter]);
 
-  // Optimized view setter with stable callback
-  const setView = useStableCallback((newView) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set("view", newView);
-    // Reset page when changing views
-    newSearchParams.set("page", "1");
-    setSearchParams(newSearchParams);
-  });
+  useEffect(() => {
+    const newWarnings = validateWarnings();
+    setValidationWarnings((prev) => {
+      if (
+        prev.length === newWarnings.length &&
+        prev.every((w, i) => w === newWarnings[i])
+      ) {
+        return prev;
+      }
+      return newWarnings;
+    });
+  }, [validateWarnings]);
+  // ✅ STEP 1: Memoized view/filter/page setters with stable callbacks
+  const setView = useCallback(
+    (newView) => {
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.set("view", newView);
+      // Reset page when changing views
+      newSearchParams.set("page", "1");
+      setSearchParams(newSearchParams);
+    },
+    [searchParams, setSearchParams]
+  );
 
   // Filter and page management
-  const setFilter = useStableCallback((newFilter) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set("filter", newFilter);
-    newSearchParams.set("page", "1"); // Reset to first page
-    setSearchParams(newSearchParams);
-  });
+  const setFilter = useCallback(
+    (newFilter) => {
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.set("filter", newFilter);
+      newSearchParams.set("page", "1"); // Reset to first page
+      setSearchParams(newSearchParams);
+    },
+    [searchParams, setSearchParams]
+  );
 
-  const setPage = useStableCallback((page) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set("page", page.toString());
-    setSearchParams(newSearchParams);
-  });
+  const setPage = useCallback(
+    (page) => {
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.set("page", page.toString());
+      setSearchParams(newSearchParams);
+    },
+    [searchParams, setSearchParams]
+  );
   // Modal states - memoized to prevent unnecessary re-renders
   const [reviewModal, setReviewModal] = useState({
     isOpen: false,
@@ -227,23 +248,17 @@ const OperatorDashboard = () => {
   const { items: filteredAndSortedAppointments } = useStableAppointmentSorting(
     stableAppointments,
     currentFilter
-  );
-
-  // � ULTRA-PERFORMANCE: Replace pagination with virtualized version
+  ); // ✅ STEP 2: Use virtualized pagination hook directly
   const appointmentsPagination = useVirtualizedPagination(
     filteredAndSortedAppointments,
     10,
     800 // Container height in pixels
-  );
-  // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
-  const {
-    buttonLoading,
-    setButtonLoading: setActionLoading,
-    forceClearLoading,
-  } = useOptimizedButtonLoading();
+  ); // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
+  const { buttonLoading, setActionLoading, forceClearLoading } =
+    useOptimizedButtonLoading();
   // 🚀 ULTRA-PERFORMANCE: Optimized dashboard tabs with stable memoization
+  // OPTIMIZATION: Only depend on counts, not full arrays, to avoid unnecessary recalculation
   const dashboardTabs = useMemo(() => {
-    // Pre-calculate counts to avoid repeated access
     const rejectedCount = rejectedAppointments?.length || 0;
     const pendingCount = pendingAppointments?.length || 0;
     const overdueCount = overdueAppointments?.length || 0;
@@ -254,34 +269,17 @@ const OperatorDashboard = () => {
     const pendingPickupsCount = driverAssignment?.pendingPickups?.length || 0;
     const activeSessionsCount = activeSessions?.length || 0;
     const pickupRequestsCount = pickupRequests?.length || 0;
-
     return [
-      {
-        id: "rejected",
-        label: "Rejection Reviews",
-        count: rejectedCount,
-      },
-      {
-        id: "pending",
-        label: "Pending Acceptance",
-        count: pendingCount,
-      },
-      {
-        id: "timeout",
-        label: "Timeout Monitoring",
-        count: overdueCount,
-      },
+      { id: "rejected", label: "Rejection Reviews", count: rejectedCount },
+      { id: "pending", label: "Pending Acceptance", count: pendingCount },
+      { id: "timeout", label: "Timeout Monitoring", count: overdueCount },
       {
         id: "payment",
         label: "Payment Verification",
         count: awaitingPaymentCount,
       },
       { id: "all", label: "All Appointments", count: appointmentsCount },
-      {
-        id: "attendance",
-        label: "Attendance",
-        count: attendanceCount,
-      },
+      { id: "attendance", label: "Attendance", count: attendanceCount },
       {
         id: "notifications",
         label: "Notifications",
@@ -292,16 +290,8 @@ const OperatorDashboard = () => {
         label: "Driver Coordination",
         count: pendingPickupsCount,
       },
-      {
-        id: "workflow",
-        label: "Service Workflow",
-        count: 0,
-      },
-      {
-        id: "sessions",
-        label: "Active Sessions",
-        count: activeSessionsCount,
-      },
+      { id: "workflow", label: "Service Workflow", count: 0 },
+      { id: "sessions", label: "Active Sessions", count: activeSessionsCount },
       { id: "pickup", label: "Pickup Requests", count: pickupRequestsCount },
     ];
   }, [
@@ -315,7 +305,7 @@ const OperatorDashboard = () => {
     driverAssignment?.pendingPickups?.length,
     activeSessions?.length,
     pickupRequests?.length,
-  ]); // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
+  ]);
   // The optimized data manager handles background refreshes automatically
   // 🚀 ULTRA-PERFORMANCE: Optimized countdown timer management
   const isTimeoutViewActive = currentView === "timeout";
@@ -325,18 +315,13 @@ const OperatorDashboard = () => {
   );
 
   // 🔥 PERFORMANCE OPTIMIZATION: Optimized countdown timer management
+  // OPTIMIZATION: Only run timer effect when view or appointments change
   useEffect(() => {
-    if (isTimeoutViewActive) {
-      manageTimer();
-    } else {
-      stopTimer();
-    }
-
-    // Cleanup on unmount
+    manageTimer();
     return () => {
       stopTimer();
     };
-  }, [isTimeoutViewActive, manageTimer, stopTimer]); // Helper function to get driver task description based on appointment status
+  }, [isTimeoutViewActive, manageTimer, stopTimer]);
   const getDriverTaskDescription = useCallback((appointment) => {
     if (!appointment) return "On assignment";
 
@@ -494,21 +479,30 @@ const OperatorDashboard = () => {
       }
     },
     [dispatch, getDriverTaskDescription]
-  ); // 🔧 FIX: Removed appointments dependency - now passed as parameter
+  ); // 🔧 FIX: Removed appointments dependency - now passed as parameter  // ✅ STEP 5: Memoize current appointments to avoid dependencies on the array
+  const currentAppointmentsForDriver = useMemo(
+    () => stableAppointments,
+    [stableAppointments]
+  );
 
   useEffect(() => {
     // Only load data if appointments is available (not undefined) and initial data hasn't been loaded
     if (appointmentsLength > 0 && !initialDriverDataLoaded.current) {
       const loadInitialData = async () => {
         console.log("🚗 Loading initial driver data");
-        await loadDriverData(stableAppointments);
+        await loadDriverData(currentAppointmentsForDriver);
         // Also fetch notifications on initial load
         dispatch(fetchNotifications());
         initialDriverDataLoaded.current = true;
       };
       loadInitialData();
     }
-  }, [appointmentsLength, loadDriverData, dispatch, stableAppointments]); // 🔧 FIX: Use stable appointments
+  }, [
+    appointmentsLength,
+    loadDriverData,
+    dispatch,
+    currentAppointmentsForDriver,
+  ]); // ✅ STEP 5: Use memoized appointments
   // Listen for real-time driver updates via sync service
   useEffect(() => {
     const handleDriverUpdate = (data) => {
@@ -1016,6 +1010,7 @@ const OperatorDashboard = () => {
         "🔄 handleMarkPaymentPaid: Setting loading state to false for",
         actionKey
       );
+      setActionLoading(actionKey, false);
 
       // Add a small delay to ensure state update completes
       setTimeout(() => {
@@ -1659,16 +1654,15 @@ const OperatorDashboard = () => {
     );
   };
 
-  // � PERFORMANCE: Old implementations removed - using ultra-optimized versions above
-
-  // Sync pagination with URL
+  // � PERFORMANCE: Old implementations removed - using ultra-optimized versions above  // ✅ STEP 3 & 4: Optimized pagination sync with conditional updates
   useEffect(() => {
+    // Only sync if the pagination current page differs from URL page
     if (currentPage !== appointmentsPagination.currentPage) {
       appointmentsPagination.goToPage(currentPage);
     }
   }, [currentPage, appointmentsPagination]);
 
-  // Update URL when pagination changes
+  // Update URL when pagination changes - only if values actually differ
   useEffect(() => {
     if (appointmentsPagination.currentPage !== currentPage) {
       setPage(appointmentsPagination.currentPage);

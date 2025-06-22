@@ -131,166 +131,167 @@ class WebSocketTanStackService {
    * Handle appointment creation - update TanStack Query cache
    */
   handleAppointmentCreate(appointment) {
-    // Update all appointment queries
-    queryClient.setQueryData(["appointments"], (oldData) => {
-      if (!oldData) return [appointment];
-      return [...oldData, appointment];
+    // Update global appointments list
+    queryClient.setQueryData(["appointments"], (old = []) => {
+      // Prevent duplicates
+      if (old.find((a) => a.id === appointment.id)) return old;
+      return [appointment, ...old];
     });
 
     // Update today's appointments if applicable
     const today = new Date().toISOString().split("T")[0];
     if (appointment.date === today) {
-      queryClient.setQueryData(["appointments", "today"], (oldData) => {
-        if (!oldData) return [appointment];
-        return [...oldData, appointment];
+      queryClient.setQueryData(["appointments", "today"], (old = []) => {
+        if (old.find((a) => a.id === appointment.id)) return old;
+        return [appointment, ...old];
       });
     }
 
-    // Update date-specific queries
+    // Update per-date queries
     queryClient.setQueryData(
       ["appointments", "date", appointment.date],
-      (oldData) => {
-        if (!oldData) return [appointment];
-        return [...oldData, appointment];
+      (old = []) => {
+        if (old.find((a) => a.id === appointment.id)) return old;
+        return [appointment, ...old];
       }
     );
 
-    // Update user-specific queries
+    // Update therapist dashboard queries
     if (appointment.therapist_id) {
       queryClient.setQueryData(
         ["appointments", "therapist", appointment.therapist_id],
-        (oldData) => {
-          if (!oldData) return [appointment];
-          return [...oldData, appointment];
+        (old = []) => {
+          if (old.find((a) => a.id === appointment.id)) return old;
+          return [appointment, ...old];
         }
       );
     }
 
+    // Update driver dashboard queries
     if (appointment.driver_id) {
       queryClient.setQueryData(
         ["appointments", "driver", appointment.driver_id],
-        (oldData) => {
-          if (!oldData) return [appointment];
-          return [...oldData, appointment];
+        (old = []) => {
+          if (old.find((a) => a.id === appointment.id)) return old;
+          return [appointment, ...old];
         }
       );
     }
 
-    // Invalidate related queries to trigger refetch
+    // Invalidate related queries to trigger refetch (for filtered lists, etc.)
+    queryClient.invalidateQueries({ queryKey: ["appointments"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "today"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "date"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] });
     queryClient.invalidateQueries({ queryKey: ["availability"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-
-    console.log("✅ Appointment created - cache updated");
   }
 
   /**
    * Handle appointment update - update TanStack Query cache
    */
   handleAppointmentUpdate(updatedAppointment) {
-    // Update appointment in all relevant queries
-    const updateAppointmentInList = (oldData) => {
-      if (!oldData) return oldData;
-      return oldData.map((appointment) =>
-        appointment.id === updatedAppointment.id
-          ? { ...appointment, ...updatedAppointment }
-          : appointment
-      );
-    };
+    // Update global appointments list
+    queryClient.setQueryData(["appointments"], (old = []) =>
+      old.map((a) => (a.id === updatedAppointment.id ? updatedAppointment : a))
+    );
 
-    // Update all appointment lists
-    queryClient.setQueryData(["appointments"], updateAppointmentInList);
-    queryClient.setQueryData(
-      ["appointments", "today"],
-      updateAppointmentInList
-    );
-    queryClient.setQueryData(
-      ["appointments", "upcoming"],
-      updateAppointmentInList
-    );
+    // Update today's appointments if applicable
+    const today = new Date().toISOString().split("T")[0];
+    if (updatedAppointment.date === today) {
+      queryClient.setQueryData(["appointments", "today"], (old = []) =>
+        old.map((a) =>
+          a.id === updatedAppointment.id ? updatedAppointment : a
+        )
+      );
+    }
+
+    // Update per-date queries
     queryClient.setQueryData(
       ["appointments", "date", updatedAppointment.date],
-      updateAppointmentInList
+      (old = []) =>
+        old.map((a) =>
+          a.id === updatedAppointment.id ? updatedAppointment : a
+        )
     );
 
-    // Update user-specific queries
+    // Update therapist dashboard queries
     if (updatedAppointment.therapist_id) {
       queryClient.setQueryData(
         ["appointments", "therapist", updatedAppointment.therapist_id],
-        updateAppointmentInList
+        (old = []) =>
+          old.map((a) =>
+            a.id === updatedAppointment.id ? updatedAppointment : a
+          )
       );
     }
 
+    // Update driver dashboard queries
     if (updatedAppointment.driver_id) {
       queryClient.setQueryData(
         ["appointments", "driver", updatedAppointment.driver_id],
-        updateAppointmentInList
+        (old = []) =>
+          old.map((a) =>
+            a.id === updatedAppointment.id ? updatedAppointment : a
+          )
       );
     }
 
-    // Update individual appointment query
-    queryClient.setQueryData(
-      ["appointment", updatedAppointment.id],
-      updatedAppointment
-    );
-
-    // Invalidate related queries
+    // Invalidate related queries to trigger refetch (for filtered lists, etc.)
+    queryClient.invalidateQueries({ queryKey: ["appointments"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "today"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "date"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] });
     queryClient.invalidateQueries({ queryKey: ["availability"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-
-    console.log("✅ Appointment updated - cache updated");
   }
 
   /**
    * Handle appointment deletion - update TanStack Query cache
    */
   handleAppointmentDelete(deletedAppointment) {
-    const removeAppointmentFromList = (oldData) => {
-      if (!oldData) return oldData;
-      return oldData.filter(
-        (appointment) => appointment.id !== deletedAppointment.appointment_id
-      );
-    };
+    // Remove from global appointments list
+    queryClient.setQueryData(["appointments"], (old = []) =>
+      old.filter((a) => a.id !== deletedAppointment.id)
+    );
 
-    // Remove from all appointment lists
-    queryClient.setQueryData(["appointments"], removeAppointmentFromList);
-    queryClient.setQueryData(
-      ["appointments", "today"],
-      removeAppointmentFromList
-    );
-    queryClient.setQueryData(
-      ["appointments", "upcoming"],
-      removeAppointmentFromList
-    );
+    // Remove from today's appointments if applicable
+    const today = new Date().toISOString().split("T")[0];
+    if (deletedAppointment.date === today) {
+      queryClient.setQueryData(["appointments", "today"], (old = []) =>
+        old.filter((a) => a.id !== deletedAppointment.id)
+      );
+    }
+
+    // Remove from per-date queries
     queryClient.setQueryData(
       ["appointments", "date", deletedAppointment.date],
-      removeAppointmentFromList
+      (old = []) => old.filter((a) => a.id !== deletedAppointment.id)
     );
 
-    // Remove from user-specific queries
+    // Remove from therapist dashboard queries
     if (deletedAppointment.therapist_id) {
       queryClient.setQueryData(
         ["appointments", "therapist", deletedAppointment.therapist_id],
-        removeAppointmentFromList
+        (old = []) => old.filter((a) => a.id !== deletedAppointment.id)
       );
     }
 
+    // Remove from driver dashboard queries
     if (deletedAppointment.driver_id) {
       queryClient.setQueryData(
         ["appointments", "driver", deletedAppointment.driver_id],
-        removeAppointmentFromList
+        (old = []) => old.filter((a) => a.id !== deletedAppointment.id)
       );
     }
 
-    // Remove individual appointment query
-    queryClient.removeQueries({
-      queryKey: ["appointment", deletedAppointment.appointment_id],
-    });
-
-    // Invalidate related queries
+    // Invalidate related queries to trigger refetch (for filtered lists, etc.)
+    queryClient.invalidateQueries({ queryKey: ["appointments"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "today"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "date"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] });
     queryClient.invalidateQueries({ queryKey: ["availability"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-
-    console.log("✅ Appointment deleted - cache updated");
   }
 
   /**
