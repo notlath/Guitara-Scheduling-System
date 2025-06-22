@@ -26,7 +26,6 @@ import {
   useAttendanceActions,
   useAttendanceRecords,
 } from "./contexts/AttendanceContext";
-import PerformanceMonitor from "./PerformanceMonitor";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
