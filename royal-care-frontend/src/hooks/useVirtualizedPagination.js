@@ -23,8 +23,29 @@ export const useVirtualizedPagination = (
   const scrollPositionRef = useRef(0);
   const containerRef = useRef();
 
+  // PERFORMANCE: Ensure items is always an array and handle edge cases
+  const safeItems = useMemo(() => {
+    if (!items) return [];
+    if (Array.isArray(items)) return items;
+    // Handle case where items might be an object with data property
+    if (typeof items === "object" && Array.isArray(items.data))
+      return items.data;
+    // Handle case where items might be an object with items property
+    if (typeof items === "object" && Array.isArray(items.items))
+      return items.items;
+    // Last resort: try to convert to array or return empty array
+    try {
+      return Array.from(items);
+    } catch {
+      console.warn(
+        "useVirtualizedPagination: items is not an array-like object, using empty array"
+      );
+      return [];
+    }
+  }, [items]);
+
   // PERFORMANCE: Decide between pagination and virtualization based on data size
-  const shouldVirtualize = items.length > 50;
+  const shouldVirtualize = safeItems.length > 50;
 
   // PERFORMANCE: Memoized pagination calculations
   const paginationData = useMemo(() => {
@@ -34,11 +55,11 @@ export const useVirtualizedPagination = (
       const visibleCount = Math.ceil(containerHeight / ITEM_HEIGHT);
       const bufferedStart = Math.max(0, startIndex - BUFFER_SIZE);
       const bufferedEnd = Math.min(
-        items.length,
+        safeItems.length,
         startIndex + visibleCount + BUFFER_SIZE
       );
 
-      const virtualItems = items
+      const virtualItems = safeItems
         .slice(bufferedStart, bufferedEnd)
         .map((item, index) => ({
           ...item,
@@ -50,23 +71,23 @@ export const useVirtualizedPagination = (
         currentItems: virtualItems,
         currentPage: 1,
         totalPages: 1,
-        totalItems: items.length,
+        totalItems: safeItems.length,
         startIndex: bufferedStart + 1,
         endIndex: bufferedEnd,
         hasNextPage: false,
         hasPrevPage: false,
         pageRange: [],
         isVirtualized: true,
-        totalHeight: items.length * ITEM_HEIGHT,
+        totalHeight: safeItems.length * ITEM_HEIGHT,
         visibleRange: { start: bufferedStart, end: bufferedEnd },
       };
     } else {
       // Standard pagination mode
-      const totalItems = items.length;
+      const totalItems = safeItems.length;
       const totalPages = Math.ceil(totalItems / itemsPerPage);
       const startIndex = (currentPage - 1) * itemsPerPage;
       const endIndex = startIndex + itemsPerPage;
-      const currentItems = items.slice(startIndex, endIndex);
+      const currentItems = safeItems.slice(startIndex, endIndex);
 
       // Smart page range calculation
       const getPageRange = () => {
@@ -119,7 +140,7 @@ export const useVirtualizedPagination = (
       };
     }
   }, [
-    items,
+    safeItems,
     itemsPerPage,
     currentPage,
     scrollTop,
@@ -184,16 +205,16 @@ export const useVirtualizedPagination = (
 
   // PERFORMANCE: Auto-enable virtualization for large datasets
   useEffect(() => {
-    if (shouldVirtualize && !isVirtualized && items.length > 100) {
+    if (shouldVirtualize && !isVirtualized && safeItems.length > 100) {
       setIsVirtualized(true);
     }
-  }, [shouldVirtualize, isVirtualized, items.length]);
+  }, [shouldVirtualize, isVirtualized, safeItems.length]);
 
   // PERFORMANCE: Reset on item changes
   useEffect(() => {
     setCurrentPage(1);
     setScrollTop(0);
-  }, [items.length]);
+  }, [safeItems.length]);
 
   return {
     ...paginationData,

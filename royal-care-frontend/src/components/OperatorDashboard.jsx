@@ -5,8 +5,6 @@ import { approveAttendance } from "../features/attendance/attendanceSlice";
 import { logout } from "../features/auth/authSlice";
 import {
   autoCancelOverdueAppointments,
-  fetchNotifications,
-  fetchStaffMembers,
   markAppointmentPaid,
   reviewRejection,
   updateAppointmentStatus,
@@ -15,18 +13,10 @@ import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 // PERFORMANCE: Stable filtering imports to prevent render loops
-import {
-  useStableAppointmentFilters,
-  useStableAppointmentSorting,
-} from "../hooks/useStableAppointmentFilters";
 import { useVirtualizedPagination } from "../hooks/useVirtualizedPagination";
 import Pagination from "./Pagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
-import { useOperatorDashboardData } from "../hooks/useDashboardQueries";
-import {
-  useOptimizedButtonLoading,
-  useOptimizedCountdown,
-} from "../hooks/useOperatorPerformance";
+import { useOptimizedButtonLoading } from "../hooks/useOperatorPerformance";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import syncService from "../services/syncService";
@@ -77,13 +67,6 @@ const VALID_FILTER_VALUES = Object.freeze([
 const validateUrlParam = (param, validValues, defaultValue) => {
   if (!param || typeof param !== "string") return defaultValue;
   return validValues.includes(param) ? param : defaultValue;
-};
-
-const validateAppointmentsData = (appointments) => {
-  if (!appointments) return { isValid: false, error: "No appointments data" };
-  if (!Array.isArray(appointments))
-    return { isValid: false, error: "Appointments data is not an array" };
-  return { isValid: true, error: null };
 };
 
 const OperatorDashboard = () => {
@@ -194,493 +177,372 @@ const OperatorDashboard = () => {
     selectedDate,
   } = useAttendanceRecords();
 
-  const { setSelectedDate, forceRefreshAttendance } = useAttendanceActions();
-  // Driver coordination state
+  const { setSelectedDate, forceRefreshAttendance } = useAttendanceActions(); // Driver coordination state
   const [driverAssignment, setDriverAssignment] = useState({
     availableDrivers: [],
     busyDrivers: [],
     pendingPickups: [],
-  }); // Enhanced data access with immediate display capabilities
-  // OPTIMIZED: Use optimized dashboard data hook
-  const {
-    appointments,
-    todayAppointments,
-    upcomingAppointments,
-    notifications,
-    loading,
-    error,
-    hasData,
-    forceRefresh,
-  } = useOperatorDashboardData();
+  });
 
-  // 🔧 FIX: Memoize appointments array to prevent unnecessary effect triggers
-  const stableAppointments = useMemo(() => appointments, [appointments]);
+  // ✅ PER-TAB DATA FETCHING: Replace global data hooks with tab-specific fetching
+  const [tabData, setTabData] = useState(null);
+  const [tabLoading, setTabLoading] = useState(false);
+  const [tabError, setTabError] = useState(null);
+  const tabCache = useRef({});
 
-  // ✅ ROBUST FILTERING: Validate appointments data before processing
-  const appointmentsValidation = useMemo(() => {
-    return validateAppointmentsData(stableAppointments);
-  }, [stableAppointments]); // ✅ STABLE FILTERING: Replace robust with stable versions to prevent render loops
-  const stableFilteringResults =
-    useStableAppointmentFilters(stableAppointments);
-  // 🔧 FIX: Memoize filtering errors to prevent unnecessary updates
-  const filteringErrors = useMemo(() => {
-    if (!appointmentsValidation.isValid) {
-      return {
-        hasErrors: true,
-        errorMessage: appointmentsValidation.error,
-      };
-    }
+  // Helper function to get authentication token
+  const getToken = () => localStorage.getItem("knoxToken");
+  // API fetch functions for each tab - wrapped in useCallback to prevent dependency issues
+  const fetchAllAppointments = useCallback(async () => {
+    const token = getToken();
+    if (!token) throw new Error("Authentication required");
+
+    const response = await fetch(
+      "http://localhost:8000/api/scheduling/appointments/",
+      {
+        headers: { Authorization: `Token ${token}` },
+      }
+    );
+    if (!response.ok)
+      throw new Error(`Failed to fetch appointments: ${response.status}`);
+    return response.json();
+  }, []);
+
+  const fetchPendingAppointments = useCallback(async () => {
+    const appointments = await fetchAllAppointments();
+    return appointments.filter((apt) => apt.status === "pending");
+  }, [fetchAllAppointments]);
+
+  const fetchRejectedAppointments = useCallback(async () => {
+    const appointments = await fetchAllAppointments();
+    return appointments.filter((apt) => apt.status === "rejected");
+  }, [fetchAllAppointments]);
+
+  const fetchTimeoutAppointments = useCallback(async () => {
+    const appointments = await fetchAllAppointments();
+    const now = new Date();
+    return appointments.filter((apt) => {
+      const createdAt = new Date(apt.created_at);
+      const timeDiff = now - createdAt;
+      const hoursElapsed = timeDiff / (1000 * 60 * 60);
+      return apt.status === "pending" && hoursElapsed > 24; // 24 hours timeout
+    });
+  }, [fetchAllAppointments]);
+
+  const fetchAwaitingPaymentAppointments = useCallback(async () => {
+    const appointments = await fetchAllAppointments();
+    return appointments.filter((apt) => apt.status === "awaiting_payment");
+  }, [fetchAllAppointments]);
+
+  const fetchAttendanceRecords = useCallback(async () => {
+    const token = getToken();
+    if (!token) throw new Error("Authentication required");
+
+    const today = selectedDate || new Date().toISOString().split("T")[0];
+    const response = await fetch(
+      `http://localhost:8000/api/attendance/records/?date=${today}`,
+      {
+        headers: { Authorization: `Token ${token}` },
+      }
+    );
+    if (!response.ok)
+      throw new Error(`Failed to fetch attendance: ${response.status}`);
+    return response.json();
+  }, [selectedDate]);
+  const fetchUnreadNotifications = useCallback(async () => {
+    const token = getToken();
+    if (!token) throw new Error("Authentication required");
+
+    console.log("🔔 Fetching notifications...");
+    const response = await fetch(
+      "http://localhost:8000/api/scheduling/notifications/?is_read=false",
+      {
+        headers: { Authorization: `Token ${token}` },
+      }
+    );
+    if (!response.ok)
+      throw new Error(`Failed to fetch notifications: ${response.status}`);
+    const data = await response.json();
+    console.log("🔔 Notifications fetched:", data);
+    return data;
+  }, []);
+
+  const fetchDriverAssignments = useCallback(async () => {
+    const token = getToken();
+    if (!token) throw new Error("Authentication required");
+
+    const response = await fetch(
+      "http://localhost:8000/api/scheduling/staff/?role=driver",
+      {
+        headers: { Authorization: `Token ${token}` },
+      }
+    );
+    if (!response.ok)
+      throw new Error(`Failed to fetch drivers: ${response.status}`);
+    return response.json();
+  }, []);
+  const fetchWorkflowData = useCallback(async () => {
+    // Return mock workflow data with expected structure
     return {
-      hasErrors: false,
-      errorMessage: null,
+      totalAppointments: 0,
+      inProgress: 0,
+      completed: 0,
+      workflows: [],
+      todayAppointments: [], // Mock data for today's appointments
+      activeSessions: [], // Mock data for active sessions
+      upcomingAppointments: [], // Mock data for upcoming appointments
     };
-  }, [appointmentsValidation.isValid, appointmentsValidation.error]);
-  const {
-    rejected: rejectedAppointments,
-    pending: pendingAppointments,
-    awaitingPayment: awaitingPaymentAppointments,
-    overdue: overdueAppointments,
-    approachingDeadline: approachingDeadlineAppointments,
-    activeSessions,
-    pickupRequests,
-    rejectionStats,
-  } = stableFilteringResults; // ✅ STABLE SORTING: Replace robust with stable version to prevent render loops
-  const { items: filteredAndSortedAppointments } = useStableAppointmentSorting(
-    stableAppointments,
-    currentFilter
-  ); // ✅ STEP 2: Use virtualized pagination hook directly
+  }, []);
+
+  const fetchActiveSessions = useCallback(async () => {
+    const appointments = await fetchAllAppointments();
+    return appointments.filter(
+      (apt) => apt.status === "in_progress" || apt.status === "session_started"
+    );
+  }, [fetchAllAppointments]);
+
+  const fetchPickupRequests = useCallback(async () => {
+    const appointments = await fetchAllAppointments();
+    return appointments.filter((apt) => apt.status === "pickup_requested");
+  }, [fetchAllAppointments]);
+
+  // ✅ PER-TAB DATA FETCHING: Only fetch data for the active tab
+  useEffect(() => {
+    let isMounted = true;
+    setTabLoading(true);
+    setTabError(null);
+    setTabData(null);
+
+    // If you want to cache tab data, check cache first
+    if (tabCache.current[currentView]) {
+      setTabData(tabCache.current[currentView]);
+      setTabLoading(false);
+      return;
+    }
+
+    let fetchPromise;
+    switch (currentView) {
+      case "all":
+        fetchPromise = fetchAllAppointments();
+        break;
+      case "pending":
+        fetchPromise = fetchPendingAppointments();
+        break;
+      case "rejected":
+        fetchPromise = fetchRejectedAppointments();
+        break;
+      case "timeout":
+        fetchPromise = fetchTimeoutAppointments();
+        break;
+      case "payment":
+        fetchPromise = fetchAwaitingPaymentAppointments();
+        break;
+      case "attendance":
+        fetchPromise = fetchAttendanceRecords();
+        break;
+      case "notifications":
+        fetchPromise = fetchUnreadNotifications();
+        break;
+      case "driver":
+        fetchPromise = fetchDriverAssignments();
+        break;
+      case "workflow":
+        fetchPromise = fetchWorkflowData();
+        break;
+      case "sessions":
+        fetchPromise = fetchActiveSessions();
+        break;
+      case "pickup":
+        fetchPromise = fetchPickupRequests();
+        break;
+      default:
+        fetchPromise = Promise.resolve(null);
+    }
+
+    fetchPromise
+      .then((data) => {
+        if (isMounted) {
+          setTabData(data);
+          tabCache.current[currentView] = data; // cache
+        }
+      })
+      .catch((err) => {
+        if (isMounted) setTabError(err);
+      })
+      .finally(() => {
+        if (isMounted) setTabLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    currentView,
+    selectedDate,
+    fetchAllAppointments,
+    fetchPendingAppointments,
+    fetchRejectedAppointments,
+    fetchTimeoutAppointments,
+    fetchAwaitingPaymentAppointments,
+    fetchAttendanceRecords,
+    fetchUnreadNotifications,
+    fetchDriverAssignments,
+    fetchWorkflowData,
+    fetchActiveSessions,
+    fetchPickupRequests,
+  ]);
+  // ✅ SIMPLIFIED: Create filtered data based on current tab data
+  const processedTabData = useMemo(() => {
+    if (!tabData) return { appointments: [], filteredAppointments: [] };
+
+    // For appointment-based tabs, apply the current filter
+    if (
+      Array.isArray(tabData) &&
+      currentView !== "attendance" &&
+      currentView !== "notifications" &&
+      currentView !== "driver" &&
+      currentView !== "workflow"
+    ) {
+      let filtered = tabData;
+
+      // Apply currentFilter for appointment data
+      if (currentFilter !== "all") {
+        const today = new Date().toISOString().split("T")[0];
+        switch (currentFilter) {
+          case "today":
+            filtered = tabData.filter((apt) => apt.date === today);
+            break;
+          case "upcoming":
+            filtered = tabData.filter((apt) => new Date(apt.date) > new Date());
+            break;
+          case "completed":
+            filtered = tabData.filter((apt) => apt.status === "completed");
+            break;
+          // Add more filters as needed
+          default:
+            filtered = tabData.filter((apt) => apt.status === currentFilter);
+        }
+      }
+
+      return { appointments: tabData, filteredAppointments: filtered };
+    }
+
+    // For non-appointment views (notifications, attendance, driver, workflow), return empty arrays for pagination
+    if (
+      currentView === "notifications" ||
+      currentView === "attendance" ||
+      currentView === "driver" ||
+      currentView === "workflow"
+    ) {
+      return { appointments: [], filteredAppointments: [] };
+    }
+
+    return { appointments: tabData, filteredAppointments: tabData };
+  }, [tabData, currentFilter, currentView]);
+
+  // ✅ SIMPLIFIED: Pagination only for filtered data
   const appointmentsPagination = useVirtualizedPagination(
-    filteredAndSortedAppointments,
+    processedTabData.filteredAppointments || [],
     10,
     800 // Container height in pixels
   ); // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
   const { buttonLoading, setActionLoading, forceClearLoading } =
-    useOptimizedButtonLoading();
-  // 🚀 ULTRA-PERFORMANCE: Optimized dashboard tabs with stable memoization
-  // OPTIMIZATION: Only depend on counts, not full arrays, to avoid unnecessary recalculation
-  const dashboardTabs = useMemo(
-    () => {
-      // const rejectedCount = rejectedAppointments?.length || 0;
-      // const pendingCount = pendingAppointments?.length || 0;
-      // const overdueCount = overdueAppointments?.length || 0;
-      // const awaitingPaymentCount = awaitingPaymentAppointments?.length || 0;
-      // const appointmentsCount = stableAppointments?.length || 0;
-      // const attendanceCount = attendanceRecords?.length || 0;
-      // const notificationsCount = notifications?.length || 0;
-      // const pendingPickupsCount = driverAssignment?.pendingPickups?.length || 0;
-      // const activeSessionsCount = activeSessions?.length || 0;
-      // const pickupRequestsCount = pickupRequests?.length || 0;
-      return [
-        { id: "rejected", label: "Rejection Reviews" },
-        { id: "pending", label: "Pending Acceptance" },
-        { id: "timeout", label: "Timeout Monitoring" },
-        {
-          id: "payment",
-          label: "Payment Verification",
-        },
-        { id: "all", label: "All Appointments" },
-        { id: "attendance", label: "Attendance" },
-        {
-          id: "notifications",
-          label: "Notifications",
-        },
-        {
-          id: "driver",
-          label: "Driver Coordination",
-        },
-        { id: "workflow", label: "Service Workflow" },
-        { id: "sessions", label: "Active Sessions" },
-        { id: "pickup", label: "Pickup Requests" },
-      ];
+    useOptimizedButtonLoading(); // 🚀 ULTRA-PERFORMANCE: Simplified dashboard tabs without counts
+  const dashboardTabs = useMemo(() => {
+    return [
+      { id: "rejected", label: "Rejection Reviews" },
+      { id: "pending", label: "Pending Acceptance" },
+      { id: "timeout", label: "Timeout Monitoring" },
+      { id: "payment", label: "Payment Verification" },
+      { id: "all", label: "All Appointments" },
+      { id: "attendance", label: "Attendance" },
+      { id: "notifications", label: "Notifications" },
+      { id: "driver", label: "Driver Coordination" },
+      { id: "workflow", label: "Service Workflow" },
+      { id: "sessions", label: "Active Sessions" },
+      { id: "pickup", label: "Pickup Requests" },
+    ];
+  }, []); // The optimized data manager handles background refreshes automatically
+  // ✅ SIMPLIFIED: Remove unused timeout and driver variables since we're using per-tab data fetching
+  // ✅ SIMPLIFIED: Basic driver data loading (if needed for driver tab)
+  const loadDriverData = useCallback(async () => {
+    if (currentView === "driver" && tabData) {
+      // Process driver data from tabData if needed
+      setDriverAssignment({
+        availableDrivers: Array.isArray(tabData)
+          ? tabData.filter((d) => d.status === "available")
+          : [],
+        busyDrivers: Array.isArray(tabData)
+          ? tabData.filter((d) => d.status === "busy")
+          : [],
+        pendingPickups: [],
+      });
     }
-    // [
-    // rejectedAppointments?.length,
-    // pendingAppointments?.length,
-    // overdueAppointments?.length,
-    // awaitingPaymentAppointments?.length,
-    // stableAppointments?.length,
-    // attendanceRecords?.length,
-    // notifications?.length,
-    // driverAssignment?.pendingPickups?.length,
-    // activeSessions?.length,
-    // pickupRequests?.length,
-    // ]
-  );
-  // The optimized data manager handles background refreshes automatically
-  // 🚀 ULTRA-PERFORMANCE: Optimized countdown timer management
-  const isTimeoutViewActive = currentView === "timeout";
-  const { countdowns, manageTimer, stopTimer } = useOptimizedCountdown(
-    overdueAppointments,
-    isTimeoutViewActive
-  );
-
-  // 🔥 PERFORMANCE OPTIMIZATION: Optimized countdown timer management
-  // OPTIMIZATION: Only run timer effect when view or appointments change
+  }, [currentView, tabData]);
+  // ✅ SIMPLIFIED: Load driver data when on driver tab
   useEffect(() => {
-    manageTimer();
-    return () => {
-      stopTimer();
-    };
-  }, [isTimeoutViewActive, manageTimer, stopTimer]);
-  const getDriverTaskDescription = useCallback((appointment) => {
-    if (!appointment) return "On assignment";
+    loadDriverData();
+  }, [loadDriverData]);
 
-    const therapistName = appointment.therapist_details
-      ? `${appointment.therapist_details.first_name} ${appointment.therapist_details.last_name}`
-      : appointment.therapist_name || "therapist";
-
-    switch (appointment.status) {
-      case "driver_confirmed":
-        return `Ready to transport ${therapistName}`;
-      case "in_progress":
-        return `Starting journey - picking up ${therapistName}`;
-      case "journey_started":
-      case "journey":
-        return `Transporting ${therapistName} to client location`;
-      case "arrived":
-        return `Arrived - dropping off ${therapistName}`;
-      case "return_journey":
-        return `Return journey - picking up ${therapistName}`;
-      case "driver_assigned_pickup":
-        return `Assigned pickup for ${therapistName}`;
-      default:
-        return `Active with ${therapistName}`;
-    }
-  }, []); // No dependencies needed as it's a pure function  // Load driver data on component mount and refresh
-  const initialDriverDataLoaded = useRef(false);
-  // 🔧 FIX: Stabilize appointmentsLength to prevent render loops
-  const appointmentsLength = useMemo(
-    () => appointments?.length || 0,
-    [appointments?.length]
-  );
-  // Memoize the driver data loading to prevent recreation on every render
-  const loadDriverData = useCallback(
-    async (appointmentsData) => {
-      try {
-        // Fetch real staff data from backend
-        const staffResponse = await dispatch(fetchStaffMembers()).unwrap();
-
-        // Filter drivers and categorize by availability status
-        const drivers = staffResponse.filter(
-          (staff) => staff.role === "driver"
-        );
-
-        // Get current appointments to determine driver status
-        // Note: "dropped_off" is NOT included here, so drivers who dropped off therapists will be available
-        const activeAppointmentStatuses = [
-          "driver_confirmed",
-          "in_progress",
-          "journey_started",
-          "journey",
-          "arrived",
-          "return_journey", // Driver is en route to pick up therapist after session
-          "driver_assigned_pickup", // Driver assigned for pickup but hasn't confirmed yet
-        ]; // Find drivers with active appointments (busy)
-        const busyDriverIds = (appointmentsData || [])
-          .filter(
-            (apt) =>
-              activeAppointmentStatuses.includes(apt.status) && apt.driver
-          )
-          .map((apt) => apt.driver);
-
-        // Categorize drivers
-        const availableDrivers = [];
-        const busyDrivers = [];
-        drivers.forEach((driver) => {
-          // Find the current appointment for this driver
-          const currentAppointment = (appointmentsData || []).find(
-            (apt) =>
-              activeAppointmentStatuses.includes(apt.status) &&
-              apt.driver === driver.id
-          );
-
-          const driverData = {
-            id: driver.id,
-            first_name: driver.first_name,
-            last_name: driver.last_name,
-            role: driver.role,
-            specialization: driver.specialization,
-            vehicle_type: driver.vehicle_type || "Motorcycle",
-            current_location: driver.current_location || "Available",
-            last_available_at: driver.last_available_at,
-            last_drop_off_time: driver.last_drop_off_time,
-            last_vehicle_used:
-              driver.last_vehicle_used || driver.vehicle_type || "Motorcycle",
-            last_location: driver.current_location || "Available",
-            available_since:
-              driver.last_available_at || new Date().toISOString(),
-            status: busyDriverIds.includes(driver.id) ? "busy" : "available", // Enhanced appointment details for busy drivers
-            currentAppointment: currentAppointment,
-            current_task: currentAppointment
-              ? getDriverTaskDescription(currentAppointment)
-              : null,
-            therapist_name: currentAppointment?.therapist_details
-              ? `${currentAppointment.therapist_details.first_name} ${currentAppointment.therapist_details.last_name}`
-              : currentAppointment?.therapist_name || "Unknown Therapist",
-            client_name:
-              currentAppointment?.client_details?.name ||
-              currentAppointment?.client_name ||
-              "Unknown Client",
-            appointment_status: currentAppointment?.status,
-            appointment_location: currentAppointment?.location,
-          };
-
-          if (busyDriverIds.includes(driver.id)) {
-            busyDrivers.push(driverData);
-          } else {
-            availableDrivers.push(driverData);
-          }
-        });
-
-        setDriverAssignment({
-          availableDrivers,
-          busyDrivers,
-          pendingPickups: [],
-        });
-      } catch (error) {
-        console.error("Failed to load driver data:", error);
-        // Fallback to mock data if API fails
-        setDriverAssignment({
-          availableDrivers: [
-            {
-              id: 1,
-              first_name: "Juan",
-              last_name: "Dela Cruz",
-              vehicle_type: "Motorcycle",
-              last_location: "Quezon City",
-              available_since: new Date().toISOString(),
-              status: "available",
-            },
-            {
-              id: 2,
-              first_name: "Maria",
-              last_name: "Santos",
-              vehicle_type: "Car",
-              last_location: "Makati",
-              available_since: new Date().toISOString(),
-              status: "available",
-            },
-          ],
-          busyDrivers: [
-            {
-              id: 3,
-              first_name: "Jose",
-              last_name: "Garcia",
-              vehicle_type: "Motorcycle",
-              current_task: "Transporting therapist to session",
-              estimated_completion: new Date(
-                Date.now() + 30 * 60000
-              ).toISOString(),
-              status: "busy",
-            },
-          ],
-          pendingPickups: [],
-        });
-      }
-    },
-    [dispatch, getDriverTaskDescription]
-  ); // 🔧 FIX: Removed appointments dependency - now passed as parameter  // ✅ STEP 5: Memoize current appointments to avoid dependencies on the array
-  const currentAppointmentsForDriver = useMemo(
-    () => stableAppointments,
-    [stableAppointments]
-  );
-
-  useEffect(() => {
-    // Only load data if appointments is available (not undefined) and initial data hasn't been loaded
-    if (appointmentsLength > 0 && !initialDriverDataLoaded.current) {
-      const loadInitialData = async () => {
-        console.log("🚗 Loading initial driver data");
-        await loadDriverData(currentAppointmentsForDriver);
-        // Also fetch notifications on initial load
-        dispatch(fetchNotifications());
-        initialDriverDataLoaded.current = true;
-      };
-      loadInitialData();
-    }
-  }, [
-    appointmentsLength,
-    loadDriverData,
-    dispatch,
-    currentAppointmentsForDriver,
-  ]); // ✅ STEP 5: Use memoized appointments
   // Listen for real-time driver updates via sync service
   useEffect(() => {
     const handleDriverUpdate = (data) => {
-      setDriverAssignment((prev) => {
-        switch (data.type) {
-          case "driver_available":
-            return {
-              ...prev,
-              availableDrivers: [
-                ...prev.availableDrivers.filter((d) => d.id !== data.driver_id),
-                data.driver,
-              ],
-              busyDrivers: prev.busyDrivers.filter(
-                (d) => d.id !== data.driver_id
-              ),
-            };
-          case "driver_assigned":
-            return {
-              ...prev,
-              availableDrivers: prev.availableDrivers.filter(
-                (d) => d.id !== data.driver_id
-              ),
-              busyDrivers: [
-                ...prev.busyDrivers.filter((d) => d.id !== data.driver_id),
-                data.driver,
-              ],
-            };
-          case "pickup_requested":
-            return {
-              ...prev,
-              pendingPickups: [
-                ...prev.pendingPickups.filter(
-                  (p) => p.id !== data.therapist_id
-                ),
-                data.therapist,
-              ],
-            };
-          default:
-            return prev;
-        }
-      });
-    };
-
-    // Subscribe to driver-related events and store the unsubscribe function
+      if (currentView === "driver") {
+        // Simple driver update handling
+        console.log("Driver update received:", data);
+        // Could refresh driver data here if needed
+      }
+    }; // Subscribe to driver-related events
     const unsubscribe = syncService.subscribe(
       "driver_update",
       handleDriverUpdate
     );
+    return () => unsubscribe();
+  }, [currentView]); // ✅ SIMPLIFIED: Tab refresh functionality
+  const refreshCurrentTab = useCallback(() => {
+    // Clear cache for current tab and refetch
+    delete tabCache.current[currentView];
+    // Trigger refetch by clearing tabData
+    setTabData(null);
+  }, [currentView]);
 
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-  // 🔥 REMOVED: All redundant filtering and memoized computations
-  // The useOperatorDashboardData hook provides all filtered data
-
-  // 🔥 REMOVED: Old redundant polling - now handled by centralized DataManager
-  // Real-time sync is handled by useSyncEventHandlers hook and centralized data manager
-  // OPTIMIZED: Remove manual data loading (handled by optimized data manager)
-  // The optimized data manager handles initial data loading automatically  // 🔧 FIX: Memoize pendingAppointments length to prevent timer effect loops
-  const pendingAppointmentsCount = useMemo(
-    () => pendingAppointments?.length || 0,
-    [pendingAppointments?.length]
-  );
-
-  // Real-time timer for updating countdown displays - FIXED to prevent infinite loops
-  useEffect(() => {
-    let timer;
-
-    if (currentView === "timeout" && pendingAppointmentsCount > 0) {
-      timer = setInterval(() => {
-        // Instead of forcing re-render with dummy state update,
-        // let the countdown hooks handle their own updates
-        console.log("⏰ Timer tick for timeout view");
-      }, 1000);
+  // ✅ SIMPLIFIED: Calculate stats from current tab data
+  const tabStats = useMemo(() => {
+    if (!tabData || currentView !== "rejected") {
+      return {
+        rejectionStats: { total: 0, therapist: 0, driver: 0, pending: 0 },
+      };
     }
 
-    return () => {
-      if (timer) {
-        clearInterval(timer);
-      }
-    };
-  }, [currentView, pendingAppointmentsCount]); // 🔧 FIX: Use memoized count
-  // � FIX: Throttled debug logging to prevent excessive logging
-  const renderCount = useRef(0);
-  renderCount.current++;
-  // Only log every 10th render to reduce console spam
-  if (renderCount.current % 10 === 1) {
-    console.log(`🔄 OperatorDashboard render #${renderCount.current}`, {
-      appointmentsCount: stableAppointments?.length || 0,
-      hasData,
-      loading,
-      error: !!error,
-      currentView,
-      timestamp: new Date().toISOString(),
-    });
-  } // 🔧 FIX: Throttled debug tracking for data state changes
-  const dataStateDebugCountRef = useRef(0);
+    if (Array.isArray(tabData)) {
+      const totalRejections = tabData.length;
+      const therapistRejections = tabData.filter(
+        (apt) =>
+          apt.rejection_reason &&
+          apt.rejection_reason.toLowerCase().includes("therapist")
+      ).length;
+      const driverRejections = tabData.filter(
+        (apt) =>
+          apt.rejection_reason &&
+          apt.rejection_reason.toLowerCase().includes("driver")
+      ).length;
+      const pendingReviews = tabData.filter(
+        (apt) => apt.status === "rejected" && !apt.review_completed
+      ).length;
 
-  useEffect(() => {
-    dataStateDebugCountRef.current++;
-    // Only log every 5th data state change
-    if (dataStateDebugCountRef.current % 5 === 1) {
-      console.log("🔍 OperatorDashboard Debug - Data State:", {
-        appointments: stableAppointments?.length || 0,
-        appointmentsType: typeof stableAppointments,
-        appointmentsIsArray: Array.isArray(stableAppointments),
-        hasData,
-        loading,
-        error,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }, [stableAppointments, hasData, loading, error]);
-  // 🔧 FIX: Simplified driver data debug tracking - only when appointments length changes
-  const driverDataDebugRef = useRef(0);
-
-  useEffect(() => {
-    if (driverDataDebugRef.current !== appointmentsLength) {
-      driverDataDebugRef.current = appointmentsLength;
-      console.log("🚗 Driver data effect triggered:", {
-        appointmentsLength,
-        initialDriverDataLoaded: initialDriverDataLoaded.current,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }, [appointmentsLength]); // Only depend on stable appointmentsLength// 🔧 FIX: Stabilized debug tracking for filtering - removed problematic dependencies
-  const appointmentsDebugRef = useRef(); // 🔧 FIX: Memoize sample data to prevent render loops
-  const sampleAppointmentsData = useMemo(() => {
-    if (
-      !Array.isArray(stableAppointments) ||
-      stableAppointments.length === 0 ||
-      stableAppointments.length > 1000
-    ) {
-      return null;
+      return {
+        rejectionStats: {
+          total: totalRejections,
+          therapist: therapistRejections,
+          driver: driverRejections,
+          pending: pendingReviews,
+        },
+      };
     }
 
     return {
-      totalCount: stableAppointments.length,
-      first5Statuses: stableAppointments.slice(0, 5).map((apt) => ({
-        id: apt.id,
-        status: apt.status,
-        date: apt.date,
-        created_at: apt.created_at,
-      })),
-      allUniqueStatuses: [
-        ...new Set(stableAppointments.map((apt) => apt.status)),
-      ],
+      rejectionStats: { total: 0, therapist: 0, driver: 0, pending: 0 },
     };
-  }, [stableAppointments]); // Safe to include appointments here since it's memoized
-
-  useEffect(() => {
-    // Only log when appointments array actually changes, not derived values
-    if (appointmentsDebugRef.current !== appointmentsLength) {
-      appointmentsDebugRef.current = appointmentsLength;
-
-      console.log("� Appointments data changed:", {
-        appointmentsCount: appointmentsLength,
-        currentFilter,
-        timestamp: new Date().toISOString(),
-      });
-
-      // Log sample data if available
-      if (sampleAppointmentsData) {
-        console.log("📋 Sample appointments data:", sampleAppointmentsData);
-      }
-    }
-  }, [appointmentsLength, currentFilter, sampleAppointmentsData]); // Now safe to include memoized data
-
-  // Emergency loop breaker - render component normally but log warnings
-  if (renderCount.current > 50) {
-    console.error(
-      "🚨 HIGH RENDER COUNT DETECTED - Component rendered more than 50 times"
-    );
-    console.error(
-      "This suggests an infinite loop. Check the hooks and dependencies."
-    );
-  }
+  }, [tabData, currentView]);
 
   // Helper function to display therapist information (single or multiple)
   const renderTherapistInfo = (appointment) => {
@@ -846,8 +708,8 @@ const OperatorDashboard = () => {
           reviewNotes: reviewNotes,
         })
       ).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await forceRefresh();
+      // ✅ PERFORMANCE FIX: Use simple refresh instead of global forceRefresh
+      await refreshCurrentTab();
       setReviewModal({
         isOpen: false,
         appointmentId: null,
@@ -877,7 +739,7 @@ const OperatorDashboard = () => {
     try {
       await dispatch(autoCancelOverdueAppointments()).unwrap();
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await forceRefresh();
+      await refreshCurrentTab();
       alert("Successfully processed overdue appointments");
     } catch {
       alert("Failed to process overdue appointments. Please try again.");
@@ -895,9 +757,8 @@ const OperatorDashboard = () => {
           status: "in_progress",
           action: "start_appointment",
         })
-      ).unwrap(); // Refresh dashboard data to get updated status
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await forceRefresh();
+      ).unwrap(); // Refresh dashboard data to get updated status      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+      await refreshCurrentTab();
     } catch (error) {
       console.error("Failed to start appointment:", error);
       alert("Failed to start appointment. Please try again.");
@@ -995,7 +856,7 @@ const OperatorDashboard = () => {
       });
       console.log("🔄 handleMarkPaymentPaid: Refreshing dashboard data");
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await forceRefresh();
+      refreshCurrentTab();
 
       alert("Payment marked as received successfully!");
     } catch (error) {
@@ -1100,10 +961,9 @@ const OperatorDashboard = () => {
         const waitTime = (new Date() - new Date(requestTime)) / (1000 * 60); // minutes
         return waitTime > 20 ? "urgent" : "normal"; // Reduced to 20 minutes for Pasig City
       };
-
       try {
         // Get current pending pickup requests from appointments
-        const currentPendingPickups = appointments
+        const currentPendingPickups = (tabData || [])
           .filter((apt) => apt.status === "pickup_requested")
           .map((apt) => ({
             id: apt.therapist,
@@ -1221,9 +1081,8 @@ const OperatorDashboard = () => {
           pickup_location: therapist.location,
           estimated_time: estimatedTime,
           assignment_method: "FIFO",
-        });
-        // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-        await forceRefresh();
+        }); // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
+        refreshCurrentTab();
 
         // Show success notification with FIFO details
         alert(
@@ -1235,11 +1094,11 @@ const OperatorDashboard = () => {
       }
     },
     [
-      appointments,
-      driverAssignment.availableDrivers,
       dispatch,
       setDriverAssignment,
-      forceRefresh,
+      refreshCurrentTab,
+      driverAssignment.availableDrivers,
+      tabData,
     ]
   );
   const _handleUrgentPickupRequest = async (therapistId) => {
@@ -1733,6 +1592,9 @@ const OperatorDashboard = () => {
     return result;
   };
   const renderRejectedAppointments = () => {
+    const rejectedAppointments =
+      currentView === "rejected" && Array.isArray(tabData) ? tabData : [];
+
     if (!rejectedAppointments || rejectedAppointments.length === 0) {
       return (
         <div className="empty-state">
@@ -1806,8 +1668,10 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderPendingAcceptanceAppointments = () => {
+    const pendingAppointments =
+      currentView === "pending" && Array.isArray(tabData) ? tabData : [];
+
     if (!pendingAppointments || pendingAppointments.length === 0) {
       return (
         <div className="empty-state">
@@ -1870,8 +1734,12 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderTimeoutMonitoring = () => {
+    const timeoutData =
+      currentView === "timeout" && Array.isArray(tabData) ? tabData : [];
+    const overdueAppointments = timeoutData;
+    const approachingDeadlineAppointments = []; // Can be filtered from the same data if needed
+
     const overdueCount = overdueAppointments.length;
     const approachingCount = approachingDeadlineAppointments.length;
 
@@ -1901,8 +1769,9 @@ const OperatorDashboard = () => {
           <div className="overdue-section">
             <h4>Overdue Appointments ({overdueCount})</h4>
             <div className="appointments-list">
+              {" "}
               {overdueAppointments.map((appointment) => {
-                const countdown = countdowns[appointment.id];
+                // Simple timeout display without complex countdown
                 return (
                   <div
                     key={appointment.id}
@@ -1915,14 +1784,10 @@ const OperatorDashboard = () => {
                         {appointment.client_details?.last_name || ""}
                       </h3>
                       <div className="status-badges">
+                        {" "}
                         <span className="status-badge status-overdue">
                           Overdue
                         </span>
-                        {countdown && (
-                          <span className="countdown-badge">
-                            {countdown.display}
-                          </span>
-                        )}
                       </div>
                     </div>
                     <div className="appointment-details">
@@ -1949,8 +1814,9 @@ const OperatorDashboard = () => {
           <div className="approaching-deadline-section">
             <h4>Approaching Deadline ({approachingCount})</h4>
             <div className="appointments-list">
+              {" "}
               {approachingDeadlineAppointments.map((appointment) => {
-                const countdown = countdowns[appointment.id];
+                // Simple approaching deadline display
                 return (
                   <div
                     key={appointment.id}
@@ -1963,14 +1829,13 @@ const OperatorDashboard = () => {
                         {appointment.client_details?.last_name || ""}
                       </h3>
                       <div className="status-badges">
+                        {" "}
                         <span className="status-badge status-warning">
                           Approaching Deadline
                         </span>
-                        {countdown && (
-                          <span className="countdown-badge warning">
-                            {countdown.display}
-                          </span>
-                        )}
+                        <span className="countdown-badge warning">
+                          Time remaining available
+                        </span>
                       </div>
                     </div>
                     <div className="appointment-details">
@@ -2001,12 +1866,10 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderPaymentVerificationView = () => {
-    if (
-      !awaitingPaymentAppointments ||
-      awaitingPaymentAppointments.length === 0
-    ) {
+    const awaitingPaymentAppointments = tabData?.appointments || [];
+
+    if (awaitingPaymentAppointments.length === 0) {
       return (
         <div className="empty-state">
           <i className="fas fa-credit-card"></i>
@@ -2126,10 +1989,13 @@ const OperatorDashboard = () => {
               onChange={(e) => setFilter(e.target.value)}
               className="filter-select"
             >
+              {" "}
               {VALID_FILTER_VALUES.map((filterValue) => (
                 <option key={filterValue} value={filterValue}>
                   {filterValue === "all"
-                    ? `All Appointments (${filteredAndSortedAppointments.length})`
+                    ? `All Appointments (${
+                        processedTabData.filteredAppointments?.length || 0
+                      })`
                     : filterValue.charAt(0).toUpperCase() +
                       filterValue.slice(1).replace(/_/g, " ")}
                 </option>
@@ -2187,28 +2053,30 @@ const OperatorDashboard = () => {
 
         <div className="sort-indicator">
           <i className="fas fa-sort-amount-down"></i>
-          <span>Sorted by urgency and time (most urgent first)</span>
+          <span>Sorted by urgency and time (most urgent first)</span>{" "}
           <span className="filter-info">
             •{" "}
             {isVirtualized
               ? "Virtual scrolling"
               : `Showing ${paginatedAppointments?.length || 0} of ${
-                  filteredAndSortedAppointments.length
+                  processedTabData.filteredAppointments?.length || 0
                 } appointments`}
             {currentFilter !== "all" && ` (filtered by: ${currentFilter})`}
           </span>
         </div>
 
         {/* Appointment Cards Container or Empty State */}
-        {!Array.isArray(filteredAndSortedAppointments) ||
-        filteredAndSortedAppointments.length === 0 ? (
+        {!Array.isArray(processedTabData.filteredAppointments) ||
+        processedTabData.filteredAppointments.length === 0 ? (
           <div className="empty-state">
             <i className="fas fa-calendar"></i>
             <p>No appointments found</p>
-            {error && (
+            {tabError && (
               <p className="error-text">
                 Error:{" "}
-                {typeof error === "string" ? error : JSON.stringify(error)}
+                {typeof tabError === "string"
+                  ? tabError
+                  : JSON.stringify(tabError)}
               </p>
             )}
           </div>
@@ -2439,82 +2307,154 @@ const OperatorDashboard = () => {
     );
   };
   const renderNotifications = () => {
-    // Ensure notifications is an array with proper error handling
-    if (
-      !notifications ||
-      !Array.isArray(notifications) ||
-      notifications.length === 0
-    ) {
-      console.log(
-        "No notifications to render or notifications is not an array:",
-        notifications
-      );
+    // ✅ FIXED: Use tabData directly since notifications are fetched directly, not in a nested property
+    const notifications = Array.isArray(tabData) ? tabData : [];
+
+    console.log("🔔 Rendering notifications:", {
+      tabData,
+      notificationsArray: notifications,
+      count: notifications.length,
+      currentView,
+    });
+
+    // Show loading state
+    if (tabLoading) {
       return (
-        <div className="empty-state">
-          <i className="fas fa-bell"></i>
-          <p>No notifications</p>
+        <div className="loading-state">
+          <MinimalLoadingIndicator
+            show={true}
+            position="center"
+            size="medium"
+            tooltip="Loading notifications..."
+          />
         </div>
       );
     }
 
+    // Show error state
+    if (tabError) {
+      return (
+        <div className="error-state">
+          <i className="fas fa-exclamation-triangle"></i>
+          <p>Error loading notifications: {tabError.message || tabError}</p>
+          <button onClick={refreshCurrentTab} className="retry-btn">
+            Retry
+          </button>
+        </div>
+      );
+    }
+
+    // Show empty state
+    if (notifications.length === 0) {
+      return (
+        <div className="empty-state">
+          <i className="fas fa-bell"></i>
+          <p>No unread notifications</p>
+          <p className="empty-subtitle">You're all caught up!</p>
+        </div>
+      );
+    }
     return (
       <div className="notifications-list">
-        {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className={`notification-card ${
-              notification.type || notification.notification_type || ""
-            }`}
-          >
-            <div className="notification-header">
-              <h4>
-                {notification.title ||
-                  notification.message?.substring(0, 30) ||
-                  "Notification"}
-              </h4>
-              <span className="notification-time">
-                {new Date(notification.created_at).toLocaleString()}
-              </span>
+        <div className="notifications-header">
+          <h3>Unread Notifications ({notifications.length})</h3>
+          <button onClick={refreshCurrentTab} className="refresh-btn">
+            <i className="fas fa-sync-alt"></i> Refresh
+          </button>
+        </div>
+
+        <div className="notifications-container">
+          {notifications.map((notification) => (
+            <div
+              key={notification.id}
+              className={`notification-card ${
+                notification.type || notification.notification_type || "info"
+              } ${notification.is_read ? "read" : "unread"}`}
+            >
+              <div className="notification-header">
+                <div className="notification-icon">
+                  {notification.type === "appointment" && (
+                    <i className="fas fa-calendar"></i>
+                  )}
+                  {notification.type === "payment" && (
+                    <i className="fas fa-money-bill"></i>
+                  )}
+                  {notification.type === "driver" && (
+                    <i className="fas fa-car"></i>
+                  )}
+                  {!notification.type && <i className="fas fa-bell"></i>}
+                </div>
+                <h4>
+                  {notification.title ||
+                    notification.message?.substring(0, 50) ||
+                    "Notification"}
+                </h4>
+                <span className="notification-time">
+                  {new Date(notification.created_at).toLocaleString()}
+                </span>
+              </div>
+              <div className="notification-content">
+                <p>{notification.message}</p>
+                {notification.appointment_id && (
+                  <div className="notification-details">
+                    <span className="appointment-link">
+                      Appointment #{notification.appointment_id}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {!notification.is_read && (
+                <div className="notification-actions">
+                  <button
+                    className="mark-read-btn"
+                    onClick={() => {
+                      // TODO: Implement mark as read functionality
+                      console.log(
+                        "Mark notification as read:",
+                        notification.id
+                      );
+                    }}
+                  >
+                    Mark as Read
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="notification-content">
-              <p>{notification.message}</p>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   };
-
   const renderDriverCoordinationPanel = () => {
+    const drivers = Array.isArray(tabData) ? tabData : [];
+    const availableDrivers = drivers.filter((d) => d.status !== "busy") || [];
+    const busyDrivers = drivers.filter((d) => d.status === "busy") || [];
+    const pickupRequests = tabData?.pickupRequests || [];
+
     return (
       <div className="driver-coordination-panel">
         <div className="driver-stats">
           <div className="stat-card available">
-            <span className="stat-number">
-              {driverAssignment.availableDrivers.length}
-            </span>
+            <span className="stat-number">{availableDrivers.length}</span>
             <span className="stat-label">Available Drivers</span>
           </div>
           <div className="stat-card busy">
-            <span className="stat-number">
-              {driverAssignment.busyDrivers.length}
-            </span>
+            <span className="stat-number">{busyDrivers.length}</span>
             <span className="stat-label">Busy Drivers</span>
           </div>
           <div className="stat-card pending">
             <span className="stat-number">{pickupRequests.length}</span>
             <span className="stat-label">Pending Pickups</span>
           </div>
-        </div>
-
+        </div>{" "}
         <div className="driver-sections">
           <div className="available-drivers-section">
             <h3>Available Drivers</h3>
-            {driverAssignment.availableDrivers.length === 0 ? (
+            {availableDrivers.length === 0 ? (
               <p>No drivers currently available</p>
             ) : (
               <div className="drivers-list">
-                {driverAssignment.availableDrivers.map((driver) => (
+                {availableDrivers.map((driver) => (
                   <div key={driver.id} className="driver-card available">
                     <div className="driver-info">
                       <h4>
@@ -2539,11 +2479,11 @@ const OperatorDashboard = () => {
 
           <div className="busy-drivers-section">
             <h3>Busy Drivers</h3>
-            {driverAssignment.busyDrivers.length === 0 ? (
+            {busyDrivers.length === 0 ? (
               <p>No drivers currently busy</p>
             ) : (
               <div className="drivers-list">
-                {driverAssignment.busyDrivers.map((driver) => (
+                {busyDrivers.map((driver) => (
                   <div key={driver.id} className="driver-card busy">
                     <div className="driver-info">
                       <h4>
@@ -2568,8 +2508,12 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderServiceWorkflowView = () => {
+    const workflowData = tabData || {};
+    const todayAppointments = workflowData.todayAppointments || [];
+    const activeSessions = workflowData.activeSessions || [];
+    const upcomingAppointments = workflowData.upcomingAppointments || [];
+
     return (
       <div className="service-workflow-panel">
         <div className="workflow-stats">
@@ -2595,8 +2539,9 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderActiveSessionsView = () => {
+    const activeSessions = Array.isArray(tabData) ? tabData : [];
+
     if (activeSessions.length === 0) {
       return (
         <div className="empty-state">
@@ -2636,8 +2581,9 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderPickupRequestsView = () => {
+    const pickupRequests = Array.isArray(tabData) ? tabData : [];
+
     if (pickupRequests.length === 0) {
       return (
         <div className="empty-state">
@@ -2725,13 +2671,13 @@ const OperatorDashboard = () => {
         </LayoutRow>{" "}
         {/* OPTIMIZED: Simplified loading indicator */}
         <MinimalLoadingIndicator
-          show={loading}
-          hasData={hasData} // OPTIMIZED: Use hasData instead of hasAnyData
+          show={tabLoading}
+          hasData={tabData !== null}
           position="bottom-left"
           size="small"
-          variant="subtle" // OPTIMIZED: Remove stale data check
+          variant="subtle"
           tooltip={
-            hasData
+            tabData !== null
               ? "Refreshing dashboard data..."
               : "Loading dashboard data..."
           }
@@ -2739,14 +2685,14 @@ const OperatorDashboard = () => {
           fadeIn={true}
         />{" "}
         {/* OPTIMIZED: Simplified error handling */}
-        {error && !hasData && (
+        {tabError && !tabData && (
           <div className="error-message">
-            {typeof error === "object"
-              ? error.message || error.error || JSON.stringify(error)
-              : error}
+            {typeof tabError === "object"
+              ? tabError.message || tabError.error || JSON.stringify(tabError)
+              : tabError}
           </div>
         )}
-        {/* ✅ ROBUST FILTERING: Display validation warnings and errors */}
+        {/* ✅ ROBUST FILTERING: Display validation warnings and errors */}{" "}
         {validationWarnings.length > 0 && (
           <div
             className="validation-warnings"
@@ -2771,60 +2717,40 @@ const OperatorDashboard = () => {
             </ul>
           </div>
         )}
-        {filteringErrors.hasErrors && (
-          <div
-            className="filtering-errors"
-            style={{
-              backgroundColor: "#f8d7da",
-              border: "1px solid #f5c6cb",
-              borderRadius: "4px",
-              padding: "12px",
-              margin: "10px 0",
-              color: "#721c24",
-            }}
-          >
-            <h5 style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
-              ❌ Filtering System Error:
-            </h5>
-            <p style={{ margin: "0", fontSize: "13px" }}>
-              {filteringErrors.errorMessage}
-            </p>
-            <p
-              style={{
-                margin: "8px 0 0 0",
-                fontSize: "12px",
-                fontStyle: "italic",
-              }}
-            >
-              Using fallback data. Please refresh the page or contact support if
-              this persists.
-            </p>
-          </div>
-        )}{" "}
-        {/* Statistics Dashboard */}
-        <div className="stats-dashboard">
-          <div className="stats-card">
-            <h4>Rejection Overview</h4>
-            <div className="stats-grid">
-              <div className="stat-item">
-                <span className="stat-number">{rejectionStats.total}</span>
-                <span className="stat-label">Total Rejections</span>
-              </div>
-              <div className="stat-item therapist-stat">
-                <span className="stat-number">{rejectionStats.therapist}</span>
-                <span className="stat-label">Therapist Rejections</span>
-              </div>
-              <div className="stat-item driver-stat">
-                <span className="stat-number">{rejectionStats.driver}</span>
-                <span className="stat-label">Driver Rejections</span>
-              </div>{" "}
-              <div className="stat-item pending-stat">
-                <span className="stat-number">{rejectionStats.pending}</span>
-                <span className="stat-label">Pending Reviews</span>
+        {/* Statistics Dashboard - Only show for rejected view */}
+        {currentView === "rejected" && (
+          <div className="stats-dashboard">
+            <div className="stats-card">
+              <h4>Rejection Overview</h4>
+              <div className="stats-grid">
+                <div className="stat-item">
+                  <span className="stat-number">
+                    {tabStats.rejectionStats.total}
+                  </span>
+                  <span className="stat-label">Total Rejections</span>
+                </div>
+                <div className="stat-item therapist-stat">
+                  <span className="stat-number">
+                    {tabStats.rejectionStats.therapist}
+                  </span>
+                  <span className="stat-label">Therapist Rejections</span>
+                </div>
+                <div className="stat-item driver-stat">
+                  <span className="stat-number">
+                    {tabStats.rejectionStats.driver}
+                  </span>
+                  <span className="stat-label">Driver Rejections</span>
+                </div>{" "}
+                <div className="stat-item pending-stat">
+                  <span className="stat-number">
+                    {tabStats.rejectionStats.pending}
+                  </span>
+                  <span className="stat-label">Pending Reviews</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>{" "}
+        )}
         <div className="tab-switcher">
           <TabSwitcher
             tabs={dashboardTabs}
@@ -2839,10 +2765,10 @@ const OperatorDashboard = () => {
         >
           {" "}
           {/* 🔥 PERFORMANCE MONITOR: Real-time performance tracking */}
-          <PerformanceMonitor
+          {/* <PerformanceMonitor
             componentName="OperatorDashboard"
             enabled={import.meta.env.DEV || false}
-          />
+          /> */}
           {currentView === "rejected" && (
             <div className="rejected-appointments">
               <h2>Rejection Reviews</h2>

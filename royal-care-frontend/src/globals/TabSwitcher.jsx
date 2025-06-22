@@ -27,9 +27,6 @@ const TabSwitcher = memo(({ tabs, activeTab, onTabChange }) => {
             onClick={() => handleTabClick(tabKey)}
           >
             {tabLabel}
-            {tab.count !== undefined && (
-              <span className="tab-count">{tab.count}</span>
-            )}
           </button>
         );
       })}
