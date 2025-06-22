@@ -24,7 +24,7 @@ const fetchAppointmentsAPI = async () => {
 
   const token = localStorage.getItem("knoxToken");
   if (!token) {
-    console.error("❌ No authentication token found");
+    console.log("⚠️ No authentication token found - user not authenticated");
     throw new Error("Authentication required");
   }
 
@@ -99,7 +99,9 @@ const fetchNotificationsAPI = async () => {
 
   const token = localStorage.getItem("knoxToken");
   if (!token) {
-    console.error("❌ No authentication token found for notifications");
+    console.log(
+      "⚠️ No authentication token found for notifications - user not authenticated"
+    );
     throw new Error("Authentication required");
   }
 
@@ -903,9 +905,14 @@ const fetchAttendanceRecordsAPI = async (selectedDate) => {
   });
 
   const token = localStorage.getItem("knoxToken");
-  if (!token) {
-    console.error("❌ No authentication token found");
-    throw new Error("Authentication required");
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  if (!token || !user || !user.id) {
+    // Silent handling for unauthenticated users (likely on login page)
+    console.log(
+      "ℹ️ No authentication found - user not logged in, skipping attendance fetch"
+    );
+    return []; // Return empty array instead of throwing error
   }
 
   const ATTENDANCE_API_URL =
@@ -921,6 +928,7 @@ const fetchAttendanceRecordsAPI = async (selectedDate) => {
   console.log("🔄 Direct API: Fetching attendance records...", {
     url,
     token: token.substring(0, 10) + "...",
+    userId: user.id,
   });
 
   try {
@@ -940,6 +948,14 @@ const fetchAttendanceRecordsAPI = async (selectedDate) => {
 
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
+    // Check if it's an authentication error
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      console.log("🔒 Authentication expired, clearing stored data");
+      localStorage.removeItem("knoxToken");
+      localStorage.removeItem("user");
+      return []; // Return empty array instead of throwing
+    }
+
     console.error("❌ Direct API: Failed to fetch attendance records", {
       error: error.message,
       status: error.response?.status,
@@ -960,10 +976,33 @@ const fetchAttendanceRecordsAPI = async (selectedDate) => {
 export const useAttendanceData = (selectedDate) => {
   const dispatch = useDispatch();
 
-  // Attendance records query with proper Redux dispatch for compatibility
+  // Multi-layer authentication check to prevent unnecessary API calls
+  const isAuthenticated = useMemo(() => {
+    const token = localStorage.getItem("knoxToken");
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+
+    // Check if we have both token and valid user data
+    const hasToken = !!token && token.length > 10; // Basic token validation
+    const hasValidUser = !!(user && user.id && user.role);
+
+    return hasToken && hasValidUser;
+  }, []);
+
+  // Attendance records query with robust authentication checks
   const attendanceQuery = useQuery({
     queryKey: ["attendance", "records", selectedDate],
     queryFn: async () => {
+      // Double-check authentication before making the API call
+      const token = localStorage.getItem("knoxToken");
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+
+      if (!token || !user || !user.id) {
+        console.log(
+          "🚫 useAttendanceData: Authentication check failed, skipping API call"
+        );
+        throw new Error("Authentication required - user not logged in");
+      }
+
       try {
         // Use both direct API and Redux dispatch for complete compatibility
         const result = await dispatch(
@@ -974,8 +1013,11 @@ export const useAttendanceData = (selectedDate) => {
         return Array.isArray(result) ? result : [];
       } catch (error) {
         console.warn("Redux fetch failed, trying direct API:", error);
-        // Fallback to direct API call
-        return await fetchAttendanceRecordsAPI(selectedDate);
+        // Fallback to direct API call only if still authenticated
+        if (localStorage.getItem("knoxToken")) {
+          return await fetchAttendanceRecordsAPI(selectedDate);
+        }
+        throw error;
       }
     },
     staleTime: 0,
@@ -984,7 +1026,7 @@ export const useAttendanceData = (selectedDate) => {
     refetchOnMount: true,
     retry: 2,
     initialData: [], // Provide initial data as empty array
-    enabled: !!selectedDate, // Only fetch when selectedDate is provided
+    enabled: !!(selectedDate && isAuthenticated), // Only fetch when authenticated AND selectedDate is provided
   });
 
   // Force refresh function for compatibility

@@ -22,7 +22,27 @@
       errorKey.includes("NetworkError") ||
       errorKey.includes("TypeError: Failed to fetch");
 
-    if (!isServiceWorkerError) {
+    // Check if this is an authentication error from unauthenticated users
+    const isAuthError =
+      errorKey.includes("No authentication token found") ||
+      errorKey.includes("Authentication required") ||
+      errorKey.includes("user not logged in");
+
+    // Don't suppress auth errors if we're on a protected route
+    if (isAuthError) {
+      const isOnLoginPage =
+        window.location.pathname.includes("/login") ||
+        window.location.pathname.includes("/register") ||
+        window.location.pathname.includes("/forgot-password") ||
+        window.location.pathname === "/";
+
+      // Suppress auth errors only if user is on login/public pages
+      if (isOnLoginPage) {
+        return true; // Suppress
+      }
+    }
+
+    if (!isServiceWorkerError && !isAuthError) {
       return false;
     }
 

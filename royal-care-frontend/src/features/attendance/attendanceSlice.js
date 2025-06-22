@@ -82,8 +82,14 @@ export const fetchAttendanceRecords = createAsyncThunk(
   "attendance/fetchAttendanceRecords",
   async ({ date = null, staffId = null }, { rejectWithValue }) => {
     const token = localStorage.getItem("knoxToken");
-    if (!token) {
-      return rejectWithValue("Authentication required");
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+
+    // Enhanced authentication check
+    if (!token || !user || !user.id) {
+      console.log(
+        "ℹ️ fetchAttendanceRecords: No authentication found, skipping request"
+      );
+      return rejectWithValue("Authentication required - user not logged in");
     }
 
     try {
