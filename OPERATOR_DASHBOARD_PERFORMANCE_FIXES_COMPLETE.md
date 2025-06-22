@@ -13,20 +13,26 @@ The component was experiencing **50+ renders** due to several performance anti-p
 ### **1. Stabilized Derived State Values**
 
 **Problem:** `appointmentsLength` was recalculated on every render
+
 ```jsx
 // ❌ BEFORE: Unstable derived value
 const appointmentsLength = appointments?.length || 0;
 ```
 
 **Solution:** Memoized to prevent unnecessary recalculations
+
 ```jsx
 // ✅ AFTER: Stable memoized value
-const appointmentsLength = useMemo(() => appointments?.length || 0, [appointments?.length]);
+const appointmentsLength = useMemo(
+  () => appointments?.length || 0,
+  [appointments?.length]
+);
 ```
 
 ### **2. Fixed Circular Dependencies in useEffect**
 
 **Problem:** Effect depended on both derived value and source array
+
 ```jsx
 // ❌ BEFORE: Circular dependency causing infinite loop
 useEffect(() => {
@@ -35,6 +41,7 @@ useEffect(() => {
 ```
 
 **Solution:** Separated concerns and memoized sample data
+
 ```jsx
 // ✅ AFTER: Memoized sample data prevents loops
 const sampleAppointmentsData = useMemo(() => {
@@ -56,6 +63,7 @@ useEffect(() => {
 ### **3. Optimized State Management**
 
 **Problem:** Unnecessary state updates in effects
+
 ```jsx
 // ❌ BEFORE: State updates triggering more effects
 const [filteringErrors, setFilteringErrors] = useState({...});
@@ -65,6 +73,7 @@ useEffect(() => {
 ```
 
 **Solution:** Replaced with memoized computed values
+
 ```jsx
 // ✅ AFTER: Pure computed state, no effect needed
 const filteringErrors = useMemo(() => {
@@ -78,6 +87,7 @@ const filteringErrors = useMemo(() => {
 ### **4. Stabilized Function Dependencies**
 
 **Problem:** Function captured unstable appointments in closure
+
 ```jsx
 // ❌ BEFORE: Function depends on appointments array in closure
 const loadDriverData = useCallback(async () => {
@@ -86,6 +96,7 @@ const loadDriverData = useCallback(async () => {
 ```
 
 **Solution:** Pass appointments as parameter instead of closure capture
+
 ```jsx
 // ✅ AFTER: Stable function, appointments passed as parameter
 const loadDriverData = useCallback(async (appointmentsData) => {
@@ -99,29 +110,39 @@ await loadDriverData(stableAppointments);
 ### **5. Implemented Stable Appointments Reference**
 
 **Problem:** Multiple hooks using same appointments array created reference instability
+
 ```jsx
 // ❌ BEFORE: Multiple direct references
 const stableFilteringResults = useStableAppointmentFilters(appointments);
-const { items: filteredAndSortedAppointments } = useStableAppointmentSorting(appointments, currentFilter);
+const { items: filteredAndSortedAppointments } = useStableAppointmentSorting(
+  appointments,
+  currentFilter
+);
 ```
 
 **Solution:** Single memoized reference used consistently
+
 ```jsx
 // ✅ AFTER: Consistent stable reference
 const stableAppointments = useMemo(() => appointments, [appointments]);
 const stableFilteringResults = useStableAppointmentFilters(stableAppointments);
-const { items: filteredAndSortedAppointments } = useStableAppointmentSorting(stableAppointments, currentFilter);
+const { items: filteredAndSortedAppointments } = useStableAppointmentSorting(
+  stableAppointments,
+  currentFilter
+);
 ```
 
 ### **6. Optimized Timer Effects**
 
 **Problem:** Timer effect depending on array length directly
+
 ```jsx
 // ❌ BEFORE: Direct dependency on array length
 }, [currentView, pendingAppointments.length]);
 ```
 
 **Solution:** Memoized length to prevent timer resets
+
 ```jsx
 // ✅ AFTER: Stable memoized count
 const pendingAppointmentsCount = useMemo(() => pendingAppointments?.length || 0, [pendingAppointments?.length]);
@@ -135,6 +156,7 @@ const pendingAppointmentsCount = useMemo(() => pendingAppointments?.length || 0,
 ### **7. Fixed Variable Initialization Order**
 
 **Problem:** `stableAppointments` was being accessed before initialization
+
 ```javascript
 // ❌ BEFORE: stableAppointments used before declaration
 const appointmentsValidation = useMemo(() => {
@@ -146,6 +168,7 @@ const stableAppointments = useMemo(() => appointments, [appointments]);
 ```
 
 **Solution:** Moved `stableAppointments` declaration to correct position
+
 ```javascript
 // ✅ AFTER: stableAppointments declared before use
 const stableAppointments = useMemo(() => appointments, [appointments]);
@@ -162,12 +185,14 @@ const appointmentsValidation = useMemo(() => {
 ## 📊 **Performance Impact**
 
 ### **Before Fixes:**
+
 - **50+ renders** per second during normal operation
 - Infinite render loops causing browser lag
 - Excessive console logging (every render)
 - High CPU usage from constant recalculations
 
 ### **After Fixes:**
+
 - **Normal render count** (1-2 renders per state change)
 - No more infinite loops
 - Throttled debug logging (every 10th render)

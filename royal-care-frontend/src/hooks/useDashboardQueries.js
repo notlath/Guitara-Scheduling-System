@@ -375,124 +375,134 @@ export const useOperatorDashboardData = () => {
   }, [queryClient]);
 
   // Memoize the complete data object to prevent new references on every render
-  const returnData = useMemo(() => ({
-    // ✅ PRIMARY DATA - All required fields from OperatorDashboard.jsx
-    appointments: appointmentsQuery.data || [],
-    todayAppointments: todayAppointmentsQuery.data || [],
-    upcomingAppointments: upcomingAppointmentsQuery.data || [],
-    notifications: Array.isArray(notificationsQuery.data)
-      ? notificationsQuery.data
-      : notificationsQuery.data?.notifications ||
-        notificationsQuery.data?.results ||
-        [],
-    attendanceRecords: attendanceQuery.data || [],
+  const returnData = useMemo(
+    () => ({
+      // ✅ PRIMARY DATA - All required fields from OperatorDashboard.jsx
+      appointments: appointmentsQuery.data || [],
+      todayAppointments: todayAppointmentsQuery.data || [],
+      upcomingAppointments: upcomingAppointmentsQuery.data || [],
+      notifications: Array.isArray(notificationsQuery.data)
+        ? notificationsQuery.data
+        : notificationsQuery.data?.notifications ||
+          notificationsQuery.data?.results ||
+          [],
+      attendanceRecords: attendanceQuery.data || [],
 
-    // ✅ LOADING STATES - Complete compatibility
-    loading:
-      appointmentsQuery.isLoading ||
-      todayAppointmentsQuery.isLoading ||
-      upcomingAppointmentsQuery.isLoading ||
-      notificationsQuery.isLoading ||
-      attendanceQuery.isLoading,
-    isLoading:
-      appointmentsQuery.isLoading ||
-      todayAppointmentsQuery.isLoading ||
-      upcomingAppointmentsQuery.isLoading ||
-      notificationsQuery.isLoading ||
-      attendanceQuery.isLoading,
+      // ✅ LOADING STATES - Complete compatibility
+      loading:
+        appointmentsQuery.isLoading ||
+        todayAppointmentsQuery.isLoading ||
+        upcomingAppointmentsQuery.isLoading ||
+        notificationsQuery.isLoading ||
+        attendanceQuery.isLoading,
+      isLoading:
+        appointmentsQuery.isLoading ||
+        todayAppointmentsQuery.isLoading ||
+        upcomingAppointmentsQuery.isLoading ||
+        notificationsQuery.isLoading ||
+        attendanceQuery.isLoading,
 
-    // ✅ ERROR STATES - Comprehensive error handling
-    error:
-      appointmentsQuery.error ||
-      todayAppointmentsQuery.error ||
-      upcomingAppointmentsQuery.error ||
-      notificationsQuery.error ||
+      // ✅ ERROR STATES - Comprehensive error handling
+      error:
+        appointmentsQuery.error ||
+        todayAppointmentsQuery.error ||
+        upcomingAppointmentsQuery.error ||
+        notificationsQuery.error ||
+        attendanceQuery.error,
+
+      // ✅ DATA AVAILABILITY - Smart hasData detection
+      hasData:
+        appointmentsQuery.data?.length > 0 ||
+        todayAppointmentsQuery.data?.length > 0 ||
+        upcomingAppointmentsQuery.data?.length > 0 ||
+        notificationsQuery.data?.length > 0 ||
+        attendanceQuery.data?.length > 0,
+
+      // ✅ REFRESH FUNCTIONS - Complete compatibility with legacy
+      forceRefresh,
+      refreshAppointments,
+      refreshNotifications,
+      refreshTodayData, // Enhanced real-time refresh for critical data
+
+      // ✅ TANSTACK QUERY ENHANCED FEATURES
+      isRefetching:
+        appointmentsQuery.isRefetching ||
+        todayAppointmentsQuery.isRefetching ||
+        upcomingAppointmentsQuery.isRefetching ||
+        notificationsQuery.isRefetching ||
+        attendanceQuery.isRefetching,
+
+      // Individual query states for advanced usage
+      queryStates: {
+        appointments: {
+          isLoading: appointmentsQuery.isLoading,
+          isError: appointmentsQuery.isError,
+          error: appointmentsQuery.error,
+          isFetching: appointmentsQuery.isFetching,
+          isRefetching: appointmentsQuery.isRefetching,
+          dataUpdatedAt: appointmentsQuery.dataUpdatedAt,
+        },
+        todayAppointments: {
+          isLoading: todayAppointmentsQuery.isLoading,
+          isError: todayAppointmentsQuery.isError,
+          error: todayAppointmentsQuery.error,
+          isFetching: todayAppointmentsQuery.isFetching,
+          isRefetching: todayAppointmentsQuery.isRefetching,
+          dataUpdatedAt: todayAppointmentsQuery.dataUpdatedAt,
+        },
+        notifications: {
+          isLoading: notificationsQuery.isLoading,
+          isError: notificationsQuery.isError,
+          error: notificationsQuery.error,
+          isFetching: notificationsQuery.isFetching,
+          isRefetching: notificationsQuery.isRefetching,
+          dataUpdatedAt: notificationsQuery.dataUpdatedAt,
+        },
+      },
+
+      // Data source identifier
+      dataSource: "tanstack-query",
+      lastUpdated: new Date().toISOString(),
+    }),
+    [
+      // Only depend on actual data and essential states
+      appointmentsQuery.data,
+      todayAppointmentsQuery.data,
+      upcomingAppointmentsQuery.data,
+      notificationsQuery.data,
+      attendanceQuery.data,
+      appointmentsQuery.isLoading,
+      todayAppointmentsQuery.isLoading,
+      upcomingAppointmentsQuery.isLoading,
+      notificationsQuery.isLoading,
+      attendanceQuery.isLoading,
+      appointmentsQuery.error,
+      todayAppointmentsQuery.error,
+      upcomingAppointmentsQuery.error,
+      notificationsQuery.error,
       attendanceQuery.error,
-
-    // ✅ DATA AVAILABILITY - Smart hasData detection
-    hasData:
-      appointmentsQuery.data?.length > 0 ||
-      todayAppointmentsQuery.data?.length > 0 ||
-      upcomingAppointmentsQuery.data?.length > 0 ||
-      notificationsQuery.data?.length > 0 ||
-      attendanceQuery.data?.length > 0,
-
-    // ✅ REFRESH FUNCTIONS - Complete compatibility with legacy
-    forceRefresh,
-    refreshAppointments,
-    refreshNotifications,
-    refreshTodayData, // Enhanced real-time refresh for critical data
-
-    // ✅ TANSTACK QUERY ENHANCED FEATURES
-    isRefetching:
-      appointmentsQuery.isRefetching ||
-      todayAppointmentsQuery.isRefetching ||
-      upcomingAppointmentsQuery.isRefetching ||
-      notificationsQuery.isRefetching ||
-      attendanceQuery.isRefetching,
-
-    // Individual query states for advanced usage
-    queryStates: {
-      appointments: {
-        isLoading: appointmentsQuery.isLoading,
-        isError: appointmentsQuery.isError,
-        error: appointmentsQuery.error,
-        isFetching: appointmentsQuery.isFetching,
-        isRefetching: appointmentsQuery.isRefetching,
-        dataUpdatedAt: appointmentsQuery.dataUpdatedAt,
-      },
-      todayAppointments: {
-        isLoading: todayAppointmentsQuery.isLoading,
-        isError: todayAppointmentsQuery.isError,
-        error: todayAppointmentsQuery.error,
-        isFetching: todayAppointmentsQuery.isFetching,
-        isRefetching: todayAppointmentsQuery.isRefetching,
-        dataUpdatedAt: todayAppointmentsQuery.dataUpdatedAt,
-      },
-      notifications: {
-        isLoading: notificationsQuery.isLoading,
-        isError: notificationsQuery.isError,
-        error: notificationsQuery.error,
-        isFetching: notificationsQuery.isFetching,
-        isRefetching: notificationsQuery.isRefetching,
-        dataUpdatedAt: notificationsQuery.dataUpdatedAt,
-      },
-    },
-
-    // Data source identifier
-    dataSource: "tanstack-query",
-    lastUpdated: new Date().toISOString(),
-  }), [
-    // Only depend on actual data and essential states
-    appointmentsQuery.data,
-    todayAppointmentsQuery.data,
-    upcomingAppointmentsQuery.data,
-    notificationsQuery.data,
-    attendanceQuery.data,
-    appointmentsQuery.isLoading,
-    todayAppointmentsQuery.isLoading,
-    upcomingAppointmentsQuery.isLoading,
-    notificationsQuery.isLoading,
-    attendanceQuery.isLoading,
-    appointmentsQuery.error,
-    todayAppointmentsQuery.error,
-    upcomingAppointmentsQuery.error,
-    notificationsQuery.error,
-    attendanceQuery.error,
-    forceRefresh,
-    refreshAppointments,
-    refreshNotifications,
-    refreshTodayData,
-  ]);
+      forceRefresh,
+      refreshAppointments,
+      refreshNotifications,
+      refreshTodayData,
+    ]
+  );
 
   // Reduced debug logging - only when data actually changes
-  const dataFingerprint = useMemo(() => 
-    `${returnData.appointments?.length || 0}-${returnData.todayAppointments?.length || 0}-${returnData.notifications?.length || 0}`,
-    [returnData.appointments?.length, returnData.todayAppointments?.length, returnData.notifications?.length]
+  const dataFingerprint = useMemo(
+    () =>
+      `${returnData.appointments?.length || 0}-${
+        returnData.todayAppointments?.length || 0
+      }-${returnData.notifications?.length || 0}`,
+    [
+      returnData.appointments?.length,
+      returnData.todayAppointments?.length,
+      returnData.notifications?.length,
+    ]
   );
 
   const lastFingerprintRef = useRef(null);
-  
+
   if (lastFingerprintRef.current !== dataFingerprint) {
     console.log("🔍 useOperatorDashboardData data changed:", {
       fingerprint: dataFingerprint,

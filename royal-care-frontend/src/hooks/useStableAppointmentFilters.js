@@ -33,7 +33,7 @@ const STABLE_EMPTY_RESULTS = Object.freeze({
 const VALID_STATUSES = Object.freeze([
   "pending",
   "therapist_confirmed",
-  "driver_confirmed", 
+  "driver_confirmed",
   "in_progress",
   "journey",
   "arrived",
@@ -65,7 +65,8 @@ const VALIDATORS = Object.freeze({
   isValidAppointment: (appointment) => {
     if (!appointment || typeof appointment !== "object") return false;
     if (!appointment.id) return false;
-    if (!appointment.status || !VALID_STATUSES.includes(appointment.status)) return false;
+    if (!appointment.status || !VALID_STATUSES.includes(appointment.status))
+      return false;
     return true;
   },
 
@@ -100,8 +101,8 @@ const STATUS_CHECKS = Object.freeze({
   isPickupRequest: (status) => {
     return [
       "pickup_requested",
-      "driver_assigned_pickup", 
-      "return_journey"
+      "driver_assigned_pickup",
+      "return_journey",
     ].includes(status);
   },
 });
@@ -121,14 +122,18 @@ export const useStableAppointmentFilters = (appointments) => {
   // Create a stable input hash to detect real changes
   const inputHash = useMemo(() => {
     if (!Array.isArray(appointments) || appointments.length === 0) {
-      return 'empty';
+      return "empty";
     }
-    
+
     // Create a lightweight hash based on length and key properties
-    const keyProperties = appointments.slice(0, 10).map(apt => 
-      `${apt?.id || ''}-${apt?.status || ''}-${apt?.payment_status || ''}`
-    ).join('|');
-    
+    const keyProperties = appointments
+      .slice(0, 10)
+      .map(
+        (apt) =>
+          `${apt?.id || ""}-${apt?.status || ""}-${apt?.payment_status || ""}`
+      )
+      .join("|");
+
     return `${appointments.length}-${keyProperties}`;
   }, [appointments]);
 
@@ -173,7 +178,7 @@ export const useStableAppointmentFilters = (appointments) => {
         if (STATUS_CHECKS.isRejected(status)) {
           result.rejected.push(apt);
           result.rejectionStats.total++;
-          
+
           if (status === "rejected_by_therapist") {
             result.rejectionStats.therapist++;
           } else if (status === "rejected_by_driver") {
@@ -183,7 +188,7 @@ export const useStableAppointmentFilters = (appointments) => {
           if (apt.operator_review_status === "pending") {
             result.rejectionStats.pending++;
           }
-        } 
+        }
         // Pending appointments with timeout calculations
         else if (STATUS_CHECKS.isPending(status)) {
           result.pending.push(apt);
@@ -200,7 +205,7 @@ export const useStableAppointmentFilters = (appointments) => {
               // Silent fail for timeout calculations
             }
           }
-        } 
+        }
         // Other status categories
         else if (STATUS_CHECKS.isAwaitingPayment(status, paymentStatus)) {
           result.awaitingPayment.push(apt);
@@ -231,7 +236,10 @@ export const useStableAppointmentFilters = (appointments) => {
   // Memoized result with stable hash comparison
   return useMemo(() => {
     // If input hasn't changed, return cached result
-    if (lastInputHashRef.current === inputHash && lastResultRef.current !== STABLE_EMPTY_RESULTS) {
+    if (
+      lastInputHashRef.current === inputHash &&
+      lastResultRef.current !== STABLE_EMPTY_RESULTS
+    ) {
       return lastResultRef.current;
     }
 
@@ -239,12 +247,12 @@ export const useStableAppointmentFilters = (appointments) => {
     lastInputHashRef.current = inputHash;
     const result = filterAppointments(appointments);
     lastResultRef.current = result;
-    
+
     processedCountRef.current++;
-    
+
     // Only log occasionally to avoid spam
     if (processedCountRef.current % 10 === 1) {
-      console.log('🔒 Stable filtering processed:', {
+      console.log("🔒 Stable filtering processed:", {
         appointmentsCount: appointments?.length || 0,
         rejectedCount: result.rejected.length,
         pendingCount: result.pending.length,
@@ -288,7 +296,7 @@ export const useStableAppointmentSorting = (appointments, currentFilter) => {
 
     // Create cache key
     const cacheKey = `${appointments.length}-${currentFilter}`;
-    
+
     // Check if input hasn't changed
     if (
       lastInputRef.current.appointments === appointments &&
@@ -300,16 +308,16 @@ export const useStableAppointmentSorting = (appointments, currentFilter) => {
 
     // Apply basic filtering based on currentFilter
     let filteredItems = [...appointments];
-    
-    if (currentFilter === 'today') {
-      const today = new Date().toISOString().split('T')[0];
-      filteredItems = appointments.filter(apt => 
-        apt.date && apt.date.startsWith(today)
+
+    if (currentFilter === "today") {
+      const today = new Date().toISOString().split("T")[0];
+      filteredItems = appointments.filter(
+        (apt) => apt.date && apt.date.startsWith(today)
       );
-    } else if (currentFilter === 'pending') {
-      filteredItems = appointments.filter(apt => apt.status === 'pending');
-    } else if (currentFilter === 'rejected') {
-      filteredItems = appointments.filter(apt => apt.status === 'rejected');
+    } else if (currentFilter === "pending") {
+      filteredItems = appointments.filter((apt) => apt.status === "pending");
+    } else if (currentFilter === "rejected") {
+      filteredItems = appointments.filter((apt) => apt.status === "rejected");
     }
     // 'all' filter shows everything
 
@@ -330,7 +338,7 @@ export const useStableAppointmentSorting = (appointments, currentFilter) => {
 
     // Cache the result
     sortCacheRef.current.set(cacheKey, result);
-    
+
     // Keep cache size reasonable
     if (sortCacheRef.current.size > 20) {
       const firstKey = sortCacheRef.current.keys().next().value;

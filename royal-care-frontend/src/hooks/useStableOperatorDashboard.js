@@ -5,8 +5,8 @@
 
 import { useCallback, useMemo, useRef } from "react";
 import { useOperatorDashboardData } from "./useDashboardQueries";
-import { useRobustAppointmentFilters } from "./useRobustAppointmentFilters";
 import { useStableValue } from "./usePerformanceOptimization";
+import { useRobustAppointmentFilters } from "./useRobustAppointmentFilters";
 
 // Stable empty constants to prevent reference changes
 const EMPTY_ARRAY = Object.freeze([]);
@@ -34,16 +34,24 @@ const EMPTY_FILTER_RESULTS = Object.freeze({
 export const useStableOperatorDashboard = () => {
   const lastStableDataRef = useRef(null);
   const renderCountRef = useRef(0);
-  
+
   // Always call hooks in the same order - never conditionally
   // Get raw data from TanStack Query
   const rawDashboardData = useOperatorDashboardData();
 
   // Create ultra-stable data references
-  const stableAppointments = useStableValue(rawDashboardData?.appointments || EMPTY_ARRAY);
-  const stableTodayAppointments = useStableValue(rawDashboardData?.todayAppointments || EMPTY_ARRAY);
-  const stableUpcomingAppointments = useStableValue(rawDashboardData?.upcomingAppointments || EMPTY_ARRAY);
-  const stableNotifications = useStableValue(rawDashboardData?.notifications || EMPTY_ARRAY);
+  const stableAppointments = useStableValue(
+    rawDashboardData?.appointments || EMPTY_ARRAY
+  );
+  const stableTodayAppointments = useStableValue(
+    rawDashboardData?.todayAppointments || EMPTY_ARRAY
+  );
+  const stableUpcomingAppointments = useStableValue(
+    rawDashboardData?.upcomingAppointments || EMPTY_ARRAY
+  );
+  const stableNotifications = useStableValue(
+    rawDashboardData?.notifications || EMPTY_ARRAY
+  );
 
   // Create stable loading/error states
   const stableLoading = useStableValue(rawDashboardData?.loading || false);
@@ -64,7 +72,7 @@ export const useStableOperatorDashboard = () => {
   const stableResult = useMemo(() => {
     // Track renders but don't log excessively
     renderCountRef.current++;
-    
+
     // Emergency circuit breaker - return cached data if available
     if (renderCountRef.current > 100) {
       console.error("🚨 EMERGENCY: Render loop detected, using cached data");
@@ -99,11 +107,11 @@ export const useStableOperatorDashboard = () => {
 
     // Cache the result for emergency fallback
     lastStableDataRef.current = result;
-    
+
     return result;
   }, [
     stableAppointments,
-    stableTodayAppointments, 
+    stableTodayAppointments,
     stableUpcomingAppointments,
     stableNotifications,
     filteringResults,

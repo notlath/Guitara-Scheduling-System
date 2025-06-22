@@ -186,7 +186,8 @@ const OperatorDashboard = () => {
     todayAppointments,
     upcomingAppointments,
     notifications,
-    loading,    error,
+    loading,
+    error,
     hasData,
     forceRefresh,
   } = useOperatorDashboardData();
@@ -197,8 +198,9 @@ const OperatorDashboard = () => {
   // ✅ ROBUST FILTERING: Validate appointments data before processing
   const appointmentsValidation = useMemo(() => {
     return validateAppointmentsData(stableAppointments);
-  }, [stableAppointments]);// ✅ STABLE FILTERING: Replace robust with stable versions to prevent render loops
-  const stableFilteringResults = useStableAppointmentFilters(stableAppointments);
+  }, [stableAppointments]); // ✅ STABLE FILTERING: Replace robust with stable versions to prevent render loops
+  const stableFilteringResults =
+    useStableAppointmentFilters(stableAppointments);
   // 🔧 FIX: Memoize filtering errors to prevent unnecessary updates
   const filteringErrors = useMemo(() => {
     if (!appointmentsValidation.isValid) {
@@ -221,7 +223,7 @@ const OperatorDashboard = () => {
     activeSessions,
     pickupRequests,
     rejectionStats,
-  } = stableFilteringResults;  // ✅ STABLE SORTING: Replace robust with stable version to prevent render loops
+  } = stableFilteringResults; // ✅ STABLE SORTING: Replace robust with stable version to prevent render loops
   const { items: filteredAndSortedAppointments } = useStableAppointmentSorting(
     stableAppointments,
     currentFilter
@@ -361,132 +363,143 @@ const OperatorDashboard = () => {
     }
   }, []); // No dependencies needed as it's a pure function  // Load driver data on component mount and refresh
   const initialDriverDataLoaded = useRef(false);
-    // 🔧 FIX: Stabilize appointmentsLength to prevent render loops
-  const appointmentsLength = useMemo(() => appointments?.length || 0, [appointments?.length]);
+  // 🔧 FIX: Stabilize appointmentsLength to prevent render loops
+  const appointmentsLength = useMemo(
+    () => appointments?.length || 0,
+    [appointments?.length]
+  );
   // Memoize the driver data loading to prevent recreation on every render
-  const loadDriverData = useCallback(async (appointmentsData) => {
-    try {
-      // Fetch real staff data from backend
-      const staffResponse = await dispatch(fetchStaffMembers()).unwrap();
+  const loadDriverData = useCallback(
+    async (appointmentsData) => {
+      try {
+        // Fetch real staff data from backend
+        const staffResponse = await dispatch(fetchStaffMembers()).unwrap();
 
-      // Filter drivers and categorize by availability status
-      const drivers = staffResponse.filter((staff) => staff.role === "driver");
-
-      // Get current appointments to determine driver status
-      // Note: "dropped_off" is NOT included here, so drivers who dropped off therapists will be available
-      const activeAppointmentStatuses = [
-        "driver_confirmed",
-        "in_progress",
-        "journey_started",
-        "journey",
-        "arrived",
-        "return_journey", // Driver is en route to pick up therapist after session
-        "driver_assigned_pickup", // Driver assigned for pickup but hasn't confirmed yet
-      ];      // Find drivers with active appointments (busy)
-      const busyDriverIds = (appointmentsData || [])
-        .filter(
-          (apt) => activeAppointmentStatuses.includes(apt.status) && apt.driver
-        )
-        .map((apt) => apt.driver);
-
-      // Categorize drivers
-      const availableDrivers = [];
-      const busyDrivers = [];
-      drivers.forEach((driver) => {
-        // Find the current appointment for this driver
-        const currentAppointment = (appointmentsData || []).find(
-          (apt) =>
-            activeAppointmentStatuses.includes(apt.status) &&
-            apt.driver === driver.id
+        // Filter drivers and categorize by availability status
+        const drivers = staffResponse.filter(
+          (staff) => staff.role === "driver"
         );
 
-        const driverData = {
-          id: driver.id,
-          first_name: driver.first_name,
-          last_name: driver.last_name,
-          role: driver.role,
-          specialization: driver.specialization,
-          vehicle_type: driver.vehicle_type || "Motorcycle",
-          current_location: driver.current_location || "Available",
-          last_available_at: driver.last_available_at,
-          last_drop_off_time: driver.last_drop_off_time,
-          last_vehicle_used:
-            driver.last_vehicle_used || driver.vehicle_type || "Motorcycle",
-          last_location: driver.current_location || "Available",
-          available_since: driver.last_available_at || new Date().toISOString(),
-          status: busyDriverIds.includes(driver.id) ? "busy" : "available", // Enhanced appointment details for busy drivers
-          currentAppointment: currentAppointment,
-          current_task: currentAppointment
-            ? getDriverTaskDescription(currentAppointment)
-            : null,
-          therapist_name: currentAppointment?.therapist_details
-            ? `${currentAppointment.therapist_details.first_name} ${currentAppointment.therapist_details.last_name}`
-            : currentAppointment?.therapist_name || "Unknown Therapist",
-          client_name:
-            currentAppointment?.client_details?.name ||
-            currentAppointment?.client_name ||
-            "Unknown Client",
-          appointment_status: currentAppointment?.status,
-          appointment_location: currentAppointment?.location,
-        };
+        // Get current appointments to determine driver status
+        // Note: "dropped_off" is NOT included here, so drivers who dropped off therapists will be available
+        const activeAppointmentStatuses = [
+          "driver_confirmed",
+          "in_progress",
+          "journey_started",
+          "journey",
+          "arrived",
+          "return_journey", // Driver is en route to pick up therapist after session
+          "driver_assigned_pickup", // Driver assigned for pickup but hasn't confirmed yet
+        ]; // Find drivers with active appointments (busy)
+        const busyDriverIds = (appointmentsData || [])
+          .filter(
+            (apt) =>
+              activeAppointmentStatuses.includes(apt.status) && apt.driver
+          )
+          .map((apt) => apt.driver);
 
-        if (busyDriverIds.includes(driver.id)) {
-          busyDrivers.push(driverData);
-        } else {
-          availableDrivers.push(driverData);
-        }
-      });
+        // Categorize drivers
+        const availableDrivers = [];
+        const busyDrivers = [];
+        drivers.forEach((driver) => {
+          // Find the current appointment for this driver
+          const currentAppointment = (appointmentsData || []).find(
+            (apt) =>
+              activeAppointmentStatuses.includes(apt.status) &&
+              apt.driver === driver.id
+          );
 
-      setDriverAssignment({
-        availableDrivers,
-        busyDrivers,
-        pendingPickups: [],
-      });
-    } catch (error) {
-      console.error("Failed to load driver data:", error);
-      // Fallback to mock data if API fails
-      setDriverAssignment({
-        availableDrivers: [
-          {
-            id: 1,
-            first_name: "Juan",
-            last_name: "Dela Cruz",
-            vehicle_type: "Motorcycle",
-            last_location: "Quezon City",
-            available_since: new Date().toISOString(),
-            status: "available",
-          },
-          {
-            id: 2,
-            first_name: "Maria",
-            last_name: "Santos",
-            vehicle_type: "Car",
-            last_location: "Makati",
-            available_since: new Date().toISOString(),
-            status: "available",
-          },
-        ],
-        busyDrivers: [
-          {
-            id: 3,
-            first_name: "Jose",
-            last_name: "Garcia",
-            vehicle_type: "Motorcycle",
-            current_task: "Transporting therapist to session",
-            estimated_completion: new Date(
-              Date.now() + 30 * 60000
-            ).toISOString(),
-            status: "busy",
-          },
-        ],
-        pendingPickups: [],
-      });
-    }
-  }, [dispatch, getDriverTaskDescription]); // 🔧 FIX: Removed appointments dependency - now passed as parameter
+          const driverData = {
+            id: driver.id,
+            first_name: driver.first_name,
+            last_name: driver.last_name,
+            role: driver.role,
+            specialization: driver.specialization,
+            vehicle_type: driver.vehicle_type || "Motorcycle",
+            current_location: driver.current_location || "Available",
+            last_available_at: driver.last_available_at,
+            last_drop_off_time: driver.last_drop_off_time,
+            last_vehicle_used:
+              driver.last_vehicle_used || driver.vehicle_type || "Motorcycle",
+            last_location: driver.current_location || "Available",
+            available_since:
+              driver.last_available_at || new Date().toISOString(),
+            status: busyDriverIds.includes(driver.id) ? "busy" : "available", // Enhanced appointment details for busy drivers
+            currentAppointment: currentAppointment,
+            current_task: currentAppointment
+              ? getDriverTaskDescription(currentAppointment)
+              : null,
+            therapist_name: currentAppointment?.therapist_details
+              ? `${currentAppointment.therapist_details.first_name} ${currentAppointment.therapist_details.last_name}`
+              : currentAppointment?.therapist_name || "Unknown Therapist",
+            client_name:
+              currentAppointment?.client_details?.name ||
+              currentAppointment?.client_name ||
+              "Unknown Client",
+            appointment_status: currentAppointment?.status,
+            appointment_location: currentAppointment?.location,
+          };
+
+          if (busyDriverIds.includes(driver.id)) {
+            busyDrivers.push(driverData);
+          } else {
+            availableDrivers.push(driverData);
+          }
+        });
+
+        setDriverAssignment({
+          availableDrivers,
+          busyDrivers,
+          pendingPickups: [],
+        });
+      } catch (error) {
+        console.error("Failed to load driver data:", error);
+        // Fallback to mock data if API fails
+        setDriverAssignment({
+          availableDrivers: [
+            {
+              id: 1,
+              first_name: "Juan",
+              last_name: "Dela Cruz",
+              vehicle_type: "Motorcycle",
+              last_location: "Quezon City",
+              available_since: new Date().toISOString(),
+              status: "available",
+            },
+            {
+              id: 2,
+              first_name: "Maria",
+              last_name: "Santos",
+              vehicle_type: "Car",
+              last_location: "Makati",
+              available_since: new Date().toISOString(),
+              status: "available",
+            },
+          ],
+          busyDrivers: [
+            {
+              id: 3,
+              first_name: "Jose",
+              last_name: "Garcia",
+              vehicle_type: "Motorcycle",
+              current_task: "Transporting therapist to session",
+              estimated_completion: new Date(
+                Date.now() + 30 * 60000
+              ).toISOString(),
+              status: "busy",
+            },
+          ],
+          pendingPickups: [],
+        });
+      }
+    },
+    [dispatch, getDriverTaskDescription]
+  ); // 🔧 FIX: Removed appointments dependency - now passed as parameter
 
   useEffect(() => {
     // Only load data if appointments is available (not undefined) and initial data hasn't been loaded
-    if (appointmentsLength > 0 && !initialDriverDataLoaded.current) {      const loadInitialData = async () => {
+    if (appointmentsLength > 0 && !initialDriverDataLoaded.current) {
+      const loadInitialData = async () => {
         console.log("🚗 Loading initial driver data");
         await loadDriverData(stableAppointments);
         // Also fetch notifications on initial load
@@ -556,7 +569,10 @@ const OperatorDashboard = () => {
   // Real-time sync is handled by useSyncEventHandlers hook and centralized data manager
   // OPTIMIZED: Remove manual data loading (handled by optimized data manager)
   // The optimized data manager handles initial data loading automatically  // 🔧 FIX: Memoize pendingAppointments length to prevent timer effect loops
-  const pendingAppointmentsCount = useMemo(() => pendingAppointments?.length || 0, [pendingAppointments?.length]);
+  const pendingAppointmentsCount = useMemo(
+    () => pendingAppointments?.length || 0,
+    [pendingAppointments?.length]
+  );
 
   // Real-time timer for updating countdown displays - FIXED to prevent infinite loops
   useEffect(() => {
@@ -589,13 +605,14 @@ const OperatorDashboard = () => {
       currentView,
       timestamp: new Date().toISOString(),
     });
-  }// 🔧 FIX: Throttled debug tracking for data state changes
+  } // 🔧 FIX: Throttled debug tracking for data state changes
   const dataStateDebugCountRef = useRef(0);
-  
+
   useEffect(() => {
     dataStateDebugCountRef.current++;
     // Only log every 5th data state change
-    if (dataStateDebugCountRef.current % 5 === 1) {      console.log("🔍 OperatorDashboard Debug - Data State:", {
+    if (dataStateDebugCountRef.current % 5 === 1) {
+      console.log("🔍 OperatorDashboard Debug - Data State:", {
         appointments: stableAppointments?.length || 0,
         appointmentsType: typeof stableAppointments,
         appointmentsIsArray: Array.isArray(stableAppointments),
@@ -608,7 +625,7 @@ const OperatorDashboard = () => {
   }, [stableAppointments, hasData, loading, error]);
   // 🔧 FIX: Simplified driver data debug tracking - only when appointments length changes
   const driverDataDebugRef = useRef(0);
-  
+
   useEffect(() => {
     if (driverDataDebugRef.current !== appointmentsLength) {
       driverDataDebugRef.current = appointmentsLength;
@@ -619,12 +636,16 @@ const OperatorDashboard = () => {
       });
     }
   }, [appointmentsLength]); // Only depend on stable appointmentsLength// 🔧 FIX: Stabilized debug tracking for filtering - removed problematic dependencies
-  const appointmentsDebugRef = useRef();  // 🔧 FIX: Memoize sample data to prevent render loops
+  const appointmentsDebugRef = useRef(); // 🔧 FIX: Memoize sample data to prevent render loops
   const sampleAppointmentsData = useMemo(() => {
-    if (!Array.isArray(stableAppointments) || stableAppointments.length === 0 || stableAppointments.length > 1000) {
+    if (
+      !Array.isArray(stableAppointments) ||
+      stableAppointments.length === 0 ||
+      stableAppointments.length > 1000
+    ) {
       return null;
     }
-    
+
     return {
       totalCount: stableAppointments.length,
       first5Statuses: stableAppointments.slice(0, 5).map((apt) => ({
@@ -633,7 +654,9 @@ const OperatorDashboard = () => {
         date: apt.date,
         created_at: apt.created_at,
       })),
-      allUniqueStatuses: [...new Set(stableAppointments.map((apt) => apt.status))],
+      allUniqueStatuses: [
+        ...new Set(stableAppointments.map((apt) => apt.status)),
+      ],
     };
   }, [stableAppointments]); // Safe to include appointments here since it's memoized
 
@@ -641,13 +664,13 @@ const OperatorDashboard = () => {
     // Only log when appointments array actually changes, not derived values
     if (appointmentsDebugRef.current !== appointmentsLength) {
       appointmentsDebugRef.current = appointmentsLength;
-      
+
       console.log("� Appointments data changed:", {
         appointmentsCount: appointmentsLength,
         currentFilter,
         timestamp: new Date().toISOString(),
       });
-      
+
       // Log sample data if available
       if (sampleAppointmentsData) {
         console.log("📋 Sample appointments data:", sampleAppointmentsData);
