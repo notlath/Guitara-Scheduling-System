@@ -1,18 +1,21 @@
-import { useEffect, useState } from "react";
 import axios from "axios";
-import styles from "./InventoryPage.module.css";
+import { useEffect, useState } from "react";
+import { MdAdd } from "react-icons/md";
 import pageTitles from "../../constants/pageTitles";
 import DataTable from "../../globals/DataTable";
-import PageLayout from "../../globals/PageLayout";
 import LayoutRow from "../../globals/LayoutRow";
-import { MdAdd } from "react-icons/md";
+import PageLayout from "../../globals/PageLayout";
+import { getToken } from "../../utils/tokenManager";
+import styles from "./InventoryPage.module.css";
+import { MenuItem, Select } from "./MUISelect";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const INVENTORY_API_URL = `${API_BASE_URL}/inventory/`;
 
 const getAuthToken = () => {
-  // Adjust this if you store the token elsewhere (e.g., Redux)
-  return localStorage.getItem("token");
+  // Use the centralized token manager
+  return getToken();
 };
 
 const axiosAuth = axios.create();
@@ -23,7 +26,6 @@ axiosAuth.interceptors.request.use((config) => {
   }
   return config;
 });
-import { Select, MenuItem } from "./MUISelect";
 
 const InventoryPage = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -121,8 +123,15 @@ const InventoryPage = () => {
 
   const handleEditSave = async (updatedItem) => {
     try {
-      const res = await axiosAuth.put(`${INVENTORY_API_URL}${updatedItem.id}/`, updatedItem);
-      setInventoryItems(inventoryItems.map((item) => (item.id === updatedItem.id ? res.data : item)));
+      const res = await axiosAuth.put(
+        `${INVENTORY_API_URL}${updatedItem.id}/`,
+        updatedItem
+      );
+      setInventoryItems(
+        inventoryItems.map((item) =>
+          item.id === updatedItem.id ? res.data : item
+        )
+      );
       setShowEditModal(false);
       setEditItem(null);
     } catch {
@@ -165,7 +174,9 @@ const InventoryPage = () => {
           selectedCategory === "all" || item.category === selectedCategory;
         const matchesSearch =
           (item.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (item.supplier || "").toLowerCase().includes(searchTerm.toLowerCase());
+          (item.supplier || "")
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase());
         return matchesCategory && matchesSearch;
       })
     : [];
@@ -198,10 +209,11 @@ const InventoryPage = () => {
       (item) => item.current_stock <= item.min_stock
     ).length;
     const totalValue = inventoryItems.reduce(
-      (sum, item) => sum + (item.current_stock * item.cost_per_unit),
+      (sum, item) => sum + item.current_stock * item.cost_per_unit,
       0
     );
-    const categories = new Set(inventoryItems.map((item) => item.category)).size;
+    const categories = new Set(inventoryItems.map((item) => item.category))
+      .size;
 
     return { totalItems, lowStockItems, totalValue, categories };
   };
@@ -250,31 +262,58 @@ const InventoryPage = () => {
         <span className={styles[stockStatus.class]}>{stockStatus.label}</span>
       ),
       supplier: item.supplier,
-      costPerUnit: item.cost_per_unit !== undefined && item.cost_per_unit !== null ? `₱${Number(item.cost_per_unit).toFixed(2)}` : '',
-      totalValue: item.current_stock !== undefined && item.cost_per_unit !== undefined && item.current_stock !== null && item.cost_per_unit !== null ? `₱${(Number(item.current_stock) * Number(item.cost_per_unit)).toFixed(2)}` : '',
+      costPerUnit:
+        item.cost_per_unit !== undefined && item.cost_per_unit !== null
+          ? `₱${Number(item.cost_per_unit).toFixed(2)}`
+          : "",
+      totalValue:
+        item.current_stock !== undefined &&
+        item.cost_per_unit !== undefined &&
+        item.current_stock !== null &&
+        item.cost_per_unit !== null
+          ? `₱${(
+              Number(item.current_stock) * Number(item.cost_per_unit)
+            ).toFixed(2)}`
+          : "",
       actions: (
         <div className={styles["item-actions"]}>
-          <button className={styles["edit-button"]} onClick={() => handleEditClick(item)}>Edit</button>
-          <button className={styles["delete-button"]} onClick={() => handleRestockClick(item)}>Restock</button>
+          <button
+            className={styles["edit-button"]}
+            onClick={() => handleEditClick(item)}
+          >
+            Edit
+          </button>
+          <button
+            className={styles["delete-button"]}
+            onClick={() => handleRestockClick(item)}
+          >
+            Restock
+          </button>
         </div>
       ),
     };
   });
 
   const usageLogTableData = usageLogs.map((log) => {
-    const dateObj = new Date(log.timestamp || log.date || log.created_at || Date.now());
+    const dateObj = new Date(
+      log.timestamp || log.date || log.created_at || Date.now()
+    );
     let quantity = log.quantity_used;
     let notes = log.notes && log.notes.trim() !== "" ? log.notes : "-";
     let action = log.action_type || "usage";
-    let quantityLabel = action === "restock" ? "Quantity Restocked" : "Quantity Used";
+    let quantityLabel =
+      action === "restock" ? "Quantity Restocked" : "Quantity Used";
     return {
       date: dateObj.toISOString().split("T")[0],
-      time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: dateObj.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
       productName: log.item_name || log.product_name || log.item || "-",
-      quantityRefilled: `${quantity} ${log.unit || ''}`,
+      quantityRefilled: `${quantity} ${log.unit || ""}`,
       notes: notes,
       actionType: action,
-      quantityLabel: quantityLabel
+      quantityLabel: quantityLabel,
     };
   });
 
@@ -337,7 +376,10 @@ const InventoryPage = () => {
             </div>
             <div className={styles["stat-card"]}>
               <div className={styles["stat-number"]}>
-                {typeof stats.totalValue === 'number' && !isNaN(stats.totalValue) ? `₱${stats.totalValue.toFixed(2)}` : ''}
+                {typeof stats.totalValue === "number" &&
+                !isNaN(stats.totalValue)
+                  ? `₱${stats.totalValue.toFixed(2)}`
+                  : ""}
               </div>
               <div className={styles["stat-label"]}>Total Inventory Value</div>
             </div>
@@ -360,27 +402,27 @@ const InventoryPage = () => {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className={styles["category-select"]}
               size="small"
-            displayEmpty
-            sx={{
-              minWidth: 180,
-              background: "#f7f7fa",
-              borderRadius: "8px",
-              border: "1px solid #e0e0e0",
-              fontSize: "1rem",
-              height: "40px",
-              boxShadow: "none",
-              ".MuiOutlinedInput-notchedOutline": {
-                border: "none",
-              },
-              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                border: "1px solid #bdbdbd",
-              },
-              ".MuiSelect-select": {
-                padding: "10px 14px",
-                display: "flex",
-                alignItems: "center",
-              },
-            }}
+              displayEmpty
+              sx={{
+                minWidth: 180,
+                background: "#f7f7fa",
+                borderRadius: "8px",
+                border: "1px solid #e0e0e0",
+                fontSize: "1rem",
+                height: "40px",
+                boxShadow: "none",
+                ".MuiOutlinedInput-notchedOutline": {
+                  border: "none",
+                },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  border: "1px solid #bdbdbd",
+                },
+                ".MuiSelect-select": {
+                  padding: "10px 14px",
+                  display: "flex",
+                  alignItems: "center",
+                },
+              }}
             >
               {categories.map((category) => (
                 <MenuItem key={category} value={category}>
@@ -549,22 +591,100 @@ const InventoryPage = () => {
           <div className={styles["modal-overlay"]}>
             <div className={styles["modal-content"]}>
               <h2>Edit Item</h2>
-              <button className={styles["close-modal"]} onClick={() => setShowEditModal(false)}>
+              <button
+                className={styles["close-modal"]}
+                onClick={() => setShowEditModal(false)}
+              >
                 Close
               </button>
               <form
-                onSubmit={e => {
+                onSubmit={(e) => {
                   e.preventDefault();
                   handleEditSave(editItem);
                 }}
               >
-                <label>Name: <input value={editItem.name} onChange={e => setEditItem({ ...editItem, name: e.target.value })} /></label><br />
-                <label>Category: <input value={editItem.category} onChange={e => setEditItem({ ...editItem, category: e.target.value })} /></label><br />
-                <label>Current Stock: <input type="number" value={editItem.current_stock} onChange={e => setEditItem({ ...editItem, current_stock: Number(e.target.value) })} /></label><br />
-                <label>Min Stock: <input type="number" value={editItem.min_stock} onChange={e => setEditItem({ ...editItem, min_stock: Number(e.target.value) })} /></label><br />
-                <label>Unit: <input value={editItem.unit} onChange={e => setEditItem({ ...editItem, unit: e.target.value })} /></label><br />
-                <label>Supplier: <input value={editItem.supplier} onChange={e => setEditItem({ ...editItem, supplier: e.target.value })} /></label><br />
-                <label>Cost Per Unit: <input type="number" value={editItem.cost_per_unit} onChange={e => setEditItem({ ...editItem, cost_per_unit: Number(e.target.value) })} /></label><br />
+                <label>
+                  Name:{" "}
+                  <input
+                    value={editItem.name}
+                    onChange={(e) =>
+                      setEditItem({ ...editItem, name: e.target.value })
+                    }
+                  />
+                </label>
+                <br />
+                <label>
+                  Category:{" "}
+                  <input
+                    value={editItem.category}
+                    onChange={(e) =>
+                      setEditItem({ ...editItem, category: e.target.value })
+                    }
+                  />
+                </label>
+                <br />
+                <label>
+                  Current Stock:{" "}
+                  <input
+                    type="number"
+                    value={editItem.current_stock}
+                    onChange={(e) =>
+                      setEditItem({
+                        ...editItem,
+                        current_stock: Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <br />
+                <label>
+                  Min Stock:{" "}
+                  <input
+                    type="number"
+                    value={editItem.min_stock}
+                    onChange={(e) =>
+                      setEditItem({
+                        ...editItem,
+                        min_stock: Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <br />
+                <label>
+                  Unit:{" "}
+                  <input
+                    value={editItem.unit}
+                    onChange={(e) =>
+                      setEditItem({ ...editItem, unit: e.target.value })
+                    }
+                  />
+                </label>
+                <br />
+                <label>
+                  Supplier:{" "}
+                  <input
+                    value={editItem.supplier}
+                    onChange={(e) =>
+                      setEditItem({ ...editItem, supplier: e.target.value })
+                    }
+                  />
+                </label>
+                <br />
+                <label>
+                  Cost Per Unit:{" "}
+                  <input
+                    type="number"
+                    value={editItem.cost_per_unit}
+                    onChange={(e) =>
+                      setEditItem({
+                        ...editItem,
+                        cost_per_unit: Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <br />
                 <button type="submit">Save</button>
               </form>
             </div>
@@ -576,19 +696,47 @@ const InventoryPage = () => {
           <div className={styles["modal-overlay"]}>
             <div className={styles["modal-content"]}>
               <h2>Restock Item</h2>
-              <button className={styles["close-modal"]} onClick={() => setShowRestockModal(false)}>
+              <button
+                className={styles["close-modal"]}
+                onClick={() => setShowRestockModal(false)}
+              >
                 Close
               </button>
               <div>Item: {restockItem.name}</div>
-              <div>Current Stock: {restockItem.current_stock} {restockItem.unit}</div>
+              <div>
+                Current Stock: {restockItem.current_stock} {restockItem.unit}
+              </div>
               <form
-                onSubmit={e => {
+                onSubmit={(e) => {
                   e.preventDefault();
                   handleRestockSave();
                 }}
               >
-                <label>Amount to Add: <input type="number" value={restockAmount === 0 ? '' : restockAmount} onChange={e => setRestockAmount(e.target.value === '' ? 0 : Number(e.target.value))} min={1} placeholder="Enter amount" /></label><br />
-                <label>Notes (optional): <input type="text" value={restockNotes} onChange={e => setRestockNotes(e.target.value)} placeholder="Enter notes (optional)" /></label><br />
+                <label>
+                  Amount to Add:{" "}
+                  <input
+                    type="number"
+                    value={restockAmount === 0 ? "" : restockAmount}
+                    onChange={(e) =>
+                      setRestockAmount(
+                        e.target.value === "" ? 0 : Number(e.target.value)
+                      )
+                    }
+                    min={1}
+                    placeholder="Enter amount"
+                  />
+                </label>
+                <br />
+                <label>
+                  Notes (optional):{" "}
+                  <input
+                    type="text"
+                    value={restockNotes}
+                    onChange={(e) => setRestockNotes(e.target.value)}
+                    placeholder="Enter notes (optional)"
+                  />
+                </label>
+                <br />
                 <button type="submit">Restock</button>
               </form>
             </div>

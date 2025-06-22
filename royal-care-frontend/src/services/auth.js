@@ -1,5 +1,6 @@
 // src/services/auth.js
 import axios from "axios";
+import { getToken } from "../utils/tokenManager";
 
 const API_URL = `${import.meta.env.VITE_API_BASE_URL}/auth/`;
 
@@ -80,7 +81,7 @@ export const register = (userData) => {
 // This is optional and used only to prevent infinite loops with disabled accounts
 export const validateToken = async () => {
   try {
-    const token = localStorage.getItem("knoxToken");
+    const token = getToken();
     if (!token) {
       return { valid: false, reason: "NO_TOKEN" };
     }
@@ -110,10 +111,13 @@ export const validateToken = async () => {
 // Used to poll account status for recently disabled users
 export const checkAccountStatus = async (username) => {
   try {
-    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/check-account-status/`, {
-      username,
-    });
-    
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/auth/check-account-status/`,
+      {
+        username,
+      }
+    );
+
     return {
       success: true,
       isActive: response.data.is_active,
@@ -128,7 +132,7 @@ export const checkAccountStatus = async (username) => {
         message: "Account not found",
       };
     }
-    
+
     if (error.response?.status === 403) {
       return {
         success: false,
@@ -136,38 +140,44 @@ export const checkAccountStatus = async (username) => {
         message: "Account is disabled",
       };
     }
-    
+
     // Network or other errors
     return {
       success: false,
       isActive: false,
-      message: error.response?.data?.message || "Unable to check account status",
+      message:
+        error.response?.data?.message || "Unable to check account status",
     };
   }
 };
 
 // Function to start polling account status for a disabled user
 // Returns a promise that resolves when the account becomes active
-export const pollAccountStatus = (username, onStatusChange, maxAttempts = 60, intervalMs = 5000) => {
+export const pollAccountStatus = (
+  username,
+  onStatusChange,
+  maxAttempts = 60,
+  intervalMs = 5000
+) => {
   return new Promise((resolve, reject) => {
     let attempts = 0;
-    
+
     const pollInterval = setInterval(async () => {
       attempts++;
-      
+
       try {
         const status = await checkAccountStatus(username);
-        
+
         // Notify caller of status change
         if (onStatusChange) {
           onStatusChange({
             attempt: attempts,
             maxAttempts,
-            status: status.isActive ? 'active' : 'disabled',
+            status: status.isActive ? "active" : "disabled",
             message: status.message,
           });
         }
-        
+
         // If account is now active, resolve
         if (status.success && status.isActive) {
           clearInterval(pollInterval);
@@ -178,7 +188,7 @@ export const pollAccountStatus = (username, onStatusChange, maxAttempts = 60, in
           });
           return;
         }
-        
+
         // If we've reached max attempts, stop polling
         if (attempts >= maxAttempts) {
           clearInterval(pollInterval);
@@ -189,10 +199,9 @@ export const pollAccountStatus = (username, onStatusChange, maxAttempts = 60, in
           });
           return;
         }
-        
       } catch (error) {
         console.error("Error polling account status:", error);
-        
+
         // On error, continue polling unless we've reached max attempts
         if (attempts >= maxAttempts) {
           clearInterval(pollInterval);
@@ -205,7 +214,7 @@ export const pollAccountStatus = (username, onStatusChange, maxAttempts = 60, in
         }
       }
     }, intervalMs);
-    
+
     // Return a cleanup function
     return () => clearInterval(pollInterval);
   });

@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { queryClient } from "../lib/queryClient";
+import { getToken } from "../utils/tokenManager";
 
 class WebSocketTanStackService {
   constructor() {
@@ -46,7 +47,7 @@ class WebSocketTanStackService {
 
     try {
       // Get auth token from localStorage if not provided
-      const authToken = token || localStorage.getItem("authToken");
+      const authToken = token || getToken();
 
       // Build WebSocket URL with authentication
       const wsUrl =
