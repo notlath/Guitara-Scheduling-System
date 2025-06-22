@@ -164,16 +164,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
     operator_details = UserSerializer(source="operator", read_only=True)
     rejected_by_details = UserSerializer(source="rejected_by", read_only=True)
     services_details = ServiceSerializer(source="services", many=True, read_only=True)
-    rejection_details = AppointmentRejectionSerializer(
-        source="appointmentrejection", read_only=True
-    )
+    rejection_details = AppointmentRejectionSerializer(read_only=True)
     total_duration = serializers.SerializerMethodField()
     total_price = serializers.SerializerMethodField()
     # Add acceptance status fields
     both_parties_accepted = serializers.SerializerMethodField()
-    pending_acceptances = (
-        serializers.SerializerMethodField()
-    )  # Add explicit services field to handle ManyToManyField properly
+    pending_acceptances = serializers.SerializerMethodField()
+
+    # Add explicit services field to handle ManyToManyField properly
     services = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Service.objects.all(), required=True
     )
@@ -185,7 +183,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def get_total_duration(self, obj):
         """Calculate total duration from all services in minutes"""
         total_seconds = 0
-        for service in obj.services.all():
+        # Use prefetched services instead of obj.services.all() to avoid N+1 queries
+        services = getattr(obj, "_prefetched_objects_cache", {}).get(
+            "services", obj.services.all()
+        )
+        for service in services:
             if service.duration:
                 # Handle both timedelta objects and integer values
                 if hasattr(service.duration, "total_seconds"):
@@ -196,7 +198,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     def get_total_price(self, obj):
         """Calculate the total price of all services"""
-        return sum(service.price for service in obj.services.all())
+        # Use prefetched services instead of obj.services.all() to avoid N+1 queries
+        services = getattr(obj, "_prefetched_objects_cache", {}).get(
+            "services", obj.services.all()
+        )
+        return sum(service.price for service in services)
 
     def get_both_parties_accepted(self, obj):
         """Check if both parties have accepted"""

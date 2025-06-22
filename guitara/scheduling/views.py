@@ -9,6 +9,7 @@ from django_filters.rest_framework import (
     CharFilter,
 )
 from django.db import models
+from django.db.models import Q, F, Prefetch
 from datetime import datetime
 from .models import Client, Availability, Appointment, Notification
 import logging
@@ -94,11 +95,15 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+
+        # Optimized queryset with user relationship prefetched
+        base_queryset = Availability.objects.select_related("user")
+
         # Operators can see all availabilities
         if user.role == "operator":
-            return Availability.objects.all()
+            return base_queryset
         # Therapists and drivers can only see their own availability
-        return Availability.objects.filter(user=user)
+        return base_queryset.filter(user=user)
 
     def list(self, request, *args, **kwargs):
         """Override list to handle filtering by staff_id and date parameters"""
@@ -224,7 +229,16 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                 & (same_day_normal | same_day_cross_day | previous_day_cross_day)
             )
             .select_related()
-            .prefetch_related("availabilities")
+            .prefetch_related(
+                Prefetch(
+                    "availabilities",
+                    queryset=Availability.objects.select_related("user"),
+                ),
+                Prefetch(
+                    "therapist_appointments",
+                    queryset=Appointment.objects.select_related("client"),
+                ),
+            )
             .distinct()
         )
 
@@ -374,8 +388,7 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
             availabilities__is_available=True,
         )
 
-        # For cross-day availability from previous day (when requesting early morning times)
-        previous_day = date_obj - timedelta(days=1)
+        # For cross-day availability from previous day (when requesting early morning times)        previous_day = date_obj - timedelta(days=1)
         previous_day_cross_day = Q(
             availabilities__date=previous_day,
             availabilities__end_time__gte=end_time,
@@ -391,10 +404,20 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                 & (same_day_normal | same_day_cross_day | previous_day_cross_day)
             )
             .select_related()
-            .prefetch_related("availabilities")
+            .prefetch_related(
+                Prefetch(
+                    "availabilities",
+                    queryset=Availability.objects.select_related("user"),
+                ),
+                Prefetch(
+                    "driver_appointments",
+                    queryset=Appointment.objects.select_related("client"),
+                ),
+            )
             .distinct()
-        )  # Exclude drivers who have conflicting appointments (including cross-day conflicts)
-        # Normal same-day conflicts
+        )
+
+        # Exclude drivers who have conflicting appointments (including cross-day conflicts)
         same_day_conflicts = Q(
             driver_appointments__date=date_obj,
             driver_appointments__status__in=["pending", "confirmed", "in_progress"],
@@ -662,23 +685,28 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     ]
 
     def get_queryset(self):
-        from django.db.models import Q
+        from django.db.models import Q, Prefetch
 
-        user = self.request.user
+        user = (
+            self.request.user
+        )  # Optimized base queryset with all necessary relationships prefetched
+        base_queryset = Appointment.objects.select_related(
+            "client", "therapist", "driver", "operator", "rejected_by"
+        ).prefetch_related("services", "therapists", "rejection_details")
 
         # Operators can see all appointments
         if user.role == "operator":
-            return Appointment.objects.all()
+            return base_queryset
 
         # Therapists can see their own appointments (both single and multi-therapist)
         elif user.role == "therapist":
-            return Appointment.objects.filter(
+            return base_queryset.filter(
                 Q(therapist=user) | Q(therapists=user)
             ).distinct()
 
         # Drivers can see their own appointments
         elif user.role == "driver":
-            return Appointment.objects.filter(driver=user)
+            return base_queryset.filter(driver=user)
 
         # Other roles can't see any appointments
         return Appointment.objects.none()
