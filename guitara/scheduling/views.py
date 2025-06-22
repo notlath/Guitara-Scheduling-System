@@ -715,6 +715,23 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Other roles can't see any appointments
         return Appointment.objects.none()
 
+    def get_object(self):
+        """
+        Always fetch the appointment with all related objects to avoid N+1 queries.
+        """
+        queryset = self.get_queryset()
+        # Use the optimized queryset with select_related/prefetch_related
+        return queryset.get(pk=self.kwargs["pk"])
+
+    def _get_optimized_appointment(self, pk):
+        return (
+            Appointment.objects.select_related(
+                "client", "therapist", "driver", "operator", "rejected_by"
+            )
+            .prefetch_related("services", "therapists", "rejection_details")
+            .get(pk=pk)
+        )
+
     def perform_create(self, serializer):
         # TODO: Re-enable operator-only restriction after fixing auth
         # Temporarily allow any authenticated user to create appointments
@@ -854,7 +871,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         """Cancel an appointment"""
-        appointment = self.get_object()
+        appointment = self._get_optimized_appointment(pk)
 
         # Only operators, the assigned therapist, or driver can cancel appointments
         user = request.user
@@ -878,13 +895,27 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             "appointment_cancelled",
             f"Appointment for {appointment.client} on {appointment.date} at {appointment.start_time} has been cancelled.",
         )
+        from guitara.scheduling.optimized_data_manager import data_manager
+
+        data_manager._invalidate_appointment_caches(
+            {
+                "id": appointment.id,
+                "date": appointment.date,
+                "therapist_id": getattr(appointment.therapist, "id", None),
+                "driver_id": getattr(appointment.driver, "id", None),
+            }
+        )
+        data_manager.broadcast_appointment_update(
+            {"id": appointment.id, "status": appointment.status},
+            update_type="cancelled",
+        )
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
         """Mark an appointment as completed"""
-        appointment = self.get_object()
+        appointment = self._get_optimized_appointment(pk)
 
         # Only the assigned therapist(s), driver or operators can complete appointments
         user = request.user
@@ -911,14 +942,27 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             "appointment_updated",
             f"Appointment for {appointment.client} on {appointment.date} at {appointment.start_time} has been completed.",
         )
+        from guitara.scheduling.optimized_data_manager import data_manager
 
+        data_manager._invalidate_appointment_caches(
+            {
+                "id": appointment.id,
+                "date": appointment.date,
+                "therapist_id": getattr(appointment.therapist, "id", None),
+                "driver_id": getattr(appointment.driver, "id", None),
+            }
+        )
+        data_manager.broadcast_appointment_update(
+            {"id": appointment.id, "status": appointment.status},
+            update_type="completed",
+        )
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
     def accept(self, request, pk=None):
         """Therapist or Driver accepts a pending appointment"""
-        appointment = self.get_object()
+        appointment = self._get_optimized_appointment(pk)
 
         # Only the assigned therapist or driver can accept
         if request.user != appointment.therapist and request.user != appointment.driver:
@@ -1011,7 +1055,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
         """Therapist starts an appointment"""
-        appointment = self.get_object()
+        appointment = self._get_optimized_appointment(pk)
 
         # Only the assigned therapist can start
         if request.user != appointment.therapist:
@@ -1051,7 +1095,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
         """Therapist or Driver rejects an appointment with a reason"""
-        appointment = self.get_object()
+        appointment = self._get_optimized_appointment(pk)
 
         # Only the assigned therapist or driver can reject
         if request.user != appointment.therapist and request.user != appointment.driver:
@@ -1443,10 +1487,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         """Therapist confirms appointment - first step in confirmation process"""
         appointment = self.get_object()
 
+        user = request.user
         # Only the assigned therapist can confirm
-        if (
-            request.user != appointment.therapist
-            and request.user not in appointment.therapists.all()
+        if not user.is_authenticated or not (
+            hasattr(user, "role")
+            and (user == appointment.therapist or user in appointment.therapists.all())
         ):
             return Response(
                 {"error": "You can only confirm your own appointments"},
@@ -1457,98 +1502,88 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": "Only pending appointments can be confirmed"},
                 status=status.HTTP_400_BAD_REQUEST,
-            )  # Handle multi-therapist appointments
+            )
+
         if appointment.group_size > 1:
-            # For multi-therapist appointments, track individual confirmations
             from .models import TherapistConfirmation
             from django.core.exceptions import ObjectDoesNotExist
+            from django.db import transaction
 
-            # Check if this therapist has already confirmed
-            try:
-                existing_confirmation = TherapistConfirmation.objects.get(
-                    appointment=appointment, therapist=request.user
+            with transaction.atomic():
+                confirmation, created = TherapistConfirmation.objects.get_or_create(
+                    appointment=appointment, therapist=user
                 )
-                if existing_confirmation.confirmed_at:
+                if confirmation.confirmed_at:
                     return Response(
                         {"error": "You have already confirmed this appointment"},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
+                confirmation.confirmed_at = timezone.now()
+                confirmation.save(update_fields=["confirmed_at"])
+
+                # Efficiently count confirmations
+                total_confirmations = TherapistConfirmation.objects.filter(
+                    appointment=appointment, confirmed_at__isnull=False
+                ).count()
+
+                if total_confirmations >= appointment.group_size:
+                    # ALL therapists have confirmed - update appointment status
+                    appointment.group_confirmation_complete = True
+                    appointment.therapist_confirmed_at = timezone.now()
+                    appointment.status = "therapist_confirmed"
+                    appointment.save(
+                        update_fields=[
+                            "group_confirmation_complete",
+                            "therapist_confirmed_at",
+                            "status",
+                            "updated_at",
+                        ]
+                    )
+                    message = "All therapists have confirmed. Waiting for driver confirmation."
                 else:
-                    # Update existing record
-                    existing_confirmation.confirmed_at = timezone.now()
-                    existing_confirmation.save()
-            except ObjectDoesNotExist:
-                # Create new confirmation record
-                TherapistConfirmation.objects.create(
-                    appointment=appointment,
-                    therapist=request.user,
-                    confirmed_at=timezone.now(),
-                )
-
-            # Check if all therapists have confirmed
-            total_confirmations = TherapistConfirmation.objects.filter(
-                appointment=appointment, confirmed_at__isnull=False
-            ).count()
-
-            if total_confirmations >= appointment.group_size:
-                # ALL therapists have confirmed - update appointment status
-                appointment.group_confirmation_complete = True
-                appointment.therapist_confirmed_at = timezone.now()
-                appointment.status = "therapist_confirmed"  # Use consistent status name
-                message = (
-                    "All therapists have confirmed. Waiting for driver confirmation."
-                )
-            else:
-                # Still waiting for other therapists - keep status as pending
-                remaining = appointment.group_size - total_confirmations
-                message = f"Your confirmation recorded. Waiting for {remaining} more therapist(s)."
-                # Don't change appointment status yet, keep it as "pending"
-                # Don't save appointment.status change here
-                appointment.save(update_fields=["updated_at"])  # Only update timestamp
-
-                # Send notification but don't change overall status
-                self._create_notifications(
-                    appointment,
-                    "therapist_partial_confirmed",
-                    f"Therapist {request.user.get_full_name()} has confirmed. {remaining} more confirmations needed.",
-                )
-
-                return Response(
-                    {
-                        "message": message,
-                        "appointment": self.get_serializer(appointment).data,
-                    }
-                )
+                    remaining = appointment.group_size - total_confirmations
+                    appointment.save(update_fields=["updated_at"])
+                    self._create_notifications(
+                        appointment,
+                        "therapist_partial_confirmed",
+                        f"Therapist {user.get_full_name()} has confirmed. {remaining} more confirmations needed.",
+                    )
+                    return Response(
+                        {
+                            "message": f"Your confirmation recorded. Waiting for {remaining} more therapist(s).",
+                            "appointment": self.get_serializer(appointment).data,
+                        }
+                    )
         else:
             # Single therapist appointment
             appointment.therapist_confirmed_at = timezone.now()
-            appointment.status = "therapist_confirmed"  # Use consistent status name
+            appointment.status = "therapist_confirmed"
+            appointment.save(
+                update_fields=["therapist_confirmed_at", "status", "updated_at"]
+            )
             message = "Therapist confirmed. Appointment is now visible to the driver."
 
-        appointment.save()
-
-        # Create notifications
         self._create_notifications(
             appointment,
             "therapist_confirmed",
-            f"Therapist {request.user.get_full_name()} has confirmed the appointment for {appointment.client} on {appointment.date}.",
+            f"Therapist {user.get_full_name()} has confirmed the appointment for {appointment.client} on {appointment.date}.",
         )
 
-        # Send WebSocket notification
         channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            "appointments",
-            {
-                "type": "appointment_message",
-                "message": {
-                    "type": "therapist_confirmed",
-                    "appointment_id": appointment.id,
-                    "therapist_id": request.user.id,
-                    "message": message,
-                    "status": appointment.status,
+        if channel_layer is not None:
+            async_to_sync(channel_layer.group_send)(
+                "appointments",
+                {
+                    "type": "appointment_message",
+                    "message": {
+                        "type": "therapist_confirmed",
+                        "appointment_id": appointment.id,
+                        "therapist_id": getattr(user, "id", None),
+                        "message": message,
+                        "status": appointment.status,
+                    },
                 },
-            },
-        )
+            )
 
         serializer = self.get_serializer(appointment)
         return Response({"message": message, "appointment": serializer.data})
@@ -1628,8 +1663,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def start_journey(self, request, pk=None):
-        """Driver starts journey to client location"""
-        appointment = self.get_object()
+        """Driver starts journey to client location (optimized)"""
+        # Use optimized queryset to fetch the appointment
+        appointment = (
+            Appointment.objects.select_related(
+                "client", "therapist", "driver", "operator", "rejected_by"
+            )
+            .prefetch_related("services", "therapists", "rejection_details")
+            .get(pk=pk)
+        )
 
         if request.user != appointment.driver:
             return Response(
@@ -1654,6 +1696,22 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment,
             "journey_started",
             f"Driver {request.user.get_full_name()} has started the journey to {appointment.client} at {appointment.location}.",
+        )
+
+        # Invalidate cache and broadcast update for real-time dashboard sync
+        from guitara.scheduling.optimized_data_manager import data_manager
+
+        data_manager._invalidate_appointment_caches(
+            {
+                "id": appointment.id,
+                "date": appointment.date,
+                "therapist_id": getattr(appointment.therapist, "id", None),
+                "driver_id": getattr(appointment.driver, "id", None),
+            }
+        )
+        data_manager.broadcast_appointment_update(
+            {"id": appointment.id, "status": appointment.status},
+            update_type="journey_started",
         )
 
         serializer = self.get_serializer(appointment)
@@ -1693,8 +1751,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(appointment)
         return Response(
             {"message": "Arrived at client location.", "appointment": serializer.data}
-        ) @ action(detail=True, methods=["post"])
+        )
 
+    @action(detail=True, methods=["post"])
     def drop_off_therapist(self, request, pk=None):
         """Driver marks therapist(s) as dropped off and completes their transport"""
         appointment = self.get_object()
@@ -1805,8 +1864,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 "message": "Session completed. Awaiting payment from client.",
                 "appointment": serializer.data,
             }
-        ) @ action(detail=True, methods=["post"])
+        )
 
+    @action(detail=True, methods=["post"])
     def mark_completed(self, request, pk=None):
         """Operator verifies payment received and marks appointment complete"""
         appointment = self.get_object()

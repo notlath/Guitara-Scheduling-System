@@ -68,15 +68,6 @@ class ReceiptService {
       const fileExtension = file.name.split(".").pop() || "jpg";
       const fileName = `appointments/${appointmentId}/gcash-receipt-${timestamp}.${fileExtension}`;
 
-      // Initialize bucket if it doesn't exist
-      const { data: buckets } = await supabase.storage.listBuckets();
-      if (!buckets.find((bucket) => bucket.name === this.bucketName)) {
-        await supabase.storage.createBucket(this.bucketName, {
-          public: false,
-          fileSizeLimit: 10485760, // 10MB
-        });
-      }
-
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from(this.bucketName)
