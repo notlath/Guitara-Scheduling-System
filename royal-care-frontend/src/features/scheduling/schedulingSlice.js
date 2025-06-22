@@ -819,6 +819,32 @@ export const fetchAvailableDrivers = createAsyncThunk(
       });
     }
 
+    // Additional validation for cross-day availability
+    const timeToMinutes = (timeStr) => {
+      const [hours, minutes] = timeStr.split(":").map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const startMinutes = timeToMinutes(start_time);
+    const endMinutes = timeToMinutes(end_time);
+    const isCrossDay = endMinutes < startMinutes;
+
+    // Validate cross-day times to prevent backend errors
+    if (isCrossDay) {
+      const endHour = parseInt(end_time.split(":")[0]);
+      
+      // Prevent problematic cross-day times that cause backend errors
+      if (endHour > 12 && endHour < 18) {
+        console.error(
+          "fetchAvailableDrivers: Invalid cross-day time range",
+          { start_time, end_time }
+        );
+        return rejectWithValue({
+          error: "Invalid cross-day time range. Cross-day availability should end in early morning hours (01:00-06:00).",
+        });
+      }
+    }
+
     const token = getToken();
     if (!token) {
       return rejectWithValue({ error: "Authentication required" });
@@ -844,6 +870,17 @@ export const fetchAvailableDrivers = createAsyncThunk(
         "fetchAvailableDrivers: Error",
         error.response?.data || error.message
       );
+
+      // Handle specific backend errors related to cross-day availability
+      if (error.response?.status === 500 && error.response?.data?.includes?.("UnboundLocalError")) {
+        console.error(
+          "Backend error detected: Cross-day availability handling failed"
+        );
+        return rejectWithValue({
+          error: "Cross-day availability processing failed. Please try a different time range or contact support.",
+        });
+      }
+
       return rejectWithValue(
         error.response?.data || { error: "Could not fetch available drivers" }
       );

@@ -58,9 +58,14 @@ export const performServiceHealthCheck = () => {
     );
 
     // Overall status
-    const allHealthy = Object.values(results)
+    const healthCheckResults = Object.values(results)
       .filter((result) => typeof result === "object" && result?.status)
-      .every((result) => result.status === "healthy");
+      .map((result) => result.status);
+
+    // Consider migrated services as healthy
+    const allHealthy = healthCheckResults.every((status) => 
+      status === "healthy" || status === "migrated-to-tanstack-query"
+    );
 
     results.overall = allHealthy ? "healthy" : "degraded";
 

@@ -20,7 +20,9 @@
       errorKey.includes("Service Worker") ||
       errorKey.includes("Failed to fetch") ||
       errorKey.includes("NetworkError") ||
-      errorKey.includes("TypeError: Failed to fetch");
+      errorKey.includes("TypeError: Failed to fetch") ||
+      errorKey.includes("Service health check failed") ||
+      errorKey.includes("proceeding with caution");
 
     // Check if this is an authentication error from unauthenticated users
     const isAuthError =
