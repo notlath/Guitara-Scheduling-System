@@ -22,10 +22,6 @@ import {
 import { useVirtualizedPagination } from "../hooks/useVirtualizedPagination";
 import Pagination from "./Pagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
-import {
-  useAttendanceActions,
-  useAttendanceRecords,
-} from "../hooks/useAttendanceHooks";
 import { useOperatorDashboardData } from "../hooks/useDashboardQueries";
 import {
   useOptimizedButtonLoading,
@@ -37,6 +33,10 @@ import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
+import {
+  useAttendanceActions,
+  useAttendanceRecords,
+} from "./contexts/AttendanceContext";
 import PerformanceMonitor from "./PerformanceMonitor";
 
 import "../globals/TabSwitcher.css";
@@ -2423,9 +2423,17 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderNotifications = () => {
-    if (!notifications || notifications.length === 0) {
+    // Ensure notifications is an array with proper error handling
+    if (
+      !notifications ||
+      !Array.isArray(notifications) ||
+      notifications.length === 0
+    ) {
+      console.log(
+        "No notifications to render or notifications is not an array:",
+        notifications
+      );
       return (
         <div className="empty-state">
           <i className="fas fa-bell"></i>
@@ -2439,10 +2447,16 @@ const OperatorDashboard = () => {
         {notifications.map((notification) => (
           <div
             key={notification.id}
-            className={`notification-card ${notification.type}`}
+            className={`notification-card ${
+              notification.type || notification.notification_type || ""
+            }`}
           >
             <div className="notification-header">
-              <h4>{notification.title}</h4>
+              <h4>
+                {notification.title ||
+                  notification.message?.substring(0, 30) ||
+                  "Notification"}
+              </h4>
               <span className="notification-time">
                 {new Date(notification.created_at).toLocaleString()}
               </span>

@@ -7,11 +7,10 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import { fetchAttendanceRecords } from "../features/attendance/attendanceSlice";
 import { updateAppointmentStatus } from "../features/scheduling/schedulingSlice";
-import store from "../store";
 
 // API URL based on environment
 const API_URL =
@@ -123,7 +122,20 @@ const fetchNotificationsAPI = async () => {
       isArray: Array.isArray(response.data),
     });
 
-    return response.data || [];
+    // Process the response data to ensure we always return an array
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else if (response.data && Array.isArray(response.data.notifications)) {
+      return response.data.notifications;
+    } else if (response.data && Array.isArray(response.data.results)) {
+      return response.data.results;
+    } else {
+      console.warn(
+        "⚠️ Notifications response is not an array, converting to empty array",
+        response.data
+      );
+      return [];
+    }
   } catch (error) {
     console.error("❌ fetchNotificationsAPI error:", error);
     console.error("❌ Error details:", {
@@ -368,7 +380,11 @@ export const useOperatorDashboardData = () => {
     appointments: appointmentsQuery.data || [],
     todayAppointments: todayAppointmentsQuery.data || [],
     upcomingAppointments: upcomingAppointmentsQuery.data || [],
-    notifications: notificationsQuery.data || [],
+    notifications: Array.isArray(notificationsQuery.data)
+      ? notificationsQuery.data
+      : notificationsQuery.data?.notifications ||
+        notificationsQuery.data?.results ||
+        [],
     attendanceRecords: attendanceQuery.data || [],
 
     // ✅ LOADING STATES - Complete compatibility
@@ -659,191 +675,151 @@ export const useDriverDashboardData = (driverId) => {
 // ==========================================
 
 /**
- * Scheduling dashboard data optimized for scheduling coordination
- * Replaces: useOptimizedDashboardData("schedulingDashboard", "admin")
+ * Scheduling Dashboard Data Hook for TanStack Query Migration
+ * Replaces legacy useOptimizedDashboardData for scheduling dashboard
  */
 export const useSchedulingDashboardData = () => {
-  const queryClient = useQueryClient();
-
-  // All appointments for scheduling overview
+  // ✅ APPOINTMENTS QUERIES - All appointment data with real-time updates
   const appointmentsQuery = useQuery({
     queryKey: queryKeys.appointments.list,
     queryFn: fetchAppointmentsAPI,
-    staleTime: staleTime.SHORT,
-    refetchInterval: 3 * 60 * 1000, // 3 minutes for scheduling
+    staleTime: staleTime.SHORT, // Frequent updates for scheduling
+    cacheTime: 3 * 60 * 1000,
+    refetchInterval: 30 * 1000, // Faster refresh for scheduling dashboard
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
     retry: 2,
     initialData: [],
   });
 
-  // Today's appointments for immediate attention
+  // ✅ TODAY'S APPOINTMENTS - Critical scheduling data
   const todayAppointmentsQuery = useQuery({
     queryKey: queryKeys.appointments.today,
     queryFn: fetchTodayAppointmentsAPI,
     staleTime: staleTime.SHORT,
-    refetchInterval: 2 * 60 * 1000, // 2 minutes for today's data
+    cacheTime: 2 * 60 * 1000,
+    refetchInterval: 30 * 1000, // Real-time updates for today's schedule
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
     retry: 2,
     initialData: [],
   });
 
-  // Upcoming appointments for planning
+  // ✅ UPCOMING APPOINTMENTS - Next appointments for scheduling
   const upcomingAppointmentsQuery = useQuery({
     queryKey: queryKeys.appointments.upcoming,
     queryFn: fetchUpcomingAppointmentsAPI,
     staleTime: staleTime.MEDIUM,
-    refetchInterval: 5 * 60 * 1000, // 5 minutes for upcoming
+    cacheTime: 3 * 60 * 1000,
+    refetchInterval: 60 * 1000, // Regular updates for upcoming appointments
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
     retry: 2,
     initialData: [],
   });
 
-  // Notifications for scheduling alerts
-  const notificationsQuery = useQuery({
-    queryKey: queryKeys.notifications.list,
-    queryFn: fetchNotificationsAPI,
-    staleTime: staleTime.SHORT,
-    refetchInterval: 1 * 60 * 1000, // 1 minute for notifications
-    refetchOnWindowFocus: true,
-    retry: 2,
-    initialData: [],
-  });
-
+  // ✅ FORCE REFRESH FUNCTIONS - Enhanced for scheduling needs
   const forceRefresh = useCallback(async () => {
-    console.log("🔄 Force refreshing scheduling dashboard data...");
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
-    ]);
-
-    // Force immediate refetch
+    console.log(
+      "🔥 TanStack Query: Force refreshing scheduling dashboard data"
+    );
     await Promise.all([
       appointmentsQuery.refetch(),
       todayAppointmentsQuery.refetch(),
       upcomingAppointmentsQuery.refetch(),
-      notificationsQuery.refetch(),
     ]);
-  }, [
-    queryClient,
-    appointmentsQuery,
-    todayAppointmentsQuery,
-    upcomingAppointmentsQuery,
-    notificationsQuery,
-  ]);
+  }, [appointmentsQuery, todayAppointmentsQuery, upcomingAppointmentsQuery]);
 
-  const isLoading =
-    appointmentsQuery.isLoading ||
-    todayAppointmentsQuery.isLoading ||
-    upcomingAppointmentsQuery.isLoading ||
-    notificationsQuery.isLoading;
+  const refreshAppointments = useCallback(async () => {
+    console.log("🔥 TanStack Query: Refreshing appointments");
+    await appointmentsQuery.refetch();
+  }, [appointmentsQuery]);
 
-  const error =
-    appointmentsQuery.error ||
-    todayAppointmentsQuery.error ||
-    upcomingAppointmentsQuery.error ||
-    notificationsQuery.error;
+  // ✅ RETURN SCHEDULING DASHBOARD DATA - Complete compatibility
+  return useMemo(
+    () => ({
+      // ✅ DATA ARRAYS - Ready for immediate use
+      appointments: appointmentsQuery.data || [],
+      todayAppointments: todayAppointmentsQuery.data || [],
+      upcomingAppointments: upcomingAppointmentsQuery.data || [],
 
-  const hasData = !!(
-    appointmentsQuery.data?.length ||
-    todayAppointmentsQuery.data?.length ||
-    upcomingAppointmentsQuery.data?.length
+      // ✅ LOADING STATES - Unified loading detection
+      loading:
+        appointmentsQuery.isLoading ||
+        todayAppointmentsQuery.isLoading ||
+        upcomingAppointmentsQuery.isLoading,
+
+      isLoading:
+        appointmentsQuery.isLoading ||
+        todayAppointmentsQuery.isLoading ||
+        upcomingAppointmentsQuery.isLoading,
+
+      // ✅ ERROR HANDLING - Comprehensive error reporting
+      error:
+        appointmentsQuery.error?.message ||
+        todayAppointmentsQuery.error?.message ||
+        upcomingAppointmentsQuery.error?.message ||
+        null,
+
+      hasError: !!(
+        appointmentsQuery.error ||
+        todayAppointmentsQuery.error ||
+        upcomingAppointmentsQuery.error
+      ),
+
+      // ✅ DATA AVAILABILITY - Smart hasData detection
+      hasData:
+        appointmentsQuery.data?.length > 0 ||
+        todayAppointmentsQuery.data?.length > 0 ||
+        upcomingAppointmentsQuery.data?.length > 0,
+
+      // ✅ REFRESH FUNCTIONS - Complete compatibility with legacy
+      forceRefresh,
+      refreshAppointments,
+
+      // ✅ TANSTACK QUERY ENHANCED FEATURES
+      isRefetching:
+        appointmentsQuery.isRefetching ||
+        todayAppointmentsQuery.isRefetching ||
+        upcomingAppointmentsQuery.isRefetching,
+
+      // Individual query states for advanced usage
+      queryStates: {
+        appointments: {
+          isLoading: appointmentsQuery.isLoading,
+          isError: appointmentsQuery.isError,
+          error: appointmentsQuery.error,
+          data: appointmentsQuery.data,
+        },
+        todayAppointments: {
+          isLoading: todayAppointmentsQuery.isLoading,
+          isError: todayAppointmentsQuery.isError,
+          error: todayAppointmentsQuery.error,
+          data: todayAppointmentsQuery.data,
+        },
+        upcomingAppointments: {
+          isLoading: upcomingAppointmentsQuery.isLoading,
+          isError: upcomingAppointmentsQuery.isError,
+          error: upcomingAppointmentsQuery.error,
+          data: upcomingAppointmentsQuery.data,
+        },
+      },
+
+      // Data freshness information
+      lastUpdated: Math.max(
+        appointmentsQuery.dataUpdatedAt || 0,
+        todayAppointmentsQuery.dataUpdatedAt || 0,
+        upcomingAppointmentsQuery.dataUpdatedAt || 0
+      ),
+    }),
+    [
+      appointmentsQuery,
+      todayAppointmentsQuery,
+      upcomingAppointmentsQuery,
+      forceRefresh,
+      refreshAppointments,
+    ]
   );
-
-  console.log("📅 useSchedulingDashboardData return:", {
-    appointments: appointmentsQuery.data?.length || 0,
-    todayAppointments: todayAppointmentsQuery.data?.length || 0,
-    upcomingAppointments: upcomingAppointmentsQuery.data?.length || 0,
-    notifications: notificationsQuery.data?.length || 0,
-    isLoading,
-    hasData,
-    dataSource: "tanstack-query",
-  });
-
-  return {
-    // Primary data (exact same interface as legacy hook)
-    appointments: appointmentsQuery.data || [],
-    todayAppointments: todayAppointmentsQuery.data || [],
-    upcomingAppointments: upcomingAppointmentsQuery.data || [],
-    notifications: notificationsQuery.data || [],
-
-    // Loading and error states
-    isLoading,
-    loading: isLoading, // Legacy alias
-    error,
-    hasData,
-
-    // Actions
-    forceRefresh,
-    refetch: forceRefresh, // Legacy alias
-
-    // Data source identifier
-    dataSource: "tanstack-query",
-  };
-};
-
-// ==========================================
-// ATTENDANCE DASHBOARD HOOKS
-// ==========================================
-
-/**
- * Attendance data hook using TanStack Query
- * Replaces: useOptimizedAttendance(selectedDate)
- */
-export const useAttendanceData = (selectedDate) => {
-  // Attendance records for specific date
-  const attendanceQuery = useQuery({
-    queryKey: queryKeys.attendance.byDate
-      ? queryKeys.attendance.byDate(selectedDate)
-      : ["attendance", selectedDate],
-    queryFn: async () => {
-      const data = await fetchAttendanceAPI(selectedDate);
-      return Array.isArray(data) ? data : [];
-    },
-    staleTime: staleTime.MEDIUM,
-    refetchInterval: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: true,
-    retry: 2,
-    initialData: [],
-    enabled: !!selectedDate,
-  });
-
-  const forceRefresh = useCallback(async () => {
-    await attendanceQuery.refetch();
-  }, [attendanceQuery]);
-
-  return {
-    attendanceRecords: attendanceQuery.data || [],
-    isLoading: attendanceQuery.isLoading,
-    loading: attendanceQuery.isLoading, // Legacy alias
-    error: attendanceQuery.error,
-    hasData: !!attendanceQuery.data?.length,
-    forceRefresh,
-    refetch: forceRefresh, // Legacy alias
-
-    // Legacy method aliases for backward compatibility
-    fetchAttendanceForDate: async () => {
-      // Could implement cache-first lookup here if needed
-      return attendanceQuery.data || [];
-    },
-    getCachedAttendanceForDate: () => {
-      return attendanceQuery.data || [];
-    },
-    forceRefreshAttendance: forceRefresh,
-    hasDataForDate: !!attendanceQuery.data?.length,
-  };
-};
-
-// API function for attendance
-const fetchAttendanceAPI = async (date) => {
-  try {
-    const result = await store
-      .dispatch(fetchAttendanceRecords({ date }))
-      .unwrap();
-    return Array.isArray(result) ? result : [];
-  } catch (error) {
-    console.warn("Failed to fetch attendance records:", error);
-    return [];
-  }
 };
 
 // ==========================================
@@ -921,6 +897,171 @@ export const useAppointmentStatusMutation = () => {
   });
 };
 
+// Direct API call for attendance records
+const fetchAttendanceRecordsAPI = async (selectedDate) => {
+  console.log("🚀 TanStack Query: fetchAttendanceRecordsAPI called!", {
+    selectedDate,
+  });
+
+  const token = localStorage.getItem("knoxToken");
+  if (!token) {
+    console.error("❌ No authentication token found");
+    throw new Error("Authentication required");
+  }
+
+  const ATTENDANCE_API_URL =
+    import.meta.env.MODE === "production"
+      ? "/api/attendance/"
+      : "http://localhost:8000/api/attendance/";
+
+  let url = `${ATTENDANCE_API_URL}records/`;
+  if (selectedDate) {
+    url += `?date=${selectedDate}`;
+  }
+
+  console.log("🔄 Direct API: Fetching attendance records...", {
+    url,
+    token: token.substring(0, 10) + "...",
+  });
+
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Token ${token}`,
+      },
+    });
+
+    console.log("✅ Direct API: Attendance records fetched successfully", {
+      status: response.status,
+      count: response.data?.length || 0,
+      dataType: typeof response.data,
+      isArray: Array.isArray(response.data),
+      sampleData: response.data?.slice(0, 2),
+    });
+
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error("❌ Direct API: Failed to fetch attendance records", {
+      error: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+    });
+    throw error;
+  }
+};
+
+// ==========================================
+// ATTENDANCE DATA HOOKS
+// ==========================================
+
+/**
+ * Attendance Data Hook for TanStack Query Migration
+ * Replaces legacy useOptimizedAttendance from optimizedDataManager
+ */
+export const useAttendanceData = (selectedDate) => {
+  const dispatch = useDispatch();
+
+  // Attendance records query with proper Redux dispatch for compatibility
+  const attendanceQuery = useQuery({
+    queryKey: ["attendance", "records", selectedDate],
+    queryFn: async () => {
+      try {
+        // Use both direct API and Redux dispatch for complete compatibility
+        const result = await dispatch(
+          fetchAttendanceRecords({
+            date: selectedDate,
+          })
+        ).unwrap();
+        return Array.isArray(result) ? result : [];
+      } catch (error) {
+        console.warn("Redux fetch failed, trying direct API:", error);
+        // Fallback to direct API call
+        return await fetchAttendanceRecordsAPI(selectedDate);
+      }
+    },
+    staleTime: 0,
+    cacheTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    retry: 2,
+    initialData: [], // Provide initial data as empty array
+    enabled: !!selectedDate, // Only fetch when selectedDate is provided
+  });
+
+  // Force refresh function for compatibility
+  const forceRefreshAttendance = useCallback(async () => {
+    console.log("🔥 TanStack Query: Force refreshing attendance data");
+    await attendanceQuery.refetch();
+  }, [attendanceQuery]);
+
+  // Get cached attendance for date (compatibility function)
+  const getCachedAttendanceForDate = useCallback(
+    (date) => {
+      const queryClient = attendanceQuery.queryClient;
+      const cachedData = queryClient?.getQueryData([
+        "attendance",
+        "records",
+        date,
+      ]);
+      return Array.isArray(cachedData) ? cachedData : [];
+    },
+    [attendanceQuery.queryClient]
+  );
+
+  // Fetch attendance for specific date (compatibility function)
+  const fetchAttendanceForDate = useCallback(
+    async (date) => {
+      if (!date) return [];
+
+      try {
+        const result = await dispatch(
+          fetchAttendanceRecords({ date })
+        ).unwrap();
+        return Array.isArray(result) ? result : [];
+      } catch (error) {
+        console.warn("Failed to fetch attendance for date:", error);
+        return [];
+      }
+    },
+    [dispatch]
+  );
+
+  return {
+    // Main data array
+    attendanceRecords: attendanceQuery.data || [],
+
+    // Loading states
+    loading: attendanceQuery.isLoading,
+    isLoading: attendanceQuery.isLoading,
+    isFetching: attendanceQuery.isFetching,
+    isRefetching: attendanceQuery.isRefetching,
+
+    // Error states
+    error: attendanceQuery.error?.message || null,
+    hasError: !!attendanceQuery.error,
+
+    // Success states
+    isSuccess: attendanceQuery.isSuccess,
+    hasData:
+      Array.isArray(attendanceQuery.data) && attendanceQuery.data.length > 0,
+
+    // Data freshness
+    isStale: attendanceQuery.isStale,
+    lastUpdated: attendanceQuery.dataUpdatedAt,
+
+    // Actions (compatibility with legacy hooks)
+    forceRefresh: forceRefreshAttendance,
+    forceRefreshAttendance,
+    fetchAttendanceForDate,
+    getCachedAttendanceForDate,
+    refetch: attendanceQuery.refetch,
+
+    // Query status for debugging
+    status: attendanceQuery.status,
+    fetchStatus: attendanceQuery.fetchStatus,
+  };
+};
+
 // ==========================================
 // CACHE INVALIDATION UTILITIES
 // ==========================================
@@ -978,6 +1119,6 @@ export default {
   useDriverDashboardData,
   useAppointmentStatusMutation,
   useInvalidateOperatorData,
-  useSchedulingDashboardData,
   useAttendanceData,
+  useSchedulingDashboardData,
 };

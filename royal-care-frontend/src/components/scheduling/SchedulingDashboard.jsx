@@ -1,10 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
-import { shallowEqual, useDispatch } from "react-redux";
+import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
-// TANSTACK QUERY: Replace legacy data hooks with TanStack Query
+// MIGRATED TO TANSTACK QUERY: Replace legacy optimized hooks with TanStack Query
 import { useSchedulingDashboardData } from "../../hooks/useDashboardQueries";
-import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import { SkeletonLoader } from "../common/LoadingComponents";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
@@ -51,7 +50,7 @@ const SchedulingDashboard = () => {
     setSearchParams(newSearchParams);
   };
   const dispatch = useDispatch();
-  // TANSTACK QUERY: Use TanStack Query dashboard data hook
+  // MIGRATED TO TANSTACK QUERY: Use TanStack Query hooks instead of legacy optimizedDataManager
   const {
     todayAppointments,
     upcomingAppointments,
@@ -61,7 +60,7 @@ const SchedulingDashboard = () => {
     hasData,
   } = useSchedulingDashboardData();
 
-  const { user } = useOptimizedSelector(
+  const { user } = useSelector(
     useCallback(
       (state) => ({
         user: state.auth?.user || null,
@@ -71,7 +70,7 @@ const SchedulingDashboard = () => {
     shallowEqual
   );
 
-  const { unreadNotificationCount } = useOptimizedSelector(
+  const { unreadNotificationCount } = useSelector(
     useCallback(
       (state) => ({
         unreadNotificationCount: state.scheduling?.unreadNotificationCount || 0,
@@ -110,12 +109,11 @@ const SchedulingDashboard = () => {
     setSelectedTime(appointment.start_time);
     setIsFormVisible(true);
   };
-
   const handleDeleteAppointment = async (appointmentId) => {
     if (window.confirm("Are you sure you want to delete this booking?")) {
       try {
         await dispatch(deleteAppointment(appointmentId)).unwrap();
-        // TANSTACK QUERY: Use TanStack Query refetch instead of optimizedDataManager
+        // TANSTACK QUERY: Use forceRefresh from TanStack Query instead of optimizedDataManager
         await forceRefresh();
       } catch (error) {
         // Add user feedback
@@ -125,7 +123,7 @@ const SchedulingDashboard = () => {
   };
   const handleFormSubmitSuccess = async () => {
     setIsFormVisible(false);
-    // TANSTACK QUERY: Use TanStack Query refetch instead of optimizedDataManager
+    // TANSTACK QUERY: Use forceRefresh from TanStack Query instead of optimizedDataManager
     await forceRefresh();
   };
 

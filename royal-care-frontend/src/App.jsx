@@ -41,9 +41,8 @@ import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import UserGuidePage from "./pages/UserGuidePage/UserGuidePage";
 import { validateToken } from "./services/auth";
-import cachePreloader from "./services/cachePreloader";
-import crossTabSync from "./services/crossTabSync";
-import memoryManager from "./services/memoryManager";
+import crossTabSync from "./services/crossTabSync"; // Migrated - now a stub that indicates TanStack Query handles this
+// import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
 
@@ -201,49 +200,31 @@ const App = () => {
             "⚠️ Service health check failed, proceeding with caution:",
             healthCheck
           );
-        }
-
-        // Debug what we imported
+        } // Debug what we imported
         console.log("Debug imports:", {
-          memoryManager: typeof memoryManager,
-          memoryManagerInit: typeof memoryManager?.initialize,
           crossTabSync: typeof crossTabSync,
           crossTabSyncInit: typeof crossTabSync?.initialize,
-          cachePreloader: typeof cachePreloader,
-          cachePreloaderPreload: typeof cachePreloader?.preloadCriticalData,
         });
 
-        // Initialize memory manager
-        if (memoryManager && typeof memoryManager.initialize === "function") {
-          memoryManager.initialize();
-          console.log("✅ Memory Manager initialized");
-        } else {
-          console.error(
-            "❌ Memory Manager initialization failed - method not found",
-            memoryManager
-          );
-        }
-
-        // Initialize cross-tab synchronization
+        // Initialize cross-tab synchronization (now handled by TanStack Query)
         if (crossTabSync && typeof crossTabSync.initialize === "function") {
           crossTabSync.initialize();
-          console.log("✅ Cross-tab sync initialized");
+          console.log(
+            "✅ Cross-tab sync initialized (now handled by TanStack Query)"
+          );
         } else {
           console.error(
             "❌ Cross-tab sync initialization failed - method not found",
             crossTabSync
           );
-        } // Initialize cache preloader and start critical data preloading
-        if (user?.role) {
-          await cachePreloader.preloadCriticalData(user.role);
-          console.log("✅ Critical data preloaded for role:", user.role);
-        } else {
-          // Only preload non-authenticated data if there's no user
-          // This prevents API calls that require authentication
-          console.log(
-            "⚠️ Skipping critical data preload - user not authenticated"
-          );
         }
+
+        // Cache preloading now handled by TanStack Query automatically
+        console.log(
+          "✅ Data preloading handled by TanStack Query background fetching"
+        );
+        // TanStack Query handles intelligent caching and background data fetching
+        // No manual preloading needed - data is fetched on-demand and cached automatically
 
         // Initialize performance test utilities after user is authenticated
         if (
