@@ -934,16 +934,21 @@ const TherapistDashboard = () => {
       </div>
     );
   };
+  // Helper to check if appointment is transport completed or completed
+  const isTransportCompleted = (appointment) =>
+    ["transport_completed", "completed", "driver_transport_completed"].includes(
+      appointment.status
+    );
+
   return (
     <PageLayout>
-      {" "}
       {/* OPTIMIZED: Simplified loading indicator */}
       <MinimalLoadingIndicator
         show={loading}
-        hasData={hasData} // OPTIMIZED: Use hasData instead of hasAnyData
+        hasData={hasData}
         position="top-right"
         size="small"
-        variant="subtle" // OPTIMIZED: Remove stale data check
+        variant="subtle"
         tooltip={
           hasData ? "Refreshing appointments..." : "Loading appointments..."
         }
@@ -960,7 +965,7 @@ const TherapistDashboard = () => {
               Logout
             </button>
           </div>
-        </LayoutRow>{" "}
+        </LayoutRow>
         {/* OPTIMIZED: Simplified error handling */}
         {error && !hasData && (
           <div className="error-message">
@@ -968,9 +973,9 @@ const TherapistDashboard = () => {
               {typeof error === "object"
                 ? error.message || error.error || "An error occurred"
                 : error}
-            </div>{" "}
+            </div>
             <button
-              onClick={refetch} // TANSTACK QUERY: Use refetch instead of optimizedDataManager
+              onClick={refetch}
               className="retry-button"
               style={{
                 marginTop: "10px",
@@ -985,7 +990,7 @@ const TherapistDashboard = () => {
               Retry
             </button>
           </div>
-        )}{" "}
+        )}
         <TabSwitcher
           tabs={[
             { label: "Today's Appointments", value: "today" },
@@ -1000,21 +1005,27 @@ const TherapistDashboard = () => {
           {currentView === "today" && (
             <div className="todays-appointments">
               <h2>Today's Appointments</h2>
-              {renderAppointmentsList(myTodayAppointments)}
+              {renderAppointmentsList(
+                myTodayAppointments.filter((apt) => !isTransportCompleted(apt))
+              )}
             </div>
           )}
           {currentView === "upcoming" && (
             <div className="upcoming-appointments">
               <h2>Upcoming Appointments</h2>
-              {renderAppointmentsList(myUpcomingAppointments)}
+              {renderAppointmentsList(
+                myUpcomingAppointments.filter(
+                  (apt) => !isTransportCompleted(apt)
+                )
+              )}
             </div>
-          )}{" "}
+          )}
           {currentView === "all" && (
             <div className="all-appointments">
               <h2>All My Appointments</h2>
               {renderAppointmentsList(myAppointments)}
             </div>
-          )}{" "}
+          )}
           {currentView === "attendance" && (
             <div className="attendance-view">
               <AttendanceComponent />
@@ -1022,16 +1033,16 @@ const TherapistDashboard = () => {
           )}
           {currentView === "calendar" && (
             <div className="calendar-view">
-              <h2>Calendar View</h2>{" "}
+              <h2>Calendar View</h2>
               <Calendar
                 showClientLabels={true}
                 context="therapist"
-                onDateSelected={() => {}} // Optional: Add date selection handling
-                onTimeSelected={() => {}} // Optional: Add time selection handling
-              />{" "}
+                onDateSelected={() => {}}
+                onTimeSelected={() => {}}
+              />
             </div>
           )}
-        </div>{" "}
+        </div>
         <WebSocketStatus />
         <RejectionModal
           isOpen={rejectionModal.isOpen}
