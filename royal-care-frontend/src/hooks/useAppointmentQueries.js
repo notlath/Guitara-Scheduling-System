@@ -28,7 +28,7 @@ export const useAppointments = (options = {}) => {
   const { isConnected } = useWebSocketConnection();
 
   const query = useQuery({
-    queryKey: queryKeys.appointments,
+    queryKey: queryKeys.appointments.all,
     queryFn: async () => {
       const result = await dispatch(fetchAppointments()).unwrap();
       return result;
@@ -44,7 +44,7 @@ export const useAppointments = (options = {}) => {
   useEffect(() => {
     if (isConnected) {
       // Refetch data when WebSocket connects to sync any missed updates
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments });
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
     }
   }, [isConnected, queryClient]);
 
@@ -61,7 +61,7 @@ export const useTodayAppointments = (options = {}) => {
   const { isConnected } = useWebSocketConnection();
 
   const query = useQuery({
-    queryKey: queryKeys.todayAppointments,
+    queryKey: queryKeys.appointments.today(),
     queryFn: async () => {
       const result = await dispatch(fetchTodayAppointments()).unwrap();
       return result;
@@ -75,7 +75,7 @@ export const useTodayAppointments = (options = {}) => {
   // Background refetch when WebSocket reconnects
   useEffect(() => {
     if (isConnected) {
-      queryClient.invalidateQueries({ queryKey: queryKeys.todayAppointments });
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.today() });
     }
   }, [isConnected, queryClient]);
 
@@ -92,7 +92,7 @@ export const useUpcomingAppointments = (options = {}) => {
   const { isConnected } = useWebSocketConnection();
 
   const query = useQuery({
-    queryKey: queryKeys.upcomingAppointments,
+    queryKey: queryKeys.appointments.upcoming(),
     queryFn: async () => {
       const result = await dispatch(fetchUpcomingAppointments()).unwrap();
       return result;
@@ -107,7 +107,7 @@ export const useUpcomingAppointments = (options = {}) => {
   useEffect(() => {
     if (isConnected) {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.upcomingAppointments,
+        queryKey: queryKeys.appointments.upcoming(),
       });
     }
   }, [isConnected, queryClient]);
@@ -137,21 +137,21 @@ export const useCreateAppointment = () => {
     // Optimistic updates - UI updates immediately
     onMutate: async (newAppointment) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: queryKeys.appointments });
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
       await queryClient.cancelQueries({
-        queryKey: queryKeys.todayAppointments,
+        queryKey: queryKeys.appointments.today(),
       });
 
       // Snapshot previous values
       const previousAppointments = queryClient.getQueryData(
-        queryKeys.appointments
+        queryKeys.appointments.all
       );
       const previousTodayAppointments = queryClient.getQueryData(
-        queryKeys.todayAppointments
+        queryKeys.appointments.today()
       );
 
       // Optimistically update cache
-      queryClient.setQueryData(queryKeys.appointments, (old) =>
+      queryClient.setQueryData(queryKeys.appointments.all, (old) =>
         old
           ? [...old, { ...newAppointment, id: "temp-" + Date.now() }]
           : [newAppointment]
@@ -160,7 +160,7 @@ export const useCreateAppointment = () => {
       // If it's today's appointment, update today's cache too
       const today = new Date().toISOString().split("T")[0];
       if (newAppointment.date === today) {
-        queryClient.setQueryData(queryKeys.todayAppointments, (old) =>
+        queryClient.setQueryData(queryKeys.appointments.today(), (old) =>
           old ? [...old, newAppointment] : [newAppointment]
         );
       }
@@ -171,21 +171,21 @@ export const useCreateAppointment = () => {
     // Rollback on error
     onError: (err, newAppointment, context) => {
       queryClient.setQueryData(
-        queryKeys.appointments,
+        queryKeys.appointments.all,
         context.previousAppointments
       );
       queryClient.setQueryData(
-        queryKeys.todayAppointments,
+        queryKeys.appointments.today(),
         context.previousTodayAppointments
       );
     },
 
     // Refetch on success to ensure consistency and notify via WebSocket
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments });
-      queryClient.invalidateQueries({ queryKey: queryKeys.todayAppointments });
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.today() });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.upcomingAppointments,
+        queryKey: queryKeys.appointments.upcoming(),
       });
 
       // Also invalidate availability queries (they might have changed)
@@ -226,14 +226,14 @@ export const useUpdateAppointment = () => {
 
     // Optimistic updates for editing
     onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.appointments });
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
 
       const previousAppointments = queryClient.getQueryData(
-        queryKeys.appointments
+        queryKeys.appointments.all
       );
 
       // Optimistically update the appointment
-      queryClient.setQueryData(queryKeys.appointments, (old) =>
+      queryClient.setQueryData(queryKeys.appointments.all, (old) =>
         old ? old.map((apt) => (apt.id === id ? { ...apt, ...data } : apt)) : []
       );
 
@@ -242,16 +242,16 @@ export const useUpdateAppointment = () => {
 
     onError: (err, variables, context) => {
       queryClient.setQueryData(
-        queryKeys.appointments,
+        queryKeys.appointments.all,
         context.previousAppointments
       );
     },
 
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments });
-      queryClient.invalidateQueries({ queryKey: queryKeys.todayAppointments });
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.today() });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.upcomingAppointments,
+        queryKey: queryKeys.appointments.upcoming(),
       });
     },
   });
@@ -270,14 +270,14 @@ export const useDeleteAppointment = () => {
       return result;
     },
     onMutate: async (appointmentId) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.appointments });
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
 
       const previousAppointments = queryClient.getQueryData(
-        queryKeys.appointments
+        queryKeys.appointments.all
       );
 
       // Optimistically remove
-      queryClient.setQueryData(queryKeys.appointments, (old) =>
+      queryClient.setQueryData(queryKeys.appointments.all, (old) =>
         old ? old.filter((apt) => apt.id !== appointmentId) : []
       );
 
@@ -285,7 +285,7 @@ export const useDeleteAppointment = () => {
     },
     onError: (err, appointmentId, context) => {
       queryClient.setQueryData(
-        queryKeys.appointments,
+        queryKeys.appointments.all,
         context.previousAppointments
       );
     },

@@ -45,7 +45,7 @@ export const useAvailableTherapists = (params) => {
   const dispatch = useDispatch();
 
   return useQuery({
-    queryKey: queryKeys.availableTherapists(date, startTime, serviceId),
+    queryKey: queryKeys.availability.therapists(date, startTime, serviceId),
     queryFn: async () => {
       const result = await dispatch(
         fetchAvailableTherapists({
@@ -88,7 +88,7 @@ export const useAvailableDrivers = (params) => {
   const dispatch = useDispatch();
 
   return useQuery({
-    queryKey: queryKeys.availableDrivers(date, startTime),
+    queryKey: queryKeys.availability.drivers(date, startTime),
     queryFn: async () => {
       const result = await dispatch(
         fetchAvailableDrivers({
@@ -169,7 +169,7 @@ export const useAppointmentFormData = () => {
   const dispatch = useDispatch();
 
   const clientsQuery = useQuery({
-    queryKey: queryKeys.clients,
+    queryKey: queryKeys.clients.all,
     queryFn: async () => {
       const result = await dispatch(fetchClients());
       return result.payload || [];
@@ -180,7 +180,7 @@ export const useAppointmentFormData = () => {
   });
 
   const servicesQuery = useQuery({
-    queryKey: queryKeys.services,
+    queryKey: queryKeys.services.all,
     queryFn: async () => {
       const result = await dispatch(fetchServices());
       return result.payload || [];
@@ -191,7 +191,7 @@ export const useAppointmentFormData = () => {
   });
 
   const staffQuery = useQuery({
-    queryKey: queryKeys.staffMembers,
+    queryKey: queryKeys.staff.all,
     queryFn: async () => {
       const result = await dispatch(fetchStaffMembers());
       return result.payload || [];

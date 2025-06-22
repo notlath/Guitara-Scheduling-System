@@ -21,7 +21,7 @@ export const useClients = (options = {}) => {
   const dispatch = useDispatch();
 
   return useQuery({
-    queryKey: queryKeys.clients,
+    queryKey: queryKeys.clients.all,
     queryFn: async () => {
       const result = await dispatch(fetchClients()).unwrap();
       return result;
@@ -41,7 +41,7 @@ export const useServices = (options = {}) => {
   const dispatch = useDispatch();
 
   return useQuery({
-    queryKey: queryKeys.services,
+    queryKey: queryKeys.services.all,
     queryFn: async () => {
       const result = await dispatch(fetchServices()).unwrap();
       return result;
@@ -62,7 +62,7 @@ export const useStaffMembers = (options = {}) => {
   const dispatch = useDispatch();
 
   return useQuery({
-    queryKey: queryKeys.staffMembers,
+    queryKey: queryKeys.staff.all,
     queryFn: async () => {
       const result = await dispatch(fetchStaffMembers()).unwrap();
       return result;

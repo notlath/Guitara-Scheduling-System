@@ -12,10 +12,10 @@ export const useAppointmentFormErrorHandler = () => {
 
   const clearFormCache = React.useCallback(() => {
     // Clear all appointment-related queries
-    queryClient.removeQueries({ queryKey: queryKeys.appointments });
-    queryClient.removeQueries({ queryKey: queryKeys.clients });
-    queryClient.removeQueries({ queryKey: queryKeys.services });
-    queryClient.removeQueries({ queryKey: queryKeys.availability });
+    queryClient.removeQueries({ queryKey: queryKeys.appointments.all });
+    queryClient.removeQueries({ queryKey: queryKeys.clients.all });
+    queryClient.removeQueries({ queryKey: queryKeys.services.all });
+    queryClient.removeQueries({ queryKey: queryKeys.availability.all });
 
     console.log("🧹 Cleared appointment form cache");
   }, [queryClient]);

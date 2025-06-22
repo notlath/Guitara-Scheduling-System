@@ -62,7 +62,7 @@ export const useAvailableTherapists = (date, startTime, endTime, serviceId) => {
   const dispatch = useDispatch();
 
   return useQuery({
-    queryKey: queryKeys.availableTherapists(date, startTime, serviceId),
+    queryKey: queryKeys.availability.therapists(date, startTime, serviceId),
     queryFn: async () => {
       const result = await dispatch(
         fetchAvailableTherapists({
@@ -97,7 +97,7 @@ export const useAvailableDrivers = (date, startTime, endTime) => {
   const dispatch = useDispatch();
 
   return useQuery({
-    queryKey: queryKeys.availableDrivers(date, startTime),
+    queryKey: queryKeys.availability.drivers(date, startTime),
     queryFn: async () => {
       const result = await dispatch(
         fetchAvailableDrivers({
@@ -178,9 +178,9 @@ export const useCreateAppointment = () => {
 
     // OPTIMISTIC UPDATE - User sees immediate feedback
     onMutate: async (newAppointment) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.appointments });
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
 
-      const previousData = queryClient.getQueryData(queryKeys.appointments);
+      const previousData = queryClient.getQueryData(queryKeys.appointments.all);
 
       // Immediately show the new appointment
       const optimisticAppointment = {
@@ -190,7 +190,7 @@ export const useCreateAppointment = () => {
         created_at: new Date().toISOString(),
       };
 
-      queryClient.setQueryData(queryKeys.appointments, (old) =>
+      queryClient.setQueryData(queryKeys.appointments.all, (old) =>
         old ? [...old, optimisticAppointment] : [optimisticAppointment]
       );
 
@@ -199,14 +199,14 @@ export const useCreateAppointment = () => {
 
     // On success, replace with real data
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments });
-      queryClient.invalidateQueries({ queryKey: queryKeys.availability });
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.availability.all });
     },
 
     // On error, rollback
     onError: (err, variables, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.appointments, context.previousData);
+        queryClient.setQueryData(queryKeys.appointments.all, context.previousData);
       }
     },
   });
@@ -229,7 +229,7 @@ export const useClients = () => {
   const dispatch = useDispatch();
 
   return useQuery({
-    queryKey: queryKeys.clients,
+    queryKey: queryKeys.clients.all,
     queryFn: async () => {
       const result = await dispatch(fetchClients());
       return result.payload || [];
@@ -258,7 +258,7 @@ export const useAppointmentFormData = () => {
 
   const clientsQuery = useClients();
   const servicesQuery = useQuery({
-    queryKey: queryKeys.services,
+    queryKey: queryKeys.services.all,
     queryFn: async () => {
       const result = await dispatch(fetchServices());
       return result.payload || [];
@@ -267,7 +267,7 @@ export const useAppointmentFormData = () => {
   });
 
   const staffQuery = useQuery({
-    queryKey: queryKeys.staffMembers,
+    queryKey: queryKeys.staff.all,
     queryFn: async () => {
       const result = await dispatch(fetchStaffMembers());
       return result.payload || [];

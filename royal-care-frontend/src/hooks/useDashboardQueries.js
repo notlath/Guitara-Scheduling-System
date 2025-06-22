@@ -11,6 +11,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { fetchAttendanceRecords } from "../features/attendance/attendanceSlice";
 import { updateAppointmentStatus } from "../features/scheduling/schedulingSlice";
+import { queryKeys } from "../lib/queryClient";
 
 // API URL based on environment
 const API_URL =
@@ -164,37 +165,6 @@ const fetchUpcomingAppointmentsAPI = async () => {
   return response.data || [];
 };
 
-// Simple query keys (no method calls)
-const queryKeys = {
-  appointments: {
-    all: ["appointments"],
-    list: ["appointments", "list"],
-    today: ["appointments", "today"],
-    upcoming: ["appointments", "upcoming"],
-    byTherapist: (therapistId, type) => [
-      "appointments",
-      "therapist",
-      therapistId,
-      type,
-    ],
-    byDriver: (driverId, type) => ["appointments", "driver", driverId, type],
-  },
-  notifications: {
-    all: ["notifications"],
-    list: ["notifications", "list"],
-  },
-  attendance: {
-    all: ["attendance"],
-    list: ["attendance", "list"],
-  },
-  dashboard: {
-    all: ["dashboard"],
-    operator: ["dashboard", "operator"],
-    therapist: (therapistId) => ["dashboard", "therapist", therapistId],
-    driver: (driverId) => ["dashboard", "driver", driverId],
-  },
-};
-
 // Stale time constants
 const staleTime = {
   SHORT: 3 * 60 * 1000, // 3 minutes
@@ -218,7 +188,7 @@ export const useOperatorDashboardData = () => {
 
   // Main appointments data with direct API calls
   const appointmentsQuery = useQuery({
-    queryKey: queryKeys.appointments.list,
+    queryKey: queryKeys.appointments.list(),
     queryFn: fetchAppointmentsAPI,
     staleTime: 0, // Force fresh data for debugging
     cacheTime: 5 * 60 * 1000, // 5 minutes cache
@@ -261,7 +231,7 @@ export const useOperatorDashboardData = () => {
 
   // Today's appointments with direct API calls
   const todayAppointmentsQuery = useQuery({
-    queryKey: queryKeys.appointments.today,
+    queryKey: queryKeys.appointments.today(),
     queryFn: fetchTodayAppointmentsAPI,
     staleTime: 0, // Force fresh data for debugging
     cacheTime: 2 * 60 * 1000, // 2 minutes cache
@@ -274,7 +244,7 @@ export const useOperatorDashboardData = () => {
 
   // Upcoming appointments with direct API calls
   const upcomingAppointmentsQuery = useQuery({
-    queryKey: queryKeys.appointments.upcoming,
+    queryKey: queryKeys.appointments.upcoming(),
     queryFn: fetchUpcomingAppointmentsAPI,
     staleTime: 0, // Force fresh data for debugging
     cacheTime: 5 * 60 * 1000,
@@ -286,7 +256,7 @@ export const useOperatorDashboardData = () => {
 
   // Notifications with direct API calls
   const notificationsQuery = useQuery({
-    queryKey: queryKeys.notifications.list,
+    queryKey: queryKeys.notifications.list(),
     queryFn: fetchNotificationsAPI,
     staleTime: 0, // Force fresh data for debugging
     cacheTime: 3 * 60 * 1000,
@@ -299,7 +269,7 @@ export const useOperatorDashboardData = () => {
 
   // Attendance records with proper Redux dispatch
   const attendanceQuery = useQuery({
-    queryKey: queryKeys.attendance.list,
+    queryKey: queryKeys.attendance.list(),
     queryFn: async () => {
       try {
         const result = await dispatch(
@@ -341,9 +311,9 @@ export const useOperatorDashboardData = () => {
 
     // Force immediate refetch of critical data
     await Promise.all([
-      queryClient.refetchQueries({ queryKey: queryKeys.appointments.list }),
-      queryClient.refetchQueries({ queryKey: queryKeys.appointments.today }),
-      queryClient.refetchQueries({ queryKey: queryKeys.notifications.list }),
+      queryClient.refetchQueries({ queryKey: queryKeys.appointments.list() }),
+      queryClient.refetchQueries({ queryKey: queryKeys.appointments.today() }),
+      queryClient.refetchQueries({ queryKey: queryKeys.notifications.list() }),
     ]);
 
     console.log("✅ Force refresh completed");
@@ -370,8 +340,8 @@ export const useOperatorDashboardData = () => {
   const refreshTodayData = useCallback(async () => {
     console.log("🔄 Refreshing today's critical data...");
     await Promise.all([
-      queryClient.refetchQueries({ queryKey: queryKeys.appointments.today }),
-      queryClient.refetchQueries({ queryKey: queryKeys.notifications.list }),
+      queryClient.refetchQueries({ queryKey: queryKeys.appointments.today() }),
+      queryClient.refetchQueries({ queryKey: queryKeys.notifications.list() }),
     ]);
     console.log("✅ Today's data refresh completed");
   }, [queryClient]);
@@ -682,7 +652,7 @@ export const useDriverDashboardData = (driverId) => {
 export const useSchedulingDashboardData = () => {
   // ✅ APPOINTMENTS QUERIES - All appointment data with real-time updates
   const appointmentsQuery = useQuery({
-    queryKey: queryKeys.appointments.list,
+    queryKey: queryKeys.appointments.list(),
     queryFn: fetchAppointmentsAPI,
     staleTime: staleTime.SHORT, // Frequent updates for scheduling
     cacheTime: 3 * 60 * 1000,
@@ -695,7 +665,7 @@ export const useSchedulingDashboardData = () => {
 
   // ✅ TODAY'S APPOINTMENTS - Critical scheduling data
   const todayAppointmentsQuery = useQuery({
-    queryKey: queryKeys.appointments.today,
+    queryKey: queryKeys.appointments.today(),
     queryFn: fetchTodayAppointmentsAPI,
     staleTime: staleTime.SHORT,
     cacheTime: 2 * 60 * 1000,
@@ -708,7 +678,7 @@ export const useSchedulingDashboardData = () => {
 
   // ✅ UPCOMING APPOINTMENTS - Next appointments for scheduling
   const upcomingAppointmentsQuery = useQuery({
-    queryKey: queryKeys.appointments.upcoming,
+    queryKey: queryKeys.appointments.upcoming(),
     queryFn: fetchUpcomingAppointmentsAPI,
     staleTime: staleTime.MEDIUM,
     cacheTime: 3 * 60 * 1000,
@@ -853,21 +823,21 @@ export const useAppointmentStatusMutation = () => {
 
       // Snapshot the previous value
       const previousAppointments = queryClient.getQueryData(
-        queryKeys.appointments.list
+        queryKeys.appointments.list()
       );
       const previousTodayAppointments = queryClient.getQueryData(
-        queryKeys.appointments.today
+        queryKeys.appointments.today()
       );
 
       // Optimistically update the cache
-      queryClient.setQueryData(queryKeys.appointments.list, (old) => {
+      queryClient.setQueryData(queryKeys.appointments.list(), (old) => {
         if (!old) return old;
         return old.map((apt) =>
           apt.id === appointmentId ? { ...apt, status } : apt
         );
       });
 
-      queryClient.setQueryData(queryKeys.appointments.today, (old) => {
+      queryClient.setQueryData(queryKeys.appointments.today(), (old) => {
         if (!old) return old;
         return old.map((apt) =>
           apt.id === appointmentId ? { ...apt, status } : apt
@@ -884,13 +854,13 @@ export const useAppointmentStatusMutation = () => {
       // Rollback optimistic update
       if (context?.previousAppointments) {
         queryClient.setQueryData(
-          queryKeys.appointments.list,
+          queryKeys.appointments.list(),
           context.previousAppointments
         );
       }
       if (context?.previousTodayAppointments) {
         queryClient.setQueryData(
-          queryKeys.appointments.today,
+          queryKeys.appointments.today(),
           context.previousTodayAppointments
         );
       }

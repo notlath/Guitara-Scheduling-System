@@ -35,7 +35,7 @@ export const useAvailableTherapists = (
     })();
 
   return useQuery({
-    queryKey: queryKeys.availableTherapists(date, startTime, serviceId),
+    queryKey: queryKeys.availability.therapists(date, startTime, serviceId),
     queryFn: async () => {
       const params = {
         date,
@@ -65,7 +65,7 @@ export const useAvailableDrivers = (date, startTime, endTime = null) => {
   const dispatch = useDispatch();
 
   return useQuery({
-    queryKey: queryKeys.availableDrivers(date, startTime),
+    queryKey: queryKeys.availability.drivers(date, startTime),
     queryFn: async () => {
       const params = {
         date,

@@ -306,11 +306,11 @@ const AppointmentForm = ({
     },
     onMutate: async (newAppointment) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: queryKeys.appointments });
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
 
       // Snapshot the previous value
       const previousAppointments = queryClient.getQueryData(
-        queryKeys.appointments
+        queryKeys.appointments.all
       );
 
       // Optimistically update the cache
@@ -321,7 +321,7 @@ const AppointmentForm = ({
         created_at: new Date().toISOString(),
       };
 
-      queryClient.setQueryData(queryKeys.appointments, (old) =>
+      queryClient.setQueryData(queryKeys.appointments.all, (old) =>
         old ? [...old, optimisticAppointment] : [optimisticAppointment]
       );
 
@@ -337,7 +337,7 @@ const AppointmentForm = ({
       // Rollback optimistic update
       if (context?.previousAppointments) {
         queryClient.setQueryData(
-          queryKeys.appointments,
+          queryKeys.appointments.all,
           context.previousAppointments
         );
       }
@@ -725,7 +725,7 @@ const AppointmentForm = ({
           .then(() => {
             // Update TanStack Query cache with fresh availability data
             queryClient.setQueryData(
-              queryKeys.availableTherapists(
+              queryKeys.availability.therapists(
                 availabilityParams.date,
                 availabilityParams.start_time,
                 availabilityParams.services
@@ -734,7 +734,7 @@ const AppointmentForm = ({
             );
 
             queryClient.setQueryData(
-              queryKeys.availableDrivers(
+              queryKeys.availability.drivers(
                 availabilityParams.date,
                 availabilityParams.start_time
               ),

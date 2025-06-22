@@ -109,9 +109,7 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
         """Override list to handle filtering by staff_id and date parameters"""
         # Get query parameters
         staff_id = request.query_params.get("staff_id")
-        date_str = request.query_params.get("date")
-
-        # Start with the base queryset
+        date_str = request.query_params.get("date")  # Start with the base queryset
         queryset = self.filter_queryset(self.get_queryset())
 
         # Apply additional filtering if parameters are provided
@@ -150,7 +148,9 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                         availability.is_cross_day = False
 
             except ValueError:
-                pass  # Invalid date format, continue without date filtering        # Serialize and return
+                pass  # Invalid date format, continue without date filtering
+
+        # Serialize and return
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -328,10 +328,9 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                     (availability and availability.end_time < availability.start_time)
                     if availability
                     else False
-                ),
-            }
+                ),            }
             therapists_data.append(therapist_data)
-
+        
         return Response(therapists_data)
 
     @action(detail=False, methods=["get"])
@@ -359,8 +358,11 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                     "error": "Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
-            )  # Start with drivers who have availability at this time
-        # Handle both same-day and cross-day availability        from datetime import timedelta
+            )
+
+        # Start with drivers who have availability at this time
+        # Handle both same-day and cross-day availability
+        from datetime import timedelta
 
         # Query logic for availability:
         # 1. Same day: Normal case where start_time <= requested_time <= end_time
@@ -388,7 +390,8 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
             availabilities__is_available=True,
         )
 
-        # For cross-day availability from previous day (when requesting early morning times)        previous_day = date_obj - timedelta(days=1)
+        # For cross-day availability from previous day (when requesting early morning times)
+        previous_day = date_obj - timedelta(days=1)
         previous_day_cross_day = Q(
             availabilities__date=previous_day,
             availabilities__end_time__gte=end_time,
@@ -448,9 +451,9 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
             same_day_conflicts | cross_day_conflicts | previous_day_conflicts
         ).distinct()
 
-        available_drivers = available_drivers_query.exclude(
-            pk__in=conflicting_drivers
-        )  # Build custom response with availability data
+        available_drivers = available_drivers_query.exclude(pk__in=conflicting_drivers)
+
+        # Build custom response with availability data
         drivers_data = []
         for driver in available_drivers:
             # Get the specific availability for this date (current day first, then previous day for cross-day)
@@ -864,7 +867,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Update appointment status        appointment.status = "cancelled"
+        # Update appointment status
+        appointment.status = "cancelled"
         appointment.save()
 
         # Create notifications for all involved parties

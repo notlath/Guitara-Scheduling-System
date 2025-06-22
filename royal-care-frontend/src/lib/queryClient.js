@@ -50,6 +50,13 @@ export const queryKeys = {
     upcoming: () => ["appointments", "upcoming"],
     byWeek: (date) => ["appointments", "week", date],
     byId: (id) => ["appointments", id],
+    byTherapist: (therapistId, type) => [
+      "appointments",
+      "therapist", 
+      therapistId,
+      type,
+    ],
+    byDriver: (driverId, type) => ["appointments", "driver", driverId, type],
   },
 
   // Availability
@@ -100,6 +107,14 @@ export const queryKeys = {
     list: () => ["attendance", "list"],
     byDate: (date) => ["attendance", date],
     byId: (id) => ["attendance", id],
+  },
+
+  // Dashboard
+  dashboard: {
+    all: ["dashboard"],
+    operator: ["dashboard", "operator"],
+    therapist: (therapistId) => ["dashboard", "therapist", therapistId],
+    driver: (driverId) => ["dashboard", "driver", driverId],
   },
 };
 
