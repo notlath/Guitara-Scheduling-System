@@ -7,7 +7,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { fetchAttendanceRecords } from "../features/attendance/attendanceSlice";
 import { updateAppointmentStatus } from "../features/scheduling/schedulingSlice";
@@ -374,8 +374,8 @@ export const useOperatorDashboardData = () => {
     console.log("✅ Today's data refresh completed");
   }, [queryClient]);
 
-  // Complete data object matching original useOptimizedDashboardData interface
-  const returnData = {
+  // Memoize the complete data object to prevent new references on every render
+  const returnData = useMemo(() => ({
     // ✅ PRIMARY DATA - All required fields from OperatorDashboard.jsx
     appointments: appointmentsQuery.data || [],
     todayAppointments: todayAppointmentsQuery.data || [],
@@ -462,60 +462,49 @@ export const useOperatorDashboardData = () => {
     // Data source identifier
     dataSource: "tanstack-query",
     lastUpdated: new Date().toISOString(),
-  };
+  }), [
+    // Only depend on actual data and essential states
+    appointmentsQuery.data,
+    todayAppointmentsQuery.data,
+    upcomingAppointmentsQuery.data,
+    notificationsQuery.data,
+    attendanceQuery.data,
+    appointmentsQuery.isLoading,
+    todayAppointmentsQuery.isLoading,
+    upcomingAppointmentsQuery.isLoading,
+    notificationsQuery.isLoading,
+    attendanceQuery.isLoading,
+    appointmentsQuery.error,
+    todayAppointmentsQuery.error,
+    upcomingAppointmentsQuery.error,
+    notificationsQuery.error,
+    attendanceQuery.error,
+    forceRefresh,
+    refreshAppointments,
+    refreshNotifications,
+    refreshTodayData,
+  ]);
 
-  // Enhanced debug logging with performance metrics
-  console.log("🔍 useOperatorDashboardData return:", {
-    // Data counts
-    appointmentsCount: returnData.appointments?.length || 0,
-    todayAppointmentsCount: returnData.todayAppointments?.length || 0,
-    upcomingAppointmentsCount: returnData.upcomingAppointments?.length || 0,
-    notificationsCount: returnData.notifications?.length || 0,
-    attendanceCount: returnData.attendanceRecords?.length || 0,
+  // Reduced debug logging - only when data actually changes
+  const dataFingerprint = useMemo(() => 
+    `${returnData.appointments?.length || 0}-${returnData.todayAppointments?.length || 0}-${returnData.notifications?.length || 0}`,
+    [returnData.appointments?.length, returnData.todayAppointments?.length, returnData.notifications?.length]
+  );
 
-    // States
-    loading: returnData.loading,
-    hasData: returnData.hasData,
-    error: !!returnData.error,
-    isRefetching: returnData.isRefetching,
-
-    // Performance metrics
-    appointmentsQueryState: {
-      data: appointmentsQuery.data?.length || 0,
-      isLoading: appointmentsQuery.isLoading,
-      isFetching: appointmentsQuery.isFetching,
-      isRefetching: appointmentsQuery.isRefetching,
-      error: !!appointmentsQuery.error,
-      status: appointmentsQuery.status,
-      lastUpdated: new Date(
-        appointmentsQuery.dataUpdatedAt
-      ).toLocaleTimeString(),
-    },
-    todayAppointmentsQueryState: {
-      data: todayAppointmentsQuery.data?.length || 0,
-      isLoading: todayAppointmentsQuery.isLoading,
-      isFetching: todayAppointmentsQuery.isFetching,
-      isRefetching: todayAppointmentsQuery.isRefetching,
-      error: !!todayAppointmentsQuery.error,
-      status: todayAppointmentsQuery.status,
-      lastUpdated: new Date(
-        todayAppointmentsQuery.dataUpdatedAt
-      ).toLocaleTimeString(),
-    },
-    notificationsQueryState: {
-      data: notificationsQuery.data?.length || 0,
-      isLoading: notificationsQuery.isLoading,
-      isFetching: notificationsQuery.isFetching,
-      isRefetching: notificationsQuery.isRefetching,
-      error: !!notificationsQuery.error,
-      status: notificationsQuery.status,
-      lastUpdated: new Date(
-        notificationsQuery.dataUpdatedAt
-      ).toLocaleTimeString(),
-    },
-
-    timestamp: new Date().toISOString(),
-  });
+  const lastFingerprintRef = useRef(null);
+  
+  if (lastFingerprintRef.current !== dataFingerprint) {
+    console.log("🔍 useOperatorDashboardData data changed:", {
+      fingerprint: dataFingerprint,
+      appointmentsCount: returnData.appointments?.length || 0,
+      todayAppointmentsCount: returnData.todayAppointments?.length || 0,
+      notificationsCount: returnData.notifications?.length || 0,
+      loading: returnData.loading,
+      hasData: returnData.hasData,
+      error: !!returnData.error,
+    });
+    lastFingerprintRef.current = dataFingerprint;
+  }
 
   return returnData;
 };
