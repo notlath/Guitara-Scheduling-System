@@ -258,54 +258,54 @@ const OperatorDashboard = () => {
     useOptimizedButtonLoading();
   // 🚀 ULTRA-PERFORMANCE: Optimized dashboard tabs with stable memoization
   // OPTIMIZATION: Only depend on counts, not full arrays, to avoid unnecessary recalculation
-  const dashboardTabs = useMemo(() => {
-    const rejectedCount = rejectedAppointments?.length || 0;
-    const pendingCount = pendingAppointments?.length || 0;
-    const overdueCount = overdueAppointments?.length || 0;
-    const awaitingPaymentCount = awaitingPaymentAppointments?.length || 0;
-    const appointmentsCount = stableAppointments?.length || 0;
-    const attendanceCount = attendanceRecords?.length || 0;
-    const notificationsCount = notifications?.length || 0;
-    const pendingPickupsCount = driverAssignment?.pendingPickups?.length || 0;
-    const activeSessionsCount = activeSessions?.length || 0;
-    const pickupRequestsCount = pickupRequests?.length || 0;
-    return [
-      { id: "rejected", label: "Rejection Reviews", count: rejectedCount },
-      { id: "pending", label: "Pending Acceptance", count: pendingCount },
-      { id: "timeout", label: "Timeout Monitoring", count: overdueCount },
-      {
-        id: "payment",
-        label: "Payment Verification",
-        count: awaitingPaymentCount,
-      },
-      { id: "all", label: "All Appointments", count: appointmentsCount },
-      { id: "attendance", label: "Attendance", count: attendanceCount },
-      {
-        id: "notifications",
-        label: "Notifications",
-        count: notificationsCount,
-      },
-      {
-        id: "driver",
-        label: "Driver Coordination",
-        count: pendingPickupsCount,
-      },
-      { id: "workflow", label: "Service Workflow", count: 0 },
-      { id: "sessions", label: "Active Sessions", count: activeSessionsCount },
-      { id: "pickup", label: "Pickup Requests", count: pickupRequestsCount },
-    ];
-  }, [
-    rejectedAppointments?.length,
-    pendingAppointments?.length,
-    overdueAppointments?.length,
-    awaitingPaymentAppointments?.length,
-    stableAppointments?.length,
-    attendanceRecords?.length,
-    notifications?.length,
-    driverAssignment?.pendingPickups?.length,
-    activeSessions?.length,
-    pickupRequests?.length,
-  ]);
+  const dashboardTabs = useMemo(
+    () => {
+      // const rejectedCount = rejectedAppointments?.length || 0;
+      // const pendingCount = pendingAppointments?.length || 0;
+      // const overdueCount = overdueAppointments?.length || 0;
+      // const awaitingPaymentCount = awaitingPaymentAppointments?.length || 0;
+      // const appointmentsCount = stableAppointments?.length || 0;
+      // const attendanceCount = attendanceRecords?.length || 0;
+      // const notificationsCount = notifications?.length || 0;
+      // const pendingPickupsCount = driverAssignment?.pendingPickups?.length || 0;
+      // const activeSessionsCount = activeSessions?.length || 0;
+      // const pickupRequestsCount = pickupRequests?.length || 0;
+      return [
+        { id: "rejected", label: "Rejection Reviews" },
+        { id: "pending", label: "Pending Acceptance" },
+        { id: "timeout", label: "Timeout Monitoring" },
+        {
+          id: "payment",
+          label: "Payment Verification",
+        },
+        { id: "all", label: "All Appointments" },
+        { id: "attendance", label: "Attendance" },
+        {
+          id: "notifications",
+          label: "Notifications",
+        },
+        {
+          id: "driver",
+          label: "Driver Coordination",
+        },
+        { id: "workflow", label: "Service Workflow" },
+        { id: "sessions", label: "Active Sessions" },
+        { id: "pickup", label: "Pickup Requests" },
+      ];
+    }
+    // [
+    // rejectedAppointments?.length,
+    // pendingAppointments?.length,
+    // overdueAppointments?.length,
+    // awaitingPaymentAppointments?.length,
+    // stableAppointments?.length,
+    // attendanceRecords?.length,
+    // notifications?.length,
+    // driverAssignment?.pendingPickups?.length,
+    // activeSessions?.length,
+    // pickupRequests?.length,
+    // ]
+  );
   // The optimized data manager handles background refreshes automatically
   // 🚀 ULTRA-PERFORMANCE: Optimized countdown timer management
   const isTimeoutViewActive = currentView === "timeout";
