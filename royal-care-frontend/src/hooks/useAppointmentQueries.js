@@ -75,7 +75,9 @@ export const useTodayAppointments = (options = {}) => {
   // Background refetch when WebSocket reconnects
   useEffect(() => {
     if (isConnected) {
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.today() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.today(),
+      });
     }
   }, [isConnected, queryClient]);
 
@@ -183,7 +185,9 @@ export const useCreateAppointment = () => {
     // Refetch on success to ensure consistency and notify via WebSocket
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.today() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.today(),
+      });
       queryClient.invalidateQueries({
         queryKey: queryKeys.appointments.upcoming(),
       });
@@ -249,7 +253,9 @@ export const useUpdateAppointment = () => {
 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.today() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.today(),
+      });
       queryClient.invalidateQueries({
         queryKey: queryKeys.appointments.upcoming(),
       });

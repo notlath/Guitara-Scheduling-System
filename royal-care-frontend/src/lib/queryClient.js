@@ -52,7 +52,7 @@ export const queryKeys = {
     byId: (id) => ["appointments", id],
     byTherapist: (therapistId, type) => [
       "appointments",
-      "therapist", 
+      "therapist",
       therapistId,
       type,
     ],

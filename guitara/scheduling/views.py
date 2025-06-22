@@ -328,9 +328,10 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                     (availability and availability.end_time < availability.start_time)
                     if availability
                     else False
-                ),            }
+                ),
+            }
             therapists_data.append(therapist_data)
-        
+
         return Response(therapists_data)
 
     @action(detail=False, methods=["get"])

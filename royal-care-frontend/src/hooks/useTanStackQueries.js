@@ -206,7 +206,10 @@ export const useCreateAppointment = () => {
     // On error, rollback
     onError: (err, variables, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.appointments.all, context.previousData);
+        queryClient.setQueryData(
+          queryKeys.appointments.all,
+          context.previousData
+        );
       }
     },
   });
