@@ -181,8 +181,10 @@ class OptimizedDataManager:
 
     def get_availability_optimized(self, date, role=None, specialization=None):
         """
-        Optimized availability lookup with caching
+        Optimized availability lookup with caching and SQL debug logging
         """
+        import time
+        from django.db import connection
         cache_key = self.get_cache_key(
             "availability", date.isoformat(), role or "all", specialization or "none"
         )
@@ -195,9 +197,9 @@ class OptimizedDataManager:
         from core.models import CustomUser
 
         # Build optimized query
-        queryset = Availability.objects.select_related("user").filter(
-            date=date, is_available=True
-        )
+        queryset = Availability.objects.select_related("user").only(
+            "id", "user", "date", "start_time", "end_time", "is_available", "user__id", "user__first_name", "user__last_name", "user__role", "user__specialization", "user__last_available_at"
+        ).filter(date=date, is_available=True)
 
         if role:
             queryset = queryset.filter(user__role=role, user__is_active=True)
@@ -205,12 +207,23 @@ class OptimizedDataManager:
         if specialization:
             queryset = queryset.filter(user__specialization=specialization)
 
+        start_time = time.time()
         availabilities = list(queryset.order_by("user__last_available_at"))
+        duration = time.time() - start_time
+
+        # Debug: log SQL and timing if DEBUG is True
+        from django.conf import settings
+        if getattr(settings, "DEBUG", False):
+            queries = connection.queries[-1] if connection.queries else None
+            logger.debug(f"[Availability] SQL: {queries['sql'][:300]}..." if queries else "[Availability] No SQL recorded.")
+            logger.debug(f"[Availability] Query duration: {duration:.3f}s, count: {len(availabilities)}")
+
         serialized_data = self._serialize_availability(availabilities)
 
         # Cache for 5 minutes
         cache.set(cache_key, serialized_data, self.cache_timeout)
         return serialized_data
+        # For further profiling, consider using Django Debug Toolbar or EXPLAIN in DB shell.
 
     def get_next_available_slot(self, user_id, date, duration_minutes=60):
         """
