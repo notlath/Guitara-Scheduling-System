@@ -61,6 +61,16 @@ import { queryKeys } from "../lib/queryClient";
 export const useAvailableTherapists = (date, startTime, endTime, serviceId) => {
   const dispatch = useDispatch();
 
+  // Calculate endTime if not provided
+  let computedEndTime = endTime;
+  if (!computedEndTime && startTime && serviceId) {
+    // Example: Assume 1 hour duration for fallback, replace with real logic if available
+    const [h, m] = startTime.split(":").map(Number);
+    const start = new Date(0, 0, 0, h, m);
+    start.setMinutes(start.getMinutes() + 60); // +60 min
+    computedEndTime = start.toTimeString().slice(0, 5);
+  }
+
   return useQuery({
     queryKey: queryKeys.availability.therapists(date, startTime, serviceId),
     queryFn: async () => {
@@ -68,13 +78,13 @@ export const useAvailableTherapists = (date, startTime, endTime, serviceId) => {
         fetchAvailableTherapists({
           date,
           start_time: startTime,
-          end_time: endTime,
+          end_time: computedEndTime,
           service_id: parseInt(serviceId, 10),
         })
       );
       return result.payload || [];
     },
-    enabled: !!(date && startTime && endTime && serviceId), // Replaces your complex condition checking
+    enabled: !!(date && startTime && computedEndTime && serviceId), // Replaces your complex condition checking
     staleTime: 2 * 60 * 1000, // 2 minutes - replaces your cache TTL logic
     refetchOnWindowFocus: true, // Real-time updates when user returns
   });
@@ -96,6 +106,16 @@ export const useAvailableTherapists = (date, startTime, endTime, serviceId) => {
 export const useAvailableDrivers = (date, startTime, endTime) => {
   const dispatch = useDispatch();
 
+  // Calculate endTime if not provided
+  let computedEndTime = endTime;
+  if (!computedEndTime && startTime) {
+    // Example: Assume 1 hour duration for fallback
+    const [h, m] = startTime.split(":").map(Number);
+    const start = new Date(0, 0, 0, h, m);
+    start.setMinutes(start.getMinutes() + 60);
+    computedEndTime = start.toTimeString().slice(0, 5);
+  }
+
   return useQuery({
     queryKey: queryKeys.availability.drivers(date, startTime),
     queryFn: async () => {
@@ -103,12 +123,12 @@ export const useAvailableDrivers = (date, startTime, endTime) => {
         fetchAvailableDrivers({
           date,
           start_time: startTime,
-          end_time: endTime,
+          end_time: computedEndTime,
         })
       );
       return result.payload || [];
     },
-    enabled: !!(date && startTime && endTime),
+    enabled: !!(date && startTime && computedEndTime),
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
   });

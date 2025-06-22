@@ -44,6 +44,16 @@ export const useAvailableTherapists = (params) => {
   const { date, startTime, endTime, serviceId } = params;
   const dispatch = useDispatch();
 
+  // Calculate endTime if not provided
+  let computedEndTime = endTime;
+  if (!computedEndTime && startTime && serviceId) {
+    // Example: Assume 1 hour duration for fallback, replace with real logic if available
+    const [h, m] = startTime.split(":").map(Number);
+    const start = new Date(0, 0, 0, h, m);
+    start.setMinutes(start.getMinutes() + 60); // +60 min
+    computedEndTime = start.toTimeString().slice(0, 5);
+  }
+
   return useQuery({
     queryKey: queryKeys.availability.therapists(date, startTime, serviceId),
     queryFn: async () => {
@@ -51,14 +61,14 @@ export const useAvailableTherapists = (params) => {
         fetchAvailableTherapists({
           date,
           start_time: startTime,
-          end_time: endTime,
+          end_time: computedEndTime,
           service_id: parseInt(serviceId, 10),
         })
       );
       return result.payload || [];
     },
     // This replaces your complex condition checking in useEffect
-    enabled: !!(date && startTime && endTime && serviceId),
+    enabled: !!(date && startTime && computedEndTime && serviceId),
 
     // Cache for 2 minutes - availability changes frequently
     staleTime: 2 * 60 * 1000,
@@ -87,6 +97,16 @@ export const useAvailableDrivers = (params) => {
   const { date, startTime, endTime } = params;
   const dispatch = useDispatch();
 
+  // Calculate endTime if not provided
+  let computedEndTime = endTime;
+  if (!computedEndTime && startTime) {
+    // Example: Assume 1 hour duration for fallback
+    const [h, m] = startTime.split(":").map(Number);
+    const start = new Date(0, 0, 0, h, m);
+    start.setMinutes(start.getMinutes() + 60);
+    computedEndTime = start.toTimeString().slice(0, 5);
+  }
+
   return useQuery({
     queryKey: queryKeys.availability.drivers(date, startTime),
     queryFn: async () => {
@@ -94,12 +114,12 @@ export const useAvailableDrivers = (params) => {
         fetchAvailableDrivers({
           date,
           start_time: startTime,
-          end_time: endTime,
+          end_time: computedEndTime,
         })
       );
       return result.payload || [];
     },
-    enabled: !!(date && startTime && endTime),
+    enabled: !!(date && startTime && computedEndTime),
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
