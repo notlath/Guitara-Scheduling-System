@@ -41,9 +41,8 @@ import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import UserGuidePage from "./pages/UserGuidePage/UserGuidePage";
 import { validateToken } from "./services/auth";
-import cachePreloader from "./services/cachePreloader";
-import crossTabSync from "./services/crossTabSync";
-import memoryManager from "./services/memoryManager";
+import crossTabSync from "./services/crossTabSync"; // Migrated - now a stub that indicates TanStack Query handles this
+// import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
 
@@ -201,49 +200,31 @@ const App = () => {
             "⚠️ Service health check failed, proceeding with caution:",
             healthCheck
           );
-        }
-
-        // Debug what we imported
+        } // Debug what we imported
         console.log("Debug imports:", {
-          memoryManager: typeof memoryManager,
-          memoryManagerInit: typeof memoryManager?.initialize,
           crossTabSync: typeof crossTabSync,
           crossTabSyncInit: typeof crossTabSync?.initialize,
-          cachePreloader: typeof cachePreloader,
-          cachePreloaderPreload: typeof cachePreloader?.preloadCriticalData,
         });
 
-        // Initialize memory manager
-        if (memoryManager && typeof memoryManager.initialize === "function") {
-          memoryManager.initialize();
-          console.log("✅ Memory Manager initialized");
-        } else {
-          console.error(
-            "❌ Memory Manager initialization failed - method not found",
-            memoryManager
-          );
-        }
-
-        // Initialize cross-tab synchronization
+        // Initialize cross-tab synchronization (now handled by TanStack Query)
         if (crossTabSync && typeof crossTabSync.initialize === "function") {
           crossTabSync.initialize();
-          console.log("✅ Cross-tab sync initialized");
+          console.log(
+            "✅ Cross-tab sync initialized (now handled by TanStack Query)"
+          );
         } else {
           console.error(
             "❌ Cross-tab sync initialization failed - method not found",
             crossTabSync
           );
-        } // Initialize cache preloader and start critical data preloading
-        if (user?.role) {
-          await cachePreloader.preloadCriticalData(user.role);
-          console.log("✅ Critical data preloaded for role:", user.role);
-        } else {
-          // Only preload non-authenticated data if there's no user
-          // This prevents API calls that require authentication
-          console.log(
-            "⚠️ Skipping critical data preload - user not authenticated"
-          );
         }
+
+        // Cache preloading now handled by TanStack Query automatically
+        console.log(
+          "✅ Data preloading handled by TanStack Query background fetching"
+        );
+        // TanStack Query handles intelligent caching and background data fetching
+        // No manual preloading needed - data is fetched on-demand and cached automatically
 
         // Initialize performance test utilities after user is authenticated
         if (
@@ -273,108 +254,104 @@ const App = () => {
       console.log("SchedulingPage component is:", SchedulingPage);
     }
   }, []);
-
   return (
-    <AttendanceMemoProvider>
-      <BrowserRouter>
-        <div className="App">
-          <Routes>
-            <Route path="/" element={<RouteHandler />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/2fa" element={<TwoFactorAuthPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route
-              path="/2fa-forgot-password"
-              element={<TwoFAForgotPasswordPage />}
-            />
-            <Route
-              path="/enter-new-password"
-              element={<EnterNewPasswordPage />}
-            />
-            <Route
-              path="/forgot-password-confirmation"
-              element={<ForgotPasswordConfirmationPage />}
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
+    <BrowserRouter>
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<RouteHandler />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/2fa" element={<TwoFactorAuthPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route
+            path="/2fa-forgot-password"
+            element={<TwoFAForgotPasswordPage />}
+          />
+          <Route
+            path="/enter-new-password"
+            element={<EnterNewPasswordPage />}
+          />
+          <Route
+            path="/forgot-password-confirmation"
+            element={<ForgotPasswordConfirmationPage />}
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <AttendanceMemoProvider>
                   <MainLayout />
-                </ProtectedRoute>
+                </AttendanceMemoProvider>
+              </ProtectedRoute>
+            }
+          >
+            <Route
+              index
+              element={
+                user?.role === "operator" ? (
+                  <OperatorDashboard />
+                ) : user?.role === "therapist" ? (
+                  <TherapistDashboard />
+                ) : user?.role === "driver" ? (
+                  <DriverDashboard />
+                ) : (
+                  <Navigate to="/" />
+                )
               }
-            >
-              <Route
-                index
-                element={
-                  user?.role === "operator" ? (
-                    <OperatorDashboard />
-                  ) : user?.role === "therapist" ? (
-                    <TherapistDashboard />
-                  ) : user?.role === "driver" ? (
-                    <DriverDashboard />
-                  ) : (
-                    <Navigate to="/" />
-                  )
-                }
-              />
-              <Route path="notifications" element={<NotificationsPage />} />
-              <Route path="scheduling" element={<SchedulingPage />} />
-              <Route path="availability" element={<AvailabilityManager />} />
-              <Route path="bookings" element={<BookingsPage />} />
-              <Route
-                path="attendance"
-                element={
-                  user?.role === "therapist" || user?.role === "driver" ? (
-                    <StaffAttendancePage />
-                  ) : (
-                    <AttendancePage />
-                  )
-                }
-              />
-              <Route
-                path="sales-reports"
-                element={
-                  user?.role === "therapist" || user?.role === "driver" ? (
-                    <Navigate to="/dashboard" replace />
-                  ) : (
-                    <SalesReportsPage />
-                  )
-                }
-              />
-              <Route path="inventory" element={<InventoryPage />} />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route
-                path="settings/account"
-                element={<SettingsAccountPage />}
-              />
-              <Route
-                path="settings/data"
-                element={
-                  user?.role === "therapist" || user?.role === "driver" ? (
-                    <Navigate to="/dashboard" replace />
-                  ) : (
-                    <SettingsDataPage />
-                  )
-                }
-              />
-              {/* Help Pages */}
-              <Route path="help">
-                <Route path="user-guide" element={<UserGuidePage />} />
-                <Route path="faqs" element={<FAQsPage />} />
-                <Route path="contact" element={<ContactPage />} />
-              </Route>
-              {/* About Pages */}
-              <Route path="about">
-                <Route path="company" element={<CompanyInfoPage />} />
-                <Route path="system" element={<SystemInfoPage />} />
-                <Route path="developers" element={<DeveloperInfoPage />} />
-              </Route>
+            />
+            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="scheduling" element={<SchedulingPage />} />
+            <Route path="availability" element={<AvailabilityManager />} />
+            <Route path="bookings" element={<BookingsPage />} />
+            <Route
+              path="attendance"
+              element={
+                user?.role === "therapist" || user?.role === "driver" ? (
+                  <StaffAttendancePage />
+                ) : (
+                  <AttendancePage />
+                )
+              }
+            />
+            <Route
+              path="sales-reports"
+              element={
+                user?.role === "therapist" || user?.role === "driver" ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <SalesReportsPage />
+                )
+              }
+            />
+            <Route path="inventory" element={<InventoryPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="settings/account" element={<SettingsAccountPage />} />
+            <Route
+              path="settings/data"
+              element={
+                user?.role === "therapist" || user?.role === "driver" ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <SettingsDataPage />
+                )
+              }
+            />{" "}
+            {/* Help Pages */}
+            <Route path="help">
+              <Route path="user-guide" element={<UserGuidePage />} />
+              <Route path="faqs" element={<FAQsPage />} />
+              <Route path="contact" element={<ContactPage />} />
             </Route>
-          </Routes>
-        </div>
-      </BrowserRouter>
-    </AttendanceMemoProvider>
+            {/* About Pages */}
+            <Route path="about">
+              <Route path="company" element={<CompanyInfoPage />} />
+              <Route path="system" element={<SystemInfoPage />} />
+              <Route path="developers" element={<DeveloperInfoPage />} />{" "}
+            </Route>
+          </Route>
+        </Routes>
+      </div>
+    </BrowserRouter>
   );
 };
 

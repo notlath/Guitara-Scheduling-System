@@ -1,4 +1,11 @@
 // Utility functions for better authentication and error handling
+import {
+  getToken,
+  getAuthHeaders as getTokenHeaders,
+  hasValidToken,
+  removeToken,
+} from "./tokenManager";
+
 export const handleAuthenticationError = (error) => {
   // Check if error is authentication related
   const isAuthError =
@@ -10,7 +17,7 @@ export const handleAuthenticationError = (error) => {
 
   if (isAuthError) {
     // Clear localStorage and redirect to login
-    localStorage.removeItem("knoxToken");
+    removeToken();
     localStorage.removeItem("user");
 
     // Show user-friendly message
@@ -28,13 +35,11 @@ export const handleAuthenticationError = (error) => {
 };
 
 export const isValidToken = () => {
-  const token = localStorage.getItem("knoxToken");
-  return token && token.trim() !== "";
+  return hasValidToken();
 };
 
 export const getAuthHeaders = () => {
-  const token = localStorage.getItem("knoxToken");
-  return token ? { Authorization: `Token ${token}` } : {};
+  return getTokenHeaders();
 };
 
 // Debounce utility for API calls
@@ -65,7 +70,7 @@ export const getErrorMessage = (
 
 // Enhanced token validation and debugging
 export const validateTokenAndDebug = () => {
-  const token = localStorage.getItem("knoxToken");
+  const token = getToken();
   const user = localStorage.getItem("user");
 
   console.log("🔍 Token Debug Info:", {
@@ -92,7 +97,7 @@ export const validateTokenAndDebug = () => {
 // Force logout and redirect
 export const forceLogout = (reason = "Session expired") => {
   console.log(`🚪 Forcing logout: ${reason}`);
-  localStorage.removeItem("knoxToken");
+  removeToken();
   localStorage.removeItem("user");
   sessionStorage.clear(); // Clear all session data
   window.location.href = "/";

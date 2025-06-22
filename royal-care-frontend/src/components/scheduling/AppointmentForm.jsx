@@ -1,3 +1,4 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { shallowEqual, useDispatch } from "react-redux";
 import {
@@ -9,7 +10,9 @@ import {
   fetchStaffMembers,
   updateAppointment,
 } from "../../features/scheduling/schedulingSlice";
+import { useAppointmentFormErrorHandler } from "../../hooks/useAppointmentFormErrorHandler";
 import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
+import { queryKeys, queryUtils } from "../../lib/queryClient";
 import { registerClient } from "../../services/api";
 import "../../styles/AppointmentForm.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
@@ -287,6 +290,78 @@ const AppointmentForm = ({
   const [isFormReady, setIsFormReady] = useState(false); // Add form ready state
   const [fetchingAvailability, setFetchingAvailability] = useState(false); // Track availability fetching
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
+
+  // Error handling hook
+  const { handleError, clearError, showError } =
+    useAppointmentFormErrorHandler();
+
+  // TanStack Query mutations for optimistic updates
+  const createAppointmentMutation = useMutation({
+    mutationFn: async (appointmentData) => {
+      const result = await dispatch(createAppointment(appointmentData));
+      if (result.error)
+        throw new Error(result.error.message || "Failed to create appointment");
+      return result.payload;
+    },
+    onMutate: async (newAppointment) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments });
+
+      // Snapshot the previous value
+      const previousAppointments = queryClient.getQueryData(
+        queryKeys.appointments
+      );
+
+      // Optimistically update the cache
+      const optimisticAppointment = {
+        ...newAppointment,
+        id: `temp-${Date.now()}`,
+        status: "pending",
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData(queryKeys.appointments, (old) =>
+        old ? [...old, optimisticAppointment] : [optimisticAppointment]
+      );
+
+      return { previousAppointments };
+    },
+    onSuccess: () => {
+      // Invalidate and refetch to get fresh data
+      queryUtils.invalidateAppointments();
+      queryUtils.invalidateAvailability();
+      clearError(); // Clear any previous errors on success
+    },
+    onError: (err, newAppointment, context) => {
+      // Rollback optimistic update
+      if (context?.previousAppointments) {
+        queryClient.setQueryData(
+          queryKeys.appointments,
+          context.previousAppointments
+        );
+      }
+      handleError(err); // Use error handler
+    },
+  });
+
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async ({ id, data }) => {
+      const result = await dispatch(updateAppointment({ id, data }));
+      if (result.error)
+        throw new Error(result.error.message || "Failed to update appointment");
+      return result.payload;
+    },
+    onSuccess: () => {
+      queryUtils.invalidateAppointments();
+      queryUtils.invalidateAvailability();
+      clearError(); // Clear any previous errors on success
+    },
+    onError: (err) => {
+      handleError(err); // Use error handler
+    },
+  });
+
   const schedulingState = useOptimizedSelector(
     (state) => state.scheduling,
     shallowEqual
@@ -646,9 +721,29 @@ const AppointmentForm = ({
         );
 
         // Set loading to false when both requests complete
-        Promise.allSettled([fetchPromise1, fetchPromise2]).finally(() => {
-          setFetchingAvailability(false);
-        });
+        Promise.allSettled([fetchPromise1, fetchPromise2])
+          .then(() => {
+            // Update TanStack Query cache with fresh availability data
+            queryClient.setQueryData(
+              queryKeys.availableTherapists(
+                availabilityParams.date,
+                availabilityParams.start_time,
+                availabilityParams.services
+              ),
+              fetchedAvailableTherapists
+            );
+
+            queryClient.setQueryData(
+              queryKeys.availableDrivers(
+                availabilityParams.date,
+                availabilityParams.start_time
+              ),
+              fetchedAvailableDrivers
+            );
+          })
+          .finally(() => {
+            setFetchingAvailability(false);
+          });
       } else {
         setFetchingAvailability(false);
       }
@@ -665,6 +760,9 @@ const AppointmentForm = ({
     calculateEndTime,
     dispatch,
     loading,
+    queryClient,
+    fetchedAvailableTherapists,
+    fetchedAvailableDrivers,
   ]);
 
   // If editing an existing appointment, populate the form
@@ -899,6 +997,19 @@ const AppointmentForm = ({
     }
 
     setIsSubmitting(true);
+
+    // Check if mutations are already pending to prevent double submission
+    if (
+      createAppointmentMutation.isPending ||
+      updateAppointmentMutation.isPending
+    ) {
+      console.warn(
+        "Mutation already in progress, preventing double submission"
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       let clientId = formData.client;
 
@@ -1024,13 +1135,14 @@ const AppointmentForm = ({
       }
 
       if (appointment) {
-        // Update existing appointment
-        await dispatch(
-          updateAppointment({ id: appointment.id, data: finalAppointmentData })
-        ).unwrap();
+        // Update existing appointment with TanStack Query
+        await updateAppointmentMutation.mutateAsync({
+          id: appointment.id,
+          data: finalAppointmentData,
+        });
       } else {
-        // Create new appointment
-        await dispatch(createAppointment(finalAppointmentData)).unwrap();
+        // Create new appointment with optimistic updates
+        await createAppointmentMutation.mutateAsync(finalAppointmentData);
       }
 
       // Reset form and call success callback
@@ -1047,57 +1159,33 @@ const AppointmentForm = ({
       setErrors({});
     } catch (error) {
       if (import.meta.env && import.meta.env.MODE === "development") {
-        console.error(
-          "📋 Redux thunk error (likely from rejectWithValue):",
-          error
-        );
+        console.error("📋 Form submission error:", error);
       }
+
+      // Use the error handler hook for consistent error handling
+      handleError(error);
 
       // Special handling for therapist availability error
       if (error.therapist && typeof error.therapist === "string") {
-        // This is our custom formatted error from the Redux slice
         setErrors((prev) => ({
           ...prev,
           therapist: error.therapist,
         }));
-
-        // Show a more visible alert
-        alert(error.therapist);
-        return;
       }
 
-      // Handle Redux thunk rejection errors (from rejectWithValue)
+      // Handle validation errors from API
       if (typeof error === "object" && error !== null && !error.response) {
-        console.error(
-          "📋 Redux thunk error (likely from rejectWithValue):",
-          error
-        );
-
-        // This is likely a validation error object from the API
         if (typeof error === "object") {
-          // Create user-friendly error messages
-          let errorMessages = [];
           const apiErrors = {};
-
           Object.entries(error).forEach(([field, messages]) => {
-            if (field === "_original" || field === "therapist") return; // Skip meta fields
-
+            if (field === "_original" || field === "therapist") return;
             if (Array.isArray(messages)) {
-              errorMessages.push(`${field}: ${messages.join(", ")}`);
-              apiErrors[field] = messages[0]; // Use first error message
+              apiErrors[field] = messages[0];
             } else if (typeof messages === "string") {
-              const messageStr = JSON.stringify(messages);
-              errorMessages.push(`${field}: ${messageStr}`);
               apiErrors[field] = messages;
-            } else if (typeof messages === "object") {
-              errorMessages.push(`${field}: ${JSON.stringify(messages)}`);
-              apiErrors[field] = JSON.stringify(messages);
             }
           });
-
           setErrors((prev) => ({ ...prev, ...apiErrors }));
-          alert(`Form submission failed: ${errorMessages.join("\n")}`);
-          return;
         }
       }
 
@@ -1192,25 +1280,65 @@ const AppointmentForm = ({
   // Show loading spinner only if form is not ready and we're still loading essential data
   if (!isFormReady || (loading && services.length === 0)) {
     return (
-      <LoadingSpinner
-        size="large"
-        variant="primary"
-        text="Loading appointment form..."
-        className="appointment-form-loading"
-      />
+      <FormLoadingOverlay>
+        <LoadingSpinner
+          size="large"
+          variant="primary"
+          text="Loading appointment form..."
+          className="appointment-form-loading"
+        />
+        {loading && <p>Fetching services and client data...</p>}
+      </FormLoadingOverlay>
     );
   }
+
+  // Show mutation loading state and errors
+  const isMutationPending =
+    createAppointmentMutation.isPending || updateAppointmentMutation.isPending;
+  const mutationError =
+    createAppointmentMutation.error || updateAppointmentMutation.error;
 
   // Return the form once we have essential data
   return (
     <div className="appointment-form-container">
       <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
 
+      {/* Error Handler Display */}
+      {showError && (
+        <div className="error-message error-boundary">
+          <strong>Error:</strong> {showError}
+          <button
+            type="button"
+            onClick={clearError}
+            className="error-dismiss-btn"
+            style={{ marginLeft: "10px", padding: "2px 6px" }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* TanStack Query Error Display */}
+      {mutationError && (
+        <div className="error-message">
+          <strong>Submission Error:</strong> {mutationError.message}
+        </div>
+      )}
+
       {errors.form && <div className="error-message">{errors.form}</div>}
+
+      {/* Optimistic Update Indicator */}
+      {isMutationPending && (
+        <OptimisticIndicator
+          message={
+            appointment ? "Updating appointment..." : "Creating appointment..."
+          }
+        />
+      )}
 
       {/* Form Loading Overlay for submission */}
       <FormLoadingOverlay
-        show={isSubmitting}
+        show={isSubmitting || isMutationPending}
         message={
           appointment ? "Updating appointment..." : "Creating appointment..."
         }
@@ -1640,13 +1768,22 @@ const AppointmentForm = ({
           </button>
           <LoadingButton
             type="submit"
-            loading={isSubmitting}
-            loadingText={appointment ? "Updating..." : "Creating..."}
+            loading={isSubmitting || isMutationPending}
+            loadingText={
+              isMutationPending
+                ? appointment
+                  ? "Updating..."
+                  : "Creating..."
+                : appointment
+                ? "Updating..."
+                : "Creating..."
+            }
             variant="primary"
             size="medium"
             className="submit-button"
             disabled={
               isSubmitting ||
+              isMutationPending ||
               (availabilityParams.date &&
                 availabilityParams.start_time &&
                 availabilityParams.services &&

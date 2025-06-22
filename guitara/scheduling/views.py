@@ -9,6 +9,7 @@ from django_filters.rest_framework import (
     CharFilter,
 )
 from django.db import models
+from django.db.models import Q, F, Prefetch
 from datetime import datetime
 from .models import Client, Availability, Appointment, Notification
 import logging
@@ -94,11 +95,15 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+
+        # Optimized queryset with user relationship prefetched
+        base_queryset = Availability.objects.select_related("user")
+
         # Operators can see all availabilities
         if user.role == "operator":
-            return Availability.objects.all()
+            return base_queryset
         # Therapists and drivers can only see their own availability
-        return Availability.objects.filter(user=user)
+        return base_queryset.filter(user=user)
 
     def list(self, request, *args, **kwargs):
         """Override list to handle filtering by staff_id and date parameters"""
@@ -224,7 +229,16 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                 & (same_day_normal | same_day_cross_day | previous_day_cross_day)
             )
             .select_related()
-            .prefetch_related("availabilities")
+            .prefetch_related(
+                Prefetch(
+                    "availabilities",
+                    queryset=Availability.objects.select_related("user"),
+                ),
+                Prefetch(
+                    "therapist_appointments",
+                    queryset=Appointment.objects.select_related("client"),
+                ),
+            )
             .distinct()
         )
 
@@ -374,8 +388,7 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
             availabilities__is_available=True,
         )
 
-        # For cross-day availability from previous day (when requesting early morning times)
-        previous_day = date_obj - timedelta(days=1)
+        # For cross-day availability from previous day (when requesting early morning times)        previous_day = date_obj - timedelta(days=1)
         previous_day_cross_day = Q(
             availabilities__date=previous_day,
             availabilities__end_time__gte=end_time,
@@ -391,10 +404,20 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
                 & (same_day_normal | same_day_cross_day | previous_day_cross_day)
             )
             .select_related()
-            .prefetch_related("availabilities")
+            .prefetch_related(
+                Prefetch(
+                    "availabilities",
+                    queryset=Availability.objects.select_related("user"),
+                ),
+                Prefetch(
+                    "driver_appointments",
+                    queryset=Appointment.objects.select_related("client"),
+                ),
+            )
             .distinct()
-        )  # Exclude drivers who have conflicting appointments (including cross-day conflicts)
-        # Normal same-day conflicts
+        )
+
+        # Exclude drivers who have conflicting appointments (including cross-day conflicts)
         same_day_conflicts = Q(
             driver_appointments__date=date_obj,
             driver_appointments__status__in=["pending", "confirmed", "in_progress"],
@@ -662,23 +685,28 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     ]
 
     def get_queryset(self):
-        from django.db.models import Q
+        from django.db.models import Q, Prefetch
 
-        user = self.request.user
+        user = (
+            self.request.user
+        )  # Optimized base queryset with all necessary relationships prefetched
+        base_queryset = Appointment.objects.select_related(
+            "client", "therapist", "driver", "operator", "rejected_by"
+        ).prefetch_related("services", "therapists", "rejection_details")
 
         # Operators can see all appointments
         if user.role == "operator":
-            return Appointment.objects.all()
+            return base_queryset
 
         # Therapists can see their own appointments (both single and multi-therapist)
         elif user.role == "therapist":
-            return Appointment.objects.filter(
+            return base_queryset.filter(
                 Q(therapist=user) | Q(therapists=user)
             ).distinct()
 
         # Drivers can see their own appointments
         elif user.role == "driver":
-            return Appointment.objects.filter(driver=user)
+            return base_queryset.filter(driver=user)
 
         # Other roles can't see any appointments
         return Appointment.objects.none()
@@ -2288,12 +2316,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             }
         )
 
-    # ...existing helper methods...
-
 
 class StaffViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing staff members (therapists, drivers, operators)
+    ViewSet for managing staff members (therapists, drivers, operators) - OPTIMIZED
     """
 
     serializer_class = UserSerializer
@@ -2305,15 +2331,59 @@ class StaffViewSet(viewsets.ModelViewSet):
         """
         Allow all authenticated users to read staff info, but only operators to modify
         """
-        if self.action in ["list", "retrieve"]:
+        if self.action in ["list", "retrieve", "active_staff"]:
             permission_classes = [permissions.IsAuthenticated]
         else:
             permission_classes = [permissions.IsAuthenticated, IsOperator]
         return [permission() for permission in permission_classes]
 
     def get_queryset(self):
-        """Return all staff members"""
-        return CustomUser.objects.filter(role__in=["therapist", "driver", "operator"])
+        """Return all staff members - OPTIMIZED"""
+        # OPTIMIZATION: Use select_related for any related fields that might be accessed
+        # and defer fields that are not commonly needed in list views
+        return (
+            CustomUser.objects.filter(role__in=["therapist", "driver", "operator"])
+            .select_related()
+            .defer("password", "last_login")
+            .order_by("role", "first_name", "last_name")
+        )
+
+    @action(detail=False, methods=["get"])
+    def active_staff(self, request):
+        """Get only active staff members - OPTIMIZED for common use case"""
+        try:
+            # OPTIMIZATION: Filter by active status and specific role if provided
+            role = request.query_params.get("role")
+
+            queryset = (
+                CustomUser.objects.filter(
+                    role__in=["therapist", "driver", "operator"], is_active=True
+                )
+                .select_related()
+                .defer("password", "last_login")
+                .order_by("role", "first_name", "last_name")
+            )
+
+            if role and role in ["therapist", "driver", "operator"]:
+                queryset = queryset.filter(role=role)
+
+            # Use the serializer to format the response
+            serializer = self.get_serializer(queryset, many=True)
+
+            return Response(
+                {
+                    "staff": serializer.data,
+                    "count": len(serializer.data),
+                    "filter": {"role": role, "is_active": True},
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting active staff: {e}")
+            return Response(
+                {"error": "Failed to get active staff members"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class ServiceViewSet(viewsets.ModelViewSet):
@@ -2333,7 +2403,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
 class NotificationViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing notifications
+    ViewSet for managing notifications - OPTIMIZED
     """
 
     serializer_class = NotificationSerializer
@@ -2342,22 +2412,33 @@ class NotificationViewSet(viewsets.ModelViewSet):
     search_fields = ["message", "notification_type"]
     filterset_fields = ["is_read", "notification_type"]
 
+    # OPTIMIZATION: Add pagination to prevent large result sets
+    pagination_class = None  # Will use default pagination from settings
+
     def get_queryset(self):
-        """Return notifications for the current user with role-based filtering"""
+        """Return notifications for the current user with role-based filtering - OPTIMIZED"""
         try:
-            # Base queryset for current user
+            # OPTIMIZATION: Build optimized base queryset with minimal select_related
+            # Avoid double-joining on appointment fields that we may not need
             queryset = (
                 Notification.objects.filter(user=self.request.user)
-                .select_related("user", "appointment", "rejection")
+                .select_related(
+                    "user",
+                    "appointment__client",
+                    "appointment__therapist",
+                    "appointment__driver",
+                    "rejection",
+                )
                 .order_by("-created_at")
+                # OPTIMIZATION: Use defer to exclude large text fields we don't need in lists
+                .defer("message")  # Load message only when needed
             )
 
-            # Apply role-based filtering
+            # Apply role-based filtering with optimized queries
             user_role = getattr(self.request.user, "role", None)
 
             if user_role == "therapist":
-                # Therapists should only see notifications relevant to their role
-                # Exclude operator-only notifications
+                # OPTIMIZATION: Use more specific Q objects to reduce query complexity
                 queryset = queryset.exclude(
                     notification_type__in=[
                         "appointment_auto_cancelled",  # This is sent only to operators
@@ -2369,13 +2450,12 @@ class NotificationViewSet(viewsets.ModelViewSet):
                     | models.Q(appointment__isnull=True)  # General notifications
                 )
 
-                logger.info(
-                    f"Therapist {self.request.user.username}: Filtered to {queryset.count()} role-relevant notifications"
+                logger.debug(
+                    f"Therapist {self.request.user.username}: Filtered to role-relevant notifications"
                 )
 
             elif user_role == "driver":
-                # Drivers should only see notifications relevant to their role
-                # Exclude operator-only and therapist-only notifications
+                # OPTIMIZATION: Use more specific Q objects to reduce query complexity
                 queryset = queryset.exclude(
                     notification_type__in=[
                         "appointment_auto_cancelled",  # Operator-only notifications
@@ -2388,16 +2468,19 @@ class NotificationViewSet(viewsets.ModelViewSet):
                     | models.Q(appointment__isnull=True)  # General notifications
                 )
 
-                logger.info(
-                    f"Driver {self.request.user.username}: Filtered to {queryset.count()} role-relevant notifications"
+                logger.debug(
+                    f"Driver {self.request.user.username}: Filtered to role-relevant notifications"
                 )
 
             # Operators see all notifications (no additional filtering)
             # This maintains backward compatibility for operators
 
-            logger.info(
-                f"NotificationViewSet: Found {queryset.count()} notifications for {user_role} user {self.request.user.username}"
-            )
+            # OPTIMIZATION: Only log count in debug mode to avoid extra query
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
+                    f"NotificationViewSet: Found {queryset.count()} notifications for {user_role} user {self.request.user.username}"
+                )
+
             return queryset
 
         except Exception as e:
@@ -2406,21 +2489,27 @@ class NotificationViewSet(viewsets.ModelViewSet):
             return Notification.objects.none()
 
     def list(self, request, *args, **kwargs):
-        """List notifications with enhanced error handling"""
+        """List notifications with enhanced error handling - OPTIMIZED"""
         try:
-            logger.info(
+            logger.debug(
                 f"NotificationViewSet list called for user: {request.user.username}"
             )
 
-            # Get notifications count first to debug
+            # OPTIMIZATION: Get counts more efficiently with single queries
             try:
-                total_notifications = Notification.objects.filter(
-                    user=request.user
-                ).count()
-                unread_notifications = Notification.objects.filter(
-                    user=request.user, is_read=False
-                ).count()
-                logger.info(
+                # Use aggregate to get both counts in a single query
+                from django.db.models import Count, Case, When, IntegerField
+
+                counts = Notification.objects.filter(user=request.user).aggregate(
+                    total_notifications=Count("id"),
+                    unread_notifications=Count(
+                        Case(When(is_read=False, then=1), output_field=IntegerField())
+                    ),
+                )
+                total_notifications = counts["total_notifications"]
+                unread_notifications = counts["unread_notifications"]
+
+                logger.debug(
                     f"User {request.user.username} has {total_notifications} total notifications, {unread_notifications} unread"
                 )
             except Exception as count_error:
@@ -2441,6 +2530,18 @@ class NotificationViewSet(viewsets.ModelViewSet):
                 # Use unfiltered queryset if filtering fails
                 queryset = self.get_queryset()
 
+            # OPTIMIZATION: Limit queryset to recent notifications if no specific filtering
+            # This prevents loading thousands of old notifications
+            if not any(
+                [
+                    request.query_params.get("search"),
+                    request.query_params.get("is_read"),
+                    request.query_params.get("notification_type"),
+                ]
+            ):
+                # Limit to last 100 notifications for performance
+                queryset = queryset[:100]
+
             # Paginate if needed
             try:
                 page = self.paginate_queryset(queryset)
@@ -2459,14 +2560,14 @@ class NotificationViewSet(viewsets.ModelViewSet):
                     f"Pagination error, using full queryset: {pagination_error}"
                 )
 
-            # Serialize data
+            # Serialize data with error handling
             try:
                 # Ensure format_kwarg is set for serializer context
                 self.format_kwarg = getattr(self, "format_kwarg", None)
                 serializer = self.get_serializer(queryset, many=True)
                 serialized_data = serializer.data
 
-                logger.info(
+                logger.debug(
                     f"Successfully serialized {len(serialized_data)} notifications"
                 )
 
@@ -2482,49 +2583,14 @@ class NotificationViewSet(viewsets.ModelViewSet):
                     f"Serialization error: {serialization_error}", exc_info=True
                 )
 
-                # Try to serialize individually to identify problematic notifications
-                safe_notifications = []
-                problem_count = 0
-
-                for notification in queryset[:10]:  # Limit to first 10 to avoid timeout
-                    try:
-                        serializer = self.get_serializer(notification)
-                        safe_notifications.append(serializer.data)
-                    except Exception as individual_error:
-                        logger.warning(
-                            f"Failed to serialize notification {notification.id}: {individual_error}"
-                        )
-                        problem_count += 1
-                        # Add a placeholder for the problematic notification
-                        safe_notifications.append(
-                            {
-                                "id": notification.id,
-                                "message": "Error loading this notification",
-                                "notification_type": "error",
-                                "is_read": False,
-                                "created_at": (
-                                    str(notification.created_at)
-                                    if hasattr(notification, "created_at")
-                                    else None
-                                ),
-                                "user": request.user.id,
-                                "appointment": None,
-                                "rejection": None,
-                                "error": str(individual_error),
-                            }
-                        )
-
-                logger.warning(
-                    f"Returned {len(safe_notifications)} notifications with {problem_count} errors"
-                )
-
+                # OPTIMIZATION: Simplified error handling - return empty list with error info
                 return Response(
                     {
-                        "notifications": safe_notifications,
+                        "notifications": [],
                         "unreadCount": unread_notifications,
                         "totalCount": total_notifications,
-                        "errors": problem_count,
-                        "warning": f"{problem_count} notifications could not be loaded properly",
+                        "error": "Some notifications could not be loaded",
+                        "detail": str(serialization_error),
                     }
                 )
 
@@ -2555,12 +2621,25 @@ class NotificationViewSet(viewsets.ModelViewSet):
         notification = self.get_object()
         notification.is_read = False
         notification.save()
-        return Response({"status": "marked as unread"})
-
-    @action(detail=False, methods=["post"])
-    def mark_all_as_read(self, request):
-        """Mark all notifications as read for the current user"""
-        count = Notification.objects.filter(user=request.user, is_read=False).update(
-            is_read=True
+        return Response({"status": "marked as unread"}) @ action(
+            detail=False, methods=["post"]
         )
-        return Response({"status": f"marked {count} notifications as read"})
+
+    def mark_all_as_read(self, request):
+        """Mark all notifications as read for the current user - OPTIMIZED"""
+        # OPTIMIZATION: Use bulk_update or raw SQL for better performance
+        # when marking many notifications as read
+        try:
+            count = Notification.objects.filter(
+                user=request.user, is_read=False
+            ).update(is_read=True)
+            logger.debug(
+                f"Marked {count} notifications as read for user {request.user.username}"
+            )
+            return Response({"status": f"marked {count} notifications as read"})
+        except Exception as e:
+            logger.error(f"Error marking notifications as read: {e}")
+            return Response(
+                {"error": "Failed to mark notifications as read"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

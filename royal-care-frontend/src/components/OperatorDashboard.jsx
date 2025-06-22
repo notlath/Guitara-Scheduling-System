@@ -14,23 +14,22 @@ import {
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
-// PERFORMANCE: Robust filtering imports
+// PERFORMANCE: Stable filtering imports to prevent render loops
 import {
-  useRobustAppointmentFilters,
-  useRobustAppointmentSorting,
-} from "../hooks/useRobustAppointmentFilters";
+  useStableAppointmentFilters,
+  useStableAppointmentSorting,
+} from "../hooks/useStableAppointmentFilters";
 import { useVirtualizedPagination } from "../hooks/useVirtualizedPagination";
 import Pagination from "./Pagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
+import { useOperatorDashboardData } from "../hooks/useDashboardQueries";
 import {
   useOptimizedButtonLoading,
   useOptimizedCountdown,
 } from "../hooks/useOperatorPerformance";
-import { useOptimizedDashboardData } from "../hooks/useOptimizedData";
 import { useStableCallback } from "../hooks/usePerformanceOptimization";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
-import optimizedDataManager from "../services/optimizedDataManager";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
@@ -190,37 +189,31 @@ const OperatorDashboard = () => {
     loading,
     error,
     hasData,
-  } = useOptimizedDashboardData("operatorDashboard", "operator");
+    forceRefresh,
+  } = useOperatorDashboardData();
+
+  // 🔧 FIX: Memoize appointments array to prevent unnecessary effect triggers
+  const stableAppointments = useMemo(() => appointments, [appointments]);
 
   // ✅ ROBUST FILTERING: Validate appointments data before processing
   const appointmentsValidation = useMemo(() => {
-    return validateAppointmentsData(appointments);
-  }, [appointments]);
-
-  // ✅ ROBUST FILTERING: Replace ultra-optimized with robust versions with error handling
-  const robustFilteringResults = useRobustAppointmentFilters(appointments);
-
-  // Add error state tracking
-  const [filteringErrors, setFilteringErrors] = useState({
-    hasErrors: false,
-    errorMessage: null,
-  });
-
-  // Monitor for filtering errors
-  useEffect(() => {
+    return validateAppointmentsData(stableAppointments);
+  }, [stableAppointments]); // ✅ STABLE FILTERING: Replace robust with stable versions to prevent render loops
+  const stableFilteringResults =
+    useStableAppointmentFilters(stableAppointments);
+  // 🔧 FIX: Memoize filtering errors to prevent unnecessary updates
+  const filteringErrors = useMemo(() => {
     if (!appointmentsValidation.isValid) {
-      setFilteringErrors({
+      return {
         hasErrors: true,
         errorMessage: appointmentsValidation.error,
-      });
-    } else {
-      setFilteringErrors({
-        hasErrors: false,
-        errorMessage: null,
-      });
+      };
     }
-  }, [appointmentsValidation]);
-
+    return {
+      hasErrors: false,
+      errorMessage: null,
+    };
+  }, [appointmentsValidation.isValid, appointmentsValidation.error]);
   const {
     rejected: rejectedAppointments,
     pending: pendingAppointments,
@@ -230,11 +223,9 @@ const OperatorDashboard = () => {
     activeSessions,
     pickupRequests,
     rejectionStats,
-  } = robustFilteringResults;
-
-  // ✅ ROBUST SORTING: Replace ultra-optimized with robust version
-  const { items: filteredAndSortedAppointments } = useRobustAppointmentSorting(
-    appointments,
+  } = stableFilteringResults; // ✅ STABLE SORTING: Replace robust with stable version to prevent render loops
+  const { items: filteredAndSortedAppointments } = useStableAppointmentSorting(
+    stableAppointments,
     currentFilter
   );
 
@@ -257,7 +248,7 @@ const OperatorDashboard = () => {
     const pendingCount = pendingAppointments?.length || 0;
     const overdueCount = overdueAppointments?.length || 0;
     const awaitingPaymentCount = awaitingPaymentAppointments?.length || 0;
-    const appointmentsCount = appointments?.length || 0;
+    const appointmentsCount = stableAppointments?.length || 0;
     const attendanceCount = attendanceRecords?.length || 0;
     const notificationsCount = notifications?.length || 0;
     const pendingPickupsCount = driverAssignment?.pendingPickups?.length || 0;
@@ -318,7 +309,7 @@ const OperatorDashboard = () => {
     pendingAppointments?.length,
     overdueAppointments?.length,
     awaitingPaymentAppointments?.length,
-    appointments?.length,
+    stableAppointments?.length,
     attendanceRecords?.length,
     notifications?.length,
     driverAssignment?.pendingPickups?.length,
@@ -370,148 +361,154 @@ const OperatorDashboard = () => {
       default:
         return `Active with ${therapistName}`;
     }
-  }, []); // No dependencies needed as it's a pure function
-
-  // Load driver data on component mount and refresh
+  }, []); // No dependencies needed as it's a pure function  // Load driver data on component mount and refresh
   const initialDriverDataLoaded = useRef(false);
-  const appointmentsLength = appointments?.length || 0;
-
+  // 🔧 FIX: Stabilize appointmentsLength to prevent render loops
+  const appointmentsLength = useMemo(
+    () => appointments?.length || 0,
+    [appointments?.length]
+  );
   // Memoize the driver data loading to prevent recreation on every render
-  const loadDriverData = useCallback(async () => {
-    try {
-      // Fetch real staff data from backend
-      const staffResponse = await dispatch(fetchStaffMembers()).unwrap();
+  const loadDriverData = useCallback(
+    async (appointmentsData) => {
+      try {
+        // Fetch real staff data from backend
+        const staffResponse = await dispatch(fetchStaffMembers()).unwrap();
 
-      // Filter drivers and categorize by availability status
-      const drivers = staffResponse.filter((staff) => staff.role === "driver");
-
-      // Get current appointments to determine driver status
-      // Note: "dropped_off" is NOT included here, so drivers who dropped off therapists will be available
-      const activeAppointmentStatuses = [
-        "driver_confirmed",
-        "in_progress",
-        "journey_started",
-        "journey",
-        "arrived",
-        "return_journey", // Driver is en route to pick up therapist after session
-        "driver_assigned_pickup", // Driver assigned for pickup but hasn't confirmed yet
-      ];
-
-      // Find drivers with active appointments (busy)
-      const busyDriverIds = (appointments || [])
-        .filter(
-          (apt) => activeAppointmentStatuses.includes(apt.status) && apt.driver
-        )
-        .map((apt) => apt.driver);
-
-      // Categorize drivers
-      const availableDrivers = [];
-      const busyDrivers = [];
-      drivers.forEach((driver) => {
-        // Find the current appointment for this driver
-        const currentAppointment = (appointments || []).find(
-          (apt) =>
-            activeAppointmentStatuses.includes(apt.status) &&
-            apt.driver === driver.id
+        // Filter drivers and categorize by availability status
+        const drivers = staffResponse.filter(
+          (staff) => staff.role === "driver"
         );
 
-        const driverData = {
-          id: driver.id,
-          first_name: driver.first_name,
-          last_name: driver.last_name,
-          role: driver.role,
-          specialization: driver.specialization,
-          vehicle_type: driver.vehicle_type || "Motorcycle",
-          current_location: driver.current_location || "Available",
-          last_available_at: driver.last_available_at,
-          last_drop_off_time: driver.last_drop_off_time,
-          last_vehicle_used:
-            driver.last_vehicle_used || driver.vehicle_type || "Motorcycle",
-          last_location: driver.current_location || "Available",
-          available_since: driver.last_available_at || new Date().toISOString(),
-          status: busyDriverIds.includes(driver.id) ? "busy" : "available", // Enhanced appointment details for busy drivers
-          currentAppointment: currentAppointment,
-          current_task: currentAppointment
-            ? getDriverTaskDescription(currentAppointment)
-            : null,
-          therapist_name: currentAppointment?.therapist_details
-            ? `${currentAppointment.therapist_details.first_name} ${currentAppointment.therapist_details.last_name}`
-            : currentAppointment?.therapist_name || "Unknown Therapist",
-          client_name:
-            currentAppointment?.client_details?.name ||
-            currentAppointment?.client_name ||
-            "Unknown Client",
-          appointment_status: currentAppointment?.status,
-          appointment_location: currentAppointment?.location,
-        };
+        // Get current appointments to determine driver status
+        // Note: "dropped_off" is NOT included here, so drivers who dropped off therapists will be available
+        const activeAppointmentStatuses = [
+          "driver_confirmed",
+          "in_progress",
+          "journey_started",
+          "journey",
+          "arrived",
+          "return_journey", // Driver is en route to pick up therapist after session
+          "driver_assigned_pickup", // Driver assigned for pickup but hasn't confirmed yet
+        ]; // Find drivers with active appointments (busy)
+        const busyDriverIds = (appointmentsData || [])
+          .filter(
+            (apt) =>
+              activeAppointmentStatuses.includes(apt.status) && apt.driver
+          )
+          .map((apt) => apt.driver);
 
-        if (busyDriverIds.includes(driver.id)) {
-          busyDrivers.push(driverData);
-        } else {
-          availableDrivers.push(driverData);
-        }
-      });
+        // Categorize drivers
+        const availableDrivers = [];
+        const busyDrivers = [];
+        drivers.forEach((driver) => {
+          // Find the current appointment for this driver
+          const currentAppointment = (appointmentsData || []).find(
+            (apt) =>
+              activeAppointmentStatuses.includes(apt.status) &&
+              apt.driver === driver.id
+          );
 
-      setDriverAssignment({
-        availableDrivers,
-        busyDrivers,
-        pendingPickups: [],
-      });
-    } catch (error) {
-      console.error("Failed to load driver data:", error);
-      // Fallback to mock data if API fails
-      setDriverAssignment({
-        availableDrivers: [
-          {
-            id: 1,
-            first_name: "Juan",
-            last_name: "Dela Cruz",
-            vehicle_type: "Motorcycle",
-            last_location: "Quezon City",
-            available_since: new Date().toISOString(),
-            status: "available",
-          },
-          {
-            id: 2,
-            first_name: "Maria",
-            last_name: "Santos",
-            vehicle_type: "Car",
-            last_location: "Makati",
-            available_since: new Date().toISOString(),
-            status: "available",
-          },
-        ],
-        busyDrivers: [
-          {
-            id: 3,
-            first_name: "Jose",
-            last_name: "Garcia",
-            vehicle_type: "Motorcycle",
-            current_task: "Transporting therapist to session",
-            estimated_completion: new Date(
-              Date.now() + 30 * 60000
-            ).toISOString(),
-            status: "busy",
-          },
-        ],
-        pendingPickups: [],
-      });
-    }
-  }, [dispatch, appointments, getDriverTaskDescription]);
+          const driverData = {
+            id: driver.id,
+            first_name: driver.first_name,
+            last_name: driver.last_name,
+            role: driver.role,
+            specialization: driver.specialization,
+            vehicle_type: driver.vehicle_type || "Motorcycle",
+            current_location: driver.current_location || "Available",
+            last_available_at: driver.last_available_at,
+            last_drop_off_time: driver.last_drop_off_time,
+            last_vehicle_used:
+              driver.last_vehicle_used || driver.vehicle_type || "Motorcycle",
+            last_location: driver.current_location || "Available",
+            available_since:
+              driver.last_available_at || new Date().toISOString(),
+            status: busyDriverIds.includes(driver.id) ? "busy" : "available", // Enhanced appointment details for busy drivers
+            currentAppointment: currentAppointment,
+            current_task: currentAppointment
+              ? getDriverTaskDescription(currentAppointment)
+              : null,
+            therapist_name: currentAppointment?.therapist_details
+              ? `${currentAppointment.therapist_details.first_name} ${currentAppointment.therapist_details.last_name}`
+              : currentAppointment?.therapist_name || "Unknown Therapist",
+            client_name:
+              currentAppointment?.client_details?.name ||
+              currentAppointment?.client_name ||
+              "Unknown Client",
+            appointment_status: currentAppointment?.status,
+            appointment_location: currentAppointment?.location,
+          };
+
+          if (busyDriverIds.includes(driver.id)) {
+            busyDrivers.push(driverData);
+          } else {
+            availableDrivers.push(driverData);
+          }
+        });
+
+        setDriverAssignment({
+          availableDrivers,
+          busyDrivers,
+          pendingPickups: [],
+        });
+      } catch (error) {
+        console.error("Failed to load driver data:", error);
+        // Fallback to mock data if API fails
+        setDriverAssignment({
+          availableDrivers: [
+            {
+              id: 1,
+              first_name: "Juan",
+              last_name: "Dela Cruz",
+              vehicle_type: "Motorcycle",
+              last_location: "Quezon City",
+              available_since: new Date().toISOString(),
+              status: "available",
+            },
+            {
+              id: 2,
+              first_name: "Maria",
+              last_name: "Santos",
+              vehicle_type: "Car",
+              last_location: "Makati",
+              available_since: new Date().toISOString(),
+              status: "available",
+            },
+          ],
+          busyDrivers: [
+            {
+              id: 3,
+              first_name: "Jose",
+              last_name: "Garcia",
+              vehicle_type: "Motorcycle",
+              current_task: "Transporting therapist to session",
+              estimated_completion: new Date(
+                Date.now() + 30 * 60000
+              ).toISOString(),
+              status: "busy",
+            },
+          ],
+          pendingPickups: [],
+        });
+      }
+    },
+    [dispatch, getDriverTaskDescription]
+  ); // 🔧 FIX: Removed appointments dependency - now passed as parameter
 
   useEffect(() => {
     // Only load data if appointments is available (not undefined) and initial data hasn't been loaded
     if (appointmentsLength > 0 && !initialDriverDataLoaded.current) {
       const loadInitialData = async () => {
         console.log("🚗 Loading initial driver data");
-        await loadDriverData();
+        await loadDriverData(stableAppointments);
         // Also fetch notifications on initial load
         dispatch(fetchNotifications());
         initialDriverDataLoaded.current = true;
       };
       loadInitialData();
     }
-  }, [appointmentsLength, loadDriverData, dispatch]); // Use stable dependencies
+  }, [appointmentsLength, loadDriverData, dispatch, stableAppointments]); // 🔧 FIX: Use stable appointments
   // Listen for real-time driver updates via sync service
   useEffect(() => {
     const handleDriverUpdate = (data) => {
@@ -571,12 +568,17 @@ const OperatorDashboard = () => {
   // 🔥 REMOVED: Old redundant polling - now handled by centralized DataManager
   // Real-time sync is handled by useSyncEventHandlers hook and centralized data manager
   // OPTIMIZED: Remove manual data loading (handled by optimized data manager)
-  // The optimized data manager handles initial data loading automatically
+  // The optimized data manager handles initial data loading automatically  // 🔧 FIX: Memoize pendingAppointments length to prevent timer effect loops
+  const pendingAppointmentsCount = useMemo(
+    () => pendingAppointments?.length || 0,
+    [pendingAppointments?.length]
+  );
+
   // Real-time timer for updating countdown displays - FIXED to prevent infinite loops
   useEffect(() => {
     let timer;
 
-    if (currentView === "timeout" && pendingAppointments.length > 0) {
+    if (currentView === "timeout" && pendingAppointmentsCount > 0) {
       timer = setInterval(() => {
         // Instead of forcing re-render with dummy state update,
         // let the countdown hooks handle their own updates
@@ -589,75 +591,92 @@ const OperatorDashboard = () => {
         clearInterval(timer);
       }
     };
-  }, [currentView, pendingAppointments.length]);
-
-  // 🔍 DEBUG: Add debug code to identify the loop source - placed after all hooks
+  }, [currentView, pendingAppointmentsCount]); // 🔧 FIX: Use memoized count
+  // � FIX: Throttled debug logging to prevent excessive logging
   const renderCount = useRef(0);
   renderCount.current++;
-
-  // Debug logging for render tracking
-  console.log(`🔄 OperatorDashboard render #${renderCount.current}`, {
-    appointmentsCount: appointments?.length || 0,
-    hasData,
-    loading,
-    error: !!error,
-    currentView,
-    timestamp: new Date().toISOString(),
-  });
-  // Add debug tracking for data state changes
-  useEffect(() => {
-    console.log("🔍 OperatorDashboard Debug - Data State:", {
-      appointments: appointments?.length || 0,
-      appointmentsType: typeof appointments,
-      appointmentsIsArray: Array.isArray(appointments),
+  // Only log every 10th render to reduce console spam
+  if (renderCount.current % 10 === 1) {
+    console.log(`🔄 OperatorDashboard render #${renderCount.current}`, {
+      appointmentsCount: stableAppointments?.length || 0,
       hasData,
       loading,
-      error,
+      error: !!error,
+      currentView,
       timestamp: new Date().toISOString(),
     });
-  }, [appointments, hasData, loading, error]);
+  } // 🔧 FIX: Throttled debug tracking for data state changes
+  const dataStateDebugCountRef = useRef(0);
 
-  // Add debug tracking for driver data loading
   useEffect(() => {
-    console.log("🚗 Driver data effect triggered:", {
-      appointmentsUndefined: appointments === undefined,
-      appointmentsLength: appointments?.length || 0,
-      initialDriverDataLoaded: initialDriverDataLoaded.current,
-      timestamp: new Date().toISOString(),
-    });
-  }, [appointments]);
-
-  // Add debug tracking for filtering
-  useEffect(() => {
-    console.log("🔄 Filtering triggered:", {
-      appointmentsCount: appointments?.length || 0,
-      currentFilter,
-      rejectedCount: rejectedAppointments.length,
-      pendingCount: pendingAppointments.length,
-      timestamp: new Date().toISOString(),
-    });
-
-    // Debug: Log first few appointments and their statuses
-    if (appointments && appointments.length > 0) {
-      console.log("📋 Sample appointments data:", {
-        totalCount: appointments.length,
-        first5Statuses: appointments.slice(0, 5).map((apt) => ({
-          id: apt.id,
-          status: apt.status,
-          date: apt.date,
-          created_at: apt.created_at,
-        })),
-        allUniqueStatuses: [...new Set(appointments.map((apt) => apt.status))],
-        filteredAndSortedCount: filteredAndSortedAppointments.length,
+    dataStateDebugCountRef.current++;
+    // Only log every 5th data state change
+    if (dataStateDebugCountRef.current % 5 === 1) {
+      console.log("🔍 OperatorDashboard Debug - Data State:", {
+        appointments: stableAppointments?.length || 0,
+        appointmentsType: typeof stableAppointments,
+        appointmentsIsArray: Array.isArray(stableAppointments),
+        hasData,
+        loading,
+        error,
+        timestamp: new Date().toISOString(),
       });
     }
-  }, [
-    appointments,
-    currentFilter,
-    rejectedAppointments.length,
-    pendingAppointments.length,
-    filteredAndSortedAppointments.length,
-  ]);
+  }, [stableAppointments, hasData, loading, error]);
+  // 🔧 FIX: Simplified driver data debug tracking - only when appointments length changes
+  const driverDataDebugRef = useRef(0);
+
+  useEffect(() => {
+    if (driverDataDebugRef.current !== appointmentsLength) {
+      driverDataDebugRef.current = appointmentsLength;
+      console.log("🚗 Driver data effect triggered:", {
+        appointmentsLength,
+        initialDriverDataLoaded: initialDriverDataLoaded.current,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }, [appointmentsLength]); // Only depend on stable appointmentsLength// 🔧 FIX: Stabilized debug tracking for filtering - removed problematic dependencies
+  const appointmentsDebugRef = useRef(); // 🔧 FIX: Memoize sample data to prevent render loops
+  const sampleAppointmentsData = useMemo(() => {
+    if (
+      !Array.isArray(stableAppointments) ||
+      stableAppointments.length === 0 ||
+      stableAppointments.length > 1000
+    ) {
+      return null;
+    }
+
+    return {
+      totalCount: stableAppointments.length,
+      first5Statuses: stableAppointments.slice(0, 5).map((apt) => ({
+        id: apt.id,
+        status: apt.status,
+        date: apt.date,
+        created_at: apt.created_at,
+      })),
+      allUniqueStatuses: [
+        ...new Set(stableAppointments.map((apt) => apt.status)),
+      ],
+    };
+  }, [stableAppointments]); // Safe to include appointments here since it's memoized
+
+  useEffect(() => {
+    // Only log when appointments array actually changes, not derived values
+    if (appointmentsDebugRef.current !== appointmentsLength) {
+      appointmentsDebugRef.current = appointmentsLength;
+
+      console.log("� Appointments data changed:", {
+        appointmentsCount: appointmentsLength,
+        currentFilter,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Log sample data if available
+      if (sampleAppointmentsData) {
+        console.log("📋 Sample appointments data:", sampleAppointmentsData);
+      }
+    }
+  }, [appointmentsLength, currentFilter, sampleAppointmentsData]); // Now safe to include memoized data
 
   // Emergency loop breaker - render component normally but log warnings
   if (renderCount.current > 50) {
@@ -834,10 +853,7 @@ const OperatorDashboard = () => {
         })
       ).unwrap();
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
+      await forceRefresh();
       setReviewModal({
         isOpen: false,
         appointmentId: null,
@@ -867,10 +883,7 @@ const OperatorDashboard = () => {
     try {
       await dispatch(autoCancelOverdueAppointments()).unwrap();
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
+      await forceRefresh();
       alert("Successfully processed overdue appointments");
     } catch {
       alert("Failed to process overdue appointments. Please try again.");
@@ -890,10 +903,7 @@ const OperatorDashboard = () => {
         })
       ).unwrap(); // Refresh dashboard data to get updated status
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
+      await forceRefresh();
     } catch (error) {
       console.error("Failed to start appointment:", error);
       alert("Failed to start appointment. Please try again.");
@@ -991,10 +1001,7 @@ const OperatorDashboard = () => {
       });
       console.log("🔄 handleMarkPaymentPaid: Refreshing dashboard data");
       // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await optimizedDataManager.forceRefresh([
-        "appointments",
-        "todayAppointments",
-      ]);
+      await forceRefresh();
 
       alert("Payment marked as received successfully!");
     } catch (error) {
@@ -1221,10 +1228,7 @@ const OperatorDashboard = () => {
           assignment_method: "FIFO",
         });
         // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-        await optimizedDataManager.forceRefresh([
-          "appointments",
-          "todayAppointments",
-        ]);
+        await forceRefresh();
 
         // Show success notification with FIFO details
         alert(
@@ -1240,6 +1244,7 @@ const OperatorDashboard = () => {
       driverAssignment.availableDrivers,
       dispatch,
       setDriverAssignment,
+      forceRefresh,
     ]
   );
   const _handleUrgentPickupRequest = async (therapistId) => {
@@ -2439,9 +2444,17 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   const renderNotifications = () => {
-    if (!notifications || notifications.length === 0) {
+    // Ensure notifications is an array with proper error handling
+    if (
+      !notifications ||
+      !Array.isArray(notifications) ||
+      notifications.length === 0
+    ) {
+      console.log(
+        "No notifications to render or notifications is not an array:",
+        notifications
+      );
       return (
         <div className="empty-state">
           <i className="fas fa-bell"></i>
@@ -2455,10 +2468,16 @@ const OperatorDashboard = () => {
         {notifications.map((notification) => (
           <div
             key={notification.id}
-            className={`notification-card ${notification.type}`}
+            className={`notification-card ${
+              notification.type || notification.notification_type || ""
+            }`}
           >
             <div className="notification-header">
-              <h4>{notification.title}</h4>
+              <h4>
+                {notification.title ||
+                  notification.message?.substring(0, 30) ||
+                  "Notification"}
+              </h4>
               <span className="notification-time">
                 {new Date(notification.created_at).toLocaleString()}
               </span>
@@ -2695,10 +2714,12 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-
   // Render the tab switcher at the top of the dashboard
   return (
     <PageLayout>
+      {/* TanStack Query Debugger - Remove this after debugging
+      <TanStackQueryDebugger /> */}
+
       <div className={`operator-dashboard`}>
         {" "}
         <LayoutRow title="Operator Dashboard">

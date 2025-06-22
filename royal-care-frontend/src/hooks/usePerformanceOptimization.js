@@ -1,6 +1,9 @@
 /**
- * Performance Optimization Hooks
- * Comprehensive React performance optimization utilities
+ * Performance Optimization Hooks - TanStack Query Compatible
+ * Essential React performance optimization utilities
+ *
+ * NOTE: Data fetching hooks have been migrated to TanStack Query
+ * This file contains only the performance optimization hooks that are still needed
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,7 +12,10 @@ import { shallowEqual, useSelector } from "react-redux";
 /**
  * Optimized Redux selector with memoization and shallow comparison by default
  * Prevents unnecessary re-renders from Redux state changes
- * Enhanced to ensure stable references and prevent selector warnings
+ *
+ * IMPORTANT: This is still needed even with TanStack Query because:
+ * - Redux state (auth, UI state, settings) still needs optimization
+ * - TanStack Query only handles server state, not client state
  */
 export const useOptimizedSelector = (selector, equalityFn = shallowEqual) => {
   // Always call hooks in the same order - create stable references first
@@ -76,6 +82,7 @@ export const useOptimizedSelector = (selector, equalityFn = shallowEqual) => {
 
 /**
  * Enhanced debounced state hook with immediate value access
+ * Still needed for form inputs, search, and UI interactions
  */
 export const useDebouncedState = (initialValue, delay = 300) => {
   const [value, setValue] = useState(initialValue);
@@ -112,6 +119,7 @@ export const useDebouncedState = (initialValue, delay = 300) => {
 
 /**
  * Stable callback hook that prevents unnecessary re-creations
+ * Essential for preventing unnecessary re-renders in complex components
  */
 export const useStableCallback = (callback) => {
   const callbackRef = useRef(callback);
@@ -122,6 +130,7 @@ export const useStableCallback = (callback) => {
 
 /**
  * Deep comparison memoization hook
+ * Useful for complex object dependencies
  */
 export const useDeepMemo = (factory, dependencies) => {
   const ref = useRef();
@@ -235,6 +244,7 @@ export const useThrottledEffect = (effect, dependencies, delay = 100) => {
 
 /**
  * Performance tracking hook with detailed metrics
+ * Enhanced to work well with TanStack Query DevTools
  */
 export const usePerformanceTracker = (componentName, options = {}) => {
   const {
@@ -286,7 +296,7 @@ export const usePerformanceTracker = (componentName, options = {}) => {
               2
             )}ms (avg: ${avgRenderTime.toFixed(2)}ms, render #${
               renderCount.current
-            })`
+            }) - Check TanStack Query DevTools for data fetching performance`
           );
         }
       }
@@ -362,66 +372,17 @@ export const useSmartMemo = (factory, dependencies) => {
 };
 
 /**
- * Optimized data fetching hook with intelligent caching and deduplication
+ * REMOVED: useOptimizedDataFetch - Replaced by TanStack Query
+ * Use useQuery from @tanstack/react-query instead
+ *
+ * Migration guide:
+ * OLD: const { data, loading, error } = useOptimizedDataFetch(fetchFn, cacheKey, deps);
+ * NEW: const { data, isLoading: loading, error } = useQuery({
+ *        queryKey: [cacheKey, ...deps],
+ *        queryFn: fetchFn,
+ *        staleTime: 30000 // 30 seconds
+ *      });
  */
-export const useOptimizedDataFetch = (fetchFn, cacheKey, dependencies = []) => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const cacheRef = useRef(new Map());
-  const activeRequestRef = useRef(null);
-
-  const optimizedFetch = useCallback(async () => {
-    // Check cache first
-    if (cacheKey && cacheRef.current.has(cacheKey)) {
-      const cachedData = cacheRef.current.get(cacheKey);
-      const cacheAge = Date.now() - cachedData.timestamp;
-
-      // Use cache if it's fresh (less than 30 seconds old)
-      if (cacheAge < 30000) {
-        setData(cachedData.data);
-        return cachedData.data;
-      }
-    }
-
-    // If there's already an active request for this cache key, don't start another
-    if (activeRequestRef.current === cacheKey) {
-      return;
-    }
-
-    setLoading(true);
-    activeRequestRef.current = cacheKey;
-
-    try {
-      const result = await fetchFn();
-
-      // Store in cache
-      if (cacheKey) {
-        cacheRef.current.set(cacheKey, {
-          data: result,
-          timestamp: Date.now(),
-        });
-      }
-
-      setData(result);
-      setError(null);
-      return result;
-    } catch (err) {
-      setError(err);
-      return null;
-    } finally {
-      setLoading(false);
-      activeRequestRef.current = null;
-    }
-  }, [fetchFn, cacheKey]);
-
-  useEffect(() => {
-    optimizedFetch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [optimizedFetch, ...dependencies]);
-
-  return { data, loading, error, refetch: optimizedFetch };
-};
 
 /**
  * Batch state updates hook to reduce re-renders
@@ -462,6 +423,7 @@ export const useBatchedUpdates = () => {
 
 /**
  * Virtual list hook for large data sets - reduces DOM nodes
+ * Essential for performance when rendering large appointment lists
  */
 export const useVirtualList = (items, containerHeight, itemHeight) => {
   const [scrollTop, setScrollTop] = useState(0);
@@ -529,6 +491,7 @@ export const useVirtualList = (items, containerHeight, itemHeight) => {
 
 /**
  * Efficient subscription management hook
+ * Works well with TanStack Query for WebSocket updates
  */
 export const useOptimizedSubscription = (subscribe, dependencies = []) => {
   const subscriptionRef = useRef(null);
@@ -627,46 +590,140 @@ export const isDevelopmentMode = () => {
 };
 
 /**
- * Hook to automatically run performance diagnostic after authentication
+ * UI-specific performance hooks that complement TanStack Query
  */
-export const usePerformanceDiagnostic = () => {
-  const { user, isAuthenticated } = useOptimizedSelector((state) => ({
-    user: state.auth.user,
-    isAuthenticated: state.auth.isAuthenticated,
-  }));
 
-  const hasRunRef = useRef(false);
+/**
+ * Optimized button loading state hook
+ * Prevents button spam and provides smooth loading UX
+ */
+export const useOptimizedButtonLoading = () => {
+  const [loadingButtons, setLoadingButtons] = useState(new Set());
 
-  useEffect(() => {
-    if (isAuthenticated && user && !hasRunRef.current && isDevelopmentMode()) {
-      // Run performance diagnostic after authentication in development mode
-      const runDiagnostic = async () => {
+  const setButtonLoading = useCallback((buttonId, isLoading) => {
+    setLoadingButtons((prev) => {
+      const newSet = new Set(prev);
+      if (isLoading) {
+        newSet.add(buttonId);
+      } else {
+        newSet.delete(buttonId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const isButtonLoading = useCallback(
+    (buttonId) => {
+      return loadingButtons.has(buttonId);
+    },
+    [loadingButtons]
+  );
+
+  const createButtonHandler = useCallback(
+    (buttonId, asyncAction) => {
+      return async (...args) => {
+        if (isButtonLoading(buttonId)) return; // Prevent double-click
+
+        setButtonLoading(buttonId, true);
         try {
-          // Dynamic import to avoid circular dependencies
-          const { runPerformanceDiagnostic } = await import(
-            "../utils/performanceTestSuite"
-          );
-          console.log("🚀 Running post-login performance diagnostic...");
-          await runPerformanceDiagnostic();
-          hasRunRef.current = true;
-        } catch (error) {
-          console.warn("⚠️ Failed to run performance diagnostic:", error);
+          await asyncAction(...args);
+        } finally {
+          setButtonLoading(buttonId, false);
         }
       };
-
-      // Small delay to let the authentication flow complete
-      setTimeout(runDiagnostic, 1000);
-    }
-  }, [isAuthenticated, user]);
-
-  // Reset flag when user logs out
-  useEffect(() => {
-    if (!isAuthenticated) {
-      hasRunRef.current = false;
-    }
-  }, [isAuthenticated]);
+    },
+    [isButtonLoading, setButtonLoading]
+  );
 
   return {
-    hasRunDiagnostic: hasRunRef.current,
+    setButtonLoading,
+    isButtonLoading,
+    createButtonHandler,
+    loadingButtons: Array.from(loadingButtons),
   };
+};
+
+/**
+ * Optimized countdown hook for appointment timers
+ */
+export const useOptimizedCountdown = (initialCountdowns = {}) => {
+  const [countdowns, setCountdowns] = useState(initialCountdowns);
+  const intervalsRef = useRef(new Map());
+
+  const manageTimer = useCallback((id, seconds, onComplete) => {
+    // Clear existing timer if any
+    if (intervalsRef.current.has(id)) {
+      clearInterval(intervalsRef.current.get(id));
+    }
+
+    // Set initial countdown
+    setCountdowns((prev) => ({ ...prev, [id]: seconds }));
+
+    // Start new timer
+    const intervalId = setInterval(() => {
+      setCountdowns((prev) => {
+        const current = prev[id];
+        if (current <= 1) {
+          clearInterval(intervalId);
+          intervalsRef.current.delete(id);
+          onComplete?.();
+          const { [id]: _removed, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [id]: current - 1 };
+      });
+    }, 1000);
+
+    intervalsRef.current.set(id, intervalId);
+  }, []);
+
+  const stopTimer = useCallback((id) => {
+    if (intervalsRef.current.has(id)) {
+      clearInterval(intervalsRef.current.get(id));
+      intervalsRef.current.delete(id);
+    }
+    setCountdowns((prev) => {
+      const { [id]: _removed, ...rest } = prev;
+      return rest;
+    });
+  }, []);
+
+  useEffect(() => {
+    const intervals = intervalsRef.current;
+    return () => {
+      // Cleanup all timers on unmount
+      intervals.forEach((intervalId) => clearInterval(intervalId));
+      intervals.clear();
+    };
+  }, []);
+
+  return {
+    countdowns,
+    manageTimer,
+    stopTimer,
+  };
+};
+
+/**
+ * REMOVED: usePerformanceDiagnostic - Modified for TanStack Query
+ * Performance diagnostics should now include TanStack Query metrics
+ */
+
+// Export all hooks that are still needed
+export default {
+  useOptimizedSelector,
+  useDebouncedState,
+  useStableCallback,
+  useDeepMemo,
+  useThrottledEffect,
+  usePerformanceTracker,
+  useStableValue,
+  useSmartMemo,
+  useBatchedUpdates,
+  useVirtualList,
+  useOptimizedSubscription,
+  useOptimizedState,
+  useOptimizedButtonLoading,
+  useOptimizedCountdown,
+  isDevelopmentMode,
 };

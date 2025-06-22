@@ -1,12 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
-import { shallowEqual, useDispatch } from "react-redux";
+import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
-// OPTIMIZED: Replace old data hooks with optimized versions
-import { useOptimizedDashboardData } from "../../hooks/useOptimizedData";
-import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
+// MIGRATED TO TANSTACK QUERY: Replace legacy optimized hooks with TanStack Query
+import { useSchedulingDashboardData } from "../../hooks/useDashboardQueries";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
-import optimizedDataManager from "../../services/optimizedDataManager";
 import { SkeletonLoader } from "../common/LoadingComponents";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
@@ -17,7 +15,12 @@ import TabSwitcher from "../../globals/TabSwitcher";
 import "../../globals/TabSwitcher.css";
 import "../../styles/SchedulingDashboard.css";
 import ErrorBoundary from "../common/ErrorBoundary";
-import AppointmentForm from "./AppointmentForm";
+// Legacy forms (comment out when ready)
+// import AppointmentForm from "./AppointmentForm";
+// import AppointmentForm from "./AppointmentFormMigrated";
+
+// TanStack Query integrated form
+import AppointmentForm from "./AppointmentFormTanStackComplete";
 import AvailabilityManager from "./AvailabilityManager";
 import Calendar from "./Calendar";
 import NotificationCenter from "./NotificationCenter";
@@ -46,19 +49,18 @@ const SchedulingDashboard = () => {
     newSearchParams.set("view", newView);
     setSearchParams(newSearchParams);
   };
-
   const dispatch = useDispatch();
-  // OPTIMIZED: Use optimized dashboard data hook
+  // MIGRATED TO TANSTACK QUERY: Use TanStack Query hooks instead of legacy optimizedDataManager
   const {
     todayAppointments,
     upcomingAppointments,
     loading,
     error,
-    // forceRefresh,
+    forceRefresh,
     hasData,
-  } = useOptimizedDashboardData("schedulingDashboard", "admin");
+  } = useSchedulingDashboardData();
 
-  const { user } = useOptimizedSelector(
+  const { user } = useSelector(
     useCallback(
       (state) => ({
         user: state.auth?.user || null,
@@ -68,7 +70,7 @@ const SchedulingDashboard = () => {
     shallowEqual
   );
 
-  const { unreadNotificationCount } = useOptimizedSelector(
+  const { unreadNotificationCount } = useSelector(
     useCallback(
       (state) => ({
         unreadNotificationCount: state.scheduling?.unreadNotificationCount || 0,
@@ -107,32 +109,22 @@ const SchedulingDashboard = () => {
     setSelectedTime(appointment.start_time);
     setIsFormVisible(true);
   };
-
   const handleDeleteAppointment = async (appointmentId) => {
     if (window.confirm("Are you sure you want to delete this booking?")) {
       try {
         await dispatch(deleteAppointment(appointmentId)).unwrap();
-        // 🔥 FIXED: Use centralized data manager refresh instead of individual API calls
-        // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-        await optimizedDataManager.forceRefresh([
-          "appointments",
-          "todayAppointments",
-        ]);
+        // TANSTACK QUERY: Use forceRefresh from TanStack Query instead of optimizedDataManager
+        await forceRefresh();
       } catch (error) {
         // Add user feedback
         alert(`Failed to delete appointment: ${error.message || error}`);
       }
     }
   };
-
   const handleFormSubmitSuccess = async () => {
     setIsFormVisible(false);
-    // 🔥 FIXED: Use centralized data manager refresh instead of individual API calls
-    // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-    await optimizedDataManager.forceRefresh([
-      "appointments",
-      "todayAppointments",
-    ]);
+    // TANSTACK QUERY: Use forceRefresh from TanStack Query instead of optimizedDataManager
+    await forceRefresh();
   };
 
   const handleFormCancel = () => {

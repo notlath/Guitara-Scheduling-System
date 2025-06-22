@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getToken } from "../utils/tokenManager";
 
 // Create the base Axios instance
 export const api = axios.create({
@@ -15,7 +16,7 @@ import { sanitizeFormInput } from "../utils/formSanitization";
 api.interceptors.request.use(
   (config) => {
     // Add authentication token to all requests
-    const token = localStorage.getItem("knoxToken");
+    const token = getToken();
     if (token) {
       config.headers.Authorization = `Token ${token}`;
     }

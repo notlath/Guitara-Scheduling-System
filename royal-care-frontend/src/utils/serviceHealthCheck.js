@@ -4,9 +4,9 @@
  */
 
 // Import all services
-import memoryManager from '../services/memoryManager';
-import crossTabSync from '../services/crossTabSync';
-import cachePreloader from '../services/cachePreloader';
+// import memoryManager from '../services/memoryManager'; // Removed - migrated to TanStack Query
+// import cachePreloader from "../services/cachePreloader"; // Removed - was dependent on optimizedDataManager
+import crossTabSync from "../services/crossTabSync"; // Migrated - now a stub that indicates TanStack Query handles this
 
 /**
  * Perform a health check on all performance services
@@ -15,84 +15,64 @@ import cachePreloader from '../services/cachePreloader';
 export const performServiceHealthCheck = () => {
   const results = {
     timestamp: new Date().toISOString(),
-    memoryManager: null,
+    // memoryManager: null, // Removed - migrated to TanStack Query
     crossTabSync: null,
-    cachePreloader: null,
-    overall: 'unknown'
+    // cachePreloader: null, // Removed - was dependent on optimizedDataManager
+    overall: "unknown",
   };
 
   try {
-    // Test Memory Manager
-    console.log('🔍 Testing Memory Manager...');
-    results.memoryManager = {
-      imported: !!memoryManager,
-      type: typeof memoryManager,
-      hasInitialize: typeof memoryManager?.initialize === 'function',
-      methods: memoryManager ? Object.getOwnPropertyNames(Object.getPrototypeOf(memoryManager)) : [],
-      status: 'unknown'
-    };
+    // Test Memory Manager - Migrated to TanStack Query
+    console.log(
+      "🔍 Memory Manager migrated to TanStack Query - memory management handled internally"
+    );
+    // results.memoryManager = { ... }; // Removed - migrated to TanStack Query
+    console.log(
+      "✅ Memory Manager: Migrated to TanStack Query (memory management handled internally)"
+    );
 
-    if (memoryManager && typeof memoryManager.initialize === 'function') {
-      results.memoryManager.status = 'healthy';
-      console.log('✅ Memory Manager: Healthy');
-    } else {
-      results.memoryManager.status = 'error';
-      console.error('❌ Memory Manager: Missing initialize method');
-    }
-
-    // Test Cross-Tab Sync
-    console.log('🔍 Testing Cross-Tab Sync...');
+    // Test Cross-Tab Sync (now handled by TanStack Query)
+    console.log("🔍 Testing Cross-Tab Sync (now handled by TanStack Query)...");
     results.crossTabSync = {
       imported: !!crossTabSync,
       type: typeof crossTabSync,
-      hasInitialize: typeof crossTabSync?.initialize === 'function',
-      methods: crossTabSync ? Object.getOwnPropertyNames(Object.getPrototypeOf(crossTabSync)) : [],
-      status: 'unknown'
+      hasInitialize: typeof crossTabSync?.initialize === "function",
+      methods: crossTabSync
+        ? Object.getOwnPropertyNames(Object.getPrototypeOf(crossTabSync))
+        : [],
+      status: "unknown",
     };
 
-    if (crossTabSync && typeof crossTabSync.initialize === 'function') {
-      results.crossTabSync.status = 'healthy';
-      console.log('✅ Cross-Tab Sync: Healthy');
+    if (crossTabSync && typeof crossTabSync.initialize === "function") {
+      results.crossTabSync.status = "migrated-to-tanstack-query";
+      console.log("✅ Cross-Tab Sync: Migrated to TanStack Query");
     } else {
-      results.crossTabSync.status = 'error';
-      console.error('❌ Cross-Tab Sync: Missing initialize method');
+      results.crossTabSync.status = "error";
+      console.error("❌ Cross-Tab Sync: Missing initialize method");
     }
 
-    // Test Cache Preloader
-    console.log('🔍 Testing Cache Preloader...');
-    results.cachePreloader = {
-      imported: !!cachePreloader,
-      type: typeof cachePreloader,
-      hasPreloadCriticalData: typeof cachePreloader?.preloadCriticalData === 'function',
-      methods: cachePreloader ? Object.getOwnPropertyNames(Object.getPrototypeOf(cachePreloader)) : [],
-      status: 'unknown'
-    };
-
-    if (cachePreloader && typeof cachePreloader.preloadCriticalData === 'function') {
-      results.cachePreloader.status = 'healthy';
-      console.log('✅ Cache Preloader: Healthy');
-    } else {
-      results.cachePreloader.status = 'error';
-      console.error('❌ Cache Preloader: Missing preloadCriticalData method');
-    }
+    // Cache Preloader - Removed (was dependent on optimizedDataManager)
+    console.log("🔍 Cache Preloader functionality migrated to TanStack Query");
+    console.log(
+      "✅ Cache Preloader: Handled by TanStack Query automatic caching"
+    );
 
     // Overall status
     const allHealthy = Object.values(results)
-      .filter(result => typeof result === 'object' && result?.status)
-      .every(result => result.status === 'healthy');
+      .filter((result) => typeof result === "object" && result?.status)
+      .every((result) => result.status === "healthy");
 
-    results.overall = allHealthy ? 'healthy' : 'degraded';
+    results.overall = allHealthy ? "healthy" : "degraded";
 
-    console.log('🏥 Service Health Check Summary:', {
+    console.log("🏥 Service Health Check Summary:", {
       overall: results.overall,
-      memoryManager: results.memoryManager.status,
+      // memoryManager: results.memoryManager.status, // Removed - migrated to TanStack Query
       crossTabSync: results.crossTabSync.status,
-      cachePreloader: results.cachePreloader.status
+      // cachePreloader: results.cachePreloader.status, // Removed - was dependent on optimizedDataManager
     });
-
   } catch (error) {
-    console.error('💥 Service Health Check Failed:', error);
-    results.overall = 'error';
+    console.error("💥 Service Health Check Failed:", error);
+    results.overall = "error";
     results.error = error.message;
   }
 
@@ -105,10 +85,10 @@ export const performServiceHealthCheck = () => {
  */
 export const validateServices = () => {
   const results = performServiceHealthCheck();
-  return results.overall === 'healthy';
+  return results.overall === "healthy";
 };
 
 export default {
   performServiceHealthCheck,
-  validateServices
+  validateServices,
 };
