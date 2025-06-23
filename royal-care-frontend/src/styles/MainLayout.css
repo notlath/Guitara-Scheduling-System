@@ -98,7 +98,7 @@
   font-size: var(--font-size-base);
   padding: calc(var(--spacing-xm)) var(--spacing-sm);
   color: var(--text);
-  border-radius: 4px;
+  border-radius: 6px;
   background: none;
   display: flex;
   align-items: center;

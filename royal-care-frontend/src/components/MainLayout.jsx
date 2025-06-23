@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   MdBarChart,
   MdBusiness,
@@ -29,11 +29,24 @@ import "../styles/MainLayout.css";
 const MainLayout = () => {
   const [showHelpSublinks, setShowHelpSublinks] = useState(false);
   const [showAboutSublinks, setShowAboutSublinks] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(window.innerWidth > 768);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
   const { user } = useSelector((state) => state.auth);
   const unreadNotificationCount = useSelector(
     (state) => state.scheduling?.unreadNotificationCount || 0
   );
+
+  useEffect(() => {
+    const handleResize = () => {
+      const desktop = window.innerWidth > 768;
+      setIsDesktop(desktop);
+      setMobileMenuOpen(desktop);
+    };
+    window.addEventListener("resize", handleResize);
+    // Set initial state
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const isTherapistOrDriver =
     user && (user.role === "therapist" || user.role === "driver");
@@ -64,13 +77,15 @@ const MainLayout = () => {
           </NavLink>
         </div>
         {/* Hamburger menu icon for mobile */}
-        <button
-          className="hamburger-menu"
-          aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-          onClick={() => setMobileMenuOpen((open) => !open)}
-        >
-          {mobileMenuOpen ? <MdClose size={28} /> : <MdMenu size={28} />}
-        </button>
+        {!isDesktop && (
+          <button
+            className="hamburger-menu"
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            {mobileMenuOpen ? <MdClose size={28} /> : <MdMenu size={28} />}
+          </button>
+        )}
         {/* Desktop nav links (hidden on mobile if menu open) */}
         {/* <div className={`nav-links${mobileMenuOpen ? " hide-on-mobile" : ""}`}>
           <NavLink
@@ -143,19 +158,21 @@ const MainLayout = () => {
         {mobileMenuOpen && (
           <div
             className="mobile-drawer"
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={() => !isDesktop && setMobileMenuOpen(false)}
           >
             <div
               className="drawer-links"
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside drawer
             >
-              <button
-                className="hamburger-menu close-btn"
-                aria-label="Close menu"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <MdClose size={28} />
-              </button>
+              {!isDesktop && (
+                <button
+                  className="hamburger-menu close-btn"
+                  aria-label="Close menu"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <MdClose size={28} />
+                </button>
+              )}
               <div className="drawer-content">
                 <div className="notification-link">
                   <NavLink
