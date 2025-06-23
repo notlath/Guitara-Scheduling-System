@@ -19,14 +19,19 @@ RAILWAY_PUBLIC_DOMAIN = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
 ALLOWED_HOSTS = []
 if os.environ.get("ALLOWED_HOSTS"):
     ALLOWED_HOSTS.extend(
-        [host.strip() for host in os.environ.get("ALLOWED_HOSTS", "").split(",") if host.strip()]
+        [
+            host.strip()
+            for host in os.environ.get("ALLOWED_HOSTS", "").split(",")
+            if host.strip()
+        ]
     )
 
 # Add Railway domains automatically
 if RAILWAY_STATIC_URL:
     # Extract domain from Railway static URL
     import re
-    domain_match = re.search(r'https?://([^/]+)', RAILWAY_STATIC_URL)
+
+    domain_match = re.search(r"https?://([^/]+)", RAILWAY_STATIC_URL)
     if domain_match:
         ALLOWED_HOSTS.append(domain_match.group(1))
 
@@ -34,12 +39,7 @@ if RAILWAY_PUBLIC_DOMAIN:
     ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
 
 # Add common Railway patterns
-ALLOWED_HOSTS.extend([
-    "*.up.railway.app",
-    "*.railway.app",
-    "127.0.0.1",
-    "localhost"
-])
+ALLOWED_HOSTS.extend(["*.up.railway.app", "*.railway.app", "127.0.0.1", "localhost"])
 
 # Remove duplicates and empty strings
 ALLOWED_HOSTS = list(set([host for host in ALLOWED_HOSTS if host]))
@@ -49,11 +49,18 @@ print(f"[PRODUCTION SETTINGS] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 # Database connection error handling
 try:
     # Validate required database environment variables
-    required_db_vars = ["SUPABASE_DB_NAME", "SUPABASE_DB_USER", "SUPABASE_DB_PASSWORD", "SUPABASE_DB_HOST"]
+    required_db_vars = [
+        "SUPABASE_DB_NAME",
+        "SUPABASE_DB_USER",
+        "SUPABASE_DB_PASSWORD",
+        "SUPABASE_DB_HOST",
+    ]
     missing_vars = [var for var in required_db_vars if not os.environ.get(var)]
-    
+
     if missing_vars:
-        print(f"[ERROR] Missing required database environment variables: {missing_vars}")
+        print(
+            f"[ERROR] Missing required database environment variables: {missing_vars}"
+        )
         print("[ERROR] Application will not be able to connect to database")
     else:
         print(f"[SUCCESS] All required database environment variables are present")
