@@ -37,7 +37,9 @@ DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 # Parse ALLOWED_HOSTS from environment variable
 ALLOWED_HOSTS_ENV = os.environ.get("ALLOWED_HOSTS", "")
 if ALLOWED_HOSTS_ENV:
-    ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_ENV.split(",") if host.strip()]
+    ALLOWED_HOSTS = [
+        host.strip() for host in ALLOWED_HOSTS_ENV.split(",") if host.strip()
+    ]
     print(f"[SETTINGS] ALLOWED_HOSTS from env: {ALLOWED_HOSTS}")
 else:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]

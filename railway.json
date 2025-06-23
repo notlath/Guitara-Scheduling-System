@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "cd guitara && python manage.py migrate && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p $PORT guitara.asgi:application",
+    "startCommand": "python manage.py migrate && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p $PORT guitara.asgi:application",
     "healthcheckPath": "/",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
