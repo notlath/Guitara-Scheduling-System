@@ -178,7 +178,9 @@ else:
 
 # Static files configuration for production
 STATIC_ROOT = "/app/staticfiles"
+STATIC_URL = "/static/"  # This was missing and is required
 MEDIA_ROOT = "/app/media"
+MEDIA_URL = "/media/"
 
 # Security settings for production
 if not DEBUG:
@@ -191,11 +193,42 @@ if not DEBUG:
 
 # CORS settings for production
 CORS_ALLOWED_ORIGINS = [
-    "https://yourdomain.com",  # Replace with your frontend domain
-    "https://www.yourdomain.com",  # Replace with your frontend domain
+    "https://your-vercel-app.vercel.app",  # Replace with your actual Vercel URL
+    "https://your-custom-domain.com",  # If you have a custom domain
+    "http://localhost:3000",  # Keep for local development
+    "http://localhost:5173",  # Vite dev server
 ]
 
-# Logging configuration for production
+# Allow credentials for authentication
+CORS_ALLOW_CREDENTIALS = True
+
+# Additional CORS settings for production
+CORS_ALLOWED_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "cache-control",
+]
+
+CORS_ALLOWED_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+# For development/testing - set to False in final production
+CORS_ALLOW_ALL_ORIGINS = False
+
+# Logging configuration for production - use console only for Railway
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -214,19 +247,25 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "simple",
         },
-        "file": {
-            "class": "logging.FileHandler",
-            "filename": "/app/logs/django.log",
-            "formatter": "verbose",
-        },
+        # File handler removed for Railway deployment - logs go to console
     },
     "loggers": {
         "django": {
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
             "level": "INFO",
         },
         "guitara": {
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "scheduling": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "channels": {
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },

@@ -15,9 +15,11 @@ def get_user(token_key):
             token_key
         )  # Authentication successful
         return user
-    except AuthenticationFailed:
+    except AuthenticationFailed as e:
+        print(f"[MIDDLEWARE] Authentication failed for token: {e}")
         return AnonymousUser()
-    except Exception:
+    except Exception as e:
+        print(f"[MIDDLEWARE] Unexpected error during authentication: {e}")
         return AnonymousUser()
 
 
@@ -28,10 +30,13 @@ class TokenAuthMiddleware:
 
     def __init__(self, inner):
         self.inner = inner
+        print("[MIDDLEWARE] TokenAuthMiddleware initialized")
 
     async def __call__(self, scope, receive, send):
-        try:  # Get query parameters
+        try:
+            # Get query parameters
             query_string = scope.get("query_string", b"").decode()
+            print(f"[MIDDLEWARE] WebSocket connection attempt, query: {query_string}")
 
             # Safely parse query parameters
             query_params = {}
@@ -46,10 +51,18 @@ class TokenAuthMiddleware:
             if token_key:
                 # Get user from token
                 scope["user"] = await get_user(token_key)
+                if scope["user"].is_authenticated:
+                    print(
+                        f"[MIDDLEWARE] ✅ User authenticated: {scope['user'].id} ({scope['user'].role})"
+                    )
+                else:
+                    print("[MIDDLEWARE] ❌ Token provided but authentication failed")
             else:
                 scope["user"] = AnonymousUser()
+                print("[MIDDLEWARE] ⚠️ No token provided, using AnonymousUser")
 
             return await self.inner(scope, receive, send)
-        except Exception:
+        except Exception as e:
+            print(f"[MIDDLEWARE] ❌ Error in TokenAuthMiddleware: {e}")
             scope["user"] = AnonymousUser()
             return await self.inner(scope, receive, send)

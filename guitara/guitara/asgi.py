@@ -31,16 +31,8 @@ except Exception as e:
 try:
     from scheduling.middleware import TokenAuthMiddleware
     import scheduling.routing
-except Exception as e:
-    import logging
 
-    logger = logging.getLogger(__name__)
-    logger.error(f"Error importing middleware after Django setup: {e}")
-    traceback.print_exc(file=sys.stdout)
-    raise
-
-# Define the ASGI application
-try:
+    # Define the ASGI application with WebSocket support
     application = ProtocolTypeRouter(
         {
             "http": django_asgi_app,
@@ -49,10 +41,45 @@ try:
             ),
         }
     )
+    print("[ASGI] ✅ Full ASGI application configured with WebSocket support")
+
+except ImportError as e:
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.warning(f"WebSocket middleware import failed (this may be expected): {e}")
+    logger.warning("⚠️ Falling back to HTTP-only ASGI application")
+
+    # Fallback to HTTP-only ASGI application
+    application = ProtocolTypeRouter(
+        {
+            "http": django_asgi_app,
+        }
+    )
+    print(
+        "[ASGI] ⚠️ HTTP-only ASGI application configured (WebSocket disabled due to import issues)"
+    )
+
 except Exception as e:
     import logging
 
     logger = logging.getLogger(__name__)
-    logger.error(f"Error configuring ASGI application: {e}")
+    logger.error(f"Error importing middleware or routing: {e}")
+    logger.error("Full traceback:")
     traceback.print_exc(file=sys.stdout)
-    raise
+
+    # Fallback to HTTP-only ASGI application
+    logger.warning("⚠️ Falling back to HTTP-only ASGI application")
+    application = ProtocolTypeRouter(
+        {
+            "http": django_asgi_app,
+        }
+    )
+    print(
+        "[ASGI] ⚠️ HTTP-only ASGI application configured (WebSocket disabled due to errors)"
+    )
+
+print(f"[ASGI] Application type: {type(application)}")
+print(
+    f"[ASGI] Available protocols: {list(application.application_mapping.keys()) if hasattr(application, 'application_mapping') else 'Unknown'}"
+)

@@ -22,52 +22,71 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
         self.connection_id = None
 
     async def connect(self):
-        self.user = self.scope["user"]
-
-        # Reject connection if user is not authenticated
-        if not self.user.is_authenticated:
-            await self.close()
-            return
-
-        # Generate unique connection ID for this user session
-        self.connection_id = f"{self.user.id}_{asyncio.current_task().get_name()}"
-
-        # Join appointment group
-        await self.channel_layer.group_add("appointments", self.channel_name)
-
-        # Join user-specific group for targeted notifications
-        user_group = f"user_{self.user.id}"
-        await self.channel_layer.group_add(user_group, self.channel_name)
-
-        await self.accept()
-
-        # Log connection for monitoring
-        logger.info(f"WebSocket connected: User {self.user.id} ({self.user.role})")
-
-        # Send initial data upon connection with caching
         try:
-            if self.user.role == "operator":
-                appointments = await self.get_today_appointments_cached()
-            else:
-                appointments = await self.get_user_appointments_cached()
+            self.user = self.scope["user"]
+            print(
+                f"[CONSUMER] Connection attempt from user: {self.user} (authenticated: {self.user.is_authenticated})"
+            )
 
-            await self.send(
-                text_data=json.dumps(
-                    {
-                        "type": "initial_data",
-                        "appointments": appointments,
-                        "connection_id": self.connection_id,
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                )
+            # Reject connection if user is not authenticated
+            if not self.user.is_authenticated:
+                print("[CONSUMER] ❌ Rejecting unauthenticated connection")
+                await self.close()
+                return
+
+            # Generate unique connection ID for this user session
+            self.connection_id = f"{self.user.id}_{asyncio.current_task().get_name()}"
+
+            # Join appointment group
+            await self.channel_layer.group_add("appointments", self.channel_name)
+
+            # Join user-specific group for targeted notifications
+            user_group = f"user_{self.user.id}"
+            await self.channel_layer.group_add(user_group, self.channel_name)
+
+            await self.accept()
+
+            # Log connection for monitoring
+            logger.info(f"WebSocket connected: User {self.user.id} ({self.user.role})")
+            print(
+                f"[CONSUMER] ✅ WebSocket connected: User {self.user.id} ({self.user.role})"
             )
+
+            # Send initial data upon connection with caching
+            try:
+                if self.user.role == "operator":
+                    appointments = await self.get_today_appointments_cached()
+                else:
+                    appointments = await self.get_user_appointments_cached()
+
+                await self.send(
+                    text_data=json.dumps(
+                        {
+                            "type": "initial_data",
+                            "appointments": appointments,
+                            "connection_id": self.connection_id,
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
+                )
+                print(
+                    f"[CONSUMER] ✅ Initial data sent: {len(appointments)} appointments"
+                )
+            except Exception as e:
+                logger.error(f"Error sending initial data: {e}")
+                print(f"[CONSUMER] ❌ Error sending initial data: {e}")
+                await self.send(
+                    text_data=json.dumps(
+                        {"type": "error", "message": "Failed to load initial data"}
+                    )
+                )
         except Exception as e:
-            logger.error(f"Error sending initial data: {e}")
-            await self.send(
-                text_data=json.dumps(
-                    {"type": "error", "message": "Failed to load initial data"}
-                )
-            )
+            logger.error(f"Error in WebSocket connect: {e}")
+            print(f"[CONSUMER] ❌ Critical error in connect: {e}")
+            import traceback
+
+            traceback.print_exc()
+            await self.close()
 
     async def disconnect(self, close_code):
         logger.info(
