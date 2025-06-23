@@ -1,0 +1,18 @@
+[phases.build]
+# Python build phase
+pythonVersion = "3.11"
+
+[phases.install]
+# Install Python dependencies
+cmds = ["pip install -r requirements.txt"]
+
+[phases.setup]
+# Django setup commands  
+cmds = [
+    "cd guitara",
+    "python manage.py collectstatic --noinput"
+]
+
+[start]
+# Start command
+cmd = "cd guitara && python manage.py migrate && daphne -b 0.0.0.0 -p $PORT guitara.asgi:application"

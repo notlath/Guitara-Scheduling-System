@@ -1,0 +1,19 @@
+[build]
+# Railway build configuration
+# Force Python buildpack/provider
+builder = "nixpacks"
+
+[build.nixpacks]
+# Use Python provider specifically
+providers = ["python"]
+
+# Build configuration
+[deploy]
+# Start command for Railway
+startCommand = "cd guitara && python manage.py migrate && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p $PORT guitara.asgi:application"
+
+# Health check configuration
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
