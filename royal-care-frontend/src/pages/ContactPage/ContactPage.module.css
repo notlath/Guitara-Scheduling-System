@@ -161,7 +161,7 @@
   opacity: 1;
 }
 
-.contactSupportContainer {
+/* .contactSupportContainer {
   max-width: 520px;
   margin: var(--spacing-lg) auto 0 auto;
   background: var(--background);
@@ -173,7 +173,7 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-}
+} */
 
 @media (max-width: 600px) {
   .contactSupportContainer {
