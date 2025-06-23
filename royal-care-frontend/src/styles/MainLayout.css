@@ -261,19 +261,19 @@
   display: none;
   background: none;
   border: none;
-  padding: 0 8px;
+  padding: 0;
   margin-left: auto;
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  height: 56px;
+  /* height: 56px; */
   z-index: 20;
   color: var(--text);
 }
 
 .hamburger-menu.close-btn {
   align-self: flex-end;
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-mm);
   color: var(--text);
 }
 
@@ -323,37 +323,37 @@
   .notification-link,
   .bottom-links {
     /* flex-direction: row; */
-    gap: var(--spacing-xxs);
+    /* gap: var(--spacing-xxs); */
     /* width: auto; */
     /* overflow-x: auto; */
     /* padding: 0; */
     /* margin: 0; */
-    align-items: center;
+    /* align-items: center; */
     /* height: 100%; */
     /* white-space: nowrap; */
-    display: flex;
+    /* display: flex; */
   }
-  .nav-links a,
+  /* .nav-links a,
   .notification-link a,
-  .bottom-links a {
-    /* display: inline-flex; */
-    /* align-items: center; */
-    /* white-space: nowrap; */
-    /* padding: 0 10px; */
-    /* font-size: 1em; */
-    /* min-width: 0; */
-    /* height: 56px; */
-    border-radius: 0;
-    border-bottom: 2px solid transparent;
-    /* flex-shrink: 0; */
-  }
-  .nav-links a.active-link,
+  .bottom-links a { */
+  /* display: inline-flex; */
+  /* align-items: center; */
+  /* white-space: nowrap; */
+  /* padding: 0 10px; */
+  /* font-size: 1em; */
+  /* min-width: 0; */
+  /* height: 56px; */
+  /* border-radius: 0;
+  border-left: 2px solid transparent; */
+  /* flex-shrink: 0; */
+  /* } */
+  /* .nav-links a.active-link,
   .notification-link a.active-link,
   .bottom-links a.active-link {
-    border-bottom: 2px solid var(--primary);
+    border-left: 2px solid var(--primary);
     background: none;
     color: var(--primary);
-  }
+  } */
   .content {
     padding: 10px 0 0 0;
   }
@@ -380,11 +380,11 @@
   }
   .drawer-links {
     background: var(--background);
-    width: 80vw;
+    width: 65vw;
     max-width: 340px;
     height: 100vh;
     box-shadow: -2px 0 12px rgba(0, 0, 0, 0.08);
-    padding: 24px 18px 18px 18px;
+    padding: var(--spacing-mxs) var(--spacing-mm);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -406,13 +406,13 @@
     padding: 0 2px;
     height: 48px;
   }
-  .nav-links a,
+  /* .nav-links a,
   .notification-link a,
-  .bottom-links a {
-    font-size: 0.95em;
-    padding: 0 6px;
-    height: 48px;
-  }
+  .bottom-links a { */
+  /* font-size: 0.95em; */
+  /* padding: 0 6px; */
+  /* height: 48px; */
+  /* } */
   .logo img {
     max-width: 2rem;
     height: 2rem;
