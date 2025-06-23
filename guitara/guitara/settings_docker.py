@@ -39,8 +39,8 @@ DATABASES = {
 }
 
 # Redis configuration for Docker
-REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
-CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
+REDIS_URL = os.environ.get("REDIS_URL", "redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062")
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062")
 
 # Channel layers for Docker
 CHANNEL_LAYERS = {

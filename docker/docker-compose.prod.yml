@@ -31,8 +31,8 @@ services:
       - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
       - SUPABASE_DB_HOST=${SUPABASE_DB_HOST}
       # Redis for Channels and Celery
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
+      - REDIS_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
       # Email settings
       - EMAIL_HOST_USER=${EMAIL_HOST_USER}
       - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
@@ -66,8 +66,8 @@ services:
       - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
       - SUPABASE_DB_HOST=${SUPABASE_DB_HOST}
       # Redis for Celery
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
+      - REDIS_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
       # Email settings
       - EMAIL_HOST_USER=${EMAIL_HOST_USER}
       - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
@@ -93,8 +93,8 @@ services:
       - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
       - SUPABASE_DB_HOST=${SUPABASE_DB_HOST}
       # Redis for Celery
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
+      - REDIS_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
       # Email settings
       - EMAIL_HOST_USER=${EMAIL_HOST_USER}
       - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
