@@ -14,8 +14,8 @@ const Calendar = ({
   onDateSelected,
   onTimeSelected,
   selectedDate,
-  showClientLabels = false,
-  context = "therapist",
+  showClientLabels = true,
+  context = "operator",
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(null);
@@ -556,6 +556,9 @@ const Calendar = ({
                   cancelled: "status-cancelled",
                   rejected: "status-cancelled",
                   auto_cancelled: "status-cancelled",
+                  picking_up_therapists: "status-active",
+                  transporting_group: "status-active",
+                  therapist_dropped_off: "status-active",
                 };
 
                 const driverStatuses = {
@@ -592,11 +595,35 @@ const Calendar = ({
                   rejected: "status-cancelled",
                 };
 
-                // Select appropriate status mapping based on context
-                const statusMap =
-                  context === "driver" ? driverStatuses : therapistStatuses;
+                const operatorStatuses = {
+                  pending: "status-pending",
+                  confirmed: "status-confirmed",
+                  in_progress: "status-active",
+                  journey: "status-active",
+                  journey_started: "status-active",
+                  arrived: "status-active",
+                  dropped_off: "status-session",
+                  session_in_progress: "status-session",
+                  completed: "status-completed",
+                  cancelled: "status-cancelled",
+                  rejected: "status-cancelled",
+                  awaiting_payment: "status-session",
+                  payment_requested: "status-session",
+                  pickup_requested: "status-active",
+                  driver_assigned_pickup: "status-active",
+                  return_journey: "status-active",
+                  transport_completed: "status-completed",
+                  therapist_confirmed: "status-confirmed",
+                  driver_confirmed: "status-confirmed",
+                  picking_up_therapists: "status-active",
+                  transporting_group: "status-active",
+                  therapist_dropped_off: "status-active",
+                };
 
-                // Return mapped status or default
+                let statusMap;
+                if (context === "driver") statusMap = driverStatuses;
+                else if (context === "operator") statusMap = operatorStatuses;
+                else statusMap = therapistStatuses;
                 return statusMap[status] || "status-default";
               };
 
@@ -616,29 +643,30 @@ const Calendar = ({
                   onClick={() => handleDateClick(day)}
                 >
                   {/* Client labels - show only for therapist/driver dashboards */}
-                  {showClientLabels && clientInfo.length > 0 && !isPastDay && (
-                    <div className="client-labels">
-                      {clientInfo.slice(0, 2).map((info, index) => (
-                        <span
-                          key={index}
-                          className={`client-label ${getStatusColorClass(
-                            info.status
-                          )}`}
-                          title={`${info.name} - Status: ${info.status.replace(
-                            /_/g,
-                            " "
-                          )}`}
-                        >
-                          {info.name}
-                        </span>
-                      ))}
-                      {clientInfo.length > 2 && (
-                        <span className="client-label more-clients">
-                          +{clientInfo.length - 2} more
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  {(showClientLabels || context === "operator") &&
+                    clientInfo.length > 0 &&
+                    !isPastDay && (
+                      <div className="client-labels">
+                        {clientInfo.slice(0, 2).map((info, index) => (
+                          <span
+                            key={index}
+                            className={`client-label ${getStatusColorClass(
+                              info.status
+                            )}`}
+                            title={`${
+                              info.name
+                            } - Status: ${info.status.replace(/_/g, " ")}`}
+                          >
+                            {info.name}
+                          </span>
+                        ))}
+                        {clientInfo.length > 2 && (
+                          <span className="client-label more-clients">
+                            +{clientInfo.length - 2} more
+                          </span>
+                        )}
+                      </div>
+                    )}
                   <span className="day-number">{day}</span>
                   {isToday && <span className="today-label">Today</span>}
                 </div>
@@ -648,11 +676,16 @@ const Calendar = ({
         </div>
 
         {/* Context-aware status legend for client labels */}
-        {showClientLabels && (
+        {(showClientLabels || context === "operator") && (
           <div className="calendar-status-legend">
             <h4>
               Client Label Colors (
-              {context === "driver" ? "Driver" : "Therapist"} View):
+              {context === "driver"
+                ? "Driver"
+                : context === "operator"
+                ? "Operator"
+                : "Therapist"}{" "}
+              View):
             </h4>
             <div className="status-legend-grid">
               <div className="status-legend-item">
@@ -664,6 +697,8 @@ const Calendar = ({
                   Pending
                   {context === "driver"
                     ? "/Awaiting Assignment"
+                    : context === "operator"
+                    ? "/Awaiting Review"
                     : "/Awaiting Confirmation"}
                 </span>
               </div>
@@ -676,6 +711,8 @@ const Calendar = ({
                   Confirmed
                   {context === "driver"
                     ? "/Ready to Drive"
+                    : context === "operator"
+                    ? "/Ready to Assign"
                     : "/Ready to Proceed"}
                 </span>
               </div>
@@ -686,6 +723,14 @@ const Calendar = ({
                     style={{ backgroundColor: "#8b5cf6" }}
                   ></div>
                   <span>Active Transport/Pickup</span>
+                </div>
+              ) : context === "operator" ? (
+                <div className="status-legend-item">
+                  <div
+                    className="status-legend-color"
+                    style={{ backgroundColor: "#10b981" }}
+                  ></div>
+                  <span>Session/Treatment/Assignment</span>
                 </div>
               ) : (
                 <div className="status-legend-item">
@@ -704,6 +749,8 @@ const Calendar = ({
                 <span>
                   {context === "driver"
                     ? "Transport Completed"
+                    : context === "operator"
+                    ? "Session/Assignment Completed"
                     : "Session Completed"}
                 </span>
               </div>
