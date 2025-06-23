@@ -13,8 +13,6 @@ import sys
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
-from scheduling.middleware import TokenAuthMiddleware
-import scheduling.routing
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "guitara.settings")
 
@@ -26,6 +24,18 @@ except Exception as e:
 
     logger = logging.getLogger(__name__)
     logger.error(f"Error initializing Django ASGI application: {e}")
+    traceback.print_exc(file=sys.stdout)
+    raise
+
+# Import Django models and middleware after Django is initialized
+try:
+    from scheduling.middleware import TokenAuthMiddleware
+    import scheduling.routing
+except Exception as e:
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.error(f"Error importing middleware after Django setup: {e}")
     traceback.print_exc(file=sys.stdout)
     raise
 

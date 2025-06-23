@@ -24,7 +24,7 @@ RUN apt-get update \
 WORKDIR /app
 
 # Copy requirements and install Python dependencies
-COPY guitara/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy Django project

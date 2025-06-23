@@ -51,7 +51,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "channels",
-    # "django_celery_beat",
+    "django_celery_beat",
     "django_celery_results",
     "core",
     "authentication",
