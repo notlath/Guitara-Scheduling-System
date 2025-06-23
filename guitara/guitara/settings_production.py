@@ -5,6 +5,7 @@ Inherits from base settings and overrides for production environment.
 
 from .settings import *
 import os
+import re
 
 # Production settings override
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
@@ -91,22 +92,39 @@ DATABASES = {
 }
 
 # Redis configuration for Docker
-REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+REDIS_URL = os.environ.get("REDIS_URL", None)
 
-# Channels layer configuration with Redis
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [REDIS_URL],
+# Channels layer configuration with Redis fallback
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+            },
         },
-    },
-}
+    }
+    print(f"[PRODUCTION SETTINGS] Using Redis for channels: {REDIS_URL}")
+else:
+    # Fallback to in-memory channel layer for Railway deployment
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        },
+    }
+    print("[PRODUCTION SETTINGS] Using in-memory channel layer (Redis not available)")
 
-# Celery configuration for Docker
+# Celery configuration for Docker with Redis fallback
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
-CELERY_RESULT_BACKEND = "django-db"
-CELERY_CACHE_BACKEND = "django-cache"
+if not CELERY_BROKER_URL:
+    # Disable Celery if no Redis/broker available
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+    print("[PRODUCTION SETTINGS] Celery running in eager mode (no broker available)")
+else:
+    CELERY_RESULT_BACKEND = "django-db"
+    CELERY_CACHE_BACKEND = "django-cache"
+    print(f"[PRODUCTION SETTINGS] Celery broker: {CELERY_BROKER_URL}")
 
 # Static files configuration for production
 STATIC_ROOT = "/app/staticfiles"

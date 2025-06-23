@@ -24,6 +24,7 @@ from django.conf.urls.static import static
 from django.db import connection
 from django.core.cache import cache
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -41,30 +42,39 @@ def health_check(request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
 
-        # Try cache if Redis is configured
-        cache_status = "ok"
+        # Try cache if Redis is configured - don't fail if cache is unavailable
+        cache_status = "not_configured"
         try:
             cache.set("health_check", "ok", 10)
             cache_status = cache.get("health_check", "error")
+            if cache_status == "ok":
+                cache_status = "connected"
         except Exception as e:
-            cache_status = f"error: {str(e)}"
-            logger.warning(f"Cache health check failed: {e}")
+            cache_status = f"unavailable: {str(e)[:50]}"
+            logger.info(f"Cache not available (this is OK for Railway): {e}")
 
-        return JsonResponse(
-            {
-                "status": "healthy",
-                "database": "connected",
-                "cache": cache_status,
-                "debug": settings.DEBUG,
-                "allowed_hosts": settings.ALLOWED_HOSTS,
-            },
-            status=200,
-        )
+        # Check if we're running on Railway
+        is_railway = bool(os.environ.get("RAILWAY_ENVIRONMENT"))
+
+        response_data = {
+            "status": "healthy",
+            "database": "connected",
+            "cache": cache_status,
+            "debug": settings.DEBUG,
+            "allowed_hosts": settings.ALLOWED_HOSTS[:3],  # Limit for security
+            "environment": "railway" if is_railway else "other",
+        }
+
+        return JsonResponse(response_data, status=200)
 
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return JsonResponse(
-            {"status": "unhealthy", "error": str(e), "debug": settings.DEBUG},
+            {
+                "status": "unhealthy",
+                "error": str(e)[:100],  # Truncate error message
+                "debug": settings.DEBUG,
+            },
             status=503,
         )
 

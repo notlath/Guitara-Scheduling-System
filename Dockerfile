@@ -37,7 +37,7 @@ RUN mkdir -p /app/staticfiles /app/media
 WORKDIR /app/guitara
 
 # Set environment variables for production
-ENV DJANGO_SETTINGS_MODULE=guitara.settings_production
+ENV DJANGO_SETTINGS_MODULE=guitara.settings_railway
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 

@@ -24,7 +24,7 @@ services:
       # Production settings
       - DEBUG=False
       - DJANGO_SETTINGS_MODULE=guitara.settings_production
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}:-localhost,127.0.0.1}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
       # Database (Supabase)
       - SUPABASE_DB_NAME=${SUPABASE_DB_NAME}
       - SUPABASE_DB_USER=${SUPABASE_DB_USER}
