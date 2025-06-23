@@ -32,9 +32,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-ic&egssnr$r%4-xjaq*0g-^8&m@&vbf2l+!0^2)1t(pdka3%5o"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+# Parse ALLOWED_HOSTS from environment variable
+ALLOWED_HOSTS_ENV = os.environ.get("ALLOWED_HOSTS", "")
+if ALLOWED_HOSTS_ENV:
+    ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_ENV.split(",") if host.strip()]
+    print(f"[SETTINGS] ALLOWED_HOSTS from env: {ALLOWED_HOSTS}")
+else:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+    print(f"[SETTINGS] Using default ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+
+print(f"[SETTINGS] Final ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
 
 # Application definition

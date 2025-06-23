@@ -36,6 +36,11 @@ RUN mkdir -p /app/staticfiles /app/media
 # Set working directory to Django project
 WORKDIR /app/guitara
 
+# Set environment variables for production
+ENV DJANGO_SETTINGS_MODULE=guitara.settings
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
 # Create a non-root user
 RUN useradd --create-home --shell /bin/bash app \
     && chown -R app:app /app
@@ -48,5 +53,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/ || exit 1
 
-# Default command (can be overridden in docker-compose.yml)
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Default command (can be overridden)
+# For Railway deployment, use production-ready server
+CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p ${PORT:-8000} guitara.asgi:application"]

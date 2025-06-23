@@ -23,8 +23,8 @@ services:
     environment:
       # Production settings
       - DEBUG=False
-      - DJANGO_SETTINGS_MODULE=guitara.settings
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - DJANGO_SETTINGS_MODULE=guitara.settings_production
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}:-localhost,127.0.0.1}
       # Database (Supabase)
       - SUPABASE_DB_NAME=${SUPABASE_DB_NAME}
       - SUPABASE_DB_USER=${SUPABASE_DB_USER}
@@ -59,7 +59,7 @@ services:
     environment:
       # Production settings
       - DEBUG=False
-      - DJANGO_SETTINGS_MODULE=guitara.settings
+      - DJANGO_SETTINGS_MODULE=guitara.settings_production
       # Database (Supabase)
       - SUPABASE_DB_NAME=${SUPABASE_DB_NAME}
       - SUPABASE_DB_USER=${SUPABASE_DB_USER}
@@ -86,7 +86,7 @@ services:
     environment:
       # Production settings
       - DEBUG=False
-      - DJANGO_SETTINGS_MODULE=guitara.settings
+      - DJANGO_SETTINGS_MODULE=guitara.settings_production
       # Database (Supabase)
       - SUPABASE_DB_NAME=${SUPABASE_DB_NAME}
       - SUPABASE_DB_USER=${SUPABASE_DB_USER}
