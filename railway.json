@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "export DJANGO_SETTINGS_MODULE=guitara.settings_production && python manage.py migrate && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p $PORT guitara.asgi:application",
+    "startCommand": "python manage.py migrate && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p $PORT guitara.asgi:application",
     "healthcheckPath": "/health-check/",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
