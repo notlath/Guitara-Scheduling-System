@@ -249,6 +249,63 @@ Once running, you can access:
 | 👑 **Admin Panel**  | http://localhost:8000/admin/    | Django admin interface        |
 | 📚 **API Docs**     | http://localhost:8000/api/docs/ | Interactive API documentation |
 
+---
+
+## 🐳 Docker Deployment
+
+<div align="center">
+
+**Deploy with Docker for production-ready setup!**
+
+</div>
+
+### **Quick Docker Setup**
+
+```bash
+# 1. Setup Docker environment
+./docker/setup-docker.sh     # Linux/Mac
+docker\setup-docker.bat      # Windows
+
+# 2. Edit .env file with your configuration
+# (Database, email, etc.)
+
+# 3. Start with Docker Compose
+./docker/docker-manage.sh dev   # Development mode
+./docker/docker-manage.sh prod  # Production mode
+
+# Or use the convenient launchers from root:
+./docker-launch.sh dev          # Linux/Mac
+docker-launch.bat dev           # Windows
+```
+
+### **Docker Services**
+
+| Service            | Description             | Port |
+| ------------------ | ----------------------- | ---- |
+| 🌐 **web**         | Django + ASGI server    | 8000 |
+| 🎯 **celery**      | Background task worker  | -    |
+| ⏰ **celery-beat** | Periodic task scheduler | -    |
+| 📡 **redis**       | Message broker & cache  | 6379 |
+| 🗄️ **postgres**    | Database (optional)     | 5432 |
+
+### **Docker File Structure**
+
+```
+docker/                          # Docker configurations
+├── docker-compose.prod.yml      # Production overrides
+├── docker-compose.dev.yml       # Development overrides
+├── docker-manage.sh/.bat        # Management scripts
+├── setup-docker.sh/.bat         # Initial setup scripts
+└── README.md                    # Docker documentation
+
+docker-compose.yml               # Base configuration (root)
+Dockerfile                       # Main application image (root)
+```
+
+**📖 Full Docker Guide:** [docker/README.md](docker/README.md)
+
+---
+
 ### 🔑 **Getting Started**
 
 For development and testing:

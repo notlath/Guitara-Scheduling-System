@@ -36,11 +36,16 @@ app.conf.update(
         "scheduling.tasks.process_driver_assignment": {"queue": "high_priority"},
         "scheduling.tasks.send_appointment_notifications": {"queue": "notifications"},
         "scheduling.tasks.cleanup_expired_appointments": {"queue": "maintenance"},
+        "scheduling.tasks.auto_cancel_overdue_appointments": {"queue": "maintenance"},
     },
     # Beat schedule for periodic tasks
     beat_schedule={
         "cleanup-expired-appointments": {
             "task": "scheduling.tasks.cleanup_expired_appointments",
+            "schedule": 300.0,  # Every 5 minutes
+        },
+        "auto-cancel-overdue-appointments": {
+            "task": "scheduling.tasks.auto_cancel_overdue_appointments",
             "schedule": 300.0,  # Every 5 minutes
         },
         "sync-appointment-statuses": {

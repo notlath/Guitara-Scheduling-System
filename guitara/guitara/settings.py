@@ -101,9 +101,21 @@ WSGI_APPLICATION = "guitara.wsgi.application"
 ASGI_APPLICATION = "guitara.asgi.application"
 
 # Channels layer configuration
-CHANNEL_LAYERS = {
-    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
-}
+# Use Redis if available, otherwise fall back to InMemory
+REDIS_URL = os.environ.get("REDIS_URL", None)
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+            },
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
+    }
 
 
 # Database
@@ -320,7 +332,7 @@ APPEND_SLASH = True
 
 import os
 
-CELERY_BROKER_URL = f"redis://127.0.0.1:6379/0"
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_CACHE_BACKEND = "django-cache"
 
