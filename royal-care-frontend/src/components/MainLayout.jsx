@@ -36,22 +36,27 @@ const MainLayout = () => {
     (state) => state.scheduling?.unreadNotificationCount || 0
   );
 
-  useEffect(() => {
-    let resizeTimer;
-    const handleResize = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        const desktop = window.innerWidth > 768;
-        setIsDesktop(desktop);
-        setMobileMenuOpen(desktop);
-      }, 150);
+  // Debounce utility
+  function debounce(fn, delay) {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), delay);
     };
+  }
+
+  useEffect(() => {
+    const handleResize = debounce(() => {
+      const desktop = window.innerWidth > 768;
+      setIsDesktop(desktop);
+      setMobileMenuOpen(desktop);
+    }, 150);
+
     window.addEventListener("resize", handleResize);
     // Set initial state
     handleResize();
     return () => {
       window.removeEventListener("resize", handleResize);
-      clearTimeout(resizeTimer);
     };
   }, []);
 
