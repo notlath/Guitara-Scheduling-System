@@ -12,12 +12,57 @@ DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 # Security settings for production
 SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)
 
-# Allowed hosts from environment variable
-ALLOWED_HOSTS = (
-    os.environ.get("ALLOWED_HOSTS", "").split(",")
-    if os.environ.get("ALLOWED_HOSTS")
-    else ALLOWED_HOSTS
-)
+# Allowed hosts from environment variable - Railway deployment support
+RAILWAY_STATIC_URL = os.environ.get("RAILWAY_STATIC_URL", "")
+RAILWAY_PUBLIC_DOMAIN = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+
+ALLOWED_HOSTS = []
+if os.environ.get("ALLOWED_HOSTS"):
+    ALLOWED_HOSTS.extend(
+        [host.strip() for host in os.environ.get("ALLOWED_HOSTS", "").split(",") if host.strip()]
+    )
+
+# Add Railway domains automatically
+if RAILWAY_STATIC_URL:
+    # Extract domain from Railway static URL
+    import re
+    domain_match = re.search(r'https?://([^/]+)', RAILWAY_STATIC_URL)
+    if domain_match:
+        ALLOWED_HOSTS.append(domain_match.group(1))
+
+if RAILWAY_PUBLIC_DOMAIN:
+    ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
+
+# Add common Railway patterns
+ALLOWED_HOSTS.extend([
+    "*.up.railway.app",
+    "*.railway.app",
+    "127.0.0.1",
+    "localhost"
+])
+
+# Remove duplicates and empty strings
+ALLOWED_HOSTS = list(set([host for host in ALLOWED_HOSTS if host]))
+
+print(f"[PRODUCTION SETTINGS] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+
+# Database connection error handling
+try:
+    # Validate required database environment variables
+    required_db_vars = ["SUPABASE_DB_NAME", "SUPABASE_DB_USER", "SUPABASE_DB_PASSWORD", "SUPABASE_DB_HOST"]
+    missing_vars = [var for var in required_db_vars if not os.environ.get(var)]
+    
+    if missing_vars:
+        print(f"[ERROR] Missing required database environment variables: {missing_vars}")
+        print("[ERROR] Application will not be able to connect to database")
+    else:
+        print(f"[SUCCESS] All required database environment variables are present")
+        print(f"[DB CONFIG] Host: {os.environ.get('SUPABASE_DB_HOST')}")
+        print(f"[DB CONFIG] Database: {os.environ.get('SUPABASE_DB_NAME')}")
+        print(f"[DB CONFIG] User: {os.environ.get('SUPABASE_DB_USER')}")
+
+except Exception as e:
+    print(f"[ERROR] Database configuration error: {e}")
 
 # Database configuration for Docker
 DATABASES = {
@@ -29,12 +74,12 @@ DATABASES = {
         "HOST": os.environ.get("SUPABASE_DB_HOST"),
         "PORT": "5432",
         "OPTIONS": {
-            "connect_timeout": 10,
-            "application_name": "guitara_scheduling",
+            "connect_timeout": 30,
+            "application_name": "guitara_scheduling_railway",
         },
         "ATOMIC_REQUESTS": False,
         "CONN_HEALTH_CHECKS": True,
-        "CONN_MAX_AGE": 600,
+        "CONN_MAX_AGE": 300,  # Reduced for Railway
     }
 }
 

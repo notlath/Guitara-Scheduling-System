@@ -37,11 +37,14 @@ RUN mkdir -p /app/staticfiles /app/media
 WORKDIR /app/guitara
 
 # Set environment variables for production
-ENV DJANGO_SETTINGS_MODULE=guitara.settings
+ENV DJANGO_SETTINGS_MODULE=guitara.settings_production
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Create a non-root user
+# Create directories for static files and logs
+RUN mkdir -p /app/staticfiles /app/media /app/logs
+
+# Create a non-root user and set permissions
 RUN useradd --create-home --shell /bin/bash app \
     && chown -R app:app /app
 USER app
