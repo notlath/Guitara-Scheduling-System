@@ -40,7 +40,15 @@ if RAILWAY_PUBLIC_DOMAIN:
     ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
 
 # Add common Railway patterns
-ALLOWED_HOSTS.extend(["*.up.railway.app", "*.railway.app", "127.0.0.1", "localhost"])
+ALLOWED_HOSTS.extend(
+    [
+        "*.up.railway.app",
+        "*.railway.app",
+        "healthcheck.railway.app",  # Railway health check domain
+        "127.0.0.1",
+        "localhost",
+    ]
+)
 
 # Remove duplicates and empty strings
 ALLOWED_HOSTS = list(set([host for host in ALLOWED_HOSTS if host]))
