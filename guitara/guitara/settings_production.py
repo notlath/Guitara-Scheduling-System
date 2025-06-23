@@ -95,6 +95,31 @@ try:
         f"[ENV DEBUG] RAILWAY_ENVIRONMENT: {os.environ.get('RAILWAY_ENVIRONMENT', 'NOT SET')}"
     )
 
+    # Test database connection
+    try:
+        import psycopg2
+
+        print(f"[DB TEST] Testing connection to: {os.environ.get('SUPABASE_DB_HOST')}")
+
+        # Quick connection test
+        test_conn = psycopg2.connect(
+            host=os.environ.get("SUPABASE_DB_HOST"),
+            database=os.environ.get("SUPABASE_DB_NAME"),
+            user=os.environ.get("SUPABASE_DB_USER"),
+            password=os.environ.get("SUPABASE_DB_PASSWORD"),
+            port=5432,
+            sslmode="require",
+            connect_timeout=30,
+        )
+        test_conn.close()
+        print("[DB TEST] ✅ Database connection successful!")
+
+    except ImportError:
+        print("[DB TEST] ⚠️ psycopg2 not available for connection test")
+    except Exception as db_error:
+        print(f"[DB TEST] ❌ Database connection failed: {db_error}")
+        print(f"[DB TEST] Error type: {type(db_error).__name__}")
+
 except Exception as e:
     print(f"[ERROR] Configuration error: {e}")
 
@@ -108,12 +133,17 @@ DATABASES = {
         "HOST": os.environ.get("SUPABASE_DB_HOST"),
         "PORT": "5432",
         "OPTIONS": {
-            "connect_timeout": 30,
+            "connect_timeout": 60,  # Increased timeout
             "application_name": "guitara_scheduling_railway",
+            "sslmode": "require",  # Required for Supabase
+            "sslcert": None,
+            "sslkey": None,
+            "sslrootcert": None,
+            "options": "-c default_transaction_isolation=read_committed",
         },
         "ATOMIC_REQUESTS": False,
-        "CONN_HEALTH_CHECKS": True,
-        "CONN_MAX_AGE": 300,  # Reduced for Railway
+        "CONN_HEALTH_CHECKS": False,  # Disable for Railway deployment
+        "CONN_MAX_AGE": 0,  # Don't reuse connections to avoid timeout issues
     }
 }
 
