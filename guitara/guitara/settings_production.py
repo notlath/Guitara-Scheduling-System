@@ -71,6 +71,9 @@ try:
 
     # Debug environment variables
     print(f"[ENV DEBUG] REDIS_URL: {os.environ.get('REDIS_URL', 'NOT SET')[:50]}...")
+    print(f"[ENV DEBUG] SUPABASE_URL: {os.environ.get('SUPABASE_URL', 'NOT SET')[:50]}...")
+    print(f"[ENV DEBUG] SUPABASE_SERVICE_KEY: {'SET' if os.environ.get('SUPABASE_SERVICE_KEY') else 'NOT SET'}")
+    print(f"[ENV DEBUG] All SUPABASE vars: {[k for k in os.environ.keys() if 'SUPABASE' in k]}")
     print(
         f"[ENV DEBUG] CELERY_BROKER_URL: {os.environ.get('CELERY_BROKER_URL', 'NOT SET')[:50]}..."
     )
