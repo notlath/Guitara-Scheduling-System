@@ -25,6 +25,7 @@ from django.db import connection
 from django.core.cache import cache
 import logging
 import os
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -41,28 +42,35 @@ def health_check(request):
         # Check database connection
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
+        db_status = "connected"
 
         # Try cache if Redis is configured - don't fail if cache is unavailable
         cache_status = "not_configured"
         try:
-            cache.set("health_check", "ok", 10)
-            cache_status = cache.get("health_check", "error")
-            if cache_status == "ok":
-                cache_status = "connected"
+            if hasattr(settings, "REDIS_URL") and settings.REDIS_URL:
+                cache.set("health_check", "ok", 10)
+                cache_status = cache.get("health_check", "error")
+                if cache_status == "ok":
+                    cache_status = "connected"
+                else:
+                    cache_status = "available_but_failed"
+            else:
+                cache_status = "not_configured"
         except Exception as e:
-            cache_status = f"unavailable: {str(e)[:50]}"
-            logger.info(f"Cache not available (this is OK for Railway): {e}")
+            cache_status = "unavailable"
+            # Don't log this as an error since Redis is optional
+            pass
 
         # Check if we're running on Railway
         is_railway = bool(os.environ.get("RAILWAY_ENVIRONMENT"))
 
         response_data = {
             "status": "healthy",
-            "database": "connected",
+            "database": db_status,
             "cache": cache_status,
             "debug": settings.DEBUG,
-            "allowed_hosts": settings.ALLOWED_HOSTS[:3],  # Limit for security
             "environment": "railway" if is_railway else "other",
+            "timestamp": int(time.time()),
         }
 
         return JsonResponse(response_data, status=200)
@@ -72,8 +80,9 @@ def health_check(request):
         return JsonResponse(
             {
                 "status": "unhealthy",
-                "error": str(e)[:100],  # Truncate error message
+                "error": str(e)[:100],
                 "debug": settings.DEBUG,
+                "timestamp": int(time.time()),
             },
             status=503,
         )

@@ -69,8 +69,17 @@ try:
         print(f"[DB CONFIG] Database: {os.environ.get('SUPABASE_DB_NAME')}")
         print(f"[DB CONFIG] User: {os.environ.get('SUPABASE_DB_USER')}")
 
+    # Debug environment variables
+    print(f"[ENV DEBUG] REDIS_URL: {os.environ.get('REDIS_URL', 'NOT SET')[:50]}...")
+    print(
+        f"[ENV DEBUG] CELERY_BROKER_URL: {os.environ.get('CELERY_BROKER_URL', 'NOT SET')[:50]}..."
+    )
+    print(
+        f"[ENV DEBUG] RAILWAY_ENVIRONMENT: {os.environ.get('RAILWAY_ENVIRONMENT', 'NOT SET')}"
+    )
+
 except Exception as e:
-    print(f"[ERROR] Database configuration error: {e}")
+    print(f"[ERROR] Configuration error: {e}")
 
 # Database configuration for Docker
 DATABASES = {
@@ -91,20 +100,31 @@ DATABASES = {
     }
 }
 
-# Redis configuration for Docker
+# Redis configuration for Railway
 REDIS_URL = os.environ.get("REDIS_URL", None)
 
 # Channels layer configuration with Redis fallback
 if REDIS_URL:
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [REDIS_URL],
+    try:
+        CHANNEL_LAYERS = {
+            "default": {
+                "BACKEND": "channels_redis.core.RedisChannelLayer",
+                "CONFIG": {
+                    "hosts": [REDIS_URL],
+                    "capacity": 1500,
+                    "expiry": 60,
+                },
             },
-        },
-    }
-    print(f"[PRODUCTION SETTINGS] Using Redis for channels: {REDIS_URL}")
+        }
+        print(f"[PRODUCTION SETTINGS] Using Redis for channels: {REDIS_URL[:20]}...")
+    except Exception as e:
+        print(f"[WARNING] Redis configuration failed: {e}")
+        CHANNEL_LAYERS = {
+            "default": {
+                "BACKEND": "channels.layers.InMemoryChannelLayer",
+            },
+        }
+        print("[PRODUCTION SETTINGS] Falling back to in-memory channel layer")
 else:
     # Fallback to in-memory channel layer for Railway deployment
     CHANNEL_LAYERS = {
@@ -114,17 +134,30 @@ else:
     }
     print("[PRODUCTION SETTINGS] Using in-memory channel layer (Redis not available)")
 
-# Celery configuration for Docker with Redis fallback
+# Celery configuration for Railway with Redis fallback
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
-if not CELERY_BROKER_URL:
+if CELERY_BROKER_URL:
+    try:
+        CELERY_RESULT_BACKEND = "django-db"
+        CELERY_CACHE_BACKEND = "django-cache"
+        CELERY_ACCEPT_CONTENT = ["application/json"]
+        CELERY_TASK_SERIALIZER = "json"
+        CELERY_RESULT_SERIALIZER = "json"
+        CELERY_TIMEZONE = "UTC"
+        CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+        CELERY_BROKER_CONNECTION_RETRY = True
+        CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
+        print(f"[PRODUCTION SETTINGS] Celery broker: {CELERY_BROKER_URL[:20]}...")
+    except Exception as e:
+        print(f"[WARNING] Celery configuration failed: {e}")
+        CELERY_TASK_ALWAYS_EAGER = True
+        CELERY_TASK_EAGER_PROPAGATES = True
+        print("[PRODUCTION SETTINGS] Celery running in eager mode (broker failed)")
+else:
     # Disable Celery if no Redis/broker available
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
     print("[PRODUCTION SETTINGS] Celery running in eager mode (no broker available)")
-else:
-    CELERY_RESULT_BACKEND = "django-db"
-    CELERY_CACHE_BACKEND = "django-cache"
-    print(f"[PRODUCTION SETTINGS] Celery broker: {CELERY_BROKER_URL}")
 
 # Static files configuration for production
 STATIC_ROOT = "/app/staticfiles"
