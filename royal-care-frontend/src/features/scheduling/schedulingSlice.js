@@ -12,7 +12,7 @@ import { getToken } from "../../utils/tokenManager";
 // API URL based on environment
 const API_URL =
   import.meta.env.MODE === "production"
-    ? "/api/scheduling/"
+    ? `${import.meta.env.VITE_API_BASE_URL}/scheduling/`
     : "http://localhost:8000/api/scheduling/";
 
 // Fallback services data
@@ -832,15 +832,16 @@ export const fetchAvailableDrivers = createAsyncThunk(
     // Validate cross-day times to prevent backend errors
     if (isCrossDay) {
       const endHour = parseInt(end_time.split(":")[0]);
-      
+
       // Prevent problematic cross-day times that cause backend errors
       if (endHour > 12 && endHour < 18) {
-        console.error(
-          "fetchAvailableDrivers: Invalid cross-day time range",
-          { start_time, end_time }
-        );
+        console.error("fetchAvailableDrivers: Invalid cross-day time range", {
+          start_time,
+          end_time,
+        });
         return rejectWithValue({
-          error: "Invalid cross-day time range. Cross-day availability should end in early morning hours (01:00-06:00).",
+          error:
+            "Invalid cross-day time range. Cross-day availability should end in early morning hours (01:00-06:00).",
         });
       }
     }
@@ -872,12 +873,16 @@ export const fetchAvailableDrivers = createAsyncThunk(
       );
 
       // Handle specific backend errors related to cross-day availability
-      if (error.response?.status === 500 && error.response?.data?.includes?.("UnboundLocalError")) {
+      if (
+        error.response?.status === 500 &&
+        error.response?.data?.includes?.("UnboundLocalError")
+      ) {
         console.error(
           "Backend error detected: Cross-day availability handling failed"
         );
         return rejectWithValue({
-          error: "Cross-day availability processing failed. Please try a different time range or contact support.",
+          error:
+            "Cross-day availability processing failed. Please try a different time range or contact support.",
         });
       }
 

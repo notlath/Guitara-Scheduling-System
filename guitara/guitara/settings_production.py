@@ -193,7 +193,7 @@ if not DEBUG:
 
 # CORS settings for production
 CORS_ALLOWED_ORIGINS = [
-    "https://your-vercel-app.vercel.app",  # Replace with your actual Vercel URL
+    "https://guitara-scheduling-system.vercel.app",  # Replace with your actual Vercel URL
     "https://your-custom-domain.com",  # If you have a custom domain
     "http://localhost:3000",  # Keep for local development
     "http://localhost:5173",  # Vite dev server

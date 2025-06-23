@@ -3,7 +3,7 @@ import { getToken } from "../utils/tokenManager";
 
 // Create the base Axios instance
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api",
   headers: {
     "Content-Type": "application/json",
   },

@@ -83,3 +83,10 @@ print(f"[ASGI] Application type: {type(application)}")
 print(
     f"[ASGI] Available protocols: {list(application.application_mapping.keys()) if hasattr(application, 'application_mapping') else 'Unknown'}"
 )
+
+# Additional startup verification
+import sys
+
+print(f"[ASGI] Python version: {sys.version}")
+print(f"[ASGI] Django settings module: {os.environ.get('DJANGO_SETTINGS_MODULE')}")
+print(f"[ASGI] ✅ ASGI application ready for Railway deployment")
