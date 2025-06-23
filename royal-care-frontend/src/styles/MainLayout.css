@@ -38,7 +38,7 @@
   text-decoration: none;
   color: var(--text);
   padding: var(--spacing-xm) var(--spacing-sm);
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: var(--font-size-base);
   font-family: "Plus Jakarta Sans", sans-serif;
   font-weight: 400;
@@ -108,6 +108,8 @@
   pointer-events: none;
   transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: normal;
+  word-break: break-word;
 }
 
 .sublinks.open a {
@@ -190,6 +192,8 @@
   min-width: 0;
   gap: 0.5em;
   align-items: center;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .dropdown-icon {
@@ -384,7 +388,7 @@
     max-width: 340px;
     height: 100vh;
     box-shadow: -2px 0 12px rgba(0, 0, 0, 0.08);
-    padding: var(--spacing-mxs) var(--spacing-mm);
+    padding: var(--spacing-mm) var(--spacing-mm);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
