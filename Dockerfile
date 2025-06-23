@@ -52,9 +52,9 @@ USER app
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/ || exit 1
+# Health check - Railway will handle this via the JSON config
+# HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+#     CMD curl -f http://localhost:8000/ || exit 1
 
 # Default command - using exec form with bash
 CMD ["bash", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && exec daphne -b 0.0.0.0 -p ${PORT:-8000} guitara.asgi:application"]

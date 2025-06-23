@@ -65,6 +65,9 @@ Dockerfile*
 docker-compose*.yml
 .dockerignore
 
+# Railway
+railway.toml
+
 # Environment files
 .env
 .env.*
