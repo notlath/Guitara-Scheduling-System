@@ -37,15 +37,22 @@ const MainLayout = () => {
   );
 
   useEffect(() => {
+    let resizeTimer;
     const handleResize = () => {
-      const desktop = window.innerWidth > 768;
-      setIsDesktop(desktop);
-      setMobileMenuOpen(desktop);
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const desktop = window.innerWidth > 768;
+        setIsDesktop(desktop);
+        setMobileMenuOpen(desktop);
+      }, 150);
     };
     window.addEventListener("resize", handleResize);
     // Set initial state
     handleResize();
-    return () => window.removeEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      clearTimeout(resizeTimer);
+    };
   }, []);
 
   const isTherapistOrDriver =
@@ -286,8 +293,8 @@ const MainLayout = () => {
                     Profile
                   </NavLink>
                   {/* Help Section with Sublinks */}
-                  <a
-                    href="#"
+                  <button
+                    type="button"
                     className="sidebar-sublink-parent"
                     onClick={toggleHelpSublinks}
                   >
@@ -302,7 +309,7 @@ const MainLayout = () => {
                     >
                       <MdKeyboardArrowDown className="main-layout__dropdown-arrow" />
                     </span>
-                  </a>
+                  </button>
                   <div className={`sublinks${showHelpSublinks ? " open" : ""}`}>
                     <NavLink
                       to="/dashboard/help/user-guide"
@@ -333,8 +340,8 @@ const MainLayout = () => {
                     </NavLink>
                   </div>
                   {/* About Section with Sublinks */}
-                  <a
-                    href="#"
+                  <button
+                    type="button"
                     className="sidebar-sublink-parent"
                     onClick={toggleAboutSublinks}
                   >
@@ -349,7 +356,7 @@ const MainLayout = () => {
                     >
                       <MdKeyboardArrowDown className="main-layout__dropdown-arrow" />
                     </span>
-                  </a>
+                  </button>
                   <div
                     className={`sublinks${showAboutSublinks ? " open" : ""}`}
                   >

@@ -393,3 +393,31 @@
     height: 2rem;
   } */
 /* } */
+
+.sidebar-sublink-parent {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background 0.2s;
+  justify-content: space-between;
+  width: 100%;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font: inherit;
+  padding: var(--spacing-xm) var(--spacing-sm);
+}
+
+/* .sidebar-sublink-parent:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+} */
+
+.sidebar-sublink-parent:hover,
+.sidebar-sublink-parent.active-link {
+  background: var(--background-100);
+  /* color: var(--primary); */
+}
