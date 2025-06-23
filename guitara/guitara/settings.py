@@ -126,11 +126,12 @@ import environ
 env = environ.Env()
 
 # Explicitly specify the path to the .env file
-env_file = BASE_DIR / ".env"
+env_file = Path(__file__).resolve().parent.parent / ".env"
 if env_file.exists():
     environ.Env.read_env(env_file)
 else:
-    raise ImproperlyConfigured(f"Environment file not found at {env_file}")
+    # Don't raise error if running in Railway/production, just rely on os.environ
+    pass
 
 DATABASES = {
     "default": {
