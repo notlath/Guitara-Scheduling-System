@@ -7,10 +7,10 @@ class InventoryItem(models.Model):
     current_stock = models.PositiveIntegerField(default=0)
     min_stock = models.PositiveIntegerField(default=0)
     unit = models.CharField(max_length=50)
-    supplier = models.CharField(max_length=255)
     cost_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
     last_restocked = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
+    size_per_unit = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Size per unit in ml or g, if applicable")
     
     def __str__(self):
         return self.name
