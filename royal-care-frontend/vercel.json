@@ -4,7 +4,6 @@
   "installCommand": "npm install --legacy-peer-deps",
   "framework": "vite",
   "regions": ["iad1"],
-  "functions": {},
   "routes": [
     {
       "src": "/assets/(.*)",
