@@ -504,6 +504,17 @@ const Calendar = ({
 
               // Extract client names and status info for the day
               const clientInfo = dayAppointments
+                .filter(
+                  (appointment) =>
+                    appointment.status === "pending" ||
+                    appointment.status === "confirmed" ||
+                    appointment.status === "in_progress" ||
+                    appointment.status === "journey" ||
+                    appointment.status === "journey_started" ||
+                    appointment.status === "arrived" ||
+                    appointment.status === "dropped_off" ||
+                    appointment.status === "session_in_progress"
+                ) // Add any other "active" statuses you want to show
                 .map((appointment) => ({
                   name: `${appointment.client_details?.first_name || ""} ${
                     appointment.client_details?.last_name || ""
@@ -599,13 +610,13 @@ const Calendar = ({
                     currentMonth.getFullYear() === selectedDate.getFullYear()
                       ? "selected-day"
                       : ""
-                  } ${hasAppointments ? "appointment-day" : ""} ${
+                  } ${hasAppointments && !isPastDay ? "appointment-day" : ""} ${
                     isToday ? "today" : ""
                   } ${isPastDay ? "past-day" : ""}`}
                   onClick={() => handleDateClick(day)}
                 >
                   {/* Client labels - show only for therapist/driver dashboards */}
-                  {showClientLabels && clientInfo.length > 0 && (
+                  {showClientLabels && clientInfo.length > 0 && !isPastDay && (
                     <div className="client-labels">
                       {clientInfo.slice(0, 2).map((info, index) => (
                         <span
