@@ -55,10 +55,12 @@ const fetchAppointmentsAPI = async () => {
 
     console.log("✅ Direct API: Appointments fetched successfully", {
       status: response.status,
-      count: response.data?.length || 0,
+      count: Array.isArray(response.data) ? response.data.length : response.data?.count || 0,
       dataType: typeof response.data,
       isArray: Array.isArray(response.data),
-      sampleData: response.data?.slice(0, 2),
+      sampleData: Array.isArray(response.data) 
+        ? response.data.slice(0, 2) 
+        : response.data?.results?.slice(0, 2) || [],
     });
 
     console.log("📦 API appointments response (full):", response.data);
@@ -483,22 +485,40 @@ export const useOperatorDashboardData = () => {
       lastUpdated: new Date().toISOString(),
     }),
     [
-      // Only depend on actual data and essential states
+      // Essential data
       appointmentsQuery.data,
       todayAppointmentsQuery.data,
       upcomingAppointmentsQuery.data,
       notificationsQuery.data,
       attendanceQuery.data,
+      // Loading states
       appointmentsQuery.isLoading,
       todayAppointmentsQuery.isLoading,
       upcomingAppointmentsQuery.isLoading,
       notificationsQuery.isLoading,
       attendanceQuery.isLoading,
+      // Error states
       appointmentsQuery.error,
       todayAppointmentsQuery.error,
       upcomingAppointmentsQuery.error,
       notificationsQuery.error,
       attendanceQuery.error,
+      // Additional states required by the component
+      appointmentsQuery.isError,
+      appointmentsQuery.isFetching,
+      appointmentsQuery.isRefetching,
+      appointmentsQuery.dataUpdatedAt,
+      todayAppointmentsQuery.isError,
+      todayAppointmentsQuery.isFetching,
+      todayAppointmentsQuery.isRefetching,
+      todayAppointmentsQuery.dataUpdatedAt,
+      notificationsQuery.isError,
+      notificationsQuery.isFetching,
+      notificationsQuery.isRefetching,
+      notificationsQuery.dataUpdatedAt,
+      upcomingAppointmentsQuery.isRefetching,
+      attendanceQuery.isRefetching,
+      // Functions
       forceRefresh,
       refreshAppointments,
       refreshNotifications,
