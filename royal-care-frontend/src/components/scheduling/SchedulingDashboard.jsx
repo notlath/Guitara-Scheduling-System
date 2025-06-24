@@ -14,6 +14,7 @@ import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
 import "../../globals/TabSwitcher.css";
 import "../../styles/SchedulingDashboard.css";
+import APIErrorDisplay from "../common/APIErrorDisplay";
 import ErrorBoundary from "../common/ErrorBoundary";
 // Legacy forms (comment out when ready)
 // import AppointmentForm from "./AppointmentForm";
@@ -362,13 +363,7 @@ const SchedulingDashboard = () => {
             />
           </div>
         )}
-        {error && (
-          <div className="error-message">
-            {typeof error === "object"
-              ? error.message || error.error || JSON.stringify(error)
-              : error}
-          </div>
-        )}
+        {error && <APIErrorDisplay error={error} onRetry={forceRefresh} />}
         {/* Display notifications panel when visible */}
         {isNotificationVisible && (
           <div className="notifications-panel">

@@ -16,7 +16,52 @@ import AvailabilityManager from "./components/scheduling/AvailabilityManager";
 import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
 // Initialize service worker error suppression early
 import "./utils/serviceWorkerErrorSuppression";
-// Import performance optimization services
+// Add browser extension error suppression
+const suppressBrowserExtensionErrors = () => {
+  // Store original console methods
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+
+  // List of browser extension error patterns to suppress
+  const extensionErrorPatterns = [
+    /Unchecked runtime\.lastError/,
+    /extension port is moved into back\/forward cache/,
+    /No tab with id:/,
+    /Frame with ID .* was removed/,
+    /Duplicate script ID/,
+    /Failed to start the connection.*Failed to fetch/,
+    /WebSocket closed with status code: 1006/,
+    /background\.js.*Error/,
+  ];
+
+  // Override console.error to filter out extension errors
+  console.error = (...args) => {
+    const message = args.join(" ");
+    const isExtensionError = extensionErrorPatterns.some((pattern) =>
+      pattern.test(message)
+    );
+
+    if (!isExtensionError) {
+      originalConsoleError.apply(console, args);
+    }
+  };
+
+  // Override console.warn for similar patterns
+  console.warn = (...args) => {
+    const message = args.join(" ");
+    const isExtensionWarning = extensionErrorPatterns.some((pattern) =>
+      pattern.test(message)
+    );
+
+    if (!isExtensionWarning) {
+      originalConsoleWarn.apply(console, args);
+    }
+  };
+};
+
+// Initialize error suppression
+suppressBrowserExtensionErrors();
+
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
 import CompanyInfoPage from "./pages/AboutPages/CompanyInfoPage";
 import DeveloperInfoPage from "./pages/AboutPages/DeveloperInfoPage";

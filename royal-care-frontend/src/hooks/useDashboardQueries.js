@@ -12,6 +12,12 @@ import { useDispatch } from "react-redux";
 import { fetchAttendanceRecords } from "../features/attendance/attendanceSlice";
 import { updateAppointmentStatus } from "../features/scheduling/schedulingSlice";
 import { queryKeys } from "../lib/queryClient";
+import {
+  createAdBlockerFriendlyConfig,
+  getUserFriendlyErrorMessage,
+  isBlockedByClient,
+  isNetworkError,
+} from "../utils/apiRequestUtils";
 
 // API URL based on environment - ensure consistent URL handling
 const getBaseURL = () => {
@@ -39,11 +45,13 @@ const fetchAppointmentsAPI = async () => {
   });
 
   try {
-    const response = await axios.get(`${API_URL}appointments/`, {
+    const config = createAdBlockerFriendlyConfig({
       headers: {
         Authorization: `Token ${token}`,
       },
     });
+
+    const response = await axios.get(`${API_URL}appointments/`, config);
 
     console.log("✅ Direct API: Appointments fetched successfully", {
       status: response.status,
@@ -70,21 +78,33 @@ const fetchAppointmentsAPI = async () => {
     }
   } catch (error) {
     console.error("❌ fetchAppointmentsAPI error:", error);
+
+    // Enhance error with classification
+    error.isBlockedByClient = isBlockedByClient(error);
+    error.isNetworkError = isNetworkError(error);
+    error.userFriendlyMessage = getUserFriendlyErrorMessage(error);
+
     console.error("❌ Error details:", {
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,
       isNetworkError: error.isNetworkError,
       isBlockedByClient: error.isBlockedByClient,
-      isServerError: error.isServerError,
-      isParsingError: error.isParsingError,
       userFriendlyMessage: error.userFriendlyMessage,
     });
 
-    // Use the user-friendly error message if available
-    const errorMessage =
-      error.userFriendlyMessage || error.errorMessage || error.message;
-    throw new Error(errorMessage);
+    // Special handling for ad blocker issues
+    if (error.isBlockedByClient) {
+      console.warn(
+        "🚫 Request blocked by browser/extension - this is likely an ad blocker issue"
+      );
+      console.warn(
+        "💡 Suggestion: Check Brave Shields or other ad blocker settings"
+      );
+    }
+
+    // Use the user-friendly error message
+    throw new Error(error.userFriendlyMessage);
   }
 };
 
@@ -96,11 +116,13 @@ const fetchTodayAppointmentsAPI = async () => {
 
   try {
     console.log("🔄 Direct API: Fetching today appointments...");
-    const response = await axios.get(`${API_URL}appointments/today/`, {
+    const config = createAdBlockerFriendlyConfig({
       headers: {
         Authorization: `Token ${token}`,
       },
     });
+
+    const response = await axios.get(`${API_URL}appointments/today/`, config);
 
     console.log("✅ Direct API: Today appointments fetched", {
       count: response.data?.length || 0,
@@ -110,10 +132,12 @@ const fetchTodayAppointmentsAPI = async () => {
   } catch (error) {
     console.error("❌ fetchTodayAppointmentsAPI error:", error);
 
-    // Use the user-friendly error message if available
-    const errorMessage =
-      error.userFriendlyMessage || error.errorMessage || error.message;
-    throw new Error(errorMessage);
+    // Enhance error with classification
+    error.isBlockedByClient = isBlockedByClient(error);
+    error.isNetworkError = isNetworkError(error);
+    error.userFriendlyMessage = getUserFriendlyErrorMessage(error);
+
+    throw new Error(error.userFriendlyMessage);
   }
 };
 
