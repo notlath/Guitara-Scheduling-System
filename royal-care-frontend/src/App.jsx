@@ -124,7 +124,7 @@ const App = () => {
   useEffect(() => {
     // Clean up any invalid tokens on app startup
     cleanupInvalidTokens();
-    
+
     // Check if user data exists in localStorage and validate the token
     const checkStoredAuth = async () => {
       const storedUser = localStorage.getItem("user");

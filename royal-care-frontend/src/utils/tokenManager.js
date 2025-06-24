@@ -14,12 +14,14 @@ export const TOKEN_KEY = "knoxToken";
  * @returns {boolean} True if the token is valid
  */
 const isValidToken = (token) => {
-  return token && 
-         token !== "undefined" && 
-         token !== "null" && 
-         token.trim() !== "" &&
-         token !== "undefined" &&
-         typeof token === "string";
+  return (
+    token &&
+    token !== "undefined" &&
+    token !== "null" &&
+    token.trim() !== "" &&
+    token !== "undefined" &&
+    typeof token === "string"
+  );
 };
 
 /**
@@ -111,15 +113,15 @@ export const getAuthHeaders = () => {
 export const cleanupInvalidTokens = () => {
   const keys = [TOKEN_KEY, "token", "authToken"];
   let cleaned = false;
-  
-  keys.forEach(key => {
+
+  keys.forEach((key) => {
     const value = localStorage.getItem(key);
     if (value && !isValidToken(value)) {
       localStorage.removeItem(key);
       cleaned = true;
     }
   });
-  
+
   if (cleaned) {
     console.log("🧹 Cleaned up invalid tokens from localStorage");
   }
@@ -140,7 +142,7 @@ export const debugTokenStatus = () => {
         knoxToken: localStorage.getItem(TOKEN_KEY),
         token: localStorage.getItem("token"),
         authToken: localStorage.getItem("authToken"),
-      }
+      },
     });
   }
 };
