@@ -279,15 +279,7 @@
   .imageSide {
     display: none;
   }
-  .formContainer {
-    /* padding: var(--spacing-ml); */
-    max-width: 400px;
-    border-radius: var(--border-radius);
-    /* border: 1px solid var(--border-color); */
-    /* margin: 0 100px; */
-    width: auto;
-    max-width: min(400px, calc(100vw - 100px));
-  }
+
   .formSide {
     flex: 1 1 auto;
     min-height: 100vh;
