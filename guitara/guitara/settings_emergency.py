@@ -13,6 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security settings
 SECRET_KEY = os.environ.get("SECRET_KEY", "railway-emergency-key-change-in-production")
 DEBUG = False  # Always False for Railway
+APPEND_SLASH = True  # ✅ ADDED: Ensure proper slash handling
 
 # Ultra-minimal ALLOWED_HOSTS
 ALLOWED_HOSTS = [
@@ -52,7 +53,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",  # ✅ ADDED: Must be first
     "django.middleware.security.SecurityMiddleware",
-    "django.middleware.common.CommonMiddleware",
+    "django.middleware.common.CommonMiddleware",  # ✅ This handles APPEND_SLASH
 ]
 
 # ✅ ADDED: CORS settings for your Vercel frontend

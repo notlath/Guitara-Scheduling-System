@@ -7,7 +7,7 @@
   "deploy": {
     "healthcheckPath": "/health/",
     "healthcheckTimeout": 60,
-    "startCommand": "python railway_emergency_start.py",
+    "startCommand": "cd guitara && python railway_emergency_fix.py",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 2
   }
