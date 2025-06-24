@@ -10,8 +10,19 @@ from django_filters.rest_framework import (
 )
 from django.db import models
 from django.db.models import Q, F, Prefetch
-from datetime import datetime
-from .models import Client, Availability, Appointment, Notification
+from datetime import datetime, timedelta, date
+from .models import (
+    Client,
+    Availability,
+    Appointment,
+    Notification,
+    AppointmentRejection,
+)
+from .pagination import (
+    AppointmentsPagination,
+    StandardResultsPagination,
+    NotificationsPagination,
+)
 import logging
 
 # Set up logger
@@ -59,15 +70,22 @@ from asgiref.sync import async_to_sync
 
 class ClientViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for viewing and editing client information
+    ViewSet for viewing and editing client information with pagination
     """
 
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    pagination_class = StandardResultsPagination
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
     filterset_fields = ["first_name", "last_name", "phone_number"]
     search_fields = ["first_name", "last_name", "phone_number", "email", "address"]
+    ordering_fields = ["first_name", "last_name", "created_at"]
+    ordering = ["last_name", "first_name"]
 
 
 class AvailabilityFilter(FilterSet):
@@ -85,13 +103,16 @@ class AvailabilityFilter(FilterSet):
 
 class AvailabilityViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing therapist and driver availability
+    ViewSet for managing therapist and driver availability with pagination
     """
 
     serializer_class = AvailabilitySerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
+    pagination_class = StandardResultsPagination
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = AvailabilityFilter
+    ordering_fields = ["date", "start_time", "end_time", "created_at"]
+    ordering = ["-date", "start_time"]
 
     def get_queryset(self):
         user = self.request.user
@@ -674,12 +695,17 @@ class AppointmentFilter(FilterSet):
 
 class AppointmentViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing appointments/bookings
+    ViewSet for managing appointments/bookings with server-side pagination
     """
 
     serializer_class = AppointmentSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    pagination_class = AppointmentsPagination
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
     filterset_class = AppointmentFilter
     search_fields = [
         "client__first_name",
@@ -687,6 +713,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         "client__phone_number",
         "location",
     ]
+    ordering_fields = ["created_at", "appointment_date", "status"]
+    ordering = ["-created_at"]  # Default ordering
 
     def get_queryset(self):
         from django.db.models import Q, Prefetch
@@ -2381,6 +2409,93 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             }
         )
 
+    # Custom paginated endpoints for different appointment views
+    @action(detail=False, methods=["get"])
+    def rejected(self, request):
+        """Get rejected appointments with pagination"""
+        queryset = self.filter_queryset(self.get_queryset().filter(status="rejected"))
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def pending(self, request):
+        """Get pending appointments with pagination"""
+        queryset = self.filter_queryset(self.get_queryset().filter(status="pending"))
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def timeout(self, request):
+        """Get timeout appointments with pagination"""
+        from django.utils import timezone
+
+        # Appointments that are pending for more than 24 hours
+        timeout_threshold = timezone.now() - timedelta(hours=24)
+        queryset = self.filter_queryset(
+            self.get_queryset().filter(
+                status="pending", created_at__lt=timeout_threshold
+            )
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def awaiting_payment(self, request):
+        """Get appointments awaiting payment with pagination"""
+        queryset = self.filter_queryset(
+            self.get_queryset().filter(status="awaiting_payment")
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def active_sessions(self, request):
+        """Get active session appointments with pagination"""
+        queryset = self.filter_queryset(
+            self.get_queryset().filter(status="in_progress")
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def pickup_requests(self, request):
+        """Get appointments with pickup requests with pagination"""
+        queryset = self.filter_queryset(
+            self.get_queryset().filter(pickup_requested=True)
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class StaffViewSet(viewsets.ModelViewSet):
     """
@@ -2468,17 +2583,21 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
 class NotificationViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing notifications - OPTIMIZED
+    ViewSet for managing notifications with server-side pagination
     """
 
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
+    pagination_class = NotificationsPagination
+    filter_backends = [
+        filters.SearchFilter,
+        DjangoFilterBackend,
+        filters.OrderingFilter,
+    ]
     search_fields = ["message", "notification_type"]
     filterset_fields = ["is_read", "notification_type"]
-
-    # OPTIMIZATION: Add pagination to prevent large result sets
-    pagination_class = None  # Will use default pagination from settings
+    ordering_fields = ["created_at", "is_read"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         """Return notifications for the current user with role-based filtering - OPTIMIZED"""
