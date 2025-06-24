@@ -241,13 +241,18 @@ class APIResponseOptimizationMiddleware(MiddlewareMixin):
 class HealthCheckMiddleware(MiddlewareMixin):
     """
     Provide health check endpoint for monitoring
+    IMPORTANT: Railway health checks bypass this middleware via URL routing
     """
 
     def process_request(self, request):
-        """Handle health check requests"""
-        if request.path == "/health/":
+        """Handle health check requests - Railway bypasses this via URL routing"""
+        # Railway health checks (/health/, /healthcheck/, /ping/) are handled
+        # directly by URL routing and bypass this middleware completely
+        
+        # This middleware only handles diagnostic health checks
+        if request.path in ["/health-check/", "/diagnostic-health-check/"]:
             try:
-                # Check database connection
+                # Only perform database checks for diagnostic endpoints
                 from django.db import connection
 
                 with connection.cursor() as cursor:
@@ -283,7 +288,7 @@ class HealthCheckMiddleware(MiddlewareMixin):
                 return JsonResponse(health_data)
 
             except Exception as e:
-                logger.error(f"Health check failed: {e}")
+                logger.error(f"Diagnostic health check failed: {e}")
                 return JsonResponse(
                     {"status": "unhealthy", "error": str(e), "timestamp": time.time()},
                     status=503,

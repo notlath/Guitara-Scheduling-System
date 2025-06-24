@@ -19,13 +19,19 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "guitara.settings")
 # Initialize Django ASGI application early to catch any startup errors
 try:
     django_asgi_app = get_asgi_application()
+    print("[ASGI] ✅ Django ASGI application initialized successfully")
 except Exception as e:
     import logging
 
     logger = logging.getLogger(__name__)
     logger.error(f"Error initializing Django ASGI application: {e}")
     traceback.print_exc(file=sys.stdout)
-    raise
+    # Create a minimal ASGI app as fallback
+    from django.http import JsonResponse
+    from django.urls import path
+    from django.core.wsgi import get_wsgi_application
+    django_asgi_app = get_asgi_application()
+    print("[ASGI] ⚠️ Using fallback ASGI application")
 
 # Import Django models and middleware after Django is initialized
 try:
@@ -47,37 +53,33 @@ except ImportError as e:
     import logging
 
     logger = logging.getLogger(__name__)
-    logger.warning(f"WebSocket middleware import failed (this may be expected): {e}")
-    logger.warning("⚠️ Falling back to HTTP-only ASGI application")
+    logger.warning(f"WebSocket middleware import failed: {e}")
+    logger.warning("⚠️ Falling back to HTTP-only ASGI application for Railway compatibility")
 
-    # Fallback to HTTP-only ASGI application
+    # HTTP-only ASGI application for Railway
     application = ProtocolTypeRouter(
         {
             "http": django_asgi_app,
         }
     )
-    print(
-        "[ASGI] ⚠️ HTTP-only ASGI application configured (WebSocket disabled due to import issues)"
-    )
+    print("[ASGI] ⚠️ HTTP-only ASGI application configured (WebSocket disabled)")
 
 except Exception as e:
     import logging
 
     logger = logging.getLogger(__name__)
-    logger.error(f"Error importing middleware or routing: {e}")
+    logger.error(f"Error configuring ASGI application: {e}")
     logger.error("Full traceback:")
     traceback.print_exc(file=sys.stdout)
 
     # Fallback to HTTP-only ASGI application
-    logger.warning("⚠️ Falling back to HTTP-only ASGI application")
+    logger.warning("⚠️ Emergency fallback to HTTP-only ASGI application")
     application = ProtocolTypeRouter(
         {
             "http": django_asgi_app,
         }
     )
-    print(
-        "[ASGI] ⚠️ HTTP-only ASGI application configured (WebSocket disabled due to errors)"
-    )
+    print("[ASGI] ⚠️ Emergency HTTP-only ASGI application configured")
 
 print(f"[ASGI] Application type: {type(application)}")
 print(

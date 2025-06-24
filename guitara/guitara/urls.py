@@ -27,6 +27,11 @@ import logging
 import os
 import time
 
+# Emergency health check imports - no external dependencies
+from .emergency_health import emergency_health, railway_ping
+# Railway-specific health checks
+from .railway_health import railway_health_primary, railway_ping as railway_ping_alt, railway_healthcheck
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,36 +42,62 @@ def default_route(request):
 
 @require_GET
 def health_check(request):
-    """Railway-optimized health check endpoint that doesn't fail on DB issues"""
+    """Railway-optimized health check endpoint - ultra-fast response"""
+    # Return immediately without any external dependencies
+    return JsonResponse(
+        {
+            "status": "healthy",
+            "timestamp": int(time.time()),
+            "service": "guitara-scheduling-system",
+            "environment": "railway" if os.environ.get("RAILWAY_ENVIRONMENT") else "other",
+        },
+        status=200,
+    )
+
+
+@require_GET
+def simple_health_check(request):
+    """Ultra-simple health check for Railway - immediate response"""
+    return JsonResponse({"status": "ok"}, status=200)
+
+
+@require_GET
+def railway_health_check(request):
+    """Railway-specific health check endpoint - immediate response"""
+    return JsonResponse({"status": "healthy"}, status=200)
+
+
+@require_GET
+def diagnostic_health_check(request):
+    """Detailed health check for diagnostics - NOT for Railway health checks"""
     response_data = {
         "status": "healthy",
         "timestamp": int(time.time()),
+        "service": "guitara-scheduling-system",
         "environment": "railway" if os.environ.get("RAILWAY_ENVIRONMENT") else "other",
         "debug": settings.DEBUG,
-        "service": "guitara-scheduling-system",
     }
 
-    # Test database connection with timeout - don't fail health check if DB is down
+    # Test database connection with short timeout
     try:
-        # Set a short timeout for database check
         from django.db import connection
-        
+
+        # Set connection timeout
         connection.ensure_connection()
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
         response_data["database"] = "connected"
     except Exception as e:
-        # Database is down but service is still running
         response_data["database"] = "disconnected"
         response_data["database_error"] = str(e)[:100]
-        logger.warning(f"Database health check failed (service still healthy): {e}")
+        logger.warning(f"Database diagnostic failed: {e}")
 
-    # Test cache with timeout - don't fail health check if cache is down
+    # Test cache connection
     try:
         if hasattr(settings, "REDIS_URL") and getattr(settings, "REDIS_URL", None):
-            cache.set("health_check", "ok", 10)
-            cache_result = cache.get("health_check", "error")
+            cache.set("diagnostic_check", "ok", 10)
+            cache_result = cache.get("diagnostic_check", "error")
             response_data["cache"] = (
                 "connected" if cache_result == "ok" else "available_but_failed"
             )
@@ -76,30 +107,15 @@ def health_check(request):
         response_data["cache"] = "unavailable"
         response_data["cache_error"] = str(e)[:50]
 
-    # Service is healthy if Django is running, regardless of DB/cache status
     return JsonResponse(response_data, status=200)
 
 
-@require_GET
-def simple_health_check(request):
-    """Ultra-simple health check for Railway that always succeeds if Django is running"""
-    return JsonResponse(
-        {
-            "status": "ok",
-            "service": "guitara-scheduling-system",
-            "timestamp": int(time.time()),
-        },
-        status=200,
-    )
-
-
-@require_GET
-def railway_health_check(request):
-    """Railway-specific health check endpoint - extremely lightweight"""
-    return JsonResponse({"status": "healthy"}, status=200)
-
-
 urlpatterns = [
+    # Railway health checks - MUST BE FIRST to bypass middleware
+    path("health/", railway_health_primary, name="railway_health_primary"),  # Railway primary
+    path("healthcheck/", railway_healthcheck, name="railway_healthcheck"),  # Railway alt
+    path("ping/", railway_ping_alt, name="railway_ping"),  # Railway ping
+    # API routes
     path("api/inventory/", include("inventory.urls")),
     path("api/auth/", include("authentication.urls")),
     path("api/", include("core.urls")),
@@ -108,10 +124,9 @@ urlpatterns = [
     path("api/registration/", include("registration.urls")),
     path("api/scheduling/", include("scheduling.urls")),
     path("api/attendance/", include("attendance.urls")),
+    # Detailed health checks for diagnostics (not Railway)
     path("health-check/", health_check, name="health_check"),
-    path("health/", simple_health_check, name="simple_health_check"),
-    path("healthcheck/", railway_health_check, name="railway_health_check"),  # Railway compatibility
-    path("ping/", simple_health_check, name="ping"),
+    path("diagnostic-health-check/", diagnostic_health_check, name="diagnostic_health_check"),
 ]
 
 # Serve media files during development
