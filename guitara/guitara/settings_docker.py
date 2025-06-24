@@ -42,11 +42,11 @@ DATABASES = {
 # Redis configuration for Docker
 REDIS_URL = os.environ.get(
     "REDIS_URL",
-    "redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062",
+    "redis://localhost:6379/0",  # Default fallback for local development
 )
 CELERY_BROKER_URL = os.environ.get(
     "CELERY_BROKER_URL",
-    "redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062",
+    "redis://localhost:6379/0",  # Default fallback for local development
 )
 
 # Channel layers for Docker
