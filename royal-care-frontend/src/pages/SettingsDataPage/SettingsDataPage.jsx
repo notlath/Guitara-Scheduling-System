@@ -16,6 +16,7 @@ import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
 import useSettingsData from "../../hooks/useSettingsData";
 import {
+  api,
   checkUsernameAvailable,
   registerClient,
   registerDriver,
@@ -29,14 +30,6 @@ import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import styles from "./SettingsDataPage.module.css";
-
-// Consistent API URL handling
-const getAPIBaseURL = () => {
-  if (import.meta.env.PROD) {
-    return "https://charismatic-appreciation-production.up.railway.app/api";
-  }
-  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
-};
 
 const TABS = [
   "Therapists",
@@ -123,191 +116,162 @@ const DEFAULT_PAGE_SIZE = 10;
 // Add fetch functions for each tab - Updated to use proper data endpoints
 const fetchers = {
   Therapists: async (page = 1) => {
-    const token = localStorage.getItem("knoxToken");
-    const res = await fetch(
-      `${getAPIBaseURL()}/registration/register/therapist/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
-      {
-        headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    const items = Array.isArray(data) ? data : data.results || [];
-    return items.map((item) => ({
-      Username: item.username,
-      Name: `${capitalizeName(item.first_name) || ""} ${
-        capitalizeName(item.last_name) || ""
-      }`.trim(),
-      Email: item.email,
-      Contact: item.phone_number || "-",
-      Specialization: item.specialization || "-",
-      Pressure: item.pressure
-        ? item.pressure.charAt(0).toUpperCase() + item.pressure.slice(1)
-        : "-",
-    }));
-  },
-  Drivers: async (page = 1) => {
-    const token = localStorage.getItem("knoxToken");
-    const res = await fetch(
-      `${getAPIBaseURL()}/registration/register/driver/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
-      {
-        headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    const items = Array.isArray(data) ? data : data.results || [];
-    return items.map((item) => ({
-      Username: item.username,
-      Name: `${capitalizeName(item.first_name) || ""} ${
-        capitalizeName(item.last_name) || ""
-      }`.trim(),
-      Email: item.email,
-      Contact: item.phone_number || "-",
-      Specialization: item.motorcycle_plate || "N/A",
-      Pressure: "N/A",
-    }));
-  },
-  Operators: async (page = 1) => {
-    const token = localStorage.getItem("knoxToken");
-    const res = await fetch(
-      `${getAPIBaseURL()}/registration/register/operator/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
-      {
-        headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (!res.ok) {
-      console.error(
-        `Failed to fetch operators: ${res.status} ${res.statusText}`
+    try {
+      const res = await api.get(
+        `/registration/register/therapist/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
       );
+      const data = res.data;
+      const items = Array.isArray(data) ? data : data.results || [];
+      return items.map((item) => ({
+        Username: item.username,
+        Name: `${capitalizeName(item.first_name) || ""} ${
+          capitalizeName(item.last_name) || ""
+        }`.trim(),
+        Email: item.email,
+        Contact: item.phone_number || "-",
+        Specialization: item.specialization || "-",
+        Pressure: item.pressure
+          ? item.pressure.charAt(0).toUpperCase() + item.pressure.slice(1)
+          : "-",
+      }));
+    } catch (error) {
+      console.error("Error fetching therapists:", error);
       return [];
     }
-
-    const data = await res.json();
-    const items = Array.isArray(data) ? data : data.results || data.data || [];
-
-    return items.map((item) => {
-      // Safely handle name construction
-      const firstName = capitalizeName(item.first_name || "");
-      const lastName = capitalizeName(item.last_name || "");
-      const fullName =
-        [firstName, lastName].filter(Boolean).join(" ") || "Unknown";
-
-      return {
-        Username: item.username || "N/A",
-        Name: fullName,
-        Email: item.email || "N/A",
-        Contact: item.phone_number || "N/A", // This field might not exist
-        Specialization: "N/A",
+  },
+  Drivers: async (page = 1) => {
+    try {
+      const res = await api.get(
+        `/registration/register/driver/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
+      );
+      const data = res.data;
+      const items = Array.isArray(data) ? data : data.results || [];
+      return items.map((item) => ({
+        Username: item.username,
+        Name: `${capitalizeName(item.first_name) || ""} ${
+          capitalizeName(item.last_name) || ""
+        }`.trim(),
+        Email: item.email,
+        Contact: item.phone_number || "-",
+        Specialization: item.motorcycle_plate || "N/A",
         Pressure: "N/A",
-      };
-    });
+      }));
+    } catch (error) {
+      console.error("Error fetching drivers:", error);
+      return [];
+    }
+  },
+  Operators: async (page = 1) => {
+    try {
+      const res = await api.get(
+        `/registration/register/operator/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
+      );
+      const data = res.data;
+      const items = Array.isArray(data)
+        ? data
+        : data.results || data.data || [];
+
+      return items.map((item) => {
+        // Safely handle name construction
+        const firstName = capitalizeName(item.first_name || "");
+        const lastName = capitalizeName(item.last_name || "");
+        const fullName =
+          [firstName, lastName].filter(Boolean).join(" ") || "Unknown";
+
+        return {
+          Username: item.username || "N/A",
+          Name: fullName,
+          Email: item.email || "N/A",
+          Contact: item.phone_number || "N/A", // This field might not exist
+          Specialization: "N/A",
+          Pressure: "N/A",
+        };
+      });
+    } catch (error) {
+      console.error("Error fetching operators:", error);
+      return [];
+    }
   },
   Clients: async (page = 1) => {
-    const token = localStorage.getItem("knoxToken");
-    const res = await fetch(
-      `${getAPIBaseURL()}/registration/register/client/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
-      {
-        headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    const items = Array.isArray(data) ? data : data.results || [];
-    return items.map((item) => ({
-      Name: capitalizeName(item.Name) || "-",
-      Email: item.Email || "-",
-      Address: item.Address || "-",
-      Contact: item.Contact || "-",
-      Notes: item.Notes || "-",
-    }));
+    try {
+      const res = await api.get(
+        `/registration/register/client/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
+      );
+      const data = res.data;
+      const items = Array.isArray(data) ? data : data.results || [];
+      return items.map((item) => ({
+        Name: capitalizeName(item.Name) || "-",
+        Email: item.Email || "-",
+        Address: item.Address || "-",
+        Contact: item.Contact || "-",
+        Notes: item.Notes || "-",
+      }));
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      return [];
+    }
   },
   Services: async (page = 1) => {
-    const token = localStorage.getItem("knoxToken");
-    const res = await fetch(
-      `${getAPIBaseURL()}/registration/register/service/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
-      {
-        headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    const items = Array.isArray(data) ? data : data.results || [];
+    try {
+      const res = await api.get(
+        `/registration/register/service/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
+      );
+      const data = res.data;
+      const items = Array.isArray(data) ? data : data.results || [];
 
-    // Debug: Log the raw response
-    console.log("🔍 Services Response:", data);
+      return items.map((item) => {
+        // Handle both Supabase and Django formats
+        let materials = "-";
 
-    return items.map((item) => {
-      // Debug: Log each item's materials
-      console.log(`🔍 ${item.name} materials:`, item.materials);
+        if (Array.isArray(item.materials) && item.materials.length > 0) {
+          materials = item.materials
+            .map((mat) => {
+              // Handle both object format { name: "..." } and string format
+              if (typeof mat === "object" && mat.name) {
+                return mat.name;
+              } else if (typeof mat === "string") {
+                return mat;
+              }
+              return null;
+            })
+            .filter(Boolean)
+            .join(", ");
+        }
 
-      // Handle both Supabase and Django formats
-      let materials = "-";
-
-      if (Array.isArray(item.materials) && item.materials.length > 0) {
-        materials = item.materials
-          .map((mat) => {
-            // Handle both object format { name: "..." } and string format
-            if (typeof mat === "object" && mat.name) {
-              return mat.name;
-            } else if (typeof mat === "string") {
-              return mat;
-            }
-            return null;
-          })
-          .filter(Boolean)
-          .join(", ");
-      }
-
-      return {
-        Name: item.name,
-        Description: item.description || "-",
-        Duration:
-          item.duration !== undefined && item.duration !== null
-            ? `${item.duration} min`
-            : "-",
-        Price:
-          item.price !== undefined && item.price !== null
-            ? `₱${item.price}`
-            : "-",
-        Materials: materials,
-      };
-    });
+        return {
+          Name: item.name,
+          Description: item.description || "-",
+          Duration:
+            item.duration !== undefined && item.duration !== null
+              ? `${item.duration} min`
+              : "-",
+          Price:
+            item.price !== undefined && item.price !== null
+              ? `₱${item.price}`
+              : "-",
+          Materials: materials,
+        };
+      });
+    } catch (error) {
+      console.error("Error fetching services:", error);
+      return [];
+    }
   },
   Materials: async (page = 1) => {
-    const token = localStorage.getItem("knoxToken");
-    const res = await fetch(
-      `${getAPIBaseURL()}/registration/register/material/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
-      {
-        headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    const items = Array.isArray(data) ? data : data.results || [];
-    return items.map((item) => ({
-      Name: item.name,
-      Description: item.description || "-",
-    }));
+    try {
+      const res = await api.get(
+        `/registration/register/material/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
+      );
+      const data = res.data;
+      const items = Array.isArray(data) ? data : data.results || [];
+      return items.map((item) => ({
+        Name: item.name,
+        Description: item.description || "-",
+      }));
+    } catch (error) {
+      console.error("Error fetching materials:", error);
+      return [];
+    }
   },
 };
 
@@ -1263,16 +1227,33 @@ const SettingsDataPage = () => {
           const nextPage = tabPages[activeTab] + 1;
           const fetcher = fetchers[activeTab];
           if (!fetcher) return;
-          const newData = await fetcher(nextPage);
-          setTabHasMore((prev) => ({
-            ...prev,
-            [activeTab]: newData.length === DEFAULT_PAGE_SIZE,
-          }));
-          setTabPages((prev) => ({ ...prev, [activeTab]: nextPage }));
-          setTableData((prev) => ({
-            ...prev,
-            [activeTab]: [...(prev[activeTab] || []), ...newData],
-          }));
+
+          try {
+            const newData = await fetcher(nextPage);
+            if (Array.isArray(newData) && newData.length > 0) {
+              setTabHasMore((prev) => ({
+                ...prev,
+                [activeTab]: newData.length === DEFAULT_PAGE_SIZE,
+              }));
+              setTabPages((prev) => ({ ...prev, [activeTab]: nextPage }));
+              setTableData((prev) => ({
+                ...prev,
+                [activeTab]: [...(prev[activeTab] || []), ...newData],
+              }));
+            } else {
+              // No more data available
+              setTabHasMore((prev) => ({
+                ...prev,
+                [activeTab]: false,
+              }));
+            }
+          } catch (error) {
+            console.error(`Error loading more ${activeTab} data:`, error);
+            setTabHasMore((prev) => ({
+              ...prev,
+              [activeTab]: false,
+            }));
+          }
         }
       }, 150); // 150ms debounce
     };
