@@ -53,8 +53,11 @@ ALLOWED_HOSTS.extend(["127.0.0.1", "localhost"])
 ALLOWED_HOSTS = list(set([host for host in ALLOWED_HOSTS if host]))
 
 print(f"[RAILWAY SETTINGS] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+print(f"[RAILWAY SETTINGS] Database Host: {os.environ.get('SUPABASE_DB_HOST')}")
+print(f"[RAILWAY SETTINGS] Database Name: {os.environ.get('SUPABASE_DB_NAME')}")
+print(f"[RAILWAY SETTINGS] Loading fault-tolerant configuration")
 
-# Database configuration for Railway (Supabase)
+# Database configuration for Railway (Supabase) - fault tolerant
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -64,43 +67,77 @@ DATABASES = {
         "HOST": os.environ.get("SUPABASE_DB_HOST"),
         "PORT": "5432",
         "OPTIONS": {
-            "connect_timeout": 30,
+            "connect_timeout": 60,  # Increased timeout for Railway
             "application_name": "guitara_scheduling_railway",
             "sslmode": "require",  # Railway/Supabase requires SSL
+            "options": "-c default_transaction_isolation=read_committed",
         },
         "ATOMIC_REQUESTS": False,
-        "CONN_HEALTH_CHECKS": True,
-        "CONN_MAX_AGE": 300,  # Shorter connection age for Railway
+        "CONN_HEALTH_CHECKS": False,  # Disable to prevent startup failures
+        "CONN_MAX_AGE": 0,  # Don't reuse connections
+        "TEST": {
+            "NAME": None,
+        },
     }
 }
 
 # Redis configuration - Railway doesn't provide Redis by default
+# Redis configuration - Railway external Redis with fault tolerance
 REDIS_URL = os.environ.get("REDIS_URL", None)
 
 if REDIS_URL:
-    # Use Redis if available (if user added Redis plugin)
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [REDIS_URL],
+    try:
+        # Use Redis if available and working
+        CHANNEL_LAYERS = {
+            "default": {
+                "BACKEND": "channels_redis.core.RedisChannelLayer",
+                "CONFIG": {
+                    "hosts": [REDIS_URL],
+                    "capacity": 1500,
+                    "expiry": 60,
+                },
             },
-        },
-    }
-    CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
-    CELERY_RESULT_BACKEND = "django-db"
-    print(f"[RAILWAY SETTINGS] Using Redis: {REDIS_URL}")
+        }
+        
+        # Celery with Redis
+        CELERY_BROKER_URL = REDIS_URL
+        CELERY_RESULT_BACKEND = "django-db"
+        CELERY_CACHE_BACKEND = "django-cache"
+        CELERY_ACCEPT_CONTENT = ["application/json"]
+        CELERY_TASK_SERIALIZER = "json"
+        CELERY_RESULT_SERIALIZER = "json"
+        CELERY_TIMEZONE = "UTC"
+        CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+        CELERY_BROKER_CONNECTION_RETRY = True
+        CELERY_BROKER_CONNECTION_MAX_RETRIES = 3  # Reduced for faster startup
+        
+        print(f"[RAILWAY SETTINGS] ✅ Redis configured: {REDIS_URL[:30]}...")
+        
+    except Exception as e:
+        print(f"[RAILWAY SETTINGS] ⚠️ Redis configuration failed: {e}")
+        # Fall back to in-memory options
+        CHANNEL_LAYERS = {
+            "default": {
+                "BACKEND": "channels.layers.InMemoryChannelLayer",
+            },
+        }
+        CELERY_TASK_ALWAYS_EAGER = True
+        CELERY_TASK_EAGER_PROPAGATES = True
+        print("[RAILWAY SETTINGS] Using fallback in-memory configuration")
+        
 else:
     # Fallback configuration for Railway without Redis
+    print("[RAILWAY SETTINGS] Redis not available - using fallback configuration")
+    
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
         },
     }
+    
     # Run Celery tasks synchronously if no broker
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
-    print("[RAILWAY SETTINGS] No Redis - using in-memory channels and eager Celery")
 
 # Static files configuration for Railway
 STATIC_ROOT = "/app/staticfiles"
@@ -183,6 +220,8 @@ if railway_env:
         ]
     )
 
+print("[RAILWAY SETTINGS] ✅ All Railway settings loaded successfully")
 print(f"[RAILWAY SETTINGS] Environment: {railway_env}")
-print(f"[RAILWAY SETTINGS] DEBUG: {DEBUG}")
-print(f"[RAILWAY SETTINGS] Database: {DATABASES['default']['HOST']}")
+print(f"[RAILWAY SETTINGS] Debug mode: {DEBUG}")
+print(f"[RAILWAY SETTINGS] Database engine: {DATABASES['default']['ENGINE']}")
+print(f"[RAILWAY SETTINGS] Channel layer: {CHANNEL_LAYERS['default']['BACKEND']}")

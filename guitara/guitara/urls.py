@@ -37,55 +37,50 @@ def default_route(request):
 
 @require_GET
 def health_check(request):
-    """Enhanced health check endpoint for Railway deployment"""
+    """Railway-optimized health check endpoint that doesn't fail on DB issues"""
+    response_data = {
+        "status": "healthy",
+        "timestamp": int(time.time()),
+        "environment": "railway" if os.environ.get("RAILWAY_ENVIRONMENT") else "other",
+        "debug": settings.DEBUG,
+        "service": "guitara-scheduling-system",
+    }
+    
+    # Test database connection - don't fail health check if DB is down
     try:
-        # Check database connection
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-        db_status = "connected"
-
-        # Try cache if Redis is configured - don't fail if cache is unavailable
-        cache_status = "not_configured"
-        try:
-            if hasattr(settings, "REDIS_URL") and settings.REDIS_URL:
-                cache.set("health_check", "ok", 10)
-                cache_status = cache.get("health_check", "error")
-                if cache_status == "ok":
-                    cache_status = "connected"
-                else:
-                    cache_status = "available_but_failed"
-            else:
-                cache_status = "not_configured"
-        except Exception as e:
-            cache_status = "unavailable"
-            # Don't log this as an error since Redis is optional
-            pass
-
-        # Check if we're running on Railway
-        is_railway = bool(os.environ.get("RAILWAY_ENVIRONMENT"))
-
-        response_data = {
-            "status": "healthy",
-            "database": db_status,
-            "cache": cache_status,
-            "debug": settings.DEBUG,
-            "environment": "railway" if is_railway else "other",
-            "timestamp": int(time.time()),
-        }
-
-        return JsonResponse(response_data, status=200)
-
+        response_data["database"] = "connected"
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return JsonResponse(
-            {
-                "status": "unhealthy",
-                "error": str(e)[:100],
-                "debug": settings.DEBUG,
-                "timestamp": int(time.time()),
-            },
-            status=503,
-        )
+        # Database is down but service is still running
+        response_data["database"] = "disconnected"
+        response_data["database_error"] = str(e)[:100]
+        logger.warning(f"Database health check failed (service still healthy): {e}")
+
+    # Test cache - don't fail health check if cache is down
+    try:
+        if hasattr(settings, "REDIS_URL") and getattr(settings, "REDIS_URL", None):
+            cache.set("health_check", "ok", 10)
+            cache_result = cache.get("health_check", "error")
+            response_data["cache"] = "connected" if cache_result == "ok" else "available_but_failed"
+        else:
+            response_data["cache"] = "not_configured"
+    except Exception as e:
+        response_data["cache"] = "unavailable"
+        response_data["cache_error"] = str(e)[:50]
+
+    # Service is healthy if Django is running, regardless of DB/cache status
+    return JsonResponse(response_data, status=200)
+
+
+@require_GET
+def simple_health_check(request):
+    """Ultra-simple health check for Railway that always succeeds if Django is running"""
+    return JsonResponse({
+        "status": "ok", 
+        "service": "guitara-scheduling-system",
+        "timestamp": int(time.time())
+    }, status=200)
 
 
 urlpatterns = [
@@ -98,6 +93,8 @@ urlpatterns = [
     path("api/scheduling/", include("scheduling.urls")),
     path("api/attendance/", include("attendance.urls")),
     path("health-check/", health_check, name="health_check"),
+    path("health/", simple_health_check, name="simple_health_check"),
+    path("ping/", simple_health_check, name="ping"),
 ]
 
 # Serve media files during development

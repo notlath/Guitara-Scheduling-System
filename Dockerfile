@@ -56,5 +56,5 @@ EXPOSE 8000
 # HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 #     CMD curl -f http://localhost:8000/ || exit 1
 
-# Default command - using exec form with bash
-CMD ["bash", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && exec daphne -b 0.0.0.0 -p ${PORT:-8000} guitara.asgi:application"]
+# Default command - using ultra-simple startup script
+CMD ["python", "simple_startup.py"]
