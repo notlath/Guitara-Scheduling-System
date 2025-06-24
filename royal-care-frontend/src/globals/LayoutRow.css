@@ -2,9 +2,6 @@
 
 .global-container {
   padding: var(--spacing-xl) var(--spacing-xl);
-  /* margin: 64px auto; */
-  /* max-width: 1100px; */
-  /* min-height: 100vh; */
 }
 
 .global-content {
@@ -32,9 +29,6 @@
 
 @media (max-width: 768px) {
   .global-container {
-    /* max-width: 100%; */
-    /* padding: 0 16px;
-    margin: 16px auto; */
     padding: var(--spacing-ml) var(--spacing-ml);
   }
 }
