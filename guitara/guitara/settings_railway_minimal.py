@@ -177,6 +177,7 @@ CORS_ALLOW_ALL_ORIGINS = True  # For Railway health checks
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "https://charismatic-appreciation-production.up.railway.app",
+    "https://guitara-scheduling-system.vercel.app",  # Add Vercel frontend domain
     "http://localhost:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3000",
@@ -204,6 +205,19 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
 ]
+
+# Allow common HTTP methods
+CORS_ALLOWED_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+# Additional CORS settings for API
+CORS_PREFLIGHT_MAX_AGE = 86400  # Cache preflight for 24 hours
 
 print(f"[ULTRA-MINIMAL RAILWAY] CORS Origins: {CORS_ALLOWED_ORIGINS}")
 
