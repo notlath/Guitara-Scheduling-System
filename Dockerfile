@@ -36,8 +36,8 @@ RUN mkdir -p /app/staticfiles /app/media
 # Set working directory to Django project
 WORKDIR /app/guitara
 
-# Set environment variables for Railway - force minimal settings
-ENV DJANGO_SETTINGS_MODULE=guitara.settings_railway_minimal
+# Set environment variables for Railway - use production settings
+ENV DJANGO_SETTINGS_MODULE=guitara.settings_production
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
@@ -59,5 +59,5 @@ EXPOSE 8000
 # Change to the guitara directory where the startup script is
 WORKDIR /app/guitara
 
-# Default command - using ultra-simple emergency startup
-CMD ["python", "railway_emergency_start.py"]
+# Default command - use production startup with database support
+CMD ["python", "railway_production_start.py"]

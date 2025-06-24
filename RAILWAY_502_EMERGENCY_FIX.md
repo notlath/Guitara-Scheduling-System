@@ -1,17 +1,20 @@
 # Railway 502 Error Fix - Emergency Deployment Guide
 
 ## Issue Diagnosis
+
 You're getting a 502 Bad Gateway error, which means Railway's proxy can't reach your Django app. This typically happens when:
 
 1. **App fails to start** - Crashes during startup
-2. **Wrong port binding** - App not listening on Railway's PORT 
+2. **Wrong port binding** - App not listening on Railway's PORT
 3. **Startup timeout** - Takes too long to become ready
 4. **Health check fails** - `/health/` endpoint not responding
 
 ## Emergency Fix Applied
 
 ### 1. Ultra-Simple Startup Script
+
 Created `guitara/railway_emergency_start.py` that:
+
 - ✅ Uses emergency Django settings (no database dependency)
 - ✅ Binds to `0.0.0.0:$PORT` (Railway requirement)
 - ✅ Includes proxy headers support
@@ -19,6 +22,7 @@ Created `guitara/railway_emergency_start.py` that:
 - ✅ Quick Django setup test before starting server
 
 ### 2. Updated Dockerfile
+
 ```dockerfile
 # Change to the guitara directory where the startup script is
 WORKDIR /app/guitara
@@ -28,6 +32,7 @@ CMD ["python", "railway_emergency_start.py"]
 ```
 
 ### 3. Updated railway.json
+
 ```json
 {
   "deploy": {
@@ -50,14 +55,16 @@ CMD ["python", "railway_emergency_start.py"]
 ## What to Look For in Railway Logs
 
 **✅ Good signs:**
+
 ```
 🆘 ULTRA-SIMPLE RAILWAY EMERGENCY START
 PORT: 8000
-✅ Django setup successful  
+✅ Django setup successful
 🚀 Executing daphne server...
 ```
 
 **❌ Bad signs:**
+
 ```
 ❌ Django setup failed: [error]
 💥 Server failed: [error]
@@ -66,6 +73,7 @@ PORT: 8000
 ## Emergency Settings Features
 
 Your emergency mode provides:
+
 - `/health/` - Health check (200 OK always)
 - `/` - Root endpoint (basic info)
 - `/health/minimal/` - Minimal health check
@@ -76,6 +84,7 @@ Your emergency mode provides:
 ## Testing Locally
 
 Test the exact Railway setup locally:
+
 ```bash
 cd guitara
 PORT=8000 python railway_emergency_start.py
@@ -93,6 +102,7 @@ Then test: `http://localhost:8000/health/`
 ## Fallback Options
 
 If this still doesn't work:
+
 1. Try even simpler `gunicorn` instead of `daphne`
 2. Use Railway's Nixpacks builder instead of Dockerfile
 3. Consider different deployment platform (Heroku, Render)

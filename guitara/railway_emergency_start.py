@@ -26,6 +26,7 @@ print(f"🔧 Django settings: {os.environ['DJANGO_SETTINGS_MODULE']}")
 try:
     print("🧪 Quick Django setup test...")
     import django
+
     django.setup()
     print("✅ Django setup successful")
 except Exception as e:
@@ -35,27 +36,31 @@ except Exception as e:
 # Get port from Railway
 port = os.environ.get("PORT", "8000")
 
+
 def main():
     """Start emergency server immediately"""
     print(f"\n🆘 Starting emergency server on 0.0.0.0:{port}")
     print("🔧 Server will bind to all interfaces (0.0.0.0)")
-    
+
     # Build daphne command
     cmd = [
         sys.executable,
-        "-m", 
+        "-m",
         "daphne",
-        "-b", "0.0.0.0",    # Bind to all interfaces for Railway
-        "-p", port,         # Use Railway's PORT
+        "-b",
+        "0.0.0.0",  # Bind to all interfaces for Railway
+        "-p",
+        port,  # Use Railway's PORT
         "--proxy-headers",  # Handle Railway's proxy headers
-        "-v", "2",          # Verbose logging
-        "guitara.asgi_emergency:application"
+        "-v",
+        "2",  # Verbose logging
+        "guitara.asgi_emergency:application",
     ]
-    
+
     print(f"Command: {' '.join(cmd)}")
     print("🚀 Executing daphne server...")
     print("📡 Server should be accessible from Railway proxy...")
-    
+
     # Run daphne - this will block until the server stops
     try:
         subprocess.run(cmd, check=True)
@@ -64,8 +69,10 @@ def main():
     except Exception as e:
         print(f"💥 Server failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
