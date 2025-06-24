@@ -9,10 +9,12 @@ let fido2ScriptLoaded = false;
 /**
  * Safely loads the FIDO2 authentication script only once
  * @param {string} scriptId - The ID to assign to the script tag
+ * @param {string} scriptSrc - The source URL of the script to load
  * @returns {Promise} - Resolves when the script is loaded or if already loaded
  */
 export const loadFido2Script = (
-  scriptId = "fido2-page-script-registration"
+  scriptId = "fido2-page-script-registration",
+  scriptSrc = null
 ) => {
   return new Promise((resolve, reject) => {
     // If script is already loaded, resolve immediately
@@ -31,10 +33,20 @@ export const loadFido2Script = (
       return;
     }
 
-    // Create new script element with a unique ID
-    const uniqueId = `${scriptId}-${Date.now()}`;
+    // If no script source is provided, just resolve (no-op)
+    if (!scriptSrc) {
+      console.log("No FIDO2 script source provided, marking as loaded");
+      fido2ScriptLoaded = true;
+      resolve();
+      return;
+    }
+
+    // Create new script element with a unique ID to prevent duplicates
+    const uniqueId = `${scriptId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const script = document.createElement("script");
     script.id = uniqueId;
+    script.src = scriptSrc;
+    script.type = "text/javascript";
 
     // Set success and error handlers
     script.onload = () => {
@@ -45,6 +57,7 @@ export const loadFido2Script = (
 
     script.onerror = (error) => {
       console.error("Error loading FIDO2 script:", error);
+      fido2ScriptLoaded = false; // Reset on error
       reject(error);
     };
 

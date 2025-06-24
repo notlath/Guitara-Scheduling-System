@@ -55,9 +55,19 @@ const ProfilePage = () => {
             profile_photo_url: profileData.profile_photo_url,
           };
           localStorage.setItem("user", JSON.stringify(updatedUser));
+        } else if (response.status === 401) {
+          console.warn("Authentication failed while fetching profile - token may be expired");
+          // Don't log out here, just fail silently for profile photo fetch
+        } else {
+          console.warn(`Profile fetch failed with status: ${response.status}`);
         }
       } catch (error) {
-        console.error("Failed to fetch user profile:", error);
+        // Only log error if it's not a parsing error from server being offline
+        if (!error.message?.includes("JSON") && !error.message?.includes("Unexpected token")) {
+          console.error("Failed to fetch user profile:", error);
+        } else {
+          console.warn("Profile fetch failed - server may be offline, using cached data");
+        }
       }
     };
 

@@ -70,8 +70,16 @@ const fetchAppointmentsAPI = async () => {
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,
+      isNetworkError: error.isNetworkError,
+      isBlockedByClient: error.isBlockedByClient,
+      isServerError: error.isServerError,
+      isParsingError: error.isParsingError,
+      userFriendlyMessage: error.userFriendlyMessage,
     });
-    throw error;
+
+    // Use the user-friendly error message if available
+    const errorMessage = error.userFriendlyMessage || error.errorMessage || error.message;
+    throw new Error(errorMessage);
   }
 };
 
@@ -81,18 +89,26 @@ const fetchTodayAppointmentsAPI = async () => {
     throw new Error("Authentication required");
   }
 
-  console.log("🔄 Direct API: Fetching today appointments...");
-  const response = await axios.get(`${API_URL}appointments/today/`, {
-    headers: {
-      Authorization: `Token ${token}`,
-    },
-  });
+  try {
+    console.log("🔄 Direct API: Fetching today appointments...");
+    const response = await axios.get(`${API_URL}appointments/today/`, {
+      headers: {
+        Authorization: `Token ${token}`,
+      },
+    });
 
-  console.log("✅ Direct API: Today appointments fetched", {
-    count: response.data?.length || 0,
-  });
+    console.log("✅ Direct API: Today appointments fetched", {
+      count: response.data?.length || 0,
+    });
 
-  return response.data || [];
+    return response.data || [];
+  } catch (error) {
+    console.error("❌ fetchTodayAppointmentsAPI error:", error);
+    
+    // Use the user-friendly error message if available
+    const errorMessage = error.userFriendlyMessage || error.errorMessage || error.message;
+    throw new Error(errorMessage);
+  }
 };
 
 const fetchNotificationsAPI = async () => {

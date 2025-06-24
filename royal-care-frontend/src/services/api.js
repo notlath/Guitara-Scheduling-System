@@ -1,13 +1,20 @@
 import axios from "axios";
 import { getToken } from "../utils/tokenManager";
+import { 
+  createAdBlockerFriendlyConfig, 
+  isBlockedByClient, 
+  isNetworkError, 
+  isHTMLResponse,
+  getUserFriendlyErrorMessage 
+} from "../utils/apiRequestUtils";
 
-// Create the base Axios instance
-export const api = axios.create({
+// Create the base Axios instance with ad-blocker friendly configuration
+export const api = axios.create(createAdBlockerFriendlyConfig({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api",
   headers: {
     "Content-Type": "application/json",
   },
-});
+}));
 
 // Import sanitization utilities
 import { sanitizeFormInput } from "../utils/formSanitization";
@@ -106,8 +113,22 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Use utility functions for better error classification
+    const isBlocked = isBlockedByClient(error);
+    const isNetwork = isNetworkError(error);
+    const isHTML = isHTMLResponse(error);
+    const userFriendlyMessage = getUserFriendlyErrorMessage(error);
+
     // Handle response errors
     if (error.response) {
+      // Check if response is HTML instead of JSON
+      if (isHTML) {
+        console.error("API returned HTML instead of JSON - server may be offline or returning error page");
+        error.errorMessage = userFriendlyMessage;
+        error.isServerError = true;
+        return Promise.reject(error);
+      }
+
       // Extract the most useful error message
       let errorMessage = "An unknown error occurred";
 
@@ -139,13 +160,18 @@ api.interceptors.response.use(
           status: error.response.status,
           data: error.response.data,
           message: errorMessage,
+          userFriendlyMessage,
+          isBlocked,
+          isNetwork,
+          isHTML,
           headers: error.response.headers,
           token: localStorage.getItem("knoxToken") ? "Present" : "Missing",
         }
       );
 
-      // Attach the extracted error message to the error object for easy access
+      // Attach both technical and user-friendly error messages
       error.errorMessage = errorMessage;
+      error.userFriendlyMessage = userFriendlyMessage;
 
       // Handle specific error status codes
       switch (error.response.status) {
@@ -162,16 +188,37 @@ api.interceptors.response.use(
             errorMessage
           );
           break;
+        case 500:
+        case 502:
+        case 503:
+        case 504:
+          console.warn("Server error - API may be offline or experiencing issues");
+          error.isServerError = true;
+          break;
       }
     } else if (error.request) {
       // Request made but no response received
-      console.error("No response received:", error.request);
-      error.errorMessage =
-        "No response from server - please check your connection";
+      if (isBlocked) {
+        console.warn("Request blocked by ad blocker or browser extension");
+        error.errorMessage = userFriendlyMessage;
+        error.isBlockedByClient = true;
+      } else if (isNetwork) {
+        console.error("Network error - no response received:", error.request);
+        error.errorMessage = userFriendlyMessage;
+        error.isNetworkError = true;
+      } else {
+        console.error("No response received:", error.request);
+        error.errorMessage = "No response from server - please check your connection";
+      }
     } else {
       // Something else caused the error
       console.error("Error setting up request:", error.message);
-      error.errorMessage = "Error connecting to server";
+      error.errorMessage = userFriendlyMessage;
+      
+      // Handle JSON parsing errors specifically
+      if (error.message?.includes("JSON") || error.name === "SyntaxError") {
+        error.isParsingError = true;
+      }
     }
 
     return Promise.reject(error);

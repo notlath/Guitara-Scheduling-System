@@ -124,8 +124,33 @@ const SettingsAccountPage = () => {
       } catch (error) {
         console.error("Failed to load user profile:", error);
 
-        // Handle authentication errors
+        // Handle different types of errors
         if (error.response?.status === 401) {
+          localStorage.removeItem("knoxToken");
+          localStorage.removeItem("user");
+          window.location.href = "/login";
+          return;
+        }
+
+        // Handle JSON parsing errors (HTML responses)
+        if (error.message?.includes("Unexpected token") || 
+            error.message?.includes("JSON") ||
+            error.name === "SyntaxError") {
+          console.warn("API returned HTML instead of JSON - likely server error or API offline");
+          // Don't redirect to login for server errors, just use cached data
+          return;
+        }
+
+        // Handle network errors
+        if (error.code === "ERR_NETWORK" || error.message?.includes("fetch")) {
+          console.warn("Network error - API may be offline");
+          // Don't redirect to login for network errors
+          return;
+        }
+
+        // Only redirect for actual auth errors
+        if (error.response?.status === 403) {
+          console.warn("Access forbidden - redirecting to login");
           localStorage.removeItem("knoxToken");
           localStorage.removeItem("user");
           window.location.href = "/login";
