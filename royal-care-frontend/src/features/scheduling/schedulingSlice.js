@@ -108,12 +108,33 @@ export const fetchAppointments = createAsyncThunk(
         },
       });
 
+      // Ensure we have valid data before logging success
+      const data = response.data;
+      if (data === undefined || data === null) {
+        console.warn("⚠️ fetchAppointments: API returned undefined/null data");
+        return [];
+      }
+
+      // Handle both array and paginated responses
+      let appointments = [];
+      if (Array.isArray(data)) {
+        appointments = data;
+      } else if (data && Array.isArray(data.results)) {
+        appointments = data.results;
+      } else {
+        console.warn(
+          "⚠️ fetchAppointments: API returned unexpected data structure:",
+          data
+        );
+        appointments = [];
+      }
+
       console.log(
         "✅ fetchAppointments: Success, received",
-        response.data.length,
+        appointments.length,
         "appointments"
       );
-      return response.data;
+      return appointments;
     } catch (error) {
       console.error("❌ fetchAppointments: API Error", {
         status: error.response?.status,
@@ -141,7 +162,35 @@ export const fetchTodayAppointments = createAsyncThunk(
         },
       });
 
-      return response.data;
+      // Ensure we have valid data before processing
+      const data = response.data;
+      if (data === undefined || data === null) {
+        console.warn(
+          "⚠️ fetchTodayAppointments: API returned undefined/null data"
+        );
+        return [];
+      }
+
+      // Handle both array and paginated responses
+      let appointments = [];
+      if (Array.isArray(data)) {
+        appointments = data;
+      } else if (data && Array.isArray(data.results)) {
+        appointments = data.results;
+      } else {
+        console.warn(
+          "⚠️ fetchTodayAppointments: API returned unexpected data structure:",
+          data
+        );
+        appointments = [];
+      }
+
+      console.log(
+        "✅ fetchTodayAppointments: Success, received",
+        appointments.length,
+        "today's appointments"
+      );
+      return appointments;
     } catch (error) {
       return rejectWithValue(
         handleApiError(error, "Could not fetch today's appointments")
@@ -163,7 +212,35 @@ export const fetchUpcomingAppointments = createAsyncThunk(
         },
       });
 
-      return response.data;
+      // Ensure we have valid data before processing
+      const data = response.data;
+      if (data === undefined || data === null) {
+        console.warn(
+          "⚠️ fetchUpcomingAppointments: API returned undefined/null data"
+        );
+        return [];
+      }
+
+      // Handle both array and paginated responses
+      let appointments = [];
+      if (Array.isArray(data)) {
+        appointments = data;
+      } else if (data && Array.isArray(data.results)) {
+        appointments = data.results;
+      } else {
+        console.warn(
+          "⚠️ fetchUpcomingAppointments: API returned unexpected data structure:",
+          data
+        );
+        appointments = [];
+      }
+
+      console.log(
+        "✅ fetchUpcomingAppointments: Success, received",
+        appointments.length,
+        "upcoming appointments"
+      );
+      return appointments;
     } catch (error) {
       return rejectWithValue(
         handleApiError(error, "Could not fetch upcoming appointments")
@@ -914,12 +991,34 @@ export const fetchStaffMembers = createAsyncThunk(
           Authorization: `Token ${token}`,
         },
       });
+
+      // Ensure we have valid data before processing
+      const data = response.data;
+      if (data === undefined || data === null) {
+        console.warn("⚠️ fetchStaffMembers: API returned undefined/null data");
+        return [];
+      }
+
+      // Handle both array and paginated responses
+      let staffMembers = [];
+      if (Array.isArray(data)) {
+        staffMembers = data;
+      } else if (data && Array.isArray(data.results)) {
+        staffMembers = data.results;
+      } else {
+        console.warn(
+          "⚠️ fetchStaffMembers: API returned unexpected data structure:",
+          data
+        );
+        staffMembers = [];
+      }
+
       console.log(
-        "fetchStaffMembers: Success, received",
-        response.data.length,
+        "✅ fetchStaffMembers: Success, received",
+        staffMembers.length,
         "staff members"
       );
-      return response.data;
+      return staffMembers;
     } catch (error) {
       console.error(
         "fetchStaffMembers: Error",

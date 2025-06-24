@@ -70,6 +70,24 @@ const TherapistDashboard = () => {
     hasData,
   } = useEnhancedDashboardData("therapist", user?.id);
 
+  // Debug logging for troubleshooting the "No appointments found" issue
+  console.log("🔍 TherapistDashboard Debug:", {
+    user: user,
+    userRole: "therapist",
+    userId: user?.id,
+    myAppointments: myAppointments,
+    myAppointmentsLength: myAppointments?.length || 0,
+    myAppointmentsIsArray: Array.isArray(myAppointments),
+    myTodayAppointments: myTodayAppointments,
+    myTodayAppointmentsLength: myTodayAppointments?.length || 0,
+    myUpcomingAppointments: myUpcomingAppointments,
+    myUpcomingAppointmentsLength: myUpcomingAppointments?.length || 0,
+    loading,
+    error,
+    hasData,
+    currentView,
+  });
+
   // TANSTACK QUERY: Automatic background refreshes handled by TanStack Query
   // No manual refresh logic needed - TanStack Query handles it automatically
 
@@ -852,7 +870,17 @@ const TherapistDashboard = () => {
     }
   };
   const renderAppointmentsList = (appointmentsList) => {
-    if (appointmentsList.length === 0) {
+    // Enhanced safety checks for undefined/null data
+    if (
+      !appointmentsList ||
+      !Array.isArray(appointmentsList) ||
+      appointmentsList.length === 0
+    ) {
+      console.log("🔍 renderAppointmentsList: No appointments to render:", {
+        appointmentsList,
+        isArray: Array.isArray(appointmentsList),
+        length: appointmentsList?.length,
+      });
       return <p className="no-appointments">No appointments found.</p>;
     }
 
@@ -1007,7 +1035,10 @@ const TherapistDashboard = () => {
             <div className="todays-appointments">
               <h2>Today's Appointments</h2>
               {renderAppointmentsList(
-                (Array.isArray(myTodayAppointments) ? myTodayAppointments : []).filter((apt) => !isTransportCompleted(apt))
+                (Array.isArray(myTodayAppointments)
+                  ? myTodayAppointments
+                  : []
+                ).filter((apt) => apt && !isTransportCompleted(apt))
               )}
             </div>
           )}
@@ -1015,16 +1046,19 @@ const TherapistDashboard = () => {
             <div className="upcoming-appointments">
               <h2>Upcoming Appointments</h2>
               {renderAppointmentsList(
-                (Array.isArray(myUpcomingAppointments) ? myUpcomingAppointments : []).filter(
-                  (apt) => !isTransportCompleted(apt)
-                )
+                (Array.isArray(myUpcomingAppointments)
+                  ? myUpcomingAppointments
+                  : []
+                ).filter((apt) => apt && !isTransportCompleted(apt))
               )}
             </div>
           )}
           {currentView === "all" && (
             <div className="all-appointments">
               <h2>All My Appointments</h2>
-              {renderAppointmentsList(myAppointments)}
+              {renderAppointmentsList(
+                Array.isArray(myAppointments) ? myAppointments : []
+              )}
             </div>
           )}
           {currentView === "attendance" && (

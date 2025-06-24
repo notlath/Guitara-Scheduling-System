@@ -1,6 +1,6 @@
 /**
  * Array Utility Functions for Production Safety
- * 
+ *
  * These functions prevent the "TypeError: m.filter is not a function" error
  * that occurs when trying to call array methods on non-array data.
  */
@@ -13,7 +13,11 @@
  */
 export const safeFilter = (data, filterFn) => {
   if (!Array.isArray(data)) {
-    console.warn('⚠️ safeFilter: Data is not an array, returning empty array:', typeof data, data);
+    console.warn(
+      "⚠️ safeFilter: Data is not an array, returning empty array:",
+      typeof data,
+      data
+    );
     return [];
   }
   return data.filter(filterFn);
@@ -27,7 +31,11 @@ export const safeFilter = (data, filterFn) => {
  */
 export const ensureArray = (data, fallback = []) => {
   if (!Array.isArray(data)) {
-    console.warn('⚠️ ensureArray: Data is not an array, returning fallback:', typeof data, data);
+    console.warn(
+      "⚠️ ensureArray: Data is not an array, returning fallback:",
+      typeof data,
+      data
+    );
     return fallback;
   }
   return data;
@@ -41,7 +49,11 @@ export const ensureArray = (data, fallback = []) => {
  */
 export const safeMap = (data, mapFn) => {
   if (!Array.isArray(data)) {
-    console.warn('⚠️ safeMap: Data is not an array, returning empty array:', typeof data, data);
+    console.warn(
+      "⚠️ safeMap: Data is not an array, returning empty array:",
+      typeof data,
+      data
+    );
     return [];
   }
   return data.map(mapFn);
@@ -54,7 +66,11 @@ export const safeMap = (data, mapFn) => {
  */
 export const safeLength = (data) => {
   if (!Array.isArray(data)) {
-    console.warn('⚠️ safeLength: Data is not an array, returning 0:', typeof data, data);
+    console.warn(
+      "⚠️ safeLength: Data is not an array, returning 0:",
+      typeof data,
+      data
+    );
     return 0;
   }
   return data.length;

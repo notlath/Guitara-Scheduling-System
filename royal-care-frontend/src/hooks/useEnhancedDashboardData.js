@@ -36,10 +36,35 @@ import { queryClientUtils, queryKeys, queryUtils } from "../lib/queryClient";
 export const useEnhancedDashboardData = (userRole, userId) => {
   const dispatch = useDispatch();
 
-  // Core appointment queries with different refresh intervals
+  // Core appointment queries with different refresh intervals and improved error handling
   const appointmentsQuery = useQuery({
     queryKey: queryKeys.appointments.list(),
-    queryFn: () => dispatch(fetchAppointments()).unwrap(),
+    queryFn: async () => {
+      try {
+        const result = await dispatch(fetchAppointments()).unwrap();
+        console.log("🔍 appointmentsQuery result:", {
+          result,
+          isArray: Array.isArray(result),
+        });
+
+        // Ensure we always return an array
+        if (Array.isArray(result)) {
+          return result;
+        } else if (result && Array.isArray(result.results)) {
+          // Handle paginated response
+          return result.results;
+        } else {
+          console.warn(
+            "⚠️ fetchAppointments returned unexpected data:",
+            result
+          );
+          return [];
+        }
+      } catch (error) {
+        console.error("❌ appointmentsQuery error:", error);
+        throw error;
+      }
+    },
     staleTime: queryUtils.staleTime.MEDIUM,
     refetchInterval: 5 * 60 * 1000, // 5 minutes
     retry: 2,
@@ -47,7 +72,32 @@ export const useEnhancedDashboardData = (userRole, userId) => {
 
   const todayQuery = useQuery({
     queryKey: queryKeys.appointments.today(),
-    queryFn: () => dispatch(fetchTodayAppointments()).unwrap(),
+    queryFn: async () => {
+      try {
+        const result = await dispatch(fetchTodayAppointments()).unwrap();
+        console.log("🔍 todayQuery result:", {
+          result,
+          isArray: Array.isArray(result),
+        });
+
+        // Ensure we always return an array
+        if (Array.isArray(result)) {
+          return result;
+        } else if (result && Array.isArray(result.results)) {
+          // Handle paginated response
+          return result.results;
+        } else {
+          console.warn(
+            "⚠️ fetchTodayAppointments returned unexpected data:",
+            result
+          );
+          return [];
+        }
+      } catch (error) {
+        console.error("❌ todayQuery error:", error);
+        throw error;
+      }
+    },
     staleTime: queryUtils.staleTime.SHORT,
     refetchInterval: 2 * 60 * 1000, // 2 minutes for today's data
     retry: 2,
@@ -55,7 +105,32 @@ export const useEnhancedDashboardData = (userRole, userId) => {
 
   const upcomingQuery = useQuery({
     queryKey: queryKeys.appointments.upcoming(),
-    queryFn: () => dispatch(fetchUpcomingAppointments()).unwrap(),
+    queryFn: async () => {
+      try {
+        const result = await dispatch(fetchUpcomingAppointments()).unwrap();
+        console.log("🔍 upcomingQuery result:", {
+          result,
+          isArray: Array.isArray(result),
+        });
+
+        // Ensure we always return an array
+        if (Array.isArray(result)) {
+          return result;
+        } else if (result && Array.isArray(result.results)) {
+          // Handle paginated response
+          return result.results;
+        } else {
+          console.warn(
+            "⚠️ fetchUpcomingAppointments returned unexpected data:",
+            result
+          );
+          return [];
+        }
+      } catch (error) {
+        console.error("❌ upcomingQuery error:", error);
+        throw error;
+      }
+    },
     staleTime: queryUtils.staleTime.MEDIUM,
     refetchInterval: 10 * 60 * 1000, // 10 minutes for upcoming
     retry: 2,
@@ -80,11 +155,28 @@ export const useEnhancedDashboardData = (userRole, userId) => {
   // Role-based filtered data (replaces complex useMemo chains)
   const filteredData = useMemo(() => {
     // Enhanced data safety - ensure arrays even if API returns unexpected data
-    const appointments = Array.isArray(appointmentsQuery.data) ? appointmentsQuery.data : [];
-    const todayAppointments = Array.isArray(todayQuery.data) ? todayQuery.data : [];
-    const upcomingAppointments = Array.isArray(upcomingQuery.data) ? upcomingQuery.data : [];
+    const appointments = Array.isArray(appointmentsQuery.data)
+      ? appointmentsQuery.data
+      : [];
+    const todayAppointments = Array.isArray(todayQuery.data)
+      ? todayQuery.data
+      : [];
+    const upcomingAppointments = Array.isArray(upcomingQuery.data)
+      ? upcomingQuery.data
+      : [];
+
+    console.log("🔍 filteredData debug - Raw data:", {
+      appointments: appointments.length,
+      todayAppointments: todayAppointments.length,
+      upcomingAppointments: upcomingAppointments.length,
+      userRole,
+      userId,
+    });
 
     if (!userId) {
+      console.log(
+        "🔍 filteredData: No userId provided, returning empty arrays"
+      );
       return {
         appointments: [],
         todayAppointments: [],
@@ -93,44 +185,67 @@ export const useEnhancedDashboardData = (userRole, userId) => {
     }
 
     switch (userRole) {
-      case "therapist":
-        return {
-          appointments: (Array.isArray(appointments) ? appointments : []).filter(
+      case "therapist": {
+        const filteredTherapistData = {
+          appointments: appointments.filter(
             (apt) =>
-              apt && (apt.therapist === userId ||
-              (apt.therapists && apt.therapists.includes(userId)))
+              apt &&
+              (apt.therapist === userId ||
+                (apt.therapists && apt.therapists.includes(userId)))
           ),
-          todayAppointments: (Array.isArray(todayAppointments) ? todayAppointments : []).filter(
+          todayAppointments: todayAppointments.filter(
             (apt) =>
-              apt && (apt.therapist === userId ||
-              (apt.therapists && apt.therapists.includes(userId)))
+              apt &&
+              (apt.therapist === userId ||
+                (apt.therapists && apt.therapists.includes(userId)))
           ),
-          upcomingAppointments: (Array.isArray(upcomingAppointments) ? upcomingAppointments : []).filter(
+          upcomingAppointments: upcomingAppointments.filter(
             (apt) =>
-              apt && (apt.therapist === userId ||
-              (apt.therapists && apt.therapists.includes(userId)))
+              apt &&
+              (apt.therapist === userId ||
+                (apt.therapists && apt.therapists.includes(userId)))
           ),
         };
 
-      case "driver":
+        console.log("🔍 filteredData debug - Therapist filtered:", {
+          userId,
+          filteredAppointments: filteredTherapistData.appointments.length,
+          filteredTodayAppointments:
+            filteredTherapistData.todayAppointments.length,
+          filteredUpcomingAppointments:
+            filteredTherapistData.upcomingAppointments.length,
+          sampleAppointment: filteredTherapistData.appointments[0] || "none",
+        });
+
+        return filteredTherapistData;
+      }
+
+      case "driver": {
         return {
-          appointments: (Array.isArray(appointments) ? appointments : []).filter((apt) => apt && apt.driver === userId),
-          todayAppointments: (Array.isArray(todayAppointments) ? todayAppointments : []).filter(
-            (apt) => apt && apt.driver === userId
-          ),
-          upcomingAppointments: (Array.isArray(upcomingAppointments) ? upcomingAppointments : []).filter(
-            (apt) => apt && apt.driver === userId
-          ),
+          appointments: (Array.isArray(appointments)
+            ? appointments
+            : []
+          ).filter((apt) => apt && apt.driver === userId),
+          todayAppointments: (Array.isArray(todayAppointments)
+            ? todayAppointments
+            : []
+          ).filter((apt) => apt && apt.driver === userId),
+          upcomingAppointments: (Array.isArray(upcomingAppointments)
+            ? upcomingAppointments
+            : []
+          ).filter((apt) => apt && apt.driver === userId),
         };
+      }
 
       case "operator":
-      default:
+      default: {
         // Operators see all appointments
         return {
           appointments,
           todayAppointments,
           upcomingAppointments,
         };
+      }
     }
   }, [
     appointmentsQuery.data,

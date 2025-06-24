@@ -269,10 +269,16 @@ const NotificationCenter = ({ onClose }) => {
 
   // Filter notifications - Enhanced safety for production
   const filteredNotifications = showAll
-    ? (Array.isArray(notifications) ? notifications : [])
-    : (Array.isArray(notifications) ? notifications : []).filter((notif) => notif && !notif.is_read);
+    ? Array.isArray(notifications)
+      ? notifications
+      : []
+    : (Array.isArray(notifications) ? notifications : []).filter(
+        (notif) => notif && !notif.is_read
+      );
 
-  const unreadCount = (Array.isArray(notifications) ? notifications : []).filter((notif) => notif && !notif.is_read).length;
+  const unreadCount = (
+    Array.isArray(notifications) ? notifications : []
+  ).filter((notif) => notif && !notif.is_read).length;
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);

@@ -108,7 +108,9 @@ const fetchAppointmentsAPI = async () => {
     }
 
     // Always return empty array on error to prevent filter issues in production
-    console.warn("⚠️ Returning empty array due to API error to prevent filter crashes");
+    console.warn(
+      "⚠️ Returning empty array due to API error to prevent filter crashes"
+    );
     return [];
   }
 };
@@ -150,7 +152,7 @@ const fetchTodayAppointmentsAPI = async () => {
     }
   } catch (error) {
     console.error("❌ fetchTodayAppointmentsAPI error:", error);
-    
+
     // Enhanced error with classification
     error.isBlockedByClient = isBlockedByClient(error);
     error.isNetworkError = isNetworkError(error);
@@ -631,10 +633,15 @@ export const useTherapistDashboardData = (therapistId) => {
         const appointments = Array.isArray(data) ? data : [];
         // Double-check that appointments is still an array before filtering
         if (!Array.isArray(appointments)) {
-          console.error("⚠️ Appointments data is not an array after validation:", appointments);
+          console.error(
+            "⚠️ Appointments data is not an array after validation:",
+            appointments
+          );
           return [];
         }
-        return appointments.filter((apt) => apt && apt.therapist === therapistId);
+        return appointments.filter(
+          (apt) => apt && apt.therapist === therapistId
+        );
       } catch (error) {
         console.error("❌ Error in therapist today appointments query:", error);
         return []; // Return empty array on error to prevent filter issues
@@ -653,11 +660,15 @@ export const useTherapistDashboardData = (therapistId) => {
   }, [queryClient, therapistId]);
 
   return {
-    todayAppointments: Array.isArray(todayAppointmentsQuery.data) ? todayAppointmentsQuery.data : [],
+    todayAppointments: Array.isArray(todayAppointmentsQuery.data)
+      ? todayAppointmentsQuery.data
+      : [],
     loading: todayAppointmentsQuery.isLoading,
     error: todayAppointmentsQuery.error,
     forceRefresh,
-    hasData: Array.isArray(todayAppointmentsQuery.data) && todayAppointmentsQuery.data.length > 0,
+    hasData:
+      Array.isArray(todayAppointmentsQuery.data) &&
+      todayAppointmentsQuery.data.length > 0,
   };
 };
 
@@ -682,7 +693,10 @@ export const useDriverDashboardData = (driverId) => {
         const appointments = Array.isArray(data) ? data : [];
         // Double-check that appointments is still an array before filtering
         if (!Array.isArray(appointments)) {
-          console.error("⚠️ Driver appointments data is not an array after validation:", appointments);
+          console.error(
+            "⚠️ Driver appointments data is not an array after validation:",
+            appointments
+          );
           return [];
         }
         return appointments.filter((apt) => apt && apt.driver === driverId);
@@ -707,7 +721,10 @@ export const useDriverDashboardData = (driverId) => {
         const appointments = Array.isArray(data) ? data : [];
         // Double-check that appointments is still an array before filtering
         if (!Array.isArray(appointments)) {
-          console.error("⚠️ Driver today appointments data is not an array after validation:", appointments);
+          console.error(
+            "⚠️ Driver today appointments data is not an array after validation:",
+            appointments
+          );
           return [];
         }
         return appointments.filter((apt) => apt && apt.driver === driverId);
@@ -733,7 +750,10 @@ export const useDriverDashboardData = (driverId) => {
         const appointments = Array.isArray(data) ? data : [];
         // Double-check that appointments is still an array before filtering
         if (!Array.isArray(appointments)) {
-          console.error("⚠️ Driver upcoming appointments data is not an array after validation:", appointments);
+          console.error(
+            "⚠️ Driver upcoming appointments data is not an array after validation:",
+            appointments
+          );
           return [];
         }
         return appointments.filter(
@@ -767,14 +787,22 @@ export const useDriverDashboardData = (driverId) => {
     appointmentsQuery.isRefetching || todayAppointmentsQuery.isRefetching;
   const error = appointmentsQuery.error || todayAppointmentsQuery.error;
   const hasData =
-    (Array.isArray(appointmentsQuery.data) && appointmentsQuery.data.length > 0) ||
-    (Array.isArray(todayAppointmentsQuery.data) && todayAppointmentsQuery.data.length > 0);
+    (Array.isArray(appointmentsQuery.data) &&
+      appointmentsQuery.data.length > 0) ||
+    (Array.isArray(todayAppointmentsQuery.data) &&
+      todayAppointmentsQuery.data.length > 0);
 
   console.log("🚗 useDriverDashboardData return:", {
     driverId,
-    appointments: Array.isArray(appointmentsQuery.data) ? appointmentsQuery.data.length : 0,
-    todayAppointments: Array.isArray(todayAppointmentsQuery.data) ? todayAppointmentsQuery.data.length : 0,
-    upcomingAppointments: Array.isArray(upcomingAppointmentsQuery.data) ? upcomingAppointmentsQuery.data.length : 0,
+    appointments: Array.isArray(appointmentsQuery.data)
+      ? appointmentsQuery.data.length
+      : 0,
+    todayAppointments: Array.isArray(todayAppointmentsQuery.data)
+      ? todayAppointmentsQuery.data.length
+      : 0,
+    upcomingAppointments: Array.isArray(upcomingAppointmentsQuery.data)
+      ? upcomingAppointmentsQuery.data.length
+      : 0,
     isLoading,
     hasData,
     dataSource: "tanstack-query",
@@ -782,9 +810,15 @@ export const useDriverDashboardData = (driverId) => {
 
   return {
     // Primary data (exact same interface as legacy hook) - with enhanced array safety
-    appointments: Array.isArray(appointmentsQuery.data) ? appointmentsQuery.data : [],
-    todayAppointments: Array.isArray(todayAppointmentsQuery.data) ? todayAppointmentsQuery.data : [],
-    upcomingAppointments: Array.isArray(upcomingAppointmentsQuery.data) ? upcomingAppointmentsQuery.data : [],
+    appointments: Array.isArray(appointmentsQuery.data)
+      ? appointmentsQuery.data
+      : [],
+    todayAppointments: Array.isArray(todayAppointmentsQuery.data)
+      ? todayAppointmentsQuery.data
+      : [],
+    upcomingAppointments: Array.isArray(upcomingAppointmentsQuery.data)
+      ? upcomingAppointmentsQuery.data
+      : [],
 
     // Loading and error states
     isLoading,
