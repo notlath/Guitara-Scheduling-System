@@ -31,12 +31,13 @@ print(f"  SUPABASE_DB_PASSWORD: {'SET' if password else 'NOT SET'}")
 try:
     print("\n🚀 Setting up Django...")
     import django
+
     django.setup()
     print("✅ Django setup successful")
-    
+
     print("\n🔍 Testing database connection...")
     import psycopg2
-    
+
     # Test direct connection
     conn = psycopg2.connect(
         host=os.environ.get("SUPABASE_DB_HOST"),
@@ -45,24 +46,24 @@ try:
         password=os.environ.get("SUPABASE_DB_PASSWORD"),
         port="5432",
         sslmode="require",
-        connect_timeout=30
+        connect_timeout=30,
     )
-    
+
     cursor = conn.cursor()
     cursor.execute("SELECT 1")
     result = cursor.fetchone()
-    
+
     if result and result[0] == 1:
         print("✅ Direct database connection successful!")
     else:
         print("❌ Direct database connection failed")
-    
+
     cursor.close()
     conn.close()
-    
+
     print("\n🔍 Testing Django database connection...")
     from django.db import connection
-    
+
     with connection.cursor() as cursor:
         cursor.execute("SELECT 1")
         result = cursor.fetchone()
@@ -70,11 +71,12 @@ try:
             print("✅ Django database connection successful!")
         else:
             print("❌ Django database connection failed")
-    
+
     print("\n🎉 All database tests passed!")
-    
+
 except Exception as e:
     print(f"\n❌ Database test failed: {e}")
     import traceback
+
     traceback.print_exc()
     sys.exit(1)

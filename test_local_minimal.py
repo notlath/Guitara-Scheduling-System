@@ -21,6 +21,7 @@ try:
     import rest_framework
     import corsheaders
     import knox
+
     print("✅ All required packages are available")
 except ImportError as e:
     print(f"❌ Missing package: {e}")
@@ -37,6 +38,7 @@ except Exception as e:
 # Test settings import
 try:
     from django.conf import settings
+
     print(f"✅ Settings loaded: {settings.SETTINGS_MODULE}")
     print(f"   Installed apps: {len(settings.INSTALLED_APPS)}")
     print(f"   Middleware: {len(settings.MIDDLEWARE)}")
@@ -47,6 +49,7 @@ except Exception as e:
 # Test URL configuration
 try:
     from django.urls import resolve
+
     resolve("/health/")
     resolve("/health/minimal/")
     resolve("/ready/")

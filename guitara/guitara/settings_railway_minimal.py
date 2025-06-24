@@ -45,6 +45,7 @@ print(f"[ULTRA-MINIMAL RAILWAY] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
 # Ultra-minimal application definition - only essential apps + required for URLs
 INSTALLED_APPS = [
+    "django.contrib.admin",  # Required for admin URLs
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "django.contrib.sessions",
@@ -124,14 +125,25 @@ DATABASES = {
 }
 
 # Validate required database environment variables
-required_db_vars = ["SUPABASE_DB_HOST", "SUPABASE_DB_NAME", "SUPABASE_DB_USER", "SUPABASE_DB_PASSWORD"]
+required_db_vars = [
+    "SUPABASE_DB_HOST",
+    "SUPABASE_DB_NAME",
+    "SUPABASE_DB_USER",
+    "SUPABASE_DB_PASSWORD",
+]
 missing_vars = [var for var in required_db_vars if not os.environ.get(var)]
 
 if missing_vars:
-    print(f"[ULTRA-MINIMAL RAILWAY] ⚠️ Missing database environment variables: {missing_vars}")
-    print(f"[ULTRA-MINIMAL RAILWAY] Available DB vars: {[var for var in required_db_vars if os.environ.get(var)]}")
+    print(
+        f"[ULTRA-MINIMAL RAILWAY] ⚠️ Missing database environment variables: {missing_vars}"
+    )
+    print(
+        f"[ULTRA-MINIMAL RAILWAY] Available DB vars: {[var for var in required_db_vars if os.environ.get(var)]}"
+    )
 else:
-    print(f"[ULTRA-MINIMAL RAILWAY] ✅ All required database environment variables are set")
+    print(
+        f"[ULTRA-MINIMAL RAILWAY] ✅ All required database environment variables are set"
+    )
 
 # REST Framework minimal config
 REST_FRAMEWORK = {
@@ -160,9 +172,40 @@ MEDIA_ROOT = os.path.join(BASE_DIR.parent, "media")
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Minimal CORS settings
+# CORS settings for Railway deployment
 CORS_ALLOW_ALL_ORIGINS = True  # For Railway health checks
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "https://charismatic-appreciation-production.up.railway.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+]
+
+# Parse additional CORS origins from environment
+if os.environ.get("CORS_ALLOWED_ORIGINS"):
+    additional_origins = [
+        origin.strip()
+        for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+    CORS_ALLOWED_ORIGINS.extend(additional_origins)
+
+# Allow common headers
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
+print(f"[ULTRA-MINIMAL RAILWAY] CORS Origins: {CORS_ALLOWED_ORIGINS}")
 
 # Minimal logging to avoid startup delays
 LOGGING = {
@@ -197,6 +240,10 @@ print(f"[ULTRA-MINIMAL RAILWAY] Database config: {db_config}")
 
 # Verify SSL mode for Supabase
 if "sslmode" in DATABASES["default"]["OPTIONS"]:
-    print(f"[ULTRA-MINIMAL RAILWAY] SSL Mode: {DATABASES['default']['OPTIONS']['sslmode']}")
+    print(
+        f"[ULTRA-MINIMAL RAILWAY] SSL Mode: {DATABASES['default']['OPTIONS']['sslmode']}"
+    )
 else:
-    print(f"[ULTRA-MINIMAL RAILWAY] ⚠️ SSL mode not configured - this may cause connection issues with Supabase")
+    print(
+        f"[ULTRA-MINIMAL RAILWAY] ⚠️ SSL mode not configured - this may cause connection issues with Supabase"
+    )

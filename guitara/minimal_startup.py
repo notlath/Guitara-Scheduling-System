@@ -27,7 +27,9 @@ print("\n📊 DATABASE CONFIGURATION:")
 print(f"  SUPABASE_DB_HOST: {os.environ.get('SUPABASE_DB_HOST', 'NOT SET')}")
 print(f"  SUPABASE_DB_NAME: {os.environ.get('SUPABASE_DB_NAME', 'NOT SET')}")
 print(f"  SUPABASE_DB_USER: {os.environ.get('SUPABASE_DB_USER', 'NOT SET')}")
-print(f"  SUPABASE_DB_PASSWORD: {'SET' if os.environ.get('SUPABASE_DB_PASSWORD') else 'NOT SET'}")
+print(
+    f"  SUPABASE_DB_PASSWORD: {'SET' if os.environ.get('SUPABASE_DB_PASSWORD') else 'NOT SET'}"
+)
 
 
 def test_database_connection():
@@ -35,11 +37,12 @@ def test_database_connection():
     try:
         print("\n🔍 Testing database connection...")
         import django
+
         django.setup()
-        
+
         from django.db import connection
         from django.db.utils import OperationalError
-        
+
         # Test the connection with a timeout
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
@@ -50,13 +53,14 @@ def test_database_connection():
             else:
                 print("❌ Database connection failed: Invalid response")
                 return False
-                
+
     except OperationalError as e:
         print(f"❌ Database connection failed: {e}")
         return False
     except Exception as e:
         print(f"❌ Database setup failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -66,6 +70,7 @@ def try_migrations():
     try:
         print("\n🔄 Running migrations...")
         from django.core.management import execute_from_command_line
+
         execute_from_command_line(["manage.py", "migrate", "--noinput"])
         print("✅ Migrations completed successfully")
         return True
@@ -79,6 +84,7 @@ def try_collectstatic():
     try:
         print("\n📁 Collecting static files...")
         from django.core.management import execute_from_command_line
+
         execute_from_command_line(["manage.py", "collectstatic", "--noinput"])
         print("✅ Static files collected successfully")
         return True
@@ -107,7 +113,7 @@ def start_daphne_minimal():
 
         print(f"Executing: {' '.join(cmd)}")
         subprocess.run(cmd, check=True)
-        
+
     except KeyboardInterrupt:
         print("\n🛑 Server stopped by user")
     except Exception as e:
@@ -119,7 +125,7 @@ def fallback_to_emergency():
     """Fallback to emergency mode if minimal mode fails"""
     print("\n⚠️ FALLING BACK TO EMERGENCY MODE")
     os.environ["DJANGO_SETTINGS_MODULE"] = "guitara.settings_emergency"
-    
+
     port = os.environ.get("PORT", "8000")
     cmd = [
         sys.executable,
@@ -131,30 +137,30 @@ def fallback_to_emergency():
         port,
         "guitara.asgi_emergency:application",
     ]
-    
+
     print(f"Emergency fallback command: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
 
 def main():
     """Main startup sequence"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("MINIMAL MODE STARTUP SEQUENCE")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Step 1: Test database connection
     if not test_database_connection():
         print("\n❌ Database connection failed. Falling back to emergency mode...")
         fallback_to_emergency()
         return
-    
+
     # Step 2: Run migrations
     if not try_migrations():
         print("\n⚠️ Migrations failed, but continuing with existing database state...")
-    
+
     # Step 3: Collect static files (optional)
     try_collectstatic()
-    
+
     # Step 4: Start the server
     print("\n🚀 All checks passed! Starting minimal mode server...")
     start_daphne_minimal()
@@ -166,6 +172,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n💥 Critical startup failure: {e}")
         import traceback
+
         traceback.print_exc()
         print("\n🆘 Attempting emergency fallback...")
         try:

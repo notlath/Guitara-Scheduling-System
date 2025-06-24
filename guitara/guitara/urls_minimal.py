@@ -18,7 +18,7 @@ def railway_ultra_health(request):
             "service": "guitara-scheduling-system",
             "timestamp": int(time.time()),
             "environment": "railway",
-            "mode": "minimal"
+            "mode": "minimal",
         },
         status=200,
     )
@@ -43,24 +43,43 @@ urlpatterns = [
     path("health/", railway_ultra_health, name="railway_health"),
     path("healthcheck/", railway_ultra_health, name="railway_healthcheck"),
     path("ping/", minimal_ping, name="railway_ping"),
-    
     # Enhanced health checks (with database)
     path("health/minimal/", minimal_health_check, name="minimal_health"),
     path("ready/", minimal_ready, name="minimal_ready"),
-    
-    # API endpoints
-    path("api/", include([
+    # Default route
+    path("", default_route, name="default"),
+]
+
+# Add API endpoints with error handling
+try:
+    api_patterns = [
         path("auth/", include("authentication.urls")),
         path("core/", include("core.urls")),
         path("registration/", include("registration.urls")),
         path("scheduling/", include("scheduling.urls")),
         path("attendance/", include("attendance.urls")),
         path("inventory/", include("inventory.urls")),
-    ])),
-    
-    # Admin (if needed)
-    path("admin/", admin.site.urls),
-    
-    # Default route
-    path("", default_route, name="default"),
-]
+    ]
+    urlpatterns += [
+        path("api/", include(api_patterns)),
+        path("admin/", admin.site.urls),  # Add admin after API
+    ]
+    print("[MINIMAL URLS] ✅ All API endpoints and admin loaded successfully")
+except Exception as e:
+    print(f"[MINIMAL URLS] ⚠️ Error loading API endpoints: {e}")
+
+    # Add a fallback API endpoint
+    def api_error(request):
+        return JsonResponse(
+            {
+                "error": "API endpoints temporarily unavailable",
+                "status": "degraded",
+                "timestamp": int(time.time()),
+            },
+            status=503,
+        )
+
+    urlpatterns += [
+        path("api/", api_error, name="api_error"),
+        path("admin/", admin.site.urls),  # Admin should still work
+    ]
