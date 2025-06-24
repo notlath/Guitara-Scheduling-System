@@ -184,3 +184,16 @@ small {
   /* Container max width: global variable for the width of the main content container on all pages. Adjust this to control the maximum width of page content for consistent layouts. */
   --container-max-width: 1000px;
 }
+
+@media (max-width: 768px) {
+  :root {
+    --font-size-xs: 0.7rem; /* 11px */
+    --font-size-sm: 0.84rem; /* 13.5px */
+    --font-size-base: 1rem; /* 16px */
+    --font-size-md: 1.2rem; /* 19.2px */
+    --font-size-lg: 1.44rem; /* 23px */
+    --font-size-xl: 1.728rem; /* 27.6px */
+    --font-size-xxl: 2.074rem; /* 33.2px */
+    --font-size-xxxl: 2.488rem; /* 39.8px */
+  }
+}

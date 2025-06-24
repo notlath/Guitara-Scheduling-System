@@ -4,6 +4,8 @@
   flex-direction: column;
   align-items: flex-start;
   max-width: 350px;
+  /* max-width: min(350px, calc(100vw - 100px));
+  width: auto; */
 }
 .form-blueprint-logo {
   max-width: 100%;
@@ -43,4 +45,16 @@
 }
 .form-blueprint-link-anchor:hover {
   text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .form-blueprint-container {
+    /* padding: var(--spacing-ml); */
+    max-width: 400px;
+    border-radius: var(--border-radius);
+    /* border: 1px solid var(--border-color); */
+    /* margin: 0 100px; */
+    width: auto;
+    max-width: min(400px, calc(100vw - 100px));
+  }
 }
