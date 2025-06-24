@@ -336,9 +336,7 @@
     background: none;
     color: var(--primary);
   } */
-  .content {
-    padding: 10px 0 0 0;
-  }
+
   .hamburger-menu {
     display: flex;
   }

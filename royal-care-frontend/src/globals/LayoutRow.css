@@ -1,7 +1,9 @@
 /* Global container, content, and header row styles for consistent page layouts */
 
 .global-container {
-  padding: var(--spacing-xl) 0;
+  padding: var(--spacing-xl) var(--spacing-xl);
+  /* margin: 64px auto; */
+  /* max-width: 1100px; */
   /* min-height: 100vh; */
 }
 
@@ -26,4 +28,13 @@
   font-size: var(--font-size-base);
   color: var(--muted-200);
   margin-top: var(--spacing-xm);
+}
+
+@media (max-width: 768px) {
+  .global-container {
+    /* max-width: 100%; */
+    /* padding: 0 16px;
+    margin: 16px auto; */
+    padding: var(--spacing-ml) var(--spacing-ml);
+  }
 }
