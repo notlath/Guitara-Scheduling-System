@@ -432,11 +432,11 @@ if REDIS_URL:
             "TIMEOUT": 300,  # 5 minutes default timeout
         }
     }
-    
+
     # Cache for WebSocket data
     APPOINTMENT_CACHE_TIMEOUT = 60  # 1 minute for appointment data
-    USER_DATA_CACHE_TIMEOUT = 300   # 5 minutes for user data
-    
+    USER_DATA_CACHE_TIMEOUT = 300  # 5 minutes for user data
+
 else:
     # Development fallback
     CACHES = {

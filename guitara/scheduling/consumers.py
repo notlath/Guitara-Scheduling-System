@@ -117,7 +117,9 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
         """Send notification to WebSocket"""
         try:
             await self.send(text_data=json.dumps(event["data"]))
-            print(f"[CONSUMER] ✅ Sent notification: {event['data']['notification_type']}")
+            print(
+                f"[CONSUMER] ✅ Sent notification: {event['data']['notification_type']}"
+            )
         except Exception as e:
             logger.error(f"Error sending notification: {e}")
 
@@ -131,7 +133,14 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
 
             if message_type == "heartbeat":
                 # Handle heartbeat
-                await self.send(text_data=json.dumps({"type": "heartbeat_response", "timestamp": datetime.now().isoformat()}))
+                await self.send(
+                    text_data=json.dumps(
+                        {
+                            "type": "heartbeat_response",
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
+                )
 
             elif message_type == "subscribe_to_updates":
                 # Handle subscription requests
@@ -151,26 +160,46 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
 
         except json.JSONDecodeError:
             logger.error("Invalid JSON received")
-            await self.send(text_data=json.dumps({"type": "error", "message": "Invalid JSON format"}))
+            await self.send(
+                text_data=json.dumps(
+                    {"type": "error", "message": "Invalid JSON format"}
+                )
+            )
         except Exception as e:
             logger.error(f"Error processing received message: {e}")
-            await self.send(text_data=json.dumps({"type": "error", "message": "Failed to process message"}))
+            await self.send(
+                text_data=json.dumps(
+                    {"type": "error", "message": "Failed to process message"}
+                )
+            )
 
     async def _handle_subscription(self, update_types):
         """Handle subscription to specific update types"""
         try:
             # Join specific groups based on subscription
             for update_type in update_types:
-                if update_type == "appointments" and self.user.role in ["operator", "therapist", "driver"]:
-                    await self.channel_layer.group_add("appointments", self.channel_name)
+                if update_type == "appointments" and self.user.role in [
+                    "operator",
+                    "therapist",
+                    "driver",
+                ]:
+                    await self.channel_layer.group_add(
+                        "appointments", self.channel_name
+                    )
                 elif update_type == "notifications":
-                    await self.channel_layer.group_add(f"user_{self.user.id}", self.channel_name)
+                    await self.channel_layer.group_add(
+                        f"user_{self.user.id}", self.channel_name
+                    )
 
-            await self.send(text_data=json.dumps({
-                "type": "subscription_confirmed",
-                "subscribed_to": update_types,
-                "timestamp": datetime.now().isoformat()
-            }))
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        "type": "subscription_confirmed",
+                        "subscribed_to": update_types,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+            )
 
         except Exception as e:
             logger.error(f"Error handling subscription: {e}")
@@ -183,11 +212,15 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
             else:
                 appointments = await self.get_user_appointments_cached()
 
-            await self.send(text_data=json.dumps({
-                "type": "initial_data",
-                "appointments": appointments,
-                "timestamp": datetime.now().isoformat(),
-            }))
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        "type": "initial_data",
+                        "appointments": appointments,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+            )
 
         except Exception as e:
             logger.error(f"Error sending initial data: {e}")
@@ -199,10 +232,11 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
             accepted = data.get("accepted", False)
 
             if not appointment_id:
-                await self.send(text_data=json.dumps({
-                    "type": "error",
-                    "message": "Missing appointment_id"
-                }))
+                await self.send(
+                    text_data=json.dumps(
+                        {"type": "error", "message": "Missing appointment_id"}
+                    )
+                )
                 return
 
             # Update appointment in database
@@ -212,31 +246,38 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
 
             # Fire custom signal for therapist response
             from .signals import therapist_response_signal
+
             therapist_response_signal.send(
                 sender=self.__class__,
                 appointment=appointment,
                 therapist=self.user,
-                accepted=accepted
+                accepted=accepted,
             )
 
-            await self.send(text_data=json.dumps({
-                "type": "response_confirmed",
-                "appointment_id": appointment_id,
-                "accepted": accepted,
-                "timestamp": datetime.now().isoformat()
-            }))
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        "type": "response_confirmed",
+                        "appointment_id": appointment_id,
+                        "accepted": accepted,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+            )
 
         except Appointment.DoesNotExist:
-            await self.send(text_data=json.dumps({
-                "type": "error",
-                "message": "Appointment not found"
-            }))
+            await self.send(
+                text_data=json.dumps(
+                    {"type": "error", "message": "Appointment not found"}
+                )
+            )
         except Exception as e:
             logger.error(f"Error handling therapist response: {e}")
-            await self.send(text_data=json.dumps({
-                "type": "error",
-                "message": "Failed to process response"
-            }))
+            await self.send(
+                text_data=json.dumps(
+                    {"type": "error", "message": "Failed to process response"}
+                )
+            )
 
     async def handle_immediate_message(self, data):
         """Handle messages that need immediate processing"""

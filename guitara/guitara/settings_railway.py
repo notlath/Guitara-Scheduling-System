@@ -105,7 +105,7 @@ if REDIS_URL:
                 "TIMEOUT": 300,
             }
         }
-        
+
         # Use Redis if available and working
         CHANNEL_LAYERS = {
             "default": {
