@@ -28,6 +28,14 @@ import "../../styles/LoadingConsistency.css";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
+
+// Consistent API URL handling
+const getAPIBaseURL = () => {
+  if (import.meta.env.PROD) {
+    return "https://charismatic-appreciation-production.up.railway.app/api";
+  }
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+};
 import styles from "./SettingsDataPage.module.css";
 
 const TABS = [
@@ -117,9 +125,7 @@ const fetchers = {
   Therapists: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${
-        import.meta.env.VITE_API_BASE_URL
-      }/registration/register/therapist/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${getAPIBaseURL()}/registration/register/therapist/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -145,9 +151,7 @@ const fetchers = {
   Drivers: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${
-        import.meta.env.VITE_API_BASE_URL
-      }/registration/register/driver/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${getAPIBaseURL()}/registration/register/driver/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -171,9 +175,7 @@ const fetchers = {
   Operators: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${
-        import.meta.env.VITE_API_BASE_URL
-      }/registration/register/operator/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${getAPIBaseURL()}/registration/register/operator/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -217,9 +219,7 @@ const fetchers = {
   Clients: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${
-        import.meta.env.VITE_API_BASE_URL
-      }/registration/register/client/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${getAPIBaseURL()}/registration/register/client/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -240,9 +240,7 @@ const fetchers = {
   Services: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${
-        import.meta.env.VITE_API_BASE_URL
-      }/registration/register/service/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${getAPIBaseURL()}/registration/register/service/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,
@@ -296,9 +294,7 @@ const fetchers = {
   Materials: async (page = 1) => {
     const token = localStorage.getItem("knoxToken");
     const res = await fetch(
-      `${
-        import.meta.env.VITE_API_BASE_URL
-      }/registration/register/material/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
+      `${getAPIBaseURL()}/registration/register/material/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`,
       {
         headers: {
           Authorization: `Token ${token}`,

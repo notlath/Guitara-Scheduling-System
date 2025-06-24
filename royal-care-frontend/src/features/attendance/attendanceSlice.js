@@ -2,11 +2,15 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
 import { handleAuthenticationError } from "../../utils/authUtils";
 
-// API URL based on environment
-const API_URL =
-  import.meta.env.MODE === "production"
-    ? "/api/attendance/"
-    : "http://localhost:8000/api/attendance/";
+// API URL based on environment - ensure consistent URL handling
+const getBaseURL = () => {
+  if (import.meta.env.PROD) {
+    return "https://charismatic-appreciation-production.up.railway.app/api";
+  }
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+};
+
+const API_URL = `${getBaseURL()}/attendance/`;
 
 // Helper function to handle API errors consistently
 const handleApiError = (error, fallbackMessage) => {

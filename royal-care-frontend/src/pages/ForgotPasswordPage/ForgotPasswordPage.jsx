@@ -24,7 +24,7 @@ function ForgotPasswordPage() {
     setLoading(true);
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/auth/request-password-reset/`,
+        `${import.meta.env.PROD ? 'https://charismatic-appreciation-production.up.railway.app/api' : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api')}/auth/request-password-reset/`,
         {
           email,
         }

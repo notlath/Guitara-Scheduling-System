@@ -2,7 +2,15 @@
 import axios from "axios";
 import { getToken } from "../utils/tokenManager";
 
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/auth/`;
+// Ensure consistent API URL handling
+const getBaseURL = () => {
+  if (import.meta.env.PROD) {
+    return "https://charismatic-appreciation-production.up.railway.app/api";
+  }
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+};
+
+const API_URL = `${getBaseURL()}/auth/`;
 
 export const login = async (username, password) => {
   try {
@@ -112,7 +120,7 @@ export const validateToken = async () => {
 export const checkAccountStatus = async (username) => {
   try {
     const response = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/auth/check-account-status/`,
+      `${getBaseURL()}/auth/check-account-status/`,
       {
         username,
       }

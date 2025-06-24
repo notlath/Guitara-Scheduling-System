@@ -525,7 +525,7 @@ const AvailabilityManager = () => {
     try {
       const knoxToken = localStorage.getItem("knoxToken");
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/toggle-account-status/${
+        `${import.meta.env.PROD ? 'https://charismatic-appreciation-production.up.railway.app/api' : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api')}/toggle-account-status/${
           selectedStaffData.id
         }/`,
         {

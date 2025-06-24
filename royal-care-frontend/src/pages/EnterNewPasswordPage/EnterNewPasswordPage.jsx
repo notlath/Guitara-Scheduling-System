@@ -41,7 +41,7 @@ function EnterNewPasswordPage() {
     setLoading(true);
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/auth/set-new-password/`,
+        `${import.meta.env.PROD ? 'https://charismatic-appreciation-production.up.railway.app/api' : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api')}/auth/set-new-password/`,
         {
           email,
           code,

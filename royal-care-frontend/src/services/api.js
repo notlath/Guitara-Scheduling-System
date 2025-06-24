@@ -9,9 +9,21 @@ import {
 import { getToken } from "../utils/tokenManager";
 
 // Create the base Axios instance with ad-blocker friendly configuration
+const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
+// Force the correct URL in production to ensure consistency
+const finalBaseURL = import.meta.env.PROD ? 
+  "https://charismatic-appreciation-production.up.railway.app/api" : 
+  baseURL;
+
+// Only log in development mode
+if (import.meta.env.DEV) {
+  console.log("🔧 API Service: Final baseURL:", finalBaseURL);
+}
+
 export const api = axios.create(
   createAdBlockerFriendlyConfig({
-    baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api",
+    baseURL: finalBaseURL,
     headers: {
       "Content-Type": "application/json",
     },
@@ -30,17 +42,16 @@ api.interceptors.request.use(
       config.headers.Authorization = `Token ${token}`;
     }
 
+    // Log requests only in development mode
+    if (import.meta.env.DEV) {
+      console.log(`🌐 API Request [${config.method?.toUpperCase()}]:`, {
+        url: config.url,
+        fullURL: `${config.baseURL}${config.url}`,
+      });
+    }
+
     // Special handling for auth endpoints
     if (config.url && config.url.includes("/auth/")) {
-      // Log auth request details in development mode
-      if (import.meta.env.MODE === "development") {
-        console.log(`Auth Request [${config.method}] ${config.url}:`, {
-          headers: config.headers,
-          data: config.data,
-          token: token ? "Present" : "Missing",
-        });
-      }
-
       // Ensure data is properly formatted for Django REST
       if (config.method === "post" && config.data) {
         // Make sure we're sending a proper content type

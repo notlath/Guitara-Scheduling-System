@@ -13,11 +13,15 @@ import { fetchAttendanceRecords } from "../features/attendance/attendanceSlice";
 import { updateAppointmentStatus } from "../features/scheduling/schedulingSlice";
 import { queryKeys } from "../lib/queryClient";
 
-// API URL based on environment
-const API_URL =
-  import.meta.env.MODE === "production"
-    ? "/api/scheduling/"
-    : "http://localhost:8000/api/scheduling/";
+// API URL based on environment - ensure consistent URL handling
+const getBaseURL = () => {
+  if (import.meta.env.PROD) {
+    return "https://charismatic-appreciation-production.up.railway.app/api";
+  }
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+};
+
+const API_URL = `${getBaseURL()}/scheduling/`;
 
 // Direct API calls (bypassing Redux for TanStack Query)
 const fetchAppointmentsAPI = async () => {
@@ -913,10 +917,14 @@ const fetchAttendanceRecordsAPI = async (selectedDate) => {
     return []; // Return empty array instead of throwing error
   }
 
-  const ATTENDANCE_API_URL =
-    import.meta.env.MODE === "production"
-      ? "/api/attendance/"
-      : "http://localhost:8000/api/attendance/";
+  const getAttendanceBaseURL = () => {
+    if (import.meta.env.PROD) {
+      return "https://charismatic-appreciation-production.up.railway.app/api";
+    }
+    return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+  };
+
+  const ATTENDANCE_API_URL = `${getAttendanceBaseURL()}/attendance/`;
 
   let url = `${ATTENDANCE_API_URL}records/`;
   if (selectedDate) {
