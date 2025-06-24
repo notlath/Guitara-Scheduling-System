@@ -43,7 +43,7 @@ ALLOWED_HOSTS = list(set([host for host in ALLOWED_HOSTS if host]))
 
 print(f"[ULTRA-MINIMAL RAILWAY] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
-# Ultra-minimal application definition - only essential apps
+# Ultra-minimal application definition - only essential apps + required for URLs
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
@@ -52,6 +52,15 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "corsheaders",
+    "knox",  # Required for authentication
+    "django_filters",  # Required for filtering
+    # Required apps for URL routing to work
+    "core",
+    "authentication", 
+    "registration",
+    "scheduling",
+    "attendance",
+    "inventory",
 ]
 
 # Ultra-minimal middleware - NO performance middleware that blocks health checks
@@ -65,7 +74,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
-ROOT_URLCONF = "guitara.urls"
+ROOT_URLCONF = "guitara.urls_minimal"
 
 # Templates
 TEMPLATES = [
@@ -85,7 +94,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "guitara.wsgi.application"
-ASGI_APPLICATION = "guitara.asgi.application"
+ASGI_APPLICATION = "guitara.asgi_minimal.application"
 # Database - Use environment variables with ultra-fast settings
 DATABASES = {
     "default": {
@@ -107,12 +116,15 @@ DATABASES = {
 
 # REST Framework minimal config
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_AUTHENTICATION_CLASSES": ["knox.auth.TokenAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": [],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
     ],
 }
+
+# Custom user model
+AUTH_USER_MODEL = "core.CustomUser"
 
 # Internationalization
 LANGUAGE_CODE = "en-us"

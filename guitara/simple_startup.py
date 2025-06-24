@@ -18,20 +18,20 @@ print(f"PORT: {os.environ.get('PORT', '8000')}")
 print(f"Python version: {sys.version}")
 print(f"Working directory: {os.getcwd()}")
 
-# CRITICAL: Force minimal settings for Railway - override ANY environment variable
-# This prevents Railway's DJANGO_SETTINGS_MODULE from overriding our minimal settings
-os.environ["DJANGO_SETTINGS_MODULE"] = "guitara.settings_railway_minimal"
+# CRITICAL: Force emergency settings for Railway - override ANY environment variable
+# This prevents Railway's DJANGO_SETTINGS_MODULE from overriding our emergency settings
+os.environ["DJANGO_SETTINGS_MODULE"] = "guitara.settings_emergency"
 print(f"🔧 FORCED Django settings to: {os.environ['DJANGO_SETTINGS_MODULE']}")
 
 # Double-check that the environment variable is actually set
-if os.environ.get("DJANGO_SETTINGS_MODULE") != "guitara.settings_railway_minimal":
+if os.environ.get("DJANGO_SETTINGS_MODULE") != "guitara.settings_emergency":
     print("⚠️ WARNING: Django settings override failed!")
-    os.environ["DJANGO_SETTINGS_MODULE"] = "guitara.settings_railway_minimal"
+    os.environ["DJANGO_SETTINGS_MODULE"] = "guitara.settings_emergency"
     print(
         f"🔧 DOUBLE-FORCED Django settings to: {os.environ['DJANGO_SETTINGS_MODULE']}"
     )
 else:
-    print("✅ Django settings successfully forced to minimal")
+    print("✅ Django settings successfully forced to emergency")
 
 
 def try_django_setup():
@@ -80,12 +80,12 @@ def try_collectstatic():
 
 
 def start_daphne():
-    """Start Daphne server with minimal ASGI app"""
+    """Start Daphne server with emergency ASGI app"""
     port = os.environ.get("PORT", "8000")
     print(f"🌟 Starting Daphne on port {port}")
 
     try:
-        # Use minimal ASGI app for Railway
+        # Use emergency ASGI app for Railway
         cmd = [
             sys.executable,
             "-m",
@@ -94,7 +94,7 @@ def start_daphne():
             "0.0.0.0",
             "-p",
             port,
-            "guitara.asgi_minimal:application",  # Use minimal ASGI
+            "guitara.asgi_emergency:application",  # Use emergency ASGI
         ]
 
         print(f"Executing: {' '.join(cmd)}")
@@ -155,7 +155,7 @@ def start_emergency_server():
 def main():
     """Main startup sequence"""
 
-    # Step 1: Try Django setup with minimal settings
+    # Step 1: Try Django setup with emergency settings
     django_ok = try_django_setup()
 
     if not django_ok:
