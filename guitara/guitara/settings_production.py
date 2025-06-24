@@ -100,7 +100,9 @@ try:
     print(f"[DB CONFIG] Host: {os.environ.get('SUPABASE_DB_HOST')}")
     print(f"[DB CONFIG] Database: {os.environ.get('SUPABASE_DB_NAME')}")
     print(f"[DB CONFIG] User: {os.environ.get('SUPABASE_DB_USER')}")
-    print("[DB CONFIG] Database configuration loaded, connection will be tested on first use")
+    print(
+        "[DB CONFIG] Database configuration loaded, connection will be tested on first use"
+    )
 
 except Exception as e:
     print(f"[ERROR] Configuration error: {e}")

@@ -45,7 +45,7 @@ def health_check(request):
         "debug": settings.DEBUG,
         "service": "guitara-scheduling-system",
     }
-    
+
     # Test database connection - don't fail health check if DB is down
     try:
         with connection.cursor() as cursor:
@@ -62,7 +62,9 @@ def health_check(request):
         if hasattr(settings, "REDIS_URL") and getattr(settings, "REDIS_URL", None):
             cache.set("health_check", "ok", 10)
             cache_result = cache.get("health_check", "error")
-            response_data["cache"] = "connected" if cache_result == "ok" else "available_but_failed"
+            response_data["cache"] = (
+                "connected" if cache_result == "ok" else "available_but_failed"
+            )
         else:
             response_data["cache"] = "not_configured"
     except Exception as e:
@@ -76,11 +78,14 @@ def health_check(request):
 @require_GET
 def simple_health_check(request):
     """Ultra-simple health check for Railway that always succeeds if Django is running"""
-    return JsonResponse({
-        "status": "ok", 
-        "service": "guitara-scheduling-system",
-        "timestamp": int(time.time())
-    }, status=200)
+    return JsonResponse(
+        {
+            "status": "ok",
+            "service": "guitara-scheduling-system",
+            "timestamp": int(time.time()),
+        },
+        status=200,
+    )
 
 
 urlpatterns = [

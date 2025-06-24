@@ -98,7 +98,7 @@ if REDIS_URL:
                 },
             },
         }
-        
+
         # Celery with Redis
         CELERY_BROKER_URL = REDIS_URL
         CELERY_RESULT_BACKEND = "django-db"
@@ -110,9 +110,9 @@ if REDIS_URL:
         CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
         CELERY_BROKER_CONNECTION_RETRY = True
         CELERY_BROKER_CONNECTION_MAX_RETRIES = 3  # Reduced for faster startup
-        
+
         print(f"[RAILWAY SETTINGS] ✅ Redis configured: {REDIS_URL[:30]}...")
-        
+
     except Exception as e:
         print(f"[RAILWAY SETTINGS] ⚠️ Redis configuration failed: {e}")
         # Fall back to in-memory options
@@ -124,17 +124,17 @@ if REDIS_URL:
         CELERY_TASK_ALWAYS_EAGER = True
         CELERY_TASK_EAGER_PROPAGATES = True
         print("[RAILWAY SETTINGS] Using fallback in-memory configuration")
-        
+
 else:
     # Fallback configuration for Railway without Redis
     print("[RAILWAY SETTINGS] Redis not available - using fallback configuration")
-    
+
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
         },
     }
-    
+
     # Run Celery tasks synchronously if no broker
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True

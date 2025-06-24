@@ -16,19 +16,23 @@ SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)
 # Minimal ALLOWED_HOSTS
 ALLOWED_HOSTS = []
 if os.environ.get("ALLOWED_HOSTS"):
-    ALLOWED_HOSTS.extend([
-        host.strip() 
-        for host in os.environ.get("ALLOWED_HOSTS", "").split(",") 
-        if host.strip()
-    ])
+    ALLOWED_HOSTS.extend(
+        [
+            host.strip()
+            for host in os.environ.get("ALLOWED_HOSTS", "").split(",")
+            if host.strip()
+        ]
+    )
 
 # Add Railway patterns
-ALLOWED_HOSTS.extend([
-    "*.up.railway.app",
-    "*.railway.app",
-    "127.0.0.1",
-    "localhost",
-])
+ALLOWED_HOSTS.extend(
+    [
+        "*.up.railway.app",
+        "*.railway.app",
+        "127.0.0.1",
+        "localhost",
+    ]
+)
 
 # Remove duplicates
 ALLOWED_HOSTS = list(set([host for host in ALLOWED_HOSTS if host]))
