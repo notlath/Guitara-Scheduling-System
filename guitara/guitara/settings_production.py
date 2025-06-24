@@ -224,6 +224,7 @@ if os.environ.get("CORS_ALLOWED_ORIGINS"):
 # Add default origins if not already present
 default_origins = [
     "https://guitara-scheduling-system.vercel.app",
+    "https://guitara-scheduling-system-git-main-lathrells-projects.vercel.app",  # Your actual Vercel domain
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:3001",
@@ -242,6 +243,22 @@ print(f"[PRODUCTION SETTINGS] CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_ALL_ORIGINS = False
+
+# Ensure CORS middleware is properly loaded
+if "corsheaders" not in INSTALLED_APPS:
+    INSTALLED_APPS.append("corsheaders")
+
+# Ensure CORS middleware is at the top of middleware stack for proper CORS handling
+MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
 
 # Additional CORS settings for production
 CORS_ALLOWED_HEADERS = [

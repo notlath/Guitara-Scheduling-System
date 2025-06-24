@@ -178,6 +178,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "https://charismatic-appreciation-production.up.railway.app",
     "https://guitara-scheduling-system.vercel.app",  # Add Vercel frontend domain
+    "https://guitara-scheduling-system-git-main-lathrells-projects.vercel.app",  # Your actual deployed domain
     "http://localhost:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3000",

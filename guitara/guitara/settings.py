@@ -73,9 +73,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -236,6 +236,7 @@ PASSWORD_HASHERS = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Add your frontend's origin
     "https://guitara-scheduling-system.vercel.app",  # Add your Vercel frontend
+    "https://guitara-scheduling-system-git-main-lathrells-projects.vercel.app",  # Your actual deployed domain
 ]
 
 # Allow credentials and additional CORS settings for media files
