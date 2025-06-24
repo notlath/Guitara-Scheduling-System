@@ -135,7 +135,8 @@ const fetchers = {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return data.map((item) => ({
+    const items = Array.isArray(data) ? data : data.results || [];
+    return items.map((item) => ({
       Username: item.username,
       Name: `${capitalizeName(item.first_name) || ""} ${
         capitalizeName(item.last_name) || ""
@@ -161,7 +162,8 @@ const fetchers = {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return data.map((item) => ({
+    const items = Array.isArray(data) ? data : data.results || [];
+    return items.map((item) => ({
       Username: item.username,
       Name: `${capitalizeName(item.first_name) || ""} ${
         capitalizeName(item.last_name) || ""
@@ -192,14 +194,9 @@ const fetchers = {
     }
 
     const data = await res.json();
-    console.log("🔍 Raw Operators Response:", data); // Debug log
+    const items = Array.isArray(data) ? data : data.results || data.data || [];
 
-    // Handle both array and object responses
-    const operatorsArray = Array.isArray(data)
-      ? data
-      : data.results || data.data || [];
-
-    return operatorsArray.map((item) => {
+    return items.map((item) => {
       // Safely handle name construction
       const firstName = capitalizeName(item.first_name || "");
       const lastName = capitalizeName(item.last_name || "");
@@ -229,7 +226,8 @@ const fetchers = {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return data.map((item) => ({
+    const items = Array.isArray(data) ? data : data.results || [];
+    return items.map((item) => ({
       Name: capitalizeName(item.Name) || "-",
       Email: item.Email || "-",
       Address: item.Address || "-",
@@ -250,11 +248,12 @@ const fetchers = {
     );
     if (!res.ok) return [];
     const data = await res.json();
+    const items = Array.isArray(data) ? data : data.results || [];
 
     // Debug: Log the raw response
     console.log("🔍 Services Response:", data);
 
-    return data.map((item) => {
+    return items.map((item) => {
       // Debug: Log each item's materials
       console.log(`🔍 ${item.name} materials:`, item.materials);
 
@@ -304,7 +303,8 @@ const fetchers = {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return data.map((item) => ({
+    const items = Array.isArray(data) ? data : data.results || [];
+    return items.map((item) => ({
       Name: item.name,
       Description: item.description || "-",
     }));
