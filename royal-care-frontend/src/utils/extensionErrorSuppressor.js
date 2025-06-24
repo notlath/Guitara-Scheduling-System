@@ -4,17 +4,17 @@
  */
 
 const CHROME_EXTENSION_ERROR_PATTERNS = [
-  'chrome-extension://',
-  'Unchecked runtime.lastError',
-  'The page keeping the extension port is moved into back/forward cache',
-  'Duplicate script ID',
-  'No tab with id:',
-  'Frame with ID',
-  'was removed',
-  'Failed to fetch',
-  'WebSocket closed with status code',
-  'Failed to start the connection',
-  'triggerAutofillScriptInjection'
+  "chrome-extension://",
+  "Unchecked runtime.lastError",
+  "The page keeping the extension port is moved into back/forward cache",
+  "Duplicate script ID",
+  "No tab with id:",
+  "Frame with ID",
+  "was removed",
+  "Failed to fetch",
+  "WebSocket closed with status code",
+  "Failed to start the connection",
+  "triggerAutofillScriptInjection",
 ];
 
 const originalConsoleError = console.error;
@@ -25,7 +25,7 @@ const originalConsoleWarn = console.warn;
  */
 const isChromeExtensionError = (message) => {
   const messageStr = String(message);
-  return CHROME_EXTENSION_ERROR_PATTERNS.some(pattern => 
+  return CHROME_EXTENSION_ERROR_PATTERNS.some((pattern) =>
     messageStr.includes(pattern)
   );
 };
@@ -35,7 +35,7 @@ const isChromeExtensionError = (message) => {
  */
 const filteredConsoleError = (...args) => {
   // In development, show all errors
-  if (import.meta.env.MODE === 'development') {
+  if (import.meta.env.MODE === "development") {
     return originalConsoleError(...args);
   }
 
@@ -54,7 +54,7 @@ const filteredConsoleError = (...args) => {
  */
 const filteredConsoleWarn = (...args) => {
   // In development, show all warnings
-  if (import.meta.env.MODE === 'development') {
+  if (import.meta.env.MODE === "development") {
     return originalConsoleWarn(...args);
   }
 
@@ -73,12 +73,12 @@ const filteredConsoleWarn = (...args) => {
  */
 export const initializeExtensionErrorSuppressor = () => {
   // Only apply in production to avoid hiding important development errors
-  if (import.meta.env.MODE === 'production') {
+  if (import.meta.env.MODE === "production") {
     console.error = filteredConsoleError;
     console.warn = filteredConsoleWarn;
-    
+
     // Also handle window error events
-    window.addEventListener('error', (event) => {
+    window.addEventListener("error", (event) => {
       if (isChromeExtensionError(event.message || event.error?.message)) {
         event.preventDefault();
         event.stopPropagation();
@@ -87,16 +87,20 @@ export const initializeExtensionErrorSuppressor = () => {
     });
 
     // Handle unhandled promise rejections
-    window.addEventListener('unhandledrejection', (event) => {
+    window.addEventListener("unhandledrejection", (event) => {
       if (isChromeExtensionError(event.reason?.message || event.reason)) {
         event.preventDefault();
         return false;
       }
     });
 
-    console.log('🔇 Chrome extension error suppressor initialized for production');
+    console.log(
+      "🔇 Chrome extension error suppressor initialized for production"
+    );
   } else {
-    console.log('🔍 Chrome extension error suppressor disabled in development mode');
+    console.log(
+      "🔍 Chrome extension error suppressor disabled in development mode"
+    );
   }
 };
 

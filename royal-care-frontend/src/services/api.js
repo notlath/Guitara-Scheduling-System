@@ -1,20 +1,22 @@
 import axios from "axios";
-import { getToken } from "../utils/tokenManager";
-import { 
-  createAdBlockerFriendlyConfig, 
-  isBlockedByClient, 
-  isNetworkError, 
+import {
+  createAdBlockerFriendlyConfig,
+  getUserFriendlyErrorMessage,
+  isBlockedByClient,
   isHTMLResponse,
-  getUserFriendlyErrorMessage 
+  isNetworkError,
 } from "../utils/apiRequestUtils";
+import { getToken } from "../utils/tokenManager";
 
 // Create the base Axios instance with ad-blocker friendly configuration
-export const api = axios.create(createAdBlockerFriendlyConfig({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
-}));
+export const api = axios.create(
+  createAdBlockerFriendlyConfig({
+    baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+);
 
 // Import sanitization utilities
 import { sanitizeFormInput } from "../utils/formSanitization";
@@ -123,7 +125,9 @@ api.interceptors.response.use(
     if (error.response) {
       // Check if response is HTML instead of JSON
       if (isHTML) {
-        console.error("API returned HTML instead of JSON - server may be offline or returning error page");
+        console.error(
+          "API returned HTML instead of JSON - server may be offline or returning error page"
+        );
         error.errorMessage = userFriendlyMessage;
         error.isServerError = true;
         return Promise.reject(error);
@@ -192,7 +196,9 @@ api.interceptors.response.use(
         case 502:
         case 503:
         case 504:
-          console.warn("Server error - API may be offline or experiencing issues");
+          console.warn(
+            "Server error - API may be offline or experiencing issues"
+          );
           error.isServerError = true;
           break;
       }
@@ -208,13 +214,14 @@ api.interceptors.response.use(
         error.isNetworkError = true;
       } else {
         console.error("No response received:", error.request);
-        error.errorMessage = "No response from server - please check your connection";
+        error.errorMessage =
+          "No response from server - please check your connection";
       }
     } else {
       // Something else caused the error
       console.error("Error setting up request:", error.message);
       error.errorMessage = userFriendlyMessage;
-      
+
       // Handle JSON parsing errors specifically
       if (error.message?.includes("JSON") || error.name === "SyntaxError") {
         error.isParsingError = true;

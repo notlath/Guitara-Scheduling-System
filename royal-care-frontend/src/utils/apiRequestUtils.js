@@ -11,9 +11,9 @@ export const createAdBlockerFriendlyConfig = (baseConfig = {}) => {
     ...baseConfig,
     // Use different request headers that are less likely to be blocked
     headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Cache-Control': 'no-cache',
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "Cache-Control": "no-cache",
       ...baseConfig.headers,
     },
     // Add timeout to prevent hanging requests
@@ -32,10 +32,10 @@ export const createAdBlockerFriendlyConfig = (baseConfig = {}) => {
  */
 export const isBlockedByClient = (error) => {
   return (
-    error.code === 'ERR_BLOCKED_BY_CLIENT' ||
-    error.message?.includes('ERR_BLOCKED_BY_CLIENT') ||
-    error.message?.includes('blocked by client') ||
-    error.message?.includes('net::ERR_BLOCKED_BY_CLIENT')
+    error.code === "ERR_BLOCKED_BY_CLIENT" ||
+    error.message?.includes("ERR_BLOCKED_BY_CLIENT") ||
+    error.message?.includes("blocked by client") ||
+    error.message?.includes("net::ERR_BLOCKED_BY_CLIENT")
   );
 };
 
@@ -44,10 +44,10 @@ export const isBlockedByClient = (error) => {
  */
 export const isNetworkError = (error) => {
   return (
-    error.code === 'NETWORK_ERROR' ||
-    error.code === 'ERR_NETWORK' ||
-    error.message?.includes('Network Error') ||
-    error.message?.includes('ERR_NETWORK') ||
+    error.code === "NETWORK_ERROR" ||
+    error.code === "ERR_NETWORK" ||
+    error.message?.includes("Network Error") ||
+    error.message?.includes("ERR_NETWORK") ||
     !error.response // No response means network issue
   );
 };
@@ -56,11 +56,11 @@ export const isNetworkError = (error) => {
  * Check if the server returned HTML instead of JSON (common error page scenario)
  */
 export const isHTMLResponse = (error) => {
-  const contentType = error.response?.headers?.['content-type'];
+  const contentType = error.response?.headers?.["content-type"];
   return (
-    contentType?.includes('text/html') ||
-    error.message?.includes('Unexpected token') ||
-    error.message?.includes('<!DOCTYPE')
+    contentType?.includes("text/html") ||
+    error.message?.includes("Unexpected token") ||
+    error.message?.includes("<!DOCTYPE")
   );
 };
 
@@ -69,31 +69,31 @@ export const isHTMLResponse = (error) => {
  */
 export const getUserFriendlyErrorMessage = (error) => {
   if (isBlockedByClient(error)) {
-    return 'Your request was blocked by your browser or an extension. Please check your ad blocker settings and try again.';
+    return "Your request was blocked by your browser or an extension. Please check your ad blocker settings and try again.";
   }
 
   if (isNetworkError(error)) {
-    return 'Unable to connect to the server. Please check your internet connection and try again.';
+    return "Unable to connect to the server. Please check your internet connection and try again.";
   }
 
   if (isHTMLResponse(error)) {
-    return 'The server is currently experiencing issues. Please try again later.';
+    return "The server is currently experiencing issues. Please try again later.";
   }
 
   if (error.response?.status === 401) {
-    return 'Your session has expired. Please log in again.';
+    return "Your session has expired. Please log in again.";
   }
 
   if (error.response?.status === 403) {
-    return 'You do not have permission to access this resource.';
+    return "You do not have permission to access this resource.";
   }
 
   if (error.response?.status >= 500) {
-    return 'The server is currently experiencing issues. Please try again later.';
+    return "The server is currently experiencing issues. Please try again later.";
   }
 
   // Return the original error message if available
-  return error.errorMessage || error.message || 'An unexpected error occurred.';
+  return error.errorMessage || error.message || "An unexpected error occurred.";
 };
 
 /**
@@ -139,4 +139,4 @@ export const getRetryDelay = (retryCount) => {
 /**
  * Sleep function for retry delays
  */
-export const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

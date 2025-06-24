@@ -78,7 +78,8 @@ const fetchAppointmentsAPI = async () => {
     });
 
     // Use the user-friendly error message if available
-    const errorMessage = error.userFriendlyMessage || error.errorMessage || error.message;
+    const errorMessage =
+      error.userFriendlyMessage || error.errorMessage || error.message;
     throw new Error(errorMessage);
   }
 };
@@ -104,9 +105,10 @@ const fetchTodayAppointmentsAPI = async () => {
     return response.data || [];
   } catch (error) {
     console.error("❌ fetchTodayAppointmentsAPI error:", error);
-    
+
     // Use the user-friendly error message if available
-    const errorMessage = error.userFriendlyMessage || error.errorMessage || error.message;
+    const errorMessage =
+      error.userFriendlyMessage || error.errorMessage || error.message;
     throw new Error(errorMessage);
   }
 };

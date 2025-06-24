@@ -42,7 +42,9 @@ export const loadFido2Script = (
     }
 
     // Create new script element with a unique ID to prevent duplicates
-    const uniqueId = `${scriptId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const uniqueId = `${scriptId}-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
     const script = document.createElement("script");
     script.id = uniqueId;
     script.src = scriptSrc;

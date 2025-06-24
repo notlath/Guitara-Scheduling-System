@@ -133,10 +133,14 @@ const SettingsAccountPage = () => {
         }
 
         // Handle JSON parsing errors (HTML responses)
-        if (error.message?.includes("Unexpected token") || 
-            error.message?.includes("JSON") ||
-            error.name === "SyntaxError") {
-          console.warn("API returned HTML instead of JSON - likely server error or API offline");
+        if (
+          error.message?.includes("Unexpected token") ||
+          error.message?.includes("JSON") ||
+          error.name === "SyntaxError"
+        ) {
+          console.warn(
+            "API returned HTML instead of JSON - likely server error or API offline"
+          );
           // Don't redirect to login for server errors, just use cached data
           return;
         }

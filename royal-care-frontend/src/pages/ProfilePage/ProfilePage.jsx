@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUploadPure";
 import pageTitles from "../../constants/pageTitles";
 import { logout, updateUserProfile } from "../../features/auth/authSlice";
-import styles from "./ProfilePage.module.css";
 import PageLayout from "../../globals/PageLayout";
+import styles from "./ProfilePage.module.css";
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
@@ -56,17 +56,24 @@ const ProfilePage = () => {
           };
           localStorage.setItem("user", JSON.stringify(updatedUser));
         } else if (response.status === 401) {
-          console.warn("Authentication failed while fetching profile - token may be expired");
+          console.warn(
+            "Authentication failed while fetching profile - token may be expired"
+          );
           // Don't log out here, just fail silently for profile photo fetch
         } else {
           console.warn(`Profile fetch failed with status: ${response.status}`);
         }
       } catch (error) {
         // Only log error if it's not a parsing error from server being offline
-        if (!error.message?.includes("JSON") && !error.message?.includes("Unexpected token")) {
+        if (
+          !error.message?.includes("JSON") &&
+          !error.message?.includes("Unexpected token")
+        ) {
           console.error("Failed to fetch user profile:", error);
         } else {
-          console.warn("Profile fetch failed - server may be offline, using cached data");
+          console.warn(
+            "Profile fetch failed - server may be offline, using cached data"
+          );
         }
       }
     };
