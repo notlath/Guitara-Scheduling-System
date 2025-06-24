@@ -258,6 +258,13 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.sanitization_middleware.SanitizationMiddleware",
+    "scheduling.services_middleware.ServicesMiddleware",
+    "scheduling.performance_middleware.PerformanceMonitoringMiddleware",
+    "scheduling.performance_middleware.DatabaseQueryLoggingMiddleware",
+    "scheduling.performance_middleware.CacheHitRateMiddleware",
+    "scheduling.performance_middleware.APIResponseOptimizationMiddleware",
+    "scheduling.performance_middleware.HealthCheckMiddleware",
 ]
 
 # Additional CORS settings for production
