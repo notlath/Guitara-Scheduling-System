@@ -55,11 +55,13 @@ const fetchAppointmentsAPI = async () => {
 
     console.log("✅ Direct API: Appointments fetched successfully", {
       status: response.status,
-      count: Array.isArray(response.data) ? response.data.length : response.data?.count || 0,
+      count: Array.isArray(response.data)
+        ? response.data.length
+        : response.data?.count || 0,
       dataType: typeof response.data,
       isArray: Array.isArray(response.data),
-      sampleData: Array.isArray(response.data) 
-        ? response.data.slice(0, 2) 
+      sampleData: Array.isArray(response.data)
+        ? response.data.slice(0, 2)
         : response.data?.results?.slice(0, 2) || [],
     });
 
@@ -127,10 +129,24 @@ const fetchTodayAppointmentsAPI = async () => {
     const response = await axios.get(`${API_URL}appointments/today/`, config);
 
     console.log("✅ Direct API: Today appointments fetched", {
-      count: response.data?.length || 0,
+      count: Array.isArray(response.data)
+        ? response.data.length
+        : response.data?.count || 0,
+      dataType: typeof response.data,
+      isArray: Array.isArray(response.data),
     });
 
-    return response.data || [];
+    // Handle both array and paginated responses consistently
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else if (response.data && Array.isArray(response.data.results)) {
+      return response.data.results;
+    } else {
+      console.warn(
+        "⚠️ Today appointments response is not an array, returning empty array"
+      );
+      return [];
+    }
   } catch (error) {
     console.error("❌ fetchTodayAppointmentsAPI error:", error);
 
@@ -204,13 +220,47 @@ const fetchUpcomingAppointmentsAPI = async () => {
     throw new Error("Authentication required");
   }
 
-  const response = await axios.get(`${API_URL}appointments/upcoming/`, {
-    headers: {
-      Authorization: `Token ${token}`,
-    },
-  });
+  try {
+    const config = createAdBlockerFriendlyConfig({
+      headers: {
+        Authorization: `Token ${token}`,
+      },
+    });
 
-  return response.data || [];
+    const response = await axios.get(
+      `${API_URL}appointments/upcoming/`,
+      config
+    );
+
+    console.log("✅ Direct API: Upcoming appointments fetched", {
+      count: Array.isArray(response.data)
+        ? response.data.length
+        : response.data?.count || 0,
+      dataType: typeof response.data,
+      isArray: Array.isArray(response.data),
+    });
+
+    // Handle both array and paginated responses consistently
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else if (response.data && Array.isArray(response.data.results)) {
+      return response.data.results;
+    } else {
+      console.warn(
+        "⚠️ Upcoming appointments response is not an array, returning empty array"
+      );
+      return [];
+    }
+  } catch (error) {
+    console.error("❌ fetchUpcomingAppointmentsAPI error:", error);
+
+    // Enhance error with classification
+    error.isBlockedByClient = isBlockedByClient(error);
+    error.isNetworkError = isNetworkError(error);
+    error.userFriendlyMessage = getUserFriendlyErrorMessage(error);
+
+    throw new Error(error.userFriendlyMessage);
+  }
 };
 
 // Stale time constants
@@ -573,7 +623,8 @@ export const useTherapistDashboardData = (therapistId) => {
     queryKey: queryKeys.appointments.byTherapist(therapistId, "today"),
     queryFn: async () => {
       const data = await fetchTodayAppointmentsAPI();
-      return data?.filter((apt) => apt.therapist === therapistId) || [];
+      const appointments = Array.isArray(data) ? data : [];
+      return appointments.filter((apt) => apt.therapist === therapistId);
     },
     staleTime: staleTime.SHORT,
     refetchInterval: 3 * 60 * 1000, // 3 minutes
@@ -612,7 +663,8 @@ export const useDriverDashboardData = (driverId) => {
     queryKey: queryKeys.appointments.byDriver(driverId, "all"),
     queryFn: async () => {
       const data = await fetchAppointmentsAPI();
-      return data?.filter((apt) => apt.driver === driverId) || [];
+      const appointments = Array.isArray(data) ? data : [];
+      return appointments.filter((apt) => apt.driver === driverId);
     },
     staleTime: staleTime.MEDIUM,
     refetchInterval: 5 * 60 * 1000, // 5 minutes
@@ -625,7 +677,8 @@ export const useDriverDashboardData = (driverId) => {
     queryKey: queryKeys.appointments.byDriver(driverId, "today"),
     queryFn: async () => {
       const data = await fetchTodayAppointmentsAPI();
-      return data?.filter((apt) => apt.driver === driverId) || [];
+      const appointments = Array.isArray(data) ? data : [];
+      return appointments.filter((apt) => apt.driver === driverId);
     },
     staleTime: staleTime.SHORT,
     refetchInterval: 2 * 60 * 1000, // 2 minutes (drivers need more frequent updates)
@@ -639,8 +692,9 @@ export const useDriverDashboardData = (driverId) => {
     queryFn: async () => {
       const today = new Date().toISOString().split("T")[0];
       const data = await fetchAppointmentsAPI();
-      return (
-        data?.filter((apt) => apt.driver === driverId && apt.date > today) || []
+      const appointments = Array.isArray(data) ? data : [];
+      return appointments.filter(
+        (apt) => apt.driver === driverId && apt.date > today
       );
     },
     staleTime: staleTime.LONG,
