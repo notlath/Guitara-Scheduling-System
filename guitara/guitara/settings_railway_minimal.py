@@ -95,7 +95,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "guitara.wsgi.application"
 ASGI_APPLICATION = "guitara.asgi_minimal.application"
-# Database - Use environment variables with ultra-fast settings
+# Database - Enhanced Supabase connection with Railway compatibility
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -103,16 +103,35 @@ DATABASES = {
         "USER": os.environ.get("SUPABASE_DB_USER", "postgres"),
         "PASSWORD": os.environ.get("SUPABASE_DB_PASSWORD", ""),
         "HOST": os.environ.get("SUPABASE_DB_HOST", "localhost"),
-        "PORT": "5432",
+        "PORT": os.environ.get("SUPABASE_DB_PORT", "5432"),
         "OPTIONS": {
-            "connect_timeout": 10,
+            # Connection timeout settings
+            "connect_timeout": 30,  # Increased timeout for Railway
+            "application_name": "guitara_railway",
             "options": "-c default_transaction_isolation=read_committed",
+            # SSL settings for Supabase
+            "sslmode": "require",
+            # Performance settings
+            "server_side_binding": True,
         },
         "ATOMIC_REQUESTS": False,
-        "CONN_HEALTH_CHECKS": False,  # Critical: disable health checks
-        "CONN_MAX_AGE": 0,  # No connection pooling for startup
+        "CONN_HEALTH_CHECKS": False,  # Disable automatic health checks
+        "CONN_MAX_AGE": 300,  # Connection pooling for 5 minutes
+        "TEST": {
+            "NAME": "test_guitara_railway",
+        },
     }
 }
+
+# Validate required database environment variables
+required_db_vars = ["SUPABASE_DB_HOST", "SUPABASE_DB_NAME", "SUPABASE_DB_USER", "SUPABASE_DB_PASSWORD"]
+missing_vars = [var for var in required_db_vars if not os.environ.get(var)]
+
+if missing_vars:
+    print(f"[ULTRA-MINIMAL RAILWAY] ⚠️ Missing database environment variables: {missing_vars}")
+    print(f"[ULTRA-MINIMAL RAILWAY] Available DB vars: {[var for var in required_db_vars if os.environ.get(var)]}")
+else:
+    print(f"[ULTRA-MINIMAL RAILWAY] ✅ All required database environment variables are set")
 
 # REST Framework minimal config
 REST_FRAMEWORK = {
@@ -163,7 +182,21 @@ LOGGING = {
 print(
     f"[ULTRA-MINIMAL RAILWAY] ✅ Ultra-minimal settings loaded for Railway deployment"
 )
-print(f"[ULTRA-MINIMAL RAILWAY] Database: {os.environ.get('SUPABASE_DB_HOST')}")
+print(f"[ULTRA-MINIMAL RAILWAY] Database Host: {os.environ.get('SUPABASE_DB_HOST')}")
+print(f"[ULTRA-MINIMAL RAILWAY] Database Name: {os.environ.get('SUPABASE_DB_NAME')}")
+print(f"[ULTRA-MINIMAL RAILWAY] Database User: {os.environ.get('SUPABASE_DB_USER')}")
 print(f"[ULTRA-MINIMAL RAILWAY] Debug: {DEBUG}")
 print(f"[ULTRA-MINIMAL RAILWAY] Apps count: {len(INSTALLED_APPS)}")
 print(f"[ULTRA-MINIMAL RAILWAY] Middleware count: {len(MIDDLEWARE)}")
+
+# Debug: Print the complete database configuration (without password)
+db_config = DATABASES["default"].copy()
+if "PASSWORD" in db_config:
+    db_config["PASSWORD"] = "***HIDDEN***"
+print(f"[ULTRA-MINIMAL RAILWAY] Database config: {db_config}")
+
+# Verify SSL mode for Supabase
+if "sslmode" in DATABASES["default"]["OPTIONS"]:
+    print(f"[ULTRA-MINIMAL RAILWAY] SSL Mode: {DATABASES['default']['OPTIONS']['sslmode']}")
+else:
+    print(f"[ULTRA-MINIMAL RAILWAY] ⚠️ SSL mode not configured - this may cause connection issues with Supabase")

@@ -1,11 +1,13 @@
 """
-Ultra-minimal URLs for Railway deployment
-Only includes health check endpoints to avoid app import issues
+Minimal URLs for Railway deployment with database connectivity
+Includes both fast health checks and full API endpoints
 """
 
 import time
 from django.http import JsonResponse
-from django.urls import path
+from django.urls import path, include
+from django.contrib import admin
+from .minimal_health import minimal_health_check, minimal_ping, minimal_ready
 
 
 def railway_ultra_health(request):
@@ -16,14 +18,10 @@ def railway_ultra_health(request):
             "service": "guitara-scheduling-system",
             "timestamp": int(time.time()),
             "environment": "railway",
+            "mode": "minimal"
         },
         status=200,
     )
-
-
-def railway_ping(request):
-    """Simple ping endpoint"""
-    return JsonResponse({"ping": "pong"}, status=200)
 
 
 def default_route(request):
@@ -33,16 +31,36 @@ def default_route(request):
             "message": "Guitara Scheduling System API",
             "status": "running",
             "mode": "minimal",
+            "timestamp": int(time.time()),
         },
         status=200,
     )
 
 
-# Ultra-minimal URL patterns - only health checks
+# Minimal URL patterns with full API support
 urlpatterns = [
-    # Health check endpoints ONLY
+    # Fast health check endpoints (no database)
     path("health/", railway_ultra_health, name="railway_health"),
     path("healthcheck/", railway_ultra_health, name="railway_healthcheck"),
-    path("ping/", railway_ping, name="railway_ping"),
+    path("ping/", minimal_ping, name="railway_ping"),
+    
+    # Enhanced health checks (with database)
+    path("health/minimal/", minimal_health_check, name="minimal_health"),
+    path("ready/", minimal_ready, name="minimal_ready"),
+    
+    # API endpoints
+    path("api/", include([
+        path("auth/", include("authentication.urls")),
+        path("core/", include("core.urls")),
+        path("registration/", include("registration.urls")),
+        path("scheduling/", include("scheduling.urls")),
+        path("attendance/", include("attendance.urls")),
+        path("inventory/", include("inventory.urls")),
+    ])),
+    
+    # Admin (if needed)
+    path("admin/", admin.site.urls),
+    
+    # Default route
     path("", default_route, name="default"),
 ]
