@@ -41,7 +41,7 @@ import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import UserGuidePage from "./pages/UserGuidePage/UserGuidePage";
 import { validateToken } from "./services/auth";
-import crossTabSync from "./services/crossTabSync"; // Migrated - now a stub that indicates TanStack Query handles this
+import { cleanupInvalidTokens } from "./utils/tokenManager";
 // import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
@@ -122,6 +122,9 @@ const App = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
+    // Clean up any invalid tokens on app startup
+    cleanupInvalidTokens();
+    
     // Check if user data exists in localStorage and validate the token
     const checkStoredAuth = async () => {
       const storedUser = localStorage.getItem("user");
@@ -210,22 +213,13 @@ const App = () => {
           );
         } // Debug what we imported
         console.log("Debug imports:", {
-          crossTabSync: typeof crossTabSync,
-          crossTabSyncInit: typeof crossTabSync?.initialize,
+          tokenManager: "available",
         });
 
-        // Initialize cross-tab synchronization (now handled by TanStack Query)
-        if (crossTabSync && typeof crossTabSync.initialize === "function") {
-          crossTabSync.initialize();
-          console.log(
-            "✅ Cross-tab sync initialized (now handled by TanStack Query)"
-          );
-        } else {
-          console.error(
-            "❌ Cross-tab sync initialization failed - method not found",
-            crossTabSync
-          );
-        }
+        // Cross-tab synchronization now handled by TanStack Query
+        console.log(
+          "✅ Cross-tab sync handled by TanStack Query automatically"
+        );
 
         // Cache preloading now handled by TanStack Query automatically
         console.log(

@@ -9,12 +9,13 @@ import {
 import { getToken } from "../utils/tokenManager";
 
 // Create the base Axios instance with ad-blocker friendly configuration
-const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 // Force the correct URL in production to ensure consistency
-const finalBaseURL = import.meta.env.PROD ? 
-  "https://charismatic-appreciation-production.up.railway.app/api" : 
-  baseURL;
+const finalBaseURL = import.meta.env.PROD
+  ? "https://charismatic-appreciation-production.up.railway.app/api"
+  : baseURL;
 
 // Only log in development mode
 if (import.meta.env.DEV) {
@@ -36,10 +37,13 @@ import { sanitizeFormInput } from "../utils/formSanitization";
 // Add JWT token and sanitize data in requests
 api.interceptors.request.use(
   (config) => {
-    // Add authentication token to all requests
+    // Add authentication token to all requests ONLY if a valid token exists
     const token = getToken();
-    if (token) {
+    if (token && token !== "undefined" && token.trim() !== "") {
       config.headers.Authorization = `Token ${token}`;
+    } else {
+      // Explicitly remove Authorization header if no valid token
+      delete config.headers.Authorization;
     }
 
     // Log requests only in development mode
@@ -47,6 +51,7 @@ api.interceptors.request.use(
       console.log(`🌐 API Request [${config.method?.toUpperCase()}]:`, {
         url: config.url,
         fullURL: `${config.baseURL}${config.url}`,
+        hasToken: !!token,
       });
     }
 

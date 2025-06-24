@@ -28,6 +28,7 @@ import "../../styles/LoadingConsistency.css";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
+import styles from "./SettingsDataPage.module.css";
 
 // Consistent API URL handling
 const getAPIBaseURL = () => {
@@ -36,7 +37,6 @@ const getAPIBaseURL = () => {
   }
   return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 };
-import styles from "./SettingsDataPage.module.css";
 
 const TABS = [
   "Therapists",

@@ -9,9 +9,12 @@ import { getToken } from "../../utils/tokenManager";
 import styles from "./InventoryPage.module.css";
 import { MenuItem, Select } from "./MUISelect";
 
-const API_BASE_URL = import.meta.env.PROD ? 
-  "https://charismatic-appreciation-production.up.railway.app" : 
-  (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace('/api', '');
+const API_BASE_URL = import.meta.env.PROD
+  ? "https://charismatic-appreciation-production.up.railway.app"
+  : (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(
+      "/api",
+      ""
+    );
 const INVENTORY_API_URL = `${API_BASE_URL}/inventory/`;
 
 const getAuthToken = () => {
@@ -22,8 +25,11 @@ const getAuthToken = () => {
 const axiosAuth = axios.create();
 axiosAuth.interceptors.request.use((config) => {
   const token = getAuthToken();
-  if (token) {
+  if (token && token !== "undefined" && token.trim() !== "") {
     config.headers["Authorization"] = `Token ${token}`;
+  } else {
+    // Explicitly remove Authorization header if no valid token
+    delete config.headers["Authorization"];
   }
   return config;
 });
@@ -182,7 +188,10 @@ const InventoryPage = () => {
     "Hygiene",
     "Equipment",
     ...Array.from(new Set(inventoryItems.map((item) => item.category))).filter(
-      (cat) => !["Oils & Lotions", "Linens", "Hygiene", "Equipment", "all"].includes(cat)
+      (cat) =>
+        !["Oils & Lotions", "Linens", "Hygiene", "Equipment", "all"].includes(
+          cat
+        )
     ),
   ];
 
@@ -190,8 +199,9 @@ const InventoryPage = () => {
     ? inventoryItems.filter((item) => {
         const matchesCategory =
           selectedCategory === "all" || item.category === selectedCategory;
-        const matchesSearch =
-          (item.name || "").toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = (item.name || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
         return matchesCategory && matchesSearch;
       })
     : [];
@@ -322,7 +332,7 @@ const InventoryPage = () => {
 
   // Pluralize unit helper
   const pluralizeUnit = (quantity, unit) => {
-    if (!unit) return '';
+    if (!unit) return "";
     const lowerUnit = unit.toLowerCase();
     if (quantity === 1) {
       // Singular form
@@ -333,7 +343,7 @@ const InventoryPage = () => {
         }
       }
       // Remove trailing 's' for regular plurals
-      if (unit.endsWith('s')) {
+      if (unit.endsWith("s")) {
         return unit.slice(0, -1);
       }
       return unit;
@@ -346,7 +356,7 @@ const InventoryPage = () => {
         }
       }
       // Add 's' if not already plural
-      if (!unit.endsWith('s')) return unit + 's';
+      if (!unit.endsWith("s")) return unit + "s";
       return unit;
     }
   };
@@ -713,7 +723,7 @@ const InventoryPage = () => {
                 </label>
                 <br />
                 <label>
-                  Unit: {" "}
+                  Unit:{" "}
                   <input
                     value={editItem.unit}
                     onChange={(e) =>
@@ -723,7 +733,7 @@ const InventoryPage = () => {
                 </label>
                 <br />
                 <label>
-                  Size per Unit: {" "}
+                  Size per Unit:{" "}
                   <input
                     type="text"
                     value={editItem.size_per_unit || ""}
@@ -737,7 +747,7 @@ const InventoryPage = () => {
                 </label>
                 <br />
                 <label>
-                  Cost Per Unit: {" "}
+                  Cost Per Unit:{" "}
                   <input
                     type="number"
                     value={editItem.cost_per_unit}

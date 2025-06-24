@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import styles from "./EnterNewPasswordPage.module.css";
 import axios from "axios";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import pageTitles from "../../constants/pageTitles";
 import FormBlueprint from "../../globals/FormBlueprint";
 import { FormField } from "../../globals/FormField";
+import styles from "./EnterNewPasswordPage.module.css";
 
 function EnterNewPasswordPage() {
   useEffect(() => {
@@ -41,7 +41,11 @@ function EnterNewPasswordPage() {
     setLoading(true);
     try {
       const response = await axios.post(
-        `${import.meta.env.PROD ? 'https://charismatic-appreciation-production.up.railway.app/api' : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api')}/auth/set-new-password/`,
+        `${
+          import.meta.env.PROD
+            ? "https://charismatic-appreciation-production.up.railway.app/api"
+            : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api"
+        }/auth/set-new-password/`,
         {
           email,
           code,
