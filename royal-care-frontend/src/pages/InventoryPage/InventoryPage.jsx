@@ -10,11 +10,8 @@ import styles from "./InventoryPage.module.css";
 import { MenuItem, Select } from "./MUISelect";
 
 const API_BASE_URL = import.meta.env.PROD
-  ? "https://charismatic-appreciation-production.up.railway.app"
-  : (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(
-      "/api",
-      ""
-    );
+  ? "https://charismatic-appreciation-production.up.railway.app/api"
+  : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 const INVENTORY_API_URL = `${API_BASE_URL}/inventory/`;
 
 const getAuthToken = () => {
