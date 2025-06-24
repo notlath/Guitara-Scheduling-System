@@ -87,6 +87,25 @@ REDIS_URL = os.environ.get("REDIS_URL", None)
 
 if REDIS_URL:
     try:
+        # Django Cache Configuration with Redis
+        CACHES = {
+            "default": {
+                "BACKEND": "django_redis.cache.RedisCache",
+                "LOCATION": REDIS_URL,
+                "OPTIONS": {
+                    "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                    "CONNECTION_POOL_KWARGS": {
+                        "max_connections": 50,
+                        "retry_on_timeout": True,
+                        "socket_keepalive": True,
+                        "health_check_interval": 30,
+                    },
+                },
+                "KEY_PREFIX": "guitara_railway",
+                "TIMEOUT": 300,
+            }
+        }
+        
         # Use Redis if available and working
         CHANNEL_LAYERS = {
             "default": {
@@ -116,6 +135,12 @@ if REDIS_URL:
     except Exception as e:
         print(f"[RAILWAY SETTINGS] ⚠️ Redis configuration failed: {e}")
         # Fall back to in-memory options
+        CACHES = {
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "LOCATION": "unique-snowflake",
+            }
+        }
         CHANNEL_LAYERS = {
             "default": {
                 "BACKEND": "channels.layers.InMemoryChannelLayer",
@@ -128,6 +153,13 @@ if REDIS_URL:
 else:
     # Fallback configuration for Railway without Redis
     print("[RAILWAY SETTINGS] Redis not available - using fallback configuration")
+
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
+    }
 
     CHANNEL_LAYERS = {
         "default": {

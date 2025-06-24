@@ -138,6 +138,38 @@ DATABASES = {
 # Redis configuration for Railway
 REDIS_URL = os.environ.get("REDIS_URL", None)
 
+# Django Cache Configuration
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "CONNECTION_POOL_KWARGS": {
+                    "max_connections": 100,
+                    "retry_on_timeout": True,
+                    "socket_keepalive": True,
+                    "health_check_interval": 30,
+                },
+                "SERIALIZER": "django_redis.serializers.json.JSONSerializer",
+                "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+            },
+            "KEY_PREFIX": "guitara_prod",
+            "TIMEOUT": 300,
+        }
+    }
+    print(f"[PRODUCTION SETTINGS] Using Redis for cache: {REDIS_URL[:20]}...")
+else:
+    # Fallback to database cache if Redis is not available
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "cache_table",
+        }
+    }
+    print("[PRODUCTION SETTINGS] Using database cache (Redis not available)")
+
 # Channels layer configuration with Redis fallback
 if REDIS_URL:
     try:
