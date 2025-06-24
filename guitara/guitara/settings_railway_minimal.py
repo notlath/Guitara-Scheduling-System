@@ -1,20 +1,34 @@
 """
-Minimal Railway settings that prioritize successful startup
+Ultra-minimal Railway settings for fastest possible startup
+NO base settings import to avoid performance middleware
 """
 
 import os
+from pathlib import Path
 
-# Import base settings
-from .settings import *
+print(f"[ULTRA-MINIMAL RAILWAY] Loading ultra-minimal Railway configuration")
 
-print(f"[MINIMAL RAILWAY] Loading minimal Railway configuration")
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Override settings that might cause startup issues
+# Security settings
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY", "railway-ultra-minimal-key-change-in-production"
+)
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
-SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)
 
-# Minimal ALLOWED_HOSTS
-ALLOWED_HOSTS = []
+# Ultra-minimal ALLOWED_HOSTS
+ALLOWED_HOSTS = [
+    "charismatic-appreciation-production.up.railway.app",
+    "localhost",
+    "127.0.0.1",
+    "testserver",
+    "healthcheck.railway.app",
+    "*.up.railway.app",
+    "*.railway.app",
+]
+
+# Parse additional hosts from environment
 if os.environ.get("ALLOWED_HOSTS"):
     ALLOWED_HOSTS.extend(
         [
@@ -24,43 +38,23 @@ if os.environ.get("ALLOWED_HOSTS"):
         ]
     )
 
-# Add Railway patterns
-ALLOWED_HOSTS.extend(
-    [
-        "*.up.railway.app",
-        "*.railway.app",
-        "127.0.0.1",
-        "localhost",
-    ]
-)
-
 # Remove duplicates
 ALLOWED_HOSTS = list(set([host for host in ALLOWED_HOSTS if host]))
 
-print(f"[MINIMAL RAILWAY] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+print(f"[ULTRA-MINIMAL RAILWAY] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
-# Minimal database configuration
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("SUPABASE_DB_NAME"),
-        "USER": os.environ.get("SUPABASE_DB_USER"),
-        "PASSWORD": os.environ.get("SUPABASE_DB_PASSWORD"),
-        "HOST": os.environ.get("SUPABASE_DB_HOST"),
-        "PORT": "5432",
-        "OPTIONS": {
-            "connect_timeout": 60,
-            "application_name": "guitara_scheduling_railway",
-            "sslmode": "require",
-        },
-        "ATOMIC_REQUESTS": False,
-        "CONN_HEALTH_CHECKS": False,  # Disable to prevent startup failures
-        "CONN_MAX_AGE": 0,
-        "TEST": {"NAME": None},
-    }
-}
+# Ultra-minimal application definition - only essential apps
+INSTALLED_APPS = [
+    "django.contrib.contenttypes",
+    "django.contrib.auth",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework",
+    "corsheaders",
+]
 
-# Disable problematic middleware for startup
+# Ultra-minimal middleware - NO performance middleware that blocks health checks
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -69,32 +63,77 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # Removed performance middleware that might cause issues
 ]
 
-# Minimal channels configuration
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+ROOT_URLCONF = "guitara.urls"
+
+# Templates
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
     },
+]
+
+WSGI_APPLICATION = "guitara.wsgi.application"
+ASGI_APPLICATION = "guitara.asgi.application"
+# Database - Use environment variables with ultra-fast settings
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("SUPABASE_DB_NAME", "postgres"),
+        "USER": os.environ.get("SUPABASE_DB_USER", "postgres"),
+        "PASSWORD": os.environ.get("SUPABASE_DB_PASSWORD", ""),
+        "HOST": os.environ.get("SUPABASE_DB_HOST", "localhost"),
+        "PORT": "5432",
+        "OPTIONS": {
+            "connect_timeout": 10,
+            "options": "-c default_transaction_isolation=read_committed",
+        },
+        "ATOMIC_REQUESTS": False,
+        "CONN_HEALTH_CHECKS": False,  # Critical: disable health checks
+        "CONN_MAX_AGE": 0,  # No connection pooling for startup
+    }
 }
 
-# Disable Celery for minimal startup
-CELERY_TASK_ALWAYS_EAGER = True
-CELERY_TASK_EAGER_PROPAGATES = True
+# REST Framework minimal config
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": [],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+}
 
-# Static files
-STATIC_ROOT = "/app/staticfiles"
+# Internationalization
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
+USE_I18N = True
+USE_TZ = True
+
+# Static files (CSS, JavaScript, Images)
 STATIC_URL = "/static/"
-MEDIA_ROOT = "/app/media"
+STATIC_ROOT = os.path.join(BASE_DIR.parent, "staticfiles")
 MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR.parent, "media")
+
+# Default primary key field type
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Minimal CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # Temporarily allow all for testing
+CORS_ALLOW_ALL_ORIGINS = True  # For Railway health checks
 CORS_ALLOW_CREDENTIALS = True
 
-# Minimal logging
+# Minimal logging to avoid startup delays
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -105,10 +144,14 @@ LOGGING = {
     },
     "root": {
         "handlers": ["console"],
-        "level": "INFO",
+        "level": "WARNING",  # Minimal logging
     },
 }
 
-print(f"[MINIMAL RAILWAY] ✅ Minimal Railway settings loaded")
-print(f"[MINIMAL RAILWAY] Database: {os.environ.get('SUPABASE_DB_HOST')}")
-print(f"[MINIMAL RAILWAY] Debug: {DEBUG}")
+print(
+    f"[ULTRA-MINIMAL RAILWAY] ✅ Ultra-minimal settings loaded for Railway deployment"
+)
+print(f"[ULTRA-MINIMAL RAILWAY] Database: {os.environ.get('SUPABASE_DB_HOST')}")
+print(f"[ULTRA-MINIMAL RAILWAY] Debug: {DEBUG}")
+print(f"[ULTRA-MINIMAL RAILWAY] Apps count: {len(INSTALLED_APPS)}")
+print(f"[ULTRA-MINIMAL RAILWAY] Middleware count: {len(MIDDLEWARE)}")

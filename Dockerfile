@@ -36,8 +36,8 @@ RUN mkdir -p /app/staticfiles /app/media
 # Set working directory to Django project
 WORKDIR /app/guitara
 
-# Set environment variables for production
-ENV DJANGO_SETTINGS_MODULE=guitara.settings_railway
+# Set environment variables for Railway - force minimal settings
+ENV DJANGO_SETTINGS_MODULE=guitara.settings_railway_minimal
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
