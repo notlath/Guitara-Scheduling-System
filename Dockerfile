@@ -56,5 +56,8 @@ EXPOSE 8000
 # HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 #     CMD curl -f http://localhost:8000/ || exit 1
 
-# Default command - using robust startup with database fallback
-CMD ["python", "robust_startup.py"]
+# Change to the guitara directory where the startup script is
+WORKDIR /app/guitara
+
+# Default command - using ultra-simple emergency startup
+CMD ["python", "railway_emergency_start.py"]

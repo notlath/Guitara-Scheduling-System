@@ -6,8 +6,9 @@
   },
   "deploy": {
     "healthcheckPath": "/health/",
-    "healthcheckTimeout": 30,
+    "healthcheckTimeout": 60,
+    "startCommand": "python railway_emergency_start.py",
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 3
+    "restartPolicyMaxRetries": 2
   }
 }
