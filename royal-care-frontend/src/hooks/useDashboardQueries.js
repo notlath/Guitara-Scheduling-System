@@ -893,7 +893,17 @@ const fetchAttendanceRecordsAPI = async (selectedDate) => {
   });
 
   const token = localStorage.getItem("knoxToken");
-  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const storedUser = localStorage.getItem("user");
+
+  let user = null;
+  if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
+    try {
+      user = JSON.parse(storedUser);
+    } catch (error) {
+      console.error("Failed to parse user data:", error);
+      localStorage.removeItem("user");
+    }
+  }
 
   if (!token || !user || !user.id) {
     // Silent handling for unauthenticated users (likely on login page)
@@ -967,7 +977,17 @@ export const useAttendanceData = (selectedDate) => {
   // Multi-layer authentication check to prevent unnecessary API calls
   const isAuthenticated = useMemo(() => {
     const token = localStorage.getItem("knoxToken");
-    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const storedUser = localStorage.getItem("user");
+
+    let user = null;
+    if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
+      try {
+        user = JSON.parse(storedUser);
+      } catch (error) {
+        console.error("Failed to parse user data in useAttendanceData:", error);
+        localStorage.removeItem("user");
+      }
+    }
 
     // Check if we have both token and valid user data
     const hasToken = !!token && token.length > 10; // Basic token validation
@@ -982,7 +1002,20 @@ export const useAttendanceData = (selectedDate) => {
     queryFn: async () => {
       // Double-check authentication before making the API call
       const token = localStorage.getItem("knoxToken");
-      const user = JSON.parse(localStorage.getItem("user") || "null");
+      const storedUser = localStorage.getItem("user");
+
+      let user = null;
+      if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
+        try {
+          user = JSON.parse(storedUser);
+        } catch (error) {
+          console.error(
+            "Failed to parse user data in attendance query:",
+            error
+          );
+          localStorage.removeItem("user");
+        }
+      }
 
       if (!token || !user || !user.id) {
         console.log(

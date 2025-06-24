@@ -58,9 +58,16 @@ const SettingsAccountPage = () => {
 
     try {
       const storedUser = localStorage.getItem("user");
-      return storedUser ? JSON.parse(storedUser) : null;
+      // Check for invalid stored data
+      if (!storedUser || storedUser === "undefined" || storedUser === "null") {
+        return null;
+      }
+      return JSON.parse(storedUser);
     } catch (e) {
       console.error("Failed to parse stored user data:", e);
+      console.log("Stored user data was:", localStorage.getItem("user"));
+      // Clear corrupted data
+      localStorage.removeItem("user");
       return null;
     }
   }, [user]);

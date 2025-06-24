@@ -23,13 +23,16 @@ const ProfilePage = () => {
       setProfilePhoto(user.profile_photo_url);
     } else {
       const storedUser = localStorage.getItem("user");
-      if (storedUser) {
+      if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
         try {
           const parsedUser = JSON.parse(storedUser);
           setUserData(parsedUser);
           setProfilePhoto(parsedUser.profile_photo_url);
         } catch (error) {
           console.error("Error parsing stored user data:", error);
+          console.log("Stored user data was:", storedUser);
+          // Clear corrupted data
+          localStorage.removeItem("user");
         }
       }
     }

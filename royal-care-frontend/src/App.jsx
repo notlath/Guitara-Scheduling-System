@@ -127,8 +127,13 @@ const App = () => {
       const storedUser = localStorage.getItem("user");
       const storedToken = localStorage.getItem("knoxToken");
 
-      // Only proceed if both user data and token exist
-      if (storedUser && storedToken) {
+      // Only proceed if both user data and token exist and are valid
+      if (
+        storedUser &&
+        storedToken &&
+        storedUser !== "undefined" &&
+        storedToken !== "undefined"
+      ) {
         try {
           const parsedUser = JSON.parse(storedUser);
           // Validate if user object has required fields
@@ -167,6 +172,7 @@ const App = () => {
             }
           } else {
             // Clear invalid stored data
+            console.log("Invalid user data in localStorage, clearing...");
             localStorage.removeItem("user");
             localStorage.removeItem("knoxToken");
             dispatch(authInitialized()); // Mark auth as initialized
@@ -174,6 +180,8 @@ const App = () => {
         } catch (error) {
           // Clear corrupted stored data or handle validation errors
           console.error("Error validating stored authentication:", error);
+          console.log("Stored user data:", storedUser);
+          console.log("Clearing corrupted authentication data...");
           localStorage.removeItem("user");
           localStorage.removeItem("knoxToken");
           dispatch(authInitialized()); // Mark auth as initialized
