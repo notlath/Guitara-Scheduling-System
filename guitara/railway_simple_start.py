@@ -20,24 +20,30 @@ print(f"🔧 Django settings: {os.environ['DJANGO_SETTINGS_MODULE']}")
 # Get port from Railway
 port = os.environ.get("PORT", "8000")
 
+
 def main():
     """Start production server"""
     print(f"\n🚀 Starting production server on 0.0.0.0:{port}")
-    
+
     # Use exec to replace the process (Railway best practice)
     cmd = [
-        sys.executable, "-m", "daphne",
-        "-b", "0.0.0.0",
-        "-p", port,
+        sys.executable,
+        "-m",
+        "daphne",
+        "-b",
+        "0.0.0.0",
+        "-p",
+        port,
         "--proxy-headers",
-        "guitara.asgi:application"  # Use production ASGI
+        "guitara.asgi:application",  # Use production ASGI
     ]
-    
+
     print(f"Command: {' '.join(cmd)}")
     print("🚀 Starting server...")
-    
+
     # Replace current process with daphne
     os.execvp(sys.executable, cmd)
+
 
 if __name__ == "__main__":
     main()

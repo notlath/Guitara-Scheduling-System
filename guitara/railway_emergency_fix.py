@@ -24,4 +24,5 @@ os.environ["BUILD_TIME"] = str(BUILD_TIME)
 if __name__ == "__main__":
     # Import the original emergency start script
     from railway_emergency_start import main
+
     main()

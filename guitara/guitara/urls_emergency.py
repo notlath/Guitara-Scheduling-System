@@ -35,17 +35,17 @@ def emergency_root(request):
             "message": "Guitara Scheduling System",
             "status": "emergency_mode",
             "info": "Running in emergency bypass mode",
-            "version": "2.0.1", 
+            "version": "2.0.1",
             "timestamp": int(time.time()),
             "path": request.path,
             "method": request.method,
             "available_endpoints": ["/health/", "/ping/", "/healthcheck/"],
             "fixes_applied": [
                 "Root URL pattern fixed",
-                "APPEND_SLASH enabled", 
+                "APPEND_SLASH enabled",
                 "Explicit slash handling added",
-                "CORS headers configured"
-            ]
+                "CORS headers configured",
+            ],
         },
         status=200,
     )
@@ -58,5 +58,7 @@ urlpatterns = [
     path("healthcheck/", emergency_health, name="emergency_healthcheck"),
     path("ping/", emergency_ping, name="emergency_ping"),
     path("", emergency_root, name="emergency_root"),
-    re_path(r"^/$", emergency_root, name="emergency_root_slash"),  # Explicit slash handling
+    re_path(
+        r"^/$", emergency_root, name="emergency_root_slash"
+    ),  # Explicit slash handling
 ]

@@ -27,24 +27,28 @@ print(f"🔧 Django settings: {os.environ['DJANGO_SETTINGS_MODULE']}")
 try:
     print("🧪 Testing Django setup...")
     import django
+
     django.setup()
     print("✅ Django setup successful")
-    
+
     # Test database connection
     from django.db import connection
+
     with connection.cursor() as cursor:
         cursor.execute("SELECT 1")
         result = cursor.fetchone()
         print(f"✅ Database connection successful: {result}")
-        
+
 except Exception as e:
     print(f"❌ Django/Database setup failed: {e}")
     import traceback
+
     traceback.print_exc()
     print("🔄 Continuing anyway - some issues might resolve at runtime...")
 
 # Get port from Railway
 port = os.environ.get("PORT", "8000")
+
 
 def main():
     """Start production server with full database support"""
@@ -54,11 +58,15 @@ def main():
     # Build daphne command for production
     cmd = [
         sys.executable,
-        "-m", "daphne",
-        "-b", "0.0.0.0",  # Bind to all interfaces for Railway
-        "-p", port,       # Use Railway's PORT
-        "--proxy-headers", # Handle Railway's proxy headers
-        "-v", "1",        # Normal logging (not too verbose)
+        "-m",
+        "daphne",
+        "-b",
+        "0.0.0.0",  # Bind to all interfaces for Railway
+        "-p",
+        port,  # Use Railway's PORT
+        "--proxy-headers",  # Handle Railway's proxy headers
+        "-v",
+        "1",  # Normal logging (not too verbose)
         "guitara.asgi:application",  # Use production ASGI, not emergency
     ]
 
@@ -74,8 +82,10 @@ def main():
     except Exception as e:
         print(f"💥 Server failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
