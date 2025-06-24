@@ -59,5 +59,5 @@ EXPOSE 8000
 # Change to the guitara directory where the startup script is
 WORKDIR /app/guitara
 
-# Default command - use production startup with database support
-CMD ["python", "railway_production_start.py"]
+# Default command - use simple production startup (no cd issues)
+CMD ["python", "railway_simple_start.py"]
