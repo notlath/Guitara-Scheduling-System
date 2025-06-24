@@ -30,14 +30,6 @@
   background-color: var(--background);
 }
 
-.formContainer {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start; /* Keep contents left-aligned */
-  width: 100%;
-  max-width: 350px;
-}
-
 /* .logo styles moved to FormBlueprint.css */
 
 .loginForm {
@@ -73,15 +65,13 @@
 
 /* .registerLink and .registerLinkAnchor styles moved to FormBlueprint.css */
 
-@media screen and (min-width: 1024px) {
-  .loginContainer {
-    flex-direction: row;
-    gap: 0;
-  }
+.loginContainer {
+  flex-direction: row;
+  gap: 0;
+}
 
-  .formSide {
-    flex: 0.4;
-  }
+.formSide {
+  flex: 0.4;
 }
 
 .errorMessage {
