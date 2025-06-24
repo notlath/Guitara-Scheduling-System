@@ -49,6 +49,23 @@ CELERY_BROKER_URL = os.environ.get(
     "redis://localhost:6379/0",  # Default fallback for local development
 )
 
+# Django Cache Configuration using Redis
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 50,
+                "retry_on_timeout": True,
+            },
+        },
+        "KEY_PREFIX": "guitara_cache",
+        "TIMEOUT": 300,  # 5 minutes default timeout
+    }
+}
+
 # Channel layers for Docker
 CHANNEL_LAYERS = {
     "default": {

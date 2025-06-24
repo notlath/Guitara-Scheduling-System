@@ -7,15 +7,14 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # PostgreSQL service (optional - for local development)
-  # Remove this if you're using Supabase
   postgres:
     image: postgres:15-alpine
     restart: unless-stopped
@@ -29,11 +28,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Django application with ASGI (Channels support)
+  # Django application with enhanced WebSocket support
   web:
     build:
       context: .
@@ -45,35 +44,30 @@ services:
       # Django settings
       - DEBUG=${DEBUG:-True}
       - DJANGO_SETTINGS_MODULE=guitara.settings_docker
-      # Database (use your Supabase credentials or local postgres)
+      # Database settings
       - SUPABASE_DB_NAME=${SUPABASE_DB_NAME:-guitara_db}
       - SUPABASE_DB_USER=${SUPABASE_DB_USER:-postgres}
       - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
       - SUPABASE_DB_HOST=${SUPABASE_DB_HOST:-postgres}
-      # Redis for Channels and Celery
-      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
+      - SUPABASE_DB_PORT=${SUPABASE_DB_PORT:-5432}
+      # Redis settings - Fixed environment variable format
       - REDIS_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
-      # Email settings
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
-      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-}
+      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
+      # Auto-create superuser
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@example.com}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-admin123}
       # Security
       - SECRET_KEY=${SECRET_KEY:-django-insecure-change-this-in-production}
-      - ALLOWED_HOST=${ALLOWED_HOST:-localhost}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0}
     volumes:
       - media_volume:/app/media
       - static_volume:/app/staticfiles
+      - ./logs:/app/logs
     depends_on:
       redis:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    command: >
-      sh -c "
-        python manage.py collectstatic --noinput &&
-        python manage.py migrate &&
-        daphne -b 0.0.0.0 -p 8000 guitara.asgi:application
-      "
 
   # Celery Worker for background tasks
   celery:
@@ -82,22 +76,14 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      # Django settings
       - DEBUG=${DEBUG:-True}
       - DJANGO_SETTINGS_MODULE=guitara.settings_docker
-      # Database (use your Supabase credentials or local postgres)
       - SUPABASE_DB_NAME=${SUPABASE_DB_NAME:-guitara_db}
       - SUPABASE_DB_USER=${SUPABASE_DB_USER:-postgres}
       - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
       - SUPABASE_DB_HOST=${SUPABASE_DB_HOST:-postgres}
-      # Redis for Celery
-      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
       - REDIS_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
-      # Email settings
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
-      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-}
-      # Security
+      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-change-this-in-production}
     volumes:
       - media_volume:/app/media
@@ -106,7 +92,12 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    command: celery -A guitara worker --loglevel=info --concurrency=2
+    command: >
+      sh -c "
+        /app/wait-for-services.sh &&
+        cd /app/guitara &&
+        celery -A guitara worker --loglevel=info --concurrency=2
+      "
 
   # Celery Beat for periodic tasks
   celery-beat:
@@ -115,22 +106,14 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      # Django settings
       - DEBUG=${DEBUG:-True}
       - DJANGO_SETTINGS_MODULE=guitara.settings_docker
-      # Database (use your Supabase credentials or local postgres)
       - SUPABASE_DB_NAME=${SUPABASE_DB_NAME:-guitara_db}
       - SUPABASE_DB_USER=${SUPABASE_DB_USER:-postgres}
       - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
       - SUPABASE_DB_HOST=${SUPABASE_DB_HOST:-postgres}
-      # Redis for Celery
-      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
       - REDIS_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
-      # Email settings
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
-      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-}
-      # Security
+      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-change-this-in-production}
     volumes:
       - media_volume:/app/media
@@ -139,7 +122,12 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    command: celery -A guitara beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: >
+      sh -c "
+        /app/wait-for-services.sh &&
+        cd /app/guitara &&
+        celery -A guitara beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+      "
 
 volumes:
   redis_data:

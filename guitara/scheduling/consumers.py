@@ -105,49 +105,177 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
             user_group = f"user_{self.user.id}"
             await self.channel_layer.group_discard(user_group, self.channel_name)
 
-    async def receive(self, text_data):
+    async def send_appointment_update(self, event):
+        """Send appointment update to WebSocket"""
         try:
-            text_data_json = json.loads(text_data)
-            message_type = text_data_json.get("type")
+            await self.send(text_data=json.dumps(event["data"]))
+            print(f"[CONSUMER] ✅ Sent appointment update: {event['data']['type']}")
+        except Exception as e:
+            logger.error(f"Error sending appointment update: {e}")
 
-            # Handle heartbeat messages for connection health
+    async def send_notification(self, event):
+        """Send notification to WebSocket"""
+        try:
+            await self.send(text_data=json.dumps(event["data"]))
+            print(
+                f"[CONSUMER] ✅ Sent notification: {event['data']['notification_type']}"
+            )
+        except Exception as e:
+            logger.error(f"Error sending notification: {e}")
+
+    async def receive(self, text_data):
+        """Handle incoming WebSocket messages"""
+        try:
+            data = json.loads(text_data)
+            message_type = data.get("type")
+
+            print(f"[CONSUMER] Received message type: {message_type}")
+
             if message_type == "heartbeat":
-                self.last_heartbeat = datetime.now()
+                # Handle heartbeat
                 await self.send(
                     text_data=json.dumps(
                         {
-                            "type": "heartbeat_ack",
-                            "timestamp": self.last_heartbeat.isoformat(),
-                            "connection_id": self.connection_id,
+                            "type": "heartbeat_response",
+                            "timestamp": datetime.now().isoformat(),
                         }
                     )
                 )
-                return
 
-            # Batch updates to reduce database hits
-            if message_type in ["appointment_update", "bulk_update"]:
-                self.update_queue.append(text_data_json)
+            elif message_type == "subscribe_to_updates":
+                # Handle subscription requests
+                update_types = data.get("update_types", [])
+                await self._handle_subscription(update_types)
 
-                if not self.batch_timeout:
-                    self.batch_timeout = asyncio.create_task(
-                        self.process_batched_updates()
-                    )
-                return
+            elif message_type == "get_initial_data":
+                # Resend initial data
+                await self._send_initial_data()
 
-            # Handle immediate actions that require real-time response
-            await self.handle_immediate_message(text_data_json)
+            elif message_type == "therapist_response":
+                # Handle therapist accept/reject responses
+                await self._handle_therapist_response(data)
+
+            else:
+                logger.warning(f"Unknown message type: {message_type}")
 
         except json.JSONDecodeError:
+            logger.error("Invalid JSON received")
             await self.send(
                 text_data=json.dumps(
                     {"type": "error", "message": "Invalid JSON format"}
                 )
             )
         except Exception as e:
-            logger.error(f"Error processing message: {e}")
+            logger.error(f"Error processing received message: {e}")
             await self.send(
                 text_data=json.dumps(
-                    {"type": "error", "message": "Internal server error"}
+                    {"type": "error", "message": "Failed to process message"}
+                )
+            )
+
+    async def _handle_subscription(self, update_types):
+        """Handle subscription to specific update types"""
+        try:
+            # Join specific groups based on subscription
+            for update_type in update_types:
+                if update_type == "appointments" and self.user.role in [
+                    "operator",
+                    "therapist",
+                    "driver",
+                ]:
+                    await self.channel_layer.group_add(
+                        "appointments", self.channel_name
+                    )
+                elif update_type == "notifications":
+                    await self.channel_layer.group_add(
+                        f"user_{self.user.id}", self.channel_name
+                    )
+
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        "type": "subscription_confirmed",
+                        "subscribed_to": update_types,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+            )
+
+        except Exception as e:
+            logger.error(f"Error handling subscription: {e}")
+
+    async def _send_initial_data(self):
+        """Send initial data based on user role and permissions"""
+        try:
+            if self.user.role == "operator":
+                appointments = await self.get_today_appointments_cached()
+            else:
+                appointments = await self.get_user_appointments_cached()
+
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        "type": "initial_data",
+                        "appointments": appointments,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+            )
+
+        except Exception as e:
+            logger.error(f"Error sending initial data: {e}")
+
+    async def _handle_therapist_response(self, data):
+        """Handle therapist response to appointment assignment"""
+        try:
+            appointment_id = data.get("appointment_id")
+            accepted = data.get("accepted", False)
+
+            if not appointment_id:
+                await self.send(
+                    text_data=json.dumps(
+                        {"type": "error", "message": "Missing appointment_id"}
+                    )
+                )
+                return
+
+            # Update appointment in database
+            appointment = await database_sync_to_async(Appointment.objects.get)(
+                id=appointment_id
+            )
+
+            # Fire custom signal for therapist response
+            from .signals import therapist_response_signal
+
+            therapist_response_signal.send(
+                sender=self.__class__,
+                appointment=appointment,
+                therapist=self.user,
+                accepted=accepted,
+            )
+
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        "type": "response_confirmed",
+                        "appointment_id": appointment_id,
+                        "accepted": accepted,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+            )
+
+        except Appointment.DoesNotExist:
+            await self.send(
+                text_data=json.dumps(
+                    {"type": "error", "message": "Appointment not found"}
+                )
+            )
+        except Exception as e:
+            logger.error(f"Error handling therapist response: {e}")
+            await self.send(
+                text_data=json.dumps(
+                    {"type": "error", "message": "Failed to process response"}
                 )
             )
 

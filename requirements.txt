@@ -11,6 +11,7 @@ channels==4.0.0                  # Adds WebSocket and async support to Django
 channels-redis==4.1.0            # Redis backend for Django Channels
 daphne==4.0.0                    # ASGI server for Django Channels
 redis==5.0.1                     # Python client for Redis
+django-redis==5.4.0              # Django Redis cache backend
 
 # Background task processing
 celery==5.3.4                    # Distributed task queue

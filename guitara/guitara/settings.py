@@ -406,3 +406,67 @@ try:
 except ImportError:
     print("[SETTINGS] No local settings found, using defaults")
     pass
+
+# =====================================
+# REAL-TIME WEBSOCKET OPTIMIZATION
+# =====================================
+
+# Redis Configuration for WebSockets and Caching
+REDIS_URL = os.environ.get("REDIS_URL", None)
+if REDIS_URL:
+    # Production Redis setup
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "CONNECTION_POOL_KWARGS": {
+                    "max_connections": 50,
+                    "retry_on_timeout": True,
+                },
+                "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+                "IGNORE_EXCEPTIONS": True,
+            },
+            "KEY_PREFIX": "guitara",
+            "TIMEOUT": 300,  # 5 minutes default timeout
+        }
+    }
+
+    # Cache for WebSocket data
+    APPOINTMENT_CACHE_TIMEOUT = 60  # 1 minute for appointment data
+    USER_DATA_CACHE_TIMEOUT = 300  # 5 minutes for user data
+
+else:
+    # Development fallback
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
+    }
+    APPOINTMENT_CACHE_TIMEOUT = 30
+    USER_DATA_CACHE_TIMEOUT = 60
+
+# Database optimization for real-time performance
+if not DEBUG:
+    # Production database optimizations
+    DATABASES["default"]["CONN_MAX_AGE"] = 60  # Connection pooling
+    DATABASES["default"]["OPTIONS"] = {
+        "MAX_CONNS": 20,
+        "AUTOCOMMIT": True,
+        "ATOMIC_REQUESTS": False,
+    }
+
+# WebSocket-specific settings
+WEBSOCKET_HEARTBEAT_INTERVAL = 30  # Send heartbeat every 30 seconds
+WEBSOCKET_TIMEOUT = 60  # Close inactive connections after 60 seconds
+WEBSOCKET_MAX_CONNECTIONS_PER_USER = 5  # Limit concurrent connections
+
+# Real-time notification settings
+NOTIFICATION_BATCH_SIZE = 10  # Batch notifications for efficiency
+NOTIFICATION_BATCH_TIMEOUT = 1000  # 1 second batching timeout (milliseconds)
+
+# Performance monitoring
+WEBSOCKET_METRICS_ENABLED = True
+WEBSOCKET_LOG_LEVEL = "INFO" if DEBUG else "WARNING"
