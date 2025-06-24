@@ -72,6 +72,7 @@
 
 .formSide {
   flex: 0.4;
+  min-width: 400px;
 }
 
 .errorMessage {

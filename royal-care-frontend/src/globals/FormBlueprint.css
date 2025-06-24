@@ -4,6 +4,8 @@
   flex-direction: column;
   align-items: flex-start;
   max-width: 350px;
+  /* max-width: min(350px, calc(100vw - 100px));
+  width: auto; */
 }
 .form-blueprint-logo {
   max-width: 100%;
