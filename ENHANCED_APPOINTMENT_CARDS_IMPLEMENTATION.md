@@ -1,20 +1,24 @@
 # Enhanced Appointment Card Implementation
 
 ## Overview
+
 This document details the implementation of enhanced appointment cards in the Guitara Scheduling System, providing comprehensive appointment details with improved UX.
 
 ## Backend Changes
 
 ### 1. Enhanced AppointmentSerializer
+
 **File:** `guitara/scheduling/serializers.py`
 
 **New Fields Added:**
+
 - `formatted_date` - Human-readable date format (e.g., "December 25, 2024")
 - `formatted_start_time` - Human-readable start time (e.g., "2:30 PM")
 - `formatted_end_time` - Human-readable end time (e.g., "4:00 PM")
 - `urgency_level` - Calculated urgency based on status and time until appointment
 
 **Existing Serialized Fields:**
+
 - `client_details` - Full client information including name, phone, address
 - `therapist_details` - Single therapist information
 - `therapists_details` - Multiple therapists information
@@ -26,9 +30,11 @@ This document details the implementation of enhanced appointment cards in the Gu
 - `pending_acceptances` - List of parties that still need to accept
 
 ### 2. Optimized Queryset
+
 **File:** `guitara/scheduling/views.py`
 
 The AppointmentViewSet uses optimized queryset with proper prefetching:
+
 ```python
 base_queryset = Appointment.objects.select_related(
     "client", "therapist", "driver", "operator", "rejected_by"
@@ -38,9 +44,11 @@ base_queryset = Appointment.objects.select_related(
 ## Frontend Changes
 
 ### 1. Enhanced Card Rendering
+
 **File:** `royal-care-frontend/src/components/OperatorDashboard.jsx`
 
 **Updated `renderAllAppointments` function to display:**
+
 - Appointment ID for easy reference
 - Client name and contact information
 - Formatted date and time display
@@ -53,9 +61,11 @@ base_queryset = Appointment.objects.select_related(
 - Additional notes and location details
 
 ### 2. Enhanced Styling
+
 **File:** `royal-care-frontend/src/styles/EnhancedAppointmentCards.css`
 
 **Features:**
+
 - Modern card design with hover effects
 - Color-coded status badges
 - Responsive grid layout
@@ -69,6 +79,7 @@ base_queryset = Appointment.objects.select_related(
 ## Data Flow
 
 ### 1. Backend API Response Structure
+
 ```json
 {
   "results": [
@@ -112,6 +123,7 @@ base_queryset = Appointment.objects.select_related(
 ```
 
 ### 2. Frontend Field Mapping
+
 - `appointment.client_details?.first_name` - Client name
 - `appointment.therapist_details` or `appointment.therapists_details` - Therapist info
 - `appointment.services_details` - Services array
@@ -121,10 +133,12 @@ base_queryset = Appointment.objects.select_related(
 ## Urgency Level Calculation
 
 The backend calculates urgency based on:
+
 1. **Appointment Status**
 2. **Time Until Appointment**
 
 ### Urgency Levels:
+
 - **Critical** - In progress, session started, journey started
 - **High** - Pending/confirmed appointments within 1-2 hours
 - **Medium** - Awaiting payment, pending/confirmed within 2-4 hours
@@ -133,6 +147,7 @@ The backend calculates urgency based on:
 ## UI Components
 
 ### 1. Appointment Card Sections
+
 1. **Header** - Client name and status badge
 2. **Basic Info** - ID, date, time, location
 3. **Client Info** - Phone and address (light gray background)
@@ -143,6 +158,7 @@ The backend calculates urgency based on:
 8. **Actions** - Status-specific action buttons
 
 ### 2. Status Badge Colors
+
 - **Pending** - Yellow/amber
 - **Confirmed** - Green
 - **Driver Confirmed** - Light blue
@@ -152,6 +168,7 @@ The backend calculates urgency based on:
 - **Rejected** - Red
 
 ### 3. Responsive Design
+
 - **Desktop** - Grid layout with multiple columns
 - **Mobile** - Single column layout
 - **Touch-friendly** - Larger buttons and spacing
@@ -159,16 +176,19 @@ The backend calculates urgency based on:
 ## Benefits
 
 1. **Enhanced User Experience**
+
    - All important information visible at a glance
    - Clear visual hierarchy and organization
    - Status-specific action buttons
 
 2. **Improved Efficiency**
+
    - Reduced clicks to access appointment details
    - Quick identification of urgent appointments
    - Easy-to-read formatted dates and times
 
 3. **Better Data Presentation**
+
    - Complete service breakdown with pricing
    - Clear acceptance status for multi-party appointments
    - Organized information sections
@@ -185,14 +205,17 @@ The enhanced appointment cards are automatically used in the "All Appointments" 
 ## Future Enhancements
 
 1. **Interactive Elements**
+
    - Click to expand/collapse detailed sections
    - Quick edit capabilities for specific fields
 
 2. **Real-time Updates**
+
    - WebSocket integration for live status updates
    - Real-time acceptance status changes
 
 3. **Advanced Filtering**
+
    - Filter by urgency level
    - Filter by service type or therapist
    - Date range filtering

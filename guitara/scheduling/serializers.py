@@ -207,20 +207,20 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def get_urgency_level(self, obj):
         """Calculate urgency level based on appointment status and time"""
         from datetime import datetime, timezone
-        
+
         if not obj.date or not obj.start_time:
             return "normal"
-            
+
         now = datetime.now(timezone.utc)
         appointment_datetime = datetime.combine(obj.date, obj.start_time)
         if appointment_datetime.tzinfo is None:
             appointment_datetime = appointment_datetime.replace(tzinfo=timezone.utc)
-        
+
         time_diff = appointment_datetime - now
         hours_until_appointment = time_diff.total_seconds() / 3600
 
         status = obj.status or ""
-        
+
         if status == "pending":
             if hours_until_appointment <= 2:
                 return "high"
