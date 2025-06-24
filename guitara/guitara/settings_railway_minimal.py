@@ -56,7 +56,7 @@ INSTALLED_APPS = [
     "django_filters",  # Required for filtering
     # Required apps for URL routing to work
     "core",
-    "authentication", 
+    "authentication",
     "registration",
     "scheduling",
     "attendance",

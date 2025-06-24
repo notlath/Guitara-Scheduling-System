@@ -220,6 +220,8 @@ CORS_ALLOWED_ORIGINS = [
 # Allow credentials for authentication
 CORS_ALLOW_CREDENTIALS = True
 
+CORS_ALLOW_ALL_ORIGINS = False
+
 # Additional CORS settings for production
 CORS_ALLOWED_HEADERS = [
     "accept",

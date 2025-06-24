@@ -233,6 +233,7 @@ PASSWORD_HASHERS = [
 # CORS configuration
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Add your frontend's origin
+    "https://guitara-scheduling-system.vercel.app",  # Add your Vercel frontend
 ]
 
 # Allow credentials and additional CORS settings for media files

@@ -17,9 +17,9 @@ def emergency_health(request):
             "service": "guitara-scheduling-system",
             "timestamp": int(time.time()),
             "environment": "railway",
-            "mode": "emergency_bypass"
+            "mode": "emergency_bypass",
         },
-        status=200
+        status=200,
     )
 
 
@@ -34,9 +34,9 @@ def emergency_root(request):
         {
             "message": "Guitara Scheduling System",
             "status": "emergency_mode",
-            "info": "Running in emergency bypass mode"
+            "info": "Running in emergency bypass mode",
         },
-        status=200
+        status=200,
     )
 
 

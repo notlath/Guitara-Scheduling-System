@@ -25,8 +25,37 @@ MIDDLEWARE = [
 ]
 
 # Configure CORS settings
+# Add these CORS settings:
+
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Add your frontend's origin
+    "https://guitara-scheduling-system.vercel.app",  # Your Vercel frontend
+    "http://localhost:5173",  # Local development
+    "http://localhost:3000",  # Alternative local dev
+]
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
+
+CORS_ALLOWED_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "cache-control",
+]
+
+CORS_ALLOWED_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
 ]
 
 # Optional: Allow credentials if needed

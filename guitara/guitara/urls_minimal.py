@@ -15,9 +15,9 @@ def railway_ultra_health(request):
             "status": "healthy",
             "service": "guitara-scheduling-system",
             "timestamp": int(time.time()),
-            "environment": "railway"
+            "environment": "railway",
         },
-        status=200
+        status=200,
     )
 
 
@@ -32,9 +32,9 @@ def default_route(request):
         {
             "message": "Guitara Scheduling System API",
             "status": "running",
-            "mode": "minimal"
+            "mode": "minimal",
         },
-        status=200
+        status=200,
     )
 
 

@@ -28,6 +28,7 @@ try:
 except Exception as e:
     logger.error(f"[EMERGENCY ASGI] ❌ Error initializing ASGI application: {e}")
     import traceback
+
     traceback.print_exc()
 
     # Ultimate fallback - return a simple ASGI app
