@@ -148,19 +148,6 @@
   border-color: transparent transparent transparent var(--background);
 }
 
-@media (max-width: 600px) {
-  .passwordPopupError {
-    right: auto;
-    left: 0;
-    top: 110%;
-    min-width: 220px;
-  }
-  .passwordPopupError::before,
-  .passwordPopupError::after {
-    display: none;
-  }
-}
-
 .passwordRequirementsList {
   margin: 0;
   padding-left: var(--spacing-sm);
@@ -283,3 +270,40 @@
 }
 
 /* Keep only unique styles for LoginPage */
+
+@media (max-width: 768px) {
+  .loginContainer {
+    flex-direction: column;
+    height: 100vh;
+  }
+  .imageSide {
+    display: none;
+  }
+  .formContainer {
+    /* padding: var(--spacing-ml); */
+    max-width: 400px;
+    border-radius: var(--border-radius);
+    /* border: 1px solid var(--border-color); */
+    /* margin: 0 100px; */
+    width: auto;
+    max-width: min(400px, calc(100vw - 100px));
+  }
+  .formSide {
+    flex: 1 1 auto;
+    min-height: 100vh;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .passwordPopupError {
+    right: auto;
+    left: 0;
+    top: -140%;
+    min-width: 220px;
+  }
+  .passwordPopupError::before,
+  .passwordPopupError::after {
+    display: none;
+  }
+}
