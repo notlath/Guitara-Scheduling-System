@@ -202,7 +202,7 @@ const DriverDashboard = () => {
 
   // Setup timer for pickup assignments countdown
   useEffect(() => {
-    const activePickups = myAppointments.filter(
+    const activePickups = (Array.isArray(myAppointments) ? myAppointments : []).filter(
       (apt) => apt.status === "driver_assigned_pickup"
     );
 
@@ -1670,7 +1670,7 @@ const DriverDashboard = () => {
             <div className="todays-appointments">
               <h2>Today's Transports</h2>
               {renderAppointmentsList(
-                myTodayAppointments.filter((apt) => !isTransportCompleted(apt))
+                (Array.isArray(myTodayAppointments) ? myTodayAppointments : []).filter((apt) => !isTransportCompleted(apt))
               )}
             </div>
           )}
@@ -1678,7 +1678,7 @@ const DriverDashboard = () => {
             <div className="upcoming-appointments">
               <h2>Upcoming Transports</h2>
               {renderAppointmentsList(
-                myUpcomingAppointments.filter(
+                (Array.isArray(myUpcomingAppointments) ? myUpcomingAppointments : []).filter(
                   (apt) => !isTransportCompleted(apt)
                 )
               )}
@@ -1694,7 +1694,7 @@ const DriverDashboard = () => {
                   <div className="stat-card completed">
                     <span className="stat-number">
                       {
-                        myAllTransports.filter((apt) =>
+                        (Array.isArray(myAllTransports) ? myAllTransports : []).filter((apt) =>
                           [
                             "driver_transport_completed", // Driver completed their part
                             "therapist_dropped_off",
@@ -1710,7 +1710,7 @@ const DriverDashboard = () => {
                   <div className="stat-card pending">
                     <span className="stat-number">
                       {
-                        myAllTransports.filter((apt) =>
+                        (Array.isArray(myAllTransports) ? myAllTransports : []).filter((apt) =>
                           [
                             "pending",
                             "therapist_confirmed",
@@ -1725,7 +1725,7 @@ const DriverDashboard = () => {
                   <div className="stat-card pickup">
                     <span className="stat-number">
                       {
-                        myAllTransports.filter((apt) =>
+                        (Array.isArray(myAllTransports) ? myAllTransports : []).filter((apt) =>
                           [
                             "pickup_requested",
                             "driver_assigned_pickup",
@@ -1740,7 +1740,7 @@ const DriverDashboard = () => {
                   <div className="stat-card completed-pickups">
                     <span className="stat-number">
                       {
-                        myAllTransports.filter(
+                        (Array.isArray(myAllTransports) ? myAllTransports : []).filter(
                           (apt) => apt.status === "transport_completed"
                         ).length
                       }
@@ -1749,13 +1749,13 @@ const DriverDashboard = () => {
                   </div>
                   <div className="stat-card total">
                     <span className="stat-number">
-                      {myAllTransports.length}
+                      {Array.isArray(myAllTransports) ? myAllTransports.length : 0}
                     </span>
                     <span className="stat-label">Total Transports</span>
                   </div>
                 </div>
               </div>{" "}
-              {renderAppointmentsList(myAllTransports)}
+              {renderAppointmentsList(Array.isArray(myAllTransports) ? myAllTransports : [])}
             </div>
           )}{" "}
           {currentView === "attendance" && (

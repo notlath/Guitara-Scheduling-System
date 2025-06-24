@@ -327,10 +327,11 @@ const TherapistDashboard = () => {
   const renderTherapistTeam = (appointment) => {
     if (
       appointment.therapists_details &&
+      Array.isArray(appointment.therapists_details) &&
       appointment.therapists_details.length > 1
     ) {
       const otherTherapists = appointment.therapists_details.filter(
-        (t) => t.id !== user?.id
+        (t) => t && t.id !== user?.id
       );
       if (otherTherapists.length > 0) {
         return (
@@ -1006,7 +1007,7 @@ const TherapistDashboard = () => {
             <div className="todays-appointments">
               <h2>Today's Appointments</h2>
               {renderAppointmentsList(
-                myTodayAppointments.filter((apt) => !isTransportCompleted(apt))
+                (Array.isArray(myTodayAppointments) ? myTodayAppointments : []).filter((apt) => !isTransportCompleted(apt))
               )}
             </div>
           )}
@@ -1014,7 +1015,7 @@ const TherapistDashboard = () => {
             <div className="upcoming-appointments">
               <h2>Upcoming Appointments</h2>
               {renderAppointmentsList(
-                myUpcomingAppointments.filter(
+                (Array.isArray(myUpcomingAppointments) ? myUpcomingAppointments : []).filter(
                   (apt) => !isTransportCompleted(apt)
                 )
               )}

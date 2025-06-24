@@ -79,9 +79,10 @@ export const useEnhancedDashboardData = (userRole, userId) => {
 
   // Role-based filtered data (replaces complex useMemo chains)
   const filteredData = useMemo(() => {
-    const appointments = appointmentsQuery.data || [];
-    const todayAppointments = todayQuery.data || [];
-    const upcomingAppointments = upcomingQuery.data || [];
+    // Enhanced data safety - ensure arrays even if API returns unexpected data
+    const appointments = Array.isArray(appointmentsQuery.data) ? appointmentsQuery.data : [];
+    const todayAppointments = Array.isArray(todayQuery.data) ? todayQuery.data : [];
+    const upcomingAppointments = Array.isArray(upcomingQuery.data) ? upcomingQuery.data : [];
 
     if (!userId) {
       return {
@@ -94,31 +95,31 @@ export const useEnhancedDashboardData = (userRole, userId) => {
     switch (userRole) {
       case "therapist":
         return {
-          appointments: appointments.filter(
+          appointments: (Array.isArray(appointments) ? appointments : []).filter(
             (apt) =>
-              apt.therapist === userId ||
-              (apt.therapists && apt.therapists.includes(userId))
+              apt && (apt.therapist === userId ||
+              (apt.therapists && apt.therapists.includes(userId)))
           ),
-          todayAppointments: todayAppointments.filter(
+          todayAppointments: (Array.isArray(todayAppointments) ? todayAppointments : []).filter(
             (apt) =>
-              apt.therapist === userId ||
-              (apt.therapists && apt.therapists.includes(userId))
+              apt && (apt.therapist === userId ||
+              (apt.therapists && apt.therapists.includes(userId)))
           ),
-          upcomingAppointments: upcomingAppointments.filter(
+          upcomingAppointments: (Array.isArray(upcomingAppointments) ? upcomingAppointments : []).filter(
             (apt) =>
-              apt.therapist === userId ||
-              (apt.therapists && apt.therapists.includes(userId))
+              apt && (apt.therapist === userId ||
+              (apt.therapists && apt.therapists.includes(userId)))
           ),
         };
 
       case "driver":
         return {
-          appointments: appointments.filter((apt) => apt.driver === userId),
-          todayAppointments: todayAppointments.filter(
-            (apt) => apt.driver === userId
+          appointments: (Array.isArray(appointments) ? appointments : []).filter((apt) => apt && apt.driver === userId),
+          todayAppointments: (Array.isArray(todayAppointments) ? todayAppointments : []).filter(
+            (apt) => apt && apt.driver === userId
           ),
-          upcomingAppointments: upcomingAppointments.filter(
-            (apt) => apt.driver === userId
+          upcomingAppointments: (Array.isArray(upcomingAppointments) ? upcomingAppointments : []).filter(
+            (apt) => apt && apt.driver === userId
           ),
         };
 
