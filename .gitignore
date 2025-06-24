@@ -16,6 +16,9 @@ guitara/.env
 .env
 .env.local
 .env.*.local
+.env.*.production
+.env*
+.env.production
 
 # Ignore Node.js dependencies (installed via npm/yarn/pnpm)
 node_modules/
