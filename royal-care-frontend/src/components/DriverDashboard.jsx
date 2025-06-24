@@ -1,3 +1,9 @@
+// Helper to check if transport is completed
+const isTransportCompleted = (appointment) =>
+  ["transport_completed", "completed", "driver_transport_completed"].includes(
+    appointment.status
+  );
+
 import { useEffect, useState } from "react";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -1663,13 +1669,19 @@ const DriverDashboard = () => {
           {currentView === "today" && (
             <div className="todays-appointments">
               <h2>Today's Transports</h2>
-              {renderAppointmentsList(myTodayAppointments)}
+              {renderAppointmentsList(
+                myTodayAppointments.filter((apt) => !isTransportCompleted(apt))
+              )}
             </div>
           )}
           {currentView === "upcoming" && (
             <div className="upcoming-appointments">
               <h2>Upcoming Transports</h2>
-              {renderAppointmentsList(myUpcomingAppointments)}
+              {renderAppointmentsList(
+                myUpcomingAppointments.filter(
+                  (apt) => !isTransportCompleted(apt)
+                )
+              )}
             </div>
           )}
           {currentView === "all" && (

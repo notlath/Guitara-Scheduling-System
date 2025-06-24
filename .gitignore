@@ -12,6 +12,7 @@ __pycache__/
 
 # Ignore environment variable files (contain sensitive data)
 royal-care-frontend/.env
+royal-care-frontend/.env.production
 guitara/.env
 .env
 .env.local
@@ -19,6 +20,8 @@ guitara/.env
 .env.*.production
 .env*
 .env.production
+docker/.env.prod
+docker/.env.production
 
 # Ignore Node.js dependencies (installed via npm/yarn/pnpm)
 node_modules/

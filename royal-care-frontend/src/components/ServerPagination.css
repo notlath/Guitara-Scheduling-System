@@ -1,0 +1,119 @@
+/* Server-side pagination styles */
+.server-pagination {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-button {
+  padding: 0.5rem 1rem;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.nav-button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.nav-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.page-numbers button {
+  min-width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid #dee2e6;
+  background: white;
+  color: #495057;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.page-numbers button:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.page-numbers button.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.ellipsis {
+  padding: 0 0.5rem;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: #6c757d;
+  text-align: center;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .server-pagination {
+    padding: 0.75rem;
+  }
+
+  .pagination-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .nav-button {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .page-numbers button {
+    min-width: 2rem;
+    height: 2rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Integration with existing styles */
+.appointments-pagination .server-pagination {
+  margin-top: 1rem;
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0;
+}
+
+.appointments-pagination .nav-button {
+  background: var(--primary-color, #007bff);
+}
+
+.appointments-pagination .nav-button:hover:not(:disabled) {
+  background: var(--primary-hover, #0056b3);
+}

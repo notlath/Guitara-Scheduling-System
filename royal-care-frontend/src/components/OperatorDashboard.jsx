@@ -13,8 +13,7 @@ import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 // PERFORMANCE: Stable filtering imports to prevent render loops
-import { useVirtualizedPagination } from "../hooks/useVirtualizedPagination";
-import Pagination from "./Pagination";
+import ServerPagination from "./ServerPagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
 import { useOptimizedButtonLoading } from "../hooks/useOperatorPerformance";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
@@ -29,6 +28,7 @@ import {
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
+import "../styles/EnhancedAppointmentCards.css";
 import "../styles/OperatorDashboard.css";
 import "../styles/Performance.css";
 import "../styles/UrgencyIndicators.css";
@@ -83,7 +83,11 @@ const OperatorDashboard = () => {
   const rawPage = searchParams.get("page");
 
   const currentView = validateUrlParam(rawView, VALID_VIEW_VALUES, "rejected");
-  const currentFilter = validateUrlParam(rawFilter, VALID_FILTER_VALUES, "all");
+  const _currentFilter = validateUrlParam(
+    rawFilter,
+    VALID_FILTER_VALUES,
+    "all"
+  );
   const currentPage = Math.max(1, parseInt(rawPage || "1", 10));
 
   // Track validation warnings for user feedback
@@ -127,7 +131,7 @@ const OperatorDashboard = () => {
   );
 
   // Filter and page management
-  const setFilter = useCallback(
+  const _setFilter = useCallback(
     (newFilter) => {
       const newSearchParams = new URLSearchParams(searchParams);
       newSearchParams.set("filter", newFilter);
@@ -187,17 +191,25 @@ const OperatorDashboard = () => {
   const [tabData, setTabData] = useState(null);
   const [tabLoading, setTabLoading] = useState(false);
   const [tabError, setTabError] = useState(null);
+  const [paginationInfo, setPaginationInfo] = useState({
+    count: 0,
+    totalPages: 0,
+    currentPage: 1,
+    pageSize: 15,
+    hasNext: false,
+    hasPrevious: false,
+  });
   const tabCache = useRef({});
 
   // Helper function to get authentication token
   const getToken = () => localStorage.getItem("knoxToken");
-  // API fetch functions for each tab - wrapped in useCallback to prevent dependency issues
-  const fetchAllAppointments = useCallback(async () => {
+  // API fetch functions for each tab - updated for server-side pagination
+  const fetchAllAppointments = useCallback(async (page = 1, pageSize = 15) => {
     const token = getToken();
     if (!token) throw new Error("Authentication required");
 
     const response = await fetch(
-      "http://localhost:8000/api/scheduling/appointments/",
+      `http://localhost:8000/api/scheduling/appointments/?page=${page}&page_size=${pageSize}`,
       {
         headers: { Authorization: `Token ${token}` },
       }
@@ -207,31 +219,115 @@ const OperatorDashboard = () => {
     return response.json();
   }, []);
 
-  const fetchPendingAppointments = useCallback(async () => {
-    const appointments = await fetchAllAppointments();
-    return appointments.filter((apt) => apt.status === "pending");
-  }, [fetchAllAppointments]);
+  const fetchPendingAppointments = useCallback(
+    async (page = 1, pageSize = 15) => {
+      const token = getToken();
+      if (!token) throw new Error("Authentication required");
 
-  const fetchRejectedAppointments = useCallback(async () => {
-    const appointments = await fetchAllAppointments();
-    return appointments.filter((apt) => apt.status === "rejected");
-  }, [fetchAllAppointments]);
+      const response = await fetch(
+        `http://localhost:8000/api/scheduling/appointments/pending/?page=${page}&page_size=${pageSize}`,
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+      if (!response.ok)
+        throw new Error(
+          `Failed to fetch pending appointments: ${response.status}`
+        );
+      return response.json();
+    },
+    []
+  );
 
-  const fetchTimeoutAppointments = useCallback(async () => {
-    const appointments = await fetchAllAppointments();
-    const now = new Date();
-    return appointments.filter((apt) => {
-      const createdAt = new Date(apt.created_at);
-      const timeDiff = now - createdAt;
-      const hoursElapsed = timeDiff / (1000 * 60 * 60);
-      return apt.status === "pending" && hoursElapsed > 24; // 24 hours timeout
-    });
-  }, [fetchAllAppointments]);
+  const fetchRejectedAppointments = useCallback(
+    async (page = 1, pageSize = 15) => {
+      const token = getToken();
+      if (!token) throw new Error("Authentication required");
 
-  const fetchAwaitingPaymentAppointments = useCallback(async () => {
-    const appointments = await fetchAllAppointments();
-    return appointments.filter((apt) => apt.status === "awaiting_payment");
-  }, [fetchAllAppointments]);
+      const response = await fetch(
+        `http://localhost:8000/api/scheduling/appointments/rejected/?page=${page}&page_size=${pageSize}`,
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+      if (!response.ok)
+        throw new Error(
+          `Failed to fetch rejected appointments: ${response.status}`
+        );
+      return response.json();
+    },
+    []
+  );
+
+  const fetchTimeoutAppointments = useCallback(
+    async (page = 1, pageSize = 15) => {
+      const token = getToken();
+      if (!token) throw new Error("Authentication required");
+
+      const response = await fetch(
+        `http://localhost:8000/api/scheduling/appointments/timeout/?page=${page}&page_size=${pageSize}`,
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+      if (!response.ok)
+        throw new Error(
+          `Failed to fetch timeout appointments: ${response.status}`
+        );
+      return response.json();
+    },
+    []
+  );
+
+  const fetchAwaitingPaymentAppointments = useCallback(
+    async (page = 1, pageSize = 15) => {
+      const token = getToken();
+      if (!token) throw new Error("Authentication required");
+
+      const response = await fetch(
+        `http://localhost:8000/api/scheduling/appointments/awaiting_payment/?page=${page}&page_size=${pageSize}`,
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+      if (!response.ok)
+        throw new Error(
+          `Failed to fetch awaiting payment appointments: ${response.status}`
+        );
+      return response.json();
+    },
+    []
+  );
+
+  const fetchActiveSessions = useCallback(async (page = 1, pageSize = 15) => {
+    const token = getToken();
+    if (!token) throw new Error("Authentication required");
+
+    const response = await fetch(
+      `http://localhost:8000/api/scheduling/appointments/active_sessions/?page=${page}&page_size=${pageSize}`,
+      {
+        headers: { Authorization: `Token ${token}` },
+      }
+    );
+    if (!response.ok)
+      throw new Error(`Failed to fetch active sessions: ${response.status}`);
+    return response.json();
+  }, []);
+
+  const fetchPickupRequests = useCallback(async (page = 1, pageSize = 15) => {
+    const token = getToken();
+    if (!token) throw new Error("Authentication required");
+
+    const response = await fetch(
+      `http://localhost:8000/api/scheduling/appointments/pickup_requests/?page=${page}&page_size=${pageSize}`,
+      {
+        headers: { Authorization: `Token ${token}` },
+      }
+    );
+    if (!response.ok)
+      throw new Error(`Failed to fetch pickup requests: ${response.status}`);
+    return response.json();
+  }, []);
 
   const fetchAttendanceRecords = useCallback(async () => {
     const token = getToken();
@@ -293,48 +389,37 @@ const OperatorDashboard = () => {
     };
   }, []);
 
-  const fetchActiveSessions = useCallback(async () => {
-    const appointments = await fetchAllAppointments();
-    return appointments.filter(
-      (apt) => apt.status === "in_progress" || apt.status === "session_started"
-    );
-  }, [fetchAllAppointments]);
-
-  const fetchPickupRequests = useCallback(async () => {
-    const appointments = await fetchAllAppointments();
-    return appointments.filter((apt) => apt.status === "pickup_requested");
-  }, [fetchAllAppointments]);
-
-  // ✅ PER-TAB DATA FETCHING: Only fetch data for the active tab
+  // ✅ PER-TAB DATA FETCHING: Only fetch data for the active tab with pagination
   useEffect(() => {
     let isMounted = true;
     setTabLoading(true);
     setTabError(null);
-    setTabData(null);
 
-    // If you want to cache tab data, check cache first
-    if (tabCache.current[currentView]) {
-      setTabData(tabCache.current[currentView]);
-      setTabLoading(false);
-      return;
-    }
+    // Skip caching for paginated data - always fetch fresh
+    const pageSize = 8;
 
     let fetchPromise;
     switch (currentView) {
       case "all":
-        fetchPromise = fetchAllAppointments();
+        fetchPromise = fetchAllAppointments(currentPage, pageSize);
         break;
       case "pending":
-        fetchPromise = fetchPendingAppointments();
+        fetchPromise = fetchPendingAppointments(currentPage, pageSize);
         break;
       case "rejected":
-        fetchPromise = fetchRejectedAppointments();
+        fetchPromise = fetchRejectedAppointments(currentPage, pageSize);
         break;
       case "timeout":
-        fetchPromise = fetchTimeoutAppointments();
+        fetchPromise = fetchTimeoutAppointments(currentPage, pageSize);
         break;
       case "payment":
-        fetchPromise = fetchAwaitingPaymentAppointments();
+        fetchPromise = fetchAwaitingPaymentAppointments(currentPage, pageSize);
+        break;
+      case "sessions":
+        fetchPromise = fetchActiveSessions(currentPage, pageSize);
+        break;
+      case "pickup":
+        fetchPromise = fetchPickupRequests(currentPage, pageSize);
         break;
       case "attendance":
         fetchPromise = fetchAttendanceRecords();
@@ -348,12 +433,6 @@ const OperatorDashboard = () => {
       case "workflow":
         fetchPromise = fetchWorkflowData();
         break;
-      case "sessions":
-        fetchPromise = fetchActiveSessions();
-        break;
-      case "pickup":
-        fetchPromise = fetchPickupRequests();
-        break;
       default:
         fetchPromise = Promise.resolve(null);
     }
@@ -361,21 +440,46 @@ const OperatorDashboard = () => {
     fetchPromise
       .then((data) => {
         if (isMounted) {
-          setTabData(data);
-          tabCache.current[currentView] = data; // cache
+          // Handle paginated vs non-paginated responses
+          if (data && data.results) {
+            // Paginated response from DRF
+            setTabData(data.results);
+            setPaginationInfo({
+              count: data.count,
+              totalPages: data.total_pages,
+              currentPage: data.current_page,
+              pageSize: data.page_size,
+              hasNext: data.has_next,
+              hasPrevious: data.has_previous,
+            });
+          } else {
+            // Non-paginated response (for attendance, notifications, etc.)
+            setTabData(data);
+            setPaginationInfo({
+              count: Array.isArray(data) ? data.length : 0,
+              totalPages: 1,
+              currentPage: 1,
+              pageSize: Array.isArray(data) ? data.length : 0,
+              hasNext: false,
+              hasPrevious: false,
+            });
+          }
         }
       })
       .catch((err) => {
         if (isMounted) setTabError(err);
+        console.error("Error fetching tab data:", err);
       })
       .finally(() => {
         if (isMounted) setTabLoading(false);
       });
+
     return () => {
       isMounted = false;
     };
   }, [
     currentView,
+    currentPage, // Add currentPage as dependency
     selectedDate,
     fetchAllAppointments,
     fetchPendingAppointments,
@@ -393,7 +497,8 @@ const OperatorDashboard = () => {
   const processedTabData = useMemo(() => {
     if (!tabData) return { appointments: [], filteredAppointments: [] };
 
-    // For appointment-based tabs, apply the current filter
+    // For appointment-based tabs, we now get already filtered data from server
+    // No need for client-side filtering since server handles pagination and filtering
     if (
       Array.isArray(tabData) &&
       currentView !== "attendance" &&
@@ -401,49 +506,14 @@ const OperatorDashboard = () => {
       currentView !== "driver" &&
       currentView !== "workflow"
     ) {
-      let filtered = tabData;
-
-      // Apply currentFilter for appointment data
-      if (currentFilter !== "all") {
-        const today = new Date().toISOString().split("T")[0];
-        switch (currentFilter) {
-          case "today":
-            filtered = tabData.filter((apt) => apt.date === today);
-            break;
-          case "upcoming":
-            filtered = tabData.filter((apt) => new Date(apt.date) > new Date());
-            break;
-          case "completed":
-            filtered = tabData.filter((apt) => apt.status === "completed");
-            break;
-          // Add more filters as needed
-          default:
-            filtered = tabData.filter((apt) => apt.status === currentFilter);
-        }
-      }
-
-      return { appointments: tabData, filteredAppointments: filtered };
+      return { appointments: tabData, filteredAppointments: tabData };
     }
 
-    // For non-appointment views (notifications, attendance, driver, workflow), return empty arrays for pagination
-    if (
-      currentView === "notifications" ||
-      currentView === "attendance" ||
-      currentView === "driver" ||
-      currentView === "workflow"
-    ) {
-      return { appointments: [], filteredAppointments: [] };
-    }
+    // For non-appointment views (notifications, attendance, driver, workflow), return as-is
+    return { appointments: tabData || [], filteredAppointments: tabData || [] };
+  }, [tabData, currentView]);
 
-    return { appointments: tabData, filteredAppointments: tabData };
-  }, [tabData, currentFilter, currentView]);
-
-  // ✅ SIMPLIFIED: Pagination only for filtered data
-  const appointmentsPagination = useVirtualizedPagination(
-    processedTabData.filteredAppointments || [],
-    10,
-    800 // Container height in pixels
-  ); // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
+  // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
   const { buttonLoading, setActionLoading, forceClearLoading } =
     useOptimizedButtonLoading(); // 🚀 ULTRA-PERFORMANCE: Simplified dashboard tabs without counts
   const dashboardTabs = useMemo(() => {
@@ -667,7 +737,7 @@ const OperatorDashboard = () => {
   };
 
   // Helper function to get urgency badge
-  const getUrgencyBadge = (urgencyLevel) => {
+  const _getUrgencyBadge = (urgencyLevel) => {
     const badges = {
       critical: {
         icon: "🚨",
@@ -746,7 +816,7 @@ const OperatorDashboard = () => {
       setAutoCancelLoading(false);
     }
   };
-  const handleStartAppointment = async (appointmentId) => {
+  const _handleStartAppointment = async (appointmentId) => {
     const actionKey = `start_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
@@ -1512,20 +1582,7 @@ const OperatorDashboard = () => {
     );
   };
 
-  // � PERFORMANCE: Old implementations removed - using ultra-optimized versions above  // ✅ STEP 3 & 4: Optimized pagination sync with conditional updates
-  useEffect(() => {
-    // Only sync if the pagination current page differs from URL page
-    if (currentPage !== appointmentsPagination.currentPage) {
-      appointmentsPagination.goToPage(currentPage);
-    }
-  }, [currentPage, appointmentsPagination]);
-
-  // Update URL when pagination changes - only if values actually differ
-  useEffect(() => {
-    if (appointmentsPagination.currentPage !== currentPage) {
-      setPage(appointmentsPagination.currentPage);
-    }
-  }, [appointmentsPagination.currentPage, currentPage, setPage]);
+  // ✅ PERFORMANCE: Old implementations removed - using ultra-optimized versions above
 
   // Helper functions for status badge mapping
   const getStatusBadgeClass = (status) => {
@@ -1968,340 +2025,193 @@ const OperatorDashboard = () => {
     );
   };
 
-  const renderAllAppointments = () => {
-    const {
-      currentItems: paginatedAppointments,
-      isVirtualized,
-      totalHeight,
-    } = appointmentsPagination;
+  // Render appointment action buttons based on status
+  const renderAppointmentActions = (appointment) => {
+    const status = appointment.status;
 
-    // Always show filter controls and sort indicator
+    switch (status) {
+      case "driver_confirmed":
+        return (
+          <LoadingButton
+            onClick={() => _handleStartAppointment(appointment.id)}
+            loading={buttonLoading[`start_${appointment.id}`]}
+            className="start-button"
+          >
+            Start Appointment
+          </LoadingButton>
+        );
+
+      case "awaiting_payment":
+        return (
+          <LoadingButton
+            onClick={() => handlePaymentVerification(appointment)}
+            loading={buttonLoading[`payment_${appointment.id}`]}
+            className="payment-button"
+          >
+            Verify Payment
+          </LoadingButton>
+        );
+
+      case "rejected":
+        return (
+          <LoadingButton
+            onClick={() => handleReviewRejection(appointment)}
+            className="review-button"
+          >
+            Review Rejection
+          </LoadingButton>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const renderAllAppointments = () => {
+    const appointments = processedTabData.filteredAppointments || [];
+
     return (
       <div className="appointments-list">
-        {/* Filter Controls */}
-        <div className="filter-controls">
-          <div className="filter-section">
-            <label htmlFor="appointment-filter">Filter by:</label>
-            <select
-              id="appointment-filter"
-              value={currentFilter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="filter-select"
-            >
-              {" "}
-              {VALID_FILTER_VALUES.map((filterValue) => (
-                <option key={filterValue} value={filterValue}>
-                  {filterValue === "all"
-                    ? `All Appointments (${
-                        processedTabData.filteredAppointments?.length || 0
-                      })`
-                    : filterValue.charAt(0).toUpperCase() +
-                      filterValue.slice(1).replace(/_/g, " ")}
-                </option>
+        {/* Appointments List */}
+        <div className="appointments-container">
+          {tabLoading ? (
+            <div className="loading-message">Loading appointments...</div>
+          ) : tabError ? (
+            <div className="error-message">
+              Error loading appointments: {tabError.message}
+            </div>
+          ) : appointments.length === 0 ? (
+            <div className="no-appointments">
+              No appointments found for the current view.
+            </div>
+          ) : (
+            <div className="appointments-grid">
+              {appointments.map((appointment) => (
+                <div key={appointment.id} className="appointment-card">
+                  <div className="appointment-header">
+                    <h4>
+                      {appointment.client_details?.first_name}{" "}
+                      {appointment.client_details?.last_name}
+                    </h4>
+                    <span
+                      className={`status-badge ${getStatusBadgeClass(
+                        appointment.status
+                      )}`}
+                    >
+                      {appointment.status?.replace("_", " ").toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="appointment-details">
+                    <p>
+                      <strong>Appointment ID:</strong> #{appointment.id}
+                    </p>
+                    <p>
+                      <strong>Date:</strong>{" "}
+                      {appointment.formatted_date || appointment.date}
+                    </p>
+                    <p>
+                      <strong>Time:</strong>{" "}
+                      {appointment.formatted_start_time ||
+                        appointment.start_time}
+                      {appointment.formatted_end_time &&
+                        ` - ${appointment.formatted_end_time}`}
+                    </p>
+                    <p>
+                      <strong>Location:</strong>{" "}
+                      {appointment.location || "Not specified"}
+                    </p>
+                    {/* Client Information */}
+                    {appointment.client_details && (
+                      <div className="client-info">
+                        <p>
+                          <strong>Client Phone:</strong>{" "}
+                          {appointment.client_details.phone_number || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Client Address:</strong>{" "}
+                          {appointment.client_details.address || "N/A"}
+                        </p>
+                      </div>
+                    )}
+                    {/* Therapist Information */}
+                    {renderTherapistInfo(appointment)}
+                    {/* Driver Information */}
+                    {appointment.driver_details && (
+                      <p>
+                        <strong>Driver:</strong>{" "}
+                        {appointment.driver_details.first_name}{" "}
+                        {appointment.driver_details.last_name}
+                        {appointment.driver_details.motorcycle_plate &&
+                          ` (${appointment.driver_details.motorcycle_plate})`}
+                      </p>
+                    )}
+                    {/* Services Information */}
+                    {appointment.services_details &&
+                      appointment.services_details.length > 0 && (
+                        <div className="services-info">
+                          <p>
+                            <strong>Services:</strong>
+                          </p>
+                          <ul className="services-list">
+                            {appointment.services_details.map(
+                              (service, index) => (
+                                <li key={service.id || index}>
+                                  {service.name} - ₱{service.price}
+                                  {service.duration &&
+                                    ` (${Math.floor(
+                                      service.duration / 60
+                                    )}min)`}
+                                </li>
+                              )
+                            )}
+                          </ul>
+                          <p>
+                            <strong>Total Price:</strong> ₱
+                            {appointment.total_price || 0}
+                          </p>
+                          <p>
+                            <strong>Total Duration:</strong>{" "}
+                            {appointment.total_duration || 0} minutes
+                          </p>
+                        </div>
+                      )}
+                    {/* Acceptance Status */}
+                    {getTherapistAcceptanceStatus(appointment)}
+                    {/* Additional Notes */}
+                    {appointment.notes && (
+                      <p>
+                        <strong>Notes:</strong> {appointment.notes}
+                      </p>
+                    )}
+                    {/* Urgency Level */}
+                    {appointment.urgency_level && (
+                      <p
+                        className={`urgency-indicator urgency-${appointment.urgency_level}`}
+                      >
+                        <strong>Priority:</strong>{" "}
+                        {appointment.urgency_level.toUpperCase()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="appointment-actions">
+                    {/* Add action buttons based on appointment status */}
+                    {renderAppointmentActions(appointment)}
+                  </div>
+                </div>
               ))}
-            </select>
-          </div>
-          {/* Performance Mode Toggle */}
-          {appointmentsPagination.shouldVirtualize && (
-            <div className="performance-controls">
-              <button
-                onClick={appointmentsPagination.toggleVirtualization}
-                className={`performance-toggle ${
-                  isVirtualized ? "active" : ""
-                }`}
-                title={
-                  isVirtualized
-                    ? "Switch to Pagination"
-                    : "Switch to Virtual Scrolling"
-                }
-              >
-                {isVirtualized ? "📄 Pagination" : "⚡ Virtual Scrolling"}
-              </button>
             </div>
           )}
-          <div className="quick-filter-buttons">
-            <button
-              onClick={() => setFilter("completed")}
-              className={`quick-filter-btn ${
-                currentFilter === "completed" ? "active" : ""
-              }`}
-              title="View only completed appointments"
-            >
-              📋 View Completed
-            </button>
-            <button
-              onClick={() => setFilter("today")}
-              className={`quick-filter-btn ${
-                currentFilter === "today" ? "active" : ""
-              }`}
-              title="View today's appointments"
-            >
-              📅 Today
-            </button>
-            <button
-              onClick={() => setFilter("pending")}
-              className={`quick-filter-btn ${
-                currentFilter === "pending" ? "active" : ""
-              }`}
-              title="View pending appointments"
-            >
-              ⏳ Pending
-            </button>
-          </div>
         </div>
 
-        <div className="sort-indicator">
-          <i className="fas fa-sort-amount-down"></i>
-          <span>Sorted by urgency and time (most urgent first)</span>{" "}
-          <span className="filter-info">
-            •{" "}
-            {isVirtualized
-              ? "Virtual scrolling"
-              : `Showing ${paginatedAppointments?.length || 0} of ${
-                  processedTabData.filteredAppointments?.length || 0
-                } appointments`}
-            {currentFilter !== "all" && ` (filtered by: ${currentFilter})`}
-          </span>
-        </div>
-
-        {/* Appointment Cards Container or Empty State */}
-        {!Array.isArray(processedTabData.filteredAppointments) ||
-        processedTabData.filteredAppointments.length === 0 ? (
-          <div className="empty-state">
-            <i className="fas fa-calendar"></i>
-            <p>No appointments found</p>
-            {tabError && (
-              <p className="error-text">
-                Error:{" "}
-                {typeof tabError === "string"
-                  ? tabError
-                  : JSON.stringify(tabError)}
-              </p>
-            )}
-          </div>
-        ) : !Array.isArray(paginatedAppointments) ? (
-          <div className="empty-state">
-            <p>Loading appointments...</p>
-          </div>
-        ) : (
-          <div
-            className={`appointments-container ${
-              isVirtualized ? "virtualized" : "paginated"
-            }`}
-            style={isVirtualized ? { height: 800, overflowY: "auto" } : {}}
-            onScroll={
-              isVirtualized ? appointmentsPagination.handleScroll : undefined
-            }
-            ref={appointmentsPagination.containerRef}
-          >
-            {isVirtualized && (
-              <div style={{ height: totalHeight, position: "relative" }}>
-                {paginatedAppointments.map((appointment) => {
-                  if (!appointment || !appointment.id) return null;
-
-                  const urgencyLevel = getUrgencyLevel(appointment);
-                  const urgencyBadge = getUrgencyBadge(urgencyLevel);
-                  const status = appointment.status || "";
-
-                  return (
-                    <div
-                      key={appointment.id}
-                      className={`appointment-card ${urgencyLevel}`}
-                      style={{
-                        position: "absolute",
-                        top: appointment.offsetY || 0,
-                        left: 0,
-                        right: 0,
-                        height: 200,
-                      }}
-                    >
-                      <div className="appointment-header">
-                        <h3>
-                          Appointment #{appointment.id} -{" "}
-                          {appointment.client_details?.first_name || "Unknown"}{" "}
-                          {appointment.client_details?.last_name || ""}
-                        </h3>
-                        <div className="status-badges">
-                          <span
-                            className={`status-badge ${getStatusBadgeClass(
-                              status
-                            )}`}
-                          >
-                            {getStatusDisplayText(status)}
-                          </span>
-                          <span
-                            className={`urgency-badge ${
-                              urgencyBadge?.className || ""
-                            }`}
-                          >
-                            {urgencyBadge?.icon || ""}{" "}
-                            {urgencyBadge?.label || ""}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="appointment-details">
-                        <p>
-                          <strong>Date:</strong>{" "}
-                          {appointment.date
-                            ? new Date(appointment.date).toLocaleDateString()
-                            : "N/A"}
-                        </p>
-                        <p>
-                          <strong>Time:</strong>{" "}
-                          {appointment.start_time || "N/A"} -{" "}
-                          {appointment.end_time || "N/A"}
-                        </p>
-                        <p>
-                          <strong>Location:</strong>{" "}
-                          {appointment.location || "N/A"}
-                        </p>
-                        {renderTherapistInfo(appointment)}
-                        <p>
-                          <strong>Services:</strong>{" "}
-                          {Array.isArray(appointment.services_details)
-                            ? appointment.services_details
-                                .map((s) => s.name)
-                                .join(", ")
-                            : "N/A"}
-                        </p>
-                        <p>
-                          <strong>Status:</strong> {status || "N/A"}
-                        </p>
-                      </div>
-
-                      <div className="appointment-actions">
-                        {status === "driver_confirmed" && (
-                          <LoadingButton
-                            onClick={() =>
-                              handleStartAppointment(appointment.id)
-                            }
-                            loading={buttonLoading[`start_${appointment.id}`]}
-                            className="start-button"
-                          >
-                            Start Appointment
-                          </LoadingButton>
-                        )}
-
-                        {status === "awaiting_payment" && (
-                          <LoadingButton
-                            onClick={() =>
-                              handlePaymentVerification(appointment)
-                            }
-                            loading={buttonLoading[`payment_${appointment.id}`]}
-                            className="payment-button"
-                          >
-                            Verify Payment
-                          </LoadingButton>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {!isVirtualized &&
-              paginatedAppointments.map((appointment) => {
-                if (!appointment || !appointment.id) return null;
-
-                const urgencyLevel = getUrgencyLevel(appointment);
-                const urgencyBadge = getUrgencyBadge(urgencyLevel);
-                const status = appointment.status || "";
-
-                return (
-                  <div
-                    key={appointment.id}
-                    className={`appointment-card ${urgencyLevel}`}
-                  >
-                    <div className="appointment-header">
-                      <h3>
-                        Appointment #{appointment.id} -{" "}
-                        {appointment.client_details?.first_name || "Unknown"}{" "}
-                        {appointment.client_details?.last_name || ""}
-                      </h3>
-                      <div className="status-badges">
-                        <span
-                          className={`status-badge ${getStatusBadgeClass(
-                            status
-                          )}`}
-                        >
-                          {getStatusDisplayText(status)}
-                        </span>
-                        <span
-                          className={`urgency-badge ${
-                            urgencyBadge?.className || ""
-                          }`}
-                        >
-                          {urgencyBadge?.icon || ""} {urgencyBadge?.label || ""}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="appointment-details">
-                      <p>
-                        <strong>Date:</strong>{" "}
-                        {appointment.date
-                          ? new Date(appointment.date).toLocaleDateString()
-                          : "N/A"}
-                      </p>
-                      <p>
-                        <strong>Time:</strong> {appointment.start_time || "N/A"}{" "}
-                        - {appointment.end_time || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Location:</strong>{" "}
-                        {appointment.location || "N/A"}
-                      </p>
-                      {renderTherapistInfo(appointment)}
-                      <p>
-                        <strong>Services:</strong>{" "}
-                        {Array.isArray(appointment.services_details)
-                          ? appointment.services_details
-                              .map((s) => s.name)
-                              .join(", ")
-                          : "N/A"}
-                      </p>{" "}
-                      <p>
-                        <strong>Status:</strong> {status || "N/A"}
-                      </p>
-                    </div>
-
-                    <div className="appointment-actions">
-                      {status === "driver_confirmed" && (
-                        <LoadingButton
-                          onClick={() => handleStartAppointment(appointment.id)}
-                          loading={buttonLoading[`start_${appointment.id}`]}
-                          className="start-button"
-                        >
-                          Start Appointment
-                        </LoadingButton>
-                      )}
-
-                      {status === "awaiting_payment" && (
-                        <LoadingButton
-                          onClick={() => handlePaymentVerification(appointment)}
-                          loading={buttonLoading[`payment_${appointment.id}`]}
-                          className="payment-button"
-                        >
-                          Verify Payment
-                        </LoadingButton>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        )}
-
-        {/* Pagination Controls - Only show if not virtualized */}
-        {!isVirtualized && (
-          <Pagination
-            {...appointmentsPagination}
-            itemName="appointments"
-            className="appointments-pagination"
-          />
-        )}
+        {/* Server-side Pagination */}
+        <ServerPagination
+          currentPage={paginationInfo.currentPage}
+          totalPages={paginationInfo.totalPages}
+          hasNext={paginationInfo.hasNext}
+          hasPrevious={paginationInfo.hasPrevious}
+          onPageChange={setPage}
+          className="appointments-pagination"
+        />
       </div>
     );
   };

@@ -171,6 +171,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
     # Add acceptance status fields
     both_parties_accepted = serializers.SerializerMethodField()
     pending_acceptances = serializers.SerializerMethodField()
+    # Add formatted fields for better frontend display
+    formatted_date = serializers.SerializerMethodField()
+    formatted_start_time = serializers.SerializerMethodField()
+    formatted_end_time = serializers.SerializerMethodField()
+    urgency_level = serializers.SerializerMethodField()
 
     # Add explicit services field to handle ManyToManyField properly
     services = serializers.PrimaryKeyRelatedField(
@@ -180,6 +185,60 @@ class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = "__all__"
+
+    def get_formatted_date(self, obj):
+        """Return formatted date for frontend display"""
+        if obj.date:
+            return obj.date.strftime("%B %d, %Y")
+        return None
+
+    def get_formatted_start_time(self, obj):
+        """Return formatted start time for frontend display"""
+        if obj.start_time:
+            return obj.start_time.strftime("%I:%M %p")
+        return None
+
+    def get_formatted_end_time(self, obj):
+        """Return formatted end time for frontend display"""
+        if obj.end_time:
+            return obj.end_time.strftime("%I:%M %p")
+        return None
+
+    def get_urgency_level(self, obj):
+        """Calculate urgency level based on appointment status and time"""
+        from datetime import datetime, timezone
+
+        if not obj.date or not obj.start_time:
+            return "normal"
+
+        now = datetime.now(timezone.utc)
+        appointment_datetime = datetime.combine(obj.date, obj.start_time)
+        if appointment_datetime.tzinfo is None:
+            appointment_datetime = appointment_datetime.replace(tzinfo=timezone.utc)
+
+        time_diff = appointment_datetime - now
+        hours_until_appointment = time_diff.total_seconds() / 3600
+
+        status = obj.status or ""
+
+        if status == "pending":
+            if hours_until_appointment <= 2:
+                return "high"
+            elif hours_until_appointment <= 4:
+                return "medium"
+            return "normal"
+        elif status in ["confirmed", "driver_confirmed"]:
+            if hours_until_appointment <= 1:
+                return "high"
+            elif hours_until_appointment <= 2:
+                return "medium"
+            return "normal"
+        elif status in ["in_progress", "session_started", "journey_started"]:
+            return "critical"
+        elif status == "awaiting_payment":
+            return "medium"
+        else:
+            return "normal"
 
     def get_total_duration(self, obj):
         """Calculate total duration from all services in minutes"""

@@ -1,4 +1,4 @@
-import "../globals/LayoutRow.css";
+import "./LayoutRow.css";
 
 const LayoutRow = ({ title, subtitle, children }) => (
   <div className="header-row">
