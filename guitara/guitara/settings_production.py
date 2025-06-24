@@ -47,6 +47,7 @@ ALLOWED_HOSTS.extend(
         "healthcheck.railway.app",  # Railway health check domain
         "127.0.0.1",
         "localhost",
+        "testserver",  # For Django test client
     ]
 )
 
