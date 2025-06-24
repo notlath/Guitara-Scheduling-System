@@ -42,3 +42,6 @@ Pillow==10.1.0                   # Python Imaging Library for image processing
 
 # Supabase client
 supabase==2.15.2                 # Python client for Supabase backend services
+
+# Django Celery Beat for periodic tasks
+django-celery-beat==2.7.0       # Django app for managing periodic tasks with Celery

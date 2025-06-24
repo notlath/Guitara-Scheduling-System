@@ -1,0 +1,19 @@
+{
+  "buildCommand": "npm install --legacy-peer-deps && npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install --legacy-peer-deps",
+  "framework": "vite",
+  "regions": ["iad1"],
+  "routes": [
+    {
+      "src": "/assets/(.*)",
+      "headers": {
+        "cache-control": "max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}

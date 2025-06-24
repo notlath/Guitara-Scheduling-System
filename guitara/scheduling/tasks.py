@@ -200,6 +200,37 @@ def cleanup_expired_appointments(self):
         logger.error(f"Error during expired appointments cleanup: {str(e)}")
         return {"success": False, "error": str(e)}
 
+@shared_task(bind=True, name="scheduling.tasks.auto_cancel_overdue_appointments")
+def auto_cancel_overdue_appointments(self):
+    """
+    Periodic task to auto-cancel overdue appointments (pending and past response_deadline).
+    Sets status to 'auto_cancelled', records auto_cancelled_at, and notifies users.
+    """
+    try:
+        from .models import Appointment
+        from django.utils import timezone
+        now = timezone.now()
+        overdue_appointments = Appointment.objects.filter(
+            status="pending", response_deadline__lt=now
+        )
+        auto_cancelled_count = 0
+        for appointment in overdue_appointments:
+            appointment.status = "auto_cancelled"
+            appointment.auto_cancelled_at = now
+            appointment.save(update_fields=["status", "auto_cancelled_at"])
+            # Notify users
+            send_appointment_notifications.delay(
+                appointment.id,
+                "appointment_auto_cancelled",
+                "Appointment was automatically cancelled due to no action taken before the deadline."
+            )
+            auto_cancelled_count += 1
+        if auto_cancelled_count > 0:
+            logger.info(f"Auto-cancelled {auto_cancelled_count} overdue appointments.")
+        return {"success": True, "auto_cancelled_count": auto_cancelled_count}
+    except Exception as e:
+        logger.error(f"Error during auto-cancelling overdue appointments: {str(e)}")
+        return {"success": False, "error": str(e)}
 
 @shared_task(bind=True, name="scheduling.tasks.sync_appointment_statuses")
 def sync_appointment_statuses(self):

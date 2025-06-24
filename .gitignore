@@ -13,6 +13,12 @@ __pycache__/
 # Ignore environment variable files (contain sensitive data)
 royal-care-frontend/.env
 guitara/.env
+.env
+.env.local
+.env.*.local
+.env.*.production
+.env*
+.env.production
 
 # Ignore Node.js dependencies (installed via npm/yarn/pnpm)
 node_modules/
@@ -62,3 +68,53 @@ ENV/
 
 # Ignore archive files
 archive/
+
+# Docker development files (keep main Dockerfile and docker-compose.yml in root)
+# Advanced/environment-specific Docker files are in docker/ folder
+
+# Docker-related files and volumes
+docker-compose.override.yml
+.docker/
+docker-compose.local.yml
+docker-compose.dev.yml
+*.pid
+
+# Database files and backups
+*.sql
+*.dump
+*.backup
+db_backup/
+database_backups/
+
+# Static and media files (when using Docker volumes)
+staticfiles/
+mediafiles/
+uploads/
+
+# Celery beat schedule database
+celerybeat-schedule
+celerybeat.pid
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.pytest_cache/
+
+# Security and keys
+*.pem
+*.key
+*.crt
+secrets/
+.secrets/
+
+# OS generated files
+*.pid
+*.seed
+*.pid.lock
+
+# Editor backup files
+*~
+*.backup

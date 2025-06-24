@@ -267,7 +267,7 @@ const AvailabilityManager = () => {
     if (isNaN(staffId)) {
       alert("Invalid staff member selected");
       return;
-    }    // Validate time range
+    } // Validate time range
     const startTime = newAvailabilityForm.startTime;
     const endTime = newAvailabilityForm.endTime;
 
@@ -301,27 +301,28 @@ const AvailabilityManager = () => {
     if (diffMinutes < 30) {
       alert("Availability period must be at least 30 minutes");
       return;
-    }    // Additional validation for cross-day availability
+    } // Additional validation for cross-day availability
     const isCrossDay = timeToMinutes(endTime) < timeToMinutes(startTime);
     if (isCrossDay) {
       // Validate that cross-day availability makes sense
       const endHour = parseInt(endTime.split(":")[0]);
-      
+
       // Prevent creating availability that spans too many hours (e.g., 13:00 to 23:00 next day)
       if (endHour > 12 && endHour < 18) {
         alert(
           `Cross-day availability ending at ${endTime} is unusual. ` +
-          `Cross-day shifts typically end in early morning hours (01:00-06:00). ` +
-          `Please verify this is correct or use separate availability slots.`
+            `Cross-day shifts typically end in early morning hours (01:00-06:00). ` +
+            `Please verify this is correct or use separate availability slots.`
         );
         return;
       }
 
       // Warn about very long shifts
-      if (diffMinutes > 18 * 60) { // More than 18 hours
+      if (diffMinutes > 18 * 60) {
+        // More than 18 hours
         const proceed = window.confirm(
           `This creates a ${Math.round(diffMinutes / 60)} hour shift. ` +
-          `Very long shifts may cause scheduling issues. Continue?`
+            `Very long shifts may cause scheduling issues. Continue?`
         );
         if (!proceed) {
           return;
@@ -369,26 +370,27 @@ const AvailabilityManager = () => {
       if (!action) {
         return;
       }
-    }    // Warn user about cross-day availability and validate end time
+    } // Warn user about cross-day availability and validate end time
     if (timeToMinutes(endTime) < timeToMinutes(startTime)) {
       // For cross-day availability, ensure the end time makes sense
-      if (timeToMinutes(endTime) > 240) { // After 4:00 AM is unusual
+      if (timeToMinutes(endTime) > 240) {
+        // After 4:00 AM is unusual
         const continueAnyway = window.confirm(
           `Cross-day availability ending at ${endTime} seems unusual. ` +
-          `Most cross-day shifts end before 4:00 AM. Continue anyway?`
+            `Most cross-day shifts end before 4:00 AM. Continue anyway?`
         );
         if (!continueAnyway) {
           alert(
             "Consider using an end time like 01:00, 02:00, or 03:00 for overnight shifts. " +
-            "If you need longer hours, create separate availability slots."
+              "If you need longer hours, create separate availability slots."
           );
           return;
         }
       }
-      
+
       const isConfirmed = window.confirm(
         `This creates a cross-day availability from ${startTime} to ${endTime} next day. ` +
-        `This means you'll be available overnight. Continue?`
+          `This means you'll be available overnight. Continue?`
       );
       if (!isConfirmed) {
         return;
@@ -525,9 +527,11 @@ const AvailabilityManager = () => {
     try {
       const knoxToken = localStorage.getItem("knoxToken");
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/toggle-account-status/${
-          selectedStaffData.id
-        }/`,
+        `${
+          import.meta.env.PROD
+            ? "https://charismatic-appreciation-production.up.railway.app/api"
+            : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api"
+        }/toggle-account-status/${selectedStaffData.id}/`,
         {
           method: "PATCH",
           headers: {

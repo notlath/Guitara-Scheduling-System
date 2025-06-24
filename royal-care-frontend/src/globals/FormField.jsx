@@ -50,7 +50,9 @@ export function FormField({
   // Run validation when value, touched, or showError changes
   useEffect(() => {
     let err = "";
-    if (touched || showError) {
+    // Only show errors when explicitly requested via showError prop
+    // Don't show errors just because field was touched (blurred)
+    if (showError) {
       if (validate) {
         err = validate(value); // Use custom validator if provided
       } else if (

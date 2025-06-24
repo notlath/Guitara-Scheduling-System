@@ -6,13 +6,13 @@ import styles from "./LoginPage.module.css";
 import { useDispatch } from "react-redux";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import DisabledAccountAlert from "../../components/auth/DisabledAccountAlert";
+import pageTitles from "../../constants/pageTitles";
 import { login } from "../../features/auth/authSlice";
+import FormBlueprint from "../../globals/FormBlueprint";
+import { FormField } from "../../globals/FormField";
 import { api } from "../../services/api";
 import { handleAuthError } from "../../utils/authErrorHandler";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
-import { FormField } from "../../globals/FormField";
-import FormBlueprint from "../../globals/FormBlueprint";
-import pageTitles from "../../constants/pageTitles";
 
 function LoginPage() {
   const [formData, setFormData] = useState({ username: "", password: "" });
@@ -133,7 +133,8 @@ function LoginPage() {
     setError(""); // Clear any previous errors
     setShowDisabledAlert(false); // Hide disabled alert
 
-    try {      if (!needs2FA) {
+    try {
+      if (!needs2FA) {
         // Initial login request using enhanced auth service
         try {
           const response = await api.post("/auth/login/", formData);
@@ -237,12 +238,14 @@ function LoginPage() {
   const formFields = !needs2FA ? (
     <div className={styles.inputContainer}>
       <div className={styles.formGroup}>
+        {" "}
         <FormField
           label="Email or Username"
           name="username"
           value={formData.username}
           onChange={handleChange}
           required
+          showError={showFieldErrors}
           inputProps={{
             placeholder: "Enter your email or username",
             className:
@@ -257,6 +260,7 @@ function LoginPage() {
         )}
       </div>
       <div className={styles.formGroup}>
+        {" "}
         <FormField
           label="Password"
           name="password"
@@ -264,6 +268,7 @@ function LoginPage() {
           value={formData.password}
           onChange={handleChange}
           required
+          showError={showFieldErrors}
           inputProps={{
             placeholder: "Enter your password",
             className:
@@ -280,12 +285,14 @@ function LoginPage() {
     </div>
   ) : (
     <div className={styles.formGroup}>
+      {" "}
       <FormField
         label="Two-Factor Authentication Code"
         name="verificationCode"
         value={verificationCode}
         onChange={handleChange}
         required
+        showError={showFieldErrors}
         inputProps={{
           placeholder: "Enter the 6-digit code",
           maxLength: 6,

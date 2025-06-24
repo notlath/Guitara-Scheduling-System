@@ -1,0 +1,152 @@
+services:
+  # Redis service for Channels and Celery
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL service (optional - for local development)
+  # Remove this if you're using Supabase
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: guitara_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Django application with ASGI (Channels support)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Django settings
+      - DEBUG=${DEBUG:-True}
+      - DJANGO_SETTINGS_MODULE=guitara.settings_docker
+      # Database (use your Supabase credentials or local postgres)
+      - SUPABASE_DB_NAME=${SUPABASE_DB_NAME:-guitara_db}
+      - SUPABASE_DB_USER=${SUPABASE_DB_USER:-postgres}
+      - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
+      - SUPABASE_DB_HOST=${SUPABASE_DB_HOST:-postgres}
+      # Redis for Channels and Celery
+      - CELERY_BROKER_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
+      - REDIS_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
+      # Email settings
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-}
+      # Security
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-change-this-in-production}
+      - ALLOWED_HOST=${ALLOWED_HOST:-localhost}
+    volumes:
+      - media_volume:/app/media
+      - static_volume:/app/staticfiles
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        python manage.py collectstatic --noinput &&
+        python manage.py migrate &&
+        daphne -b 0.0.0.0 -p 8000 guitara.asgi:application
+      "
+
+  # Celery Worker for background tasks
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # Django settings
+      - DEBUG=${DEBUG:-True}
+      - DJANGO_SETTINGS_MODULE=guitara.settings_docker
+      # Database (use your Supabase credentials or local postgres)
+      - SUPABASE_DB_NAME=${SUPABASE_DB_NAME:-guitara_db}
+      - SUPABASE_DB_USER=${SUPABASE_DB_USER:-postgres}
+      - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
+      - SUPABASE_DB_HOST=${SUPABASE_DB_HOST:-postgres}
+      # Redis for Celery
+      - CELERY_BROKER_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
+      - REDIS_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
+      # Email settings
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-}
+      # Security
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-change-this-in-production}
+    volumes:
+      - media_volume:/app/media
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: celery -A guitara worker --loglevel=info --concurrency=2
+
+  # Celery Beat for periodic tasks
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # Django settings
+      - DEBUG=${DEBUG:-True}
+      - DJANGO_SETTINGS_MODULE=guitara.settings_docker
+      # Database (use your Supabase credentials or local postgres)
+      - SUPABASE_DB_NAME=${SUPABASE_DB_NAME:-guitara_db}
+      - SUPABASE_DB_USER=${SUPABASE_DB_USER:-postgres}
+      - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
+      - SUPABASE_DB_HOST=${SUPABASE_DB_HOST:-postgres}
+      # Redis for Celery
+      - CELERY_BROKER_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
+      - REDIS_URL=redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062
+      # Email settings
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-}
+      # Security
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-change-this-in-production}
+    volumes:
+      - media_volume:/app/media
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: celery -A guitara beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+volumes:
+  redis_data:
+  postgres_data:
+  media_volume:
+  static_volume:
+
+networks:
+  default:
+    name: guitara_network

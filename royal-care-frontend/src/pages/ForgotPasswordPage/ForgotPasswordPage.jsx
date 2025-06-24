@@ -1,12 +1,12 @@
+import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import styles from "../LoginPage/LoginPage.module.css";
 
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
-import { FormField } from "../../globals/FormField";
-import FormBlueprint from "../../globals/FormBlueprint";
 import pageTitles from "../../constants/pageTitles";
+import FormBlueprint from "../../globals/FormBlueprint";
+import { FormField } from "../../globals/FormField";
 
 function ForgotPasswordPage() {
   useEffect(() => {
@@ -24,7 +24,11 @@ function ForgotPasswordPage() {
     setLoading(true);
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/auth/request-password-reset/`,
+        `${
+          import.meta.env.PROD
+            ? "https://charismatic-appreciation-production.up.railway.app/api"
+            : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api"
+        }/auth/request-password-reset/`,
         {
           email,
         }

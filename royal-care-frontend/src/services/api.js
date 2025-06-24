@@ -1,13 +1,35 @@
 import axios from "axios";
+import {
+  createAdBlockerFriendlyConfig,
+  getUserFriendlyErrorMessage,
+  isBlockedByClient,
+  isHTMLResponse,
+  isNetworkError,
+} from "../utils/apiRequestUtils";
 import { getToken } from "../utils/tokenManager";
 
-// Create the base Axios instance
-export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+// Create the base Axios instance with ad-blocker friendly configuration
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
+// Force the correct URL in production to ensure consistency
+const finalBaseURL = import.meta.env.PROD
+  ? "https://charismatic-appreciation-production.up.railway.app/api"
+  : baseURL;
+
+// Only log in development mode
+if (import.meta.env.DEV) {
+  console.log("🔧 API Service: Final baseURL:", finalBaseURL);
+}
+
+export const api = axios.create(
+  createAdBlockerFriendlyConfig({
+    baseURL: finalBaseURL,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+);
 
 // Import sanitization utilities
 import { sanitizeFormInput } from "../utils/formSanitization";
@@ -15,23 +37,26 @@ import { sanitizeFormInput } from "../utils/formSanitization";
 // Add JWT token and sanitize data in requests
 api.interceptors.request.use(
   (config) => {
-    // Add authentication token to all requests
+    // Add authentication token to all requests ONLY if a valid token exists
     const token = getToken();
-    if (token) {
+    if (token && token !== "undefined" && token.trim() !== "") {
       config.headers.Authorization = `Token ${token}`;
+    } else {
+      // Explicitly remove Authorization header if no valid token
+      delete config.headers.Authorization;
+    }
+
+    // Log requests only in development mode
+    if (import.meta.env.DEV) {
+      console.log(`🌐 API Request [${config.method?.toUpperCase()}]:`, {
+        url: config.url,
+        fullURL: `${config.baseURL}${config.url}`,
+        hasToken: !!token,
+      });
     }
 
     // Special handling for auth endpoints
     if (config.url && config.url.includes("/auth/")) {
-      // Log auth request details in development mode
-      if (import.meta.env.MODE === "development") {
-        console.log(`Auth Request [${config.method}] ${config.url}:`, {
-          headers: config.headers,
-          data: config.data,
-          token: token ? "Present" : "Missing",
-        });
-      }
-
       // Ensure data is properly formatted for Django REST
       if (config.method === "post" && config.data) {
         // Make sure we're sending a proper content type
@@ -106,8 +131,24 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Use utility functions for better error classification
+    const isBlocked = isBlockedByClient(error);
+    const isNetwork = isNetworkError(error);
+    const isHTML = isHTMLResponse(error);
+    const userFriendlyMessage = getUserFriendlyErrorMessage(error);
+
     // Handle response errors
     if (error.response) {
+      // Check if response is HTML instead of JSON
+      if (isHTML) {
+        console.error(
+          "API returned HTML instead of JSON - server may be offline or returning error page"
+        );
+        error.errorMessage = userFriendlyMessage;
+        error.isServerError = true;
+        return Promise.reject(error);
+      }
+
       // Extract the most useful error message
       let errorMessage = "An unknown error occurred";
 
@@ -139,13 +180,18 @@ api.interceptors.response.use(
           status: error.response.status,
           data: error.response.data,
           message: errorMessage,
+          userFriendlyMessage,
+          isBlocked,
+          isNetwork,
+          isHTML,
           headers: error.response.headers,
           token: localStorage.getItem("knoxToken") ? "Present" : "Missing",
         }
       );
 
-      // Attach the extracted error message to the error object for easy access
+      // Attach both technical and user-friendly error messages
       error.errorMessage = errorMessage;
+      error.userFriendlyMessage = userFriendlyMessage;
 
       // Handle specific error status codes
       switch (error.response.status) {
@@ -162,16 +208,40 @@ api.interceptors.response.use(
             errorMessage
           );
           break;
+        case 500:
+        case 502:
+        case 503:
+        case 504:
+          console.warn(
+            "Server error - API may be offline or experiencing issues"
+          );
+          error.isServerError = true;
+          break;
       }
     } else if (error.request) {
       // Request made but no response received
-      console.error("No response received:", error.request);
-      error.errorMessage =
-        "No response from server - please check your connection";
+      if (isBlocked) {
+        console.warn("Request blocked by ad blocker or browser extension");
+        error.errorMessage = userFriendlyMessage;
+        error.isBlockedByClient = true;
+      } else if (isNetwork) {
+        console.error("Network error - no response received:", error.request);
+        error.errorMessage = userFriendlyMessage;
+        error.isNetworkError = true;
+      } else {
+        console.error("No response received:", error.request);
+        error.errorMessage =
+          "No response from server - please check your connection";
+      }
     } else {
       // Something else caused the error
       console.error("Error setting up request:", error.message);
-      error.errorMessage = "Error connecting to server";
+      error.errorMessage = userFriendlyMessage;
+
+      // Handle JSON parsing errors specifically
+      if (error.message?.includes("JSON") || error.name === "SyntaxError") {
+        error.isParsingError = true;
+      }
     }
 
     return Promise.reject(error);

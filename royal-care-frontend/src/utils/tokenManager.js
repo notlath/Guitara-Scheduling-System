@@ -9,13 +9,29 @@
 export const TOKEN_KEY = "knoxToken";
 
 /**
+ * Check if a token value is valid
+ * @param {string} token - The token to validate
+ * @returns {boolean} True if the token is valid
+ */
+const isValidToken = (token) => {
+  return (
+    token &&
+    token !== "undefined" &&
+    token !== "null" &&
+    token.trim() !== "" &&
+    token !== "undefined" &&
+    typeof token === "string"
+  );
+};
+
+/**
  * Get the authentication token from localStorage
  * @returns {string|null} The authentication token or null if not present
  */
 export const getToken = () => {
   // Try to get token using the standard key
   const token = localStorage.getItem(TOKEN_KEY);
-  if (token) return token;
+  if (isValidToken(token)) return token;
 
   // Fallback for legacy token keys (during transition period)
   const legacyTokens = [
@@ -24,7 +40,7 @@ export const getToken = () => {
   ];
 
   // Return the first valid token from legacy storage or null if none exist
-  const validToken = legacyTokens.find((t) => t && t.trim() !== "");
+  const validToken = legacyTokens.find(isValidToken);
 
   // If we found a valid token in a legacy location, migrate it to the standard location
   if (validToken) {
@@ -41,11 +57,12 @@ export const getToken = () => {
  * @param {string} token - The token to store
  */
 export const setToken = (token) => {
-  if (!token) {
-    console.error("⚠️ Attempted to store empty token");
+  if (!isValidToken(token)) {
+    console.warn("⚠️ Attempted to store invalid token:", token);
     return;
   }
 
+  // Store the token using the standard key
   localStorage.setItem(TOKEN_KEY, token);
 
   // During transition period, also set legacy token keys to maintain compatibility
@@ -72,7 +89,7 @@ export const removeToken = () => {
  */
 export const hasValidToken = () => {
   const token = getToken();
-  return token && token.trim() !== "";
+  return isValidToken(token);
 };
 
 /**
@@ -81,33 +98,51 @@ export const hasValidToken = () => {
  */
 export const getAuthHeaders = () => {
   const token = getToken();
-  return token ? { Authorization: `Token ${token}` } : {};
+  if (isValidToken(token)) {
+    return {
+      Authorization: `Token ${token}`,
+    };
+  }
+  return {};
 };
 
 /**
- * Debug token status across all storage locations
- * @returns {Object} Token status information
+ * Clean up any invalid tokens from localStorage
+ * This should be called on app startup to ensure clean state
+ */
+export const cleanupInvalidTokens = () => {
+  const keys = [TOKEN_KEY, "token", "authToken"];
+  let cleaned = false;
+
+  keys.forEach((key) => {
+    const value = localStorage.getItem(key);
+    if (value && !isValidToken(value)) {
+      localStorage.removeItem(key);
+      cleaned = true;
+    }
+  });
+
+  if (cleaned) {
+    console.log("🧹 Cleaned up invalid tokens from localStorage");
+  }
+};
+
+/**
+ * Debug function to check token status
+ * Only available in development mode
  */
 export const debugTokenStatus = () => {
-  const knoxToken = localStorage.getItem(TOKEN_KEY);
-  const legacyToken = localStorage.getItem("token");
-  const authToken = localStorage.getItem("authToken");
-
-  console.log("=== Token Debug Info ===");
-  console.log(`Knox Token: ${knoxToken ? "Present" : "Missing"}`);
-  console.log(`Legacy Token: ${legacyToken ? "Present" : "Missing"}`);
-  console.log(`Auth Token: ${authToken ? "Present" : "Missing"}`);
-
-  if (knoxToken) {
-    console.log(`Knox Token Length: ${knoxToken.length}`);
-    console.log(`Knox Token Preview: ${knoxToken.substring(0, 15)}...`);
+  if (import.meta.env.DEV) {
+    const token = getToken();
+    console.log("🔍 Token Debug Info:", {
+      hasToken: !!token,
+      tokenPreview: token ? `${token.substring(0, 10)}...` : "None",
+      isValid: isValidToken(token),
+      storageKeys: {
+        knoxToken: localStorage.getItem(TOKEN_KEY),
+        token: localStorage.getItem("token"),
+        authToken: localStorage.getItem("authToken"),
+      },
+    });
   }
-
-  return {
-    hasKnoxToken: !!knoxToken,
-    hasLegacyToken: !!legacyToken,
-    hasAuthToken: !!authToken,
-    tokenLength: knoxToken?.length || 0,
-    areTokensConsistent: knoxToken === legacyToken && legacyToken === authToken,
-  };
 };

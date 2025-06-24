@@ -9,8 +9,9 @@ import { getToken } from "../../utils/tokenManager";
 import styles from "./InventoryPage.module.css";
 import { MenuItem, Select } from "./MUISelect";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.PROD
+  ? "https://charismatic-appreciation-production.up.railway.app/api"
+  : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 const INVENTORY_API_URL = `${API_BASE_URL}/inventory/`;
 
 const getAuthToken = () => {
@@ -21,8 +22,11 @@ const getAuthToken = () => {
 const axiosAuth = axios.create();
 axiosAuth.interceptors.request.use((config) => {
   const token = getAuthToken();
-  if (token) {
+  if (token && token !== "undefined" && token.trim() !== "") {
     config.headers["Authorization"] = `Token ${token}`;
+  } else {
+    // Explicitly remove Authorization header if no valid token
+    delete config.headers["Authorization"];
   }
   return config;
 });
@@ -37,8 +41,8 @@ const InventoryPage = () => {
     current_stock: 0,
     min_stock: 0,
     unit: "",
-    supplier: "",
     cost_per_unit: 0,
+    size_per_unit: "",
   });
   const [inventoryItems, setInventoryItems] = useState([]);
   const [showUsageLog, setShowUsageLog] = useState(false);
@@ -78,10 +82,22 @@ const InventoryPage = () => {
     }
   };
 
+  // Fetch all usage logs, handling pagination
   const fetchUsageLogs = async () => {
+    let allLogs = [];
+    let nextUrl = `${INVENTORY_API_URL}usage-log/`;
     try {
-      const res = await axiosAuth.get(`${INVENTORY_API_URL}usage-log/`);
-      setUsageLogs(Array.isArray(res.data) ? res.data : res.data.results || []);
+      while (nextUrl) {
+        const res = await axiosAuth.get(nextUrl);
+        if (Array.isArray(res.data)) {
+          allLogs = allLogs.concat(res.data);
+          break;
+        } else {
+          allLogs = allLogs.concat(res.data.results || []);
+          nextUrl = res.data.next;
+        }
+      }
+      setUsageLogs(allLogs);
     } catch {
       setUsageLogs([]);
     }
@@ -96,11 +112,10 @@ const InventoryPage = () => {
         current_stock: newItem.current_stock,
         min_stock: newItem.min_stock,
         unit: newItem.unit,
-        supplier: newItem.supplier,
         cost_per_unit: newItem.cost_per_unit,
+        size_per_unit: newItem.size_per_unit,
       });
       setInventoryItems([...inventoryItems, res.data]);
-      // setLastAddedId(res.data.id); // Highlight this row
       setShowAddModal(false);
       setNewItem({
         name: "",
@@ -108,8 +123,8 @@ const InventoryPage = () => {
         current_stock: 0,
         min_stock: 0,
         unit: "",
-        supplier: "",
         cost_per_unit: 0,
+        size_per_unit: "",
       });
     } catch {
       showError("Failed to add item.");
@@ -165,18 +180,25 @@ const InventoryPage = () => {
 
   const categories = [
     "all",
-    ...new Set(inventoryItems.map((item) => item.category)),
+    "Oils & Lotions",
+    "Linens",
+    "Hygiene",
+    "Equipment",
+    ...Array.from(new Set(inventoryItems.map((item) => item.category))).filter(
+      (cat) =>
+        !["Oils & Lotions", "Linens", "Hygiene", "Equipment", "all"].includes(
+          cat
+        )
+    ),
   ];
 
   const filteredItems = Array.isArray(inventoryItems)
     ? inventoryItems.filter((item) => {
         const matchesCategory =
           selectedCategory === "all" || item.category === selectedCategory;
-        const matchesSearch =
-          (item.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (item.supplier || "")
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase());
+        const matchesSearch = (item.name || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
         return matchesCategory && matchesSearch;
       })
     : [];
@@ -212,10 +234,10 @@ const InventoryPage = () => {
       (sum, item) => sum + item.current_stock * item.cost_per_unit,
       0
     );
-    const categories = new Set(inventoryItems.map((item) => item.category))
+    const categoryCount = new Set(inventoryItems.map((item) => item.category))
       .size;
 
-    return { totalItems, lowStockItems, totalValue, categories };
+    return { totalItems, lowStockItems, totalValue, categories: categoryCount };
   };
 
   const stats = getInventoryStats();
@@ -227,7 +249,6 @@ const InventoryPage = () => {
     { key: "currentStock", label: "Current Stock" },
     { key: "minStock", label: "Min Stock" },
     { key: "status", label: "Status" },
-    { key: "supplier", label: "Supplier" },
     { key: "costPerUnit", label: "Cost/Unit" },
     { key: "totalValue", label: "Total Value" },
     { key: "actions", label: "Actions" },
@@ -261,7 +282,6 @@ const InventoryPage = () => {
       status: (
         <span className={styles[stockStatus.class]}>{stockStatus.label}</span>
       ),
-      supplier: item.supplier,
       costPerUnit:
         item.cost_per_unit !== undefined && item.cost_per_unit !== null
           ? `₱${Number(item.cost_per_unit).toFixed(2)}`
@@ -284,7 +304,7 @@ const InventoryPage = () => {
             Edit
           </button>
           <button
-            className={styles["delete-button"]}
+            className={styles["restock-button"]}
             onClick={() => handleRestockClick(item)}
           >
             Restock
@@ -294,15 +314,57 @@ const InventoryPage = () => {
     };
   });
 
+  // Irregular plural mappings for units
+  const irregularPlurals = {
+    piece: "pieces",
+    bottle: "bottles",
+    leaf: "leaves",
+    mouse: "mice",
+    // Add more irregulars as needed
+    pieces: "piece",
+    bottles: "bottle",
+    leaves: "leaf",
+    mice: "mouse",
+  };
+
+  // Pluralize unit helper
+  const pluralizeUnit = (quantity, unit) => {
+    if (!unit) return "";
+    const lowerUnit = unit.toLowerCase();
+    if (quantity === 1) {
+      // Singular form
+      if (irregularPlurals[lowerUnit]) {
+        // If already plural, convert to singular
+        if (["pieces", "bottles", "leaves", "mice"].includes(lowerUnit)) {
+          return irregularPlurals[lowerUnit];
+        }
+      }
+      // Remove trailing 's' for regular plurals
+      if (unit.endsWith("s")) {
+        return unit.slice(0, -1);
+      }
+      return unit;
+    } else {
+      // Plural form
+      if (irregularPlurals[lowerUnit]) {
+        // If singular, convert to plural
+        if (["piece", "bottle", "leaf", "mouse"].includes(lowerUnit)) {
+          return irregularPlurals[lowerUnit];
+        }
+      }
+      // Add 's' if not already plural
+      if (!unit.endsWith("s")) return unit + "s";
+      return unit;
+    }
+  };
+
   const usageLogTableData = usageLogs.map((log) => {
     const dateObj = new Date(
       log.timestamp || log.date || log.created_at || Date.now()
     );
     let quantity = log.quantity_used;
     let notes = log.notes && log.notes.trim() !== "" ? log.notes : "-";
-    let action = log.action_type || "usage";
-    let quantityLabel =
-      action === "restock" ? "Quantity Restocked" : "Quantity Used";
+    const unit = log.unit || "";
     return {
       date: dateObj.toISOString().split("T")[0],
       time: dateObj.toLocaleTimeString([], {
@@ -310,10 +372,8 @@ const InventoryPage = () => {
         minute: "2-digit",
       }),
       productName: log.item_name || log.product_name || log.item || "-",
-      quantityRefilled: `${quantity} ${log.unit || ""}`,
+      quantityRefilled: `${quantity} ${pluralizeUnit(quantity, unit)}`.trim(),
       notes: notes,
-      actionType: action,
-      quantityLabel: quantityLabel,
     };
   });
 
@@ -391,7 +451,7 @@ const InventoryPage = () => {
           <div className={styles["inventory-controls"]}>
             <input
               type="text"
-              placeholder="Search items, suppliers..."
+              placeholder="Search items..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={styles["search-input"]}
@@ -536,6 +596,25 @@ const InventoryPage = () => {
                     />
                   </div>
                   <div className={styles["form-group"]}>
+                    <label>Size per Unit</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={newItem.size_per_unit}
+                      onChange={(e) =>
+                        setNewItem({
+                          ...newItem,
+                          size_per_unit:
+                            e.target.value === ""
+                              ? ""
+                              : parseFloat(e.target.value),
+                        })
+                      }
+                      placeholder="e.g., 500"
+                      required
+                    />
+                  </div>
+                  <div className={styles["form-group"]}>
                     <label>Cost per Unit</label>
                     <input
                       type="number"
@@ -550,17 +629,6 @@ const InventoryPage = () => {
                       required
                     />
                   </div>
-                </div>
-                <div className={styles["form-group"]}>
-                  <label>Supplier</label>
-                  <input
-                    type="text"
-                    value={newItem.supplier}
-                    onChange={(e) =>
-                      setNewItem({ ...newItem, supplier: e.target.value })
-                    }
-                    required
-                  />
                 </div>
                 <div
                   style={{
@@ -662,11 +730,15 @@ const InventoryPage = () => {
                 </label>
                 <br />
                 <label>
-                  Supplier:{" "}
+                  Size per Unit:{" "}
                   <input
-                    value={editItem.supplier}
+                    type="text"
+                    value={editItem.size_per_unit || ""}
                     onChange={(e) =>
-                      setEditItem({ ...editItem, supplier: e.target.value })
+                      setEditItem({
+                        ...editItem,
+                        size_per_unit: e.target.value,
+                      })
                     }
                   />
                 </label>

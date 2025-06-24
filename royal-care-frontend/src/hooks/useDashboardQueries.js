@@ -12,12 +12,22 @@ import { useDispatch } from "react-redux";
 import { fetchAttendanceRecords } from "../features/attendance/attendanceSlice";
 import { updateAppointmentStatus } from "../features/scheduling/schedulingSlice";
 import { queryKeys } from "../lib/queryClient";
+import {
+  createAdBlockerFriendlyConfig,
+  getUserFriendlyErrorMessage,
+  isBlockedByClient,
+  isNetworkError,
+} from "../utils/apiRequestUtils";
 
-// API URL based on environment
-const API_URL =
-  import.meta.env.MODE === "production"
-    ? "/api/scheduling/"
-    : "http://localhost:8000/api/scheduling/";
+// API URL based on environment - ensure consistent URL handling
+const getBaseURL = () => {
+  if (import.meta.env.PROD) {
+    return "https://charismatic-appreciation-production.up.railway.app/api";
+  }
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+};
+
+const API_URL = `${getBaseURL()}/scheduling/`;
 
 // Direct API calls (bypassing Redux for TanStack Query)
 const fetchAppointmentsAPI = async () => {
@@ -35,11 +45,13 @@ const fetchAppointmentsAPI = async () => {
   });
 
   try {
-    const response = await axios.get(`${API_URL}appointments/`, {
+    const config = createAdBlockerFriendlyConfig({
       headers: {
         Authorization: `Token ${token}`,
       },
     });
+
+    const response = await axios.get(`${API_URL}appointments/`, config);
 
     console.log("✅ Direct API: Appointments fetched successfully", {
       status: response.status,
@@ -66,12 +78,33 @@ const fetchAppointmentsAPI = async () => {
     }
   } catch (error) {
     console.error("❌ fetchAppointmentsAPI error:", error);
+
+    // Enhance error with classification
+    error.isBlockedByClient = isBlockedByClient(error);
+    error.isNetworkError = isNetworkError(error);
+    error.userFriendlyMessage = getUserFriendlyErrorMessage(error);
+
     console.error("❌ Error details:", {
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,
+      isNetworkError: error.isNetworkError,
+      isBlockedByClient: error.isBlockedByClient,
+      userFriendlyMessage: error.userFriendlyMessage,
     });
-    throw error;
+
+    // Special handling for ad blocker issues
+    if (error.isBlockedByClient) {
+      console.warn(
+        "🚫 Request blocked by browser/extension - this is likely an ad blocker issue"
+      );
+      console.warn(
+        "💡 Suggestion: Check Brave Shields or other ad blocker settings"
+      );
+    }
+
+    // Use the user-friendly error message
+    throw new Error(error.userFriendlyMessage);
   }
 };
 
@@ -81,18 +114,31 @@ const fetchTodayAppointmentsAPI = async () => {
     throw new Error("Authentication required");
   }
 
-  console.log("🔄 Direct API: Fetching today appointments...");
-  const response = await axios.get(`${API_URL}appointments/today/`, {
-    headers: {
-      Authorization: `Token ${token}`,
-    },
-  });
+  try {
+    console.log("🔄 Direct API: Fetching today appointments...");
+    const config = createAdBlockerFriendlyConfig({
+      headers: {
+        Authorization: `Token ${token}`,
+      },
+    });
 
-  console.log("✅ Direct API: Today appointments fetched", {
-    count: response.data?.length || 0,
-  });
+    const response = await axios.get(`${API_URL}appointments/today/`, config);
 
-  return response.data || [];
+    console.log("✅ Direct API: Today appointments fetched", {
+      count: response.data?.length || 0,
+    });
+
+    return response.data || [];
+  } catch (error) {
+    console.error("❌ fetchTodayAppointmentsAPI error:", error);
+
+    // Enhance error with classification
+    error.isBlockedByClient = isBlockedByClient(error);
+    error.isNetworkError = isNetworkError(error);
+    error.userFriendlyMessage = getUserFriendlyErrorMessage(error);
+
+    throw new Error(error.userFriendlyMessage);
+  }
 };
 
 const fetchNotificationsAPI = async () => {
@@ -875,7 +921,17 @@ const fetchAttendanceRecordsAPI = async (selectedDate) => {
   });
 
   const token = localStorage.getItem("knoxToken");
-  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const storedUser = localStorage.getItem("user");
+
+  let user = null;
+  if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
+    try {
+      user = JSON.parse(storedUser);
+    } catch (error) {
+      console.error("Failed to parse user data:", error);
+      localStorage.removeItem("user");
+    }
+  }
 
   if (!token || !user || !user.id) {
     // Silent handling for unauthenticated users (likely on login page)
@@ -885,10 +941,14 @@ const fetchAttendanceRecordsAPI = async (selectedDate) => {
     return []; // Return empty array instead of throwing error
   }
 
-  const ATTENDANCE_API_URL =
-    import.meta.env.MODE === "production"
-      ? "/api/attendance/"
-      : "http://localhost:8000/api/attendance/";
+  const getAttendanceBaseURL = () => {
+    if (import.meta.env.PROD) {
+      return "https://charismatic-appreciation-production.up.railway.app/api";
+    }
+    return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+  };
+
+  const ATTENDANCE_API_URL = `${getAttendanceBaseURL()}/attendance/`;
 
   let url = `${ATTENDANCE_API_URL}records/`;
   if (selectedDate) {
@@ -949,7 +1009,17 @@ export const useAttendanceData = (selectedDate) => {
   // Multi-layer authentication check to prevent unnecessary API calls
   const isAuthenticated = useMemo(() => {
     const token = localStorage.getItem("knoxToken");
-    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const storedUser = localStorage.getItem("user");
+
+    let user = null;
+    if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
+      try {
+        user = JSON.parse(storedUser);
+      } catch (error) {
+        console.error("Failed to parse user data in useAttendanceData:", error);
+        localStorage.removeItem("user");
+      }
+    }
 
     // Check if we have both token and valid user data
     const hasToken = !!token && token.length > 10; // Basic token validation
@@ -964,7 +1034,20 @@ export const useAttendanceData = (selectedDate) => {
     queryFn: async () => {
       // Double-check authentication before making the API call
       const token = localStorage.getItem("knoxToken");
-      const user = JSON.parse(localStorage.getItem("user") || "null");
+      const storedUser = localStorage.getItem("user");
+
+      let user = null;
+      if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
+        try {
+          user = JSON.parse(storedUser);
+        } catch (error) {
+          console.error(
+            "Failed to parse user data in attendance query:",
+            error
+          );
+          localStorage.removeItem("user");
+        }
+      }
 
       if (!token || !user || !user.id) {
         console.log(

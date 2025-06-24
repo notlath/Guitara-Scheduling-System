@@ -16,7 +16,52 @@ import AvailabilityManager from "./components/scheduling/AvailabilityManager";
 import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
 // Initialize service worker error suppression early
 import "./utils/serviceWorkerErrorSuppression";
-// Import performance optimization services
+// Add browser extension error suppression
+const suppressBrowserExtensionErrors = () => {
+  // Store original console methods
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+
+  // List of browser extension error patterns to suppress
+  const extensionErrorPatterns = [
+    /Unchecked runtime\.lastError/,
+    /extension port is moved into back\/forward cache/,
+    /No tab with id:/,
+    /Frame with ID .* was removed/,
+    /Duplicate script ID/,
+    /Failed to start the connection.*Failed to fetch/,
+    /WebSocket closed with status code: 1006/,
+    /background\.js.*Error/,
+  ];
+
+  // Override console.error to filter out extension errors
+  console.error = (...args) => {
+    const message = args.join(" ");
+    const isExtensionError = extensionErrorPatterns.some((pattern) =>
+      pattern.test(message)
+    );
+
+    if (!isExtensionError) {
+      originalConsoleError.apply(console, args);
+    }
+  };
+
+  // Override console.warn for similar patterns
+  console.warn = (...args) => {
+    const message = args.join(" ");
+    const isExtensionWarning = extensionErrorPatterns.some((pattern) =>
+      pattern.test(message)
+    );
+
+    if (!isExtensionWarning) {
+      originalConsoleWarn.apply(console, args);
+    }
+  };
+};
+
+// Initialize error suppression
+suppressBrowserExtensionErrors();
+
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
 import CompanyInfoPage from "./pages/AboutPages/CompanyInfoPage";
 import DeveloperInfoPage from "./pages/AboutPages/DeveloperInfoPage";
@@ -41,7 +86,7 @@ import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage
 import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
 import UserGuidePage from "./pages/UserGuidePage/UserGuidePage";
 import { validateToken } from "./services/auth";
-import crossTabSync from "./services/crossTabSync"; // Migrated - now a stub that indicates TanStack Query handles this
+import { cleanupInvalidTokens } from "./utils/tokenManager";
 // import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
@@ -122,13 +167,21 @@ const App = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
+    // Clean up any invalid tokens on app startup
+    cleanupInvalidTokens();
+
     // Check if user data exists in localStorage and validate the token
     const checkStoredAuth = async () => {
       const storedUser = localStorage.getItem("user");
       const storedToken = localStorage.getItem("knoxToken");
 
-      // Only proceed if both user data and token exist
-      if (storedUser && storedToken) {
+      // Only proceed if both user data and token exist and are valid
+      if (
+        storedUser &&
+        storedToken &&
+        storedUser !== "undefined" &&
+        storedToken !== "undefined"
+      ) {
         try {
           const parsedUser = JSON.parse(storedUser);
           // Validate if user object has required fields
@@ -167,6 +220,7 @@ const App = () => {
             }
           } else {
             // Clear invalid stored data
+            console.log("Invalid user data in localStorage, clearing...");
             localStorage.removeItem("user");
             localStorage.removeItem("knoxToken");
             dispatch(authInitialized()); // Mark auth as initialized
@@ -174,6 +228,8 @@ const App = () => {
         } catch (error) {
           // Clear corrupted stored data or handle validation errors
           console.error("Error validating stored authentication:", error);
+          console.log("Stored user data:", storedUser);
+          console.log("Clearing corrupted authentication data...");
           localStorage.removeItem("user");
           localStorage.removeItem("knoxToken");
           dispatch(authInitialized()); // Mark auth as initialized
@@ -202,22 +258,13 @@ const App = () => {
           );
         } // Debug what we imported
         console.log("Debug imports:", {
-          crossTabSync: typeof crossTabSync,
-          crossTabSyncInit: typeof crossTabSync?.initialize,
+          tokenManager: "available",
         });
 
-        // Initialize cross-tab synchronization (now handled by TanStack Query)
-        if (crossTabSync && typeof crossTabSync.initialize === "function") {
-          crossTabSync.initialize();
-          console.log(
-            "✅ Cross-tab sync initialized (now handled by TanStack Query)"
-          );
-        } else {
-          console.error(
-            "❌ Cross-tab sync initialization failed - method not found",
-            crossTabSync
-          );
-        }
+        // Cross-tab synchronization now handled by TanStack Query
+        console.log(
+          "✅ Cross-tab sync handled by TanStack Query automatically"
+        );
 
         // Cache preloading now handled by TanStack Query automatically
         console.log(

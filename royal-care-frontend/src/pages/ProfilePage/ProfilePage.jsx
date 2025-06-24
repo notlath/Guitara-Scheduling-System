@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUploadPure";
 import pageTitles from "../../constants/pageTitles";
 import { logout, updateUserProfile } from "../../features/auth/authSlice";
-import styles from "./ProfilePage.module.css";
 import PageLayout from "../../globals/PageLayout";
+import styles from "./ProfilePage.module.css";
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
@@ -23,13 +23,16 @@ const ProfilePage = () => {
       setProfilePhoto(user.profile_photo_url);
     } else {
       const storedUser = localStorage.getItem("user");
-      if (storedUser) {
+      if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
         try {
           const parsedUser = JSON.parse(storedUser);
           setUserData(parsedUser);
           setProfilePhoto(parsedUser.profile_photo_url);
         } catch (error) {
           console.error("Error parsing stored user data:", error);
+          console.log("Stored user data was:", storedUser);
+          // Clear corrupted data
+          localStorage.removeItem("user");
         }
       }
     }
@@ -55,9 +58,26 @@ const ProfilePage = () => {
             profile_photo_url: profileData.profile_photo_url,
           };
           localStorage.setItem("user", JSON.stringify(updatedUser));
+        } else if (response.status === 401) {
+          console.warn(
+            "Authentication failed while fetching profile - token may be expired"
+          );
+          // Don't log out here, just fail silently for profile photo fetch
+        } else {
+          console.warn(`Profile fetch failed with status: ${response.status}`);
         }
       } catch (error) {
-        console.error("Failed to fetch user profile:", error);
+        // Only log error if it's not a parsing error from server being offline
+        if (
+          !error.message?.includes("JSON") &&
+          !error.message?.includes("Unexpected token")
+        ) {
+          console.error("Failed to fetch user profile:", error);
+        } else {
+          console.warn(
+            "Profile fetch failed - server may be offline, using cached data"
+          );
+        }
       }
     };
 

@@ -7,6 +7,10 @@ import { WebSocketProvider } from "./contexts/WebSocketContext"; // Import WebSo
 import "./index.css";
 import { queryClient } from "./lib/queryClient"; // Import TanStack Query client
 import store from "./store"; // Import the Redux store
+import { initializeExtensionErrorSuppressor } from "./utils/extensionErrorSuppressor"; // Import extension error suppressor
+
+// Initialize extension error suppressor to reduce console noise in production
+initializeExtensionErrorSuppressor();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

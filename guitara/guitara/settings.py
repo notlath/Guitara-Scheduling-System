@@ -29,12 +29,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-ic&egssnr$r%4-xjaq*0g-^8&m@&vbf2l+!0^2)1t(pdka3%5o"
+SECRET_KEY = "b6w)6m-7+!4$#$^lra-7xi%l+nu7*!ni3qh&kkt84z74bo@n$@"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+# Parse ALLOWED_HOSTS from environment variable
+ALLOWED_HOSTS_ENV = os.environ.get("ALLOWED_HOSTS", "")
+if ALLOWED_HOSTS_ENV:
+    ALLOWED_HOSTS = [
+        host.strip() for host in ALLOWED_HOSTS_ENV.split(",") if host.strip()
+    ]
+    print(f"[SETTINGS] ALLOWED_HOSTS from env: {ALLOWED_HOSTS}")
+else:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+    print(f"[SETTINGS] Using default ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+
+print(f"[SETTINGS] Final ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
 
 # Application definition
@@ -51,7 +62,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "channels",
-    # "django_celery_beat",
+    "django_celery_beat",
     "django_celery_results",
     "core",
     "authentication",
@@ -62,9 +73,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -101,9 +112,21 @@ WSGI_APPLICATION = "guitara.wsgi.application"
 ASGI_APPLICATION = "guitara.asgi.application"
 
 # Channels layer configuration
-CHANNEL_LAYERS = {
-    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
-}
+# Use Redis if available, otherwise fall back to InMemory
+REDIS_URL = os.environ.get("REDIS_URL", None)
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+            },
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
+    }
 
 
 # Database
@@ -114,11 +137,12 @@ import environ
 env = environ.Env()
 
 # Explicitly specify the path to the .env file
-env_file = BASE_DIR / ".env"
+env_file = Path(__file__).resolve().parent.parent / ".env"
 if env_file.exists():
     environ.Env.read_env(env_file)
 else:
-    raise ImproperlyConfigured(f"Environment file not found at {env_file}")
+    # Don't raise error if running in Railway/production, just rely on os.environ
+    pass
 
 DATABASES = {
     "default": {
@@ -130,12 +154,14 @@ DATABASES = {
         "PORT": "5432",
         "OPTIONS": {
             # PostgreSQL-specific connection options
-            "connect_timeout": 10,
+            "connect_timeout": 5,
             "application_name": "guitara_scheduling",
+            "sslmode": "require",
+            "server_side_binding": False,  # Better for poolers
         },
         "ATOMIC_REQUESTS": False,  # For better performance
         "CONN_HEALTH_CHECKS": True,
-        "CONN_MAX_AGE": 600,  # 10 minutes - Connection reuse timeout
+        "CONN_MAX_AGE": 0,  # Don't reuse connections
     }
 }
 
@@ -209,6 +235,8 @@ PASSWORD_HASHERS = [
 # CORS configuration
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Add your frontend's origin
+    "https://guitara-scheduling-system.vercel.app",  # Add your Vercel frontend
+    "https://guitara-scheduling-system-git-main-lathrells-projects.vercel.app",  # Your actual deployed domain
 ]
 
 # Allow credentials and additional CORS settings for media files
@@ -220,6 +248,7 @@ CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
     "authorization",
+    "cache-control",
     "content-type",
     "dnt",
     "origin",
@@ -320,7 +349,7 @@ APPEND_SLASH = True
 
 import os
 
-CELERY_BROKER_URL = f"redis://127.0.0.1:6379/0"
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_CACHE_BACKEND = "django-cache"
 

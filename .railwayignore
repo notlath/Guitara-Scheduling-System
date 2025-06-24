@@ -1,0 +1,35 @@
+# Ignore React frontend during Railway deployment
+royal-care-frontend/
+node_modules/
+
+# Ignore development files
+venv/
+.env
+*.log
+debug.log
+
+# Ignore archive and documentation
+archive/
+*.md
+docker-compose*.yml
+Dockerfile
+docker/
+
+# Ignore development scripts
+start_development.py
+docker-launch.*
+*.bat
+*.sh
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore test files
+test/
+tests/
+__pycache__/
+*.pyc
+*.pyo
