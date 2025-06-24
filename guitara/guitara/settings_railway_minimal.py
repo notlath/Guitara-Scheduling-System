@@ -173,7 +173,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR.parent, "media")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # CORS settings for Railway deployment
-CORS_ALLOW_ALL_ORIGINS = True  # For Railway health checks
+CORS_ALLOW_ALL_ORIGINS = False  # Use specific origins for security
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "https://charismatic-appreciation-production.up.railway.app",
@@ -193,6 +193,9 @@ if os.environ.get("CORS_ALLOWED_ORIGINS"):
     ]
     CORS_ALLOWED_ORIGINS.extend(additional_origins)
 
+# Remove duplicates and ensure we have the Vercel URL
+CORS_ALLOWED_ORIGINS = list(set(CORS_ALLOWED_ORIGINS))
+
 # Allow common headers
 CORS_ALLOW_HEADERS = [
     "accept",
@@ -204,6 +207,8 @@ CORS_ALLOW_HEADERS = [
     "user-agent",
     "x-csrftoken",
     "x-requested-with",
+    "cache-control",
+    "x-auth-token",
 ]
 
 # Allow common HTTP methods
@@ -220,6 +225,11 @@ CORS_ALLOWED_METHODS = [
 CORS_PREFLIGHT_MAX_AGE = 86400  # Cache preflight for 24 hours
 
 print(f"[ULTRA-MINIMAL RAILWAY] CORS Origins: {CORS_ALLOWED_ORIGINS}")
+print(
+    f"[ULTRA-MINIMAL RAILWAY] CORS Env Var: {os.environ.get('CORS_ALLOWED_ORIGINS', 'NOT SET')}"
+)
+print(f"[ULTRA-MINIMAL RAILWAY] CORS Allow All: {CORS_ALLOW_ALL_ORIGINS}")
+print(f"[ULTRA-MINIMAL RAILWAY] CORS Allow Credentials: {CORS_ALLOW_CREDENTIALS}")
 
 # Minimal logging to avoid startup delays
 LOGGING = {

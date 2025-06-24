@@ -210,12 +210,33 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
 
 # CORS settings for production
-CORS_ALLOWED_ORIGINS = [
-    "https://guitara-scheduling-system.vercel.app",  # Replace with your actual Vercel URL
-    "https://your-custom-domain.com",  # If you have a custom domain
-    "http://localhost:3000",  # Keep for local development
-    "http://localhost:5173",  # Vite dev server
+# Get CORS origins from environment variable first, then add defaults
+CORS_ALLOWED_ORIGINS = []
+if os.environ.get("CORS_ALLOWED_ORIGINS"):
+    CORS_ALLOWED_ORIGINS.extend(
+        [
+            origin.strip()
+            for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+            if origin.strip()
+        ]
+    )
+
+# Add default origins if not already present
+default_origins = [
+    "https://guitara-scheduling-system.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:3001",
 ]
+
+for origin in default_origins:
+    if origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(origin)
+
+# Remove duplicates
+CORS_ALLOWED_ORIGINS = list(set(CORS_ALLOWED_ORIGINS))
+
+print(f"[PRODUCTION SETTINGS] CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
 
 # Allow credentials for authentication
 CORS_ALLOW_CREDENTIALS = True
@@ -234,6 +255,8 @@ CORS_ALLOWED_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
     "cache-control",
+    "x-auth-token",
+    "access-control-allow-origin",
 ]
 
 CORS_ALLOWED_METHODS = [
@@ -244,6 +267,9 @@ CORS_ALLOWED_METHODS = [
     "POST",
     "PUT",
 ]
+
+# Ensure preflight requests are handled properly
+CORS_PREFLIGHT_MAX_AGE = 86400
 
 # For development/testing - set to False in final production
 CORS_ALLOW_ALL_ORIGINS = False

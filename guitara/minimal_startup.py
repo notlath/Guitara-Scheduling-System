@@ -18,9 +18,20 @@ print(f"PORT: {os.environ.get('PORT', '8000')}")
 print(f"Python version: {sys.version}")
 print(f"Working directory: {os.getcwd()}")
 
-# Set to minimal settings (NOT emergency)
-os.environ["DJANGO_SETTINGS_MODULE"] = "guitara.settings_railway_minimal"
-print(f"🔧 Using minimal Django settings: {os.environ['DJANGO_SETTINGS_MODULE']}")
+# Respect Django settings from environment variable if set, otherwise use minimal
+if not os.environ.get("DJANGO_SETTINGS_MODULE"):
+    os.environ["DJANGO_SETTINGS_MODULE"] = "guitara.settings_railway_minimal"
+    print(
+        f"🔧 Using default minimal Django settings: {os.environ['DJANGO_SETTINGS_MODULE']}"
+    )
+else:
+    print(
+        f"🔧 Using Django settings from environment: {os.environ['DJANGO_SETTINGS_MODULE']}"
+    )
+
+# Environment info
+print(f"🌍 Environment: {os.environ.get('RAILWAY_ENVIRONMENT', 'development')}")
+print(f"🔧 Debug mode: {os.environ.get('DEBUG', 'False')}")
 
 # Print database environment variables for debugging
 print("\n📊 DATABASE CONFIGURATION:")
