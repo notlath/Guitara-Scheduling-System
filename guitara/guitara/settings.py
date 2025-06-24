@@ -154,12 +154,14 @@ DATABASES = {
         "PORT": "5432",
         "OPTIONS": {
             # PostgreSQL-specific connection options
-            "connect_timeout": 10,
+            "connect_timeout": 5,
             "application_name": "guitara_scheduling",
+            "sslmode": "require",
+            "server_side_binding": False,  # Better for poolers
         },
         "ATOMIC_REQUESTS": False,  # For better performance
         "CONN_HEALTH_CHECKS": True,
-        "CONN_MAX_AGE": 600,  # 10 minutes - Connection reuse timeout
+        "CONN_MAX_AGE": 0,  # Don't reuse connections
     }
 }
 

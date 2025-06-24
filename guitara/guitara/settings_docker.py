@@ -31,16 +31,23 @@ DATABASES = {
         "HOST": os.environ.get("SUPABASE_DB_HOST", "postgres"),
         "PORT": "5432",
         "OPTIONS": {
-            "connect_timeout": 10,
+            "connect_timeout": 5,
             "application_name": "guitara_scheduling_docker",
+            "sslmode": "require",
         },
-        "CONN_MAX_AGE": 600,
+        "CONN_MAX_AGE": 0,
     }
 }
 
 # Redis configuration for Docker
-REDIS_URL = os.environ.get("REDIS_URL", "redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062")
-CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062")
+REDIS_URL = os.environ.get(
+    "REDIS_URL",
+    "redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062",
+)
+CELERY_BROKER_URL = os.environ.get(
+    "CELERY_BROKER_URL",
+    "redis://default:OZAurZgciODtPejgVDYSJHQtODNQDTBj@trolley.proxy.rlwy.net:12062",
+)
 
 # Channel layers for Docker
 CHANNEL_LAYERS = {

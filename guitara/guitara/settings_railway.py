@@ -67,7 +67,7 @@ DATABASES = {
         "HOST": os.environ.get("SUPABASE_DB_HOST"),
         "PORT": "5432",
         "OPTIONS": {
-            "connect_timeout": 60,  # Increased timeout for Railway
+            "connect_timeout": 5,  # Increased timeout for Railway
             "application_name": "guitara_scheduling_railway",
             "sslmode": "require",  # Railway/Supabase requires SSL
             "options": "-c default_transaction_isolation=read_committed",

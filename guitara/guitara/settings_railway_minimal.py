@@ -107,7 +107,7 @@ DATABASES = {
         "PORT": os.environ.get("SUPABASE_DB_PORT", "5432"),
         "OPTIONS": {
             # Connection timeout settings
-            "connect_timeout": 10,  # Reduced from 30 to 10 seconds
+            "connect_timeout": 5,  # Reduced from 30 to 10 seconds
             "application_name": "guitara_railway",
             "options": "-c default_transaction_isolation=read_committed -c statement_timeout=15000",  # 15 seconds
             # SSL settings for Supabase
