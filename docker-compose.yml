@@ -51,8 +51,8 @@ services:
       - SUPABASE_DB_HOST=${SUPABASE_DB_HOST:-postgres}
       - SUPABASE_DB_PORT=${SUPABASE_DB_PORT:-5432}
       # Redis settings - Fixed environment variable format
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
+      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
       # Auto-create superuser
       - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@example.com}
       - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-admin123}
@@ -82,8 +82,8 @@ services:
       - SUPABASE_DB_USER=${SUPABASE_DB_USER:-postgres}
       - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
       - SUPABASE_DB_HOST=${SUPABASE_DB_HOST:-postgres}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
+      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-change-this-in-production}
     volumes:
       - media_volume:/app/media
@@ -112,8 +112,8 @@ services:
       - SUPABASE_DB_USER=${SUPABASE_DB_USER:-postgres}
       - SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD:-postgres}
       - SUPABASE_DB_HOST=${SUPABASE_DB_HOST:-postgres}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
+      - CELERY_BROKER_URL=redis://default:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-change-this-in-production}
     volumes:
       - media_volume:/app/media
