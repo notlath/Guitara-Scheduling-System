@@ -25,10 +25,20 @@ import {
   useAttendanceActions,
   useAttendanceRecords,
 } from "./contexts/AttendanceContext";
+// API error handling utilities
+import {
+  createAdBlockerFriendlyConfig,
+  getRetryDelay,
+  getUserFriendlyErrorMessage,
+  isBlockedByClient,
+  shouldRetryRequest,
+  sleep,
+} from "../utils/apiRequestUtils";
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/EnhancedAppointmentCards.css";
+import "../styles/ErrorHandling.css";
 import "../styles/OperatorDashboard.css";
 import "../styles/Performance.css";
 import "../styles/UrgencyIndicators.css";
@@ -203,40 +213,88 @@ const OperatorDashboard = () => {
 
   // Helper function to get authentication token
   const getToken = () => localStorage.getItem("knoxToken");
-  // API fetch functions for each tab - updated for server-side pagination
-  const fetchAllAppointments = useCallback(async (page = 1, pageSize = 15) => {
-    const token = getToken();
-    if (!token) throw new Error("Authentication required");
 
-    const response = await fetch(
-      `http://localhost:8000/api/scheduling/appointments/?page=${page}&page_size=${pageSize}`,
-      {
-        headers: { Authorization: `Token ${token}` },
+  // Enhanced fetch function with ad blocker protection and retry logic
+  const enhancedFetch = useCallback(
+    async (url, options = {}, retryCount = 0) => {
+      const maxRetries = 2;
+
+      try {
+        // Create ad blocker friendly configuration
+        const config = createAdBlockerFriendlyConfig({
+          ...options,
+          headers: {
+            Authorization: `Token ${getToken()}`,
+            ...options.headers,
+          },
+        });
+
+        const response = await fetch(url, config);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error(`❌ Fetch error for ${url}:`, error);
+
+        // Check if we should retry
+        if (shouldRetryRequest(error, retryCount, maxRetries)) {
+          const delay = getRetryDelay(retryCount);
+          console.log(
+            `🔄 Retrying request to ${url} in ${delay}ms (attempt ${
+              retryCount + 1
+            }/${maxRetries})`
+          );
+
+          await sleep(delay);
+          return enhancedFetch(url, options, retryCount + 1);
+        }
+
+        // Provide user-friendly error messages
+        const friendlyMessage = getUserFriendlyErrorMessage(error);
+
+        if (isBlockedByClient(error)) {
+          console.warn("🚫 Request blocked by ad blocker or browser extension");
+          // Show user-friendly notification about ad blocker
+          console.log(
+            "💡 To fix this: Please check your ad blocker settings or try disabling extensions"
+          );
+        }
+
+        // Re-throw with enhanced error information
+        const enhancedError = new Error(friendlyMessage);
+        enhancedError.originalError = error;
+        enhancedError.isBlocked = isBlockedByClient(error);
+        throw enhancedError;
       }
-    );
-    if (!response.ok)
-      throw new Error(`Failed to fetch appointments: ${response.status}`);
-    return response.json();
-  }, []);
+    },
+    []
+  );
+  // API fetch functions for each tab - updated for server-side pagination with enhanced error handling
+  const fetchAllAppointments = useCallback(
+    async (page = 1, pageSize = 15) => {
+      const token = getToken();
+      if (!token) throw new Error("Authentication required");
+
+      return await enhancedFetch(
+        `http://localhost:8000/api/scheduling/appointments/?page=${page}&page_size=${pageSize}`
+      );
+    },
+    [enhancedFetch]
+  );
 
   const fetchPendingAppointments = useCallback(
     async (page = 1, pageSize = 15) => {
       const token = getToken();
       if (!token) throw new Error("Authentication required");
 
-      const response = await fetch(
-        `http://localhost:8000/api/scheduling/appointments/pending/?page=${page}&page_size=${pageSize}`,
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
+      return await enhancedFetch(
+        `http://localhost:8000/api/scheduling/appointments/pending/?page=${page}&page_size=${pageSize}`
       );
-      if (!response.ok)
-        throw new Error(
-          `Failed to fetch pending appointments: ${response.status}`
-        );
-      return response.json();
     },
-    []
+    [enhancedFetch]
   );
 
   const fetchRejectedAppointments = useCallback(
@@ -244,19 +302,11 @@ const OperatorDashboard = () => {
       const token = getToken();
       if (!token) throw new Error("Authentication required");
 
-      const response = await fetch(
-        `http://localhost:8000/api/scheduling/appointments/rejected/?page=${page}&page_size=${pageSize}`,
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
+      return await enhancedFetch(
+        `http://localhost:8000/api/scheduling/appointments/rejected/?page=${page}&page_size=${pageSize}`
       );
-      if (!response.ok)
-        throw new Error(
-          `Failed to fetch rejected appointments: ${response.status}`
-        );
-      return response.json();
     },
-    []
+    [enhancedFetch]
   );
 
   const fetchTimeoutAppointments = useCallback(
@@ -264,19 +314,11 @@ const OperatorDashboard = () => {
       const token = getToken();
       if (!token) throw new Error("Authentication required");
 
-      const response = await fetch(
-        `http://localhost:8000/api/scheduling/appointments/timeout/?page=${page}&page_size=${pageSize}`,
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
+      return await enhancedFetch(
+        `http://localhost:8000/api/scheduling/appointments/timeout/?page=${page}&page_size=${pageSize}`
       );
-      if (!response.ok)
-        throw new Error(
-          `Failed to fetch timeout appointments: ${response.status}`
-        );
-      return response.json();
     },
-    []
+    [enhancedFetch]
   );
 
   const fetchAwaitingPaymentAppointments = useCallback(
@@ -284,98 +326,67 @@ const OperatorDashboard = () => {
       const token = getToken();
       if (!token) throw new Error("Authentication required");
 
-      const response = await fetch(
-        `http://localhost:8000/api/scheduling/appointments/awaiting_payment/?page=${page}&page_size=${pageSize}`,
-        {
-          headers: { Authorization: `Token ${token}` },
-        }
+      return await enhancedFetch(
+        `http://localhost:8000/api/scheduling/appointments/awaiting_payment/?page=${page}&page_size=${pageSize}`
       );
-      if (!response.ok)
-        throw new Error(
-          `Failed to fetch awaiting payment appointments: ${response.status}`
-        );
-      return response.json();
     },
-    []
+    [enhancedFetch]
   );
 
-  const fetchActiveSessions = useCallback(async (page = 1, pageSize = 15) => {
-    const token = getToken();
-    if (!token) throw new Error("Authentication required");
+  const fetchActiveSessions = useCallback(
+    async (page = 1, pageSize = 15) => {
+      const token = getToken();
+      if (!token) throw new Error("Authentication required");
 
-    const response = await fetch(
-      `http://localhost:8000/api/scheduling/appointments/active_sessions/?page=${page}&page_size=${pageSize}`,
-      {
-        headers: { Authorization: `Token ${token}` },
-      }
-    );
-    if (!response.ok)
-      throw new Error(`Failed to fetch active sessions: ${response.status}`);
-    return response.json();
-  }, []);
+      return await enhancedFetch(
+        `http://localhost:8000/api/scheduling/appointments/active_sessions/?page=${page}&page_size=${pageSize}`
+      );
+    },
+    [enhancedFetch]
+  );
 
-  const fetchPickupRequests = useCallback(async (page = 1, pageSize = 15) => {
-    const token = getToken();
-    if (!token) throw new Error("Authentication required");
+  const fetchPickupRequests = useCallback(
+    async (page = 1, pageSize = 15) => {
+      const token = getToken();
+      if (!token) throw new Error("Authentication required");
 
-    const response = await fetch(
-      `http://localhost:8000/api/scheduling/appointments/pickup_requests/?page=${page}&page_size=${pageSize}`,
-      {
-        headers: { Authorization: `Token ${token}` },
-      }
-    );
-    if (!response.ok)
-      throw new Error(`Failed to fetch pickup requests: ${response.status}`);
-    return response.json();
-  }, []);
+      return await enhancedFetch(
+        `http://localhost:8000/api/scheduling/appointments/pickup_requests/?page=${page}&page_size=${pageSize}`
+      );
+    },
+    [enhancedFetch]
+  );
 
   const fetchAttendanceRecords = useCallback(async () => {
     const token = getToken();
     if (!token) throw new Error("Authentication required");
 
     const today = selectedDate || new Date().toISOString().split("T")[0];
-    const response = await fetch(
-      `http://localhost:8000/api/attendance/records/?date=${today}`,
-      {
-        headers: { Authorization: `Token ${token}` },
-      }
+    return await enhancedFetch(
+      `http://localhost:8000/api/attendance/records/?date=${today}`
     );
-    if (!response.ok)
-      throw new Error(`Failed to fetch attendance: ${response.status}`);
-    return response.json();
-  }, [selectedDate]);
+  }, [selectedDate, enhancedFetch]);
+
   const fetchUnreadNotifications = useCallback(async () => {
     const token = getToken();
     if (!token) throw new Error("Authentication required");
 
     console.log("🔔 Fetching notifications...");
-    const response = await fetch(
-      "http://localhost:8000/api/scheduling/notifications/?is_read=false",
-      {
-        headers: { Authorization: `Token ${token}` },
-      }
+    const data = await enhancedFetch(
+      "http://localhost:8000/api/scheduling/notifications/?is_read=false"
     );
-    if (!response.ok)
-      throw new Error(`Failed to fetch notifications: ${response.status}`);
-    const data = await response.json();
     console.log("🔔 Notifications fetched:", data);
     return data;
-  }, []);
+  }, [enhancedFetch]);
 
   const fetchDriverAssignments = useCallback(async () => {
     const token = getToken();
     if (!token) throw new Error("Authentication required");
 
-    const response = await fetch(
-      "http://localhost:8000/api/scheduling/staff/?role=driver",
-      {
-        headers: { Authorization: `Token ${token}` },
-      }
+    return await enhancedFetch(
+      "http://localhost:8000/api/scheduling/staff/?role=driver"
     );
-    if (!response.ok)
-      throw new Error(`Failed to fetch drivers: ${response.status}`);
-    return response.json();
-  }, []);
+  }, [enhancedFetch]);
   const fetchWorkflowData = useCallback(async () => {
     // Return mock workflow data with expected structure
     return {
@@ -467,8 +478,29 @@ const OperatorDashboard = () => {
         }
       })
       .catch((err) => {
-        if (isMounted) setTabError(err);
-        console.error("Error fetching tab data:", err);
+        if (isMounted) {
+          setTabError(err);
+
+          // Enhanced error logging with user-friendly messages
+          if (err.isBlocked) {
+            console.error(
+              "🚫 OperatorDashboard: Request blocked by ad blocker/extension"
+            );
+            console.log(
+              "💡 User action needed: Please check ad blocker settings or disable browser extensions"
+            );
+          } else {
+            console.error(
+              "❌ OperatorDashboard: Error fetching tab data:",
+              err.message || err
+            );
+          }
+
+          // Log the original error for debugging
+          if (err.originalError) {
+            console.error("🔍 Original error:", err.originalError);
+          }
+        }
       })
       .finally(() => {
         if (isMounted) setTabLoading(false);
@@ -2077,8 +2109,24 @@ const OperatorDashboard = () => {
           {tabLoading ? (
             <div className="loading-message">Loading appointments...</div>
           ) : tabError ? (
-            <div className="error-message">
-              Error loading appointments: {tabError.message}
+            <div
+              className={`error-message ${
+                tabError.isBlocked ? "blocked-error" : ""
+              }`}
+            >
+              {tabError.isBlocked ? (
+                <div className="blocked-request-error">
+                  <h4>🚫 Unable to Load Appointments</h4>
+                  <p>Your browser or an extension is blocking the request.</p>
+                  <p>
+                    <strong>
+                      Please check your ad blocker settings and try again.
+                    </strong>
+                  </p>
+                </div>
+              ) : (
+                <div>Error loading appointments: {tabError.message}</div>
+              )}
             </div>
           ) : appointments.length === 0 ? (
             <div className="no-appointments">
@@ -2243,9 +2291,23 @@ const OperatorDashboard = () => {
     // Show error state
     if (tabError) {
       return (
-        <div className="error-state">
-          <i className="fas fa-exclamation-triangle"></i>
-          <p>Error loading notifications: {tabError.message || tabError}</p>
+        <div
+          className={`error-state ${tabError.isBlocked ? "blocked-error" : ""}`}
+        >
+          {tabError.isBlocked ? (
+            <div className="blocked-request-error">
+              <h4>🚫 Unable to Load Notifications</h4>
+              <p>Your browser or an extension is blocking the request.</p>
+              <p>
+                <strong>Please check your ad blocker settings.</strong>
+              </p>
+            </div>
+          ) : (
+            <>
+              <i className="fas fa-exclamation-triangle"></i>
+              <p>Error loading notifications: {tabError.message || tabError}</p>
+            </>
+          )}
           <button onClick={refreshCurrentTab} className="retry-btn">
             Retry
           </button>
@@ -2593,12 +2655,78 @@ const OperatorDashboard = () => {
           pulse={true}
           fadeIn={true}
         />{" "}
-        {/* OPTIMIZED: Simplified error handling */}
+        {/* Enhanced error handling with user-friendly messages */}
         {tabError && !tabData && (
-          <div className="error-message">
-            {typeof tabError === "object"
-              ? tabError.message || tabError.error || JSON.stringify(tabError)
-              : tabError}
+          <div
+            className={`error-message ${
+              tabError.isBlocked ? "blocked-error" : ""
+            }`}
+          >
+            {tabError.isBlocked ? (
+              <div className="blocked-request-error">
+                <h4>🚫 Request Blocked</h4>
+                <p>
+                  <strong>{tabError.message}</strong>
+                </p>
+                <div className="error-help">
+                  <p>
+                    <strong>How to fix this:</strong>
+                  </p>
+                  <ul>
+                    <li>
+                      Check your ad blocker settings and whitelist this site
+                    </li>
+                    <li>Temporarily disable browser extensions</li>
+                    <li>Try refreshing the page</li>
+                    <li>Contact support if the issue persists</li>
+                  </ul>
+                </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="retry-button"
+                  style={{
+                    marginTop: "10px",
+                    padding: "8px 16px",
+                    backgroundColor: "#007bff",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  🔄 Retry
+                </button>
+              </div>
+            ) : (
+              <div className="general-error">
+                <h4>❌ Error Loading Data</h4>
+                <p>
+                  {typeof tabError === "object"
+                    ? tabError.message ||
+                      tabError.error ||
+                      JSON.stringify(tabError)
+                    : tabError}
+                </p>
+                <button
+                  onClick={() => {
+                    setTabError(null);
+                    setTabLoading(true);
+                  }}
+                  className="retry-button"
+                  style={{
+                    marginTop: "10px",
+                    padding: "8px 16px",
+                    backgroundColor: "#28a745",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  🔄 Try Again
+                </button>
+              </div>
+            )}
           </div>
         )}
         {/* ✅ ROBUST FILTERING: Display validation warnings and errors */}{" "}
