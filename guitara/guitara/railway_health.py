@@ -21,16 +21,16 @@ def railway_health_primary(request):
         "status": "healthy",
         "timestamp": int(time.time()),
         "service": "guitara-scheduling",
-        "environment": "railway"
+        "environment": "railway",
     }
-    
+
     response = JsonResponse(response_data, status=200)
-    
+
     # Prevent caching
-    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response['Pragma'] = 'no-cache'
-    response['Expires'] = '0'
-    
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+
     return response
 
 
@@ -43,7 +43,7 @@ def railway_ping(request):
 
 
 @csrf_exempt
-@never_cache  
+@never_cache
 @require_GET
 def railway_healthcheck(request):
     """Alternative healthcheck endpoint"""

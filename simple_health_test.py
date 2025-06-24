@@ -48,15 +48,17 @@ print("✅ Emergency settings created")
 # Now test Django setup
 try:
     import django
+
     django.setup()
     print("✅ Django setup successful")
-    
+
     from django.test import Client
+
     client = Client()
-    
+
     # Test health endpoints
     endpoints = ["/health/", "/healthcheck/", "/ping/"]
-    
+
     for endpoint in endpoints:
         try:
             response = client.get(endpoint)
@@ -65,8 +67,9 @@ try:
                 print(f"   Response: {response.content.decode()[:200]}")
         except Exception as e:
             print(f"❌ {endpoint}: {e}")
-            
+
 except Exception as e:
     print(f"❌ Django setup failed: {e}")
     import traceback
+
     traceback.print_exc()

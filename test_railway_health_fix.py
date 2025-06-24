@@ -27,6 +27,7 @@ os.environ.setdefault("SUPABASE_DB_PASSWORD", "test_password")
 os.environ.setdefault("SUPABASE_DB_HOST", "localhost")
 
 import django
+
 django.setup()
 
 from django.test import Client
@@ -35,31 +36,31 @@ from django.test import Client
 def test_emergency_health_endpoints():
     """Test that emergency health check endpoints respond immediately"""
     print("=== Testing Emergency Health Check Endpoints ===")
-    
+
     client = Client()
-    
+
     # Test endpoints that Railway will hit
     endpoints = [
         ("/health/", "Emergency Health Check"),
         ("/healthcheck/", "Railway Ping"),
         ("/ping/", "Ping"),
     ]
-    
+
     success_count = 0
-    
+
     for endpoint, name in endpoints:
         try:
             print(f"\n🧪 Testing {name}: {endpoint}")
             response = client.get(endpoint)
-            
+
             print(f"   Status Code: {response.status_code}")
-            
+
             if response.status_code == 200:
                 print(f"   ✅ {name} - SUCCESS")
                 success_count += 1
-                
+
                 # Parse response
-                if hasattr(response, 'json'):
+                if hasattr(response, "json"):
                     try:
                         data = response.json()
                         print(f"   Response: {data}")
@@ -70,13 +71,13 @@ def test_emergency_health_endpoints():
             else:
                 print(f"   ❌ {name} - FAILED (Status: {response.status_code})")
                 print(f"   Response: {response.content.decode()}")
-                
+
         except Exception as e:
             print(f"   ❌ {name} - ERROR: {e}")
-    
+
     print(f"\n=== Summary ===")
     print(f"Successful endpoints: {success_count}/{len(endpoints)}")
-    
+
     if success_count == len(endpoints):
         print("✅ ALL HEALTH CHECK ENDPOINTS ARE WORKING!")
         print("✅ Railway deployment should succeed")
@@ -90,21 +91,21 @@ def test_emergency_health_endpoints():
 def test_diagnostic_endpoints():
     """Test diagnostic endpoints (not used by Railway)"""
     print("\n=== Testing Diagnostic Endpoints ===")
-    
+
     client = Client()
-    
+
     endpoints = [
         ("/health-check/", "Health Check"),
         ("/diagnostic-health-check/", "Diagnostic Health Check"),
     ]
-    
+
     for endpoint, name in endpoints:
         try:
             print(f"\n🧪 Testing {name}: {endpoint}")
             response = client.get(endpoint)
-            
+
             print(f"   Status Code: {response.status_code}")
-            
+
             if response.status_code == 200:
                 print(f"   ✅ {name} - SUCCESS")
                 try:
@@ -115,7 +116,7 @@ def test_diagnostic_endpoints():
                     print(f"   Response: {response.content.decode()}")
             else:
                 print(f"   ⚠️ {name} - Status {response.status_code}")
-                
+
         except Exception as e:
             print(f"   ⚠️ {name} - ERROR: {e}")
 
@@ -123,10 +124,10 @@ def test_diagnostic_endpoints():
 if __name__ == "__main__":
     print("🚀 RAILWAY HEALTH CHECK VALIDATION")
     print("Testing optimized health check endpoints...\n")
-    
+
     success = test_emergency_health_endpoints()
     test_diagnostic_endpoints()
-    
+
     if success:
         print("\n🎉 VALIDATION COMPLETE - READY FOR RAILWAY DEPLOYMENT!")
         sys.exit(0)

@@ -248,7 +248,7 @@ class HealthCheckMiddleware(MiddlewareMixin):
         """Handle health check requests - Railway bypasses this via URL routing"""
         # Railway health checks (/health/, /healthcheck/, /ping/) are handled
         # directly by URL routing and bypass this middleware completely
-        
+
         # This middleware only handles diagnostic health checks
         if request.path in ["/health-check/", "/diagnostic-health-check/"]:
             try:

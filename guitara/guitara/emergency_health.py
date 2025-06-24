@@ -16,38 +16,32 @@ import time
 @never_cache
 def emergency_health(request):
     """Emergency health check - no dependencies, immediate response"""
-    if request.method != 'GET':
+    if request.method != "GET":
         return HttpResponse(status=405)
-        
+
     response_data = {
         "status": "healthy",
         "timestamp": int(time.time()),
-        "service": "guitara-scheduling"
+        "service": "guitara-scheduling",
     }
-    
+
     response = HttpResponse(
-        json.dumps(response_data),
-        content_type='application/json',
-        status=200
+        json.dumps(response_data), content_type="application/json", status=200
     )
-    
+
     # Add headers to prevent caching
-    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response['Pragma'] = 'no-cache' 
-    response['Expires'] = '0'
-    
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+
     return response
 
 
 @csrf_exempt
-@never_cache 
+@never_cache
 def railway_ping(request):
     """Ultra-minimal ping endpoint for Railway"""
-    if request.method != 'GET':
+    if request.method != "GET":
         return HttpResponse(status=405)
-        
-    return HttpResponse(
-        '{"status":"ok"}',
-        content_type='application/json',
-        status=200
-    )
+
+    return HttpResponse('{"status":"ok"}', content_type="application/json", status=200)

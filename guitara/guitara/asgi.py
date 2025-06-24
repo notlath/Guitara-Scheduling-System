@@ -30,6 +30,7 @@ except Exception as e:
     from django.http import JsonResponse
     from django.urls import path
     from django.core.wsgi import get_wsgi_application
+
     django_asgi_app = get_asgi_application()
     print("[ASGI] ⚠️ Using fallback ASGI application")
 
@@ -54,7 +55,9 @@ except ImportError as e:
 
     logger = logging.getLogger(__name__)
     logger.warning(f"WebSocket middleware import failed: {e}")
-    logger.warning("⚠️ Falling back to HTTP-only ASGI application for Railway compatibility")
+    logger.warning(
+        "⚠️ Falling back to HTTP-only ASGI application for Railway compatibility"
+    )
 
     # HTTP-only ASGI application for Railway
     application = ProtocolTypeRouter(
