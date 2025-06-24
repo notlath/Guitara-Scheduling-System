@@ -107,9 +107,9 @@ DATABASES = {
         "PORT": os.environ.get("SUPABASE_DB_PORT", "5432"),
         "OPTIONS": {
             # Connection timeout settings
-            "connect_timeout": 30,  # Increased timeout for Railway
+            "connect_timeout": 10,  # Reduced from 30 to 10 seconds
             "application_name": "guitara_railway",
-            "options": "-c default_transaction_isolation=read_committed",
+            "options": "-c default_transaction_isolation=read_committed -c statement_timeout=15000",  # 15 seconds
             # SSL settings for Supabase
             "sslmode": "require",
             # Performance settings
@@ -117,7 +117,7 @@ DATABASES = {
         },
         "ATOMIC_REQUESTS": False,
         "CONN_HEALTH_CHECKS": False,  # Disable automatic health checks
-        "CONN_MAX_AGE": 300,  # Connection pooling for 5 minutes
+        "CONN_MAX_AGE": 60,  # Reduced connection pooling to 1 minute
         "TEST": {
             "NAME": "test_guitara_railway",
         },

@@ -56,5 +56,5 @@ EXPOSE 8000
 # HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 #     CMD curl -f http://localhost:8000/ || exit 1
 
-# Default command - using minimal startup script with database connectivity
-CMD ["python", "minimal_startup.py"]
+# Default command - using robust startup with database fallback
+CMD ["python", "robust_startup.py"]
