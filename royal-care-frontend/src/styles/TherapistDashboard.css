@@ -42,7 +42,7 @@
 }
 
 .logout-button:hover {
-  background-color: var(--primary-400);
+  background-color: var(--error-hover);
 }
 
 .appointments-list {

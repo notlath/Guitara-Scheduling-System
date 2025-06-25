@@ -74,6 +74,7 @@ small {
   --muted: var(--background-500);
   --muted-200: var(--background-700);
   --error: #ff312e;
+  --error-hover: #cc0300;
   --success: #99c21e;
   --border-color: var(--background-200);
   --border-light: var(--background-100);

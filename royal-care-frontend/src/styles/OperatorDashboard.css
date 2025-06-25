@@ -26,8 +26,8 @@
   font-size: 1.1rem;
 }
 
-.logout-button {
-  background-color: #e74c3c;
+/* .logout-button {
+  background-color: var(--error);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -35,11 +35,11 @@
   cursor: pointer;
   font-size: 1rem;
   transition: background-color 0.3s;
-}
+} */
 
-.logout-button:hover {
+/* .logout-button:hover {
   background-color: #c0392b;
-}
+} */
 
 .loading-spinner {
   text-align: center;

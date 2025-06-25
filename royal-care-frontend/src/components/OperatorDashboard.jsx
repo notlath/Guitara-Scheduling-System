@@ -82,6 +82,26 @@ const OperatorDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // Get user name from localStorage (or auth state if available)
+  const user = JSON.parse(localStorage.getItem("user")) || {}; // fallback if not present
+  const userName =
+    user.first_name && user.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : user.username || "Operator";
+
+  // Helper to get greeting based on PH time
+  const getGreeting = () => {
+    const now = new Date().toLocaleString("en-PH", {
+      timeZone: "Asia/Manila",
+      hour: "2-digit",
+      hour12: false,
+    });
+    const hour = parseInt(now.split(":")[0], 10);
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
+
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
   // URL search params for view persistence
@@ -2626,20 +2646,57 @@ const OperatorDashboard = () => {
     );
   };
   // Render the tab switcher at the top of the dashboard
+
+  const [systemTime, setSystemTime] = useState(() =>
+    new Date().toLocaleString("en-PH", {
+      timeZone: "Asia/Manila",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    })
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSystemTime(
+        new Date().toLocaleString("en-PH", {
+          timeZone: "Asia/Manila",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        })
+      );
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
   return (
     <PageLayout>
       {/* TanStack Query Debugger - Remove this after debugging
       <TanStackQueryDebugger /> */}
 
       <div className={`operator-dashboard`}>
-        {" "}
-        <LayoutRow title="Operator Dashboard">
+        <LayoutRow
+          title="Operator Dashboard"
+          subtitle={
+            <>
+              {getGreeting()}, {userName}! &nbsp;|&nbsp; {systemTime}
+            </>
+          }
+        >
           <div className="action-buttons">
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>
           </div>
-        </LayoutRow>{" "}
+        </LayoutRow>
         {/* OPTIMIZED: Simplified loading indicator */}
         <MinimalLoadingIndicator
           show={tabLoading}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
@@ -32,6 +32,56 @@ const TherapistDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   // Remove the sync event handlers - TanStack Query handles real-time updates automatically
+
+  // Get user name from localStorage (or auth state if available)
+  const userName =
+    user.first_name && user.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : user.username || "Operator";
+
+  // Helper to get greeting based on PH time
+  const getGreeting = () => {
+    const now = new Date().toLocaleString("en-PH", {
+      timeZone: "Asia/Manila",
+      hour: "2-digit",
+      hour12: false,
+    });
+    const hour = parseInt(now.split(":")[0], 10);
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
+
+  const [systemTime, setSystemTime] = useState(() =>
+    new Date().toLocaleString("en-PH", {
+      timeZone: "Asia/Manila",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    })
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSystemTime(
+        new Date().toLocaleString("en-PH", {
+          timeZone: "Asia/Manila",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        })
+      );
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // URL search params for view persistence
   const [searchParams, setSearchParams] = useSearchParams();
@@ -985,7 +1035,14 @@ const TherapistDashboard = () => {
         fadeIn={true}
       />
       <div className="therapist-dashboard">
-        <LayoutRow title="Therapist Dashboard">
+        <LayoutRow
+          title="Therapist Dashboard"
+          subtitle={
+            <>
+              {getGreeting()}, {userName}! &nbsp;|&nbsp; {systemTime}
+            </>
+          }
+        >
           <div className="action-buttons">
             <p style={{ margin: 0 }}>
               Welcome, {user?.first_name} {user?.last_name}!
