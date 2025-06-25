@@ -1019,6 +1019,7 @@
   display: flex;
   /* flex-direction: column; */
   gap: var(--spacing-md);
+  align-items: flex-start;
 }
 
 .tab-switcher {
@@ -1029,6 +1030,10 @@
   padding: var(--spacing-mm) var(--spacing-mxs);
   border-radius: var(--border-radius);
   background-color: var(--background-25);
+  margin: 0;
+  height: auto;
+  /* min-width: 180px; */
+  flex-shrink: 0;
 }
 
 .tab-btn {
@@ -1044,9 +1049,9 @@
 
 .tab-btn.active,
 .view-selector button.active {
-  background-color: var(--secondary);
-  /* color: var(--background);
-  font-weight: 400; */
+  background-color: var(--secondary-100);
+  color: var(--text);
+  /* font-weight: 400;  */
 }
 
 /* Responsive stats */
