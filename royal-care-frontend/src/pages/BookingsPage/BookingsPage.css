@@ -118,7 +118,7 @@
 
 .empty-state p {
   color: #888;
-  margin-bottom: 1.5rem;
+  /* margin-bottom: 1.5rem; */
 }
 
 .bookings-grid {
