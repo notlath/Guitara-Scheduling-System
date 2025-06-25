@@ -118,7 +118,6 @@
 
 .empty-state p {
   color: #888;
-  margin-bottom: 1.5rem;
 }
 
 .bookings-grid {
@@ -414,24 +413,26 @@
 
 .stat-item {
   text-align: center;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 6px;
+  padding: var(--spacing-mmd);
+  background: var(--primary-50);
+  border-radius: var(--border-radius);
+  /* border: 1px solid var(--border-color); */
 }
 
 .stat-number {
   display: block;
-  font-size: 2rem;
+  font-size: var(--font-size-xxl);
   font-weight: bold;
-  color: #3498db;
+  /* color: #3498db; */
   margin-bottom: 0.25rem;
 }
 
 .stat-label {
-  color: #666;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  /* color: var(--muted-200); */
+  /* font-size: 0.9rem; */
+  /* text-transform: uppercase; */
+  /* letter-spacing: 0.5px; */
+  opacity: 0.6;
 }
 
 /* Therapist Display Styles */
@@ -503,28 +504,26 @@
   }
 }
 
-/* ✅ EMERGENCY FIX: Force text visibility in status badges */
-.status-badge {
-  font-family: "Plus Jakarta Sans", Arial, sans-serif !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  color: inherit !important;
-  text-shadow: none !important;
-  letter-spacing: 0.5px !important;
-  -webkit-font-smoothing: antialiased !important;
-  -moz-osx-font-smoothing: grayscale !important;
+/* Improved: Increase specificity instead of using !important for status badges */
+.booking-card .status-badge,
+.bookings-grid .booking-card .status-badge {
+  font-family: "Plus Jakarta Sans", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: inherit;
+  text-shadow: none;
+  letter-spacing: 0.5px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  opacity: 1;
+  visibility: visible;
+  display: inline-block;
 }
 
-/* Force all status badge text to be visible */
-.status-badge * {
-  color: inherit !important;
-  font-size: inherit !important;
-  font-weight: inherit !important;
-}
-
-/* Ensure status badges have proper contrast */
-.booking-card .status-badge {
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: inline-block !important;
+/* Ensure all status badge text inherits styles */
+.booking-card .status-badge *,
+.bookings-grid .booking-card .status-badge * {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
 }

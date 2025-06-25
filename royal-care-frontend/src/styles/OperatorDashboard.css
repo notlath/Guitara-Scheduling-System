@@ -946,24 +946,16 @@
 
 /* Statistics Dashboard */
 .stats-dashboard {
-  margin: 20px 0;
+  margin: var(--spacing-mmd) 0;
   padding: 0;
 }
 
-.stats-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  padding: 20px;
-  color: white;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
 .stats-card h4 {
-  margin: 0 0 15px 0;
-  font-size: 1.2rem;
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-size-md);
   font-weight: 600;
-  text-align: center;
-  opacity: 0.9;
+  /* text-align: center; */
+  /* opacity: 0.9; */
 }
 
 .stats-grid {
@@ -972,7 +964,7 @@
   gap: 15px;
 }
 
-.stat-item {
+/* .stat-item {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 15px;
@@ -980,29 +972,29 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: transform 0.2s, background-color 0.2s;
-}
+} */
 
-.stat-item:hover {
+/* .stat-item:hover {
   transform: translateY(-2px);
   background: rgba(255, 255, 255, 0.15);
-}
+} */
 
-.stat-number {
+/* .stat-number {
   display: block;
   font-size: 1.8rem;
   font-weight: 700;
   line-height: 1;
   margin-bottom: 5px;
-}
+} */
 
-.stat-label {
+/* .stat-label {
   display: block;
   font-size: 0.8rem;
   opacity: 0.8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
+} */
+/* 
 .therapist-stat {
   border-left: 4px solid #2196f3;
 }
@@ -1013,6 +1005,45 @@
 
 .pending-stat {
   border-left: 4px solid #ff9800;
+} */
+
+.dashboard-container {
+  display: flex;
+  /* flex-direction: column; */
+  gap: var(--spacing-md);
+  align-items: flex-start;
+}
+
+.operator-dashboard .tab-switcher {
+  flex-direction: column;
+  /* gap: var(--spacing-xm); */
+  /* min-width: 100px; */
+  /* border: 1px solid var(--border-color); */
+  padding: var(--spacing-mm) var(--spacing-mxs);
+  border-radius: var(--border-radius);
+  background-color: var(--background-25);
+  margin: 0;
+  height: auto;
+  /* min-width: 180px; */
+  flex-shrink: 0;
+}
+
+.operator-dashboard .tab-btn {
+  padding: var(--spacing-xs) var(--spacing-xm);
+  padding-right: var(--spacing-sm);
+  font-size: var(--font-size-base);
+  border-radius: var(--border-radius);
+  margin: 0;
+  text-align: left;
+  background-color: transparent;
+  /* color: var(--text-color); */
+}
+
+.operator-dashboard .tab-btn.active,
+.operator-dashboard .view-selector button.active {
+  background-color: var(--secondary-100);
+  color: var(--text);
+  /* font-weight: 400;  */
 }
 
 /* Responsive stats */
