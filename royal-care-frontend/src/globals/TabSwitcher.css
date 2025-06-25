@@ -4,7 +4,7 @@
   display: flex;
   border-radius: 4px;
   overflow-x: auto;
-  margin-bottom: var(--spacing-mxs);
+  margin-bottom: var(--spacing-lg);
   white-space: nowrap;
   gap: 0;
 }
