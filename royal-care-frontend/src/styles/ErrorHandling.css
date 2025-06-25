@@ -1,0 +1,87 @@
+/* Enhanced error handling styles for OperatorDashboard */
+.blocked-error {
+  background-color: #fff3cd;
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+
+.blocked-request-error {
+  padding: 20px;
+  text-align: left;
+}
+
+.blocked-request-error h4 {
+  color: #856404;
+  margin: 0 0 12px 0;
+  font-size: 18px;
+}
+
+.blocked-request-error p {
+  color: #856404;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.error-help {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 12px;
+  margin: 12px 0;
+}
+
+.error-help p {
+  margin: 0 0 8px 0;
+  font-weight: 600;
+  color: #495057;
+}
+
+.error-help ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.error-help li {
+  color: #495057;
+  margin: 4px 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.general-error {
+  padding: 16px;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  color: #721c24;
+}
+
+.general-error h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+}
+
+.retry-button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.retry-button:active {
+  transform: translateY(0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .blocked-request-error {
+    padding: 16px;
+  }
+
+  .blocked-request-error h4 {
+    font-size: 16px;
+  }
+
+  .error-help {
+    padding: 10px;
+  }
+}
