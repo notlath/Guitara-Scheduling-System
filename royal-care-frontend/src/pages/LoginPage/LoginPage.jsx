@@ -250,7 +250,11 @@ function LoginPage() {
           }
         }
         // If no error, proceed as normal
-        if (response && response.data && response.data.message === "2FA code sent") {
+        if (
+          response &&
+          response.data &&
+          response.data.message === "2FA code sent"
+        ) {
           setNeeds2FA(true); // Show 2FA input
           setFieldErrors({}); // Clear previous field errors when switching to 2FA
         } else if (response && response.data && response.data.user) {
