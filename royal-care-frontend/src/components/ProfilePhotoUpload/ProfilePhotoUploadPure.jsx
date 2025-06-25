@@ -10,6 +10,7 @@ const ProfilePhotoUploadPure = ({
   size = "large",
 }) => {
   const [uploading, setUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [preview, setPreview] = useState(currentPhoto);
   const [showCropModal, setShowCropModal] = useState(false);
   const [selectedImageSrc, setSelectedImageSrc] = useState(null);
@@ -49,6 +50,7 @@ const ProfilePhotoUploadPure = ({
     // Show preview immediately
     setPreview(croppedImageUrl);
     setUploading(true);
+    setIsDeleting(false);
 
     try {
       // Create FormData for file upload
@@ -71,8 +73,23 @@ const ProfilePhotoUploadPure = ({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Upload failed");
+        let errorMessage = "Upload failed";
+
+        // Check if response has content before trying to parse JSON
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (jsonError) {
+            console.warn("Failed to parse error response as JSON:", jsonError);
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+        } else {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -114,6 +131,8 @@ const ProfilePhotoUploadPure = ({
   };
 
   const handleRemovePhoto = async () => {
+    setUploading(true);
+    setIsDeleting(true);
     try {
       const token = localStorage.getItem("knoxToken");
       if (!token) {
@@ -129,8 +148,37 @@ const ProfilePhotoUploadPure = ({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Delete failed");
+        let errorMessage = "Delete failed";
+
+        // Check if response has content before trying to parse JSON
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (jsonError) {
+            console.warn("Failed to parse error response as JSON:", jsonError);
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+        } else {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      // Try to parse response if it has content, but don't fail if it's empty
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          await response.json(); // Parse but don't store since we don't need the response data
+        } catch (jsonError) {
+          console.warn(
+            "Response was successful but couldn't parse JSON:",
+            jsonError
+          );
+          // Continue with success since the response was ok
+        }
       }
 
       // Update Redux store and localStorage
@@ -153,6 +201,9 @@ const ProfilePhotoUploadPure = ({
     } catch (error) {
       console.error("Delete failed:", error);
       alert(`Delete failed: ${error.message}`);
+    } finally {
+      setUploading(false);
+      setIsDeleting(false);
     }
   };
 
@@ -176,7 +227,7 @@ const ProfilePhotoUploadPure = ({
             {uploading && (
               <div className={styles.uploadingOverlay}>
                 <div className={styles.uploadingSpinner}></div>
-                <span>Uploading...</span>
+                <span>{isDeleting ? "Deleting..." : "Uploading..."}</span>
               </div>
             )}
           </div>
