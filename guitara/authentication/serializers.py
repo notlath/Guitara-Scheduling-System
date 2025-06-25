@@ -32,7 +32,12 @@ class LoginSerializer(serializers.Serializer):
             try:
                 user_obj = CustomUser.objects.get(email=username_or_email)
             except CustomUser.DoesNotExist:
-                raise serializers.ValidationError("Invalid credentials")
+                raise serializers.ValidationError(
+                    {
+                        "error": "Incorrect username or password.",
+                        "code": "INVALID_LOGIN",
+                    }
+                )
 
         # Check if account is locked
         current_time = timezone.now()
@@ -40,7 +45,11 @@ class LoginSerializer(serializers.Serializer):
             time_remaining = user_obj.locked_until - current_time
             minutes_remaining = int(time_remaining.total_seconds() / 60)
             raise serializers.ValidationError(
-                f"Account is temporarily locked. Try again in {minutes_remaining} minutes."
+                {
+                    "error": f"Your account has been temporarily locked due to multiple failed login attempts. Please wait 5 minutes before trying again.",
+                    "code": "ACCOUNT_LOCKED",
+                    "minutes_remaining": minutes_remaining,
+                }
             )
 
         # If lock period has expired, reset the lockout
@@ -58,18 +67,26 @@ class LoginSerializer(serializers.Serializer):
 
             # Check if we need to lock the account
             if user_obj.failed_login_attempts >= 3:
-                user_obj.locked_until = current_time + timedelta(
-                    seconds=300
-                )  # 5 minutes
+                # Use fresh timestamp to ensure accuracy
+                current_timestamp = timezone.now()
+                lock_time = current_timestamp + timedelta(seconds=300)  # 5 minutes
+                user_obj.locked_until = lock_time
                 user_obj.save()
                 raise serializers.ValidationError(
-                    "Too many failed login attempts. Account locked for 5 minutes."
+                    {
+                        "error": "Your account has been temporarily locked due to multiple failed login attempts. Please wait 5 minutes before trying again.",
+                        "code": "ACCOUNT_LOCKED",
+                    }
                 )
             else:
                 user_obj.save()
                 attempts_remaining = 3 - user_obj.failed_login_attempts
                 raise serializers.ValidationError(
-                    f"Invalid credentials. {attempts_remaining} attempts remaining before lockout."
+                    {
+                        "error": f"Incorrect username or password. {attempts_remaining} attempts remaining before lockout.",
+                        "code": "INVALID_LOGIN",
+                        "attempts_remaining": attempts_remaining,
+                    }
                 )
 
         if user and user.is_active:
@@ -80,4 +97,9 @@ class LoginSerializer(serializers.Serializer):
                 user.save()
             return user
 
-        raise serializers.ValidationError("Invalid credentials")
+        raise serializers.ValidationError(
+            {
+                "error": "Your account has been disabled. Please see your system administrator.",
+                "code": "ACCOUNT_DISABLED",
+            }
+        )

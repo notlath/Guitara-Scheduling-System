@@ -136,54 +136,129 @@ function LoginPage() {
     try {
       if (!needs2FA) {
         // Initial login request using enhanced auth service
+        let response;
+        let errorHandled = false;
         try {
-          const response = await api.post("/auth/login/", formData);
-          if (response.data.message === "2FA code sent") {
-            setNeeds2FA(true); // Show 2FA input
-            setFieldErrors({}); // Clear previous field errors when switching to 2FA
-          } else {
-            // Handle non-2FA login (if allowed)
-            localStorage.setItem("knoxToken", response.data.token);
-            localStorage.setItem("user", JSON.stringify(response.data.user));
-            dispatch(login(response.data.user));
-            navigate(getRedirectPath(response.data.user.role));
-          }
+          response = await api.post("/auth/login/", formData);
         } catch (authError) {
-          // Use enhanced error handling utility
-          const errorInfo = handleAuthError(authError);
+          // Robust error handling using error code from backend (for thrown errors)
+          const errorData = authError.response?.data;
+          let errorCode = errorData?.code;
+          let backendError = errorData?.error || "";
+          const status = authError.response?.status;
 
-          if (errorInfo.isDisabled && !errorInfo.isLocked) {
+          // Debug logging to help diagnose issues
+          console.log("Auth Error Debug:", {
+            status,
+            errorData,
+            errorCode,
+            backendError,
+            rawResponse: authError.response,
+          });
+
+          // Handle Django REST Framework error format where errors might be nested
+          if (!errorCode && errorData?.code && Array.isArray(errorData.code)) {
+            errorCode = errorData.code[0];
+          }
+          if (
+            !backendError &&
+            errorData?.error &&
+            Array.isArray(errorData.error)
+          ) {
+            backendError = errorData.error[0];
+          }
+
+          // Debug logging to help diagnose issues
+          console.log("Auth Error Debug:", {
+            status,
+            errorData,
+            errorCode,
+            backendError,
+            rawResponse: authError.response,
+          });
+
+          if (errorCode === "ACCOUNT_LOCKED") {
+            setError(
+              backendError ||
+                "Your account has been temporarily locked due to multiple failed login attempts. Please wait 5 minutes before trying again."
+            );
+            errorHandled = true;
+          } else if (errorCode === "ACCOUNT_DISABLED") {
             // Clear any stored authentication data to prevent infinite loops
             localStorage.removeItem("knoxToken");
             localStorage.removeItem("user");
-
-            // Show disabled account alert with retry option for recently re-enabled accounts
             setDisabledAccountInfo({
-              type: errorInfo.accountType,
+              type: "account",
               message:
+                backendError ||
                 "Your account has been disabled. Please see your system administrator.",
-              contactInfo: errorInfo.contactInfo,
+              contactInfo: null,
             });
             setShowDisabledAlert(true);
-          } else if (errorInfo.isLocked) {
-            // Handle account lockout (3 failed attempts)
-            const lockoutMessage = authError.response?.data?.error || "";
-            if (
-              lockoutMessage.includes("temporarily locked") ||
-              lockoutMessage.includes("Try again in")
-            ) {
-              setError(
-                "Your account has been temporarily locked due to multiple failed login attempts. Please wait 5 minutes before trying again."
-              );
-            } else {
-              setError(
-                "Your account has been temporarily locked. Please wait 5 minutes before trying again."
-              );
-            }
+            errorHandled = true;
+          } else if (errorCode === "INVALID_LOGIN") {
+            setError(backendError || "Incorrect username or password.");
+            errorHandled = true;
           } else {
-            // Handle invalid credentials or other errors
-            setError("Incorrect username or password.");
+            // Fallback to previous logic or generic error
+            const errorInfo = handleAuthError(authError);
+            if (errorInfo.isDisabled && !errorInfo.isLocked) {
+              localStorage.removeItem("knoxToken");
+              localStorage.removeItem("user");
+              setDisabledAccountInfo({
+                type: errorInfo.accountType,
+                message:
+                  "Your account has been disabled. Please see your system administrator.",
+                contactInfo: errorInfo.contactInfo,
+              });
+              setShowDisabledAlert(true);
+              errorHandled = true;
+            } else {
+              setError(backendError || "Incorrect username or password.");
+              errorHandled = true;
+            }
           }
+        }
+        // If the API wrapper does not throw for error responses, check for error codes in the response
+        if (!errorHandled && response && response.data && response.data.code) {
+          const errorCode = response.data.code;
+          const backendError = response.data.error || "";
+          if (errorCode === "ACCOUNT_LOCKED") {
+            setError(
+              backendError ||
+                "Your account has been temporarily locked due to multiple failed login attempts. Please wait 5 minutes before trying again."
+            );
+            setIsLoading(false);
+            return;
+          } else if (errorCode === "ACCOUNT_DISABLED") {
+            localStorage.removeItem("knoxToken");
+            localStorage.removeItem("user");
+            setDisabledAccountInfo({
+              type: "account",
+              message:
+                backendError ||
+                "Your account has been disabled. Please see your system administrator.",
+              contactInfo: null,
+            });
+            setShowDisabledAlert(true);
+            setIsLoading(false);
+            return;
+          } else if (errorCode === "INVALID_LOGIN") {
+            setError(backendError || "Incorrect username or password.");
+            setIsLoading(false);
+            return;
+          }
+        }
+        // If no error, proceed as normal
+        if (response && response.data && response.data.message === "2FA code sent") {
+          setNeeds2FA(true); // Show 2FA input
+          setFieldErrors({}); // Clear previous field errors when switching to 2FA
+        } else if (response && response.data && response.data.user) {
+          // Handle non-2FA login (if allowed)
+          localStorage.setItem("knoxToken", response.data.token);
+          localStorage.setItem("user", JSON.stringify(response.data.user));
+          dispatch(login(response.data.user));
+          navigate(getRedirectPath(response.data.user.role));
         }
       } else {
         // Verify 2FA code

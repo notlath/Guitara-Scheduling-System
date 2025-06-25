@@ -99,10 +99,13 @@ const DriverDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // Get user from Redux state
+  const user = useSelector((state) => state.auth.user, shallowEqual);
+
   const userName =
-    user.first_name && user.last_name
+    user?.first_name && user?.last_name
       ? `${user.first_name} ${user.last_name}`
-      : user.username || "Operator";
+      : user?.username || "Driver";
 
   // Helper to get greeting based on PH time
   const getGreeting = () => {
@@ -175,7 +178,6 @@ const DriverDashboard = () => {
     }
   };
 
-  const user = useSelector((state) => state.auth.user, shallowEqual);
   // TANSTACK QUERY: Replace optimized data manager with TanStack Query
   const {
     appointments: myAppointments,

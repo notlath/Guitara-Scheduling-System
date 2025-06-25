@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
@@ -33,11 +33,14 @@ const TherapistDashboard = () => {
   const navigate = useNavigate();
   // Remove the sync event handlers - TanStack Query handles real-time updates automatically
 
+  // Get user from Redux state
+  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
+
   // Get user name from localStorage (or auth state if available)
   const userName =
-    user.first_name && user.last_name
+    user?.first_name && user?.last_name
       ? `${user.first_name} ${user.last_name}`
-      : user.username || "Operator";
+      : user?.username || "Therapist";
 
   // Helper to get greeting based on PH time
   const getGreeting = () => {
@@ -109,7 +112,7 @@ const TherapistDashboard = () => {
       [actionKey]: isLoading,
     }));
   };
-  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual); // TANSTACK QUERY: Replace optimized data manager with TanStack Query
+  // TANSTACK QUERY: Replace optimized data manager with TanStack Query
   const {
     appointments: myAppointments,
     todayAppointments: myTodayAppointments,

@@ -45,10 +45,12 @@ export const isAccountLockedError = (error) => {
     "too many failed login attempts",
     "account locked",
     "account is temporarily locked",
+    "temporarily locked due to multiple failed login attempts",
     "try again in",
     "attempts remaining before lockout",
     "locked for 5 minutes",
     "temporarily locked",
+    "wait 5 minutes before trying again",
   ];
 
   return lockoutKeywords.some((keyword) =>
