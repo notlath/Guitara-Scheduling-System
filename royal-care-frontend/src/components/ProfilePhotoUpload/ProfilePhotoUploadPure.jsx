@@ -4,6 +4,14 @@ import { updateUserProfile } from "../../features/auth/authSlice";
 import PhotoCropModal from "../PhotoCropModal/PhotoCropModal";
 import styles from "./ProfilePhotoUpload.module.css";
 
+// API URL based on environment - ensure consistent URL handling
+const getBaseURL = () => {
+  if (import.meta.env.PROD) {
+    return "https://charismatic-appreciation-production.up.railway.app/api";
+  }
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+};
+
 const ProfilePhotoUploadPure = ({
   currentPhoto,
   onPhotoUpdate,
@@ -64,13 +72,16 @@ const ProfilePhotoUploadPure = ({
       }
 
       // Upload via Django backend API
-      const response = await fetch("/api/registration/profile/photo/", {
-        method: "POST",
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        `${getBaseURL()}/registration/profile/photo/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+          body: formData,
+        }
+      );
 
       if (!response.ok) {
         let errorMessage = "Upload failed";
@@ -100,20 +111,38 @@ const ProfilePhotoUploadPure = ({
         profile_photo_url: data.photo_url,
       };
 
-      dispatch(updateUserProfile({ profile_photo_url: data.photo_url }));
-      localStorage.setItem("user", JSON.stringify(updatedUserData));
+      // Update Redux store
+      dispatch(updateUserProfile(updatedUserData));
+
+      // Update localStorage
+      localStorage.setItem("userData", JSON.stringify(updatedUserData));
 
       // Update preview and notify parent
       setPreview(data.photo_url);
       onPhotoUpdate?.(data.photo_url);
 
-      console.log("✅ Photo uploaded successfully:", data.photo_url);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     } catch (error) {
-      console.error("Upload failed:", error);
-      alert(`Upload failed: ${error.message}`);
+      console.error("Upload error:", error);
+
+      // Show user-friendly error message
+      let displayMessage = error.message;
+      if (error.message.includes("Failed to fetch")) {
+        displayMessage =
+          "Network error: Could not connect to server. Please check your connection and try again.";
+      } else if (error.message.includes("Authentication")) {
+        displayMessage =
+          "Session expired. Please refresh the page and log in again.";
+      }
+
+      alert(`Upload failed: ${displayMessage}`);
       setPreview(currentPhoto); // Revert preview
     } finally {
       setUploading(false);
+      setIsDeleting(false);
     }
   };
 
@@ -140,12 +169,15 @@ const ProfilePhotoUploadPure = ({
       }
 
       // Delete via Django backend API
-      const response = await fetch("/api/registration/profile/photo/", {
-        method: "DELETE",
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
+      const response = await fetch(
+        `${getBaseURL()}/registration/profile/photo/`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
 
       if (!response.ok) {
         let errorMessage = "Delete failed";
@@ -187,20 +219,34 @@ const ProfilePhotoUploadPure = ({
         profile_photo_url: null,
       };
 
-      dispatch(updateUserProfile({ profile_photo_url: null }));
-      localStorage.setItem("user", JSON.stringify(updatedUserData));
+      // Update Redux store
+      dispatch(updateUserProfile(updatedUserData));
+
+      // Update localStorage
+      localStorage.setItem("userData", JSON.stringify(updatedUserData));
 
       // Clear preview and notify parent
       setPreview(null);
       onPhotoUpdate?.(null);
+
+      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-
-      console.log("✅ Photo removed successfully");
     } catch (error) {
-      console.error("Delete failed:", error);
-      alert(`Delete failed: ${error.message}`);
+      console.error("Delete error:", error);
+
+      // Show user-friendly error message
+      let displayMessage = error.message;
+      if (error.message.includes("Failed to fetch")) {
+        displayMessage =
+          "Network error: Could not connect to server. Please check your connection and try again.";
+      } else if (error.message.includes("Authentication")) {
+        displayMessage =
+          "Session expired. Please refresh the page and log in again.";
+      }
+
+      alert(`Delete failed: ${displayMessage}`);
     } finally {
       setUploading(false);
       setIsDeleting(false);
@@ -208,72 +254,63 @@ const ProfilePhotoUploadPure = ({
   };
 
   return (
-    <>
-      <div className={`${styles.photoUpload} ${styles[size]}`}>
-        <div className={styles.photoContainer} onClick={handleUploadClick}>
-          <div className={styles.photoPreview}>
-            {preview ? (
-              <img
-                src={preview}
-                alt="Profile"
-                className={styles.profilePhoto}
-              />
-            ) : (
-              <div className={styles.photoPlaceholder}>
-                <div className={styles.placeholderIcon}>👤</div>
-                <p className={styles.placeholderText}>No Photo</p>
-              </div>
-            )}
-            {uploading && (
-              <div className={styles.uploadingOverlay}>
-                <div className={styles.uploadingSpinner}></div>
-                <span>{isDeleting ? "Deleting..." : "Uploading..."}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className={styles.photoActions}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleFileSelect}
-            disabled={uploading}
-            style={{ display: "none" }}
-          />
-
-          <button
-            onClick={handleUploadClick}
-            disabled={uploading}
-            className={styles.uploadButton}
-          >
-            {preview ? "Change Photo" : "Upload Photo"}
-          </button>
-
-          {preview && (
-            <button
-              onClick={handleRemovePhoto}
-              disabled={uploading}
-              className={styles.removeButton}
-            >
-              Remove
-            </button>
+    <div className={`${styles.photoUpload} ${styles[size]}`}>
+      <div className={styles.photoContainer} onClick={handleUploadClick}>
+        <div className={styles.photoPreview}>
+          {preview ? (
+            <img src={preview} alt="Profile" className={styles.profilePhoto} />
+          ) : (
+            <div className={styles.photoPlaceholder}>
+              <div className={styles.placeholderIcon}>👤</div>
+              <p className={styles.placeholderText}>No Photo</p>
+            </div>
+          )}
+          {uploading && (
+            <div className={styles.uploadingOverlay}>
+              <div className={styles.uploadingSpinner}></div>
+              <span>{isDeleting ? "Deleting..." : "Uploading..."}</span>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Crop Modal */}
-      {showCropModal && selectedImageSrc && (
+      <div className={styles.photoActions}>
+        <button
+          type="button"
+          className={styles.uploadButton}
+          onClick={handleUploadClick}
+          disabled={uploading}
+        >
+          {uploading && !isDeleting ? "Uploading..." : "Change Photo"}
+        </button>
+        {preview && (
+          <button
+            type="button"
+            className={styles.removeButton}
+            onClick={handleRemovePhoto}
+            disabled={uploading}
+          >
+            {isDeleting ? "Deleting..." : "Remove"}
+          </button>
+        )}
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        style={{ display: "none" }}
+      />
+
+      {showCropModal && (
         <PhotoCropModal
           imageSrc={selectedImageSrc}
           onCropComplete={handleCropComplete}
           onCancel={handleCropCancel}
-          aspectRatio={1}
-          cropShape="round"
         />
       )}
-    </>
+    </div>
   );
 };
 
