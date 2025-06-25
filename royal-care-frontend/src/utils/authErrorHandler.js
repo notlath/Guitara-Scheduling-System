@@ -9,6 +9,7 @@ export const AccountErrorTypes = {
   OPERATOR_INACTIVE: "OPERATOR_INACTIVE",
   ACCOUNT_LOCKED: "ACCOUNT_LOCKED",
   ACCOUNT_SUSPENDED: "ACCOUNT_SUSPENDED",
+  ACCOUNT_LOCKOUT: "ACCOUNT_LOCKOUT",
 };
 
 export const isDisabledAccountError = (error) => {
@@ -32,6 +33,21 @@ export const isDisabledAccountError = (error) => {
   ];
   return disabledKeywords.some((keyword) =>
     errorMessage.toLowerCase().includes(keyword)
+  );
+};
+
+export const isAccountLockoutError = (error) => {
+  if (!error) return false;
+
+  const errorMessage = error.message || error.response?.data?.error || "";
+  const statusCode = error.response?.status;
+
+  // Check for HTTP 423 Locked status or lockout-related messages
+  return (
+    statusCode === 423 ||
+    errorMessage.toLowerCase().includes("temporarily locked") ||
+    errorMessage.toLowerCase().includes("too many failed") ||
+    errorMessage.toLowerCase().includes("attempts remaining")
   );
 };
 
@@ -114,12 +130,22 @@ export const getContactInfo = (accountType = "account") => {
 };
 
 export const handleAuthError = (error) => {
+  const isLockout = isAccountLockoutError(error);
   const isDisabled = isDisabledAccountError(error);
   const accountType = getAccountTypeFromError(error);
-  const message = getDisabledAccountMessage(error, accountType);
+  
+  let message;
+  if (isLockout) {
+    // Use the specific lockout message from the server
+    message = error.response?.data?.error || error.message || "Account temporarily locked due to failed login attempts.";
+  } else {
+    message = getDisabledAccountMessage(error, accountType);
+  }
+  
   const contactInfo = getContactInfo(accountType);
 
   return {
+    isLockout,
     isDisabled,
     accountType,
     message,

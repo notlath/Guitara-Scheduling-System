@@ -1,19 +1,19 @@
-import { useEffect, useState, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useLocation, useNavigate } from "react-router-dom";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
+import { login } from "../../features/auth/authSlice";
+import FormBlueprint from "../../globals/FormBlueprint";
 import { FormField } from "../../globals/FormField";
 import styles from "../../pages/LoginPage/LoginPage.module.css";
 import {
-  completeRegistration,
-  checkEmailExists,
   api,
+  checkEmailExists,
+  completeRegistration,
 } from "../../services/api";
 import { sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
-import { login } from "../../features/auth/authSlice";
-import FormBlueprint from "../../globals/FormBlueprint";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -275,7 +275,14 @@ const Register = () => {
         localStorage.setItem("knoxToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         dispatch(login(response.data.user)); // Ensure Redux state is updated
-        navigate(getRedirectPath(response.data.user.role), { replace: true });
+        
+        if (response.data.user && response.data.user.role) {
+          navigate(getRedirectPath(response.data.user.role), { replace: true });
+        } else {
+          setErrors({
+            form: "Registration succeeded, but user information is missing. Please log in manually.",
+          });
+        }
         return;
       }
       // If no user/token returned, perform automatic login

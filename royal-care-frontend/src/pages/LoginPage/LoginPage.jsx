@@ -152,7 +152,10 @@ function LoginPage() {
           // Use enhanced error handling utility
           const errorInfo = handleAuthError(authError);
 
-          if (errorInfo.isDisabled) {
+          if (errorInfo.isLockout) {
+            // Handle account lockout - show as regular error message
+            setError(errorInfo.message);
+          } else if (errorInfo.isDisabled) {
             // Clear any stored authentication data to prevent infinite loops
             localStorage.removeItem("knoxToken");
             localStorage.removeItem("user");

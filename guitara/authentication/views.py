@@ -83,10 +83,6 @@ class LoginAPI(generics.GenericAPIView):
                     status=403,
                 )
 
-            # Reset failed login attempts on successful login
-            user.failed_login_attempts = 0
-            user.save()
-
             # Generate and send 2FA code using TwoFactorCode model
             if user.two_factor_enabled:
                 code = str(random.randint(100000, 999999))
@@ -119,7 +115,16 @@ class LoginAPI(generics.GenericAPIView):
             )
         except serializers.ValidationError as ve:
             logger.warning(f"[LOGIN] Validation error: {ve}")
-            return Response({"error": "Invalid credentials"}, status=401)
+            # Extract the error message from ValidationError
+            error_message = str(ve.detail[0]) if hasattr(ve, 'detail') and ve.detail else "Invalid credentials"
+            
+            # Determine appropriate status code based on error message
+            if "locked" in error_message.lower():
+                status_code = 423  # HTTP 423 Locked
+            else:
+                status_code = 401  # HTTP 401 Unauthorized
+                
+            return Response({"error": error_message}, status=status_code)
         except Exception as exc:
             logger.exception(f"LoginAPI 500 error: {exc}")
             return Response({"error": f"Internal server error: {exc}"}, status=500)
