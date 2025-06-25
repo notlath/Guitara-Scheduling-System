@@ -28,7 +28,7 @@
 }
 
 .appointments-list {
-  display: inline;
+  display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: var(--spacing-md);
   margin-top: var(--spacing-md);
@@ -143,7 +143,7 @@
 }
 
 .delete-button:hover {
-  background-color: var(--primary-400);
+  background-color: var(--error);
 }
 
 .dashboard-content {
