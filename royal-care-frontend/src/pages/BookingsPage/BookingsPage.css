@@ -414,24 +414,26 @@
 
 .stat-item {
   text-align: center;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 6px;
+  padding: var(--spacing-mmd);
+  background: var(--primary-50);
+  border-radius: var(--border-radius);
+  /* border: 1px solid var(--border-color); */
 }
 
 .stat-number {
   display: block;
-  font-size: 2rem;
+  font-size: var(--font-size-xxl);
   font-weight: bold;
-  color: #3498db;
+  /* color: #3498db; */
   margin-bottom: 0.25rem;
 }
 
 .stat-label {
-  color: #666;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  /* color: var(--muted-200); */
+  /* font-size: 0.9rem; */
+  /* text-transform: uppercase; */
+  /* letter-spacing: 0.5px; */
+  opacity: 0.6;
 }
 
 /* Therapist Display Styles */
