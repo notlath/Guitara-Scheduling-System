@@ -1014,7 +1014,7 @@
   align-items: flex-start;
 }
 
-.tab-switcher {
+.operator-dashboard .tab-switcher {
   flex-direction: column;
   /* gap: var(--spacing-xm); */
   /* min-width: 100px; */
@@ -1028,7 +1028,7 @@
   flex-shrink: 0;
 }
 
-.tab-btn {
+.operator-dashboard .tab-btn {
   padding: var(--spacing-xs) var(--spacing-xm);
   padding-right: var(--spacing-sm);
   font-size: var(--font-size-base);
@@ -1039,8 +1039,8 @@
   /* color: var(--text-color); */
 }
 
-.tab-btn.active,
-.view-selector button.active {
+.operator-dashboard .tab-btn.active,
+.operator-dashboard .view-selector button.active {
   background-color: var(--secondary-100);
   color: var(--text);
   /* font-weight: 400;  */
