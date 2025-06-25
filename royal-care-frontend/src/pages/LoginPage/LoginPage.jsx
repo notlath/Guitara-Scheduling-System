@@ -152,10 +152,7 @@ function LoginPage() {
           // Use enhanced error handling utility
           const errorInfo = handleAuthError(authError);
 
-          if (errorInfo.isLockout) {
-            // Handle account lockout - show as regular error message
-            setError(errorInfo.message);
-          } else if (errorInfo.isDisabled) {
+          if (errorInfo.isDisabled && !errorInfo.isLocked) {
             // Clear any stored authentication data to prevent infinite loops
             localStorage.removeItem("knoxToken");
             localStorage.removeItem("user");
@@ -163,13 +160,29 @@ function LoginPage() {
             // Show disabled account alert with retry option for recently re-enabled accounts
             setDisabledAccountInfo({
               type: errorInfo.accountType,
-              message: errorInfo.message,
+              message:
+                "Your account has been disabled. Please see your system administrator.",
               contactInfo: errorInfo.contactInfo,
             });
             setShowDisabledAlert(true);
+          } else if (errorInfo.isLocked) {
+            // Handle account lockout (3 failed attempts)
+            const lockoutMessage = authError.response?.data?.error || "";
+            if (
+              lockoutMessage.includes("temporarily locked") ||
+              lockoutMessage.includes("Try again in")
+            ) {
+              setError(
+                "Your account has been temporarily locked due to multiple failed login attempts. Please wait 5 minutes before trying again."
+              );
+            } else {
+              setError(
+                "Your account has been temporarily locked. Please wait 5 minutes before trying again."
+              );
+            }
           } else {
-            // Show regular error message
-            setError(errorInfo.message || "Login failed. Please try again.");
+            // Handle invalid credentials or other errors
+            setError("Incorrect username or password.");
           }
         }
       } else {
@@ -184,12 +197,12 @@ function LoginPage() {
         dispatch(login(response.data.user));
         navigate(getRedirectPath(response.data.user.role));
       }
-    } catch (err) {
+    } catch {
       // Handle 2FA verification errors
       if (needs2FA) {
-        setError(err.response?.data?.error || "Invalid verification code");
+        setError("Invalid code.");
       } else {
-        setError(err.response?.data?.error || "An unexpected error occurred");
+        setError("Incorrect username or password.");
       }
     }
 
@@ -228,15 +241,7 @@ function LoginPage() {
 
   const header = "Good to See You!";
   const errorMessage = error ? (
-    <p className={`${styles.errorMessage}`}>
-      {error === "Login failed. Please try again."
-        ? "Login failed. Please check your credentials and try again."
-        : error === "An unexpected error occurred"
-        ? "An unexpected error occurred. Please try again later."
-        : error === "Invalid verification code"
-        ? "Invalid verification code. Please try again."
-        : error}
-    </p>
+    <p className={`${styles.errorMessage}`}>{error}</p>
   ) : null;
   const formFields = !needs2FA ? (
     <div className={styles.inputContainer}>

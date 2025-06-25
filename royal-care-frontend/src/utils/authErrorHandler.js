@@ -9,7 +9,6 @@ export const AccountErrorTypes = {
   OPERATOR_INACTIVE: "OPERATOR_INACTIVE",
   ACCOUNT_LOCKED: "ACCOUNT_LOCKED",
   ACCOUNT_SUSPENDED: "ACCOUNT_SUSPENDED",
-  ACCOUNT_LOCKOUT: "ACCOUNT_LOCKOUT",
 };
 
 export const isDisabledAccountError = (error) => {
@@ -36,18 +35,24 @@ export const isDisabledAccountError = (error) => {
   );
 };
 
-export const isAccountLockoutError = (error) => {
+export const isAccountLockedError = (error) => {
   if (!error) return false;
 
   const errorMessage = error.message || error.response?.data?.error || "";
-  const statusCode = error.response?.status;
 
-  // Check for HTTP 423 Locked status or lockout-related messages
-  return (
-    statusCode === 423 ||
-    errorMessage.toLowerCase().includes("temporarily locked") ||
-    errorMessage.toLowerCase().includes("too many failed") ||
-    errorMessage.toLowerCase().includes("attempts remaining")
+  // Check for account lockout keywords
+  const lockoutKeywords = [
+    "too many failed login attempts",
+    "account locked",
+    "account is temporarily locked",
+    "try again in",
+    "attempts remaining before lockout",
+    "locked for 5 minutes",
+    "temporarily locked",
+  ];
+
+  return lockoutKeywords.some((keyword) =>
+    errorMessage.toLowerCase().includes(keyword)
   );
 };
 
@@ -90,13 +95,13 @@ export const getDisabledAccountMessage = (error, accountType = "account") => {
   // Generate a user-friendly message based on account type
   const typeMessages = {
     therapist:
-      "Your therapist account is currently inactive. Please contact your supervisor for assistance.",
+      "Your account has been disabled. Please see your system administrator.",
     driver:
-      "Your driver account is currently inactive. Please contact your supervisor for assistance.",
+      "Your account has been disabled. Please see your system administrator.",
     operator:
-      "Your operator account is currently inactive. Please contact your administrator for assistance.",
+      "Your account has been disabled. Please see your system administrator.",
     account:
-      "Your account has been disabled. Please contact support for assistance.",
+      "Your account has been disabled. Please see your system administrator.",
   };
 
   return typeMessages[accountType] || typeMessages.account;
@@ -130,23 +135,26 @@ export const getContactInfo = (accountType = "account") => {
 };
 
 export const handleAuthError = (error) => {
-  const isLockout = isAccountLockoutError(error);
   const isDisabled = isDisabledAccountError(error);
+  const isLocked = isAccountLockedError(error);
   const accountType = getAccountTypeFromError(error);
-  
+
+  // For lockout errors, return the original message as it contains timing info
   let message;
-  if (isLockout) {
-    // Use the specific lockout message from the server
-    message = error.response?.data?.error || error.message || "Account temporarily locked due to failed login attempts.";
+  if (isLocked) {
+    message =
+      error.message ||
+      error.response?.data?.error ||
+      "Account is temporarily locked.";
   } else {
     message = getDisabledAccountMessage(error, accountType);
   }
-  
+
   const contactInfo = getContactInfo(accountType);
 
   return {
-    isLockout,
-    isDisabled,
+    isDisabled: isDisabled || isLocked,
+    isLocked,
     accountType,
     message,
     contactInfo,
