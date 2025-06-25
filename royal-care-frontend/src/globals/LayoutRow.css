@@ -23,8 +23,9 @@
 
 .header-row-subtitle {
   font-size: var(--font-size-base);
-  color: var(--muted-200);
+  /* color: var(--muted-200); */
   margin-top: var(--spacing-xm);
+  opacity: 0.7;
 }
 
 @media (max-width: 768px) {

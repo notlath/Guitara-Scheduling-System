@@ -2843,90 +2843,90 @@ const OperatorDashboard = () => {
             </div>
           </div>
         </div>
-        <div className="tab-switcher">
+        <div className="dashboard-container">
           <TabSwitcher
             tabs={dashboardTabs}
             activeTab={currentView}
             onTabChange={setView}
           />
-        </div>{" "}
-        <div
-          className={`dashboard-content ${
-            paymentModal.isOpen || reviewModal.isOpen ? "faded" : ""
-          }`}
-        >
-          {" "}
-          {/* 🔥 PERFORMANCE MONITOR: Real-time performance tracking */}
-          {/* <PerformanceMonitor
+          <div
+            className={`dashboard-content ${
+              paymentModal.isOpen || reviewModal.isOpen ? "faded" : ""
+            }`}
+          >
+            {" "}
+            {/* 🔥 PERFORMANCE MONITOR: Real-time performance tracking */}
+            {/* <PerformanceMonitor
             componentName="OperatorDashboard"
             enabled={import.meta.env.DEV || false}
           /> */}
-          {currentView === "rejected" && (
-            <div className="rejected-appointments">
-              <h2>Rejection Reviews</h2>
-              {renderRejectedAppointments()}
-            </div>
-          )}
-          {currentView === "pending" && (
-            <div className="pending-appointments">
-              <h2>Pending Acceptance Appointments</h2>
-              {renderPendingAcceptanceAppointments()}
-            </div>
-          )}{" "}
-          {currentView === "timeout" && (
-            <div className="timeout-monitoring">
-              <h2>Timeout Monitoring</h2>
-              {renderTimeoutMonitoring()}
-            </div>
-          )}
-          {currentView === "payment" && (
-            <div className="payment-verification">
-              <h2>Payment Verification</h2>
-              {renderPaymentVerificationView()}
-            </div>
-          )}
-          {currentView === "all" && (
-            <div className="all-appointments">
-              <h2>All Appointments</h2>
-              {renderAllAppointments()}
-            </div>
-          )}{" "}
-          {currentView === "attendance" && (
-            <div className="attendance-management">
-              <h2>Attendance Management</h2>
-              {renderAttendanceView()}
-            </div>
-          )}{" "}
-          {currentView === "notifications" && (
-            <div className="notifications">
-              <h2>Notifications</h2>
-              {renderNotifications()}
-            </div>
-          )}{" "}
-          {currentView === "driver" && (
-            <div className="driver-coordination">
-              <h2>Driver Coordination Center</h2>
-              {renderDriverCoordinationPanel()}
-            </div>
-          )}
-          {currentView === "workflow" && (
-            <div className="service-workflow">
-              <h2>Service Workflow Overview</h2>
-              {renderServiceWorkflowView()}
-            </div>
-          )}
-          {currentView === "sessions" && (
-            <div className="active-sessions">
-              <h2>Active Therapy Sessions</h2>
-              {renderActiveSessionsView()}
-            </div>
-          )}{" "}
-          {currentView === "pickup" && (
-            <div className="pickup-requests">
-              <h2>Therapist Pickup Requests</h2>
-              {renderPickupRequestsView()}
-            </div>
-          )}
+            {currentView === "rejected" && (
+              <div className="rejected-appointments">
+                <h2>Rejection Reviews</h2>
+                {renderRejectedAppointments()}
+              </div>
+            )}
+            {currentView === "pending" && (
+              <div className="pending-appointments">
+                <h2>Pending Acceptance Appointments</h2>
+                {renderPendingAcceptanceAppointments()}
+              </div>
+            )}{" "}
+            {currentView === "timeout" && (
+              <div className="timeout-monitoring">
+                <h2>Timeout Monitoring</h2>
+                {renderTimeoutMonitoring()}
+              </div>
+            )}
+            {currentView === "payment" && (
+              <div className="payment-verification">
+                <h2>Payment Verification</h2>
+                {renderPaymentVerificationView()}
+              </div>
+            )}
+            {currentView === "all" && (
+              <div className="all-appointments">
+                <h2>All Appointments</h2>
+                {renderAllAppointments()}
+              </div>
+            )}{" "}
+            {currentView === "attendance" && (
+              <div className="attendance-management">
+                <h2>Attendance Management</h2>
+                {renderAttendanceView()}
+              </div>
+            )}{" "}
+            {currentView === "notifications" && (
+              <div className="notifications">
+                <h2>Notifications</h2>
+                {renderNotifications()}
+              </div>
+            )}{" "}
+            {currentView === "driver" && (
+              <div className="driver-coordination">
+                <h2>Driver Coordination Center</h2>
+                {renderDriverCoordinationPanel()}
+              </div>
+            )}
+            {currentView === "workflow" && (
+              <div className="service-workflow">
+                <h2>Service Workflow Overview</h2>
+                {renderServiceWorkflowView()}
+              </div>
+            )}
+            {currentView === "sessions" && (
+              <div className="active-sessions">
+                <h2>Active Therapy Sessions</h2>
+                {renderActiveSessionsView()}
+              </div>
+            )}{" "}
+            {currentView === "pickup" && (
+              <div className="pickup-requests">
+                <h2>Therapist Pickup Requests</h2>
+                {renderPickupRequestsView()}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {/* End of operator-dashboard */}

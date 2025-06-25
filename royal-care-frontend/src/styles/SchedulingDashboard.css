@@ -150,6 +150,10 @@
   border-radius: 8px;
 }
 
+.dashboard-content > div > h2 {
+  display: none;
+}
+
 todays-appointments h2,
 .upcoming-appointments h2 {
   margin-top: 0;

@@ -946,7 +946,7 @@
 
 /* Statistics Dashboard */
 .stats-dashboard {
-  margin: 20px 0;
+  margin: var(--spacing-mmd) 0;
   padding: 0;
 }
 
@@ -961,7 +961,7 @@
 .stats-card h4 {
   margin: 0 0 var(--spacing-sm) 0;
   font-size: var(--font-size-md);
-  /* font-weight: 400; */
+  font-weight: 600;
   /* text-align: center; */
   /* opacity: 0.9; */
 }
@@ -1014,6 +1014,40 @@
 .pending-stat {
   border-left: 4px solid #ff9800;
 } */
+
+.dashboard-container {
+  display: flex;
+  /* flex-direction: column; */
+  gap: var(--spacing-md);
+}
+
+.tab-switcher {
+  flex-direction: column;
+  /* gap: var(--spacing-xm); */
+  /* min-width: 100px; */
+  /* border: 1px solid var(--border-color); */
+  padding: var(--spacing-mm) var(--spacing-mxs);
+  border-radius: var(--border-radius);
+  background-color: var(--background-25);
+}
+
+.tab-btn {
+  padding: var(--spacing-xs) var(--spacing-xm);
+  padding-right: var(--spacing-sm);
+  font-size: var(--font-size-base);
+  border-radius: var(--border-radius);
+  margin: 0;
+  text-align: left;
+  background-color: transparent;
+  /* color: var(--text-color); */
+}
+
+.tab-btn.active,
+.view-selector button.active {
+  background-color: var(--secondary);
+  /* color: var(--background);
+  font-weight: 400; */
+}
 
 /* Responsive stats */
 @media (max-width: 768px) {
