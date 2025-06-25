@@ -351,18 +351,16 @@ function LoginPage() {
         <img src={loginSidepic} alt="Background" />
       </div>
       <div className={`${styles.formSide} global-form-field-container`}>
-        <div className={styles.formContainer}>
-          <FormBlueprint
-            header={header}
-            errorMessage={errorMessage}
-            onSubmit={handleSubmit}
-            button={button}
-            links={links}
-            formClass={styles.loginForm}
-          >
-            {formFields}
-          </FormBlueprint>
-        </div>
+        <FormBlueprint
+          header={header}
+          errorMessage={errorMessage}
+          onSubmit={handleSubmit}
+          button={button}
+          links={links}
+          formClass={styles.loginForm}
+        >
+          {formFields}
+        </FormBlueprint>
       </div>
     </div>
   );

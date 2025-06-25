@@ -1,4 +1,5 @@
 import { memo } from "react";
+// import "./PageLayout.css";
 
 const PageLayout = memo(({ children }) => (
   <div className="global-container">
