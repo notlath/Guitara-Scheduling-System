@@ -148,11 +148,15 @@
 
 .dashboard-content {
   border-radius: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.dashboard-content > div > h2 {
+/* .dashboard-content > div > h2 {
   display: none;
-}
+} */
 
 todays-appointments h2,
 .upcoming-appointments h2 {
