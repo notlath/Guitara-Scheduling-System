@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { approveAttendance } from "../features/attendance/attendanceSlice";
+import { 
+  approveAttendance,
+  checkIn,
+  checkOut,
+  getTodayAttendanceStatus 
+} from "../features/attendance/attendanceSlice";
 import { logout } from "../features/auth/authSlice";
 import {
   autoCancelOverdueAppointments,
@@ -82,6 +87,19 @@ const OperatorDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // Attendance state for operator's own check-in/check-out
+  const {
+    todayStatus,
+    isCheckedIn,
+    checkInTime,
+    checkOutTime,
+    checkInLoading,
+    checkOutLoading,
+    error: attendanceError,
+    checkInError,
+    checkOutError,
+  } = useSelector((state) => state.attendance);
+
   // Get user name from localStorage (or auth state if available)
   const user = JSON.parse(localStorage.getItem("user")) || {}; // fallback if not present
   const userName =
@@ -148,6 +166,12 @@ const OperatorDashboard = () => {
       return newWarnings;
     });
   }, [validateWarnings]);
+
+  // Fetch operator's attendance status on component mount
+  useEffect(() => {
+    dispatch(getTodayAttendanceStatus());
+  }, [dispatch]);
+
   // ✅ STEP 1: Memoized view/filter/page setters with stable callbacks
   const setView = useCallback(
     (newView) => {
@@ -1379,6 +1403,51 @@ const OperatorDashboard = () => {
   const handleDateChange = (newDate) => {
     setSelectedDate(newDate);
   };
+
+  // Operator's check-in/check-out handlers
+  const handleOperatorCheckIn = () => {
+    dispatch(checkIn());
+  };
+
+  const handleOperatorCheckOut = () => {
+    dispatch(checkOut());
+  };
+
+  // Format time for display
+  const formatTimeForDisplay = (timeString) => {
+    if (!timeString) return "--:--";
+    
+    try {
+      // If it's already a full datetime string, parse it directly
+      if (timeString.includes("T") || timeString.includes(" ")) {
+        return new Date(timeString).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+      }
+
+      // If it's just a time string (HH:MM:SS), create a proper date
+      const [hours, minutes] = timeString.split(":").map(Number);
+      const today = new Date();
+      const dateTime = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+        hours,
+        minutes
+      );
+      return dateTime.toLocaleTimeString([], {
+        hour: "2-digit", 
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch (error) {
+      console.error("Error formatting time:", timeString, error);
+      return timeString;
+    }
+  };
+
   // ✅ PERFORMANCE FIX: No need to manually fetch on tab switch - data is cached
   // The useOptimizedAttendance hook automatically handles data fetching and caching
   // Remove the effect that was causing unnecessary refetches
@@ -1491,7 +1560,58 @@ const OperatorDashboard = () => {
             >
               Refresh
             </LoadingButton>
-          </div>{" "}
+          </div>
+          
+          {/* Operator's own attendance controls */}
+          <div className="operator-attendance-controls">
+            <div className="operator-attendance-status">
+              <span className="operator-status-label">My Attendance:</span>
+              {todayStatus ? (
+                <div className="operator-times">
+                  <span className="check-time">
+                    In: {checkInTime ? formatTimeForDisplay(checkInTime) : "--:--"}
+                  </span>
+                  <span className="check-time">
+                    Out: {checkOutTime ? formatTimeForDisplay(checkOutTime) : "--:--"}
+                  </span>
+                </div>
+              ) : (
+                <span className="no-record">No record today</span>
+              )}
+            </div>
+            
+            {/* Error display */}
+            {(attendanceError || checkInError || checkOutError) && (
+              <div className="attendance-error" style={{ 
+                color: '#dc3545', 
+                fontSize: '12px', 
+                marginTop: '4px' 
+              }}>
+                {attendanceError || checkInError || checkOutError}
+              </div>
+            )}
+            
+            <div className="operator-attendance-buttons">
+              <LoadingButton
+                onClick={handleOperatorCheckIn}
+                loading={checkInLoading}
+                disabled={isCheckedIn}
+                className="check-in-btn"
+                size="small"
+              >
+                {isCheckedIn ? "Checked In" : "Check In"}
+              </LoadingButton>
+              <LoadingButton
+                onClick={handleOperatorCheckOut}
+                loading={checkOutLoading}
+                disabled={!isCheckedIn || !!checkOutTime}
+                className="check-out-btn"
+                size="small"
+              >
+                {checkOutTime ? "Checked Out" : "Check Out"}
+              </LoadingButton>
+            </div>
+          </div>
         </div>
 
         {/* Minimal loading indicator for attendance data */}

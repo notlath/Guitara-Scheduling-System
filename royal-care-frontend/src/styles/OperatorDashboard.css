@@ -1439,3 +1439,119 @@
   color: white !important;
   padding: 2px !important;
 }
+
+/* Operator Attendance Controls */
+.operator-attendance-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.operator-attendance-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.operator-status-label {
+  font-weight: 600;
+  color: #495057;
+  min-width: fit-content;
+}
+
+.operator-times {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.check-time {
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.no-record {
+  font-size: 14px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.operator-attendance-buttons {
+  display: grid;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.check-in-btn {
+  background-color: #28a745 !important;
+  color: white !important;
+  border: none !important;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+}
+
+.check-in-btn:hover:not(:disabled) {
+  background-color: #218838 !important;
+}
+
+.check-in-btn:disabled {
+  background-color: #6c757d !important;
+  cursor: not-allowed !important;
+}
+
+.check-out-btn {
+  background-color: #dc3545 !important;
+  color: white !important;
+  border: none !important;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+}
+
+.check-out-btn:hover:not(:disabled) {
+  background-color: #c82333 !important;
+}
+
+.check-out-btn:disabled {
+  background-color: #6c757d !important;
+  cursor: not-allowed !important;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .operator-attendance-controls {
+    padding: 12px;
+  }
+  
+  .operator-attendance-status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .operator-times {
+    gap: 12px;
+  }
+  
+  .operator-attendance-buttons {
+    width: 100%;
+  }
+  
+  .check-in-btn,
+  .check-out-btn {
+    flex: 1;
+    min-width: 120px;
+  }
+}
