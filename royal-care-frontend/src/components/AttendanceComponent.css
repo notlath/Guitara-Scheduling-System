@@ -326,19 +326,19 @@
   border-left-color: #007bff;
 }
 
-.stat-number {
+/* .stat-number {
   display: block;
   font-size: 2rem;
   font-weight: bold;
   color: #2c3e50;
-}
+} */
 
-.stat-label {
+/* .stat-label {
   display: block;
   font-size: 0.9rem;
   color: #6c757d;
   margin-top: 5px;
-}
+} */
 
 .attendance-list {
   display: flex;

@@ -951,19 +951,19 @@
 }
 
 .stats-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  padding: 20px;
-  color: white;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+  /* border-radius: var(--border-radius); */
+  /* padding: 20px; */
+  /* color: white; */
+  /* box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); */
 }
 
 .stats-card h4 {
-  margin: 0 0 15px 0;
-  font-size: 1.2rem;
-  font-weight: 600;
-  text-align: center;
-  opacity: 0.9;
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-size-md);
+  /* font-weight: 400; */
+  /* text-align: center; */
+  /* opacity: 0.9; */
 }
 
 .stats-grid {
@@ -972,7 +972,7 @@
   gap: 15px;
 }
 
-.stat-item {
+/* .stat-item {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 15px;
@@ -980,29 +980,29 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: transform 0.2s, background-color 0.2s;
-}
+} */
 
-.stat-item:hover {
+/* .stat-item:hover {
   transform: translateY(-2px);
   background: rgba(255, 255, 255, 0.15);
-}
+} */
 
-.stat-number {
+/* .stat-number {
   display: block;
   font-size: 1.8rem;
   font-weight: 700;
   line-height: 1;
   margin-bottom: 5px;
-}
+} */
 
-.stat-label {
+/* .stat-label {
   display: block;
   font-size: 0.8rem;
   opacity: 0.8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
+} */
+/* 
 .therapist-stat {
   border-left: 4px solid #2196f3;
 }
@@ -1013,7 +1013,7 @@
 
 .pending-stat {
   border-left: 4px solid #ff9800;
-}
+} */
 
 /* Responsive stats */
 @media (max-width: 768px) {
