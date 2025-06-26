@@ -3,6 +3,8 @@ import { shallowEqual, useDispatch } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { useOptimizedSelector } from "./hooks/usePerformanceOptimization";
+// WEBSOCKET CACHE SYNC: Import WebSocket cache synchronization hook
+import { useWebSocketCacheSync } from "./hooks/useWebSocketCacheSync";
 // Import debugger utilities for performance monitoring in development
 import DriverDashboard from "./components/DriverDashboard";
 import MainLayout from "./components/MainLayout";
@@ -121,6 +123,9 @@ const SafeApp = () => {
 const App = () => {
   const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
   const dispatch = useDispatch();
+
+  // WEBSOCKET CACHE SYNC: Enable real-time cache synchronization
+  useWebSocketCacheSync();
 
   useEffect(() => {
     // Clean up any invalid tokens on app startup

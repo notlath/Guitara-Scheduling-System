@@ -9,11 +9,10 @@ import {
 } from "../features/attendance/attendanceSlice";
 import { logout } from "../features/auth/authSlice";
 import {
-  autoCancelOverdueAppointments,
-  markAppointmentPaid,
-  reviewRejection,
   updateAppointmentStatus,
 } from "../features/scheduling/schedulingSlice";
+// ENHANCED REDUX: Import enhanced operator actions for cache synchronization
+import { useEnhancedOperatorActions } from "../hooks/useEnhancedRedux";
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
@@ -86,6 +85,14 @@ const validateUrlParam = (param, validValues, defaultValue) => {
 const OperatorDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  // ENHANCED REDUX: Initialize enhanced operator actions for cache synchronization
+  const {
+    startAppointment: enhancedStartAppointment,
+    verifyPayment: enhancedVerifyPayment,
+    reviewRejection: enhancedReviewRejection,
+    autoCancelOverdue: enhancedAutoCancelOverdue,
+  } = useEnhancedOperatorActions();
 
   // Attendance state for operator's own check-in/check-out
   const {
@@ -852,15 +859,13 @@ const OperatorDashboard = () => {
     const actionKey = `review_${reviewModal.appointmentId}_${decision}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(
-        reviewRejection({
-          id: reviewModal.appointmentId,
-          reviewDecision: decision,
-          reviewNotes: reviewNotes,
-        })
-      ).unwrap();
-      // ✅ PERFORMANCE FIX: Use simple refresh instead of global forceRefresh
-      await refreshCurrentTab();
+      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
+      await enhancedReviewRejection(
+        reviewModal.appointmentId,
+        decision,
+        reviewNotes
+      );
+      // No need for manual refresh - enhanced action handles cache invalidation automatically
       setReviewModal({
         isOpen: false,
         appointmentId: null,
@@ -888,9 +893,9 @@ const OperatorDashboard = () => {
 
     setAutoCancelLoading(true);
     try {
-      await dispatch(autoCancelOverdueAppointments()).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await refreshCurrentTab();
+      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
+      await enhancedAutoCancelOverdue();
+      // No need for manual refresh - enhanced action handles cache invalidation automatically
       alert("Successfully processed overdue appointments");
     } catch {
       alert("Failed to process overdue appointments. Please try again.");
@@ -902,14 +907,9 @@ const OperatorDashboard = () => {
     const actionKey = `start_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "in_progress",
-          action: "start_appointment",
-        })
-      ).unwrap(); // Refresh dashboard data to get updated status      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await refreshCurrentTab();
+      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
+      await enhancedStartAppointment(appointmentId);
+      // No need for manual refresh - enhanced action handles cache invalidation automatically
     } catch (error) {
       console.error("Failed to start appointment:", error);
       alert("Failed to start appointment. Please try again.");
@@ -973,18 +973,14 @@ const OperatorDashboard = () => {
 
       // Pass the appointment ID as a number, not an object
       const appointmentId = parseInt(paymentModal.appointmentId, 10);
-      console.log("🔍 handleMarkPaymentPaid: Dispatching markAppointmentPaid", {
+      console.log("🔍 handleMarkPaymentPaid: Using enhanced payment verification", {
         appointmentId,
         paymentData,
         actionKey,
       });
 
-      const result = await dispatch(
-        markAppointmentPaid({
-          appointmentId,
-          paymentData,
-        })
-      ).unwrap();
+      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
+      const result = await enhancedVerifyPayment(appointmentId, paymentData);
 
       console.log(
         "✅ handleMarkPaymentPaid: Payment verification successful",
@@ -1005,9 +1001,8 @@ const OperatorDashboard = () => {
         amount: "",
         notes: "",
       });
-      console.log("🔄 handleMarkPaymentPaid: Refreshing dashboard data");
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      refreshCurrentTab();
+      console.log("✅ handleMarkPaymentPaid: Enhanced action handles cache refresh automatically");
+      // No need for manual refresh - enhanced action handles cache invalidation automatically
 
       alert("Payment marked as received successfully!");
     } catch (error) {

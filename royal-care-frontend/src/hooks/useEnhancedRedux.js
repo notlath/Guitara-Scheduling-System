@@ -284,9 +284,9 @@ export const useEnhancedOperatorActions = () => {
   }, [enhancedDispatch, user]);
 
   const verifyPayment = useCallback(async (appointmentId, paymentData) => {
-    const { verifyPayment } = await import('../features/scheduling/schedulingSlice');
+    const { markAppointmentPaid } = await import('../features/scheduling/schedulingSlice');
     
-    return enhancedDispatch(verifyPayment({ appointmentId, ...paymentData }), {
+    return enhancedDispatch(markAppointmentPaid({ appointmentId, paymentData }), {
       optimistic: { 
         status: 'completed',
         payment_verified: true,
@@ -298,10 +298,37 @@ export const useEnhancedOperatorActions = () => {
     });
   }, [enhancedDispatch, user]);
 
+  const reviewRejection = useCallback(async (id, reviewDecision, reviewNotes) => {
+    const { reviewRejection } = await import('../features/scheduling/schedulingSlice');
+    
+    return enhancedDispatch(reviewRejection({ id, reviewDecision, reviewNotes }), {
+      optimistic: { 
+        status: reviewDecision === 'accept' ? 'cancelled' : 'pending',
+        review_completed: true,
+        review_completed_at: new Date().toISOString()
+      },
+      appointmentId: id,
+      userRole: 'operator',
+      userId: user?.id
+    });
+  }, [enhancedDispatch, user]);
+
+  const autoCancelOverdue = useCallback(async () => {
+    const { autoCancelOverdueAppointments } = await import('../features/scheduling/schedulingSlice');
+    
+    return enhancedDispatch(autoCancelOverdueAppointments(), {
+      invalidateAll: true, // This affects multiple appointments
+      userRole: 'operator',
+      userId: user?.id
+    });
+  }, [enhancedDispatch, user]);
+
   return {
     startAppointment,
     cancelAppointment,
-    verifyPayment
+    verifyPayment,
+    reviewRejection,
+    autoCancelOverdue
   };
 };
 
