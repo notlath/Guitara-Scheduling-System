@@ -4,8 +4,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../services/api";
 import { queryKeys } from "../lib/queryClient";
+import { api } from "../services/api";
 
 // Default page size for settings data
 const DEFAULT_PAGE_SIZE = 12;
@@ -19,7 +19,7 @@ const settingsApiFetchers = {
       `/registration/register/therapist/?page=${page}&page_size=${pageSize}`
     );
     const data = response.data;
-    
+
     // Handle both old format (direct array) and new format (with results)
     const items = data.results || (Array.isArray(data) ? data : []);
     const mappedItems = items.map((item) => ({
@@ -54,7 +54,7 @@ const settingsApiFetchers = {
       `/registration/register/driver/?page=${page}&page_size=${pageSize}`
     );
     const data = response.data;
-    
+
     const items = data.results || (Array.isArray(data) ? data : []);
     const mappedItems = items.map((item) => ({
       Username: item.username,
@@ -86,7 +86,7 @@ const settingsApiFetchers = {
       `/registration/register/operator/?page=${page}&page_size=${pageSize}`
     );
     const data = response.data;
-    
+
     const items = data.results || (Array.isArray(data) ? data : []);
     const mappedItems = items.map((item) => {
       const firstName = capitalizeName(item.first_name || "");
@@ -123,7 +123,7 @@ const settingsApiFetchers = {
       `/registration/register/client/?page=${page}&page_size=${pageSize}`
     );
     const data = response.data;
-    
+
     const items = data.results || (Array.isArray(data) ? data : []);
     const mappedItems = items.map((item) => ({
       Name: `${capitalizeName(item.first_name) || ""} ${
@@ -154,7 +154,7 @@ const settingsApiFetchers = {
       `/registration/register/service/?page=${page}&page_size=${pageSize}`
     );
     const data = response.data;
-    
+
     const items = data.results || (Array.isArray(data) ? data : []);
     const mappedItems = items.map((item) => {
       let materials = "-";
@@ -207,7 +207,7 @@ const settingsApiFetchers = {
       `/registration/register/material/?page=${page}&page_size=${pageSize}`
     );
     const data = response.data;
-    
+
     const items = data.results || (Array.isArray(data) ? data : []);
     const mappedItems = items.map((item) => ({
       Name: item.name,
@@ -244,9 +244,13 @@ const capitalizeName = (name) => {
 /**
  * TanStack Query hook for fetching settings data by tab
  */
-export const useSettingsData = (tabName, page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
+export const useSettingsData = (
+  tabName,
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE
+) => {
   const tabNameLower = tabName.toLowerCase();
-  
+
   return useQuery({
     queryKey: queryKeys.registration[tabNameLower]?.list(page, pageSize) || [
       "registration",
@@ -279,7 +283,7 @@ export const usePrefetchSettingsData = () => {
   const prefetchTab = (tabName, page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
     const tabNameLower = tabName.toLowerCase();
     const fetcher = settingsApiFetchers[tabNameLower];
-    
+
     if (!fetcher) return;
 
     queryClient.prefetchQuery({
@@ -308,13 +312,13 @@ export const useCreateSettingsEntry = (tabName) => {
   return useMutation({
     mutationFn: async (data) => {
       // Import the API functions dynamically based on tab
-      const { 
-        registerTherapist, 
-        registerDriver, 
-        registerOperator, 
-        registerClient, 
-        registerService, 
-        registerMaterial 
+      const {
+        registerTherapist,
+        registerDriver,
+        registerOperator,
+        registerClient,
+        registerService,
+        registerMaterial,
       } = await import("../services/api");
 
       switch (tabNameLower) {
@@ -337,9 +341,12 @@ export const useCreateSettingsEntry = (tabName) => {
     onSuccess: () => {
       // Invalidate all queries for this tab to refresh the data
       queryClient.invalidateQueries({
-        queryKey: queryKeys.registration[tabNameLower]?.all || ["registration", tabNameLower],
+        queryKey: queryKeys.registration[tabNameLower]?.all || [
+          "registration",
+          tabNameLower,
+        ],
       });
-      
+
       // Also invalidate the general registration queries
       queryClient.invalidateQueries({
         queryKey: queryKeys.registration.all,
@@ -360,7 +367,10 @@ export const useInvalidateSettingsData = () => {
   const invalidateTab = (tabName) => {
     const tabNameLower = tabName.toLowerCase();
     queryClient.invalidateQueries({
-      queryKey: queryKeys.registration[tabNameLower]?.all || ["registration", tabNameLower],
+      queryKey: queryKeys.registration[tabNameLower]?.all || [
+        "registration",
+        tabNameLower,
+      ],
     });
   };
 
@@ -371,4 +381,66 @@ export const useInvalidateSettingsData = () => {
   };
 
   return { invalidateTab, invalidateAll };
+};
+
+/**
+ * Hook for fetching all tabs' data for backup purposes
+ */
+export const useBackupAllData = () => {
+  const fetchAllTabsData = async () => {
+    const allTabs = [
+      "therapists",
+      "drivers",
+      "operators",
+      "clients",
+      "services",
+      "materials",
+    ];
+    const allData = {};
+    let totalRecords = 0;
+
+    // Fetch data for each tab
+    for (const tabName of allTabs) {
+      const tabNameLower = tabName.toLowerCase();
+      const fetcher = settingsApiFetchers[tabNameLower];
+
+      if (fetcher) {
+        try {
+          // Fetch all pages for this tab
+          let page = 1;
+          let hasMoreData = true;
+          let tabData = [];
+
+          while (hasMoreData) {
+            const response = await fetcher(page, 1000); // Large page size to get all data
+
+            if (response?.data && Array.isArray(response.data)) {
+              tabData = [...tabData, ...response.data];
+
+              // Check if there's more data
+              const totalPages = Math.ceil(
+                (response.total || response.data.length) / 1000
+              );
+              hasMoreData = page < totalPages && response.data.length === 1000;
+              page++;
+            } else {
+              hasMoreData = false;
+            }
+          }
+
+          allData[tabName] = tabData;
+          totalRecords += tabData.length;
+        } catch (error) {
+          console.error(`Error fetching ${tabName} data:`, error);
+          allData[tabName] = [];
+        }
+      } else {
+        allData[tabName] = [];
+      }
+    }
+
+    return { allData, totalRecords, dataTypes: allTabs };
+  };
+
+  return { fetchAllTabsData };
 };

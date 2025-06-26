@@ -17,13 +17,12 @@ import "../../globals/LayoutRow.css";
 import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
 import {
+  useBackupAllData,
   useCreateSettingsEntry,
   usePrefetchSettingsData,
   useSettingsData,
 } from "../../hooks/useSettingsQueries";
-import {
-  checkUsernameAvailable,
-} from "../../services/api";
+import { checkUsernameAvailable } from "../../services/api";
 import "../../styles/LoadingConsistency.css";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
@@ -145,6 +144,7 @@ const SettingsDataPage = () => {
   // TanStack Query hooks for mutations and prefetching
   const { prefetchTab } = usePrefetchSettingsData();
   const createMutation = useCreateSettingsEntry(activeTab);
+  const { fetchAllTabsData } = useBackupAllData();
 
   // Extract data and pagination from query result
   const tableData = queryResult?.data || [];
@@ -401,7 +401,7 @@ const SettingsDataPage = () => {
     }
     let payload = { ...sanitized };
     setSuccessPrompt("");
-    
+
     try {
       switch (activeTab) {
         case "Therapists":
@@ -458,10 +458,10 @@ const SettingsDataPage = () => {
         default:
           return;
       }
-      
+
       // Use TanStack Query mutation
       await createMutation.mutateAsync(payload);
-      
+
       setShowModal(false);
       setSuccessPrompt("Registered successfully!");
     } catch (err) {
@@ -533,27 +533,27 @@ const SettingsDataPage = () => {
   // Backup all data at once
   const handleBackupAllData = async () => {
     setIsBackingUp(true);
-    setBackupStatus("Creating complete backup...");
+    setBackupStatus("Fetching data from all tabs...");
 
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const filename = `royal_care_complete_backup_${timestamp}.json`;
 
-      // Note: For complete backup, we would need to fetch all tabs data
-      // For now, we'll backup the current tab data
-      const allBackupData = { [activeTab]: tableData };
-      let totalRecords = tableData?.length || 0;
+      // Fetch all tabs' data using the new hook
+      const { allData, totalRecords, dataTypes } = await fetchAllTabsData();
+
+      setBackupStatus("Creating complete backup file...");
 
       const completeBackup = {
         metadata: {
           type: "complete_backup",
           timestamp: new Date().toISOString(),
           totalRecords,
-          dataTypes: [activeTab],
+          dataTypes,
           version: "1.0",
           source: "Royal Care Scheduling System",
         },
-        data: allBackupData,
+        data: allData,
       };
 
       const blob = new Blob([JSON.stringify(completeBackup, null, 2)], {
@@ -570,7 +570,7 @@ const SettingsDataPage = () => {
       URL.revokeObjectURL(url);
 
       setBackupStatus(
-        `✅ Complete backup created with ${totalRecords} records`
+        `✅ Complete backup created with ${totalRecords} records from ${dataTypes.length} tabs`
       );
     } catch (error) {
       console.error("Complete backup error:", error);
@@ -1202,28 +1202,24 @@ const SettingsDataPage = () => {
           {!hasDataForTab && isLoading ? (
             renderTableSkeleton()
           ) : (
-            <DataTable
-              columns={getTableConfig().columns}
-              data={tableData}
-            />
+            <DataTable columns={getTableConfig().columns} data={tableData} />
           )}
         </div>
 
         {/* Pagination Controls */}
-        {hasDataForTab &&
-          paginationData.totalPages > 1 && (
-            <div style={{ marginTop: "20px" }}>
-              <ServerPagination
-                currentPage={paginationData.currentPage}
-                totalPages={paginationData.totalPages}
-                hasNext={paginationData.hasNext}
-                hasPrevious={paginationData.hasPrevious}
-                onPageChange={handlePageChange}
-                className="appointments-pagination"
-                simplified={true} // Use simplified pagination for SettingsDataPage
-              />
-            </div>
-          )}
+        {hasDataForTab && paginationData.totalPages > 1 && (
+          <div style={{ marginTop: "20px" }}>
+            <ServerPagination
+              currentPage={paginationData.currentPage}
+              totalPages={paginationData.totalPages}
+              hasNext={paginationData.hasNext}
+              hasPrevious={paginationData.hasPrevious}
+              onPageChange={handlePageChange}
+              className="appointments-pagination"
+              simplified={true} // Use simplified pagination for SettingsDataPage
+            />
+          </div>
+        )}
 
         {/* Debug pagination info - remove this in production */}
         {import.meta.env.MODE === "development" && (
