@@ -1,12 +1,6 @@
 import { useEffect, useState } from "react";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
-import { shallowEqual, useDispatch } from "react-redux";
-import {
-  fetchAppointmentsByDate,
-  fetchAvailableDrivers,
-  fetchAvailableTherapists,
-} from "../../features/scheduling/schedulingSlice";
-import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
+import { useCalendarData, useCalendarRefetch } from "../../hooks/useCalendarQueries";
 import "../../styles/Calendar.css";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
@@ -21,42 +15,20 @@ const Calendar = ({
   const [selectedTime, setSelectedTime] = useState(null);
   const [view, setView] = useState("month"); // 'month' or 'day'
 
-  const dispatch = useDispatch();
-  const schedulingState = useOptimizedSelector(
-    (state) => state.scheduling,
-    shallowEqual
-  );
+  // TanStack Query for calendar data - replaces Redux
   const {
+    appointmentsByDate,
+    appointments,
     availableTherapists,
     availableDrivers,
-    appointments,
-    appointmentsByDate,
-    loading, // Add loading state from Redux
-  } = schedulingState;
+    loading,
+  } = useCalendarData(selectedDate);
 
-  // Initialize with today's data when component mounts
-  useEffect(() => {
-    const today = new Date();
-    const formattedToday = formatDate(today);
+  // Manual refetch functions for date/time changes
+  const { refetchForDate, refetchAvailabilityForTimeSlot } = useCalendarRefetch();
 
-    if (formattedToday) {
-      // Fetch today's appointments and availability immediately
-      dispatch(fetchAppointmentsByDate(formattedToday));
-
-      // Fetch availability for the full operating hours (1 PM - 1 AM)
-      const params = {
-        date: formattedToday,
-        start_time: "13:00", // 1 PM
-        end_time: "01:00", // 1 AM next day
-      };
-
-      console.log(
-        "Calendar: Initial load - fetching today's availability for full operating hours"
-      );
-      dispatch(fetchAvailableTherapists(params));
-      dispatch(fetchAvailableDrivers(params));
-    }
-  }, [dispatch]); // Include dispatch in dependencies
+  // TanStack Query handles initial data loading automatically
+  // No need for manual useEffect - data is fetched when selectedDate changes
 
   // Helper to format date as YYYY-MM-DD
   const formatDate = (date) => {
@@ -278,15 +250,8 @@ const Calendar = ({
     const formattedDate = formatDate(firstDay);
 
     if (formattedDate && !isPastDate(firstDay)) {
-      const params = {
-        date: formattedDate,
-        start_time: "13:00", // 1 PM
-        end_time: "01:00", // 1 AM next day
-      };
-
       console.log("Calendar: Fetching availability for previous month");
-      dispatch(fetchAvailableTherapists(params));
-      dispatch(fetchAvailableDrivers(params));
+      refetchAvailabilityForTimeSlot(firstDay, "13:00", "01:00");
     }
   };
 
@@ -303,15 +268,8 @@ const Calendar = ({
     const formattedDate = formatDate(firstDay);
 
     if (formattedDate && !isPastDate(firstDay)) {
-      const params = {
-        date: formattedDate,
-        start_time: "13:00", // 1 PM
-        end_time: "01:00", // 1 AM next day
-      };
-
       console.log("Calendar: Fetching availability for next month");
-      dispatch(fetchAvailableTherapists(params));
-      dispatch(fetchAvailableDrivers(params));
+      refetchAvailabilityForTimeSlot(firstDay, "13:00", "01:00");
     }
   };
 
@@ -335,7 +293,7 @@ const Calendar = ({
       // Fetch bookings for the selected date
       const formattedDate = formatDate(selectedDate);
       if (formattedDate) {
-        dispatch(fetchAppointmentsByDate(formattedDate));
+        refetchForDate(selectedDate);
       }
 
       // Only fetch availability if it's not a past date
@@ -345,26 +303,25 @@ const Calendar = ({
           return;
         }
 
-        // Fetch availability for the full operating hours (1 PM - 1 AM)
-        const params = {
-          date: formattedDate,
-          start_time: "13:00", // 1 PM
-          end_time: "01:00", // 1 AM next day
-        };
-
         console.log(
           "Calendar: Fetching availabilities for date click:",
-          params
+          formattedDate
         );
-        dispatch(fetchAvailableTherapists(params));
-        dispatch(fetchAvailableDrivers(params));
+        // refetchForDate already handles both appointments and availability
       }
     }
   };
 
   useEffect(() => {
-    console.log(availableTherapists);
-  }, [availableTherapists]);
+    console.log("=== CALENDAR DEBUG ===");
+    console.log("availableTherapists:", availableTherapists);
+    console.log("appointmentsByDate:", appointmentsByDate);
+    console.log("appointments:", appointments);
+    console.log("appointments type:", typeof appointments);
+    console.log("appointments isArray:", Array.isArray(appointments));
+    console.log("selectedDate:", selectedDate);
+    console.log("loading:", loading);
+  }, [availableTherapists, appointmentsByDate, selectedDate, loading, appointments]);
 
   // Handle time selection
   const handleTimeClick = (time) => {
@@ -372,8 +329,6 @@ const Calendar = ({
     onTimeSelected(time);
 
     if (selectedDate) {
-      const formattedDate = formatDate(selectedDate);
-
       // Calculate end time (assuming 1-hour appointments)
       const [hours, minutes] = time.split(":").map(Number);
       const endDate = new Date();
@@ -383,18 +338,11 @@ const Calendar = ({
         .toString()
         .padStart(2, "0")}:${endDate.getMinutes().toString().padStart(2, "0")}`;
 
-      const params = {
-        date: formattedDate,
-        start_time: time,
-        end_time: endTime,
-      };
-
       console.log(
         "Calendar: Fetching availabilities for time selection:",
-        params
+        time
       );
-      dispatch(fetchAvailableTherapists(params));
-      dispatch(fetchAvailableDrivers(params));
+      refetchAvailabilityForTimeSlot(selectedDate, time, endTime);
     }
   };
 
@@ -495,9 +443,10 @@ const Calendar = ({
               // Check if this day is in the past
               const isPastDay = cellDateMidnight < todayMidnight;
 
-              // Get all appointments for this day
-              const dayAppointments = appointments.filter((appointment) => {
-                return appointment.date === formattedDate;
+              // Get all appointments for this day - ensure appointments is an array
+              const safeAppointments = Array.isArray(appointments) ? appointments : [];
+              const dayAppointments = safeAppointments.filter((appointment) => {
+                return appointment && appointment.date === formattedDate;
               });
 
               const hasAppointments = dayAppointments.length > 0;
@@ -795,9 +744,8 @@ const Calendar = ({
 
                       // Fetch updated availability for the selected time
                       const targetDate = selectedDate || new Date();
-                      const formattedDate = formatDate(targetDate);
 
-                      if (formattedDate) {
+                      if (targetDate) {
                         const [hours, minutes] = time.split(":").map(Number);
                         const endDate = new Date();
                         endDate.setHours(hours, minutes + 60, 0); // Add 1 hour
@@ -809,18 +757,11 @@ const Calendar = ({
                           .toString()
                           .padStart(2, "0")}`;
 
-                        const params = {
-                          date: formattedDate,
-                          start_time: time,
-                          end_time: endTime,
-                        };
-
                         console.log(
                           "Calendar: Fetching availability for selected time slot:",
-                          params
+                          time
                         );
-                        dispatch(fetchAvailableTherapists(params));
-                        dispatch(fetchAvailableDrivers(params));
+                        refetchAvailabilityForTimeSlot(targetDate, time, endTime);
                       }
                     }
                   }}
