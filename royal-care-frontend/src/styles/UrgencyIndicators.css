@@ -174,7 +174,7 @@
   background: #f8f9fa;
   border-radius: 6px;
   font-size: 12px;
-  flex-wrap: wrap;
+  /* flex-wrap: wrap; */
 }
 
 .urgency-legend-item {
