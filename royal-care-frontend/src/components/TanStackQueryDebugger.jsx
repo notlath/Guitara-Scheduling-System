@@ -25,15 +25,12 @@ const TanStackQueryDebugger = () => {
       const token = localStorage.getItem("knoxToken");
       console.log("Token exists:", !!token);
 
-      const response = await fetch(
-        `${getBaseURL()}/scheduling/appointments/`,
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetch(`${getBaseURL()}/scheduling/appointments/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       console.log("Response status:", response.status);
       const data = await response.json();

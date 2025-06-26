@@ -435,9 +435,7 @@ const OperatorDashboard = () => {
     const token = getToken();
     if (!token) throw new Error("Authentication required");
 
-    return await enhancedFetch(
-      `${getBaseURL()}/scheduling/staff/?role=driver`
-    );
+    return await enhancedFetch(`${getBaseURL()}/scheduling/staff/?role=driver`);
   }, [enhancedFetch]);
   const fetchWorkflowData = useCallback(async () => {
     // Return mock workflow data with expected structure
