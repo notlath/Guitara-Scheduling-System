@@ -610,7 +610,7 @@ const OperatorDashboard = () => {
       { id: "payment", label: "Payment Verification" },
       { id: "all", label: "All Appointments" },
       { id: "attendance", label: "Attendance" },
-      { id: "notifications", label: "Notifications" },
+      // { id: "notifications", label: "Notifications" }, // Removed as requested
       { id: "driver", label: "Driver Coordination" },
       { id: "workflow", label: "Service Workflow" },
       { id: "sessions", label: "Active Sessions" },
