@@ -2137,16 +2137,17 @@ const OperatorDashboard = () => {
         )}
 
         {/* Server-side Pagination */}
-        {(overdueCount > 0 || approachingCount > 0) && paginationInfo.totalPages > 1 && (
-          <ServerPagination
-            currentPage={paginationInfo.currentPage}
-            totalPages={paginationInfo.totalPages}
-            hasNext={paginationInfo.hasNext}
-            hasPrevious={paginationInfo.hasPrevious}
-            onPageChange={setPage}
-            className="appointments-pagination"
-          />
-        )}
+        {(overdueCount > 0 || approachingCount > 0) &&
+          paginationInfo.totalPages > 1 && (
+            <ServerPagination
+              currentPage={paginationInfo.currentPage}
+              totalPages={paginationInfo.totalPages}
+              hasNext={paginationInfo.hasNext}
+              hasPrevious={paginationInfo.hasPrevious}
+              onPageChange={setPage}
+              className="appointments-pagination"
+            />
+          )}
       </div>
     );
   };

@@ -103,7 +103,7 @@ const ServerPagination = ({
               « Previous
             </button>
           )}
-          
+
           {hasNext && (
             <button
               onClick={() => handlePageChange(currentPage + 1)}

@@ -744,7 +744,9 @@ class RegisterClient(APIView):
                     "phone_number": client.phone_number,
                     "address": client.address,
                     "notes": client.notes or "",
-                    "created_at": client.created_at.isoformat() if client.created_at else "",
+                    "created_at": (
+                        client.created_at.isoformat() if client.created_at else ""
+                    ),
                 }
             )
 
