@@ -24,6 +24,22 @@ import { useFormStaticData } from "../../hooks/useStaticDataQueries";
 // Legacy components (kept for compatibility)
 import LazyClientSearch from "../common/LazyClientSearch";
 
+// Utility function to ensure date is in yyyy-MM-dd format
+const formatDateForInput = (dateValue) => {
+  if (!dateValue) return "";
+  if (dateValue instanceof Date) {
+    return dateValue.toISOString().split("T")[0];
+  }
+  if (typeof dateValue === "string" && dateValue.includes("T")) {
+    return dateValue.split("T")[0];
+  }
+  if (typeof dateValue === "string" && dateValue.includes("GMT")) {
+    // Handle date strings like "Thu Jun 26 2025 00:00:00 GMT+0800"
+    return new Date(dateValue).toISOString().split("T")[0];
+  }
+  return dateValue;
+};
+
 const initialFormState = {
   client: "",
   services: "",
@@ -69,7 +85,11 @@ const AppointmentFormTanStack = ({
     isLoadingAvailability,
     hasAvailabilityError,
     canFetchAvailability,
-  } = useFormAvailability(formData);
+  } = useFormAvailability({
+    ...formData,
+    // Ensure date is properly formatted for queries
+    date: formatDateForInput(formData.date),
+  });
 
   // Mutations
   const createMutation = useCreateAppointment();
@@ -77,7 +97,12 @@ const AppointmentFormTanStack = ({
 
   // Calculate end time when relevant form data changes
   const calculateEndTime = useCallback(() => {
-    if (!formData.start_time || !formData.services || !services.length) {
+    if (
+      !formData.start_time ||
+      !formData.services ||
+      !Array.isArray(services) ||
+      !services.length
+    ) {
       return "";
     }
 
@@ -110,7 +135,9 @@ const AppointmentFormTanStack = ({
   // Update form when selected date/time changes
   useEffect(() => {
     if (selectedDate && !formData.date) {
-      setFormData((prev) => ({ ...prev, date: selectedDate }));
+      // Ensure selectedDate is in yyyy-MM-dd format
+      const formattedDate = formatDateForInput(selectedDate);
+      setFormData((prev) => ({ ...prev, date: formattedDate }));
     }
   }, [selectedDate, formData.date]);
 
@@ -126,7 +153,7 @@ const AppointmentFormTanStack = ({
       setFormData({
         client: appointment.client || "",
         services: appointment.services?.[0] || "",
-        date: appointment.date || "",
+        date: formatDateForInput(appointment.date),
         start_time: appointment.start_time || "",
         end_time: appointment.end_time || "",
         location: appointment.location || "",
@@ -206,11 +233,13 @@ const AppointmentFormTanStack = ({
       let foundClient =
         newClient && newClient.id
           ? newClient
-          : clients.find(
+          : Array.isArray(clients)
+          ? clients.find(
               (c) =>
                 c.email === clientDetails.email ||
                 c.phone_number === clientDetails.phone_number
-            );
+            )
+          : null;
 
       return foundClient?.id || null;
     } catch (error) {
@@ -225,7 +254,14 @@ const AppointmentFormTanStack = ({
     // Basic validation
     const newErrors = {};
 
-    if (!formData.client) {
+    // Check if client is selected (can be ID or object)
+    const hasClient =
+      formData.client &&
+      ((typeof formData.client === "object" && formData.client.id) ||
+        typeof formData.client === "number" ||
+        (typeof formData.client === "string" && formData.client.trim()));
+
+    if (!hasClient) {
       newErrors.client = "Client is required";
     }
 
@@ -257,6 +293,11 @@ const AppointmentFormTanStack = ({
 
     try {
       let clientId = formData.client;
+
+      // Extract client ID if formData.client is an object
+      if (typeof formData.client === "object" && formData.client?.id) {
+        clientId = formData.client.id;
+      }
 
       // Register new client if needed
       if (!clientId) {
@@ -362,9 +403,13 @@ const AppointmentFormTanStack = ({
         <div className="form-group">
           <label htmlFor="client">Client *</label>
           <LazyClientSearch
-            selectedClient={formData.client}
-            onClientSelect={(clientId) =>
-              setFormData((prev) => ({ ...prev, client: clientId }))
+            selectedClient={
+              formData.client && typeof formData.client === "object"
+                ? formData.client
+                : clients?.find((c) => c.id === formData.client) || null
+            }
+            onClientSelect={(client) =>
+              setFormData((prev) => ({ ...prev, client: client.id || client }))
             }
             onNewClientDetails={setClientDetails}
             error={errors.client}
@@ -387,11 +432,12 @@ const AppointmentFormTanStack = ({
             className={errors.services ? "error" : ""}
           >
             <option value="">Select a service</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>
-                {service.name} ({service.duration} min - ${service.price})
-              </option>
-            ))}
+            {Array.isArray(services) &&
+              services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name} ({service.duration} min - ${service.price})
+                </option>
+              ))}
           </select>
           {errors.services && (
             <div className="error-message">{errors.services}</div>
@@ -501,11 +547,12 @@ const AppointmentFormTanStack = ({
               disabled={isSubmitting}
               className={errors.therapist ? "error" : ""}
             >
-              {availableTherapists.map((therapist) => (
-                <option key={therapist.id} value={therapist.id}>
-                  {therapist.first_name} {therapist.last_name}
-                </option>
-              ))}
+              {Array.isArray(availableTherapists) &&
+                availableTherapists.map((therapist) => (
+                  <option key={therapist.id} value={therapist.id}>
+                    {therapist.first_name} {therapist.last_name}
+                  </option>
+                ))}
             </select>
           ) : (
             <select
@@ -517,11 +564,12 @@ const AppointmentFormTanStack = ({
               className={errors.therapist ? "error" : ""}
             >
               <option value="">Select a therapist</option>
-              {availableTherapists.map((therapist) => (
-                <option key={therapist.id} value={therapist.id}>
-                  {therapist.first_name} {therapist.last_name}
-                </option>
-              ))}
+              {Array.isArray(availableTherapists) &&
+                availableTherapists.map((therapist) => (
+                  <option key={therapist.id} value={therapist.id}>
+                    {therapist.first_name} {therapist.last_name}
+                  </option>
+                ))}
             </select>
           )}
           {errors.therapist && (
@@ -540,11 +588,12 @@ const AppointmentFormTanStack = ({
             disabled={isSubmitting}
           >
             <option value="">Select a driver</option>
-            {availableDrivers.map((driver) => (
-              <option key={driver.id} value={driver.id}>
-                {driver.first_name} {driver.last_name}
-              </option>
-            ))}
+            {Array.isArray(availableDrivers) &&
+              availableDrivers.map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  {driver.first_name} {driver.last_name}
+                </option>
+              ))}
           </select>
         </div>
 

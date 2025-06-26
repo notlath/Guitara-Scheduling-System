@@ -12,6 +12,22 @@ import {
 import { queryKeys } from "../lib/queryClient";
 import { isValidToken } from "../utils/authUtils";
 
+// Utility function to format date to yyyy-MM-dd
+const formatDateForAPI = (dateValue) => {
+  if (!dateValue) return "";
+  if (dateValue instanceof Date) {
+    return dateValue.toISOString().split("T")[0];
+  }
+  if (typeof dateValue === "string" && dateValue.includes("T")) {
+    return dateValue.split("T")[0];
+  }
+  if (typeof dateValue === "string" && dateValue.includes("GMT")) {
+    // Handle date strings like "Thu Jun 26 2025 00:00:00 GMT+0800"
+    return new Date(dateValue).toISOString().split("T")[0];
+  }
+  return dateValue;
+};
+
 /**
  * Hook for fetching available therapists
  * Replaces: Complex useEffect with debouncing in AppointmentForm
@@ -38,7 +54,7 @@ export const useAvailableTherapists = (
     queryKey: queryKeys.availability.therapists(date, startTime, serviceId),
     queryFn: async () => {
       const params = {
-        date,
+        date: formatDateForAPI(date),
         start_time: startTime,
         service_id: serviceId,
         end_time: computedEndTime,
@@ -80,7 +96,7 @@ export const useAvailableDrivers = (date, startTime, endTime = null) => {
     queryKey: queryKeys.availability.drivers(date, startTime),
     queryFn: async () => {
       const params = {
-        date,
+        date: formatDateForAPI(date),
         start_time: startTime,
         end_time: computedEndTime,
       };

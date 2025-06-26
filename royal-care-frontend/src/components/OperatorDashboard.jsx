@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { 
+import {
   approveAttendance,
   checkIn,
   checkOut,
-  getTodayAttendanceStatus 
+  getTodayAttendanceStatus,
 } from "../features/attendance/attendanceSlice";
 import { logout } from "../features/auth/authSlice";
 import {
@@ -1416,7 +1416,7 @@ const OperatorDashboard = () => {
   // Format time for display
   const formatTimeForDisplay = (timeString) => {
     if (!timeString) return "--:--";
-    
+
     try {
       // If it's already a full datetime string, parse it directly
       if (timeString.includes("T") || timeString.includes(" ")) {
@@ -1438,7 +1438,7 @@ const OperatorDashboard = () => {
         minutes
       );
       return dateTime.toLocaleTimeString([], {
-        hour: "2-digit", 
+        hour: "2-digit",
         minute: "2-digit",
         hour12: true,
       });
@@ -1561,7 +1561,7 @@ const OperatorDashboard = () => {
               Refresh
             </LoadingButton>
           </div>
-          
+
           {/* Operator's own attendance controls */}
           <div className="operator-attendance-controls">
             <div className="operator-attendance-status">
@@ -1569,28 +1569,35 @@ const OperatorDashboard = () => {
               {todayStatus ? (
                 <div className="operator-times">
                   <span className="check-time">
-                    In: {checkInTime ? formatTimeForDisplay(checkInTime) : "--:--"}
+                    In:{" "}
+                    {checkInTime ? formatTimeForDisplay(checkInTime) : "--:--"}
                   </span>
                   <span className="check-time">
-                    Out: {checkOutTime ? formatTimeForDisplay(checkOutTime) : "--:--"}
+                    Out:{" "}
+                    {checkOutTime
+                      ? formatTimeForDisplay(checkOutTime)
+                      : "--:--"}
                   </span>
                 </div>
               ) : (
                 <span className="no-record">No record today</span>
               )}
             </div>
-            
+
             {/* Error display */}
             {(attendanceError || checkInError || checkOutError) && (
-              <div className="attendance-error" style={{ 
-                color: '#dc3545', 
-                fontSize: '12px', 
-                marginTop: '4px' 
-              }}>
+              <div
+                className="attendance-error"
+                style={{
+                  color: "#dc3545",
+                  fontSize: "12px",
+                  marginTop: "4px",
+                }}
+              >
                 {attendanceError || checkInError || checkOutError}
               </div>
             )}
-            
+
             <div className="operator-attendance-buttons">
               <LoadingButton
                 onClick={handleOperatorCheckIn}

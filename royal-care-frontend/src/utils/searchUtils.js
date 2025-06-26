@@ -47,16 +47,22 @@ export const filterClients = (clients, searchTerm, maxResults = 50) => {
 
   return clients
     .filter((client) => {
-      const fullName = `${client.first_name || ""} ${
-        client.last_name || ""
-      }`.trim();
-      const phoneNumber = client.phone_number || "";
+      // Handle both field naming conventions
+      const firstName = client.first_name || client.Name?.split(" ")[0] || "";
+      const lastName =
+        client.last_name || client.Name?.split(" ").slice(1).join(" ") || "";
+      const fullName = `${firstName} ${lastName}`.trim();
+      const phoneNumber = client.phone_number || client.Contact || "";
+      const email = client.email || client.Email || "";
 
       return (
         fuzzyMatch(searchTerm, fullName) ||
-        fuzzyMatch(searchTerm, client.first_name) ||
-        fuzzyMatch(searchTerm, client.last_name) ||
-        fuzzyMatch(searchTerm, phoneNumber)
+        fuzzyMatch(searchTerm, firstName) ||
+        fuzzyMatch(searchTerm, lastName) ||
+        fuzzyMatch(searchTerm, phoneNumber) ||
+        fuzzyMatch(searchTerm, email) ||
+        // Also search in the original Name field if it exists
+        (client.Name && fuzzyMatch(searchTerm, client.Name))
       );
     })
     .slice(0, maxResults);

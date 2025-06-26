@@ -1534,21 +1534,21 @@
   .operator-attendance-controls {
     padding: 12px;
   }
-  
+
   .operator-attendance-status {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
   }
-  
+
   .operator-times {
     gap: 12px;
   }
-  
+
   .operator-attendance-buttons {
     width: 100%;
   }
-  
+
   .check-in-btn,
   .check-out-btn {
     flex: 1;

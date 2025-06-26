@@ -4,6 +4,8 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
+import { fetchClients } from "../../features/scheduling/schedulingSlice";
 import { registerClient } from "../../services/api";
 import "../../styles/AppointmentForm.css";
 
@@ -36,6 +38,22 @@ const initialFormState = {
   multipleTherapists: false,
 };
 
+// Utility function to format date to yyyy-MM-dd
+const formatDateForInput = (dateValue) => {
+  if (!dateValue) return "";
+  if (dateValue instanceof Date) {
+    return dateValue.toISOString().split("T")[0];
+  }
+  if (typeof dateValue === "string" && dateValue.includes("T")) {
+    return dateValue.split("T")[0];
+  }
+  if (typeof dateValue === "string" && dateValue.includes("GMT")) {
+    // Handle date strings like "Thu Jun 26 2025 00:00:00 GMT+0800"
+    return new Date(dateValue).toISOString().split("T")[0];
+  }
+  return dateValue;
+};
+
 const AppointmentFormTanStackComplete = ({
   appointment = null,
   onSubmitSuccess,
@@ -53,6 +71,9 @@ const AppointmentFormTanStackComplete = ({
   });
   const [errors, setErrors] = useState({});
 
+  // Redux dispatch for client fetching
+  const dispatch = useDispatch();
+
   // 🔥 BEFORE: 600+ lines of custom cache logic
   // 🎉 AFTER: 3 simple hooks that handle everything!
 
@@ -64,6 +85,18 @@ const AppointmentFormTanStackComplete = ({
     isReady: staticDataReady,
   } = useFormStaticData();
 
+  // Debug logging for static data
+  useEffect(() => {
+    if (staticDataReady) {
+      console.log(
+        "✅ Static data ready - Clients:",
+        Array.isArray(clients) ? clients.length : "not array",
+        "Services:",
+        Array.isArray(services) ? services.length : "not array"
+      );
+    }
+  }, [clients, services, loadingStaticData, staticDataReady]);
+
   // Availability checking - Replaces your complex debounced logic
   const {
     availableTherapists,
@@ -71,7 +104,10 @@ const AppointmentFormTanStackComplete = ({
     isLoadingAvailability,
     hasAvailabilityError,
     canFetchAvailability,
-  } = useFormAvailability(formData);
+  } = useFormAvailability({
+    ...formData,
+    date: formatDateForInput(formData.date),
+  });
 
   // Mutations with optimistic updates
   const createMutation = useCreateAppointment();
@@ -125,19 +161,51 @@ const AppointmentFormTanStackComplete = ({
   );
 
   // Register new client helper
-  const registerNewClient = async () => {
+  const registerNewClient = async (clientDetailsOverride = null) => {
     try {
+      const detailsToUse = clientDetailsOverride || clientDetails;
+      console.log("📋 Registering client with details:", detailsToUse);
+
       const response = await registerClient({
-        first_name: clientDetails.first_name,
-        last_name: clientDetails.last_name,
-        phone_number: clientDetails.phone_number,
-        email: clientDetails.email,
+        first_name: detailsToUse.first_name,
+        last_name: detailsToUse.last_name,
+        phone_number: detailsToUse.phone_number,
+        email: detailsToUse.email,
         address: formData.location,
       });
 
-      return response.data?.id;
+      console.log("📋 Registration response:", response.data);
+
+      // Try to get client ID from response
+      let clientId = response.data?.id || response.data?.client?.id;
+
+      if (clientId) {
+        console.log("✅ Client registered successfully with ID:", clientId);
+        return clientId;
+      }
+
+      // If no ID returned, try to fetch the client by details
+      console.log("⚠️ No client ID in response, fetching from clients list...");
+
+      // Refetch clients to get the newly created client
+      await dispatch(fetchClients()).unwrap();
+
+      // Try to find the client by email or phone number
+      const updatedClients = clients || [];
+      const foundClient = updatedClients.find(
+        (c) =>
+          (c.email && c.email === detailsToUse.email) ||
+          (c.phone_number && c.phone_number === detailsToUse.phone_number)
+      );
+
+      if (foundClient && foundClient.id) {
+        console.log("✅ Found newly registered client:", foundClient.id);
+        return foundClient.id;
+      }
+
+      throw new Error("Client registered but ID not found");
     } catch (error) {
-      console.error("Failed to register client:", error);
+      console.error("❌ Failed to register client:", error);
       throw new Error("Failed to register new client");
     }
   };
@@ -148,7 +216,16 @@ const AppointmentFormTanStackComplete = ({
 
     // Validation
     const newErrors = {};
-    if (!formData.client) newErrors.client = "Client is required";
+
+    // Check if client is selected (either as object or ID)
+    const hasClient =
+      formData.client &&
+      ((typeof formData.client === "object" &&
+        (formData.client.id || formData.client.ID)) ||
+        (typeof formData.client === "string" && formData.client.trim()) ||
+        (typeof formData.client === "number" && formData.client));
+
+    if (!hasClient) newErrors.client = "Client is required";
     if (!formData.services) newErrors.services = "Service is required";
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.start_time) newErrors.start_time = "Start time is required";
@@ -161,24 +238,95 @@ const AppointmentFormTanStackComplete = ({
     }
 
     try {
-      let clientId = formData.client;
+      // Extract client ID from client object or use directly if it's already an ID
+      let clientId;
+      if (typeof formData.client === "object" && formData.client) {
+        // Check if this is an existing client with a real database ID
+        if (formData.client.is_existing_client && formData.client.database_id) {
+          clientId = formData.client.database_id;
+          console.log("✅ Using existing client database ID:", clientId);
+        } else if (
+          formData.client.id &&
+          !formData.client.id.toString().startsWith("generated-")
+        ) {
+          clientId = formData.client.id;
+          console.log("✅ Using client ID:", clientId);
+        } else {
+          console.log(
+            "⚠️  Client object detected but no valid database ID, will register as new client"
+          );
+          console.log("📋 Client object:", formData.client);
+          clientId = null; // Force registration of new client
+        }
+      } else if (
+        formData.client &&
+        !formData.client.toString().startsWith("generated-")
+      ) {
+        clientId = formData.client;
+        console.log("📋 Using client ID directly:", clientId);
+      } else {
+        console.log("📋 No valid client ID found");
+        clientId = null;
+      }
 
       // Register new client if needed
       if (!clientId) {
-        clientId = await registerNewClient();
+        console.log("📋 Registering new client...");
+
+        let clientDetailsForRegistration = clientDetails;
+
+        // If we have a selected client object but no database ID, use its details for registration
+        if (typeof formData.client === "object" && formData.client) {
+          const clientObject = formData.client;
+          clientDetailsForRegistration = {
+            first_name:
+              clientObject.first_name || clientDetails.first_name || "",
+            last_name: clientObject.last_name || clientDetails.last_name || "",
+            phone_number:
+              clientObject.phone_number || clientDetails.phone_number || "",
+            email: clientObject.email || clientDetails.email || "",
+          };
+
+          console.log(
+            "📋 Using client object details for registration:",
+            clientDetailsForRegistration
+          );
+        }
+
+        console.log(
+          "📋 Client details being used for registration:",
+          clientDetailsForRegistration
+        );
+
+        clientId = await registerNewClient(clientDetailsForRegistration);
         if (!clientId) {
           setErrors((prev) => ({
             ...prev,
-            client: "Failed to register client",
+            client:
+              "Failed to register client. Please check the client details.",
           }));
           return;
         }
+        console.log("✅ New client registered with ID:", clientId);
       }
+
+      // Validate that we have a numeric client ID
+      const numericClientId = parseInt(clientId, 10);
+      if (isNaN(numericClientId)) {
+        console.error("❌ Invalid client ID:", clientId);
+        setErrors((prev) => ({
+          ...prev,
+          client: "Invalid client ID. Please select a valid client.",
+        }));
+        return;
+      }
+
+      console.log("📋 Final client ID for submission:", numericClientId);
 
       // Prepare appointment data
       const appointmentData = {
         ...formData,
-        client: parseInt(clientId, 10),
+        client: numericClientId,
         services: [parseInt(formData.services, 10)],
         therapist: formData.multipleTherapists
           ? null
@@ -187,7 +335,10 @@ const AppointmentFormTanStackComplete = ({
           ? formData.therapists.map((id) => parseInt(id, 10))
           : [],
         driver: formData.driver ? parseInt(formData.driver, 10) : null,
+        date: formatDateForInput(formData.date),
       };
+
+      console.log("📋 Appointment data being submitted:", appointmentData);
 
       // 🔥 BEFORE: Complex manual Redux dispatch + cache management
       // 🎉 AFTER: One simple mutation call with automatic cache updates!
@@ -237,7 +388,8 @@ const AppointmentFormTanStackComplete = ({
   // Set initial values
   useEffect(() => {
     if (selectedDate && !formData.date) {
-      setFormData((prev) => ({ ...prev, date: selectedDate }));
+      const formattedDate = formatDateForInput(selectedDate);
+      setFormData((prev) => ({ ...prev, date: formattedDate }));
     }
   }, [selectedDate, formData.date]);
 
@@ -250,21 +402,35 @@ const AppointmentFormTanStackComplete = ({
   // Populate form for editing
   useEffect(() => {
     if (appointment) {
+      // Handle client data - can be ID or object
+      let clientData = appointment.client;
+      if (typeof appointment.client === "object") {
+        clientData = appointment.client;
+      } else if (Array.isArray(clients) && appointment.client) {
+        // Find the full client object from the clients list
+        const foundClient = clients.find(
+          (c) => (c.id || c.ID) === appointment.client
+        );
+        clientData = foundClient || appointment.client;
+      }
+
       setFormData({
-        client: appointment.client || "",
+        client: clientData || "",
         services: appointment.services?.[0] || "",
-        date: appointment.date || "",
+        date: formatDateForInput(appointment.date),
         start_time: appointment.start_time || "",
         end_time: appointment.end_time || "",
         location: appointment.location || "",
         notes: appointment.notes || "",
         therapist: appointment.therapist || "",
-        therapists: appointment.therapists || [],
+        therapists: Array.isArray(appointment.therapists)
+          ? appointment.therapists
+          : [],
         driver: appointment.driver || "",
         multipleTherapists: !!(appointment.therapists?.length > 0),
       });
     }
-  }, [appointment]);
+  }, [appointment, clients]);
 
   // Loading states
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
@@ -297,11 +463,51 @@ const AppointmentFormTanStackComplete = ({
         <div className="form-group">
           <label htmlFor="client">Client *</label>
           <LazyClientSearch
-            selectedClient={clients?.find((c) => c.id === formData.client)}
-            onClientSelect={(client) =>
-              setFormData((prev) => ({ ...prev, client: client?.id || "" }))
-            }
-            onNewClientDetails={setClientDetails}
+            selectedClient={(() => {
+              // If formData.client is already a client object, use it directly
+              if (
+                typeof formData.client === "object" &&
+                formData.client &&
+                formData.client.id
+              ) {
+                console.log(
+                  "🔍 Using formData.client directly as selectedClient:",
+                  formData.client
+                );
+                return formData.client;
+              }
+
+              // Otherwise try to find it in the clients array (for editing existing appointments)
+              if (Array.isArray(clients) && formData.client) {
+                const foundClient = clients.find((c) => {
+                  const clientId = c.id || c.ID;
+                  const match = clientId === formData.client;
+                  return match;
+                });
+
+                console.log("🔍 Found client in clients array:", foundClient);
+                return foundClient || null;
+              }
+
+              return null;
+            })()}
+            onClientSelect={(client) => {
+              console.log(
+                "✅ Client selected:",
+                client.first_name,
+                client.last_name
+              );
+
+              setFormData((prev) => {
+                const newFormData = { ...prev, client: client };
+                return newFormData;
+              });
+
+              // Clear client error when a client is selected
+              if (errors.client) {
+                setErrors((prev) => ({ ...prev, client: "" }));
+              }
+            }}
             error={errors.client}
             disabled={isSubmitting}
           />
@@ -319,11 +525,12 @@ const AppointmentFormTanStackComplete = ({
             className={errors.services ? "error" : ""}
           >
             <option value="">Select a service</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>
-                {service.name} - {service.duration} min - ₱{service.price}
-              </option>
-            ))}
+            {Array.isArray(services) &&
+              services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name} - {service.duration} min - ₱{service.price}
+                </option>
+              ))}
           </select>
           {errors.services && (
             <div className="error-message">{errors.services}</div>
@@ -425,12 +632,13 @@ const AppointmentFormTanStackComplete = ({
               className={errors.therapist ? "error" : ""}
             >
               <option value="">Select a therapist</option>
-              {availableTherapists.map((therapist) => (
-                <option key={therapist.id} value={therapist.id}>
-                  {therapist.first_name} {therapist.last_name} -{" "}
-                  {therapist.specialization}
-                </option>
-              ))}
+              {Array.isArray(availableTherapists) &&
+                availableTherapists.map((therapist) => (
+                  <option key={therapist.id} value={therapist.id}>
+                    {therapist.first_name} {therapist.last_name} -{" "}
+                    {therapist.specialization}
+                  </option>
+                ))}
             </select>
             {errors.therapist && (
               <div className="error-message">{errors.therapist}</div>
@@ -450,12 +658,13 @@ const AppointmentFormTanStackComplete = ({
               }
               size="5"
             >
-              {availableTherapists.map((therapist) => (
-                <option key={therapist.id} value={therapist.id}>
-                  {therapist.first_name} {therapist.last_name} -{" "}
-                  {therapist.specialization}
-                </option>
-              ))}
+              {Array.isArray(availableTherapists) &&
+                availableTherapists.map((therapist) => (
+                  <option key={therapist.id} value={therapist.id}>
+                    {therapist.first_name} {therapist.last_name} -{" "}
+                    {therapist.specialization}
+                  </option>
+                ))}
             </select>
             {errors.therapists && (
               <div className="error-message">{errors.therapists}</div>
@@ -474,11 +683,12 @@ const AppointmentFormTanStackComplete = ({
             className={errors.driver ? "error" : ""}
           >
             <option value="">Select a driver (optional)</option>
-            {availableDrivers.map((driver) => (
-              <option key={driver.id} value={driver.id}>
-                {driver.first_name} {driver.last_name}
-              </option>
-            ))}
+            {Array.isArray(availableDrivers) &&
+              availableDrivers.map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  {driver.first_name} {driver.last_name}
+                </option>
+              ))}
           </select>
           {errors.driver && (
             <div className="error-message">{errors.driver}</div>
