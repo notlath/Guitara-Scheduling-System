@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Service, Material
+from .models import Service, Material, RegistrationMaterial
 
 # These references are causing circular import issues - removing them
 # Service = Service
@@ -99,3 +99,18 @@ class CompleteRegistrationSerializer(serializers.Serializer):
         if len(value) < 8:
             raise serializers.ValidationError("Password must be at least 8 characters.")
         return value
+
+
+class RegistrationMaterialSerializer(serializers.ModelSerializer):
+    # Include the current stock from the related inventory item
+    current_stock = serializers.SerializerMethodField()
+    
+    def get_current_stock(self, obj):
+        """Get current stock from the related inventory item"""
+        if obj.inventory_item:
+            return obj.inventory_item.current_stock
+        return obj.stock_quantity  # Fallback to registration material stock
+    
+    class Meta:
+        model = RegistrationMaterial
+        fields = '__all__'

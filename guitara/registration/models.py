@@ -50,14 +50,31 @@ class Material(models.Model):
         ('Other', 'Other'),
     ]
     
-    name = models.CharField(max_length=100, default="Unnamed Material")  # Added default value
-    description = models.CharField(max_length=255, default="Material for massage service") # Added default value
+    name = models.CharField(max_length=100, default="Unnamed Material")
+    description = models.CharField(max_length=255, default="Material for massage service")
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='Other')
     unit_of_measure = models.CharField(max_length=50, choices=UNIT_CHOICES, default='Unit')
     service = models.ForeignKey(Service, related_name="materials", on_delete=models.CASCADE, blank=True, null=True)
-    stock_quantity = models.IntegerField(default=0)
     auto_deduct = models.BooleanField(default=False, help_text="Automatically deduct from inventory when booking is created")
     reusable = models.BooleanField(default=False, help_text="Whether this material can be reused")
     
+    class Meta:
+        db_table = 'registration_material_legacy'
+    
     def __str__(self):
         return f"{self.name} - {self.category}"
+
+class RegistrationMaterial(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    description = models.CharField(max_length=255, blank=True, null=True)
+    category = models.CharField(max_length=50, blank=True, null=True)
+    unit_of_measure = models.CharField(max_length=50, blank=True, null=True)
+    stock_quantity = models.IntegerField(default=0)
+    auto_deduct = models.BooleanField(default=False)
+    reusable = models.BooleanField(default=False)
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, db_column='service_id')
+    inventory_item = models.ForeignKey('inventory.InventoryItem', on_delete=models.SET_NULL, null=True, blank=True, db_column='inventory_item_id')
+
+    class Meta:
+        db_table = 'registration_material'

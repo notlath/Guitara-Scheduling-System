@@ -289,3 +289,7 @@ export const validateToken = () =>
       valid: false,
       error: error.response?.data?.detail || "Token validation failed",
     }));
+
+// Fetch materials for a given service
+export const fetchMaterialsByService = (serviceId) =>
+  api.get(`/registration/materials/by-service/${serviceId}/`);

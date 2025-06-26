@@ -12,6 +12,7 @@ from .views import (
     ProfilePhotoUploadView,
     UserProfileView,
     UserProfileUpdateView,
+    RegistrationMaterialWithStockList,
 )
 
 urlpatterns = [
@@ -34,4 +35,5 @@ urlpatterns = [
     path(
         "profile/update/", UserProfileUpdateView.as_view(), name="user_profile_update"
     ),
+    path('materials-with-stock/<int:service_id>/', RegistrationMaterialWithStockList.as_view()),
 ]

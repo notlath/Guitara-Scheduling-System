@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useDispatch } from "react-redux";
-import { fetchClients } from "../../features/scheduling/schedulingSlice";
+import { supabase } from "../../services/supabaseClient";
 import { useAppointmentFormCache } from "../../hooks/useAppointmentFormCache";
 import { filterClients } from "../../utils/searchUtils";
 import "./LazyClientSearch.css";
@@ -21,7 +20,6 @@ const LazyClientSearch = ({
   disabled = false,
   placeholder = "Search client by name or phone...",
 }) => {
-  const dispatch = useDispatch();
   const { clientCache } = useAppointmentFormCache();
 
   // Debug logging for props
@@ -59,7 +57,7 @@ const LazyClientSearch = ({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch all clients function
+  // Fetch all clients function (from Supabase)
   const fetchAllClients = useCallback(async () => {
     if (loading) return;
 
@@ -70,7 +68,7 @@ const LazyClientSearch = ({
       const cached = clientCache.getAll();
       if (cached && Array.isArray(cached) && cached.length > 0) {
         console.log("📋 Using cached clients:", cached.length);
-
+  
         // Validate cached clients and ensure they have IDs
         const validatedCached = cached
           .map((client, index) => {
@@ -83,61 +81,38 @@ const LazyClientSearch = ({
             };
           })
           .filter((client) => client !== null);
-
+  
         setAllClients(validatedCached);
         setLoading(false);
         return;
       }
-
-      console.log("🔄 Fetching clients from API...");
-
+  
       try {
-        // Fetch from API
-        const response = await dispatch(fetchClients()).unwrap();
-        const clients = response.clients || response.results || response || [];
-
-        console.log("📥 Raw API response:", response);
-        console.log("📥 Extracted clients array:", clients);
-
-        // Ensure clients is an array and filter out invalid entries
+        // Fetch from Supabase
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('clients')
+          .select('*');
+          
+        if (clientsError) throw clientsError;
+        
+        const clients = clientsData || [];
+    
+        // Ensure clients is an array
         const clientsArray = Array.isArray(clients) ? clients : [];
-        console.log("📥 clientsArray after Array.isArray check:", clientsArray);
-
-        // Add unique IDs to clients that don't have them and filter out completely invalid entries
+        
+        // Validate API clients
         const validatedClients = clientsArray
           .map((client, index) => {
-            // If client is null or doesn't have any identifiable data, skip it
             if (!client || typeof client !== "object") {
               return null;
             }
-
-            // Check for real database ID first
-            const realId =
-              client.id || client.ID || client.pk || client.client_id;
-
-            // Preserve the original client data and ensure it has an ID
-            const validatedClient = {
+            return {
               ...client,
-              // Use real ID if available, otherwise generate one
-              id: realId || `generated-${index}-${Date.now()}`,
-              // Store the real database ID separately if it exists
-              database_id: realId || null,
-              // Flag to indicate if this is a real client from database
-              is_existing_client: !!realId,
+              id: client.id || client.ID || `api-${index}-${Date.now()}`,
             };
-
-            console.log("📋 Validated client:", validatedClient);
-
-            return validatedClient;
           })
-          .filter((client) => client !== null); // Remove null entries
-
-        console.log(
-          "✅ Fetched and validated clients:",
-          validatedClients.length,
-          validatedClients
-        );
-
+          .filter((client) => client !== null);
+    
         // Cache the results
         if (validatedClients.length > 0) {
           clientCache.setAll(validatedClients);
@@ -145,7 +120,7 @@ const LazyClientSearch = ({
         setAllClients(validatedClients);
       } catch (apiError) {
         console.error("❌ API Error fetching clients:", apiError);
-
+  
         // If API fails, try to use any cached data as fallback
         const fallbackCached = clientCache.getAll();
         if (fallbackCached && Array.isArray(fallbackCached)) {
@@ -165,7 +140,7 @@ const LazyClientSearch = ({
     } finally {
       setLoading(false);
     }
-  }, [dispatch, clientCache, loading]);
+  }, [clientCache, loading]);
 
   // Load clients on component mount
   useEffect(() => {
