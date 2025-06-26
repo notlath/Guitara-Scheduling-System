@@ -9,101 +9,10 @@ import {
   MdSchedule,
   MdUpdate,
 } from "react-icons/md";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { markNotificationAsRead } from "../../features/scheduling/schedulingSlice";
 import styles from "../../styles/NotificationCenter.module.css";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
-
-// Debug component for troubleshooting
-const NotificationDebugger = () => {
-  const [debugData, setDebugData] = useState(null);
-  const { user } = useSelector((state) => state.auth);
-
-  const testNotificationAPI = useCallback(async () => {
-    try {
-      const token = localStorage.getItem("knoxToken");
-      const response = await fetch(
-        "http://localhost:8000/api/scheduling/notifications/",
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      setDebugData({
-        user: {
-          id: user?.id,
-          username: user?.username,
-          role: user?.role,
-        },
-        response: {
-          status: response.status,
-          ok: response.ok,
-          data: data,
-        },
-        timestamp: new Date().toISOString(),
-      });
-
-      console.log("🔍 Notification Debug Data:", {
-        user: user?.role,
-        response: data,
-        notificationCount: Array.isArray(data)
-          ? data.length
-          : Array.isArray(data?.notifications)
-          ? data.notifications.length
-          : Array.isArray(data?.results)
-          ? data.results.length
-          : 0,
-      });
-    } catch (error) {
-      setDebugData({
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      testNotificationAPI();
-    }
-  }, [user, testNotificationAPI]);
-
-  if (!debugData) return <div>Loading debug data...</div>;
-
-  return (
-    <div
-      style={{
-        padding: "20px",
-        background: "#f0f0f0",
-        margin: "20px",
-        borderRadius: "8px",
-      }}
-    >
-      <h3>🔧 Notification Debug Info</h3>
-      <pre
-        style={{
-          background: "#fff",
-          padding: "10px",
-          borderRadius: "4px",
-          fontSize: "12px",
-        }}
-      >
-        {JSON.stringify(debugData, null, 2)}
-      </pre>
-      <button
-        onClick={testNotificationAPI}
-        style={{ marginTop: "10px", padding: "8px 16px" }}
-      >
-        Refresh Debug Data
-      </button>
-    </div>
-  );
-};
 
 const NotificationCenter = ({ onClose }) => {
   const [notifications, setNotifications] = useState([]);
@@ -116,19 +25,11 @@ const NotificationCenter = ({ onClose }) => {
   const notificationItemsRef = useRef(new Map());
 
   // Get user information for role-aware filtering
-  const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   // Fetch notifications directly from API
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
-
-    console.log("🔄 Fetching notifications...");
-    console.log(
-      `👤 User role: ${user?.role || "Unknown"} - ${
-        user?.username || "Unknown user"
-      }`
-    );
 
     try {
       const token = localStorage.getItem("knoxToken");
@@ -137,21 +38,16 @@ const NotificationCenter = ({ onClose }) => {
         throw new Error("No authentication token found");
       }
 
-      console.log("📡 Making request to notifications API...");
-
-      // Try both regular and debug endpoints
+      // Try primary endpoint first, then fallback to debug endpoint if needed
       const endpoints = [
         "http://localhost:8000/api/scheduling/notifications/",
         "http://localhost:8000/api/scheduling/notifications/debug_all/",
       ];
 
       let data = null;
-      let usedEndpoint = null;
 
       for (const endpoint of endpoints) {
         try {
-          console.log(`🔍 Trying endpoint: ${endpoint}`);
-
           const response = await fetch(endpoint, {
             headers: {
               Authorization: `Token ${token}`,
@@ -159,154 +55,53 @@ const NotificationCenter = ({ onClose }) => {
             },
           });
 
-          console.log(
-            `📊 Response status for ${endpoint}: ${response.status} ${response.statusText}`
-          );
-
           if (response.ok) {
             data = await response.json();
-            usedEndpoint = endpoint;
-            console.log(`✅ Successfully fetched from ${endpoint}:`, data);
             break;
-          } else {
-            console.warn(
-              `⚠️ Failed to fetch from ${endpoint}: ${response.status}`
-            );
-
-            // Try to get error details
-            try {
-              const errorData = await response.json();
-              console.log("❌ Error response data:", errorData);
-            } catch (parseError) {
-              console.warn("Could not parse error response:", parseError);
-            }
           }
         } catch (endpointError) {
-          console.warn(`❌ Error with endpoint ${endpoint}:`, endpointError);
+          console.warn(`Failed to fetch from ${endpoint}:`, endpointError);
         }
       }
 
       if (!data) {
-        throw new Error("All notification endpoints failed");
+        throw new Error("Unable to fetch notifications from any endpoint");
       }
 
-      console.log(`🎯 Used endpoint: ${usedEndpoint}`);
-      console.log("📦 Received data:", data);
-
-      // Handle the backend response format
+      // Handle different response formats from the backend
       let notificationsList = [];
 
       if (Array.isArray(data)) {
-        // Old format - direct array
+        // Direct array format
         notificationsList = data;
-        console.log("✅ Using legacy array format");
       } else if (data && Array.isArray(data.notifications)) {
-        // New format - object with notifications array
+        // Object with notifications array
         notificationsList = data.notifications;
-        console.log(
-          `✅ Loaded ${notificationsList.length} notifications (${
-            data.unread_count || data.unreadCount || 0
-          } unread) for ${user?.role || "unknown"} user`
-        );
-
-        // Log debug info if available
-        if (data.debug) {
-          console.log("🔧 DEBUG MODE ACTIVE");
-          console.log(`🔧 Total count: ${data.total_count}`);
-          console.log(
-            `🔧 Notification types: ${data.notification_types?.join(", ")}`
-          );
-          console.log(`🔧 Message: ${data.message}`);
-        }
-
-        // Log any warnings from backend
-        if (data.warning) {
-          console.warn("⚠️ Backend warning:", data.warning);
-        }
-        if (data.errors && data.errors > 0) {
-          console.warn(
-            `⚠️ Backend encountered ${data.errors} errors while loading notifications`
-          );
-        }
       } else if (data && Array.isArray(data.results)) {
         // Paginated format - notifications in 'results' array
         notificationsList = data.results;
-        console.log(
-          `✅ Loaded ${
-            notificationsList.length
-          } notifications from paginated results (page ${
-            data.current_page || 1
-          }/${data.total_pages || 1}, total: ${data.count || 0}) for ${
-            user?.role || "unknown"
-          } user`
-        );
       } else if (
         data &&
         data.results &&
         Array.isArray(data.results.notifications)
       ) {
-        // Nested paginated format - notifications nested within results object
+        // Nested paginated format
         notificationsList = data.results.notifications;
-        console.log(
-          `✅ Loaded ${
-            notificationsList.length
-          } notifications from nested paginated results (page ${
-            data.current_page || 1
-          }/${data.total_pages || 1}, total: ${data.count || 0}) for ${
-            user?.role || "unknown"
-          } user`
-        );
       } else {
-        // Fallback - treat as empty array
-        console.warn("⚠️ Unexpected response format:", data);
-        console.log("📋 Available keys in response:", Object.keys(data || {}));
+        // Unexpected format - log for debugging but don't break
+        console.warn("Unexpected response format:", data);
         notificationsList = [];
       }
 
-      // Log notification types for debugging role filtering
-      if (notificationsList.length > 0) {
-        const notificationTypes = notificationsList
-          .map((n) => n.notification_type || n.type)
-          .filter(Boolean);
-        const uniqueTypes = [...new Set(notificationTypes)];
-        console.log(
-          `🏷️ Notification types received for ${user?.role}: ${uniqueTypes.join(
-            ", "
-          )}`
-        );
-
-        // Log first few notifications for debugging
-        console.log("📋 Sample notifications:");
-        notificationsList.slice(0, 3).forEach((notif, index) => {
-          console.log(
-            `  ${index + 1}. ${
-              notif.notification_type
-            }: ${notif.message?.substring(0, 50)}...`
-          );
-        });
-      } else {
-        console.warn(
-          "🚨 NO NOTIFICATIONS RECEIVED - This explains the empty state!"
-        );
-        console.log("🔍 Debugging info:");
-        console.log(`  - User: ${user?.username} (${user?.role})`);
-        console.log(`  - Token present: ${!!token}`);
-        console.log(`  - Response format: ${typeof data}`);
-        console.log(`  - Used endpoint: ${usedEndpoint}`);
-      }
-
-      console.log(`🎯 Setting ${notificationsList.length} notifications`);
       setNotifications(notificationsList);
     } catch (err) {
       console.error("Error fetching notifications:", err);
       setError(err.message);
-
-      // Set empty notifications array as fallback
       setNotifications([]);
     } finally {
       setLoading(false);
     }
-  }, [user?.role, user?.username]);
+  }, []);
 
   // Mark notification as read
   const markAsRead = useCallback(
@@ -702,9 +497,6 @@ const NotificationCenter = ({ onClose }) => {
             </div>
           ))}
       </div>
-
-      {/* Debugger - always show for now to help debug the issue */}
-      <NotificationDebugger />
     </div>
   );
 };
