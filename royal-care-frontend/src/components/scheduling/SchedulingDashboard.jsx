@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { deleteAppointment } from "../../features/scheduling/schedulingSlice";
@@ -70,57 +70,6 @@ const SchedulingDashboard = () => {
     ),
     shallowEqual
   );
-
-  // Get user name from Redux state or fallback
-  const userName =
-    user?.first_name && user?.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user?.username || "User";
-
-  // Helper to get greeting based on PH time
-  const getGreeting = () => {
-    const now = new Date().toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      hour: "2-digit",
-      hour12: false,
-    });
-    const hour = parseInt(now.split(":")[0], 10);
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
-
-  // System time state for real-time clock display
-  const [systemTime, setSystemTime] = useState(() =>
-    new Date().toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-    })
-  );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSystemTime(
-        new Date().toLocaleString("en-PH", {
-          timeZone: "Asia/Manila",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-        })
-      );
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const { unreadNotificationCount } = useSelector(
     useCallback(
@@ -353,10 +302,7 @@ const SchedulingDashboard = () => {
   return (
     <PageLayout>
       <div className="scheduling-dashboard">
-        <LayoutRow
-          title={`${getGreeting()}, ${userName}!`}
-          subtitle={<>{systemTime}</>}
-        >
+        <LayoutRow title="Bookings">
           <div className="action-buttons">
             <button
               className="notification-button"
