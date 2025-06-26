@@ -348,7 +348,7 @@ def kill_existing_cmd_windows(window_title):
     """Kill all cmd.exe windows whose title contains the given string (Windows only)"""
     if not is_windows():
         return
-    
+
     killed_count = 0
     try:
         # Method 1: Kill by window title
@@ -365,7 +365,9 @@ def kill_existing_cmd_windows(window_title):
                 columns = re.split(r"\s{2,}", line.strip())
                 if len(columns) > 2 and columns[1].isdigit():
                     pid = int(columns[1])
-                    result = subprocess.run(f"taskkill /PID {pid} /F", shell=True, capture_output=True)
+                    result = subprocess.run(
+                        f"taskkill /PID {pid} /F", shell=True, capture_output=True
+                    )
                     if result.returncode == 0:
                         print(f"🔪 Killed CMD window {pid} (title: {window_title})")
                         killed_count += 1
@@ -376,37 +378,41 @@ def kill_existing_cmd_windows(window_title):
     try:
         project_indicators = [
             "Django Backend",
-            "React Frontend", 
+            "React Frontend",
             "Guitara",
             "royal-care",
             "manage.py",
             "npm run dev",
-            "runserver"
+            "runserver",
         ]
-        
+
         result = subprocess.check_output(
             'tasklist /v /fi "IMAGENAME eq cmd.exe"',
             shell=True,
             encoding="utf-8",
             errors="ignore",
         )
-        
+
         for line in result.splitlines():
             if "cmd.exe" in line.lower():
                 line_lower = line.lower()
                 # Check if this CMD window is related to our project
-                if any(indicator.lower() in line_lower for indicator in project_indicators):
+                if any(
+                    indicator.lower() in line_lower for indicator in project_indicators
+                ):
                     columns = re.split(r"\s{2,}", line.strip())
                     if len(columns) > 2 and columns[1].isdigit():
                         pid = int(columns[1])
-                        result = subprocess.run(f"taskkill /PID {pid} /F", shell=True, capture_output=True)
+                        result = subprocess.run(
+                            f"taskkill /PID {pid} /F", shell=True, capture_output=True
+                        )
                         if result.returncode == 0:
                             print(f"🔪 Killed project-related CMD window {pid}")
                             killed_count += 1
-                            
+
     except Exception as e:
         logger.debug(f"Method 2 failed: {e}")
-    
+
     return killed_count
 
 
@@ -530,7 +536,9 @@ def start_backend() -> bool:
             venv_path = "venv"
             if not venv_activate.exists():
                 print("❌ Virtual environment activation script not found")
-                print("   Looking for: .venv\\Scripts\\activate.bat or venv\\Scripts\\activate.bat")
+                print(
+                    "   Looking for: .venv\\Scripts\\activate.bat or venv\\Scripts\\activate.bat"
+                )
                 return False
 
         # Use a dedicated batch file for more reliable startup
@@ -1131,10 +1139,10 @@ def kill_all_project_terminals():
     """Kill all terminal windows that might be related to our project (Windows only)"""
     if not is_windows():
         return 0
-    
+
     killed_count = 0
     print("   🔍 Closing ALL project-related terminal windows...")
-    
+
     try:
         # Get all cmd.exe processes with their window titles
         result = subprocess.check_output(
@@ -1143,10 +1151,10 @@ def kill_all_project_terminals():
             encoding="utf-8",
             errors="ignore",
         )
-        
+
         project_keywords = [
             "django",
-            "react", 
+            "react",
             "guitara",
             "royal-care",
             "manage.py",
@@ -1157,9 +1165,9 @@ def kill_all_project_terminals():
             "backend",
             "8000",
             "5173",
-            "development"
+            "development",
         ]
-        
+
         lines = result.splitlines()
         for line in lines:
             if "cmd.exe" in line.lower():
@@ -1173,20 +1181,22 @@ def kill_all_project_terminals():
                         # Don't kill our own process
                         if pid != os.getpid():
                             result = subprocess.run(
-                                f"taskkill /PID {pid} /F", 
-                                shell=True, 
+                                f"taskkill /PID {pid} /F",
+                                shell=True,
                                 capture_output=True,
-                                text=True
+                                text=True,
                             )
                             if result.returncode == 0:
                                 print(f"🔪 Killed project CMD window {pid}")
                                 killed_count += 1
                             else:
-                                logger.debug(f"Failed to kill CMD window {pid}: {result.stderr}")
-                                
+                                logger.debug(
+                                    f"Failed to kill CMD window {pid}: {result.stderr}"
+                                )
+
     except Exception as e:
         logger.debug(f"Error killing project terminals: {e}")
-    
+
     # Also try to kill PowerShell windows that might contain our project
     try:
         result = subprocess.check_output(
@@ -1195,7 +1205,7 @@ def kill_all_project_terminals():
             encoding="utf-8",
             errors="ignore",
         )
-        
+
         for line in result.splitlines():
             if "powershell.exe" in line.lower():
                 line_lower = line.lower()
@@ -1206,24 +1216,24 @@ def kill_all_project_terminals():
                         pid = int(columns[1])
                         if pid != os.getpid():
                             result = subprocess.run(
-                                f"taskkill /PID {pid} /F", 
-                                shell=True, 
+                                f"taskkill /PID {pid} /F",
+                                shell=True,
                                 capture_output=True,
-                                text=True
+                                text=True,
                             )
                             if result.returncode == 0:
                                 print(f"🔪 Killed project PowerShell window {pid}")
                                 killed_count += 1
-                                
+
     except Exception as e:
         logger.debug(f"Error killing PowerShell windows: {e}")
-    
+
     if killed_count > 0:
         print(f"   ✅ Killed {killed_count} project terminal window(s)")
         time.sleep(2)  # Give windows time to close
     else:
         print("   ✅ No project terminal windows found")
-    
+
     return killed_count
 
 
@@ -1253,25 +1263,26 @@ def cleanup_existing_servers():
     if is_windows():
         terminal_killed = kill_all_project_terminals()
         total_killed += terminal_killed
-        
+
         # Also try the specific window titles as backup
         print("   🔍 Closing specific terminal windows...")
-        kill_existing_cmd_windows("Django Backend")
-        kill_existing_cmd_windows("React Frontend")
+        killed_django = kill_existing_cmd_windows("Django Backend")
+        killed_react = kill_existing_cmd_windows("React Frontend")
+        total_killed += killed_django + killed_react
 
     # Step 5: Final verification - check if ports are now free
     backend_port = CONFIG["backend_port"]
     frontend_port = CONFIG["frontend_port"]
-    
+
     backend_free = is_port_available(backend_port)
     frontend_free = is_port_available(frontend_port)
-    
+
     if not backend_free:
         print(f"   ⚠️ Backend port {backend_port} still in use - forcing cleanup...")
         kill_processes_by_port(backend_port)
         time.sleep(1)
         backend_free = is_port_available(backend_port)
-    
+
     if not frontend_free:
         print(f"   ⚠️ Frontend port {frontend_port} still in use - forcing cleanup...")
         kill_processes_by_port(frontend_port)
@@ -1286,7 +1297,7 @@ def cleanup_existing_servers():
     # Final status
     if total_killed > 0:
         print(f"✅ Cleaned up {total_killed} existing processes")
-    
+
     if backend_free and frontend_free:
         print("✅ All ports are now available")
     else:
@@ -1303,13 +1314,15 @@ def manual_terminal_cleanup():
     if not is_windows():
         print("This function is only for Windows systems")
         return 0
-    
-    print("🧹 Manual terminal cleanup - killing ALL project-related terminal windows...")
-    
+
+    print(
+        "🧹 Manual terminal cleanup - killing ALL project-related terminal windows..."
+    )
+
     # Get all running terminal processes
     terminal_processes = ["cmd.exe", "powershell.exe", "pwsh.exe", "conhost.exe"]
     total_killed = 0
-    
+
     for process_name in terminal_processes:
         try:
             result = subprocess.check_output(
@@ -1318,13 +1331,25 @@ def manual_terminal_cleanup():
                 encoding="utf-8",
                 errors="ignore",
             )
-            
+
             project_keywords = [
-                "django", "react", "guitara", "royal-care", "manage.py", "runserver",
-                "npm", "vite", "frontend", "backend", "8000", "5173", "development",
-                "start_backend", "start_frontend"
+                "django",
+                "react",
+                "guitara",
+                "royal-care",
+                "manage.py",
+                "runserver",
+                "npm",
+                "vite",
+                "frontend",
+                "backend",
+                "8000",
+                "5173",
+                "development",
+                "start_backend",
+                "start_frontend",
             ]
-            
+
             for line in result.splitlines():
                 if process_name.lower() in line.lower():
                     line_lower = line.lower()
@@ -1335,18 +1360,18 @@ def manual_terminal_cleanup():
                             pid = int(columns[1])
                             if pid != os.getpid():  # Don't kill ourselves
                                 result = subprocess.run(
-                                    f"taskkill /PID {pid} /F", 
-                                    shell=True, 
+                                    f"taskkill /PID {pid} /F",
+                                    shell=True,
                                     capture_output=True,
-                                    text=True
+                                    text=True,
                                 )
                                 if result.returncode == 0:
                                     print(f"🔪 Killed {process_name} window {pid}")
                                     total_killed += 1
-                                    
+
         except Exception as e:
             logger.debug(f"Error checking {process_name}: {e}")
-    
+
     print(f"✅ Manual cleanup complete - killed {total_killed} terminal windows")
     return total_killed
 
@@ -1369,7 +1394,7 @@ def main():
     # Basic checks
     print("🔍 Performing system checks...")
     requirements_ok = check_requirements()
-    
+
     if not requirements_ok:
         print("\n❌ Requirements check failed")
         print("💡 Please fix the issues above and try again")
@@ -1385,14 +1410,18 @@ def main():
     # Double-check ports are available after cleanup
     backend_port = CONFIG["backend_port"]
     frontend_port = CONFIG["frontend_port"]
-    
+
     if not is_port_available(backend_port):
-        print(f"⚠️ Backend port {backend_port} still occupied - forcing final cleanup...")
+        print(
+            f"⚠️ Backend port {backend_port} still occupied - forcing final cleanup..."
+        )
         kill_processes_by_port(backend_port)
         time.sleep(2)
-    
+
     if not is_port_available(frontend_port):
-        print(f"⚠️ Frontend port {frontend_port} still occupied - forcing final cleanup...")
+        print(
+            f"⚠️ Frontend port {frontend_port} still occupied - forcing final cleanup..."
+        )
         kill_processes_by_port(frontend_port)
         time.sleep(2)
 
@@ -1485,7 +1514,7 @@ if __name__ == "__main__":
         total = cleanup_count + manual_count
         print(f"\n✅ Cleanup complete - total processes/terminals killed: {total}")
         sys.exit(0)
-    
+
     # Register signal handlers for graceful shutdown
     if hasattr(signal, "SIGINT"):
         signal.signal(signal.SIGINT, signal_handler)

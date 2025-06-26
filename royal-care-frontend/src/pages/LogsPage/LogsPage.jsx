@@ -4,7 +4,7 @@ import PageLayout from "../../globals/PageLayout";
 import LayoutRow from "../../globals/LayoutRow";
 import TabSwitcher from "../../globals/TabSwitcher";
 import DataTable from "../../globals/DataTable";
-import "./LogsPage.module.css"; // Import the CSS module for styling
+import styles from "./LogsPage.module.css"; // Import the CSS module as an object
 
 const LogsPage = () => {
   const [activeTab, setActiveTab] = useState("Authentication");
@@ -83,7 +83,7 @@ const LogsPage = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
-      <div className="logs-table">
+      <div className={styles.logsTable}>
         <DataTable
           columns={getColumns(activeTab)}
           data={getSampleData()}
