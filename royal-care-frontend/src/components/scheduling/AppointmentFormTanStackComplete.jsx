@@ -41,17 +41,72 @@ const initialFormState = {
 // Utility function to format date to yyyy-MM-dd
 const formatDateForInput = (dateValue) => {
   if (!dateValue) return "";
-  if (dateValue instanceof Date) {
-    return dateValue.toISOString().split("T")[0];
+
+  // If it's already a yyyy-MM-dd string, return as-is (treat as local date)
+  if (typeof dateValue === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+    return dateValue;
   }
+
+  // If it's a Date object, format it as local date
+  if (dateValue instanceof Date) {
+    const year = dateValue.getFullYear();
+    const month = String(dateValue.getMonth() + 1).padStart(2, "0");
+    const day = String(dateValue.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  // If it's an ISO string with time, extract the date part
   if (typeof dateValue === "string" && dateValue.includes("T")) {
     return dateValue.split("T")[0];
   }
+
+  // If it's a date string with GMT, parse it as a Date and format as local
   if (typeof dateValue === "string" && dateValue.includes("GMT")) {
-    // Handle date strings like "Thu Jun 26 2025 00:00:00 GMT+0800"
-    return new Date(dateValue).toISOString().split("T")[0];
+    const date = new Date(dateValue);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
+
+  // Return as-is for other string formats
   return dateValue;
+};
+
+// Utility function to check if selected date/time is in the past
+const isDateTimeInPast = (date, time) => {
+  if (!date || !time) return false;
+
+  const now = new Date();
+  const selectedDateTime = new Date(`${date}T${time}`);
+
+  return selectedDateTime < now;
+};
+
+// Utility function to get minimum date (today)
+const getMinDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+// Utility function to get minimum time for today
+const getMinTime = (selectedDate) => {
+  const today = new Date();
+  const todayString = `${today.getFullYear()}-${String(
+    today.getMonth() + 1
+  ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  if (selectedDate === todayString) {
+    const now = new Date();
+    // Add 1 hour buffer to current time for booking
+    now.setHours(now.getHours() + 1);
+    return now.toTimeString().slice(0, 5);
+  }
+
+  return ""; // No minimum time for future dates
 };
 
 const AppointmentFormTanStackComplete = ({
@@ -150,14 +205,59 @@ const AppointmentFormTanStackComplete = ({
         return;
       }
 
-      setFormData((prev) => ({ ...prev, [name]: value }));
-
-      // Clear errors
+      // Clear existing errors for this field
       if (errors[name]) {
         setErrors((prev) => ({ ...prev, [name]: "" }));
       }
+
+      // Validate date - prevent past dates
+      if (name === "date") {
+        const today = getMinDate();
+        if (value && value < today) {
+          setErrors((prev) => ({
+            ...prev,
+            date: "Cannot book appointments for past dates",
+          }));
+          return; // Don't update the form data
+        }
+
+        // If changing date, also validate existing time
+        if (
+          formData.start_time &&
+          isDateTimeInPast(value, formData.start_time)
+        ) {
+          setErrors((prev) => ({
+            ...prev,
+            start_time: "Cannot book appointments in the past",
+          }));
+        }
+      }
+
+      // Validate start time - prevent past times for today
+      if (name === "start_time") {
+        if (formData.date && isDateTimeInPast(formData.date, value)) {
+          setErrors((prev) => ({
+            ...prev,
+            start_time: "Cannot book appointments in the past",
+          }));
+          return; // Don't update the form data
+        }
+      }
+
+      // Validate end time - ensure it's after start time
+      if (name === "end_time") {
+        if (formData.start_time && value && value <= formData.start_time) {
+          setErrors((prev) => ({
+            ...prev,
+            end_time: "End time must be after start time",
+          }));
+          return; // Don't update the form data
+        }
+      }
+
+      setFormData((prev) => ({ ...prev, [name]: value }));
     },
-    [errors]
+    [errors, formData.date, formData.start_time]
   );
 
   // Register new client helper
@@ -231,6 +331,27 @@ const AppointmentFormTanStackComplete = ({
     if (!formData.start_time) newErrors.start_time = "Start time is required";
     if (!formData.end_time) newErrors.end_time = "End time is required";
     if (!formData.location) newErrors.location = "Location is required";
+
+    // Validate date and time are not in the past
+    if (formData.date && formData.start_time) {
+      if (isDateTimeInPast(formData.date, formData.start_time)) {
+        newErrors.start_time = "Cannot book appointments in the past";
+      }
+    }
+
+    // Validate date is not in the past
+    if (formData.date && formData.date < getMinDate()) {
+      newErrors.date = "Cannot book appointments for past dates";
+    }
+
+    // Validate end time is after start time
+    if (
+      formData.start_time &&
+      formData.end_time &&
+      formData.end_time <= formData.start_time
+    ) {
+      newErrors.end_time = "End time must be after start time";
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -547,6 +668,7 @@ const AppointmentFormTanStackComplete = ({
               value={formData.date}
               onChange={handleChange}
               disabled={isSubmitting}
+              min={getMinDate()}
               className={errors.date ? "error" : ""}
             />
             {errors.date && <div className="error-message">{errors.date}</div>}
@@ -560,6 +682,7 @@ const AppointmentFormTanStackComplete = ({
               value={formData.start_time}
               onChange={handleChange}
               disabled={isSubmitting}
+              min={getMinTime(formData.date)}
               className={errors.start_time ? "error" : ""}
             />
             {errors.start_time && (
@@ -575,6 +698,7 @@ const AppointmentFormTanStackComplete = ({
               value={formData.end_time}
               onChange={handleChange}
               disabled={isSubmitting}
+              min={formData.start_time || ""}
               className={errors.end_time ? "error" : ""}
             />
             {errors.end_time && (

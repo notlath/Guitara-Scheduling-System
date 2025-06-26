@@ -157,6 +157,17 @@ textarea {
   text-align: center;
 }
 
+.field-hint {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-top: 5px;
+  font-size: 0.85rem;
+  text-align: center;
+  border-left: 3px solid #1976d2;
+}
+
 .loading {
   text-align: center;
   padding: 20px;

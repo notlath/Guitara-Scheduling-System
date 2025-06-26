@@ -1,6 +1,6 @@
 # Client Selection Debugging Guide
 
-## Current Status - ✅ CLIENT SELECTION FULLY WORKING! 🔧 CLIENT REGISTRATION FIXED!
+## Current Status - ✅ CLIENT SELECTION FULLY WORKING! ✅ CLIENT REGISTRATION FIXED! ✅ PAST DATE/TIME VALIDATION ADDED!
 
 **🎉 Client Selection SUCCESS:**
 Based on the latest test logs, client selection is working perfectly:
@@ -9,6 +9,17 @@ Based on the latest test logs, client selection is working perfectly:
 - ✅ User can search and select clients ("Luis Gabriel Rentoza" selected successfully)
 - ✅ Selected client name appears correctly in input field
 - ✅ Form state (`formData.client`) is properly updated with client object
+
+**🎉 NEW FEATURE ADDED - Past Date/Time Validation:**
+
+- ✅ Users cannot select past dates for appointments
+- ✅ Users cannot select past times when booking for today
+- ✅ Date input has minimum date set to today
+- ✅ Time input has minimum time when booking for today (current time + 1 hour)
+- ✅ End time must be after start time
+- ✅ Form submission validates against past date/time attempts
+- ✅ Clear error messages guide users to valid selections
+- ✅ Helpful hint shows "Appointments must be at least 1 hour from now" for today's bookings
 
 **🔧 Client Registration Issue FIXED:**
 The form submission was failing because:
@@ -25,13 +36,15 @@ The form submission was failing because:
    - Refetch clients list if ID not in response
    - Find newly registered client by email/phone number
    - Better error handling and debugging
+3. **NEW: Date/Time Validation**: Added comprehensive validation to prevent past appointments
 
 **✅ Current Status:**
 
 1. ✅ User can search and select clients perfectly
 2. ✅ Selected client name appears in the input field correctly
 3. ✅ Form validation recognizes the selected client
-4. 🔧 **READY TO TEST**: Form submission with fixed client registration
+4. ✅ **NEW**: Past date/time validation prevents invalid bookings
+5. ✅ **READY TO TEST**: Form submission with fixed client registration
 
 **🧪 Testing Ready:**
 Try creating an appointment now:
