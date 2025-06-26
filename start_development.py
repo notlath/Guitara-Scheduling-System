@@ -129,7 +129,7 @@ def is_browser_already_open(url: str) -> bool:
                                 f"Found browser {browser} with frontend URL in process info"
                             )
                             return True
-                except:
+                except Exception:
                     continue
 
             # Method 2: Check for frontend-related window titles that might indicate our app is open
@@ -472,7 +472,7 @@ def start_backend() -> bool:
             return False
 
         # Use cmd instead of PowerShell for better reliability
-        cmd = f'start cmd /k "title Django Backend && cd /d "{project_root}" && venv\\Scripts\\activate && cd guitara && python manage.py runserver {backend_port}"'
+        cmd = f'start cmd /k "title Django Backend && cd /d \\"{project_root}\\" && venv\\Scripts\\activate && cd guitara && python manage.py runserver {backend_port}"'
 
         try:
             result = subprocess.run(cmd, shell=True, cwd=project_root)
@@ -545,7 +545,7 @@ def start_frontend() -> bool:
 
     if is_windows():
         # Windows: use cmd with npm.cmd for better compatibility
-        cmd = f'start cmd /k "title React Frontend && cd /d "{frontend_dir}" && npm.cmd run dev"'
+        cmd = f'start cmd /k "title React Frontend && cd /d \\"{frontend_dir}\\" && npm.cmd run dev"'
 
         try:
             result = subprocess.run(cmd, shell=True, cwd=project_root)
