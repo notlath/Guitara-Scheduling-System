@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
 import { shallowEqual, useDispatch } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
@@ -18,28 +18,31 @@ import { authInitialized, login } from "./features/auth/authSlice"; // Import ne
 import "./utils/serviceWorkerErrorSuppression";
 
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
-import CompanyInfoPage from "./pages/AboutPages/CompanyInfoPage";
-import DeveloperInfoPage from "./pages/AboutPages/DeveloperInfoPage";
-import SystemInfoPage from "./pages/AboutPages/SystemInfoPage";
-import AttendancePage from "./pages/AttendancePage/AttendancePage";
-import BookingsPage from "./pages/BookingsPage/BookingsPage";
-import ContactPage from "./pages/ContactPage/ContactPage";
-import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordPage";
-import FAQsPage from "./pages/FAQsPage/FAQsPage";
-import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
-import InventoryPage from "./pages/InventoryPage/InventoryPage";
-import NotificationsPage from "./pages/NotificationsPage/NotificationsPage";
-import ProfilePage from "./pages/ProfilePage/ProfilePage";
-import RegisterPage from "./pages/RegisterPage/RegisterPage";
-import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
-import SchedulingPage from "./pages/SchedulingPage/SchedulingPage";
-import SettingsAccountPage from "./pages/SettingsAccountPage/SettingsAccountPage";
-import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
-import SettingsPage from "./pages/SettingsPage/SettingsPage";
-import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage";
-import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
-import UserGuidePage from "./pages/UserGuidePage/UserGuidePage";
+
+// Lazy load pages to enable code splitting and reduce initial bundle size
+// This ensures CSS modules are only loaded when the page is actually accessed
+const CompanyInfoPage = React.lazy(() => import("./pages/AboutPages/CompanyInfoPage"));
+const DeveloperInfoPage = React.lazy(() => import("./pages/AboutPages/DeveloperInfoPage"));
+const SystemInfoPage = React.lazy(() => import("./pages/AboutPages/SystemInfoPage"));
+const AttendancePage = React.lazy(() => import("./pages/AttendancePage/AttendancePage"));
+const BookingsPage = React.lazy(() => import("./pages/BookingsPage/BookingsPage"));
+const ContactPage = React.lazy(() => import("./pages/ContactPage/ContactPage"));
+const EnterNewPasswordPage = React.lazy(() => import("./pages/EnterNewPasswordPage/EnterNewPasswordPage"));
+const FAQsPage = React.lazy(() => import("./pages/FAQsPage/FAQsPage"));
+const ForgotPasswordConfirmationPage = React.lazy(() => import("./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage"));
+const ForgotPasswordPage = React.lazy(() => import("./pages/ForgotPasswordPage/ForgotPasswordPage"));
+const InventoryPage = React.lazy(() => import("./pages/InventoryPage/InventoryPage"));
+const NotificationsPage = React.lazy(() => import("./pages/NotificationsPage/NotificationsPage"));
+const ProfilePage = React.lazy(() => import("./pages/ProfilePage/ProfilePage"));
+const RegisterPage = React.lazy(() => import("./pages/RegisterPage/RegisterPage"));
+const SalesReportsPage = React.lazy(() => import("./pages/SalesReportsPage/SalesReportsPage"));
+const SchedulingPage = React.lazy(() => import("./pages/SchedulingPage/SchedulingPage"));
+const SettingsAccountPage = React.lazy(() => import("./pages/SettingsAccountPage/SettingsAccountPage"));
+const SettingsDataPage = React.lazy(() => import("./pages/SettingsDataPage/SettingsDataPage"));
+const SettingsPage = React.lazy(() => import("./pages/SettingsPage/SettingsPage"));
+const StaffAttendancePage = React.lazy(() => import("./pages/StaffAttendancePage/StaffAttendancePage"));
+const TwoFactorAuthPage = React.lazy(() => import("./pages/TwoFactorAuthPage/TwoFactorAuthPage"));
+const UserGuidePage = React.lazy(() => import("./pages/UserGuidePage/UserGuidePage"));
 import { validateToken } from "./services/auth";
 import { cleanupInvalidTokens } from "./utils/tokenManager";
 // import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
@@ -259,99 +262,101 @@ const App = () => {
   return (
     <BrowserRouter>
       <div className="App">
-        <Routes>
-          <Route path="/" element={<RouteHandler />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/2fa" element={<TwoFactorAuthPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route
-            path="/2fa-forgot-password"
-            element={<TwoFAForgotPasswordPage />}
-          />
-          <Route
-            path="/enter-new-password"
-            element={<EnterNewPasswordPage />}
-          />
-          <Route
-            path="/forgot-password-confirmation"
-            element={<ForgotPasswordConfirmationPage />}
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <AttendanceMemoProvider>
-                  <MainLayout />
-                </AttendanceMemoProvider>
-              </ProtectedRoute>
-            }
-          >
+        <Suspense fallback={<div className="loading-spinner">Loading...</div>}>
+          <Routes>
+            <Route path="/" element={<RouteHandler />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/2fa" element={<TwoFactorAuthPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route
-              index
-              element={
-                user?.role === "operator" ? (
-                  <OperatorDashboard />
-                ) : user?.role === "therapist" ? (
-                  <TherapistDashboard />
-                ) : user?.role === "driver" ? (
-                  <DriverDashboard />
-                ) : (
-                  <Navigate to="/" />
-                )
-              }
-            />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="scheduling" element={<SchedulingPage />} />
-            <Route path="availability" element={<AvailabilityManager />} />
-            <Route path="bookings" element={<BookingsPage />} />
-            <Route
-              path="attendance"
-              element={
-                user?.role === "therapist" || user?.role === "driver" ? (
-                  <StaffAttendancePage />
-                ) : (
-                  <AttendancePage />
-                )
-              }
+              path="/2fa-forgot-password"
+              element={<TwoFAForgotPasswordPage />}
             />
             <Route
-              path="sales-reports"
-              element={
-                user?.role === "therapist" || user?.role === "driver" ? (
-                  <Navigate to="/dashboard" replace />
-                ) : (
-                  <SalesReportsPage />
-                )
-              }
+              path="/enter-new-password"
+              element={<EnterNewPasswordPage />}
             />
-            <Route path="inventory" element={<InventoryPage />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="settings/account" element={<SettingsAccountPage />} />
             <Route
-              path="settings/data"
+              path="/forgot-password-confirmation"
+              element={<ForgotPasswordConfirmationPage />}
+            />
+            <Route
+              path="/dashboard"
               element={
-                user?.role === "therapist" || user?.role === "driver" ? (
-                  <Navigate to="/dashboard" replace />
-                ) : (
-                  <SettingsDataPage />
-                )
+                <ProtectedRoute>
+                  <AttendanceMemoProvider>
+                    <MainLayout />
+                  </AttendanceMemoProvider>
+                </ProtectedRoute>
               }
-            />{" "}
-            {/* Help Pages */}
-            <Route path="help">
-              <Route path="user-guide" element={<UserGuidePage />} />
-              <Route path="faqs" element={<FAQsPage />} />
-              <Route path="contact" element={<ContactPage />} />
+            >
+              <Route
+                index
+                element={
+                  user?.role === "operator" ? (
+                    <OperatorDashboard />
+                  ) : user?.role === "therapist" ? (
+                    <TherapistDashboard />
+                  ) : user?.role === "driver" ? (
+                    <DriverDashboard />
+                  ) : (
+                    <Navigate to="/" />
+                  )
+                }
+              />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="scheduling" element={<SchedulingPage />} />
+              <Route path="availability" element={<AvailabilityManager />} />
+              <Route path="bookings" element={<BookingsPage />} />
+              <Route
+                path="attendance"
+                element={
+                  user?.role === "therapist" || user?.role === "driver" ? (
+                    <StaffAttendancePage />
+                  ) : (
+                    <AttendancePage />
+                  )
+                }
+              />
+              <Route
+                path="sales-reports"
+                element={
+                  user?.role === "therapist" || user?.role === "driver" ? (
+                    <Navigate to="/dashboard" replace />
+                  ) : (
+                    <SalesReportsPage />
+                  )
+                }
+              />
+              <Route path="inventory" element={<InventoryPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="settings/account" element={<SettingsAccountPage />} />
+              <Route
+                path="settings/data"
+                element={
+                  user?.role === "therapist" || user?.role === "driver" ? (
+                    <Navigate to="/dashboard" replace />
+                  ) : (
+                    <SettingsDataPage />
+                  )
+                }
+              />{" "}
+              {/* Help Pages */}
+              <Route path="help">
+                <Route path="user-guide" element={<UserGuidePage />} />
+                <Route path="faqs" element={<FAQsPage />} />
+                <Route path="contact" element={<ContactPage />} />
+              </Route>
+              {/* About Pages */}
+              <Route path="about">
+                <Route path="company" element={<CompanyInfoPage />} />
+                <Route path="system" element={<SystemInfoPage />} />
+                <Route path="developers" element={<DeveloperInfoPage />} />{" "}
+              </Route>
             </Route>
-            {/* About Pages */}
-            <Route path="about">
-              <Route path="company" element={<CompanyInfoPage />} />
-              <Route path="system" element={<SystemInfoPage />} />
-              <Route path="developers" element={<DeveloperInfoPage />} />{" "}
-            </Route>
-          </Route>
-        </Routes>
+          </Routes>
+        </Suspense>
       </div>
     </BrowserRouter>
   );
