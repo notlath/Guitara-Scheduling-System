@@ -1,12 +1,14 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
-import { requestPayment } from "../features/scheduling/schedulingSlice";
 // Enhanced Redux hooks for automatic TanStack Query cache invalidation
 import { useEnhancedTherapistActions } from "../hooks/useEnhancedRedux";
 // TANSTACK QUERY: Replace optimized hooks with TanStack Query
 import { useEnhancedDashboardData } from "../hooks/useEnhancedDashboardData";
+// Cache invalidation utility
+import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 
@@ -26,6 +28,8 @@ import WebSocketStatus from "./scheduling/WebSocketStatus";
 const TherapistDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   // Enhanced Redux actions with automatic TanStack Query cache invalidation
   const {
     acceptAppointment: enhancedAcceptAppointment,
@@ -34,6 +38,7 @@ const TherapistDashboard = () => {
     startSession: enhancedStartSession,
     completeSession: enhancedCompleteSession,
     requestPickup: enhancedRequestPickup,
+    markPaymentRequest: enhancedMarkPaymentRequest,
   } = useEnhancedTherapistActions();
   // Remove the sync event handlers - TanStack Query handles real-time updates automatically
 
@@ -161,7 +166,16 @@ const TherapistDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await enhancedAcceptAppointment(appointmentId);
-      // No need for manual refetch - enhanced action handles cache invalidation automatically
+
+      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+      await Promise.all([
+        refetch(), // Your existing refetch
+        invalidateAppointmentCaches(queryClient, {
+          userId: user?.id,
+          userRole: "therapist",
+          appointmentId,
+        }),
+      ]);
     } catch (error) {
       // More user-friendly error message
       if (
@@ -193,7 +207,17 @@ const TherapistDashboard = () => {
     }
     try {
       await enhancedRejectAppointment(appointmentId, cleanReason);
-      // No need for manual refetch - enhanced action handles cache invalidation automatically
+
+      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+      await Promise.all([
+        refetch(),
+        invalidateAppointmentCaches(queryClient, {
+          userId: user?.id,
+          userRole: "therapist",
+          appointmentId,
+        }),
+      ]);
+
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
       // Better error message handling with authentication awareness
@@ -229,7 +253,16 @@ const TherapistDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await enhancedConfirmReadiness(appointmentId);
-      // No need for manual refetch - enhanced action handles cache invalidation automatically
+
+      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+      await Promise.all([
+        refetch(),
+        invalidateAppointmentCaches(queryClient, {
+          userId: user?.id,
+          userRole: "therapist",
+          appointmentId,
+        }),
+      ]);
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
@@ -242,7 +275,16 @@ const TherapistDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await enhancedStartSession(appointmentId);
-      // No need for manual refetch - enhanced action handles cache invalidation automatically
+
+      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+      await Promise.all([
+        refetch(),
+        invalidateAppointmentCaches(queryClient, {
+          userId: user?.id,
+          userRole: "therapist",
+          appointmentId,
+        }),
+      ]);
     } catch (error) {
       console.error("Failed to start session:", error);
       alert("Failed to start session. Please try again.");
@@ -254,9 +296,17 @@ const TherapistDashboard = () => {
     const actionKey = `request_payment_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(requestPayment(appointmentId)).unwrap();
-      // TANSTACK QUERY: Use refetch instead of optimizedDataManager
-      await refetch();
+      await enhancedMarkPaymentRequest(appointmentId);
+
+      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+      await Promise.all([
+        refetch(),
+        invalidateAppointmentCaches(queryClient, {
+          userId: user?.id,
+          userRole: "therapist",
+          appointmentId,
+        }),
+      ]);
     } catch (error) {
       console.error("Failed to request payment:", error);
       alert("Failed to request payment. Please try again.");
@@ -273,7 +323,16 @@ const TherapistDashboard = () => {
       try {
         setActionLoading(actionKey, true);
         await enhancedCompleteSession(appointmentId);
-        // No need for manual refetch - enhanced action handles cache invalidation automatically
+
+        // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+        await Promise.all([
+          refetch(),
+          invalidateAppointmentCaches(queryClient, {
+            userId: user?.id,
+            userRole: "therapist",
+            appointmentId,
+          }),
+        ]);
       } catch (error) {
         console.error("Failed to complete session:", error);
         alert("Failed to complete session. Please try again.");
@@ -288,7 +347,17 @@ const TherapistDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await enhancedRequestPickup(appointmentId, urgency);
-      // No need for manual refetch - enhanced action handles cache invalidation automatically
+
+      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+      await Promise.all([
+        refetch(),
+        invalidateAppointmentCaches(queryClient, {
+          userId: user?.id,
+          userRole: "therapist",
+          appointmentId,
+        }),
+      ]);
+
       alert(
         urgency === "urgent"
           ? "Urgent pickup request sent!"

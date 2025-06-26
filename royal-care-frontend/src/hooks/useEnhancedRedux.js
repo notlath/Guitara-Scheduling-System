@@ -98,8 +98,8 @@ export const useEnhancedTherapistActions = () => {
   const acceptAppointment = useCallback(
     async (appointmentId) => {
       // Enhanced validation: Check if user is authorized therapist
-      if (!user || user.role !== 'therapist') {
-        throw new Error('Only therapists can accept appointments');
+      if (!user || user.role !== "therapist") {
+        throw new Error("Only therapists can accept appointments");
       }
 
       const { therapistConfirm } = await import(
@@ -125,8 +125,8 @@ export const useEnhancedTherapistActions = () => {
   const rejectAppointment = useCallback(
     async (appointmentId, rejectionReason) => {
       // Enhanced validation: Check if user is authorized therapist
-      if (!user || user.role !== 'therapist') {
-        throw new Error('Only therapists can reject appointments');
+      if (!user || user.role !== "therapist") {
+        throw new Error("Only therapists can reject appointments");
       }
 
       const { rejectAppointment } = await import(
@@ -155,8 +155,8 @@ export const useEnhancedTherapistActions = () => {
   const confirmReadiness = useCallback(
     async (appointmentId) => {
       // Enhanced validation: Check if user is authorized therapist
-      if (!user || user.role !== 'therapist') {
-        throw new Error('Only therapists can confirm readiness');
+      if (!user || user.role !== "therapist") {
+        throw new Error("Only therapists can confirm readiness");
       }
 
       const { therapistConfirm } = await import(
@@ -180,8 +180,8 @@ export const useEnhancedTherapistActions = () => {
   const startSession = useCallback(
     async (appointmentId) => {
       // Enhanced validation: Check if user is authorized therapist for this appointment
-      if (!user || user.role !== 'therapist') {
-        throw new Error('Only therapists can start sessions');
+      if (!user || user.role !== "therapist") {
+        throw new Error("Only therapists can start sessions");
       }
 
       // TODO: Add appointment ownership validation here if needed
@@ -209,8 +209,8 @@ export const useEnhancedTherapistActions = () => {
   const completeSession = useCallback(
     async (appointmentId) => {
       // Enhanced validation: Check if user is authorized therapist
-      if (!user || user.role !== 'therapist') {
-        throw new Error('Only therapists can complete sessions');
+      if (!user || user.role !== "therapist") {
+        throw new Error("Only therapists can complete sessions");
       }
 
       const { completeAppointment } = await import(
@@ -235,8 +235,8 @@ export const useEnhancedTherapistActions = () => {
   const requestPickup = useCallback(
     async (appointmentId, urgency = "normal") => {
       // Enhanced validation: Check if user is authorized therapist
-      if (!user || user.role !== 'therapist') {
-        throw new Error('Only therapists can request pickups');
+      if (!user || user.role !== "therapist") {
+        throw new Error("Only therapists can request pickups");
       }
 
       const { requestPickup } = await import(
@@ -272,8 +272,8 @@ export const useEnhancedTherapistActions = () => {
   const markPaymentRequest = useCallback(
     async (appointmentId) => {
       // Enhanced validation: Check if user is authorized therapist
-      if (!user || user.role !== 'therapist') {
-        throw new Error('Only therapists can request payments');
+      if (!user || user.role !== "therapist") {
+        throw new Error("Only therapists can request payments");
       }
 
       const { requestPayment } = await import(
@@ -313,8 +313,8 @@ export const useEnhancedDriverActions = () => {
   const confirmAppointment = useCallback(
     async (appointmentId) => {
       // Enhanced validation: Check if user is authorized driver
-      if (!user || user.role !== 'driver') {
-        throw new Error('Only drivers can confirm appointments');
+      if (!user || user.role !== "driver") {
+        throw new Error("Only drivers can confirm appointments");
       }
 
       const { driverConfirm } = await import(
@@ -340,8 +340,8 @@ export const useEnhancedDriverActions = () => {
   const confirmPickup = useCallback(
     async (appointmentId) => {
       // Enhanced validation: Check if user is authorized driver
-      if (!user || user.role !== 'driver') {
-        throw new Error('Only drivers can confirm pickups');
+      if (!user || user.role !== "driver") {
+        throw new Error("Only drivers can confirm pickups");
       }
 
       const { confirmPickup } = await import(
@@ -367,8 +367,8 @@ export const useEnhancedDriverActions = () => {
   const rejectPickup = useCallback(
     async (appointmentId, reason) => {
       // Enhanced validation: Check if user is authorized driver
-      if (!user || user.role !== 'driver') {
-        throw new Error('Only drivers can reject pickups');
+      if (!user || user.role !== "driver") {
+        throw new Error("Only drivers can reject pickups");
       }
 
       const { rejectPickup } = await import(
@@ -394,8 +394,8 @@ export const useEnhancedDriverActions = () => {
   const startJourney = useCallback(
     async (appointmentId) => {
       // Enhanced validation: Check if user is authorized driver
-      if (!user || user.role !== 'driver') {
-        throw new Error('Only drivers can start journeys');
+      if (!user || user.role !== "driver") {
+        throw new Error("Only drivers can start journeys");
       }
 
       const { startJourney } = await import(
@@ -419,8 +419,8 @@ export const useEnhancedDriverActions = () => {
   const arriveAtLocation = useCallback(
     async (appointmentId) => {
       // Enhanced validation: Check if user is authorized driver
-      if (!user || user.role !== 'driver') {
-        throw new Error('Only drivers can mark arrival');
+      if (!user || user.role !== "driver") {
+        throw new Error("Only drivers can mark arrival");
       }
 
       const { markArrived } = await import(
@@ -444,8 +444,8 @@ export const useEnhancedDriverActions = () => {
   const dropOffTherapist = useCallback(
     async (appointmentId) => {
       // Enhanced validation: Check if user is authorized driver
-      if (!user || user.role !== 'driver') {
-        throw new Error('Only drivers can complete drop-offs');
+      if (!user || user.role !== "driver") {
+        throw new Error("Only drivers can complete drop-offs");
       }
 
       const { updateAppointmentStatus } = await import(
@@ -453,9 +453,9 @@ export const useEnhancedDriverActions = () => {
       );
 
       return enhancedDispatch(
-        updateAppointmentStatus({ 
-          id: appointmentId, 
-          status: "therapist_dropped_off"
+        updateAppointmentStatus({
+          id: appointmentId,
+          status: "therapist_dropped_off",
         }),
         {
           optimistic: {
@@ -476,8 +476,8 @@ export const useEnhancedDriverActions = () => {
   const completeReturnJourney = useCallback(
     async (appointmentId) => {
       // Enhanced validation: Check if user is authorized driver
-      if (!user || user.role !== 'driver') {
-        throw new Error('Only drivers can complete return journeys');
+      if (!user || user.role !== "driver") {
+        throw new Error("Only drivers can complete return journeys");
       }
 
       const { completeReturnJourney } = await import(
@@ -639,9 +639,7 @@ export const useEnhancedOperatorActions = () => {
   const autoCancelOverdue = useCallback(async () => {
     // Enhanced validation: Check if user is authorized operator
     if (!user || user.role !== "operator") {
-      throw new Error(
-        "Only operators can auto-cancel overdue appointments"
-      );
+      throw new Error("Only operators can auto-cancel overdue appointments");
     }
 
     const { autoCancelOverdueAppointments } = await import(

@@ -64,10 +64,16 @@ export const invalidateAppointmentCaches = async (
               queryKey: queryKeys.dashboard.therapist(userId),
             }),
             // Legacy query keys
-            queryClient.invalidateQueries({ queryKey: ["appointments", "therapist", userId] }),
-            queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] }),
+            queryClient.invalidateQueries({
+              queryKey: ["appointments", "therapist", userId],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["appointments", "therapist"],
+            }),
             // Dashboard-specific keys
-            queryClient.invalidateQueries({ queryKey: ["dashboard", "therapist", userId] })
+            queryClient.invalidateQueries({
+              queryKey: ["dashboard", "therapist", userId],
+            })
           );
           break;
         case "driver":
@@ -79,10 +85,16 @@ export const invalidateAppointmentCaches = async (
               queryKey: queryKeys.dashboard.driver(userId),
             }),
             // Legacy query keys
-            queryClient.invalidateQueries({ queryKey: ["appointments", "driver", userId] }),
-            queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] }),
+            queryClient.invalidateQueries({
+              queryKey: ["appointments", "driver", userId],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["appointments", "driver"],
+            }),
             // Dashboard-specific keys
-            queryClient.invalidateQueries({ queryKey: ["dashboard", "driver", userId] })
+            queryClient.invalidateQueries({
+              queryKey: ["dashboard", "driver", userId],
+            })
           );
           break;
         case "operator":
@@ -91,16 +103,32 @@ export const invalidateAppointmentCaches = async (
               queryKey: queryKeys.dashboard.operator,
             }),
             // Operator sees all data, so invalidate comprehensive set
-            queryClient.invalidateQueries({ queryKey: ["dashboard", "operator"] }),
+            queryClient.invalidateQueries({
+              queryKey: ["dashboard", "operator"],
+            }),
             queryClient.invalidateQueries({ queryKey: ["operator"] }),
             // Operator-specific views
-            queryClient.invalidateQueries({ queryKey: ["rejected", "appointments"] }),
-            queryClient.invalidateQueries({ queryKey: ["pending", "appointments"] }),
-            queryClient.invalidateQueries({ queryKey: ["timeout", "appointments"] }),
-            queryClient.invalidateQueries({ queryKey: ["payment", "appointments"] }),
-            queryClient.invalidateQueries({ queryKey: ["workflow", "appointments"] }),
-            queryClient.invalidateQueries({ queryKey: ["sessions", "appointments"] }),
-            queryClient.invalidateQueries({ queryKey: ["pickup", "appointments"] })
+            queryClient.invalidateQueries({
+              queryKey: ["rejected", "appointments"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["pending", "appointments"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["timeout", "appointments"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["payment", "appointments"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["workflow", "appointments"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["sessions", "appointments"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["pickup", "appointments"],
+            })
           );
           break;
       }
@@ -111,9 +139,11 @@ export const invalidateAppointmentCaches = async (
       // Invalidate all role-specific queries since appointment changes affect everyone
       invalidationPromises.push(
         // All therapist queries
-        queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["appointments", "therapist"],
+        }),
         queryClient.invalidateQueries({ queryKey: ["dashboard", "therapist"] }),
-        // All driver queries  
+        // All driver queries
         queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] }),
         queryClient.invalidateQueries({ queryKey: ["dashboard", "driver"] }),
         // All operator queries
