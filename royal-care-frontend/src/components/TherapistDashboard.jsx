@@ -3,13 +3,10 @@ import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import {
-  completeAppointment,
-  rejectAppointment,
   requestPayment,
-  requestPickup,
-  startSession,
-  therapistConfirm,
 } from "../features/scheduling/schedulingSlice";
+// Enhanced Redux hooks for automatic TanStack Query cache invalidation
+import { useEnhancedTherapistActions } from "../hooks/useEnhancedRedux";
 // TANSTACK QUERY: Replace optimized hooks with TanStack Query
 import { useEnhancedDashboardData } from "../hooks/useEnhancedDashboardData";
 import { LoadingButton } from "./common/LoadingComponents";
@@ -31,6 +28,15 @@ import WebSocketStatus from "./scheduling/WebSocketStatus";
 const TherapistDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  // Enhanced Redux actions with automatic TanStack Query cache invalidation
+  const {
+    acceptAppointment: enhancedAcceptAppointment,
+    rejectAppointment: enhancedRejectAppointment,
+    confirmReadiness: enhancedConfirmReadiness,
+    startSession: enhancedStartSession,
+    completeSession: enhancedCompleteSession,
+    requestPickup: enhancedRequestPickup
+  } = useEnhancedTherapistActions();
   // Remove the sync event handlers - TanStack Query handles real-time updates automatically
 
   // Get user from Redux state
@@ -151,14 +157,13 @@ const TherapistDashboard = () => {
     navigate("/");
   };
 
-  // Handle appointment status changes with TanStack Query refetch
+  // Handle appointment status changes with enhanced Redux actions (automatic TanStack Query cache invalidation)
   const handleAcceptAppointment = async (appointmentId) => {
     const actionKey = `accept_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(therapistConfirm(appointmentId)).unwrap();
-      // TANSTACK QUERY: Use refetch instead of optimizedDataManager
-      await refetch();
+      await enhancedAcceptAppointment(appointmentId);
+      // No need for manual refetch - enhanced action handles cache invalidation automatically
     } catch (error) {
       // More user-friendly error message
       if (
@@ -189,14 +194,8 @@ const TherapistDashboard = () => {
       return;
     }
     try {
-      await dispatch(
-        rejectAppointment({
-          id: appointmentId,
-          rejectionReason: cleanReason,
-        })
-      ).unwrap();
-      // TANSTACK QUERY: Use refetch instead of optimizedDataManager
-      await refetch();
+      await enhancedRejectAppointment(appointmentId, cleanReason);
+      // No need for manual refetch - enhanced action handles cache invalidation automatically
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
       // Better error message handling with authentication awareness
@@ -231,9 +230,8 @@ const TherapistDashboard = () => {
     const actionKey = `confirm_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(therapistConfirm(appointmentId)).unwrap();
-      // TANSTACK QUERY: Use refetch instead of optimizedDataManager
-      await refetch();
+      await enhancedConfirmReadiness(appointmentId);
+      // No need for manual refetch - enhanced action handles cache invalidation automatically
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
@@ -245,9 +243,8 @@ const TherapistDashboard = () => {
     const actionKey = `start_session_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(startSession(appointmentId)).unwrap();
-      // TANSTACK QUERY: Use refetch instead of optimizedDataManager
-      await refetch();
+      await enhancedStartSession(appointmentId);
+      // No need for manual refetch - enhanced action handles cache invalidation automatically
     } catch (error) {
       console.error("Failed to start session:", error);
       alert("Failed to start session. Please try again.");
@@ -277,9 +274,8 @@ const TherapistDashboard = () => {
       const actionKey = `complete_session_${appointmentId}`;
       try {
         setActionLoading(actionKey, true);
-        await dispatch(completeAppointment(appointmentId)).unwrap();
-        // TANSTACK QUERY: Use refetch instead of optimizedDataManager
-        await refetch();
+        await enhancedCompleteSession(appointmentId);
+        // No need for manual refetch - enhanced action handles cache invalidation automatically
       } catch (error) {
         console.error("Failed to complete session:", error);
         alert("Failed to complete session. Please try again.");
@@ -293,18 +289,8 @@ const TherapistDashboard = () => {
     const actionKey = `request_pickup_${appointmentId}_${urgency}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(
-        requestPickup({
-          appointmentId,
-          pickup_urgency: urgency,
-          pickup_notes:
-            urgency === "urgent"
-              ? "Urgent pickup requested by therapist"
-              : "Pickup requested by therapist",
-        })
-      ).unwrap();
-      // TANSTACK QUERY: Use refetch instead of optimizedDataManager
-      await refetch();
+      await enhancedRequestPickup(appointmentId, urgency);
+      // No need for manual refetch - enhanced action handles cache invalidation automatically
       alert(
         urgency === "urgent"
           ? "Urgent pickup request sent!"
