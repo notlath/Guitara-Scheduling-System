@@ -471,7 +471,7 @@ const App = () => {
               }
             />
             <Route
-              path="settings/data"
+              path="data"
               element={
                 user?.role === "therapist" || user?.role === "driver" ? (
                   <Navigate to="/dashboard" replace />
@@ -481,6 +481,22 @@ const App = () => {
                   </Suspense>
                 )
               }
+            />
+            <Route
+              path="logs"
+              element={
+                user?.role === "therapist" || user?.role === "driver" ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <LogsPage />
+                  </Suspense>
+                )
+              }
+            />
+            <Route
+              path="settings/data"
+              element={<Navigate to="/dashboard/data" replace />} // Redirect old route
             />
             {/* Help Pages */}
             <Route path="help">
