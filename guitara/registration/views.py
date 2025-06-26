@@ -1392,6 +1392,7 @@ class UserProfileUpdateView(APIView):
                 "first_name",
                 "last_name",
                 "phone_number",
+                "two_factor_enabled",
             ]
             for field in allowed_fields:
                 if field in request.data:

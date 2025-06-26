@@ -365,7 +365,13 @@ def user_profile(request):
 
     elif request.method == "PUT":
         # Only allow updating specific fields
-        allowed_fields = ["first_name", "last_name", "email", "phone_number"]
+        allowed_fields = [
+            "first_name",
+            "last_name",
+            "email",
+            "phone_number",
+            "two_factor_enabled",
+        ]
         update_data = {
             key: value for key, value in request.data.items() if key in allowed_fields
         }

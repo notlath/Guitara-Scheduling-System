@@ -69,9 +69,6 @@ const SalesReportsPage = React.lazy(() =>
 const SchedulingPage = React.lazy(() =>
   import("./pages/SchedulingPage/SchedulingPage")
 );
-const SettingsAccountPage = React.lazy(() =>
-  import("./pages/SettingsAccountPage/SettingsAccountPage")
-);
 const SettingsDataPage = React.lazy(() =>
   import("./pages/SettingsDataPage/SettingsDataPage")
 );
@@ -470,14 +467,6 @@ const App = () => {
               element={
                 <Suspense fallback={<LoadingOverlay />}>
                   <SettingsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="settings/account"
-              element={
-                <Suspense fallback={<LoadingOverlay />}>
-                  <SettingsAccountPage />
                 </Suspense>
               }
             />

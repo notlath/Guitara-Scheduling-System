@@ -4,9 +4,6 @@
 /* .container and .content are now provided by PageLayout's global-container/global-content */
 
 /* If you need to add ProfilePage-specific tweaks, use more specific selectors: */
-.profileContainer {
-  /* Add any ProfilePage-specific padding or margin if needed */
-}
 
 /* Header Section */
 .header {
@@ -218,20 +215,33 @@
   margin-bottom: 8px;
 }
 
+/* Main Container */
+.container {
+  padding: var(--spacing-lg) 0;
+}
+
+.content {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  background: var(--background);
+  border-radius: 8px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
 /* Loading and Error States */
 .loadingContainer {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg);
   text-align: center;
 }
 
 .loadingContainer p {
-  margin-top: var(--spacing-md);
-  font-size: var(--font-size-md);
+  margin-top: var(--spacing-sm);
   color: var(--text-600);
+  font-size: 0.9rem;
 }
 
 .noDataMessage {
@@ -240,16 +250,232 @@
 }
 
 .noDataMessage h2 {
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  color: var(--text-800);
-  margin: 0 0 var(--spacing-md) 0;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-700);
 }
 
 .noDataMessage p {
-  font-size: var(--font-size-md);
+  margin-bottom: var(--spacing-lg);
   color: var(--text-600);
-  margin: 0 0 var(--spacing-xl) 0;
+}
+
+/* User Email */
+.userEmail {
+  color: var(--text-600);
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 0.9rem;
+}
+
+/* Section tabs */
+.sectionTabs {
+  display: flex;
+  gap: 0;
+  margin: 0 var(--spacing-lg) var(--spacing-lg);
+  border-bottom: 1px solid var(--background-100);
+}
+
+.tabButton {
+  background: none;
+  border: none;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-600);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  border-radius: 6px 6px 0 0;
+}
+
+.tabButton:hover {
+  background: var(--background-50);
+  color: var(--primary-600);
+}
+
+.tabButton.active {
+  color: var(--primary-600);
+  background: var(--primary-50);
+  border-bottom-color: var(--primary-600);
+}
+
+/* Form sections */
+.section {
+  background: var(--background);
+  border-radius: 8px;
+  padding: var(--spacing-lg);
+  margin: 0 var(--spacing-lg) var(--spacing-lg);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--background-100);
+}
+
+/* Forms */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.label {
+  font-weight: 500;
+  color: var(--text-700);
+  font-size: 0.85rem;
+}
+
+.input {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--background-200);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-md);
+  transition: all 0.2s ease;
+  background: var(--background);
+  color: var(--text);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary-400);
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+.input::placeholder {
+  color: var(--text-400);
+}
+
+.submitButton {
+  background: var(--primary);
+  color: var(--background);
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-top: var(--spacing-sm);
+}
+
+.submitButton:hover:not(:disabled) {
+  background: var(--primary-600);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.submitButton:disabled {
+  background: var(--background-300);
+  color: var(--text-400);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Messages */
+.errorMessage {
+  background: var(--error-bg);
+  color: var(--error-text);
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--error);
+  font-weight: 500;
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.85rem;
+}
+
+.successMessage {
+  background: var(--success-bg);
+  color: var(--success-text);
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--success);
+  font-weight: 500;
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.85rem;
+}
+
+/* Two-Factor Authentication Toggle Styles */
+.twoFactorToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.twoFactorStatus {
+  font-weight: 500;
+  font-size: 0.9rem;
+  min-width: 70px;
+}
+
+.toggleButton {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  background-color: var(--background-200);
+  border: 2px solid var(--background-300);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+  padding: 0;
+}
+
+.toggleButton:hover {
+  border-color: var(--primary-400);
+}
+
+.toggleButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toggleButton.enabled {
+  background-color: var(--primary-500);
+  border-color: var(--primary-500);
+}
+
+.toggleSlider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.toggleSlider.on {
+  transform: translateX(24px);
+}
+
+.toggleSlider.off {
+  transform: translateX(0);
+}
+
+.toggleLoading {
+  font-size: 0.8rem;
+  color: var(--text-600);
+  font-style: italic;
+}
+
+.twoFactorDescription {
+  margin-top: var(--spacing-xs);
+  font-size: 0.8rem;
+  color: var(--text-600);
+  line-height: 1.4;
+  max-width: 400px;
 }
 
 /* Responsive Design */
@@ -275,9 +501,32 @@
     gap: var(--spacing-sm);
   }
 
-  .profileSection {
+  .profileSection,
+  .section {
     margin: 0 var(--spacing-md) var(--spacing-md);
     padding: var(--spacing-md);
+  }
+
+  .sectionTabs {
+    margin: 0 var(--spacing-md) var(--spacing-md);
+    flex-direction: column;
+    border-bottom: none;
+    border-right: 1px solid var(--background-200);
+  }
+
+  .tabButton {
+    text-align: left;
+    border-bottom: none;
+    border-right: 2px solid transparent;
+  }
+
+  .tabButton.active {
+    border-bottom: none;
+    border-right-color: var(--primary);
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -298,8 +547,13 @@
     font-size: var(--font-size-md);
   }
 
-  .profileSection {
+  .profileSection,
+  .section {
     margin: 0 var(--spacing-xs) var(--spacing-xs);
     padding: var(--spacing-sm);
+  }
+
+  .submitButton {
+    width: 100%;
   }
 }
