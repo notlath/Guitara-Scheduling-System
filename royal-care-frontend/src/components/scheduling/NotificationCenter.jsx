@@ -38,10 +38,14 @@ const NotificationCenter = ({ onClose }) => {
         throw new Error("No authentication token found");
       }
 
+      const baseURL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
       // Try primary endpoint first, then fallback to debug endpoint if needed
       const endpoints = [
-        "http://localhost:8000/api/scheduling/notifications/",
-        "http://localhost:8000/api/scheduling/notifications/debug_all/",
+        `${baseURL}/scheduling/notifications/`,
+        `${baseURL}/scheduling/notifications/debug_all/`,
       ];
 
       let data = null;
@@ -108,9 +112,12 @@ const NotificationCenter = ({ onClose }) => {
     async (notificationId) => {
       try {
         const token = localStorage.getItem("knoxToken");
+        const baseURL = import.meta.env.PROD
+          ? "https://charismatic-appreciation-production.up.railway.app/api"
+          : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
         const response = await fetch(
-          `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_read/`,
+          `${baseURL}/scheduling/notifications/${notificationId}/mark_as_read/`,
           {
             method: "POST",
             headers: {
@@ -189,9 +196,12 @@ const NotificationCenter = ({ onClose }) => {
   const markAsUnread = async (notificationId) => {
     try {
       const token = localStorage.getItem("knoxToken");
+      const baseURL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
       const response = await fetch(
-        `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_unread/`,
+        `${baseURL}/scheduling/notifications/${notificationId}/mark_as_unread/`,
         {
           method: "POST",
           headers: {
@@ -221,9 +231,12 @@ const NotificationCenter = ({ onClose }) => {
   const deleteNotification = async (notificationId) => {
     try {
       const token = localStorage.getItem("knoxToken");
+      const baseURL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
       const response = await fetch(
-        `http://localhost:8000/api/scheduling/notifications/${notificationId}/`,
+        `${baseURL}/scheduling/notifications/${notificationId}/`,
         {
           method: "DELETE",
           headers: {

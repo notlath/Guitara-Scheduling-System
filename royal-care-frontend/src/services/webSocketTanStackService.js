@@ -50,9 +50,10 @@ class WebSocketTanStackService {
       const authToken = token || getToken();
 
       // Build WebSocket URL with authentication
-      const wsUrl =
-        import.meta.env.VITE_WS_URL ||
-        "ws://localhost:8000/ws/scheduling/appointments/";
+      const wsUrl = import.meta.env.PROD
+        ? "wss://charismatic-appreciation-production.up.railway.app/ws/scheduling/appointments/"
+        : import.meta.env.VITE_WS_URL ||
+          "ws://localhost:8000/ws/scheduling/appointments/";
       const wsUrlWithAuth = authToken
         ? `${wsUrl}?token=${encodeURIComponent(authToken)}`
         : wsUrl;

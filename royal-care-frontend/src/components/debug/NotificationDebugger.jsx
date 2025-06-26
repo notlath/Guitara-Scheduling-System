@@ -11,9 +11,13 @@ const NotificationDebugger = () => {
       const token = localStorage.getItem("knoxToken");
 
       // Test multiple endpoints
+      const baseURL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
       const endpoints = [
-        "http://localhost:8000/api/scheduling/notifications/",
-        "http://localhost:8000/api/scheduling/notifications/debug_all/",
+        `${baseURL}/scheduling/notifications/`,
+        `${baseURL}/scheduling/notifications/debug_all/`,
       ];
 
       const results = {};

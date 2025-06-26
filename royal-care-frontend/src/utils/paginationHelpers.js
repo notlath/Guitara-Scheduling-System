@@ -90,17 +90,21 @@ export const fetchPaginatedAppointments = async (
 };
 
 // Pre-configured endpoints for different appointment views
+const getBaseURL = () => {
+  if (import.meta.env.PROD) {
+    return "https://charismatic-appreciation-production.up.railway.app/api";
+  }
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+};
+
 export const appointmentEndpoints = {
-  all: "http://localhost:8000/api/scheduling/appointments/",
-  pending: "http://localhost:8000/api/scheduling/appointments/pending/",
-  rejected: "http://localhost:8000/api/scheduling/appointments/rejected/",
-  timeout: "http://localhost:8000/api/scheduling/appointments/timeout/",
-  awaiting_payment:
-    "http://localhost:8000/api/scheduling/appointments/awaiting_payment/",
-  active_sessions:
-    "http://localhost:8000/api/scheduling/appointments/active_sessions/",
-  pickup_requests:
-    "http://localhost:8000/api/scheduling/appointments/pickup_requests/",
+  all: `${getBaseURL()}/scheduling/appointments/`,
+  pending: `${getBaseURL()}/scheduling/appointments/pending/`,
+  rejected: `${getBaseURL()}/scheduling/appointments/rejected/`,
+  timeout: `${getBaseURL()}/scheduling/appointments/timeout/`,
+  awaiting_payment: `${getBaseURL()}/scheduling/appointments/awaiting_payment/`,
+  active_sessions: `${getBaseURL()}/scheduling/appointments/active_sessions/`,
+  pickup_requests: `${getBaseURL()}/scheduling/appointments/pickup_requests/`,
 };
 
 // Hook for managing paginated appointment data
