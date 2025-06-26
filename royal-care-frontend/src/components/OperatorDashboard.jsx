@@ -246,7 +246,7 @@ const OperatorDashboard = () => {
     count: 0,
     totalPages: 0,
     currentPage: 1,
-    pageSize: 15,
+    pageSize: 100, // Increased to show all records
     hasNext: false,
     hasPrevious: false,
   });
@@ -323,7 +323,8 @@ const OperatorDashboard = () => {
   );
   // API fetch functions for each tab - updated for server-side pagination with enhanced error handling
   const fetchAllAppointments = useCallback(
-    async (page = 1, pageSize = 15) => {
+    async (page = 1, pageSize = 100) => {
+      // Increased page size to show all records
       const token = getToken();
       if (!token) throw new Error("Authentication required");
 
@@ -335,7 +336,8 @@ const OperatorDashboard = () => {
   );
 
   const fetchPendingAppointments = useCallback(
-    async (page = 1, pageSize = 15) => {
+    async (page = 1, pageSize = 100) => {
+      // Increased page size to show all records
       const token = getToken();
       if (!token) throw new Error("Authentication required");
 
@@ -347,7 +349,8 @@ const OperatorDashboard = () => {
   );
 
   const fetchRejectedAppointments = useCallback(
-    async (page = 1, pageSize = 15) => {
+    async (page = 1, pageSize = 100) => {
+      // Increased page size to show all records
       const token = getToken();
       if (!token) throw new Error("Authentication required");
 
@@ -359,7 +362,8 @@ const OperatorDashboard = () => {
   );
 
   const fetchTimeoutAppointments = useCallback(
-    async (page = 1, pageSize = 15) => {
+    async (page = 1, pageSize = 100) => {
+      // Increased page size to show all records
       const token = getToken();
       if (!token) throw new Error("Authentication required");
 
@@ -371,7 +375,8 @@ const OperatorDashboard = () => {
   );
 
   const fetchAwaitingPaymentAppointments = useCallback(
-    async (page = 1, pageSize = 15) => {
+    async (page = 1, pageSize = 100) => {
+      // Increased page size to show all records
       const token = getToken();
       if (!token) throw new Error("Authentication required");
 
@@ -383,7 +388,8 @@ const OperatorDashboard = () => {
   );
 
   const fetchActiveSessions = useCallback(
-    async (page = 1, pageSize = 15) => {
+    async (page = 1, pageSize = 100) => {
+      // Increased page size to show all records
       const token = getToken();
       if (!token) throw new Error("Authentication required");
 
@@ -395,7 +401,8 @@ const OperatorDashboard = () => {
   );
 
   const fetchPickupRequests = useCallback(
-    async (page = 1, pageSize = 15) => {
+    async (page = 1, pageSize = 100) => {
+      // Increased page size to show all records
       const token = getToken();
       if (!token) throw new Error("Authentication required");
 
@@ -1931,59 +1938,71 @@ const OperatorDashboard = () => {
 
     return (
       <div className="appointments-list">
-        {pendingAppointments.map((appointment) => {
-          const urgencyLevel = getUrgencyLevel(appointment);
-          const status = appointment.status || "";
-          const acceptanceStatus = getTherapistAcceptanceStatus(appointment);
+        <div className="appointments-container">
+          {pendingAppointments.map((appointment) => {
+            const urgencyLevel = getUrgencyLevel(appointment);
+            const status = appointment.status || "";
+            const acceptanceStatus = getTherapistAcceptanceStatus(appointment);
 
-          return (
-            <div
-              key={appointment.id}
-              className={`appointment-card pending ${urgencyLevel}`}
-            >
-              <div className="appointment-header">
-                <h3>
-                  Appointment #{appointment.id} -{" "}
-                  {appointment.client_details?.first_name || "Unknown"}{" "}
-                  {appointment.client_details?.last_name || ""}
-                </h3>
-                <div className="status-badges">
-                  <span
-                    className={`status-badge ${getStatusBadgeClass(status)}`}
-                  >
-                    {getStatusDisplayText(status)}
-                  </span>
-                  {urgencyLevel && urgencyLevel !== "normal" && (
-                    <span className={`urgency-badge urgency-${urgencyLevel}`}>
-                      {urgencyLevel.toUpperCase()}
+            return (
+              <div
+                key={appointment.id}
+                className={`appointment-card pending ${urgencyLevel}`}
+              >
+                <div className="appointment-header">
+                  <h3>
+                    Appointment #{appointment.id} -{" "}
+                    {appointment.client_details?.first_name || "Unknown"}{" "}
+                    {appointment.client_details?.last_name || ""}
+                  </h3>
+                  <div className="status-badges">
+                    <span
+                      className={`status-badge ${getStatusBadgeClass(status)}`}
+                    >
+                      {getStatusDisplayText(status)}
                     </span>
-                  )}
+                    {urgencyLevel && urgencyLevel !== "normal" && (
+                      <span className={`urgency-badge urgency-${urgencyLevel}`}>
+                        {urgencyLevel.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="appointment-details">
+                  <p>
+                    <strong>Date:</strong>{" "}
+                    {appointment.date
+                      ? new Date(appointment.date).toLocaleDateString()
+                      : "N/A"}
+                  </p>
+                  <p>
+                    <strong>Time:</strong> {appointment.start_time || "N/A"} -{" "}
+                    {appointment.end_time || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Location:</strong> {appointment.location || "N/A"}
+                  </p>
+                  {renderTherapistInfo(appointment)}
+
+                  <div className="acceptance-status">
+                    <strong>Acceptance Status:</strong> {acceptanceStatus}
+                  </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
 
-              <div className="appointment-details">
-                <p>
-                  <strong>Date:</strong>{" "}
-                  {appointment.date
-                    ? new Date(appointment.date).toLocaleDateString()
-                    : "N/A"}
-                </p>
-                <p>
-                  <strong>Time:</strong> {appointment.start_time || "N/A"} -{" "}
-                  {appointment.end_time || "N/A"}
-                </p>
-                <p>
-                  <strong>Location:</strong> {appointment.location || "N/A"}
-                </p>
-                {renderTherapistInfo(appointment)}
-
-                <div className="acceptance-status">
-                  <strong>Acceptance Status:</strong> {acceptanceStatus}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {/* Server-side Pagination */}
+        <ServerPagination
+          currentPage={paginationInfo.currentPage}
+          totalPages={paginationInfo.totalPages}
+          hasNext={paginationInfo.hasNext}
+          hasPrevious={paginationInfo.hasPrevious}
+          onPageChange={setPage}
+          className="appointments-pagination"
+        />
       </div>
     );
   };
@@ -2116,6 +2135,18 @@ const OperatorDashboard = () => {
             <p>All appointments are on track! No timeout issues detected.</p>
           </div>
         )}
+
+        {/* Server-side Pagination */}
+        {(overdueCount > 0 || approachingCount > 0) && paginationInfo.totalPages > 1 && (
+          <ServerPagination
+            currentPage={paginationInfo.currentPage}
+            totalPages={paginationInfo.totalPages}
+            hasNext={paginationInfo.hasNext}
+            hasPrevious={paginationInfo.hasPrevious}
+            onPageChange={setPage}
+            className="appointments-pagination"
+          />
+        )}
       </div>
     );
   };
@@ -2213,6 +2244,16 @@ const OperatorDashboard = () => {
             </div>
           );
         })}
+
+        {/* Server-side Pagination */}
+        <ServerPagination
+          currentPage={paginationInfo.currentPage}
+          totalPages={paginationInfo.totalPages}
+          hasNext={paginationInfo.hasNext}
+          hasPrevious={paginationInfo.hasPrevious}
+          onPageChange={setPage}
+          className="appointments-pagination"
+        />
       </div>
     );
   };
@@ -2571,6 +2612,16 @@ const OperatorDashboard = () => {
             </div>
           ))}
         </div>
+
+        {/* Server-side Pagination */}
+        <ServerPagination
+          currentPage={paginationInfo.currentPage}
+          totalPages={paginationInfo.totalPages}
+          hasNext={paginationInfo.hasNext}
+          hasPrevious={paginationInfo.hasPrevious}
+          onPageChange={setPage}
+          className="appointments-pagination"
+        />
       </div>
     );
   };
@@ -2727,6 +2778,16 @@ const OperatorDashboard = () => {
             </div>
           </div>
         ))}
+
+        {/* Server-side Pagination */}
+        <ServerPagination
+          currentPage={paginationInfo.currentPage}
+          totalPages={paginationInfo.totalPages}
+          hasNext={paginationInfo.hasNext}
+          hasPrevious={paginationInfo.hasPrevious}
+          onPageChange={setPage}
+          className="appointments-pagination"
+        />
       </div>
     );
   };
@@ -2806,6 +2867,16 @@ const OperatorDashboard = () => {
             </div>
           </div>
         ))}
+
+        {/* Server-side Pagination */}
+        <ServerPagination
+          currentPage={paginationInfo.currentPage}
+          totalPages={paginationInfo.totalPages}
+          hasNext={paginationInfo.hasNext}
+          hasPrevious={paginationInfo.hasPrevious}
+          onPageChange={setPage}
+          className="appointments-pagination"
+        />
       </div>
     );
   };

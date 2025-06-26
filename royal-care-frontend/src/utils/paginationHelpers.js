@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 export const createApiUrl = (
   baseUrl,
   page = 1,
-  pageSize = 15,
+  pageSize = 12, // Set to 12 items per page for production use
   filters = {}
 ) => {
   const url = new URL(baseUrl);
@@ -39,9 +39,9 @@ export const handleApiResponse = async (response) => {
       pagination: {
         count: data.count,
         totalPages:
-          data.total_pages || Math.ceil(data.count / (data.page_size || 15)),
+          data.total_pages || Math.ceil(data.count / (data.page_size || 100)),
         currentPage: data.current_page || 1,
-        pageSize: data.page_size || 15,
+        pageSize: data.page_size || 100,
         hasNext: data.has_next || false,
         hasPrevious: data.has_previous || false,
         next: data.next,
@@ -69,7 +69,7 @@ export const handleApiResponse = async (response) => {
 export const fetchPaginatedAppointments = async (
   endpoint,
   page = 1,
-  pageSize = 15,
+  pageSize = 100, // Increased default to show all records
   filters = {}
 ) => {
   const token = localStorage.getItem("knoxToken");
@@ -119,7 +119,7 @@ export const usePaginatedAppointments = (
     count: 0,
     totalPages: 0,
     currentPage: 1,
-    pageSize: 15,
+    pageSize: 100, // Increased default to show all records
     hasNext: false,
     hasPrevious: false,
   });
@@ -139,7 +139,7 @@ export const usePaginatedAppointments = (
       const result = await fetchPaginatedAppointments(
         appointmentEndpoints[currentView],
         currentPage,
-        15
+        100 // Increased page size to show all records
       );
 
       setData(result.data);

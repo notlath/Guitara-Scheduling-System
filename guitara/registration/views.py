@@ -62,11 +62,20 @@ def insert_into_table(table_name, data):
 class RegisterTherapist(APIView):
     def get(self, request):
         supabase = get_supabase_client()
-        # Pagination parameters
+        # Pagination parameters - Set to 12 items per page for production use
         page = int(request.query_params.get("page", 1))
-        page_size = int(request.query_params.get("page_size", 20))
+        page_size = int(request.query_params.get("page_size", 12))
         offset = (page - 1) * page_size
-        # Revert to select all fields
+
+        # Get total count first
+        count_result = (
+            supabase.table("registration_therapist")
+            .select("*", count="exact")
+            .execute()
+        )
+        total_count = count_result.count if hasattr(count_result, "count") else 0
+
+        # Get paginated data
         result = (
             supabase.table("registration_therapist")
             .select("*")
@@ -89,7 +98,30 @@ class RegisterTherapist(APIView):
             except CustomUser.DoesNotExist:
                 phone_number = None
             therapist["phone_number"] = phone_number
-        return Response(data)
+
+        # Calculate pagination metadata
+        import math
+
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+        has_next = page < total_pages
+        has_previous = page > 1
+
+        # Return DRF-style paginated response
+        return Response(
+            {
+                "count": total_count,
+                "total_pages": total_pages,
+                "current_page": page,
+                "page_size": page_size,
+                "has_next": has_next,
+                "has_previous": has_previous,
+                "next": f"?page={page + 1}&page_size={page_size}" if has_next else None,
+                "previous": (
+                    f"?page={page - 1}&page_size={page_size}" if has_previous else None
+                ),
+                "results": data,
+            }
+        )
 
     def post(self, request):
         # Debug: log raw incoming data and repr
@@ -213,10 +245,23 @@ class RegisterDriver(APIView):
         supabase = get_supabase_client()
         if not supabase:
             return Response({"error": "Supabase client not available"}, status=500)
-        # Pagination parameters
+        # Pagination parameters - Set to 12 items per page for production use
         page = int(request.query_params.get("page", 1))
-        page_size = int(request.query_params.get("page_size", 20))
+        page_size = int(request.query_params.get("page_size", 12))
         offset = (page - 1) * page_size
+
+        # Get total count first
+        def count_operation():
+            return (
+                supabase.table("registration_driver")
+                .select("*", count="exact")
+                .execute()
+            )
+
+        count_result, count_error = safe_supabase_operation(count_operation, timeout=10)
+        total_count = (
+            count_result.count if count_result and hasattr(count_result, "count") else 0
+        )
 
         def operation():
             # Revert to select all fields
@@ -251,7 +296,30 @@ class RegisterDriver(APIView):
             except CustomUser.DoesNotExist:
                 phone_number = None
             driver["phone_number"] = phone_number
-        return Response(data)
+
+        # Calculate pagination metadata
+        import math
+
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+        has_next = page < total_pages
+        has_previous = page > 1
+
+        # Return DRF-style paginated response
+        return Response(
+            {
+                "count": total_count,
+                "total_pages": total_pages,
+                "current_page": page,
+                "page_size": page_size,
+                "has_next": has_next,
+                "has_previous": has_previous,
+                "next": f"?page={page + 1}&page_size={page_size}" if has_next else None,
+                "previous": (
+                    f"?page={page - 1}&page_size={page_size}" if has_previous else None
+                ),
+                "results": data,
+            }
+        )
 
     def post(self, request):
         logger.warning(f"Driver registration payload: {request.data}")
@@ -398,11 +466,18 @@ class RegisterOperator(APIView):
         supabase = get_supabase_client()
         if not supabase:
             return Response({"error": "Supabase client not available"}, status=500)
-        # Pagination parameters
+        # Pagination parameters - Set to 12 items per page for production use
         page = int(request.query_params.get("page", 1))
-        page_size = int(request.query_params.get("page_size", 20))
+        page_size = int(request.query_params.get("page_size", 12))
         offset = (page - 1) * page_size
-        # Revert to select all fields
+
+        # Get total count first
+        count_result = (
+            supabase.table("registration_operator").select("*", count="exact").execute()
+        )
+        total_count = count_result.count if hasattr(count_result, "count") else 0
+
+        # Get paginated data
         result = (
             supabase.table("registration_operator")
             .select("*")
@@ -422,7 +497,30 @@ class RegisterOperator(APIView):
         for operator in data:
             username = operator.get("username")
             operator["phone_number"] = user_map.get(username)
-        return Response(data)
+
+        # Calculate pagination metadata
+        import math
+
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+        has_next = page < total_pages
+        has_previous = page > 1
+
+        # Return DRF-style paginated response
+        return Response(
+            {
+                "count": total_count,
+                "total_pages": total_pages,
+                "current_page": page,
+                "page_size": page_size,
+                "has_next": has_next,
+                "has_previous": has_previous,
+                "next": f"?page={page + 1}&page_size={page_size}" if has_next else None,
+                "previous": (
+                    f"?page={page - 1}&page_size={page_size}" if has_previous else None
+                ),
+                "results": data,
+            }
+        )
 
     def post(self, request):
         logger.warning(f"Operator registration payload: {request.data}")
@@ -624,24 +722,55 @@ class RegisterClient(APIView):
         # Fetch all clients from scheduling app
         from scheduling.models import Client
 
-        # Pagination parameters
+        # Pagination parameters - Set to 12 items per page for production use
         page = int(request.query_params.get("page", 1))
-        page_size = int(request.query_params.get("page_size", 20))
+        page_size = int(request.query_params.get("page_size", 12))
         offset = (page - 1) * page_size
+
+        # Get total count
+        total_count = Client.objects.count()
+
+        # Get paginated data
         clients = Client.objects.all().order_by("id")[offset : offset + page_size]
+
         # Map to frontend table fields
         data = []
         for client in clients:
             data.append(
                 {
-                    "Name": f"{client.first_name} {client.last_name}".strip(),
-                    "Email": client.email or "-",
-                    "Address": client.address,
-                    "Contact": client.phone_number,
-                    "Notes": client.notes or "-",
+                    "first_name": client.first_name,
+                    "last_name": client.last_name,
+                    "email": client.email or "",
+                    "phone_number": client.phone_number,
+                    "address": client.address,
+                    "notes": client.notes or "",
+                    "created_at": client.created_at.isoformat() if client.created_at else "",
                 }
             )
-        return Response(data)
+
+        # Calculate pagination metadata
+        import math
+
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+        has_next = page < total_pages
+        has_previous = page > 1
+
+        # Return DRF-style paginated response
+        return Response(
+            {
+                "count": total_count,
+                "total_pages": total_pages,
+                "current_page": page,
+                "page_size": page_size,
+                "has_next": has_next,
+                "has_previous": has_previous,
+                "next": f"?page={page + 1}&page_size={page_size}" if has_next else None,
+                "previous": (
+                    f"?page={page - 1}&page_size={page_size}" if has_previous else None
+                ),
+                "results": data,
+            }
+        )
 
     def post(self, request):
         logger.warning(f"Client registration payload: {request.data}")
@@ -700,10 +829,17 @@ class RegisterMaterial(APIView):
         supabase = get_supabase_client()
         if not supabase:
             return Response({"error": "Supabase client not available"}, status=500)
-        # Pagination parameters
+        # Pagination parameters - Set to 12 items per page for production use
         page = int(request.query_params.get("page", 1))
-        page_size = int(request.query_params.get("page_size", 20))
+        page_size = int(request.query_params.get("page_size", 12))
         offset = (page - 1) * page_size
+
+        # Get total count first
+        count_result = (
+            supabase.table("registration_material").select("*", count="exact").execute()
+        )
+        total_count = count_result.count if hasattr(count_result, "count") else 0
+
         # Fetch paginated materials from Supabase
         result = (
             supabase.table("registration_material")
@@ -714,7 +850,30 @@ class RegisterMaterial(APIView):
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
         data = result.data if hasattr(result, "data") else []
-        return Response(data)
+
+        # Calculate pagination metadata
+        import math
+
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+        has_next = page < total_pages
+        has_previous = page > 1
+
+        # Return DRF-style paginated response
+        return Response(
+            {
+                "count": total_count,
+                "total_pages": total_pages,
+                "current_page": page,
+                "page_size": page_size,
+                "has_next": has_next,
+                "has_previous": has_previous,
+                "next": f"?page={page + 1}&page_size={page_size}" if has_next else None,
+                "previous": (
+                    f"?page={page - 1}&page_size={page_size}" if has_previous else None
+                ),
+                "results": data,
+            }
+        )
 
     def post(self, request):
         serializer = MaterialSerializer(data=request.data)
@@ -741,10 +900,13 @@ class RegisterService(APIView):
         try:
             from registration.models import Service, Material
 
-            # Pagination parameters
+            # Pagination parameters - Set to 12 items per page for production use
             page = int(request.query_params.get("page", 1))
-            page_size = int(request.query_params.get("page_size", 20))
+            page_size = int(request.query_params.get("page_size", 12))
             offset = (page - 1) * page_size
+
+            # Get total count
+            total_count = Service.objects.count()
 
             # Use prefetch_related for optimized query
             services = (
@@ -757,7 +919,12 @@ class RegisterService(APIView):
                 # Get materials for this service using the foreign key relationship
                 materials = service.materials.all()
                 materials_list = [
-                    {"id": mat.id, "name": mat.name, "description": mat.description, "stock_quantity": mat.stock_quantity}
+                    {
+                        "id": mat.id,
+                        "name": mat.name,
+                        "description": mat.description,
+                        "stock_quantity": mat.stock_quantity,
+                    }
                     for mat in materials
                 ]
 
@@ -776,6 +943,34 @@ class RegisterService(APIView):
 
             logger.info(f"Fetched {len(data)} services from local Django database")
 
+            # Calculate pagination metadata
+            import math
+
+            total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+            has_next = page < total_pages
+            has_previous = page > 1
+
+            # Return DRF-style paginated response
+            return Response(
+                {
+                    "count": total_count,
+                    "total_pages": total_pages,
+                    "current_page": page,
+                    "page_size": page_size,
+                    "has_next": has_next,
+                    "has_previous": has_previous,
+                    "next": (
+                        f"?page={page + 1}&page_size={page_size}" if has_next else None
+                    ),
+                    "previous": (
+                        f"?page={page - 1}&page_size={page_size}"
+                        if has_previous
+                        else None
+                    ),
+                    "results": data,
+                }
+            )
+
         except Exception as e:
             logger.error(f"Local services fetch failed: {e}")
 
@@ -785,8 +980,18 @@ class RegisterService(APIView):
                 try:
                     # Pagination parameters
                     page = int(request.query_params.get("page", 1))
-                    page_size = int(request.query_params.get("page_size", 20))
+                    page_size = int(request.query_params.get("page_size", 100))
                     offset = (page - 1) * page_size
+
+                    # Get total count first
+                    count_result = (
+                        supabase.table("registration_service")
+                        .select("*", count="exact")
+                        .execute()
+                    )
+                    total_count = (
+                        count_result.count if hasattr(count_result, "count") else 0
+                    )
 
                     # Fetch from Supabase
                     result = (
@@ -843,6 +1048,38 @@ class RegisterService(APIView):
                                     svc["materials"] = []
 
                         logger.info(f"Fetched {len(data)} services from Supabase")
+
+                        # Calculate pagination metadata for Supabase fallback
+                        import math
+
+                        total_pages = (
+                            math.ceil(total_count / page_size) if total_count > 0 else 1
+                        )
+                        has_next = page < total_pages
+                        has_previous = page > 1
+
+                        # Return DRF-style paginated response
+                        return Response(
+                            {
+                                "count": total_count,
+                                "total_pages": total_pages,
+                                "current_page": page,
+                                "page_size": page_size,
+                                "has_next": has_next,
+                                "has_previous": has_previous,
+                                "next": (
+                                    f"?page={page + 1}&page_size={page_size}"
+                                    if has_next
+                                    else None
+                                ),
+                                "previous": (
+                                    f"?page={page - 1}&page_size={page_size}"
+                                    if has_previous
+                                    else None
+                                ),
+                                "results": data,
+                            }
+                        )
                 except Exception as e:
                     logger.warning(f"Supabase services fetch failed: {e}")
                     return Response(
@@ -852,7 +1089,20 @@ class RegisterService(APIView):
                         status=500,
                     )
 
-        return Response(data)
+        # If everything fails, return empty paginated response
+        return Response(
+            {
+                "count": 0,
+                "total_pages": 1,
+                "current_page": 1,
+                "page_size": 100,
+                "has_next": False,
+                "has_previous": False,
+                "next": None,
+                "previous": None,
+                "results": [],
+            }
+        )
 
     def post(self, request):
         serializer = ServiceSerializer(data=request.data)
@@ -1182,6 +1432,8 @@ class UserProfileUpdateView(APIView):
 
 class RegistrationMaterialWithStockList(APIView):
     def get(self, request, service_id):
-        materials = RegistrationMaterial.objects.filter(service_id=service_id).select_related('inventory_item')
+        materials = RegistrationMaterial.objects.filter(
+            service_id=service_id
+        ).select_related("inventory_item")
         serializer = RegistrationMaterialSerializer(materials, many=True)
         return Response(serializer.data)

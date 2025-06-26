@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MdAdd,
   MdBackup,
@@ -6,8 +6,10 @@ import {
   MdDownload,
   MdRestore,
 } from "react-icons/md";
+import { useSearchParams } from "react-router-dom";
 import Select from "react-select";
 import MinimalLoadingIndicator from "../../components/common/MinimalLoadingIndicator";
+import ServerPagination from "../../components/ServerPagination";
 import DataTable from "../../globals/DataTable";
 import { FormField } from "../../globals/FormField";
 import LayoutRow from "../../globals/LayoutRow";
@@ -110,10 +112,10 @@ const generateDefaultUsername = (role, firstName, lastName) => {
 
 // (removed unused generateUniqueUsername function)
 
-// Pagination defaults
-const DEFAULT_PAGE_SIZE = 10;
+// Pagination defaults - Set to 12 items per page for production use
+const DEFAULT_PAGE_SIZE = 12; // Display 12 items per page with navigation buttons
 
-// Add fetch functions for each tab - Updated to use proper data endpoints
+// Add fetch functions for each tab - Updated to return pagination metadata
 const fetchers = {
   Therapists: async (page = 1) => {
     try {
@@ -121,8 +123,10 @@ const fetchers = {
         `/registration/register/therapist/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
       );
       const data = res.data;
-      const items = Array.isArray(data) ? data : data.results || [];
-      return items.map((item) => ({
+
+      // Handle both old format (direct array) and new format (with results)
+      const items = data.results || (Array.isArray(data) ? data : []);
+      const mappedItems = items.map((item) => ({
         Username: item.username,
         Name: `${capitalizeName(item.first_name) || ""} ${
           capitalizeName(item.last_name) || ""
@@ -134,9 +138,32 @@ const fetchers = {
           ? item.pressure.charAt(0).toUpperCase() + item.pressure.slice(1)
           : "-",
       }));
+
+      // Return both data and pagination info
+      return {
+        data: mappedItems,
+        pagination: {
+          currentPage: data.current_page || page,
+          totalPages:
+            data.total_pages ||
+            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
+          totalItems: data.count || mappedItems.length,
+          hasNext: data.has_next || false,
+          hasPrevious: data.has_previous || false,
+        },
+      };
     } catch (error) {
       console.error("Error fetching therapists:", error);
-      return [];
+      return {
+        data: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          hasNext: false,
+          hasPrevious: false,
+        },
+      };
     }
   },
   Drivers: async (page = 1) => {
@@ -145,8 +172,10 @@ const fetchers = {
         `/registration/register/driver/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
       );
       const data = res.data;
-      const items = Array.isArray(data) ? data : data.results || [];
-      return items.map((item) => ({
+
+      // Handle both old format (direct array) and new format (with results)
+      const items = data.results || (Array.isArray(data) ? data : []);
+      const mappedItems = items.map((item) => ({
         Username: item.username,
         Name: `${capitalizeName(item.first_name) || ""} ${
           capitalizeName(item.last_name) || ""
@@ -156,9 +185,31 @@ const fetchers = {
         Specialization: item.motorcycle_plate || "N/A",
         Pressure: "N/A",
       }));
+
+      return {
+        data: mappedItems,
+        pagination: {
+          currentPage: data.current_page || page,
+          totalPages:
+            data.total_pages ||
+            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
+          totalItems: data.count || mappedItems.length,
+          hasNext: data.has_next || false,
+          hasPrevious: data.has_previous || false,
+        },
+      };
     } catch (error) {
       console.error("Error fetching drivers:", error);
-      return [];
+      return {
+        data: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          hasNext: false,
+          hasPrevious: false,
+        },
+      };
     }
   },
   Operators: async (page = 1) => {
@@ -167,11 +218,11 @@ const fetchers = {
         `/registration/register/operator/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
       );
       const data = res.data;
-      const items = Array.isArray(data)
-        ? data
-        : data.results || data.data || [];
 
-      return items.map((item) => {
+      // Handle both old format (direct array) and new format (with results)
+      const items = data.results || (Array.isArray(data) ? data : []);
+
+      const mappedItems = items.map((item) => {
         // Safely handle name construction
         const firstName = capitalizeName(item.first_name || "");
         const lastName = capitalizeName(item.last_name || "");
@@ -187,9 +238,31 @@ const fetchers = {
           Pressure: "N/A",
         };
       });
+
+      return {
+        data: mappedItems,
+        pagination: {
+          currentPage: data.current_page || page,
+          totalPages:
+            data.total_pages ||
+            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
+          totalItems: data.count || mappedItems.length,
+          hasNext: data.has_next || false,
+          hasPrevious: data.has_previous || false,
+        },
+      };
     } catch (error) {
       console.error("Error fetching operators:", error);
-      return [];
+      return {
+        data: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          hasNext: false,
+          hasPrevious: false,
+        },
+      };
     }
   },
   Clients: async (page = 1) => {
@@ -198,17 +271,41 @@ const fetchers = {
         `/registration/register/client/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
       );
       const data = res.data;
-      const items = Array.isArray(data) ? data : data.results || [];
-      return items.map((item) => ({
-        Name: capitalizeName(item.Name) || "-",
-        Email: item.Email || "-",
-        Address: item.Address || "-",
-        Contact: item.Contact || "-",
-        Notes: item.Notes || "-",
+
+      // Handle both old format (direct array) and new format (with results)
+      const items = data.results || (Array.isArray(data) ? data : []);
+      const mappedItems = items.map((item) => ({
+        Name: `${capitalizeName(item.first_name) || ""} ${capitalizeName(item.last_name) || ""}`.trim(),
+        Email: item.email || "-",
+        Address: item.address || "-",
+        Contact: item.phone_number || "-",
+        Notes: item.notes || "-",
       }));
+
+      return {
+        data: mappedItems,
+        pagination: {
+          currentPage: data.current_page || page,
+          totalPages:
+            data.total_pages ||
+            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
+          totalItems: data.count || mappedItems.length,
+          hasNext: data.has_next || false,
+          hasPrevious: data.has_previous || false,
+        },
+      };
     } catch (error) {
       console.error("Error fetching clients:", error);
-      return [];
+      return {
+        data: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          hasNext: false,
+          hasPrevious: false,
+        },
+      };
     }
   },
   Services: async (page = 1) => {
@@ -217,9 +314,11 @@ const fetchers = {
         `/registration/register/service/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
       );
       const data = res.data;
-      const items = Array.isArray(data) ? data : data.results || [];
 
-      return items.map((item) => {
+      // Handle both old format (direct array) and new format (with results)
+      const items = data.results || (Array.isArray(data) ? data : []);
+
+      const mappedItems = items.map((item) => {
         // Handle both Supabase and Django formats
         let materials = "-";
 
@@ -252,9 +351,31 @@ const fetchers = {
           Materials: materials,
         };
       });
+
+      return {
+        data: mappedItems,
+        pagination: {
+          currentPage: data.current_page || page,
+          totalPages:
+            data.total_pages ||
+            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
+          totalItems: data.count || mappedItems.length,
+          hasNext: data.has_next || false,
+          hasPrevious: data.has_previous || false,
+        },
+      };
     } catch (error) {
       console.error("Error fetching services:", error);
-      return [];
+      return {
+        data: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          hasNext: false,
+          hasPrevious: false,
+        },
+      };
     }
   },
   Materials: async (page = 1) => {
@@ -263,20 +384,55 @@ const fetchers = {
         `/registration/register/material/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
       );
       const data = res.data;
-      const items = Array.isArray(data) ? data : data.results || [];
-      return items.map((item) => ({
+
+      // Handle both old format (direct array) and new format (with results)
+      const items = data.results || (Array.isArray(data) ? data : []);
+      const mappedItems = items.map((item) => ({
         Name: item.name,
         Description: item.description || "-",
       }));
+
+      return {
+        data: mappedItems,
+        pagination: {
+          currentPage: data.current_page || page,
+          totalPages:
+            data.total_pages ||
+            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
+          totalItems: data.count || mappedItems.length,
+          hasNext: data.has_next || false,
+          hasPrevious: data.has_previous || false,
+        },
+      };
     } catch (error) {
       console.error("Error fetching materials:", error);
-      return [];
+      return {
+        data: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          hasNext: false,
+          hasPrevious: false,
+        },
+      };
     }
   },
 };
 
 const SettingsDataPage = () => {
-  const [activeTab, setActiveTab] = useState(TABS[0]);
+  // URL search params for tab and page persistence
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get tab and page from URL parameters
+  const urlTab = searchParams.get("tab");
+  const urlPage = searchParams.get("page");
+
+  // Validate tab parameter
+  const initialTab = TABS.includes(urlTab) ? urlTab : TABS[0];
+  const initialPage = urlPage ? Math.max(1, parseInt(urlPage, 10)) : 1;
+
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({});
   const [successPrompt, setSuccessPrompt] = useState("");
@@ -287,28 +443,126 @@ const SettingsDataPage = () => {
   const [showBackupDropdown, setShowBackupDropdown] = useState(false);
   const [usernameError, setUsernameError] = useState("");
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-  const [tabPages, setTabPages] = useState({
-    Therapists: 1,
-    Drivers: 1,
-    Operators: 1,
-    Clients: 1,
-    Services: 1,
-    Materials: 1,
+
+  // Pagination state for each tab - Initialize with URL page if available
+  const [currentPages, setCurrentPages] = useState({
+    Therapists: activeTab === "Therapists" ? initialPage : 1,
+    Drivers: activeTab === "Drivers" ? initialPage : 1,
+    Operators: activeTab === "Operators" ? initialPage : 1,
+    Clients: activeTab === "Clients" ? initialPage : 1,
+    Services: activeTab === "Services" ? initialPage : 1,
+    Materials: activeTab === "Materials" ? initialPage : 1,
   });
-  const [tabHasMore, setTabHasMore] = useState({
-    Therapists: true,
-    Drivers: true,
-    Operators: true,
-    Clients: true,
-    Services: true,
-    Materials: true,
+
+  // Pagination metadata for each tab
+  const [paginationData, setPaginationData] = useState({
+    Therapists: {
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      hasNext: false,
+      hasPrevious: false,
+    },
+    Drivers: {
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      hasNext: false,
+      hasPrevious: false,
+    },
+    Operators: {
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      hasNext: false,
+      hasPrevious: false,
+    },
+    Clients: {
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      hasNext: false,
+      hasPrevious: false,
+    },
+    Services: {
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      hasNext: false,
+      hasPrevious: false,
+    },
+    Materials: {
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      hasNext: false,
+      hasPrevious: false,
+    },
   });
+
   const tableContainerRef = useRef(null);
+
+  // Create enhanced fetchers that handle pagination - use useCallback for stability
+  const enhancedFetchers = useMemo(() => {
+    const createFetcher = (tabName) => async () => {
+      const page = currentPages[tabName];
+      console.log(
+        `🔄 Fetching ${tabName} page ${page} with pageSize=${DEFAULT_PAGE_SIZE}`
+      );
+
+      try {
+        const result = await fetchers[tabName](page);
+
+        // Update pagination metadata immediately
+        setPaginationData((prev) => {
+          const newPaginationData = {
+            ...prev,
+            [tabName]: {
+              ...result.pagination,
+              // Ensure we have proper defaults
+              currentPage: result.pagination.currentPage || page,
+              totalPages: result.pagination.totalPages || 1,
+              totalItems: result.pagination.totalItems || result.data.length,
+              hasNext: result.pagination.hasNext || false,
+              hasPrevious: result.pagination.hasPrevious || false,
+            },
+          };
+
+          console.log(
+            `📊 Updated pagination for ${tabName}:`,
+            newPaginationData[tabName]
+          );
+          return newPaginationData;
+        });
+
+        // Return just the data for useSettingsData hook
+        return result.data;
+      } catch (error) {
+        console.error(`❌ Error in enhanced fetcher for ${tabName}:`, error);
+        // Reset pagination data on error
+        setPaginationData((prev) => ({
+          ...prev,
+          [tabName]: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 0,
+            hasNext: false,
+            hasPrevious: false,
+          },
+        }));
+        throw error;
+      }
+    };
+
+    return Object.keys(fetchers).reduce((acc, tabName) => {
+      acc[tabName] = createFetcher(tabName);
+      return acc;
+    }, {});
+  }, [currentPages]);
 
   // Use the new settings data hook for immediate data display and caching
   const {
     tableData,
-    setTableData, // <-- add this line for infinite scroll
     isTabLoading,
     getTabError,
     loadTabData,
@@ -316,7 +570,15 @@ const SettingsDataPage = () => {
     hasDataForTab,
     isTabDataStale,
     prefetchTabs,
-  } = useSettingsData(fetchers);
+  } = useSettingsData(enhancedFetchers);
+
+  // Reset page to 1 when tab changes (separate effect to avoid infinite loops)
+  useEffect(() => {
+    setCurrentPages((prev) => ({
+      ...prev,
+      [activeTab]: 1,
+    }));
+  }, [activeTab]);
 
   // Track tab switching for immediate data display
   useEffect(() => {
@@ -345,6 +607,61 @@ const SettingsDataPage = () => {
       refreshTabData(activeTab);
     }
   }, [activeTab, isTabDataStale, hasDataForTab, refreshTabData]);
+
+  // URL parameter management functions
+  const updateUrlParams = (newTab, newPage) => {
+    const params = new URLSearchParams();
+    if (newTab && newTab !== TABS[0]) {
+      params.set("tab", newTab);
+    }
+    if (newPage && newPage !== 1) {
+      params.set("page", newPage.toString());
+    }
+
+    // Only update if parameters actually changed
+    const newParamsString = params.toString();
+    const currentParamsString = searchParams.toString();
+    if (newParamsString !== currentParamsString) {
+      setSearchParams(params);
+    }
+  };
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    // Reset to page 1 when changing tabs and update URL
+    updateUrlParams(newTab, 1);
+    setCurrentPages((prev) => ({
+      ...prev,
+      [newTab]: 1,
+    }));
+  };
+
+  // Pagination handlers
+  const handlePageChange = async (newPage) => {
+    if (newPage < 1 || newPage > paginationData[activeTab].totalPages) return;
+
+    // Update URL with new page
+    updateUrlParams(activeTab, newPage);
+
+    setCurrentPages((prev) => ({
+      ...prev,
+      [activeTab]: newPage,
+    }));
+
+    // Fetch new page data
+    try {
+      const result = await fetchers[activeTab](newPage);
+      setPaginationData((prev) => ({
+        ...prev,
+        [activeTab]: result.pagination,
+      }));
+
+      // Refresh the tab data to show new page
+      refreshTabData(activeTab);
+    } catch (error) {
+      console.error(`Error loading page ${newPage} for ${activeTab}:`, error);
+    }
+  };
 
   const handleAddClick = () => {
     setFormData({});
@@ -1210,63 +1527,6 @@ const SettingsDataPage = () => {
   const currentTabLoading = isTabLoading(activeTab);
   const currentTabError = getTabError(activeTab);
 
-  // Infinite scroll handler with debounce to prevent performance bottlenecks
-  useEffect(() => {
-    let debounceTimer = null;
-    const handleScroll = async () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(async () => {
-        const container = tableContainerRef.current;
-        if (!container || isTabLoading(activeTab) || !tabHasMore[activeTab])
-          return;
-        if (
-          container.scrollTop + container.clientHeight >=
-          container.scrollHeight - 100
-        ) {
-          // Near bottom, load next page
-          const nextPage = tabPages[activeTab] + 1;
-          const fetcher = fetchers[activeTab];
-          if (!fetcher) return;
-
-          try {
-            const newData = await fetcher(nextPage);
-            if (Array.isArray(newData) && newData.length > 0) {
-              setTabHasMore((prev) => ({
-                ...prev,
-                [activeTab]: newData.length === DEFAULT_PAGE_SIZE,
-              }));
-              setTabPages((prev) => ({ ...prev, [activeTab]: nextPage }));
-              setTableData((prev) => ({
-                ...prev,
-                [activeTab]: [...(prev[activeTab] || []), ...newData],
-              }));
-            } else {
-              // No more data available
-              setTabHasMore((prev) => ({
-                ...prev,
-                [activeTab]: false,
-              }));
-            }
-          } catch (error) {
-            console.error(`Error loading more ${activeTab} data:`, error);
-            setTabHasMore((prev) => ({
-              ...prev,
-              [activeTab]: false,
-            }));
-          }
-        }
-      }, 150); // 150ms debounce
-    };
-    const container = tableContainerRef.current;
-    if (container) {
-      container.addEventListener("scroll", handleScroll);
-      return () => {
-        container.removeEventListener("scroll", handleScroll);
-        if (debounceTimer) clearTimeout(debounceTimer);
-      };
-    }
-  }, [activeTab, tabPages, tabHasMore, isTabLoading, setTableData]);
-
   return (
     <PageLayout>
       <MinimalLoadingIndicator
@@ -1406,11 +1666,11 @@ const SettingsDataPage = () => {
           <TabSwitcher
             tabs={TABS.map((tab) => ({ label: tab, value: tab }))}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
           />
         </div>
 
-        {/* Infinite scroll table container */}
+        {/* Table container with pagination */}
         <div
           ref={tableContainerRef}
           className={`${styles["table-scroll-hide"]} ${styles["table-container"]}`}
@@ -1424,6 +1684,50 @@ const SettingsDataPage = () => {
             />
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {hasDataForTab(activeTab) && (
+            <div style={{ marginTop: "20px" }}>
+              <ServerPagination
+                currentPage={paginationData[activeTab].currentPage}
+                totalPages={paginationData[activeTab].totalPages}
+                hasNext={paginationData[activeTab].hasNext}
+                hasPrevious={paginationData[activeTab].hasPrevious}
+                onPageChange={handlePageChange}
+                className="appointments-pagination"
+                simplified={true} // Use simplified pagination for SettingsDataPage
+              />
+            </div>
+          )}
+
+        {/* Debug pagination info - remove this in production */}
+        {import.meta.env.MODE === "development" && (
+          <div
+            style={{
+              marginTop: "10px",
+              padding: "10px",
+              backgroundColor: "#f5f5f5",
+              fontSize: "12px",
+              fontFamily: "monospace",
+            }}
+          >
+            <strong>Debug Pagination [{activeTab}]:</strong>
+            <br />
+            hasDataForTab: {hasDataForTab(activeTab) ? "true" : "false"}
+            <br />
+            totalPages: {paginationData[activeTab].totalPages}
+            <br />
+            currentPage: {paginationData[activeTab].currentPage}
+            <br />
+            totalItems: {paginationData[activeTab].totalItems}
+            <br />
+            hasNext: {paginationData[activeTab].hasNext ? "true" : "false"}
+            <br />
+            hasPrevious:{" "}
+            {paginationData[activeTab].hasPrevious ? "true" : "false"}
+          </div>
+        )}
+
         {/* Show error message if there's an error and no data */}
         {currentTabError && !hasDataForTab(activeTab) && (
           <div className={styles["error-message"]}>{currentTabError}</div>

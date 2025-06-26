@@ -12,9 +12,9 @@ class StandardResultsPagination(PageNumberPagination):
     Standard pagination class for most API endpoints
     """
 
-    page_size = 10
+    page_size = 12  # Set to 12 items per page for production use
     page_size_query_param = "page_size"
-    max_page_size = 100
+    max_page_size = 200  # Increased max page size
 
     def get_paginated_response(self, data):
         return Response(
@@ -38,9 +38,9 @@ class AppointmentsPagination(PageNumberPagination):
     Allows larger page sizes for dashboard views
     """
 
-    page_size = 15
+    page_size = 12  # Set to 12 items per page for production use
     page_size_query_param = "page_size"
-    max_page_size = 50
+    max_page_size = 200  # Increased max page size
 
     def get_paginated_response(self, data):
         return Response(
@@ -66,9 +66,9 @@ class NotificationsPagination(PageNumberPagination):
     Smaller page size for better UX
     """
 
-    page_size = 20
+    page_size = 12  # Set to 12 items per page for production use
     page_size_query_param = "page_size"
-    max_page_size = 100
+    max_page_size = 200  # Increased max page size
 
     def get_paginated_response(self, data):
         return Response(

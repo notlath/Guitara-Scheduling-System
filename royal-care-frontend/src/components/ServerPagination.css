@@ -117,3 +117,51 @@
 .appointments-pagination .nav-button:hover:not(:disabled) {
   background: var(--primary-hover, #0056b3);
 }
+
+/* Simplified pagination styles for SettingsDataPage */
+.server-pagination.simplified {
+  background: transparent;
+  border: none;
+  padding: 1rem 0;
+}
+
+.simplified-controls {
+  gap: 1rem;
+  justify-content: center;
+}
+
+.simplified-controls .nav-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  min-width: 120px;
+  background: #28a745;
+  border-radius: 6px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.simplified-controls .nav-button:hover:not(:disabled) {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.simplified-controls .nav-button:disabled {
+  background: #6c757d;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive design for simplified pagination */
+@media (max-width: 768px) {
+  .simplified-controls {
+    gap: 0.75rem;
+  }
+  
+  .simplified-controls .nav-button {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    min-width: 100px;
+  }
+}

@@ -7,6 +7,7 @@ const ServerPagination = ({
   hasPrevious,
   onPageChange,
   className = "",
+  simplified = false, // New prop for simplified pagination
 }) => {
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -84,8 +85,42 @@ const ServerPagination = ({
     return pageNumbers;
   };
 
-  if (totalPages <= 1) {
-    return null; // Don't render pagination if there's only one page
+  // Commented out for debugging - uncomment in production
+  // if (totalPages <= 1) {
+  //   return null; // Don't render pagination if there's only one page
+  // }
+
+  // Simplified pagination for specific pages (like SettingsDataPage)
+  if (simplified) {
+    return (
+      <div className={`server-pagination simplified ${className}`}>
+        <div className="pagination-controls simplified-controls">
+          {currentPage >= 2 && (
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={!hasPrevious}
+              className="nav-button"
+            >
+              « Previous
+            </button>
+          )}
+          
+          {hasNext && (
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!hasNext}
+              className="nav-button"
+            >
+              Next »
+            </button>
+          )}
+        </div>
+
+        <div className="pagination-info">
+          Page {currentPage} of {totalPages}
+        </div>
+      </div>
+    );
   }
 
   return (
