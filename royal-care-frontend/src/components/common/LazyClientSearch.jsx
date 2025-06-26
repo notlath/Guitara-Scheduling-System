@@ -1,6 +1,7 @@
+import axios from "axios";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "../../services/supabaseClient";
 import { useAppointmentFormCache } from "../../hooks/useAppointmentFormCache";
+import { getBaseURL, getToken } from "../../utils/authUtils";
 import { filterClients } from "../../utils/searchUtils";
 import "./LazyClientSearch.css";
 
@@ -68,7 +69,7 @@ const LazyClientSearch = ({
       const cached = clientCache.getAll();
       if (cached && Array.isArray(cached) && cached.length > 0) {
         console.log("📋 Using cached clients:", cached.length);
-  
+
         // Validate cached clients and ensure they have IDs
         const validatedCached = cached
           .map((client, index) => {
@@ -81,27 +82,53 @@ const LazyClientSearch = ({
             };
           })
           .filter((client) => client !== null);
-  
+
         setAllClients(validatedCached);
         setLoading(false);
         return;
       }
-  
+
       try {
-        // Fetch from Supabase
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('clients')
-          .select('*');
-          
-        if (clientsError) throw clientsError;
-        
-        const clients = clientsData || [];
-    
-        // Ensure clients is an array
-        const clientsArray = Array.isArray(clients) ? clients : [];
-        
-        // Validate API clients
-        const validatedClients = clientsArray
+        // Fetch from Django API (same as schedulingSlice)
+        const token = getToken();
+        if (!token) {
+          console.error("❌ No authentication token available");
+          setAllClients([]);
+          setLoading(false);
+          return;
+        }
+
+        const response = await axios.get(
+          `${getBaseURL()}/registration/register/client/`,
+          {
+            headers: { Authorization: `Token ${token}` },
+          }
+        );
+
+        const clients = response.data.results || response.data || [];
+
+        // Normalize the client data structure (same as schedulingSlice)
+        const normalizedClients = clients.map((client) => ({
+          id: client.id,
+          first_name: client.first_name || client.Name?.split(" ")[0] || "",
+          last_name:
+            client.last_name ||
+            client.Name?.split(" ").slice(1).join(" ") ||
+            "",
+          phone_number: client.phone_number || client.Contact || "",
+          email: client.email || client.Email || "",
+          address: client.address || client.Address || "",
+          notes: client.notes || client.Notes || "",
+          // Keep original fields for compatibility
+          Name: client.Name,
+          Email: client.Email,
+          Contact: client.Contact,
+          Address: client.Address,
+          Notes: client.Notes,
+        }));
+
+        // Validate clients
+        const validatedClients = normalizedClients
           .map((client, index) => {
             if (!client || typeof client !== "object") {
               return null;
@@ -112,7 +139,7 @@ const LazyClientSearch = ({
             };
           })
           .filter((client) => client !== null);
-    
+
         // Cache the results
         if (validatedClients.length > 0) {
           clientCache.setAll(validatedClients);
@@ -120,7 +147,7 @@ const LazyClientSearch = ({
         setAllClients(validatedClients);
       } catch (apiError) {
         console.error("❌ API Error fetching clients:", apiError);
-  
+
         // If API fails, try to use any cached data as fallback
         const fallbackCached = clientCache.getAll();
         if (fallbackCached && Array.isArray(fallbackCached)) {

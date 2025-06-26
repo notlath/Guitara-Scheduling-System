@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
-import { useCalendarData, useCalendarRefetch } from "../../hooks/useCalendarQueries";
+import {
+  useCalendarData,
+  useCalendarRefetch,
+} from "../../hooks/useCalendarQueries";
 import "../../styles/Calendar.css";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
@@ -25,7 +28,8 @@ const Calendar = ({
   } = useCalendarData(selectedDate);
 
   // Manual refetch functions for date/time changes
-  const { refetchForDate, refetchAvailabilityForTimeSlot } = useCalendarRefetch();
+  const { refetchForDate, refetchAvailabilityForTimeSlot } =
+    useCalendarRefetch();
 
   // TanStack Query handles initial data loading automatically
   // No need for manual useEffect - data is fetched when selectedDate changes
@@ -321,7 +325,13 @@ const Calendar = ({
     console.log("appointments isArray:", Array.isArray(appointments));
     console.log("selectedDate:", selectedDate);
     console.log("loading:", loading);
-  }, [availableTherapists, appointmentsByDate, selectedDate, loading, appointments]);
+  }, [
+    availableTherapists,
+    appointmentsByDate,
+    selectedDate,
+    loading,
+    appointments,
+  ]);
 
   // Handle time selection
   const handleTimeClick = (time) => {
@@ -444,7 +454,9 @@ const Calendar = ({
               const isPastDay = cellDateMidnight < todayMidnight;
 
               // Get all appointments for this day - ensure appointments is an array
-              const safeAppointments = Array.isArray(appointments) ? appointments : [];
+              const safeAppointments = Array.isArray(appointments)
+                ? appointments
+                : [];
               const dayAppointments = safeAppointments.filter((appointment) => {
                 return appointment && appointment.date === formattedDate;
               });
@@ -761,7 +773,11 @@ const Calendar = ({
                           "Calendar: Fetching availability for selected time slot:",
                           time
                         );
-                        refetchAvailabilityForTimeSlot(targetDate, time, endTime);
+                        refetchAvailabilityForTimeSlot(
+                          targetDate,
+                          time,
+                          endTime
+                        );
                       }
                     }
                   }}

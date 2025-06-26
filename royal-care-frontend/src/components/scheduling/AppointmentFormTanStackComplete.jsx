@@ -3,7 +3,7 @@
  * Shows the dramatic simplification possible with TanStack Query
  */
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { fetchClients } from "../../features/scheduling/schedulingSlice";
 import { registerClient } from "../../services/api";
@@ -15,8 +15,8 @@ import {
   useUpdateAppointment,
 } from "../../hooks/useAppointmentQueries";
 import { useFormAvailability } from "../../hooks/useAvailabilityQueries";
-import { useFormStaticData } from "../../hooks/useStaticDataQueries";
 import { useMaterialsWithStock } from "../../hooks/useMaterialsWithStock";
+import { useFormStaticData } from "../../hooks/useStaticDataQueries";
 
 // Components
 import LazyClientSearch from "../common/LazyClientSearch";
@@ -329,37 +329,36 @@ const AppointmentFormTanStackComplete = ({
     }
   };
 
-  // Memoize processed materials to avoid infinite re-renders
-  const processedMaterials = useMemo(() => {
+  // Update materials when service or materialsWithStock changes (prevent infinite loop)
+  useEffect(() => {
     if (formData.services && materialsWithStock.length > 0) {
-      console.log('DEBUG materialsWithStock from API:', materialsWithStock);
-      const mats = materialsWithStock.map((mat) => ({
+      console.log("DEBUG materialsWithStock from API:", materialsWithStock);
+      const processedMats = materialsWithStock.map((mat) => ({
         ...mat,
-        name: mat.name || mat.material_name || mat.item_name || Object.values(mat).find(v => typeof v === 'string') || "Material",
+        name:
+          mat.name ||
+          mat.material_name ||
+          mat.item_name ||
+          Object.values(mat).find((v) => typeof v === "string") ||
+          "Material",
         current_stock: mat.current_stock ?? 0,
         unit_of_measure: mat.unit_of_measure || "",
       }));
-      console.log('DEBUG processed materials:', mats);
-      return mats;
-    }
-    return [];
-  }, [formData.services, materialsWithStock]);
+      console.log("DEBUG processed materials:", processedMats);
 
-  // Update materials when processedMaterials changes
-  useEffect(() => {
-    setMaterials(processedMaterials);
-    
-    if (processedMaterials.length > 0) {
+      setMaterials(processedMats);
+
       // Reset material quantities when service changes
       const initialQuantities = {};
-      processedMaterials.forEach((mat) => {
+      processedMats.forEach((mat) => {
         initialQuantities[mat.id] = "";
       });
       setMaterialQuantities(initialQuantities);
     } else {
+      setMaterials([]);
       setMaterialQuantities({});
     }
-  }, [processedMaterials]);
+  }, [formData.services, materialsWithStock]); // Fixed: Direct dependencies
 
   // Handle material quantity change
   const handleMaterialQuantityChange = (materialId, value) => {
@@ -626,21 +625,26 @@ const AppointmentFormTanStackComplete = ({
       <div className="form-header">
         <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
       </div>
-      
+
       {!isFormReady ? (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '300px',
-          color: '#666'
-        }}>
-          <div className="loading-spinner" style={{ 
-            width: '32px', 
-            height: '32px',
-            marginBottom: '16px'
-          }}></div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "300px",
+            color: "#666",
+          }}
+        >
+          <div
+            className="loading-spinner"
+            style={{
+              width: "32px",
+              height: "32px",
+              marginBottom: "16px",
+            }}
+          ></div>
           <p>Loading form...</p>
         </div>
       ) : (
@@ -650,62 +654,61 @@ const AppointmentFormTanStackComplete = ({
           {isSubmitting && (
             <OptimisticIndicator message="Saving appointment..." />
           )}
-
           {errors.form && <div className="error-message">{errors.form}</div>}
+          {/* Client Selection */}
+          <div className="form-group">
+            <label htmlFor="client">Client *</label>
+            <LazyClientSearch
+              selectedClient={(() => {
+                // If formData.client is already a client object, use it directly
+                if (
+                  typeof formData.client === "object" &&
+                  formData.client &&
+                  formData.client.id
+                ) {
+                  console.log(
+                    "🔍 Using formData.client directly as selectedClient:",
+                    formData.client
+                  );
+                  return formData.client;
+                }
 
-        {/* Client Selection */}
-        <div className="form-group">
-          <label htmlFor="client">Client *</label>
-          <LazyClientSearch
-            selectedClient={(() => {
-              // If formData.client is already a client object, use it directly
-              if (
-                typeof formData.client === "object" &&
-                formData.client &&
-                formData.client.id
-              ) {
+                // Otherwise try to find it in the clients array (for editing existing appointments)
+                if (Array.isArray(clients) && formData.client) {
+                  const foundClient = clients.find((c) => {
+                    const clientId = c.id || c.ID;
+                    const match = clientId === formData.client;
+                    return match;
+                  });
+
+                  console.log("🔍 Found client in clients array:", foundClient);
+                  return foundClient || null;
+                }
+
+                return null;
+              })()}
+              onClientSelect={(client) => {
                 console.log(
-                  "🔍 Using formData.client directly as selectedClient:",
-                  formData.client
+                  "✅ Client selected:",
+                  client.first_name,
+                  client.last_name
                 );
-                return formData.client;
-              }
 
-              // Otherwise try to find it in the clients array (for editing existing appointments)
-              if (Array.isArray(clients) && formData.client) {
-                const foundClient = clients.find((c) => {
-                  const clientId = c.id || c.ID;
-                  const match = clientId === formData.client;
-                  return match;
+                setFormData((prev) => {
+                  const newFormData = { ...prev, client: client };
+                  return newFormData;
                 });
 
-                console.log("🔍 Found client in clients array:", foundClient);
-                return foundClient || null;
-              }
-
-              return null;
-            })()}
-            onClientSelect={(client) => {
-              console.log(
-                "✅ Client selected:",
-                client.first_name,
-                client.last_name
-              );
-
-              setFormData((prev) => {
-                const newFormData = { ...prev, client: client };
-                return newFormData;
-              });
-
-              // Clear client error when a client is selected
-              if (errors.client) {
-                setErrors((prev) => ({ ...prev, client: "" }));
-              }
-            }}
-            error={errors.client}
-            disabled={isSubmitting}
-          />
-        </div>          {/* Service Selection */}
+                // Clear client error when a client is selected
+                if (errors.client) {
+                  setErrors((prev) => ({ ...prev, client: "" }));
+                }
+              }}
+              error={errors.client}
+              disabled={isSubmitting}
+            />
+          </div>{" "}
+          {/* Service Selection */}
           <div className="form-group">
             <label htmlFor="services">Service *</label>
             <select
@@ -715,11 +718,11 @@ const AppointmentFormTanStackComplete = ({
               onChange={handleChange}
               disabled={isSubmitting}
               className={errors.services ? "error" : ""}
-              style={{ width: '100%' }}
+              style={{ width: "100%" }}
             >
               <option value="">Select a service</option>
               {Array.isArray(services) &&
-              services.map((service) => (
+                services.map((service) => (
                   <option key={service.id} value={service.id}>
                     {service.name} - {service.duration} min - ₱{service.price}
                   </option>
@@ -728,31 +731,47 @@ const AppointmentFormTanStackComplete = ({
             {errors.services && (
               <div className="error-message">{errors.services}</div>
             )}
-          </div>          {/* Materials Section */}
+          </div>{" "}
+          {/* Materials Section */}
           <div className="form-group">
             <label>Materials Needed</label>
             <div className="materials-list">
               {formData.services && isLoadingMaterials ? (
-                <div style={{ 
-                  padding: '12px 0',
-                  color: '#666',
-                  fontStyle: 'italic'
-                }}>
+                <div
+                  style={{
+                    padding: "12px 0",
+                    color: "#666",
+                    fontStyle: "italic",
+                  }}
+                >
                   Loading materials...
                 </div>
               ) : materials.length === 0 ? (
-                <span style={{ color: '#888' }}>
-                  {formData.services ? 'No required materials for this service.' : 'Select a service to see required materials.'}
+                <span style={{ color: "#888" }}>
+                  {formData.services
+                    ? "No required materials for this service."
+                    : "Select a service to see required materials."}
                 </span>
               ) : (
                 materials.map((mat) => (
                   <div key={mat.id} className="material-item">
-                    <span>{mat.name || mat.material_name || mat.item_name || "Material"} <span style={{color:'#888',fontSize:'0.9em'}}>(In stock: {mat.current_stock} {mat.unit_of_measure || ''})</span></span>
+                    <span>
+                      {mat.name ||
+                        mat.material_name ||
+                        mat.item_name ||
+                        "Material"}{" "}
+                      <span style={{ color: "#888", fontSize: "0.9em" }}>
+                        (In stock: {mat.current_stock}{" "}
+                        {mat.unit_of_measure || ""})
+                      </span>
+                    </span>
                     <input
                       type="number"
                       min="0"
                       value={materialQuantities[mat.id] || ""}
-                      onChange={(e) => handleMaterialQuantityChange(mat.id, e.target.value)}
+                      onChange={(e) =>
+                        handleMaterialQuantityChange(mat.id, e.target.value)
+                      }
                       placeholder="Qty"
                       style={{ width: 60, marginLeft: 8 }}
                     />
@@ -761,221 +780,224 @@ const AppointmentFormTanStackComplete = ({
               )}
             </div>
           </div>
+          {/* Date and Time */}
+          <div className="form-row">
+            <div className="form-group">
+              <label>Date *</label>
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                disabled={isSubmitting}
+                min={getMinDate()}
+                className={errors.date ? "error" : ""}
+              />
+              {errors.date && (
+                <div className="error-message">{errors.date}</div>
+              )}
+            </div>
 
-        {/* Date and Time */}
-        <div className="form-row">
-          <div className="form-group">
-            <label>Date *</label>
-            <input
-              type="date"
-              name="date"
-              value={formData.date}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              min={getMinDate()}
-              className={errors.date ? "error" : ""}
-            />
-            {errors.date && <div className="error-message">{errors.date}</div>}
+            <div className="form-group">
+              <label>Start Time *</label>
+              <input
+                type="time"
+                name="start_time"
+                value={formData.start_time}
+                onChange={handleChange}
+                disabled={isSubmitting}
+                min={getMinTime(formData.date)}
+                className={errors.start_time ? "error" : ""}
+              />
+              {errors.start_time && (
+                <div className="error-message">{errors.start_time}</div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>End Time *</label>
+              <input
+                type="time"
+                name="end_time"
+                value={formData.end_time}
+                onChange={handleChange}
+                disabled={isSubmitting}
+                min={formData.start_time || ""}
+                className={errors.end_time ? "error" : ""}
+              />
+              {errors.end_time && (
+                <div className="error-message">{errors.end_time}</div>
+              )}
+            </div>
           </div>
-
+          {/* 🔥 BEFORE: 200+ lines of complex availability checking */}
+          {/* 🎉 AFTER: Simple, automatic availability display */}
+          {canFetchAvailability && (
+            <div className="availability-status">
+              {isLoadingAvailability && (
+                <div
+                  className="availability-loading"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    color: "#666",
+                  }}
+                >
+                  <div className="loading-spinner-small"></div>
+                  Checking availability...
+                </div>
+              )}
+              {hasAvailabilityError && (
+                <div className="availability-error">
+                  ⚠️ Error checking availability
+                </div>
+              )}
+              {!isLoadingAvailability && !hasAvailabilityError && (
+                <div className="availability-info">
+                  ✅ {availableTherapists.length} therapists,{" "}
+                  {availableDrivers.length} drivers available
+                </div>
+              )}
+            </div>
+          )}
+          {/* Multiple Therapists Option */}
           <div className="form-group">
-            <label>Start Time *</label>
-            <input
-              type="time"
-              name="start_time"
-              value={formData.start_time}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              min={getMinTime(formData.date)}
-              className={errors.start_time ? "error" : ""}
-            />
-            {errors.start_time && <div className="error-message">{errors.start_time}</div>}
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="multipleTherapists"
+                checked={formData.multipleTherapists}
+                onChange={handleChange}
+                disabled={isSubmitting}
+              />
+              <span>Book multiple therapists</span>
+            </label>
           </div>
-
+          {/* Therapist Selection */}
+          {!formData.multipleTherapists ? (
+            <div className="form-group">
+              <label>Therapist *</label>
+              <select
+                name="therapist"
+                value={formData.therapist}
+                onChange={handleChange}
+                disabled={isSubmitting || !canFetchAvailability}
+                className={errors.therapist ? "error" : ""}
+              >
+                <option value="">Select a therapist</option>
+                {Array.isArray(availableTherapists) &&
+                  availableTherapists.map((therapist) => (
+                    <option key={therapist.id} value={therapist.id}>
+                      {therapist.first_name} {therapist.last_name} -{" "}
+                      {therapist.specialization}
+                    </option>
+                  ))}
+              </select>
+              {errors.therapist && (
+                <div className="error-message">{errors.therapist}</div>
+              )}
+            </div>
+          ) : (
+            <div className="form-group">
+              <label>Select Multiple Therapists *</label>
+              <select
+                name="therapists"
+                multiple
+                value={formData.therapists}
+                onChange={handleChange}
+                disabled={isSubmitting || !canFetchAvailability}
+                className={
+                  errors.therapists ? "error multi-select" : "multi-select"
+                }
+                size="5"
+              >
+                {Array.isArray(availableTherapists) &&
+                  availableTherapists.map((therapist) => (
+                    <option key={therapist.id} value={therapist.id}>
+                      {therapist.first_name} {therapist.last_name} -{" "}
+                      {therapist.specialization}
+                    </option>
+                  ))}
+              </select>
+              {errors.therapists && (
+                <div className="error-message">{errors.therapists}</div>
+              )}
+            </div>
+          )}
+          {/* Driver Selection */}
           <div className="form-group">
-            <label>End Time *</label>
-            <input
-              type="time"
-              name="end_time"
-              value={formData.end_time}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              min={formData.start_time || ""}
-              className={errors.end_time ? "error" : ""}
-            />
-            {errors.end_time && (
-              <div className="error-message">{errors.end_time}</div>
-            )}
-          </div>
-        </div>
-
-        {/* 🔥 BEFORE: 200+ lines of complex availability checking */}
-        {/* 🎉 AFTER: Simple, automatic availability display */}
-        {canFetchAvailability && (
-          <div className="availability-status">
-            {isLoadingAvailability && (
-              <div className="availability-loading" style={{ display: 'flex', alignItems: 'center', color: '#666' }}>
-                <div className="loading-spinner-small"></div>
-                Checking availability...
-              </div>
-            )}
-            {hasAvailabilityError && (
-              <div className="availability-error">
-                ⚠️ Error checking availability
-              </div>
-            )}
-            {!isLoadingAvailability && !hasAvailabilityError && (
-              <div className="availability-info">
-                ✅ {availableTherapists.length} therapists,{" "}
-                {availableDrivers.length} drivers available
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Multiple Therapists Option */}
-        <div className="form-group">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              name="multipleTherapists"
-              checked={formData.multipleTherapists}
-              onChange={handleChange}
-              disabled={isSubmitting}
-            />
-            <span>Book multiple therapists</span>
-          </label>
-        </div>
-
-        {/* Therapist Selection */}
-        {!formData.multipleTherapists ? (
-          <div className="form-group">
-            <label>Therapist *</label>
+            <label>Driver (Optional)</label>
             <select
-              name="therapist"
-              value={formData.therapist}
+              name="driver"
+              value={formData.driver}
               onChange={handleChange}
               disabled={isSubmitting || !canFetchAvailability}
-              className={errors.therapist ? "error" : ""}
+              className={errors.driver ? "error" : ""}
             >
-              <option value="">Select a therapist</option>
-              {Array.isArray(availableTherapists) &&
-                availableTherapists.map((therapist) => (
-                  <option key={therapist.id} value={therapist.id}>
-                    {therapist.first_name} {therapist.last_name} -{" "}
-                    {therapist.specialization}
+              <option value="">Select a driver (optional)</option>
+              {Array.isArray(availableDrivers) &&
+                availableDrivers.map((driver) => (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.first_name} {driver.last_name}
                   </option>
                 ))}
             </select>
-            {errors.therapist && (
-              <div className="error-message">{errors.therapist}</div>
+            {errors.driver && (
+              <div className="error-message">{errors.driver}</div>
             )}
           </div>
-        ) : (
+          {/* Location */}
           <div className="form-group">
-            <label>Select Multiple Therapists *</label>
-            <select
-              name="therapists"
-              multiple
-              value={formData.therapists}
+            <label>Location *</label>
+            <input
+              type="text"
+              name="location"
+              value={formData.location}
               onChange={handleChange}
-              disabled={isSubmitting || !canFetchAvailability}
-              className={
-                errors.therapists ? "error multi-select" : "multi-select"
+              placeholder="Enter client's address"
+              disabled={isSubmitting}
+              className={errors.location ? "error" : ""}
+            />
+            {errors.location && (
+              <div className="error-message">{errors.location}</div>
+            )}
+          </div>
+          {/* Notes */}
+          <div className="form-group">
+            <label>Notes (Optional)</label>
+            <textarea
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              placeholder="Any special instructions"
+              rows="3"
+              disabled={isSubmitting}
+            />
+          </div>
+          {/* Form Actions */}
+          <div className="form-actions">
+            <button
+              type="button"
+              className="cancel-button"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+
+            <LoadingButton
+              type="submit"
+              loading={isSubmitting}
+              loadingText={appointment ? "Updating..." : "Creating..."}
+              className="submit-button"
+              disabled={
+                isSubmitting ||
+                (!canFetchAvailability && availableTherapists.length === 0)
               }
-              size="5"
             >
-              {Array.isArray(availableTherapists) &&
-                availableTherapists.map((therapist) => (
-                  <option key={therapist.id} value={therapist.id}>
-                    {therapist.first_name} {therapist.last_name} -{" "}
-                    {therapist.specialization}
-                  </option>
-                ))}
-            </select>
-            {errors.therapists && (
-              <div className="error-message">{errors.therapists}</div>
-            )}
+              {appointment ? "Update Appointment" : "Create Appointment"}
+            </LoadingButton>
           </div>
-        )}
-
-        {/* Driver Selection */}
-        <div className="form-group">
-          <label>Driver (Optional)</label>
-          <select
-            name="driver"
-            value={formData.driver}
-            onChange={handleChange}
-            disabled={isSubmitting || !canFetchAvailability}
-            className={errors.driver ? "error" : ""}
-          >
-            <option value="">Select a driver (optional)</option>
-            {Array.isArray(availableDrivers) &&
-              availableDrivers.map((driver) => (
-                <option key={driver.id} value={driver.id}>
-                  {driver.first_name} {driver.last_name}
-                </option>
-              ))}
-          </select>
-          {errors.driver && (
-            <div className="error-message">{errors.driver}</div>
-          )}
-        </div>
-
-        {/* Location */}
-        <div className="form-group">
-          <label>Location *</label>
-          <input
-            type="text"
-            name="location"
-            value={formData.location}
-            onChange={handleChange}
-            placeholder="Enter client's address"
-            disabled={isSubmitting}
-            className={errors.location ? "error" : ""}
-          />
-          {errors.location && (
-            <div className="error-message">{errors.location}</div>
-          )}
-        </div>
-
-        {/* Notes */}
-        <div className="form-group">
-          <label>Notes (Optional)</label>
-          <textarea
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            placeholder="Any special instructions"
-            rows="3"
-            disabled={isSubmitting}
-          />
-        </div>
-
-        {/* Form Actions */}
-        <div className="form-actions">
-          <button
-            type="button"
-            className="cancel-button"
-            onClick={onCancel}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </button>
-
-          <LoadingButton
-            type="submit"
-            loading={isSubmitting}
-            loadingText={appointment ? "Updating..." : "Creating..."}
-            className="submit-button"
-            disabled={
-              isSubmitting ||
-              (!canFetchAvailability && availableTherapists.length === 0)
-            }
-          >
-            {appointment ? "Update Appointment" : "Create Appointment"}
-          </LoadingButton>
-        </div>
         </form>
       )}
     </div>

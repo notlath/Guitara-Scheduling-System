@@ -6,6 +6,14 @@ import {
   removeToken,
 } from "./tokenManager";
 
+// API URL based on environment - ensure consistent URL handling
+export const getBaseURL = () => {
+  if (import.meta.env.PROD) {
+    return "https://charismatic-appreciation-production.up.railway.app/api";
+  }
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+};
+
 export const handleAuthenticationError = (error) => {
   // Check if error is authentication related
   const isAuthError =
@@ -41,6 +49,9 @@ export const isValidToken = () => {
 export const getAuthHeaders = () => {
   return getTokenHeaders();
 };
+
+// Re-export getToken for convenience
+export { getToken };
 
 // Debounce utility for API calls
 export const debounce = (func, wait) => {

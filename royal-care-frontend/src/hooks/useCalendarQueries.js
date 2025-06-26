@@ -82,55 +82,73 @@ export const useAvailableDrivers = (params) => {
  * Combined hook for calendar data
  * Replaces multiple useSelector calls and provides unified loading state
  */
-export const useCalendarData = (selectedDate, operatingHours = { start: "13:00", end: "01:00" }) => {
+export const useCalendarData = (
+  selectedDate,
+  operatingHours = { start: "13:00", end: "01:00" }
+) => {
   // Use today's date if no selectedDate is provided (for Time Slots Preview)
   const dateToUse = selectedDate || new Date();
   const formattedDate = formatDate(dateToUse);
-  
+
   console.log("=== useCalendarData DEBUG ===");
   console.log("selectedDate:", selectedDate);
   console.log("dateToUse:", dateToUse);
   console.log("formattedDate:", formattedDate);
-  
+
   const appointmentsQuery = useAppointmentsByDate(formattedDate);
-  
-  const availabilityParams = formattedDate ? {
-    date: formattedDate,
-    start_time: operatingHours.start,
-    end_time: operatingHours.end,
-  } : null;
-  
+
+  const availabilityParams = formattedDate
+    ? {
+        date: formattedDate,
+        start_time: operatingHours.start,
+        end_time: operatingHours.end,
+      }
+    : null;
+
   const therapistsQuery = useAvailableTherapists(availabilityParams);
   const driversQuery = useAvailableDrivers(availabilityParams);
 
   return {
     // Data (matches Redux structure) - ensure arrays are always returned
-    appointmentsByDate: Array.isArray(appointmentsQuery.data) ? appointmentsQuery.data : [],
-    appointments: Array.isArray(appointmentsQuery.data) ? appointmentsQuery.data : [], // Alias for month view compatibility
-    availableTherapists: Array.isArray(therapistsQuery.data) ? therapistsQuery.data : [],
+    appointmentsByDate: Array.isArray(appointmentsQuery.data)
+      ? appointmentsQuery.data
+      : [],
+    appointments: Array.isArray(appointmentsQuery.data)
+      ? appointmentsQuery.data
+      : [], // Alias for month view compatibility
+    availableTherapists: Array.isArray(therapistsQuery.data)
+      ? therapistsQuery.data
+      : [],
     availableDrivers: Array.isArray(driversQuery.data) ? driversQuery.data : [],
-    
+
     // Loading states (matches Redux loading)
-    loading: appointmentsQuery.isLoading || therapistsQuery.isLoading || driversQuery.isLoading,
-    isFetching: appointmentsQuery.isFetching || therapistsQuery.isFetching || driversQuery.isFetching,
-    
+    loading:
+      appointmentsQuery.isLoading ||
+      therapistsQuery.isLoading ||
+      driversQuery.isLoading,
+    isFetching:
+      appointmentsQuery.isFetching ||
+      therapistsQuery.isFetching ||
+      driversQuery.isFetching,
+
     // Error states
-    error: appointmentsQuery.error || therapistsQuery.error || driversQuery.error,
-    
+    error:
+      appointmentsQuery.error || therapistsQuery.error || driversQuery.error,
+
     // Refetch functions for manual refresh
     refetchAll: () => {
       appointmentsQuery.refetch();
       therapistsQuery.refetch();
       driversQuery.refetch();
     },
-    
+
     // Specific refetch functions (replaces dispatch calls)
     refetchAppointments: appointmentsQuery.refetch,
     refetchAvailability: () => {
       therapistsQuery.refetch();
       driversQuery.refetch();
     },
-    
+
     // Individual queries for advanced usage
     queries: {
       appointments: appointmentsQuery,
