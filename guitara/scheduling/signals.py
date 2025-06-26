@@ -172,14 +172,38 @@ def notification_created(sender, instance, created, **kwargs):
     """Handle new notification creation"""
     if created:
         try:
+            # Generate a title based on notification type
+            title_map = {
+                "appointment_created": "New Appointment",
+                "appointment_updated": "Appointment Updated",
+                "appointment_reminder": "Appointment Reminder",
+                "appointment_cancelled": "Appointment Cancelled",
+                "appointment_accepted": "Appointment Accepted",
+                "appointment_rejected": "Appointment Rejected",
+                "appointment_started": "Appointment Started",
+                "appointment_completed": "Appointment Completed",
+                "appointment_auto_cancelled": "Appointment Auto Cancelled",
+                "rejection_reviewed": "Rejection Reviewed",
+                "therapist_disabled": "Therapist Disabled",
+            }
+
+            title = title_map.get(instance.notification_type, "Notification")
+
+            # Determine related object ID
+            related_object_id = None
+            if instance.appointment:
+                related_object_id = instance.appointment.id
+            elif instance.rejection:
+                related_object_id = instance.rejection.id
+
             NotificationWebSocketHandler.send_notification(
                 user_id=instance.user.id,
                 notification_type=instance.notification_type,
-                title=instance.title,
+                title=title,
                 message=instance.message,
                 data={
                     "notification_id": instance.id,
-                    "related_object_id": instance.related_object_id,
+                    "related_object_id": related_object_id,
                     "is_read": instance.is_read,
                 },
             )

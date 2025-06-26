@@ -53,10 +53,14 @@ const NotificationsPage = () => {
         ? data
         : Array.isArray(data.notifications)
         ? data.notifications
+        : Array.isArray(data.results)
+        ? data.results
+        : Array.isArray(data.results?.notifications)
+        ? data.results.notifications
         : [];
 
       setNotifications(notificationsList);
-      setTotalCount(data.total_count || notificationsList.length);
+      setTotalCount(data.total_count || data.count || notificationsList.length);
     } catch (err) {
       setError(err.message);
     } finally {

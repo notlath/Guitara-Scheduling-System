@@ -2621,40 +2621,47 @@ class NotificationViewSet(viewsets.ModelViewSet):
             # Apply role-based filtering with optimized queries
             user_role = getattr(self.request.user, "role", None)
 
-            if user_role == "therapist":
-                # OPTIMIZATION: Use more specific Q objects to reduce query complexity
-                queryset = queryset.exclude(
-                    notification_type__in=[
-                        "appointment_auto_cancelled",  # This is sent only to operators
-                    ]
-                ).filter(
-                    # Only show notifications where the therapist is directly involved
-                    models.Q(appointment__therapist=self.request.user)
-                    | models.Q(appointment__therapists=self.request.user)
-                    | models.Q(appointment__isnull=True)  # General notifications
-                )
+            # TEMPORARY FIX: Disable strict role filtering to show all notifications
+            # This is a temporary fix to debug why notifications aren't showing
+            logger.info(
+                f"🔧 TEMPORARY FIX: Showing all notifications for {user_role} user {self.request.user.username}"
+            )
 
-                logger.debug(
-                    f"Therapist {self.request.user.username}: Filtered to role-relevant notifications"
-                )
+            # Comment out the restrictive filtering for now
+            # if user_role == "therapist":
+            #     # OPTIMIZATION: Use more specific Q objects to reduce query complexity
+            #     queryset = queryset.exclude(
+            #         notification_type__in=[
+            #             "appointment_auto_cancelled",  # This is sent only to operators
+            #         ]
+            #     ).filter(
+            #         # Only show notifications where the therapist is directly involved
+            #         models.Q(appointment__therapist=self.request.user)
+            #         | models.Q(appointment__therapists=self.request.user)
+            #         | models.Q(appointment__isnull=True)  # General notifications
+            #     )
 
-            elif user_role == "driver":
-                # OPTIMIZATION: Use more specific Q objects to reduce query complexity
-                queryset = queryset.exclude(
-                    notification_type__in=[
-                        "appointment_auto_cancelled",  # Operator-only notifications
-                        "rejection_reviewed",  # Therapist-operator communication
-                        "therapist_disabled",  # Therapist-specific notifications
-                    ]
-                ).filter(
-                    # Only show notifications where the driver is directly involved
-                    models.Q(appointment__driver=self.request.user)
-                    | models.Q(appointment__isnull=True)  # General notifications
-                )
+            #     logger.debug(
+            #         f"Therapist {self.request.user.username}: Filtered to role-relevant notifications"
+            #     )
 
-                logger.debug(
-                    f"Driver {self.request.user.username}: Filtered to role-relevant notifications"
-                )
+            # elif user_role == "driver":
+            #     # OPTIMIZATION: Use more specific Q objects to reduce query complexity
+            #     queryset = queryset.exclude(
+            #         notification_type__in=[
+            #             "appointment_auto_cancelled",  # Operator-only notifications
+            #             "rejection_reviewed",  # Therapist-operator communication
+            #             "therapist_disabled",  # Therapist-specific notifications
+            #         ]
+            #     ).filter(
+            #         # Only show notifications where the driver is directly involved
+            #         models.Q(appointment__driver=self.request.user)
+            #         | models.Q(appointment__isnull=True)  # General notifications
+            #     )
+
+            #     logger.debug(
+            #         f"Driver {self.request.user.username}: Filtered to role-relevant notifications"
+            #     )
 
             # Operators see all notifications (no additional filtering)
             # This maintains backward compatibility for operators
@@ -2805,10 +2812,72 @@ class NotificationViewSet(viewsets.ModelViewSet):
         notification = self.get_object()
         notification.is_read = False
         notification.save()
-        return Response({"status": "marked as unread"}) @ action(
-            detail=False, methods=["post"]
-        )
+        return Response({"status": "marked as unread"})
 
+    @action(detail=False, methods=["get"])
+    def debug_all(self, request):
+        """Debug endpoint to see all notifications for a user without role filtering"""
+        try:
+            logger.info(
+                f"🔧 DEBUG: Fetching all notifications for user {request.user.username} ({request.user.role})"
+            )
+
+            # Get ALL notifications for this user without role filtering
+            queryset = Notification.objects.filter(user=request.user).order_by(
+                "-created_at"
+            )[:50]
+
+            # Log what we found
+            total_count = Notification.objects.filter(user=request.user).count()
+            unread_count = Notification.objects.filter(
+                user=request.user, is_read=False
+            ).count()
+
+            logger.info(
+                f"🔧 DEBUG: Found {total_count} total notifications, {unread_count} unread for {request.user.username}"
+            )
+
+            # Log notification types
+            notification_types = list(
+                queryset.values_list("notification_type", flat=True).distinct()
+            )
+            logger.info(f"🔧 DEBUG: Notification types: {notification_types}")
+
+            # Try to serialize
+            serializer = self.get_serializer(queryset, many=True)
+            serialized_data = serializer.data
+
+            logger.info(
+                f"🔧 DEBUG: Successfully serialized {len(serialized_data)} notifications"
+            )
+
+            return Response(
+                {
+                    "notifications": serialized_data,
+                    "total_count": total_count,
+                    "unread_count": unread_count,
+                    "user_role": getattr(request.user, "role", "unknown"),
+                    "notification_types": notification_types,
+                    "debug": True,
+                    "message": "Debug endpoint - no role filtering applied",
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"🔧 DEBUG endpoint error: {e}", exc_info=True)
+            return Response(
+                {
+                    "error": str(e),
+                    "notifications": [],
+                    "total_count": 0,
+                    "unread_count": 0,
+                    "debug": True,
+                    "message": "Debug endpoint failed",
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=False, methods=["post"])
     def mark_all_as_read(self, request):
         """Mark all notifications as read for the current user - OPTIMIZED"""
         # OPTIMIZATION: Use bulk_update or raw SQL for better performance
