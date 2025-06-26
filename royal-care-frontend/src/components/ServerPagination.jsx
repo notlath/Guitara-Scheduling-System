@@ -1,4 +1,5 @@
 import "./ServerPagination.css";
+import { MdArrowBack, MdArrowForward } from "react-icons/md";
 
 const ServerPagination = ({
   currentPage,
@@ -100,7 +101,7 @@ const ServerPagination = ({
               disabled={!hasPrevious}
               className="nav-button"
             >
-              « Previous
+              <MdArrowBack />
             </button>
           )}
 
@@ -110,7 +111,7 @@ const ServerPagination = ({
               disabled={!hasNext}
               className="nav-button"
             >
-              Next »
+              <MdArrowForward />
             </button>
           )}
         </div>
@@ -130,7 +131,7 @@ const ServerPagination = ({
           disabled={!hasPrevious}
           className="nav-button"
         >
-          « Previous
+          <MdArrowBack />
         </button>
 
         <div className="page-numbers">{renderPageNumbers()}</div>
@@ -140,7 +141,7 @@ const ServerPagination = ({
           disabled={!hasNext}
           className="nav-button"
         >
-          Next »
+          <MdArrowForward />
         </button>
       </div>
 
