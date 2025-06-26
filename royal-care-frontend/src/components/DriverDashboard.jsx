@@ -130,6 +130,38 @@ const DriverDashboard = () => {
     return "Good evening";
   };
 
+  // System time state for real-time clock display
+  const [systemTime, setSystemTime] = useState(() =>
+    new Date().toLocaleString("en-PH", {
+      timeZone: "Asia/Manila",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    })
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSystemTime(
+        new Date().toLocaleString("en-PH", {
+          timeZone: "Asia/Manila",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        })
+      );
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
 
@@ -1580,36 +1612,6 @@ const DriverDashboard = () => {
     );
   };
 
-  const [systemTime, setSystemTime] = useState(() =>
-    new Date().toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-    })
-  );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSystemTime(
-        new Date().toLocaleString("en-PH", {
-          timeZone: "Asia/Manila",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-        })
-      );
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
   return (
     <PageLayout>
       {" "}
@@ -1624,17 +1626,10 @@ const DriverDashboard = () => {
       )}
       <div className="driver-dashboard">
         <LayoutRow
-          title="Driver Dashboard"
-          subtitle={
-            <>
-              {getGreeting()}, {userName}! &nbsp;|&nbsp; {systemTime}
-            </>
-          }
+          title={`${getGreeting()}, ${userName}!`}
+          subtitle={<>{systemTime}</>}
         >
           <div className="action-buttons">
-            <p style={{ margin: 0 }}>
-              Welcome, {user?.first_name} {user?.last_name}!
-            </p>
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>

@@ -12,7 +12,7 @@
  * ✅ Real-time updates via TanStack Query cache invalidation
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -46,6 +46,57 @@ const TherapistDashboardMigrated = () => {
 
   // Get user info from Redux (minimal Redux usage)
   const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
+
+  // Get user name from Redux state or fallback
+  const userName =
+    user?.first_name && user?.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : user?.username || "Therapist";
+
+  // Helper to get greeting based on PH time
+  const getGreeting = () => {
+    const now = new Date().toLocaleString("en-PH", {
+      timeZone: "Asia/Manila",
+      hour: "2-digit",
+      hour12: false,
+    });
+    const hour = parseInt(now.split(":")[0], 10);
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
+
+  // System time state for real-time clock display
+  const [systemTime, setSystemTime] = useState(() =>
+    new Date().toLocaleString("en-PH", {
+      timeZone: "Asia/Manila",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    })
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSystemTime(
+        new Date().toLocaleString("en-PH", {
+          timeZone: "Asia/Manila",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        })
+      );
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ✅ NEW: Enhanced dashboard data with role-based filtering
   const {
@@ -435,11 +486,11 @@ const TherapistDashboardMigrated = () => {
       />
 
       <div className="therapist-dashboard">
-        <LayoutRow title="Therapist Dashboard">
+        <LayoutRow
+          title={`${getGreeting()}, ${userName}!`}
+          subtitle={<>{systemTime}</>}
+        >
           <div className="action-buttons">
-            <p style={{ margin: 0 }}>
-              Welcome, {user?.first_name} {user?.last_name}!
-            </p>
             {isRefetching && (
               <span className="refreshing-indicator">🔄 Updating...</span>
             )}

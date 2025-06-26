@@ -2815,12 +2815,8 @@ const OperatorDashboard = () => {
 
       <div className={`operator-dashboard`}>
         <LayoutRow
-          title="Operator Dashboard"
-          subtitle={
-            <>
-              {getGreeting()}, {userName}! &nbsp;|&nbsp; {systemTime}
-            </>
-          }
+          title={`${getGreeting()}, ${userName}!`}
+          subtitle={<>{systemTime}</>}
         >
           <div className="action-buttons">
             <button onClick={handleLogout} className="logout-button">

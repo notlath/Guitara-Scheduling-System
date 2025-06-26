@@ -54,7 +54,7 @@ const TherapistDashboard = () => {
   // Get user from Redux state
   const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
 
-  // Get user name from localStorage (or auth state if available)
+  // Get user name from Redux state or fallback
   const userName =
     user?.first_name && user?.last_name
       ? `${user.first_name} ${user.last_name}`
@@ -72,6 +72,8 @@ const TherapistDashboard = () => {
     if (hour < 18) return "Good afternoon";
     return "Good evening";
   };
+
+  // System time state for real-time clock display
 
   const [systemTime, setSystemTime] = useState(() =>
     new Date().toLocaleString("en-PH", {
@@ -1057,17 +1059,10 @@ const TherapistDashboard = () => {
       />
       <div className="therapist-dashboard">
         <LayoutRow
-          title="Therapist Dashboard"
-          subtitle={
-            <>
-              {getGreeting()}, {userName}! &nbsp;|&nbsp; {systemTime}
-            </>
-          }
+          title={`${getGreeting()}, ${userName}!`}
+          subtitle={<>{systemTime}</>}
         >
           <div className="action-buttons">
-            <p style={{ margin: 0 }}>
-              Welcome, {user?.first_name} {user?.last_name}!
-            </p>
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>
