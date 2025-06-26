@@ -14,6 +14,8 @@ import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 import { useEnhancedOperatorActions } from "../hooks/useEnhancedRedux";
+// Import shared Philippine time and greeting hook
+import { usePhilippineTime } from "../hooks/usePhilippineTime";
 // PERFORMANCE: Stable filtering imports to prevent render loops
 import ServerPagination from "./ServerPagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
@@ -112,18 +114,8 @@ const OperatorDashboard = () => {
       ? `${user.first_name} ${user.last_name}`
       : user.username || "Operator";
 
-  // Helper to get greeting based on PH time
-  const getGreeting = () => {
-    const now = new Date().toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      hour: "2-digit",
-      hour12: false,
-    });
-    const hour = parseInt(now.split(":")[0], 10);
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
+  // Use shared Philippine time and greeting hook
+  const { systemTime, greeting } = usePhilippineTime();
 
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
@@ -2778,36 +2770,6 @@ const OperatorDashboard = () => {
   };
   // Render the tab switcher at the top of the dashboard
 
-  const [systemTime, setSystemTime] = useState(() =>
-    new Date().toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-    })
-  );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSystemTime(
-        new Date().toLocaleString("en-PH", {
-          timeZone: "Asia/Manila",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-        })
-      );
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
   return (
     <PageLayout>
       {/* TanStack Query Debugger - Remove this after debugging
@@ -2815,7 +2777,7 @@ const OperatorDashboard = () => {
 
       <div className={`operator-dashboard`}>
         <LayoutRow
-          title={`${getGreeting()}, ${userName}!`}
+          title={`${greeting}, ${userName}!`}
           subtitle={<>{systemTime}</>}
         >
           <div className="action-buttons">

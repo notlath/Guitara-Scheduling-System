@@ -12,7 +12,7 @@
  * ✅ Real-time updates via TanStack Query cache invalidation
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { shallowEqual } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -22,6 +22,8 @@ import {
   useDashboardMutations,
 } from "../hooks/useAppointmentQueries";
 import { useOptimizedSelector } from "../hooks/usePerformanceOptimization";
+// Import shared Philippine time and greeting hook
+import { usePhilippineTime } from "../hooks/usePhilippineTime";
 
 // UI Components
 import LayoutRow from "../globals/LayoutRow";
@@ -53,50 +55,8 @@ const TherapistDashboardMigrated = () => {
       ? `${user.first_name} ${user.last_name}`
       : user?.username || "Therapist";
 
-  // Helper to get greeting based on PH time
-  const getGreeting = () => {
-    const now = new Date().toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      hour: "2-digit",
-      hour12: false,
-    });
-    const hour = parseInt(now.split(":")[0], 10);
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
-
-  // System time state for real-time clock display
-  const [systemTime, setSystemTime] = useState(() =>
-    new Date().toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-    })
-  );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSystemTime(
-        new Date().toLocaleString("en-PH", {
-          timeZone: "Asia/Manila",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-        })
-      );
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // Get greeting and Philippine time using shared hook
+  const { greeting, systemTime } = usePhilippineTime();
 
   // ✅ NEW: Enhanced dashboard data with role-based filtering
   const {
@@ -487,7 +447,7 @@ const TherapistDashboardMigrated = () => {
 
       <div className="therapist-dashboard">
         <LayoutRow
-          title={`${getGreeting()}, ${userName}!`}
+          title={`${greeting}, ${userName}!`}
           subtitle={<>{systemTime}</>}
         >
           <div className="action-buttons">

@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
@@ -11,6 +11,8 @@ import { useEnhancedDashboardData } from "../hooks/useEnhancedDashboardData";
 import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
 // Import the new instant updates hook
 import { useTherapistInstantActions } from "../hooks/useInstantUpdates";
+// Import shared Philippine time and greeting hook
+import { usePhilippineTime } from "../hooks/usePhilippineTime";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 
@@ -60,51 +62,8 @@ const TherapistDashboard = () => {
       ? `${user.first_name} ${user.last_name}`
       : user?.username || "Therapist";
 
-  // Helper to get greeting based on PH time
-  const getGreeting = () => {
-    const now = new Date().toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      hour: "2-digit",
-      hour12: false,
-    });
-    const hour = parseInt(now.split(":")[0], 10);
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
-
-  // System time state for real-time clock display
-
-  const [systemTime, setSystemTime] = useState(() =>
-    new Date().toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-    })
-  );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSystemTime(
-        new Date().toLocaleString("en-PH", {
-          timeZone: "Asia/Manila",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-        })
-      );
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // Use shared Philippine time and greeting hook
+  const { systemTime, greeting } = usePhilippineTime();
 
   // URL search params for view persistence
   const [searchParams, setSearchParams] = useSearchParams();
@@ -144,22 +103,24 @@ const TherapistDashboard = () => {
   } = useEnhancedDashboardData("therapist", user?.id);
 
   // Debug logging for troubleshooting the "No appointments found" issue
-  console.log("🔍 TherapistDashboard Debug:", {
-    user: user,
-    userRole: "therapist",
-    userId: user?.id,
-    myAppointments: myAppointments,
-    myAppointmentsLength: myAppointments?.length || 0,
-    myAppointmentsIsArray: Array.isArray(myAppointments),
-    myTodayAppointments: myTodayAppointments,
-    myTodayAppointmentsLength: myTodayAppointments?.length || 0,
-    myUpcomingAppointments: myUpcomingAppointments,
-    myUpcomingAppointmentsLength: myUpcomingAppointments?.length || 0,
-    loading,
-    error,
-    hasData,
-    currentView,
-  });
+  if (process.env.NODE_ENV === "development") {
+    console.log("🔍 TherapistDashboard Debug:", {
+      user: user,
+      userRole: "therapist",
+      userId: user?.id,
+      myAppointments: myAppointments,
+      myAppointmentsLength: myAppointments?.length || 0,
+      myAppointmentsIsArray: Array.isArray(myAppointments),
+      myTodayAppointments: myTodayAppointments,
+      myTodayAppointmentsLength: myTodayAppointments?.length || 0,
+      myUpcomingAppointments: myUpcomingAppointments,
+      myUpcomingAppointmentsLength: myUpcomingAppointments?.length || 0,
+      loading,
+      error,
+      hasData,
+      currentView,
+    });
+  }
 
   // TANSTACK QUERY: Automatic background refreshes handled by TanStack Query
   // No manual refresh logic needed - TanStack Query handles it automatically
@@ -1059,7 +1020,7 @@ const TherapistDashboard = () => {
       />
       <div className="therapist-dashboard">
         <LayoutRow
-          title={`${getGreeting()}, ${userName}!`}
+          title={`${greeting}, ${userName}!`}
           subtitle={<>{systemTime}</>}
         >
           <div className="action-buttons">
