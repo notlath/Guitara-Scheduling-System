@@ -48,7 +48,6 @@ import { cleanupInvalidTokens } from "./utils/tokenManager";
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
 
-
 // Error Boundary Component
 class AppErrorBoundary extends React.Component {
   constructor(props) {

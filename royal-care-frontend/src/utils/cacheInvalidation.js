@@ -1,6 +1,6 @@
 /**
  * Unified Cache Invalidation System
- * 
+ *
  * This utility ensures TanStack Query cache stays synchronized with Redux mutations.
  * It provides a centralized way to invalidate TanStack Query cache whenever Redux actions occur.
  */
@@ -11,19 +11,22 @@ import { queryKeys } from "../lib/queryClient";
  * Comprehensive cache invalidation helper
  * Use this after any Redux mutation that changes appointment data
  */
-export const invalidateAppointmentCaches = async (queryClient, options = {}) => {
+export const invalidateAppointmentCaches = async (
+  queryClient,
+  options = {}
+) => {
   const {
     userId = null,
     userRole = null,
     appointmentId = null,
-    invalidateAll = false
+    invalidateAll = false,
   } = options;
 
   console.log("🔄 Invalidating TanStack Query caches after Redux mutation", {
     userId,
     userRole,
     appointmentId,
-    invalidateAll
+    invalidateAll,
   });
 
   try {
@@ -32,38 +35,44 @@ export const invalidateAppointmentCaches = async (queryClient, options = {}) => 
     // Core appointment queries - always invalidate these
     invalidationPromises.push(
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.list() }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.today() }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.upcoming() })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.list(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.today(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.upcoming(),
+      })
     );
 
     // Role-specific invalidation
     if (userRole && userId) {
       switch (userRole) {
-        case 'therapist':
+        case "therapist":
           invalidationPromises.push(
-            queryClient.invalidateQueries({ 
-              queryKey: queryKeys.appointments.byTherapist(userId) 
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.appointments.byTherapist(userId),
             }),
-            queryClient.invalidateQueries({ 
-              queryKey: queryKeys.dashboard.therapist(userId) 
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.dashboard.therapist(userId),
             })
           );
           break;
-        case 'driver':
+        case "driver":
           invalidationPromises.push(
-            queryClient.invalidateQueries({ 
-              queryKey: queryKeys.appointments.byDriver(userId) 
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.appointments.byDriver(userId),
             }),
-            queryClient.invalidateQueries({ 
-              queryKey: queryKeys.dashboard.driver(userId) 
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.dashboard.driver(userId),
             })
           );
           break;
-        case 'operator':
+        case "operator":
           invalidationPromises.push(
-            queryClient.invalidateQueries({ 
-              queryKey: queryKeys.dashboard.operator 
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.dashboard.operator,
             })
           );
           break;
@@ -80,7 +89,9 @@ export const invalidateAppointmentCaches = async (queryClient, options = {}) => 
     // Notifications (appointment changes often trigger notifications)
     invalidationPromises.push(
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unread() })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.notifications.unread(),
+      })
     );
 
     // If invalidateAll is true, invalidate everything
@@ -98,7 +109,6 @@ export const invalidateAppointmentCaches = async (queryClient, options = {}) => 
 
     console.log("✅ TanStack Query cache invalidation completed successfully");
     return true;
-
   } catch (error) {
     console.error("❌ Failed to invalidate TanStack Query cache:", error);
     return false;
@@ -112,15 +122,17 @@ export const invalidateAppointmentCaches = async (queryClient, options = {}) => 
 export const optimisticUpdate = (queryClient, appointmentId, updateData) => {
   if (!appointmentId || !updateData) return;
 
-  console.log("⚡ Applying optimistic update for appointment:", appointmentId, updateData);
+  console.log(
+    "⚡ Applying optimistic update for appointment:",
+    appointmentId,
+    updateData
+  );
 
   // Update all appointment lists
   const updateFunction = (old) => {
     if (!Array.isArray(old)) return old;
-    return old.map(apt => 
-      apt.id === appointmentId 
-        ? { ...apt, ...updateData }
-        : apt
+    return old.map((apt) =>
+      apt.id === appointmentId ? { ...apt, ...updateData } : apt
     );
   };
 
@@ -147,27 +159,33 @@ export const rollbackOptimisticUpdate = (queryClient, backupData) => {
  */
 export const invalidateByStatus = async (queryClient, status, options = {}) => {
   const statusInvalidationMap = {
-    'confirmed': ['availability'],
-    'in_progress': ['availability', 'notifications'],
-    'completed': ['availability', 'attendance'],
-    'cancelled': ['availability', 'notifications'],
-    'rejected': ['notifications'],
-    'therapist_confirmed': ['availability'],
-    'driver_confirmed': ['availability']
+    confirmed: ["availability"],
+    in_progress: ["availability", "notifications"],
+    completed: ["availability", "attendance"],
+    cancelled: ["availability", "notifications"],
+    rejected: ["notifications"],
+    therapist_confirmed: ["availability"],
+    driver_confirmed: ["availability"],
   };
 
   const additionalQueries = statusInvalidationMap[status] || [];
-  
+
   for (const queryType of additionalQueries) {
     switch (queryType) {
-      case 'availability':
-        await queryClient.invalidateQueries({ queryKey: queryKeys.availability.all });
+      case "availability":
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.availability.all,
+        });
         break;
-      case 'notifications':
-        await queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+      case "notifications":
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.notifications.all,
+        });
         break;
-      case 'attendance':
-        await queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all });
+      case "attendance":
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.attendance.all,
+        });
         break;
     }
   }
@@ -183,20 +201,20 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
   const { type, appointment, user_id, role } = wsData;
 
   switch (type) {
-    case 'appointment_created':
-    case 'appointment_updated':
-    case 'appointment_deleted':
+    case "appointment_created":
+    case "appointment_updated":
+    case "appointment_deleted":
       return invalidateAppointmentCaches(queryClient, {
         userId: user_id,
         userRole: role,
-        appointmentId: appointment?.id
+        appointmentId: appointment?.id,
       });
 
-    case 'therapist_response':
-    case 'driver_response':
+    case "therapist_response":
+    case "driver_response":
       return invalidateByStatus(queryClient, appointment?.status, {
         userId: user_id,
-        userRole: role
+        userRole: role,
       });
 
     default:
@@ -210,5 +228,5 @@ export default {
   optimisticUpdate,
   rollbackOptimisticUpdate,
   invalidateByStatus,
-  handleWebSocketUpdate
+  handleWebSocketUpdate,
 };

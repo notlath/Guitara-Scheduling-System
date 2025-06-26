@@ -11,7 +11,7 @@ import { logout } from "../features/auth/authSlice";
 // TANSTACK QUERY: Replace optimized data manager with TanStack Query
 import { useDriverDashboardData } from "../hooks/useDashboardQueries";
 import { useDashboardMutations } from "../hooks/useEnhancedDashboardData";
-// Enhanced Redux hooks for automatic TanStack Query cache invalidation  
+// Enhanced Redux hooks for automatic TanStack Query cache invalidation
 import { useEnhancedDriverActions } from "../hooks/useEnhancedRedux";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
@@ -109,7 +109,7 @@ const DriverDashboard = () => {
     confirmAppointment: enhancedConfirmAppointment,
     confirmPickup: enhancedConfirmPickup,
     startJourney: enhancedStartJourney,
-    completeReturnJourney: enhancedCompleteReturnJourney
+    completeReturnJourney: enhancedCompleteReturnJourney,
   } = useEnhancedDriverActions();
 
   const userName =

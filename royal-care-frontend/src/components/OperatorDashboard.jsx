@@ -8,14 +8,12 @@ import {
   getTodayAttendanceStatus,
 } from "../features/attendance/attendanceSlice";
 import { logout } from "../features/auth/authSlice";
-import {
-  updateAppointmentStatus,
-} from "../features/scheduling/schedulingSlice";
+import { updateAppointmentStatus } from "../features/scheduling/schedulingSlice";
 // ENHANCED REDUX: Import enhanced operator actions for cache synchronization
-import { useEnhancedOperatorActions } from "../hooks/useEnhancedRedux";
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
+import { useEnhancedOperatorActions } from "../hooks/useEnhancedRedux";
 // PERFORMANCE: Stable filtering imports to prevent render loops
 import ServerPagination from "./ServerPagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
@@ -973,11 +971,14 @@ const OperatorDashboard = () => {
 
       // Pass the appointment ID as a number, not an object
       const appointmentId = parseInt(paymentModal.appointmentId, 10);
-      console.log("🔍 handleMarkPaymentPaid: Using enhanced payment verification", {
-        appointmentId,
-        paymentData,
-        actionKey,
-      });
+      console.log(
+        "🔍 handleMarkPaymentPaid: Using enhanced payment verification",
+        {
+          appointmentId,
+          paymentData,
+          actionKey,
+        }
+      );
 
       // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
       const result = await enhancedVerifyPayment(appointmentId, paymentData);
@@ -1001,7 +1002,9 @@ const OperatorDashboard = () => {
         amount: "",
         notes: "",
       });
-      console.log("✅ handleMarkPaymentPaid: Enhanced action handles cache refresh automatically");
+      console.log(
+        "✅ handleMarkPaymentPaid: Enhanced action handles cache refresh automatically"
+      );
       // No need for manual refresh - enhanced action handles cache invalidation automatically
 
       alert("Payment marked as received successfully!");

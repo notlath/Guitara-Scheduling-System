@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
-import {
-  requestPayment,
-} from "../features/scheduling/schedulingSlice";
+import { requestPayment } from "../features/scheduling/schedulingSlice";
 // Enhanced Redux hooks for automatic TanStack Query cache invalidation
 import { useEnhancedTherapistActions } from "../hooks/useEnhancedRedux";
 // TANSTACK QUERY: Replace optimized hooks with TanStack Query
@@ -35,7 +33,7 @@ const TherapistDashboard = () => {
     confirmReadiness: enhancedConfirmReadiness,
     startSession: enhancedStartSession,
     completeSession: enhancedCompleteSession,
-    requestPickup: enhancedRequestPickup
+    requestPickup: enhancedRequestPickup,
   } = useEnhancedTherapistActions();
   // Remove the sync event handlers - TanStack Query handles real-time updates automatically
 
