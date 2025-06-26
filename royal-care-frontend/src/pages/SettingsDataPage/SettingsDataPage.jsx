@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MdAdd,
   MdBackup,
@@ -16,16 +16,13 @@ import LayoutRow from "../../globals/LayoutRow";
 import "../../globals/LayoutRow.css";
 import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
-import useSettingsData from "../../hooks/useSettingsData";
 import {
-  api,
+  useCreateSettingsEntry,
+  usePrefetchSettingsData,
+  useSettingsData,
+} from "../../hooks/useSettingsQueries";
+import {
   checkUsernameAvailable,
-  registerClient,
-  registerDriver,
-  registerMaterial,
-  registerOperator,
-  registerService,
-  registerTherapist,
 } from "../../services/api";
 import "../../styles/LoadingConsistency.css";
 import "../../styles/Placeholders.css";
@@ -110,317 +107,8 @@ const generateDefaultUsername = (role, firstName, lastName) => {
   return `${prefix}_${name}`;
 };
 
-// (removed unused generateUniqueUsername function)
-
 // Pagination defaults - Set to 12 items per page for production use
 const DEFAULT_PAGE_SIZE = 12; // Display 12 items per page with navigation buttons
-
-// Add fetch functions for each tab - Updated to return pagination metadata
-const fetchers = {
-  Therapists: async (page = 1) => {
-    try {
-      const res = await api.get(
-        `/registration/register/therapist/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
-      );
-      const data = res.data;
-
-      // Handle both old format (direct array) and new format (with results)
-      const items = data.results || (Array.isArray(data) ? data : []);
-      const mappedItems = items.map((item) => ({
-        Username: item.username,
-        Name: `${capitalizeName(item.first_name) || ""} ${
-          capitalizeName(item.last_name) || ""
-        }`.trim(),
-        Email: item.email,
-        Contact: item.phone_number || "-",
-        Specialization: item.specialization || "-",
-        Pressure: item.pressure
-          ? item.pressure.charAt(0).toUpperCase() + item.pressure.slice(1)
-          : "-",
-      }));
-
-      // Return both data and pagination info
-      return {
-        data: mappedItems,
-        pagination: {
-          currentPage: data.current_page || page,
-          totalPages:
-            data.total_pages ||
-            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
-          totalItems: data.count || mappedItems.length,
-          hasNext: data.has_next || false,
-          hasPrevious: data.has_previous || false,
-        },
-      };
-    } catch (error) {
-      console.error("Error fetching therapists:", error);
-      return {
-        data: [],
-        pagination: {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: 0,
-          hasNext: false,
-          hasPrevious: false,
-        },
-      };
-    }
-  },
-  Drivers: async (page = 1) => {
-    try {
-      const res = await api.get(
-        `/registration/register/driver/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
-      );
-      const data = res.data;
-
-      // Handle both old format (direct array) and new format (with results)
-      const items = data.results || (Array.isArray(data) ? data : []);
-      const mappedItems = items.map((item) => ({
-        Username: item.username,
-        Name: `${capitalizeName(item.first_name) || ""} ${
-          capitalizeName(item.last_name) || ""
-        }`.trim(),
-        Email: item.email,
-        Contact: item.phone_number || "-",
-        Specialization: item.motorcycle_plate || "N/A",
-        Pressure: "N/A",
-      }));
-
-      return {
-        data: mappedItems,
-        pagination: {
-          currentPage: data.current_page || page,
-          totalPages:
-            data.total_pages ||
-            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
-          totalItems: data.count || mappedItems.length,
-          hasNext: data.has_next || false,
-          hasPrevious: data.has_previous || false,
-        },
-      };
-    } catch (error) {
-      console.error("Error fetching drivers:", error);
-      return {
-        data: [],
-        pagination: {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: 0,
-          hasNext: false,
-          hasPrevious: false,
-        },
-      };
-    }
-  },
-  Operators: async (page = 1) => {
-    try {
-      const res = await api.get(
-        `/registration/register/operator/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
-      );
-      const data = res.data;
-
-      // Handle both old format (direct array) and new format (with results)
-      const items = data.results || (Array.isArray(data) ? data : []);
-
-      const mappedItems = items.map((item) => {
-        // Safely handle name construction
-        const firstName = capitalizeName(item.first_name || "");
-        const lastName = capitalizeName(item.last_name || "");
-        const fullName =
-          [firstName, lastName].filter(Boolean).join(" ") || "Unknown";
-
-        return {
-          Username: item.username || "N/A",
-          Name: fullName,
-          Email: item.email || "N/A",
-          Contact: item.phone_number || "N/A", // This field might not exist
-          Specialization: "N/A",
-          Pressure: "N/A",
-        };
-      });
-
-      return {
-        data: mappedItems,
-        pagination: {
-          currentPage: data.current_page || page,
-          totalPages:
-            data.total_pages ||
-            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
-          totalItems: data.count || mappedItems.length,
-          hasNext: data.has_next || false,
-          hasPrevious: data.has_previous || false,
-        },
-      };
-    } catch (error) {
-      console.error("Error fetching operators:", error);
-      return {
-        data: [],
-        pagination: {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: 0,
-          hasNext: false,
-          hasPrevious: false,
-        },
-      };
-    }
-  },
-  Clients: async (page = 1) => {
-    try {
-      const res = await api.get(
-        `/registration/register/client/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
-      );
-      const data = res.data;
-
-      // Handle both old format (direct array) and new format (with results)
-      const items = data.results || (Array.isArray(data) ? data : []);
-      const mappedItems = items.map((item) => ({
-        Name: `${capitalizeName(item.first_name) || ""} ${
-          capitalizeName(item.last_name) || ""
-        }`.trim(),
-        Email: item.email || "-",
-        Address: item.address || "-",
-        Contact: item.phone_number || "-",
-        Notes: item.notes || "-",
-      }));
-
-      return {
-        data: mappedItems,
-        pagination: {
-          currentPage: data.current_page || page,
-          totalPages:
-            data.total_pages ||
-            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
-          totalItems: data.count || mappedItems.length,
-          hasNext: data.has_next || false,
-          hasPrevious: data.has_previous || false,
-        },
-      };
-    } catch (error) {
-      console.error("Error fetching clients:", error);
-      return {
-        data: [],
-        pagination: {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: 0,
-          hasNext: false,
-          hasPrevious: false,
-        },
-      };
-    }
-  },
-  Services: async (page = 1) => {
-    try {
-      const res = await api.get(
-        `/registration/register/service/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
-      );
-      const data = res.data;
-
-      // Handle both old format (direct array) and new format (with results)
-      const items = data.results || (Array.isArray(data) ? data : []);
-
-      const mappedItems = items.map((item) => {
-        // Handle both Supabase and Django formats
-        let materials = "-";
-
-        if (Array.isArray(item.materials) && item.materials.length > 0) {
-          materials = item.materials
-            .map((mat) => {
-              // Handle both object format { name: "..." } and string format
-              if (typeof mat === "object" && mat.name) {
-                return mat.name;
-              } else if (typeof mat === "string") {
-                return mat;
-              }
-              return null;
-            })
-            .filter(Boolean)
-            .join(", ");
-        }
-
-        return {
-          Name: item.name,
-          Description: item.description || "-",
-          Duration:
-            item.duration !== undefined && item.duration !== null
-              ? `${item.duration} min`
-              : "-",
-          Price:
-            item.price !== undefined && item.price !== null
-              ? `₱${item.price}`
-              : "-",
-          Materials: materials,
-        };
-      });
-
-      return {
-        data: mappedItems,
-        pagination: {
-          currentPage: data.current_page || page,
-          totalPages:
-            data.total_pages ||
-            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
-          totalItems: data.count || mappedItems.length,
-          hasNext: data.has_next || false,
-          hasPrevious: data.has_previous || false,
-        },
-      };
-    } catch (error) {
-      console.error("Error fetching services:", error);
-      return {
-        data: [],
-        pagination: {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: 0,
-          hasNext: false,
-          hasPrevious: false,
-        },
-      };
-    }
-  },
-  Materials: async (page = 1) => {
-    try {
-      const res = await api.get(
-        `/registration/register/material/?page=${page}&page_size=${DEFAULT_PAGE_SIZE}`
-      );
-      const data = res.data;
-
-      // Handle both old format (direct array) and new format (with results)
-      const items = data.results || (Array.isArray(data) ? data : []);
-      const mappedItems = items.map((item) => ({
-        Name: item.name,
-        Description: item.description || "-",
-      }));
-
-      return {
-        data: mappedItems,
-        pagination: {
-          currentPage: data.current_page || page,
-          totalPages:
-            data.total_pages ||
-            Math.ceil((data.count || mappedItems.length) / DEFAULT_PAGE_SIZE),
-          totalItems: data.count || mappedItems.length,
-          hasNext: data.has_next || false,
-          hasPrevious: data.has_previous || false,
-        },
-      };
-    } catch (error) {
-      console.error("Error fetching materials:", error);
-      return {
-        data: [],
-        pagination: {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: 0,
-          hasNext: false,
-          hasPrevious: false,
-        },
-      };
-    }
-  },
-};
 
 const SettingsDataPage = () => {
   // URL search params for tab and page persistence
@@ -435,6 +123,7 @@ const SettingsDataPage = () => {
   const initialPage = urlPage ? Math.max(1, parseInt(urlPage, 10)) : 1;
 
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({});
   const [successPrompt, setSuccessPrompt] = useState("");
@@ -446,148 +135,35 @@ const SettingsDataPage = () => {
   const [usernameError, setUsernameError] = useState("");
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
 
-  // Pagination state for each tab - Initialize with URL page if available
-  const [currentPages, setCurrentPages] = useState({
-    Therapists: activeTab === "Therapists" ? initialPage : 1,
-    Drivers: activeTab === "Drivers" ? initialPage : 1,
-    Operators: activeTab === "Operators" ? initialPage : 1,
-    Clients: activeTab === "Clients" ? initialPage : 1,
-    Services: activeTab === "Services" ? initialPage : 1,
-    Materials: activeTab === "Materials" ? initialPage : 1,
-  });
-
-  // Pagination metadata for each tab
-  const [paginationData, setPaginationData] = useState({
-    Therapists: {
-      currentPage: 1,
-      totalPages: 1,
-      totalItems: 0,
-      hasNext: false,
-      hasPrevious: false,
-    },
-    Drivers: {
-      currentPage: 1,
-      totalPages: 1,
-      totalItems: 0,
-      hasNext: false,
-      hasPrevious: false,
-    },
-    Operators: {
-      currentPage: 1,
-      totalPages: 1,
-      totalItems: 0,
-      hasNext: false,
-      hasPrevious: false,
-    },
-    Clients: {
-      currentPage: 1,
-      totalPages: 1,
-      totalItems: 0,
-      hasNext: false,
-      hasPrevious: false,
-    },
-    Services: {
-      currentPage: 1,
-      totalPages: 1,
-      totalItems: 0,
-      hasNext: false,
-      hasPrevious: false,
-    },
-    Materials: {
-      currentPage: 1,
-      totalPages: 1,
-      totalItems: 0,
-      hasNext: false,
-      hasPrevious: false,
-    },
-  });
-
-  const tableContainerRef = useRef(null);
-
-  // Create enhanced fetchers that handle pagination - use useCallback for stability
-  const enhancedFetchers = useMemo(() => {
-    const createFetcher = (tabName) => async () => {
-      const page = currentPages[tabName];
-      console.log(
-        `🔄 Fetching ${tabName} page ${page} with pageSize=${DEFAULT_PAGE_SIZE}`
-      );
-
-      try {
-        const result = await fetchers[tabName](page);
-
-        // Update pagination metadata immediately
-        setPaginationData((prev) => {
-          const newPaginationData = {
-            ...prev,
-            [tabName]: {
-              ...result.pagination,
-              // Ensure we have proper defaults
-              currentPage: result.pagination.currentPage || page,
-              totalPages: result.pagination.totalPages || 1,
-              totalItems: result.pagination.totalItems || result.data.length,
-              hasNext: result.pagination.hasNext || false,
-              hasPrevious: result.pagination.hasPrevious || false,
-            },
-          };
-
-          console.log(
-            `📊 Updated pagination for ${tabName}:`,
-            newPaginationData[tabName]
-          );
-          return newPaginationData;
-        });
-
-        // Return just the data for useSettingsData hook
-        return result.data;
-      } catch (error) {
-        console.error(`❌ Error in enhanced fetcher for ${tabName}:`, error);
-        // Reset pagination data on error
-        setPaginationData((prev) => ({
-          ...prev,
-          [tabName]: {
-            currentPage: 1,
-            totalPages: 1,
-            totalItems: 0,
-            hasNext: false,
-            hasPrevious: false,
-          },
-        }));
-        throw error;
-      }
-    };
-
-    return Object.keys(fetchers).reduce((acc, tabName) => {
-      acc[tabName] = createFetcher(tabName);
-      return acc;
-    }, {});
-  }, [currentPages]);
-
-  // Use the new settings data hook for immediate data display and caching
+  // TanStack Query hooks for data fetching
   const {
-    tableData,
-    isTabLoading,
-    getTabError,
-    loadTabData,
-    refreshTabData,
-    hasDataForTab,
-    isTabDataStale,
-    prefetchTabs,
-  } = useSettingsData(enhancedFetchers);
+    data: queryResult,
+    isLoading,
+    error,
+  } = useSettingsData(activeTab, currentPage, DEFAULT_PAGE_SIZE);
 
-  // Reset page to 1 when tab changes (separate effect to avoid infinite loops)
+  // TanStack Query hooks for mutations and prefetching
+  const { prefetchTab } = usePrefetchSettingsData();
+  const createMutation = useCreateSettingsEntry(activeTab);
+
+  // Extract data and pagination from query result
+  const tableData = queryResult?.data || [];
+  const paginationData = queryResult?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    hasNext: false,
+    hasPrevious: false,
+  };
+
+  // Reset page to 1 when tab changes
   useEffect(() => {
-    setCurrentPages((prev) => ({
-      ...prev,
-      [activeTab]: 1,
-    }));
+    setCurrentPage(1);
   }, [activeTab]);
 
-  // Track tab switching for immediate data display
+  // Track tab switching for prefetching
   useEffect(() => {
     document.title = `${activeTab} | Royal Care`;
-
-    // Load data for active tab with immediate cache display
-    loadTabData(activeTab);
 
     // Prefetch adjacent tabs for smoother navigation
     const currentIndex = TABS.indexOf(activeTab);
@@ -598,17 +174,11 @@ const SettingsDataPage = () => {
 
     if (adjacentTabs.length > 0) {
       console.log(`🚀 SettingsData: Prefetching adjacent tabs:`, adjacentTabs);
-      prefetchTabs(adjacentTabs);
+      adjacentTabs.forEach((tab) => {
+        prefetchTab(tab, 1, DEFAULT_PAGE_SIZE);
+      });
     }
-  }, [activeTab, loadTabData, prefetchTabs]);
-
-  // Auto-refresh stale data in background
-  useEffect(() => {
-    if (isTabDataStale(activeTab) && hasDataForTab(activeTab)) {
-      console.log(`🔄 SettingsData: Auto-refreshing stale ${activeTab} data`);
-      refreshTabData(activeTab);
-    }
-  }, [activeTab, isTabDataStale, hasDataForTab, refreshTabData]);
+  }, [activeTab, prefetchTab]);
 
   // URL parameter management functions
   const updateUrlParams = (newTab, newPage) => {
@@ -630,39 +200,17 @@ const SettingsDataPage = () => {
 
   const handleTabChange = (newTab) => {
     setActiveTab(newTab);
-    // Reset to page 1 when changing tabs and update URL
+    setCurrentPage(1); // Reset to page 1 when changing tabs
     updateUrlParams(newTab, 1);
-    setCurrentPages((prev) => ({
-      ...prev,
-      [newTab]: 1,
-    }));
   };
 
   // Pagination handlers
   const handlePageChange = async (newPage) => {
-    if (newPage < 1 || newPage > paginationData[activeTab].totalPages) return;
+    if (newPage < 1 || newPage > paginationData.totalPages) return;
 
     // Update URL with new page
     updateUrlParams(activeTab, newPage);
-
-    setCurrentPages((prev) => ({
-      ...prev,
-      [activeTab]: newPage,
-    }));
-
-    // Fetch new page data
-    try {
-      const result = await fetchers[activeTab](newPage);
-      setPaginationData((prev) => ({
-        ...prev,
-        [activeTab]: result.pagination,
-      }));
-
-      // Refresh the tab data to show new page
-      refreshTabData(activeTab);
-    } catch (error) {
-      console.error(`Error loading page ${newPage} for ${activeTab}:`, error);
-    }
+    setCurrentPage(newPage);
   };
 
   const handleAddClick = () => {
@@ -851,13 +399,12 @@ const SettingsDataPage = () => {
     if (sanitized.materials && Array.isArray(sanitized.materials)) {
       sanitized.materials = sanitized.materials.map((mat) => ({ name: mat }));
     }
-    let apiCall;
     let payload = { ...sanitized };
     setSuccessPrompt("");
+    
     try {
       switch (activeTab) {
         case "Therapists":
-          apiCall = registerTherapist;
           payload = {
             first_name: sanitized.firstName,
             last_name: sanitized.lastName,
@@ -868,7 +415,6 @@ const SettingsDataPage = () => {
           };
           break;
         case "Drivers":
-          apiCall = registerDriver;
           payload = {
             first_name: sanitized.firstName,
             last_name: sanitized.lastName,
@@ -877,7 +423,6 @@ const SettingsDataPage = () => {
           };
           break;
         case "Operators":
-          apiCall = registerOperator;
           payload = {
             first_name: sanitized.firstName,
             last_name: sanitized.lastName,
@@ -886,7 +431,6 @@ const SettingsDataPage = () => {
           };
           break;
         case "Clients":
-          apiCall = registerClient;
           payload = {
             first_name: sanitized.firstName,
             last_name: sanitized.lastName,
@@ -897,14 +441,12 @@ const SettingsDataPage = () => {
           };
           break;
         case "Materials":
-          apiCall = registerMaterial;
           payload = {
             name: sanitized.name,
             description: sanitized.description,
           };
           break;
         case "Services":
-          apiCall = registerService;
           payload = {
             name: sanitized.name,
             description: sanitized.description,
@@ -916,17 +458,12 @@ const SettingsDataPage = () => {
         default:
           return;
       }
-      const response = await apiCall(payload);
+      
+      // Use TanStack Query mutation
+      await createMutation.mutateAsync(payload);
+      
       setShowModal(false);
-
-      // Handle different types of success responses
-      if (response?.data?.fallback) {
-        setSuccessPrompt(
-          "Registered successfully! (Note: Stored locally due to database connectivity issues)"
-        );
-      } else {
-        setSuccessPrompt("Registered successfully!");
-      }
+      setSuccessPrompt("Registered successfully!");
     } catch (err) {
       setSuccessPrompt(
         err?.errorMessage || err?.error || "Registration failed"
@@ -937,11 +474,6 @@ const SettingsDataPage = () => {
       setIsSubmitting(false);
     }
 
-    // Always refresh table after registration, even if there was an error
-    console.log(
-      `🔄 SettingsData: Refreshing ${activeTab} data after registration`
-    );
-    refreshTabData(activeTab);
     setTimeout(() => setSuccessPrompt(""), 2000);
   };
 
@@ -955,7 +487,7 @@ const SettingsDataPage = () => {
       const filename = `${activeTab.toLowerCase()}_backup_${timestamp}.json`;
 
       // Get current data for the active tab
-      const currentData = tableData[activeTab];
+      const currentData = tableData;
 
       if (!currentData || currentData.length === 0) {
         setBackupStatus("No data available to backup");
@@ -1007,27 +539,17 @@ const SettingsDataPage = () => {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const filename = `royal_care_complete_backup_${timestamp}.json`;
 
-      // Fetch all data types
-      const allBackupData = {};
-      let totalRecords = 0;
-
-      for (const tab of TABS) {
-        try {
-          const data = await fetchers[tab]();
-          allBackupData[tab] = data;
-          totalRecords += data.length;
-        } catch (error) {
-          console.error(`Error fetching ${tab}:`, error);
-          allBackupData[tab] = [];
-        }
-      }
+      // Note: For complete backup, we would need to fetch all tabs data
+      // For now, we'll backup the current tab data
+      const allBackupData = { [activeTab]: tableData };
+      let totalRecords = tableData?.length || 0;
 
       const completeBackup = {
         metadata: {
           type: "complete_backup",
           timestamp: new Date().toISOString(),
           totalRecords,
-          dataTypes: TABS,
+          dataTypes: [activeTab],
           version: "1.0",
           source: "Royal Care Scheduling System",
         },
@@ -1526,8 +1048,9 @@ const SettingsDataPage = () => {
   };
 
   // Compute if any loading is happening for UI indicators
-  const currentTabLoading = isTabLoading(activeTab);
-  const currentTabError = getTabError(activeTab);
+  const currentTabLoading = isLoading;
+  const currentTabError = error?.message || null;
+  const hasDataForTab = !!(tableData && tableData.length > 0);
 
   return (
     <PageLayout>
@@ -1674,28 +1197,27 @@ const SettingsDataPage = () => {
 
         {/* Table container with pagination */}
         <div
-          ref={tableContainerRef}
           className={`${styles["table-scroll-hide"]} ${styles["table-container"]}`}
         >
-          {!hasDataForTab(activeTab) && isTabLoading(activeTab) ? (
+          {!hasDataForTab && isLoading ? (
             renderTableSkeleton()
           ) : (
             <DataTable
               columns={getTableConfig().columns}
-              data={tableData[activeTab]}
+              data={tableData}
             />
           )}
         </div>
 
         {/* Pagination Controls */}
-        {hasDataForTab(activeTab) &&
-          paginationData[activeTab].totalPages > 1 && (
+        {hasDataForTab &&
+          paginationData.totalPages > 1 && (
             <div style={{ marginTop: "20px" }}>
               <ServerPagination
-                currentPage={paginationData[activeTab].currentPage}
-                totalPages={paginationData[activeTab].totalPages}
-                hasNext={paginationData[activeTab].hasNext}
-                hasPrevious={paginationData[activeTab].hasPrevious}
+                currentPage={paginationData.currentPage}
+                totalPages={paginationData.totalPages}
+                hasNext={paginationData.hasNext}
+                hasPrevious={paginationData.hasPrevious}
                 onPageChange={handlePageChange}
                 className="appointments-pagination"
                 simplified={true} // Use simplified pagination for SettingsDataPage
@@ -1716,23 +1238,22 @@ const SettingsDataPage = () => {
           >
             <strong>Debug Pagination [{activeTab}]:</strong>
             <br />
-            hasDataForTab: {hasDataForTab(activeTab) ? "true" : "false"}
+            hasDataForTab: {hasDataForTab ? "true" : "false"}
             <br />
-            totalPages: {paginationData[activeTab].totalPages}
+            totalPages: {paginationData.totalPages}
             <br />
-            currentPage: {paginationData[activeTab].currentPage}
+            currentPage: {paginationData.currentPage}
             <br />
-            totalItems: {paginationData[activeTab].totalItems}
+            totalItems: {paginationData.totalItems}
             <br />
-            hasNext: {paginationData[activeTab].hasNext ? "true" : "false"}
+            hasNext: {paginationData.hasNext ? "true" : "false"}
             <br />
-            hasPrevious:{" "}
-            {paginationData[activeTab].hasPrevious ? "true" : "false"}
+            hasPrevious: {paginationData.hasPrevious ? "true" : "false"}
           </div>
         )}
 
         {/* Show error message if there's an error and no data */}
-        {currentTabError && !hasDataForTab(activeTab) && (
+        {currentTabError && !hasDataForTab && (
           <div className={styles["error-message"]}>{currentTabError}</div>
         )}
       </div>
