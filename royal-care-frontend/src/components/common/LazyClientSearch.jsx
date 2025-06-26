@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useDispatch } from "react-redux";
-import { fetchClients } from "../../features/scheduling/schedulingSlice";
+import { supabase } from "../../services/supabaseClient";
 import { useAppointmentFormCache } from "../../hooks/useAppointmentFormCache";
 import { filterClients } from "../../utils/searchUtils";
 import "./LazyClientSearch.css";
@@ -21,7 +20,6 @@ const LazyClientSearch = ({
   disabled = false,
   placeholder = "Search client by name or phone...",
 }) => {
-  const dispatch = useDispatch();
   const { clientCache } = useAppointmentFormCache();
 
   // Local state
@@ -48,7 +46,7 @@ const LazyClientSearch = ({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch all clients function
+  // Fetch all clients function (from Supabase)
   const fetchAllClients = useCallback(async () => {
     if (loading) return;
 
@@ -63,23 +61,27 @@ const LazyClientSearch = ({
         return;
       }
 
-      // Fetch from API
-      const response = await dispatch(fetchClients()).unwrap();
-      const clients = response.clients || response.results || response || [];
-
-      // Ensure clients is an array
-      const clientsArray = Array.isArray(clients) ? clients : [];
+      // Fetch from Supabase (correct table name)
+      const { data, error } = await supabase
+        .from("scheduling_client")
+        .select("*");
+      if (error) {
+        console.error("Error fetching clients from Supabase:", error);
+        setAllClients([]);
+        setLoading(false);
+        return;
+      }
 
       // Cache the results
-      clientCache.setAll(clientsArray);
-      setAllClients(clientsArray);
+      clientCache.setAll(data);
+      setAllClients(data);
     } catch (error) {
       console.error("Error fetching clients:", error);
       setAllClients([]);
     } finally {
       setLoading(false);
     }
-  }, [dispatch, clientCache, loading]);
+  }, [clientCache, loading]);
 
   // Load clients on component mount
   useEffect(() => {

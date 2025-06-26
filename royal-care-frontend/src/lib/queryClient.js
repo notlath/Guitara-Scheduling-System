@@ -9,15 +9,16 @@ import { QueryClient } from "@tanstack/react-query";
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Aggressive stale time for real-time data
-      staleTime: 2 * 60 * 1000, // 2 minutes (vs your 5 minutes)
+      // More aggressive stale time for real-time inventory data
+      staleTime: 0, // Always consider data stale for immediate freshness
 
-      // Cache time matches your current TTL patterns
-      gcTime: 10 * 60 * 1000, // 10 minutes (was cacheTime)
+      // Shorter cache time for inventory data
+      gcTime: 2 * 60 * 1000, // 2 minutes (was 10 minutes)
 
       // Enable background refetching for real-time updates
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
+      refetchOnMount: true, // Always refetch on mount
 
       // Retry configuration for robust network handling
       retry: (failureCount, error) => {

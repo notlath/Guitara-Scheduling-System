@@ -20,6 +20,8 @@ from .serializers import (
 )
 from core.models import CustomUser
 from core.storage_service import storage_service
+from .models import RegistrationMaterial
+from .serializers import RegistrationMaterialSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -744,7 +746,7 @@ class RegisterService(APIView):
                 # Get materials for this service using the foreign key relationship
                 materials = service.materials.all()
                 materials_list = [
-                    {"name": mat.name, "description": mat.description}
+                    {"id": mat.id, "name": mat.name, "description": mat.description, "stock_quantity": mat.stock_quantity}
                     for mat in materials
                 ]
 
@@ -1165,3 +1167,10 @@ class UserProfileUpdateView(APIView):
                 {"error": "Failed to update profile"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class RegistrationMaterialWithStockList(APIView):
+    def get(self, request, service_id):
+        materials = RegistrationMaterial.objects.filter(service_id=service_id).select_related('inventory_item')
+        serializer = RegistrationMaterialSerializer(materials, many=True)
+        return Response(serializer.data)

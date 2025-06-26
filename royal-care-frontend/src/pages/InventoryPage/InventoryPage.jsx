@@ -1,6 +1,6 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { MdAdd } from "react-icons/md";
+import { MdAdd, MdRefresh } from "react-icons/md";
 import pageTitles from "../../constants/pageTitles";
 import DataTable from "../../globals/DataTable";
 import LayoutRow from "../../globals/LayoutRow";
@@ -8,6 +8,9 @@ import PageLayout from "../../globals/PageLayout";
 import { getToken } from "../../utils/tokenManager";
 import styles from "./InventoryPage.module.css";
 import { MenuItem, Select } from "./MUISelect";
+import { useInventoryItems } from "../../hooks/useInventoryItems";
+import { useUpdateInventoryItem, useRestockInventoryItem, useAddInventoryItem } from "../../hooks/useInventoryMutations";
+import { useQueryClient } from "@tanstack/react-query";
 
 const API_BASE_URL = import.meta.env.PROD
   ? "https://charismatic-appreciation-production.up.railway.app/api"
@@ -32,6 +35,18 @@ axiosAuth.interceptors.request.use((config) => {
 });
 
 const InventoryPage = () => {
+  // TanStack Query hooks for data fetching and mutations
+  const { 
+    data: inventoryData, 
+    isLoading: inventoryLoading, 
+    isRefetching: inventoryRefetching,
+    error: inventoryError
+  } = useInventoryItems();
+  const updateInventoryMutation = useUpdateInventoryItem();
+  const restockInventoryMutation = useRestockInventoryItem();
+  const addInventoryMutation = useAddInventoryItem();
+  const queryClient = useQueryClient();
+
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -44,7 +59,6 @@ const InventoryPage = () => {
     cost_per_unit: 0,
     size_per_unit: "",
   });
-  const [inventoryItems, setInventoryItems] = useState([]);
   const [showUsageLog, setShowUsageLog] = useState(false);
   const [usageLogs, setUsageLogs] = useState([]);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -54,11 +68,23 @@ const InventoryPage = () => {
   const [restockAmount, setRestockAmount] = useState(0);
   const [restockNotes, setRestockNotes] = useState("");
   const [activeTab] = useState("inventory"); // Only use activeTab if needed
-  // const [lastAddedId, setLastAddedId] = useState(null); // Unused, remove highlight tracking
+
+  // Get inventory items from TanStack Query data
+  const inventoryItems = Array.isArray(inventoryData) ? inventoryData : [];
+
+  // Debug logging
+  // console.log('InventoryPage Debug:', {
+  //   inventoryData,
+  //   inventoryLoading,
+  //   inventoryError,
+  //   inventoryItems,
+  //   itemsLength: inventoryItems.length,
+  //   timestamp: new Date().toISOString()
+  // });
 
   useEffect(() => {
     document.title = pageTitles.inventory;
-    fetchInventory();
+    // No need to manually fetch - TanStack Query handles this
   }, []);
 
   useEffect(() => {
@@ -66,21 +92,6 @@ const InventoryPage = () => {
       fetchUsageLogs();
     }
   }, [showUsageLog]);
-
-  const fetchInventory = async () => {
-    try {
-      const res = await axiosAuth.get(INVENTORY_API_URL);
-      // Ensure inventoryItems is always an array
-      let items = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data.results)
-        ? res.data.results
-        : [];
-      setInventoryItems(items);
-    } catch {
-      setInventoryItems([]); // fallback to empty array
-    }
-  };
 
   // Fetch all usage logs, handling pagination
   const fetchUsageLogs = async () => {
@@ -106,7 +117,7 @@ const InventoryPage = () => {
   const handleAddItem = async (e) => {
     e.preventDefault();
     try {
-      const res = await axiosAuth.post(INVENTORY_API_URL, {
+      await addInventoryMutation.mutateAsync({
         name: newItem.name,
         category: newItem.category,
         current_stock: newItem.current_stock,
@@ -115,7 +126,6 @@ const InventoryPage = () => {
         cost_per_unit: newItem.cost_per_unit,
         size_per_unit: newItem.size_per_unit,
       });
-      setInventoryItems([...inventoryItems, res.data]);
       setShowAddModal(false);
       setNewItem({
         name: "",
@@ -138,18 +148,13 @@ const InventoryPage = () => {
 
   const handleEditSave = async (updatedItem) => {
     try {
-      const res = await axiosAuth.put(
-        `${INVENTORY_API_URL}${updatedItem.id}/`,
-        updatedItem
-      );
-      setInventoryItems(
-        inventoryItems.map((item) =>
-          item.id === updatedItem.id ? res.data : item
-        )
-      );
+      // console.log('Saving inventory update:', updatedItem);
+      await updateInventoryMutation.mutateAsync(updatedItem);
+      // console.log('Inventory update successful, cache should be cleared and refetched');
       setShowEditModal(false);
       setEditItem(null);
-    } catch {
+    } catch (error) {
+      console.error('Inventory update failed:', error);
       showError("Failed to update item.");
     }
   };
@@ -163,11 +168,11 @@ const InventoryPage = () => {
   const handleRestockSave = async () => {
     if (!restockItem) return;
     try {
-      await axiosAuth.post(`${INVENTORY_API_URL}${restockItem.id}/restock/`, {
+      await restockInventoryMutation.mutateAsync({
+        itemId: restockItem.id,
         amount: restockAmount,
         notes: restockNotes || undefined,
       });
-      fetchInventory();
       if (showUsageLog) fetchUsageLogs(); // Refresh usage log if visible
       setShowRestockModal(false);
       setRestockItem(null);
@@ -406,6 +411,20 @@ const InventoryPage = () => {
                   View Usage Log
                 </button>
                 <button
+                  className={"secondary-action-btn"}
+                  onClick={() => {
+                    // console.log('Manual refresh clicked - invalidating cache and refetching...');
+                    // Invalidate cache to trigger refetch while keeping data visible
+                    queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
+                  }}
+                  style={{ marginRight: 8 }}
+                >
+                  <span className={"primary-action-icon"}>
+                    <MdRefresh size={20} />
+                  </span>{" "}
+                  Refresh
+                </button>
+                <button
                   className={"primary-action-btn"}
                   onClick={() => setShowAddModal(true)}
                 >
@@ -496,11 +515,39 @@ const InventoryPage = () => {
         {/* Inventory Table */}
         {!showUsageLog && activeTab === "inventory" && (
           <div className={styles["inventory-table-container"]}>
-            <DataTable
-              columns={columns}
-              data={tableData}
-              noDataText="No inventory items found."
-            />
+            {/* Show loading state only when there's no data yet (initial load) */}
+            {inventoryLoading && !inventoryData ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                Loading inventory items...
+              </div>
+            ) : inventoryError ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: 'red' }}>
+                Error loading inventory: {inventoryError.message}
+              </div>
+            ) : (
+              <div>
+                {/* Show subtle refetching indicator when updating in background */}
+                {inventoryRefetching && inventoryData && (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '5px', 
+                    backgroundColor: '#f0f8ff', 
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '4px',
+                    marginBottom: '10px',
+                    fontSize: '14px',
+                    color: '#666'
+                  }}>
+                    🔄 Updating inventory data...
+                  </div>
+                )}
+                <DataTable
+                  columns={columns}
+                  data={tableData}
+                  noDataText="No inventory items found."
+                />
+              </div>
+            )}
           </div>
         )}
 

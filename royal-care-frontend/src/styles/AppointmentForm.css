@@ -164,6 +164,41 @@ textarea {
   color: #666;
 }
 
+/* Loading spinner animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Loading spinner styles */
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner-inline {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+/* Small loading spinner for inline elements */
+.loading-spinner-small {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid #f3f3f3;
+  border-top: 1.5px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;

@@ -3,7 +3,7 @@
  * Shows the dramatic simplification possible with TanStack Query
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { registerClient } from "../../services/api";
 import "../../styles/AppointmentForm.css";
 
@@ -14,6 +14,7 @@ import {
 } from "../../hooks/useAppointmentQueries";
 import { useFormAvailability } from "../../hooks/useAvailabilityQueries";
 import { useFormStaticData } from "../../hooks/useStaticDataQueries";
+import { useMaterialsWithStock } from "../../hooks/useMaterialsWithStock";
 
 // Components
 import LazyClientSearch from "../common/LazyClientSearch";
@@ -52,16 +53,16 @@ const AppointmentFormTanStackComplete = ({
     email: "",
   });
   const [errors, setErrors] = useState({});
+  const [materials, setMaterials] = useState([]);
+  const [materialQuantities, setMaterialQuantities] = useState({});
 
   // 🔥 BEFORE: 600+ lines of custom cache logic
   // 🎉 AFTER: 3 simple hooks that handle everything!
 
   // Static data (clients, services) - Cached automatically
   const {
-    clients,
     services,
-    isLoading: loadingStaticData,
-    isReady: staticDataReady,
+    isLoadingServices,
   } = useFormStaticData();
 
   // Availability checking - Replaces your complex debounced logic
@@ -76,6 +77,13 @@ const AppointmentFormTanStackComplete = ({
   // Mutations with optimistic updates
   const createMutation = useCreateAppointment();
   const updateMutation = useUpdateAppointment();
+
+  // Fetch materials with stock for the selected service
+  const {
+    data: materialsWithStock = [],
+    isLoading: isLoadingMaterials,
+    refetch: refetchMaterialsWithStock,
+  } = useMaterialsWithStock(formData.services);
 
   // Auto-calculate end time (simplified)
   const calculateEndTime = useCallback(() => {
@@ -121,8 +129,16 @@ const AppointmentFormTanStackComplete = ({
         setErrors((prev) => ({ ...prev, [name]: "" }));
       }
     },
-    [errors]
+    [errors, refetchMaterialsWithStock]
   );
+
+  // Refetch materials when the selected service changes
+  useEffect(() => {
+    if (formData.services) {
+      refetchMaterialsWithStock();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.services]);
 
   // Register new client helper
   const registerNewClient = async () => {
@@ -140,6 +156,43 @@ const AppointmentFormTanStackComplete = ({
       console.error("Failed to register client:", error);
       throw new Error("Failed to register new client");
     }
+  };
+
+  // Memoize processed materials to avoid infinite re-renders
+  const processedMaterials = useMemo(() => {
+    if (formData.services && materialsWithStock.length > 0) {
+      console.log('DEBUG materialsWithStock from API:', materialsWithStock);
+      const mats = materialsWithStock.map((mat) => ({
+        ...mat,
+        name: mat.name || mat.material_name || mat.item_name || Object.values(mat).find(v => typeof v === 'string') || "Material",
+        current_stock: mat.current_stock ?? 0,
+        unit_of_measure: mat.unit_of_measure || "",
+      }));
+      console.log('DEBUG processed materials:', mats);
+      return mats;
+    }
+    return [];
+  }, [formData.services, materialsWithStock]);
+
+  // Update materials when processedMaterials changes
+  useEffect(() => {
+    setMaterials(processedMaterials);
+    
+    if (processedMaterials.length > 0) {
+      // Reset material quantities when service changes
+      const initialQuantities = {};
+      processedMaterials.forEach((mat) => {
+        initialQuantities[mat.id] = "";
+      });
+      setMaterialQuantities(initialQuantities);
+    } else {
+      setMaterialQuantities({});
+    }
+  }, [processedMaterials]);
+
+  // Handle material quantity change
+  const handleMaterialQuantityChange = (materialId, value) => {
+    setMaterialQuantities((prev) => ({ ...prev, [materialId]: value }));
   };
 
   // Handle form submission
@@ -161,7 +214,7 @@ const AppointmentFormTanStackComplete = ({
     }
 
     try {
-      let clientId = formData.client;
+      let clientId = formData.client?.id || formData.client;
 
       // Register new client if needed
       if (!clientId) {
@@ -187,6 +240,12 @@ const AppointmentFormTanStackComplete = ({
           ? formData.therapists.map((id) => parseInt(id, 10))
           : [],
         driver: formData.driver ? parseInt(formData.driver, 10) : null,
+        materials: Object.entries(materialQuantities)
+          .filter((entry) => entry[1] && !isNaN(Number(entry[1])))
+          .map(([materialId, qty]) => ({
+            material: parseInt(materialId, 10),
+            quantity: Number(qty),
+          })),
       };
 
       // 🔥 BEFORE: Complex manual Redux dispatch + cache management
@@ -269,66 +328,108 @@ const AppointmentFormTanStackComplete = ({
   // Loading states
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
-  // Show loading while static data loads
-  if (loadingStaticData && !staticDataReady) {
-    return (
-      <div className="appointment-form-container">
-        <div className="loading-message">Loading form data...</div>
-      </div>
-    );
-  }
+  // Show loading while services are loading - but show the container
+  const isFormReady = !isLoadingServices;
 
   return (
     <div className="appointment-form-container">
-      <form onSubmit={handleSubmit} className="appointment-form">
-        <div className="form-header">
-          <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
-
+      <div className="form-header">
+        <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
+      </div>
+      
+      {!isFormReady ? (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '300px',
+          color: '#666'
+        }}>
+          <div className="loading-spinner" style={{ 
+            width: '32px', 
+            height: '32px',
+            marginBottom: '16px'
+          }}></div>
+          <p>Loading form...</p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="appointment-form">
           {/* 🔥 BEFORE: Complex manual loading indicators */}
           {/* 🎉 AFTER: Simple, automatic optimistic indicators */}
           {isSubmitting && (
             <OptimisticIndicator message="Saving appointment..." />
           )}
-        </div>
 
-        {errors.form && <div className="error-message">{errors.form}</div>}
+          {errors.form && <div className="error-message">{errors.form}</div>}
 
         {/* Client Selection */}
         <div className="form-group">
           <label htmlFor="client">Client *</label>
           <LazyClientSearch
-            selectedClient={clients?.find((c) => c.id === formData.client)}
+            selectedClient={formData.client || undefined}
             onClientSelect={(client) =>
-              setFormData((prev) => ({ ...prev, client: client?.id || "" }))
+              setFormData((prev) => ({ ...prev, client }))
             }
             onNewClientDetails={setClientDetails}
             error={errors.client}
             disabled={isSubmitting}
           />
-        </div>
-
-        {/* Service Selection */}
-        <div className="form-group">
-          <label htmlFor="services">Service *</label>
-          <select
-            id="services"
-            name="services"
-            value={formData.services}
-            onChange={handleChange}
-            disabled={isSubmitting}
-            className={errors.services ? "error" : ""}
-          >
-            <option value="">Select a service</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>
-                {service.name} - {service.duration} min - ₱{service.price}
-              </option>
-            ))}
-          </select>
-          {errors.services && (
-            <div className="error-message">{errors.services}</div>
-          )}
-        </div>
+        </div>          {/* Service Selection */}
+          <div className="form-group">
+            <label htmlFor="services">Service *</label>
+            <select
+              id="services"
+              name="services"
+              value={formData.services}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              className={errors.services ? "error" : ""}
+              style={{ width: '100%' }}
+            >
+              <option value="">Select a service</option>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name} - {service.duration} min - ₱{service.price}
+                </option>
+              ))}
+            </select>
+            {errors.services && (
+              <div className="error-message">{errors.services}</div>
+            )}
+          </div>          {/* Materials Section */}
+          <div className="form-group">
+            <label>Materials Needed</label>
+            <div className="materials-list">
+              {formData.services && isLoadingMaterials ? (
+                <div style={{ 
+                  padding: '12px 0',
+                  color: '#666',
+                  fontStyle: 'italic'
+                }}>
+                  Loading materials...
+                </div>
+              ) : materials.length === 0 ? (
+                <span style={{ color: '#888' }}>
+                  {formData.services ? 'No required materials for this service.' : 'Select a service to see required materials.'}
+                </span>
+              ) : (
+                materials.map((mat) => (
+                  <div key={mat.id} className="material-item">
+                    <span>{mat.name || mat.material_name || mat.item_name || "Material"} <span style={{color:'#888',fontSize:'0.9em'}}>(In stock: {mat.current_stock} {mat.unit_of_measure || ''})</span></span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={materialQuantities[mat.id] || ""}
+                      onChange={(e) => handleMaterialQuantityChange(mat.id, e.target.value)}
+                      placeholder="Qty"
+                      style={{ width: 60, marginLeft: 8 }}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
         {/* Date and Time */}
         <div className="form-row">
@@ -355,9 +456,7 @@ const AppointmentFormTanStackComplete = ({
               disabled={isSubmitting}
               className={errors.start_time ? "error" : ""}
             />
-            {errors.start_time && (
-              <div className="error-message">{errors.start_time}</div>
-            )}
+            {errors.start_time && <div className="error-message">{errors.start_time}</div>}
           </div>
 
           <div className="form-group">
@@ -381,8 +480,9 @@ const AppointmentFormTanStackComplete = ({
         {canFetchAvailability && (
           <div className="availability-status">
             {isLoadingAvailability && (
-              <div className="availability-loading">
-                🔄 Checking availability...
+              <div className="availability-loading" style={{ display: 'flex', alignItems: 'center', color: '#666' }}>
+                <div className="loading-spinner-small"></div>
+                Checking availability...
               </div>
             )}
             {hasAvailabilityError && (
@@ -539,7 +639,8 @@ const AppointmentFormTanStackComplete = ({
             {appointment ? "Update Appointment" : "Create Appointment"}
           </LoadingButton>
         </div>
-      </form>
+        </form>
+      )}
     </div>
   );
 };
