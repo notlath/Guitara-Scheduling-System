@@ -84,6 +84,9 @@ const TwoFactorAuthPage = React.lazy(() =>
 const UserGuidePage = React.lazy(() =>
   import("./pages/UserGuidePage/UserGuidePage")
 );
+const LogsPage = React.lazy(() =>
+  import("./pages/LogsPage/LogsPage")
+);
 import { validateToken } from "./services/auth";
 import { cleanupInvalidTokens } from "./utils/tokenManager";
 // import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
