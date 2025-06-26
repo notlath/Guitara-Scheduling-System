@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MdAdd,
   MdBackup,
@@ -66,19 +66,6 @@ const TAB_SINGULARS = {
   Materials: "Material",
 };
 
-// Helper function to capitalize names properly
-const capitalizeName = (name) => {
-  if (!name || typeof name !== "string") return "";
-
-  // Split by spaces and capitalize each word
-  return name
-    .trim()
-    .split(/\s+/) // Split by any whitespace (handles multiple spaces)
-    .filter((word) => word.length > 0) // Remove empty strings
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
-};
-
 // Helper function to generate default username based on role and name
 const generateDefaultUsername = (role, firstName, lastName) => {
   if (!lastName) return "";
@@ -133,6 +120,8 @@ const SettingsDataPage = () => {
   const [showBackupDropdown, setShowBackupDropdown] = useState(false);
   const [usernameError, setUsernameError] = useState("");
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  // Search bar state for full text search
+  const [searchTerm, setSearchTerm] = useState("");
 
   // TanStack Query hooks for data fetching
   const {
@@ -147,7 +136,7 @@ const SettingsDataPage = () => {
   const { fetchAllTabsData } = useBackupAllData();
 
   // Extract data and pagination from query result
-  const tableData = queryResult?.data || [];
+  const tableData = useMemo(() => queryResult?.data || [], [queryResult]);
   const paginationData = queryResult?.pagination || {
     currentPage: 1,
     totalPages: 1,
@@ -155,6 +144,18 @@ const SettingsDataPage = () => {
     hasNext: false,
     hasPrevious: false,
   };
+
+  // Full text search filter for table data (case-insensitive, all fields)
+  const filteredTableData = useMemo(() => {
+    if (!searchTerm.trim()) return tableData;
+    const lower = searchTerm.trim().toLowerCase();
+    return tableData.filter((row) => {
+      // Check all string fields in the row for a match
+      return Object.values(row).some(
+        (val) => typeof val === "string" && val.toLowerCase().includes(lower)
+      );
+    });
+  }, [tableData, searchTerm]);
 
   // Reset page to 1 when tab changes
   useEffect(() => {
@@ -1058,7 +1059,7 @@ const SettingsDataPage = () => {
   // Compute if any loading is happening for UI indicators
   const currentTabLoading = isLoading;
   const currentTabError = error?.message || null;
-  const hasDataForTab = !!(tableData && tableData.length > 0);
+  const hasDataForTab = !!(filteredTableData && filteredTableData.length > 0);
 
   return (
     <PageLayout>
@@ -1196,6 +1197,28 @@ const SettingsDataPage = () => {
               </button>
             </div>
           </LayoutRow>
+          {/* Full Text Search Bar (adopted from InventoryPage) */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              margin: "16px 0 8px 0",
+            }}
+          >
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={
+                styles && styles["search-input"]
+                  ? styles["search-input"]
+                  : "global-form-field-input"
+              }
+              style={{ minWidth: 220 }}
+            />
+          </div>
           <TabSwitcher
             tabs={TABS.map((tab) => ({ label: tab, value: tab }))}
             activeTab={activeTab}
@@ -1210,7 +1233,10 @@ const SettingsDataPage = () => {
           {!hasDataForTab && isLoading ? (
             renderTableSkeleton()
           ) : (
-            <DataTable columns={getTableConfig().columns} data={tableData} />
+            <DataTable
+              columns={getTableConfig().columns}
+              data={filteredTableData}
+            />
           )}
         </div>
 
