@@ -12,7 +12,9 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RouteHandler from "./components/auth/RouteHandler";
 import ReactErrorBoundary from "./components/common/ReactErrorBoundary";
 import { AttendanceMemoProvider } from "./components/contexts/AttendanceContext";
-import AvailabilityManager from "./components/scheduling/AvailabilityManager";
+const AvailabilityManager = React.lazy(() =>
+  import("./components/scheduling/AvailabilityManager")
+);
 import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
 // Initialize service worker error suppression early
 import "./utils/serviceWorkerErrorSuppression";
@@ -400,7 +402,14 @@ const App = () => {
                 </Suspense>
               }
             />
-            <Route path="availability" element={<AvailabilityManager />} />
+            <Route
+              path="availability"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <AvailabilityManager />
+                </Suspense>
+              }
+            />
             <Route
               path="bookings"
               element={

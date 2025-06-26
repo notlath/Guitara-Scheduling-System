@@ -128,7 +128,7 @@ const PhotoCropModal = ({
           <button
             className={styles.closeButton}
             onClick={onCancel}
-            aria-label="Close editor"
+            aria-label="Close crop modal"
           >
             <CloseIcon />
           </button>
