@@ -21,33 +21,81 @@ import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPa
 
 // Lazy load pages to enable code splitting and reduce initial bundle size
 // This ensures CSS modules are only loaded when the page is actually accessed
-const CompanyInfoPage = React.lazy(() => import("./pages/AboutPages/CompanyInfoPage"));
-const DeveloperInfoPage = React.lazy(() => import("./pages/AboutPages/DeveloperInfoPage"));
-const SystemInfoPage = React.lazy(() => import("./pages/AboutPages/SystemInfoPage"));
-const AttendancePage = React.lazy(() => import("./pages/AttendancePage/AttendancePage"));
-const BookingsPage = React.lazy(() => import("./pages/BookingsPage/BookingsPage"));
+const CompanyInfoPage = React.lazy(() =>
+  import("./pages/AboutPages/CompanyInfoPage")
+);
+const DeveloperInfoPage = React.lazy(() =>
+  import("./pages/AboutPages/DeveloperInfoPage")
+);
+const SystemInfoPage = React.lazy(() =>
+  import("./pages/AboutPages/SystemInfoPage")
+);
+const AttendancePage = React.lazy(() =>
+  import("./pages/AttendancePage/AttendancePage")
+);
+const BookingsPage = React.lazy(() =>
+  import("./pages/BookingsPage/BookingsPage")
+);
 const ContactPage = React.lazy(() => import("./pages/ContactPage/ContactPage"));
-const EnterNewPasswordPage = React.lazy(() => import("./pages/EnterNewPasswordPage/EnterNewPasswordPage"));
+const EnterNewPasswordPage = React.lazy(() =>
+  import("./pages/EnterNewPasswordPage/EnterNewPasswordPage")
+);
 const FAQsPage = React.lazy(() => import("./pages/FAQsPage/FAQsPage"));
-const ForgotPasswordConfirmationPage = React.lazy(() => import("./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage"));
-const ForgotPasswordPage = React.lazy(() => import("./pages/ForgotPasswordPage/ForgotPasswordPage"));
-const InventoryPage = React.lazy(() => import("./pages/InventoryPage/InventoryPage"));
-const NotificationsPage = React.lazy(() => import("./pages/NotificationsPage/NotificationsPage"));
+const ForgotPasswordConfirmationPage = React.lazy(() =>
+  import(
+    "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage"
+  )
+);
+const ForgotPasswordPage = React.lazy(() =>
+  import("./pages/ForgotPasswordPage/ForgotPasswordPage")
+);
+const InventoryPage = React.lazy(() =>
+  import("./pages/InventoryPage/InventoryPage")
+);
+const NotificationsPage = React.lazy(() =>
+  import("./pages/NotificationsPage/NotificationsPage")
+);
 const ProfilePage = React.lazy(() => import("./pages/ProfilePage/ProfilePage"));
-const RegisterPage = React.lazy(() => import("./pages/RegisterPage/RegisterPage"));
-const SalesReportsPage = React.lazy(() => import("./pages/SalesReportsPage/SalesReportsPage"));
-const SchedulingPage = React.lazy(() => import("./pages/SchedulingPage/SchedulingPage"));
-const SettingsAccountPage = React.lazy(() => import("./pages/SettingsAccountPage/SettingsAccountPage"));
-const SettingsDataPage = React.lazy(() => import("./pages/SettingsDataPage/SettingsDataPage"));
-const SettingsPage = React.lazy(() => import("./pages/SettingsPage/SettingsPage"));
-const StaffAttendancePage = React.lazy(() => import("./pages/StaffAttendancePage/StaffAttendancePage"));
-const TwoFactorAuthPage = React.lazy(() => import("./pages/TwoFactorAuthPage/TwoFactorAuthPage"));
-const UserGuidePage = React.lazy(() => import("./pages/UserGuidePage/UserGuidePage"));
+const RegisterPage = React.lazy(() =>
+  import("./pages/RegisterPage/RegisterPage")
+);
+const SalesReportsPage = React.lazy(() =>
+  import("./pages/SalesReportsPage/SalesReportsPage")
+);
+const SchedulingPage = React.lazy(() =>
+  import("./pages/SchedulingPage/SchedulingPage")
+);
+const SettingsAccountPage = React.lazy(() =>
+  import("./pages/SettingsAccountPage/SettingsAccountPage")
+);
+const SettingsDataPage = React.lazy(() =>
+  import("./pages/SettingsDataPage/SettingsDataPage")
+);
+const SettingsPage = React.lazy(() =>
+  import("./pages/SettingsPage/SettingsPage")
+);
+const StaffAttendancePage = React.lazy(() =>
+  import("./pages/StaffAttendancePage/StaffAttendancePage")
+);
+const TwoFactorAuthPage = React.lazy(() =>
+  import("./pages/TwoFactorAuthPage/TwoFactorAuthPage")
+);
+const UserGuidePage = React.lazy(() =>
+  import("./pages/UserGuidePage/UserGuidePage")
+);
 import { validateToken } from "./services/auth";
 import { cleanupInvalidTokens } from "./utils/tokenManager";
 // import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
+
+// Full-screen loading component for lazy-loaded pages
+const LoadingOverlay = () => (
+  <div className="loading-overlay">
+    <div className="loading-overlay-spinner" />
+    <div className="loading-overlay-text">Loading...</div>
+  </div>
+);
 
 // Error Boundary Component
 class AppErrorBoundary extends React.Component {
@@ -262,7 +310,7 @@ const App = () => {
   return (
     <BrowserRouter>
       <div className="App">
-        <Suspense fallback={<div className="loading-spinner">Loading...</div>}>
+        <Suspense fallback={<LoadingOverlay />}>
           <Routes>
             <Route path="/" element={<RouteHandler />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -331,7 +379,10 @@ const App = () => {
               <Route path="inventory" element={<InventoryPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<SettingsPage />} />
-              <Route path="settings/account" element={<SettingsAccountPage />} />
+              <Route
+                path="settings/account"
+                element={<SettingsAccountPage />}
+              />
               <Route
                 path="settings/data"
                 element={

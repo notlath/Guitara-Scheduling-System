@@ -203,30 +203,117 @@ button {
 }
 
 /* Loading spinner for lazy-loaded components */
-.loading-spinner {
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
-  padding: var(--spacing-lg);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+.loading-overlay-spinner {
+  width: 50px;
+  height: 50px;
+  margin-bottom: 20px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.loading-overlay-text {
+  font-weight: 600;
+  color: #374151;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+}
+
+/* Legacy loading spinner styles (kept for backward compatibility) */
+.loading-spinner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
   color: var(--text-600);
-  font-size: var(--font-size-base);
+  font-family: "Plus Jakarta Sans", sans-serif;
 }
 
 .loading-spinner::before {
-  content: '';
-  width: 20px;
-  height: 20px;
-  margin-right: 10px;
-  border: 2px solid transparent;
-  border-top: 2px solid var(--primary);
+  content: "";
+  width: 50px;
+  height: 50px;
+  margin-bottom: 20px;
+  border: 4px solid var(--background-200);
+  border-top: 4px solid var(--primary);
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: elegantSpin 1s ease-in-out infinite;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.loading-spinner::after {
+  content: "Loading...";
+  font-weight: 600;
+  color: var(--text-700);
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  animation: fadeInOut 1.5s ease-in-out infinite;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes elegantSpin {
+  0% {
+    transform: rotate(0deg);
+    border-top-color: var(--primary);
+  }
+  25% {
+    border-top-color: var(--primary);
+  }
+  50% {
+    transform: rotate(180deg);
+    border-top-color: var(--primary);
+  }
+  75% {
+    border-top-color: var(--primary);
+  }
+  100% {
+    transform: rotate(360deg);
+    border-top-color: var(--primary);
+  }
+}
+
+@keyframes fadeInOut {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Only utility and component-specific styles here. Use theme.css for all typography and color variables. */
