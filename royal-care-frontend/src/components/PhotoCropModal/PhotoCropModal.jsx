@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Cropper from "react-easy-crop";
 import { canvasToFile, getCroppedImg } from "../../utils/cropUtils";
+import CloseIcon from "@mui/icons-material/Close";
 import styles from "./PhotoCropModal.module.css";
 
 const PhotoCropModal = ({
@@ -102,7 +103,7 @@ const PhotoCropModal = ({
       onCropComplete(croppedFile, croppedImageUrl);
     } catch (error) {
       console.error("Error cropping image:", error);
-      alert("Failed to crop image. Please try again.");
+      alert("Unable to crop photo. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -123,13 +124,13 @@ const PhotoCropModal = ({
     >
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <h3 className={styles.title}>Crop Profile Photo</h3>
+          <h3 className={styles.title}>Crop Photo</h3>
           <button
             className={styles.closeButton}
             onClick={onCancel}
             aria-label="Close crop modal"
           >
-            ×
+            <CloseIcon />
           </button>
         </div>
 
@@ -152,33 +153,25 @@ const PhotoCropModal = ({
           />
         </div>
 
-        <div className={styles.controls}>
-          <div className={styles.zoomControl}>
-            <label htmlFor="zoom-slider" className={styles.zoomLabel}>
-              Zoom
-            </label>
-            <input
-              id="zoom-slider"
-              type="range"
-              min={zoomLimits.min}
-              max={zoomLimits.max}
-              step={0.01}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className={styles.zoomSlider}
-            />
-            <span className={styles.zoomValue}>{Math.round(zoom * 100)}%</span>
-          </div>
+        <div className={styles.zoomControl}>
+          <label htmlFor="zoom-slider" className={styles.zoomLabel}>
+            Zoom
+          </label>
+          <input
+            id="zoom-slider"
+            type="range"
+            min={zoomLimits.min}
+            max={zoomLimits.max}
+            step={0.01}
+            value={zoom}
+            onChange={(e) => setZoom(Number(e.target.value))}
+            className={styles.zoomSlider}
+            aria-label="Adjust zoom"
+          />
+          <span className={styles.zoomValue}>{Math.round(zoom * 100)}%</span>
         </div>
 
         <div className={styles.actions}>
-          <button
-            className={styles.cancelButton}
-            onClick={onCancel}
-            disabled={isLoading}
-          >
-            Cancel
-          </button>
           <button
             className={styles.confirmButton}
             onClick={handleCropConfirm}
@@ -187,7 +180,7 @@ const PhotoCropModal = ({
             {isLoading ? (
               <>
                 <div className={styles.spinner}></div>
-                Processing...
+                Cropping...
               </>
             ) : (
               "Crop & Upload"

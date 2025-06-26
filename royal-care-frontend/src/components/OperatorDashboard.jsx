@@ -2947,29 +2947,31 @@ const OperatorDashboard = () => {
           <div className="stats-card">
             <h4>Rejection Overview</h4>
             <div className="stats-grid">
-              <div className="stat-item">
-                <span className="stat-number">
+              <div className="operator-stat-item">
+                <span className="operator-stat-number">
                   {tabStats.rejectionStats.total}
                 </span>
-                <span className="stat-label">Total Rejections</span>
+                <span className="operator-stat-label">Total Rejections</span>
               </div>
-              <div className="stat-item therapist-stat">
-                <span className="stat-number">
+              <div className="operator-stat-item operator-therapist-stat">
+                <span className="operator-stat-number">
                   {tabStats.rejectionStats.therapist}
                 </span>
-                <span className="stat-label">Therapist Rejections</span>
+                <span className="operator-stat-label">
+                  Therapist Rejections
+                </span>
               </div>
-              <div className="stat-item driver-stat">
-                <span className="stat-number">
+              <div className="operator-stat-item operator-driver-stat">
+                <span className="operator-stat-number">
                   {tabStats.rejectionStats.driver}
                 </span>
-                <span className="stat-label">Driver Rejections</span>
+                <span className="operator-stat-label">Driver Rejections</span>
               </div>{" "}
-              <div className="stat-item pending-stat">
-                <span className="stat-number">
+              <div className="operator-stat-item operator-pending-stat">
+                <span className="operator-stat-number">
                   {tabStats.rejectionStats.pending}
                 </span>
-                <span className="stat-label">Pending Reviews</span>
+                <span className="operator-stat-label">Pending Reviews</span>
               </div>
             </div>
           </div>

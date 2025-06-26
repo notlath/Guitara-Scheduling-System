@@ -11,7 +11,7 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: var(--spacing-md);
+  /* padding: var(--spacing-md); */
   backdrop-filter: blur(4px);
 }
 
@@ -27,6 +27,7 @@
   flex-direction: column;
   overflow: hidden;
   animation: modalSlideIn 0.3s ease-out;
+  padding: var(--spacing-md);
 }
 
 @keyframes modalSlideIn {
@@ -44,26 +45,27 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--background-100);
-  background: var(--background-50);
+  /* padding: var(--spacing-mm); */
+  /* border-bottom: 1px solid var(--background-100); */
+  /* background: var(--background-50); */
+  margin-bottom: var(--spacing-mm);
 }
 
 .title {
   margin: 0;
   color: var(--text);
   font-size: var(--font-size-lg);
-  font-weight: 600;
+  /* font-weight: 600; */
 }
 
 .closeButton {
   background: none;
   border: none;
   font-size: 1.5rem;
-  color: var(--text-400);
+  color: var(--muted);
   cursor: pointer;
-  padding: var(--spacing-xs);
-  border-radius: 6px;
+  padding: var(--spacing-xxs);
+  border-radius: 100px;
   transition: all 0.2s ease;
   line-height: 1;
   width: 32px;
@@ -80,39 +82,42 @@
 
 .cropContainer {
   position: relative;
-  width: 100%;
+  /* width: 100%; */
   height: 400px;
-  background: var(--background-100);
+  /* background: var(--background-100); */
   overflow: hidden;
-}
-
-.controls {
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-bottom: 1px solid var(--background-100);
-  background: var(--background-25);
+  border-radius: var(--border-radius);
 }
 
 .zoomControl {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--spacing-mxs);
+  margin-bottom: var(--spacing-md);
 }
 
 .zoomLabel {
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  /* font-weight: 500; */
   color: var(--text);
   min-width: 40px;
+  /* text-align: center; */
 }
 
 .zoomSlider {
   flex: 1;
   height: 6px;
-  border-radius: 3px;
+  border-radius: 6px;
   background: var(--background-200);
   outline: none;
   appearance: none;
   cursor: pointer;
+  /* max-width: 80%; */
 }
 
 .zoomSlider::-webkit-slider-thumb {
@@ -145,8 +150,8 @@
 
 .zoomValue {
   font-size: var(--font-size-sm);
-  color: var(--text-600);
-  min-width: 50px;
+  color: var(--muted);
+  min-width: 40px;
   text-align: right;
   font-weight: 500;
 }
@@ -154,23 +159,23 @@
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-lg);
+  gap: var(--spacing-xm);
+  /* padding: var(--spacing-lg); */
   background: var(--background);
 }
 
 .cancelButton,
 .confirmButton {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: 6px;
+  /* padding: var(--spacing-xm) var(--spacing-mmd); */
+  border-radius: var(--border-radius);
   font-size: var(--font-size-sm);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid transparent;
+  /* border: 1px solid transparent; */
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  /* gap: var(--spacing-xs); */
   min-width: 100px;
   justify-content: center;
 }
@@ -188,14 +193,14 @@
 
 .confirmButton {
   background: var(--primary);
-  color: white;
-  border-color: var(--primary);
+  color: var(--background);
+  /* border-color: var(--primary); */
 }
 
 .confirmButton:hover:not(:disabled) {
-  background: var(--primary-600);
-  border-color: var(--primary-600);
-  transform: translateY(-1px);
+  background: var(--primary-hover);
+  /* border-color: var(--primary-600);
+  transform: translateY(-1px); */
 }
 
 .confirmButton:disabled,
