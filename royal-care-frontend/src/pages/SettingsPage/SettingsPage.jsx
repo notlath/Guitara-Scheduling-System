@@ -19,7 +19,6 @@ const SettingsPage = () => {
         <TabSwitcher
           tabs={[
             { label: "General", value: "general" },
-            { label: "Account", value: "account" },
             { label: "Notifications", value: "notifications" },
             { label: "Appearance", value: "appearance" },
           ]}
@@ -40,24 +39,6 @@ const SettingsPage = () => {
                 <li>Date and time format</li>
                 <li>Default view options</li>
                 <li>Automatic logout timer</li>
-              </ul>
-              <p className="placeholder-coming-soon">Coming soon...</p>
-              <div className="placeholder-loader"></div>
-            </div>
-          )}
-
-          {activeTab === "account" && (
-            <div className="tab-pane">
-              <h2>Account Settings</h2>
-              <p className="placeholder-text">
-                This section will contain account management options such as:
-              </p>
-              <ul className="placeholder-list">
-                <li>Change password</li>
-                <li>Update email address</li>
-                <li>Two-factor authentication settings</li>
-                <li>Manage account access</li>
-                <li>Session management</li>
               </ul>
               <p className="placeholder-coming-soon">Coming soon...</p>
               <div className="placeholder-loader"></div>

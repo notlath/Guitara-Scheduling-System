@@ -757,7 +757,12 @@ class RegisterService(APIView):
                 # Get materials for this service using the foreign key relationship
                 materials = service.materials.all()
                 materials_list = [
-                    {"id": mat.id, "name": mat.name, "description": mat.description, "stock_quantity": mat.stock_quantity}
+                    {
+                        "id": mat.id,
+                        "name": mat.name,
+                        "description": mat.description,
+                        "stock_quantity": mat.stock_quantity,
+                    }
                     for mat in materials
                 ]
 
@@ -1142,6 +1147,7 @@ class UserProfileUpdateView(APIView):
                 "first_name",
                 "last_name",
                 "phone_number",
+                "two_factor_enabled",
             ]
             for field in allowed_fields:
                 if field in request.data:
@@ -1182,6 +1188,8 @@ class UserProfileUpdateView(APIView):
 
 class RegistrationMaterialWithStockList(APIView):
     def get(self, request, service_id):
-        materials = RegistrationMaterial.objects.filter(service_id=service_id).select_related('inventory_item')
+        materials = RegistrationMaterial.objects.filter(
+            service_id=service_id
+        ).select_related("inventory_item")
         serializer = RegistrationMaterialSerializer(materials, many=True)
         return Response(serializer.data)
