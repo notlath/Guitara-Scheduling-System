@@ -133,19 +133,25 @@ const AppointmentFormTanStack = ({
   }, [calculateEndTime, formData.end_time]);
 
   // Update form when selected date/time changes
-  useEffect(() => {
-    if (selectedDate && !formData.date) {
-      // Ensure selectedDate is in yyyy-MM-dd format
-      const formattedDate = formatDateForInput(selectedDate);
-      setFormData((prev) => ({ ...prev, date: formattedDate }));
-    }
-  }, [selectedDate, formData.date]);
 
   useEffect(() => {
-    if (selectedTime && !formData.start_time) {
+    if (selectedDate) {
+      const formattedDate = formatDateForInput(selectedDate);
+      if (formData.date !== formattedDate) {
+        setFormData((prev) => ({ ...prev, date: formattedDate }));
+      }
+    }
+    // Only run when selectedDate changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (selectedTime && formData.start_time !== selectedTime) {
       setFormData((prev) => ({ ...prev, start_time: selectedTime }));
     }
-  }, [selectedTime, formData.start_time]);
+    // Only run when selectedTime changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTime]);
 
   // If editing an existing appointment, populate the form
   useEffect(() => {

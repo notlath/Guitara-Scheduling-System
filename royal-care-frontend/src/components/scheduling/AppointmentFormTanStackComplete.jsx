@@ -179,29 +179,23 @@ const AppointmentFormTanStackComplete = ({
     refetch: refetchMaterialsWithStock,
   } = useMaterialsWithStock(formData.services);
 
-  // Auto-calculate end time (simplified)
-  const calculateEndTime = useCallback(() => {
-    if (!formData.start_time || !formData.services || !services.length)
-      return "";
+  // Auto-calculate end time when dependencies change
+  useEffect(() => {
+    // Inline calculation to avoid dependency on calculateEndTime callback
+    if (!formData.start_time || !formData.services || !services.length) return;
 
     const service = services.find((s) => s.id === parseInt(formData.services));
-    if (!service?.duration) return "";
+    if (!service?.duration) return;
 
     const startTime = new Date(`2000-01-01T${formData.start_time}:00`);
     startTime.setMinutes(startTime.getMinutes() + service.duration);
+    const endTime = startTime.toTimeString().slice(0, 5);
 
-    return startTime.toTimeString().slice(0, 5);
-  }, [formData.start_time, formData.services, services]);
-
-  // Auto-calculate end time when dependencies change
-  useEffect(() => {
-    if (!formData.end_time) {
-      const endTime = calculateEndTime();
-      if (endTime) {
-        setFormData((prev) => ({ ...prev, end_time: endTime }));
-      }
+    if (endTime && formData.end_time !== endTime) {
+      setFormData((prev) => ({ ...prev, end_time: endTime }));
     }
-  }, [calculateEndTime, formData.end_time]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.start_time, formData.services, services]); // formData.end_time intentionally excluded to prevent infinite loop
 
   // Handle form changes
   const handleChange = useCallback(
@@ -331,7 +325,14 @@ const AppointmentFormTanStackComplete = ({
 
   // Update materials when service or materialsWithStock changes (prevent infinite loop)
   useEffect(() => {
-    if (formData.services && materialsWithStock.length > 0) {
+    // Only process materials if a service is selected
+    if (!formData.services) {
+      setMaterials([]);
+      setMaterialQuantities({});
+      return;
+    }
+
+    if (materialsWithStock.length > 0) {
       console.log("DEBUG materialsWithStock from API:", materialsWithStock);
       const processedMats = materialsWithStock.map((mat) => ({
         ...mat,
@@ -358,7 +359,8 @@ const AppointmentFormTanStackComplete = ({
       setMaterials([]);
       setMaterialQuantities({});
     }
-  }, [formData.services, materialsWithStock]); // Fixed: Direct dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.services, materialsWithStock.length]); // Use length instead of the full array to prevent frequent re-renders
 
   // Handle material quantity change
   const handleMaterialQuantityChange = (materialId, value) => {
@@ -421,25 +423,51 @@ const AppointmentFormTanStackComplete = ({
         if (formData.client.is_existing_client && formData.client.database_id) {
           clientId = formData.client.database_id;
           console.log("✅ Using existing client database ID:", clientId);
-        } else if (
-          formData.client.id &&
-          !formData.client.id.toString().startsWith("generated-")
-        ) {
-          clientId = formData.client.id;
-          console.log("✅ Using client ID:", clientId);
+        } else if (formData.client.id) {
+          const id = formData.client.id;
+          // Check if ID is numeric or can be converted to a valid numeric ID
+          const numericId = parseInt(id, 10);
+          if (
+            !isNaN(numericId) &&
+            numericId > 0 &&
+            !id.toString().includes("-")
+          ) {
+            clientId = numericId;
+            console.log("✅ Using valid numeric client ID:", clientId);
+          } else {
+            console.log(
+              "⚠️ Client has invalid ID format:",
+              id,
+              "- will register as new client"
+            );
+            clientId = null; // Force registration of new client
+          }
         } else {
           console.log(
-            "⚠️  Client object detected but no valid database ID, will register as new client"
+            "⚠️  Client object detected but no ID field, will register as new client"
           );
           console.log("📋 Client object:", formData.client);
           clientId = null; // Force registration of new client
         }
-      } else if (
-        formData.client &&
-        !formData.client.toString().startsWith("generated-")
-      ) {
-        clientId = formData.client;
-        console.log("📋 Using client ID directly:", clientId);
+      } else if (formData.client) {
+        const id = formData.client;
+        // Check if ID is numeric or can be converted to a valid numeric ID
+        const numericId = parseInt(id, 10);
+        if (
+          !isNaN(numericId) &&
+          numericId > 0 &&
+          !id.toString().includes("-")
+        ) {
+          clientId = numericId;
+          console.log("📋 Using valid numeric client ID directly:", clientId);
+        } else {
+          console.log(
+            "⚠️ Invalid client ID format:",
+            id,
+            "- will register as new client"
+          );
+          clientId = null;
+        }
       } else {
         console.log("📋 No valid client ID found");
         clientId = null;
@@ -488,11 +516,21 @@ const AppointmentFormTanStackComplete = ({
 
       // Validate that we have a numeric client ID
       const numericClientId = parseInt(clientId, 10);
-      if (isNaN(numericClientId)) {
-        console.error("❌ Invalid client ID:", clientId);
+      if (isNaN(numericClientId) || numericClientId <= 0) {
+        console.error(
+          "❌ Invalid client ID after processing:",
+          clientId,
+          "- parsed as:",
+          numericClientId
+        );
+        console.error(
+          "❌ Client object that caused the issue:",
+          formData.client
+        );
         setErrors((prev) => ({
           ...prev,
-          client: "Invalid client ID. Please select a valid client.",
+          client:
+            "Invalid client selection. Please select a valid client or register a new one.",
         }));
         return;
       }
@@ -568,18 +606,25 @@ const AppointmentFormTanStackComplete = ({
   };
 
   // Set initial values
-  useEffect(() => {
-    if (selectedDate && !formData.date) {
-      const formattedDate = formatDateForInput(selectedDate);
-      setFormData((prev) => ({ ...prev, date: formattedDate }));
-    }
-  }, [selectedDate, formData.date]);
 
   useEffect(() => {
-    if (selectedTime && !formData.start_time) {
+    if (selectedDate) {
+      const formattedDate = formatDateForInput(selectedDate);
+      if (formData.date !== formattedDate) {
+        setFormData((prev) => ({ ...prev, date: formattedDate }));
+      }
+    }
+    // Only run when selectedDate changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (selectedTime && formData.start_time !== selectedTime) {
       setFormData((prev) => ({ ...prev, start_time: selectedTime }));
     }
-  }, [selectedTime, formData.start_time]);
+    // Only run when selectedTime changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTime]);
 
   // Populate form for editing
   useEffect(() => {

@@ -1,7 +1,7 @@
-import { useEffect } from "react";
-import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { useEffect } from "react";
+import { createRoot } from "react-dom/client";
 import { queryClient } from "../lib/queryClient";
 
 /**
@@ -22,7 +22,7 @@ const DevTools = () => {
 
     // Create a separate React root for DevTools
     const devToolsRoot = createRoot(devToolsContainer);
-    
+
     // Render DevTools with its own QueryClientProvider
     devToolsRoot.render(
       <QueryClientProvider client={queryClient}>
@@ -32,10 +32,13 @@ const DevTools = () => {
 
     // Cleanup function
     return () => {
-      devToolsRoot.unmount();
-      if (devToolsContainer.parentNode) {
-        devToolsContainer.parentNode.removeChild(devToolsContainer);
-      }
+      // Defer unmount to avoid race condition with React render
+      setTimeout(() => {
+        devToolsRoot.unmount();
+        if (devToolsContainer.parentNode) {
+          devToolsContainer.parentNode.removeChild(devToolsContainer);
+        }
+      }, 0);
     };
   }, []);
 
