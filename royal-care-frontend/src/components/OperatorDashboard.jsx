@@ -40,12 +40,12 @@ import {
 } from "../utils/apiRequestUtils";
 
 import "../globals/TabSwitcher.css";
-import "../styles/UrgencyIndicators.css";
 import "../styles/DriverCoordination.css";
 import "../styles/EnhancedAppointmentCards.css";
 import "../styles/ErrorHandling.css";
 import "../styles/OperatorDashboard.css";
 import "../styles/Performance.css";
+import "../styles/UrgencyIndicators.css";
 
 // ✅ ROBUST FILTERING: Valid values for URL parameters
 const VALID_VIEW_VALUES = Object.freeze([
@@ -794,15 +794,17 @@ const OperatorDashboard = () => {
 
     // Time-based urgency calculation for pending appointments only
     // - Appointments starting in < 30 minutes: Critical
-    // - Appointments starting in < 1 hour and 20 minutes: High  
+    // - Appointments starting in < 1 hour and 20 minutes: High
     // - Appointments starting in <= 2 hours and 20 minutes: Medium
     // - Appointments starting in > 2 hours and 20 minutes: Normal
 
     if (minutesUntilAppointment <= 30) {
       return "critical";
-    } else if (minutesUntilAppointment <= 80) { // 1 hour 20 minutes
+    } else if (minutesUntilAppointment <= 80) {
+      // 1 hour 20 minutes
       return "high";
-    } else if (minutesUntilAppointment <= 140) { // 2 hours 20 minutes
+    } else if (minutesUntilAppointment <= 140) {
+      // 2 hours 20 minutes
       return "medium";
     } else {
       return "normal";
@@ -1864,9 +1866,7 @@ const OperatorDashboard = () => {
                     {getStatusDisplayText(status)}
                   </span>
                   {urgencyLevel && urgencyLevel !== "normal" && (
-                    <span
-                      className={`urgency-badge urgency-${urgencyLevel}`}
-                    >
+                    <span className={`urgency-badge urgency-${urgencyLevel}`}>
                       {urgencyLevel.toUpperCase()}
                     </span>
                   )}
@@ -1890,7 +1890,8 @@ const OperatorDashboard = () => {
                 {renderTherapistInfo(appointment)}
 
                 <div className="acceptance-status">
-                  <strong>Acceptance Status:</strong> {getTherapistAcceptanceStatus(appointment)}
+                  <strong>Acceptance Status:</strong>{" "}
+                  {getTherapistAcceptanceStatus(appointment)}
                 </div>
 
                 {appointment.rejection_reason && (
@@ -1953,9 +1954,7 @@ const OperatorDashboard = () => {
                     {getStatusDisplayText(status)}
                   </span>
                   {urgencyLevel && urgencyLevel !== "normal" && (
-                    <span
-                      className={`urgency-badge urgency-${urgencyLevel}`}
-                    >
+                    <span className={`urgency-badge urgency-${urgencyLevel}`}>
                       {urgencyLevel.toUpperCase()}
                     </span>
                   )}
@@ -2163,9 +2162,7 @@ const OperatorDashboard = () => {
                     {getStatusDisplayText(status)}
                   </span>
                   {urgencyLevel && urgencyLevel !== "normal" && (
-                    <span
-                      className={`urgency-badge urgency-${urgencyLevel}`}
-                    >
+                    <span className={`urgency-badge urgency-${urgencyLevel}`}>
                       {urgencyLevel.toUpperCase()}
                     </span>
                   )}
@@ -2192,15 +2189,15 @@ const OperatorDashboard = () => {
                 <p>
                   <strong>Services:</strong>{" "}
                   {Array.isArray(appointment.services_details)
-                    ? appointment.services_details
-                        .map((s) => s.name)
-                        .join(", ")
+                    ? appointment.services_details.map((s) => s.name).join(", ")
                     : "N/A"}
                 </p>
 
                 <p>
                   <strong>Total Amount:</strong>{" "}
-                  <span className="total-amount">₱{totalAmount.toFixed(2)}</span>
+                  <span className="total-amount">
+                    ₱{totalAmount.toFixed(2)}
+                  </span>
                 </p>
               </div>
 
@@ -2268,24 +2265,6 @@ const OperatorDashboard = () => {
     return (
       <div className="appointments-list">
         {/* Urgency Legend */}
-        <div className="urgency-legend">
-          <div className="urgency-legend-item">
-            <span className="urgency-badge urgency-critical">Critical</span>
-            <span>&lt; 30 min</span>
-          </div>
-          <div className="urgency-legend-item">
-            <span className="urgency-badge urgency-high">High</span>
-            <span>&lt; 1h 20m</span>
-          </div>
-          <div className="urgency-legend-item">
-            <span className="urgency-badge urgency-medium">Medium</span>
-            <span>&lt; 2h 20m</span>
-          </div>
-          <div className="urgency-legend-item">
-            <span className="urgency-badge urgency-normal">Normal</span>
-            <span>&gt; 2h 20m</span>
-          </div>
-        </div>
 
         {/* Appointments List */}
         <div className="appointments-container">
@@ -2319,20 +2298,20 @@ const OperatorDashboard = () => {
             <div className="appointments-grid">
               {appointments.map((appointment) => {
                 const urgencyLevel = getUrgencyLevel(appointment);
-                
+
                 // Determine card classes based on status and urgency
                 let cardClasses = "appointment-card";
-                
+
                 // Apply urgency styling only for pending appointments
                 if (appointment.status === "pending" && urgencyLevel) {
                   cardClasses += ` ${urgencyLevel}`;
                 }
-                
+
                 // Apply overdue styling for auto-cancelled appointments
                 if (appointment.status === "auto_cancelled") {
                   cardClasses += " overdue";
                 }
-                
+
                 return (
                   <div key={appointment.id} className={cardClasses}>
                     <div className="appointment-header">
@@ -2349,13 +2328,15 @@ const OperatorDashboard = () => {
                           {appointment.status?.replace("_", " ").toUpperCase()}
                         </span>
                         {/* Only show urgency badge for pending appointments */}
-                        {appointment.status === "pending" && urgencyLevel && urgencyLevel !== "normal" && (
-                          <span
-                            className={`urgency-badge urgency-${urgencyLevel}`}
-                          >
-                            {urgencyLevel.toUpperCase()}
-                          </span>
-                        )}
+                        {appointment.status === "pending" &&
+                          urgencyLevel &&
+                          urgencyLevel !== "normal" && (
+                            <span
+                              className={`urgency-badge urgency-${urgencyLevel}`}
+                            >
+                              {urgencyLevel.toUpperCase()}
+                            </span>
+                          )}
                       </div>
                     </div>
                     <div className="appointment-details">
@@ -2412,7 +2393,9 @@ const OperatorDashboard = () => {
                           <div className="services-info">
                             <p>
                               <strong>Services:</strong>{" "}
-                              {appointment.services_details.map((service) => service.name).join(", ")}
+                              {appointment.services_details
+                                .map((service) => service.name)
+                                .join(", ")}
                             </p>
                             <p>
                               <strong>Total Price:</strong> ₱
@@ -2766,7 +2749,11 @@ const OperatorDashboard = () => {
             <div className="appointment-header">
               <h3>Pickup Request - {request.therapist_name}</h3>
               <div className="status-badges">
-                <span className={`urgency-badge urgency-${request.urgency || "normal"}`}>
+                <span
+                  className={`urgency-badge urgency-${
+                    request.urgency || "normal"
+                  }`}
+                >
                   {request.urgency === "urgent" ? "🚨 URGENT" : "⏰ Normal"}
                 </span>
               </div>

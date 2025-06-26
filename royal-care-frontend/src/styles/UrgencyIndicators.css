@@ -47,7 +47,7 @@
   background-color: #dc3545;
   color: white;
   border-color: #dc3545;
-  animation: pulse-critical 2s infinite;
+  /* animation: pulse-critical 2s infinite; */
 }
 
 .urgency-high {
