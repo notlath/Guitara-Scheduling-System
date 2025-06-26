@@ -275,7 +275,9 @@ const fetchers = {
       // Handle both old format (direct array) and new format (with results)
       const items = data.results || (Array.isArray(data) ? data : []);
       const mappedItems = items.map((item) => ({
-        Name: `${capitalizeName(item.first_name) || ""} ${capitalizeName(item.last_name) || ""}`.trim(),
+        Name: `${capitalizeName(item.first_name) || ""} ${
+          capitalizeName(item.last_name) || ""
+        }`.trim(),
         Email: item.email || "-",
         Address: item.address || "-",
         Contact: item.phone_number || "-",
@@ -1588,7 +1590,7 @@ const SettingsDataPage = () => {
         className={
           "global-content no-page-scroll" + (showModal ? " faded" : "")
         }
-        style={{ overflow: "hidden", height: "100vh", minHeight: "100vh" }}
+        style={{ overflow: "hidden" }}
       >
         <div className={styles["header-tabs-container"]}>
           <LayoutRow title="Data">
