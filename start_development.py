@@ -27,7 +27,7 @@ CONFIG = {
     "frontend_url": "http://localhost:5173/",
     "backend_port": 8000,
     "frontend_port": 5173,
-    "startup_timeout": 60,
+    "startup_timeout": 90,
     "health_check_interval": 1,
     "verbose_logging": False,
     "auto_browser": True,
@@ -466,13 +466,20 @@ def start_backend() -> bool:
 
     if is_windows():
         # Windows: use cmd instead of PowerShell for better compatibility
-        venv_activate = project_root / "venv" / "Scripts" / "activate.bat"
+        # Check for both .venv and venv directories
+        venv_activate = project_root / ".venv" / "Scripts" / "activate.bat"
+        venv_path = ".venv"
         if not venv_activate.exists():
-            print("❌ Virtual environment activation script not found")
-            return False
+            venv_activate = project_root / "venv" / "Scripts" / "activate.bat"
+            venv_path = "venv"
+            if not venv_activate.exists():
+                print("❌ Virtual environment activation script not found")
+                print("   Looking for: .venv\\Scripts\\activate.bat or venv\\Scripts\\activate.bat")
+                return False
 
-        # Use cmd instead of PowerShell for better reliability
-        cmd = f'start cmd /k "title Django Backend && cd /d \\"{project_root}\\" && venv\\Scripts\\activate && cd guitara && python manage.py runserver {backend_port}"'
+        # Use a dedicated batch file for more reliable startup
+        batch_file = project_root / "start_backend.bat"
+        cmd = f'start "Django Backend" "{batch_file}"'
 
         try:
             result = subprocess.run(cmd, shell=True, cwd=project_root)
@@ -485,12 +492,18 @@ def start_backend() -> bool:
             return False
     else:
         # Linux/macOS: enhanced terminal detection
-        venv_activate = project_root / "venv" / "bin" / "activate"
+        # Check for both .venv and venv directories
+        venv_activate = project_root / ".venv" / "bin" / "activate"
+        venv_path = ".venv"
         if not venv_activate.exists():
-            print("❌ Virtual environment activation script not found")
-            return False
+            venv_activate = project_root / "venv" / "bin" / "activate"
+            venv_path = "venv"
+            if not venv_activate.exists():
+                print("❌ Virtual environment activation script not found")
+                print("   Looking for: .venv/bin/activate or venv/bin/activate")
+                return False
 
-        cmd = f"source venv/bin/activate && cd guitara && python manage.py runserver {backend_port}"
+        cmd = f"source {venv_path}/bin/activate && cd guitara && python manage.py runserver {backend_port}"
         terminals = get_available_terminals()
 
         if not terminals:
@@ -544,8 +557,9 @@ def start_frontend() -> bool:
         return False
 
     if is_windows():
-        # Windows: use cmd with npm.cmd for better compatibility
-        cmd = f'start cmd /k "title React Frontend && cd /d \\"{frontend_dir}\\" && npm.cmd run dev"'
+        # Windows: use a dedicated batch file for more reliable startup
+        batch_file = project_root / "start_frontend.bat"
+        cmd = f'start "React Frontend" "{batch_file}"'
 
         try:
             result = subprocess.run(cmd, shell=True, cwd=project_root)
@@ -614,18 +628,25 @@ def check_requirements() -> bool:
         print("   ✅ Python version OK")
 
     # Check virtual environment
-    venv_path = project_root / "venv"
+    venv_path = project_root / ".venv"
+    venv_name = ".venv"
     if not venv_path.exists():
-        print("   ❌ Virtual environment not found")
-        print("      Create with: python -m venv venv")
-        if is_windows():
-            print("      Activate with: venv\\Scripts\\activate")
+        venv_path = project_root / "venv"
+        venv_name = "venv"
+        if not venv_path.exists():
+            print("   ❌ Virtual environment not found")
+            print("      Create with: python -m venv .venv")
+            if is_windows():
+                print("      Activate with: .venv\\Scripts\\activate")
+            else:
+                print("      Activate with: source .venv/bin/activate")
+            all_good = False
         else:
-            print("      Activate with: source venv/bin/activate")
-        all_good = False
+            print("   ✅ Virtual environment found")
     else:
         print("   ✅ Virtual environment found")
 
+    if venv_path.exists():
         # Check if venv has Django
         if is_windows():
             django_check = venv_path / "Scripts" / "django-admin.exe"
