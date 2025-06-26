@@ -101,14 +101,176 @@ def is_server_healthy(url: str, timeout: int = 5) -> bool:
         return False
 
 
+def is_browser_already_open(url: str) -> bool:
+    """Check if a browser is already open with the specified URL or our frontend"""
+    try:
+        if is_windows():
+            # Enhanced detection for Windows
+            browsers = [
+                "chrome.exe",
+                "msedge.exe",
+                "firefox.exe",
+                "opera.exe",
+                "brave.exe",
+            ]
+
+            # Method 1: Check for direct URL references in window titles or command lines
+            for browser in browsers:
+                try:
+                    result = subprocess.run(
+                        f'tasklist /v /fi "IMAGENAME eq {browser}"',
+                        shell=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    for line in result.stdout.splitlines():
+                        if "localhost:5173" in line or "127.0.0.1:5173" in line:
+                            logger.debug(
+                                f"Found browser {browser} with frontend URL in process info"
+                            )
+                            return True
+                except:
+                    continue
+
+            # Method 2: Check for frontend-related window titles that might indicate our app is open
+            frontend_indicators = [
+                "Royal Care",
+                "Guitara",
+                "Scheduling System",
+                "localhost",
+                "127.0.0.1",
+                "5173",
+                "React App",
+                "Vite",
+                "Development",
+            ]
+
+            for browser in browsers:
+                try:
+                    result = subprocess.run(
+                        f'tasklist /v /fi "IMAGENAME eq {browser}"',
+                        shell=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    for line in result.stdout.splitlines():
+                        line_lower = line.lower()
+                        # Look for our app-specific terms in window titles
+                        if any(
+                            indicator.lower() in line_lower
+                            for indicator in frontend_indicators[:4]
+                        ):  # Check main app names
+                            logger.debug(
+                                f"Found browser {browser} with potential frontend window: {line.strip()}"
+                            )
+                            return True
+                except:
+                    continue
+
+            # Method 3: Check for WMIC command line references
+            try:
+                result = subprocess.run(
+                    "wmic process where \"CommandLine like '%localhost:5173%' or CommandLine like '%127.0.0.1:5173%'\" get ProcessId,Name /FORMAT:LIST",
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                )
+                for line in result.stdout.splitlines():
+                    if line.startswith("Name=") and any(
+                        browser in line.lower()
+                        for browser in ["chrome", "edge", "firefox", "opera", "brave"]
+                    ):
+                        logger.debug(
+                            "Found browser process with frontend URL in command line"
+                        )
+                        return True
+            except:
+                pass
+
+            # Method 4: Check if frontend server is accessible and seems to be in use
+            # This is a heuristic - if the server is running and accessible,
+            # there's a good chance a browser is already connected
+            try:
+                if is_server_healthy(url, timeout=2):
+                    # Server is running, let's be more conservative about opening new browsers
+                    # Check if there are any browser processes at all
+                    for browser in browsers:
+                        try:
+                            result = subprocess.run(
+                                f'tasklist /fi "IMAGENAME eq {browser}"',
+                                shell=True,
+                                capture_output=True,
+                                text=True,
+                            )
+                            if browser.lower() in result.stdout.lower():
+                                logger.debug(
+                                    f"Frontend server is running and {browser} is active - assuming browser already open"
+                                )
+                                return True
+                        except:
+                            continue
+            except:
+                pass
+
+        else:
+            # Linux/macOS: Enhanced detection
+            try:
+                result = subprocess.run(
+                    ["ps", "aux"], capture_output=True, text=True, check=True
+                )
+                for line in result.stdout.splitlines():
+                    if ("localhost:5173" in line or "127.0.0.1:5173" in line) and any(
+                        browser in line.lower()
+                        for browser in ["chrome", "firefox", "safari", "opera", "brave"]
+                    ):
+                        logger.debug("Found browser process with frontend URL")
+                        return True
+
+                # Also check for frontend-related processes
+                frontend_indicators = [
+                    "guitara",
+                    "royal",
+                    "scheduling",
+                    "localhost",
+                    "5173",
+                ]
+                for line in result.stdout.splitlines():
+                    line_lower = line.lower()
+                    if any(
+                        browser in line_lower
+                        for browser in ["chrome", "firefox", "safari", "opera", "brave"]
+                    ):
+                        if any(
+                            indicator in line_lower for indicator in frontend_indicators
+                        ):
+                            logger.debug(
+                                "Found browser process with potential frontend content"
+                            )
+                            return True
+            except:
+                pass
+
+    except Exception as e:
+        logger.debug(f"Error checking for existing browser: {e}")
+
+    return False
+
+
 def open_browser():
     """Open the React app in the default browser with enhanced error handling"""
     if not CONFIG["auto_browser"]:
         logger.info("Auto-browser disabled in config")
         return False
 
-    print("🌐 Opening browser...")
     frontend_url = CONFIG["frontend_url"]
+
+    # Check if browser is already open with the frontend URL
+    if is_browser_already_open(frontend_url):
+        print("🌐 Browser already open with frontend URL - skipping")
+        logger.info("Browser already open, not opening new instance")
+        return True
+
+    print("🌐 Opening browser...")
 
     # Wait for frontend to be ready
     wait_time = 5
