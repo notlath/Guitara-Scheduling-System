@@ -217,13 +217,16 @@ This frontend connects to the Django backend located in the `/guitara` directory
 To ensure a consistent, user-friendly, and professional experience across the app, all visible text (labels, placeholders, error messages, buttons, etc.) should follow these guidelines:
 
 ### 1. Tone & Voice
+
 - **Clear and Friendly:** Use language that is welcoming and easy to understand.
 - **Professional but Approachable:** Avoid jargon, but maintain a professional, respectful tone.
+- **Concise:** Keep all text as brief as possible while maintaining clarity. Remove unnecessary words and redundancy.
 - **Action-Oriented:** Button and link texts should clearly state the action.
 - **Helpful Error Messages:** Guide the user to resolve issues, not just state the problem.
 - **Empathetic:** Acknowledge user frustration in error/success messages when appropriate.
 
 ### 2. Capitalization & Formatting
+
 - **Title Case:**
   - Use Title Case (capitalize major words) for:
     - Page headers (e.g., `Forgot Your Password?`)
@@ -242,6 +245,7 @@ To ensure a consistent, user-friendly, and professional experience across the ap
   - Do not use periods in labels, buttons, or placeholders.
 
 ### 3. UI Element Guidelines
+
 - **Headers:**
   - Use Title Case.
   - Be concise and welcoming (e.g., `Welcome Back!`, `Complete Your Account Registration`).
@@ -267,6 +271,7 @@ To ensure a consistent, user-friendly, and professional experience across the ap
 ### 4. Examples for Consistency
 
 #### Registration Page
+
 - **Header:** `Complete Your Account Registration`
 - **Email Field:**
   - Label: `Email Address`
@@ -285,6 +290,7 @@ To ensure a consistent, user-friendly, and professional experience across the ap
 - **Error Example:** `Please enter a valid 10-digit Philippine mobile number (e.g., 9123456789).`
 
 #### Login Page
+
 - **Header:** `Welcome Back!`
 - **Username Field:**
   - Label: `Email or Username`
@@ -304,6 +310,7 @@ To ensure a consistent, user-friendly, and professional experience across the ap
 - **Error Example:** `Login failed. Please check your credentials and try again.`
 
 #### Forgot Password Page
+
 - **Header:** `Forgot Your Password?`
 - **Email Field:**
   - Label: `Email Address`
@@ -313,6 +320,7 @@ To ensure a consistent, user-friendly, and professional experience across the ap
 - **Back Link:** `Back to login`
 
 ### 5. Additional Details
+
 - **Accessibility:**
   - Use `aria-label` or `aria-describedby` for additional context if needed.
   - Ensure all buttons and links are keyboard accessible.

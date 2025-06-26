@@ -39,11 +39,11 @@
   gap: 15px;
 }
 
-label {
+/* label {
   margin-bottom: 5px;
   font-weight: 500;
   color: #444;
-}
+} */
 
 input,
 select,
