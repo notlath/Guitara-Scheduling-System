@@ -9,6 +9,8 @@ import { useEnhancedTherapistActions } from "../hooks/useEnhancedRedux";
 import { useEnhancedDashboardData } from "../hooks/useEnhancedDashboardData";
 // Cache invalidation utility
 import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
+// Import the new instant updates hook
+import { useTherapistInstantActions } from "../hooks/useInstantUpdates";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 
@@ -40,6 +42,13 @@ const TherapistDashboard = () => {
     requestPickup: enhancedRequestPickup,
     markPaymentRequest: enhancedMarkPaymentRequest,
   } = useEnhancedTherapistActions();
+
+  // ✅ NEW: Instant updates for immediate UI feedback
+  const {
+    acceptAppointment: instantAcceptAppointment,
+    rejectAppointment: instantRejectAppointment,
+    requestPickup: instantRequestPickup,
+  } = useTherapistInstantActions();
   // Remove the sync event handlers - TanStack Query handles real-time updates automatically
 
   // Get user from Redux state
@@ -160,34 +169,20 @@ const TherapistDashboard = () => {
     navigate("/");
   };
 
-  // Handle appointment status changes with enhanced Redux actions (automatic TanStack Query cache invalidation)
+  // Handle appointment status changes with INSTANT UPDATES (immediate UI feedback)
   const handleAcceptAppointment = async (appointmentId) => {
     const actionKey = `accept_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await enhancedAcceptAppointment(appointmentId);
 
-      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
-      await Promise.all([
-        refetch(), // Your existing refetch
-        invalidateAppointmentCaches(queryClient, {
-          userId: user?.id,
-          userRole: "therapist",
-          appointmentId,
-        }),
-      ]);
+      // ✅ INSTANT UPDATE: Uses optimistic updates for immediate UI feedback
+      // This replaces the old approach and provides instant updates across all dashboards
+      await instantAcceptAppointment(appointmentId, (loading) =>
+        setActionLoading(actionKey, loading)
+      );
     } catch (error) {
-      // More user-friendly error message
-      if (
-        error?.message?.includes("401") ||
-        error?.message?.includes("Authentication")
-      ) {
-        alert("Session expired. Please refresh the page and log in again.");
-      } else {
-        alert("Failed to accept appointment. Please try again.");
-      }
-    } finally {
-      setActionLoading(actionKey, false);
+      // Error handling is managed by the instant updates hook
+      console.error("Accept appointment failed:", error);
     }
   };
 
@@ -205,44 +200,14 @@ const TherapistDashboard = () => {
       alert("Please provide a reason for rejection.");
       return;
     }
+
     try {
-      await enhancedRejectAppointment(appointmentId, cleanReason);
-
-      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
-      await Promise.all([
-        refetch(),
-        invalidateAppointmentCaches(queryClient, {
-          userId: user?.id,
-          userRole: "therapist",
-          appointmentId,
-        }),
-      ]);
-
+      // ✅ INSTANT UPDATE: Uses optimistic updates for immediate UI feedback
+      await instantRejectAppointment(appointmentId, cleanReason);
       setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
-      // Better error message handling with authentication awareness
-      let errorMessage = "Failed to reject appointment. Please try again.";
-
-      if (
-        error?.message?.includes("401") ||
-        error?.message?.includes("Authentication")
-      ) {
-        errorMessage =
-          "Session expired. Please refresh the page and log in again.";
-      } else if (error?.error) {
-        errorMessage = error.error;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
-      }
-
-      // Show specific error from backend if available
-      if (error?.error === "Rejection reason is required") {
-        errorMessage =
-          "Rejection reason is required. Please provide a valid reason.";
-      }
-      alert(`Failed to reject appointment: ${errorMessage}`);
+      // Error handling is managed by the instant updates hook
+      console.error("Reject appointment failed:", error);
       setRejectionModal({ isOpen: false, appointmentId: null });
     }
   };
