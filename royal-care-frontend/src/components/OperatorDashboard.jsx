@@ -258,6 +258,14 @@ const OperatorDashboard = () => {
   // Helper function to get authentication token
   const getToken = () => localStorage.getItem("knoxToken");
 
+  // Helper function to get the correct API base URL
+  const getBaseURL = () => {
+    if (import.meta.env.PROD) {
+      return "https://charismatic-appreciation-production.up.railway.app/api";
+    }
+    return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+  };
+
   // Enhanced fetch function with ad blocker protection and retry logic
   const enhancedFetch = useCallback(
     async (url, options = {}, retryCount = 0) => {
@@ -323,7 +331,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -335,7 +343,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/pending/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/pending/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -347,7 +355,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/rejected/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/rejected/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -359,7 +367,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/timeout/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/timeout/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -371,7 +379,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/awaiting_payment/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/awaiting_payment/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -383,7 +391,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/active_sessions/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/active_sessions/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -395,7 +403,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/pickup_requests/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/pickup_requests/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -407,7 +415,7 @@ const OperatorDashboard = () => {
 
     const today = selectedDate || new Date().toISOString().split("T")[0];
     return await enhancedFetch(
-      `http://localhost:8000/api/attendance/records/?date=${today}`
+      `${getBaseURL()}/attendance/records/?date=${today}`
     );
   }, [selectedDate, enhancedFetch]);
 
@@ -417,7 +425,7 @@ const OperatorDashboard = () => {
 
     console.log("🔔 Fetching notifications...");
     const data = await enhancedFetch(
-      "http://localhost:8000/api/scheduling/notifications/?is_read=false"
+      `${getBaseURL()}/scheduling/notifications/?is_read=false`
     );
     console.log("🔔 Notifications fetched:", data);
     return data;
@@ -428,7 +436,7 @@ const OperatorDashboard = () => {
     if (!token) throw new Error("Authentication required");
 
     return await enhancedFetch(
-      "http://localhost:8000/api/scheduling/staff/?role=driver"
+      `${getBaseURL()}/scheduling/staff/?role=driver`
     );
   }, [enhancedFetch]);
   const fetchWorkflowData = useCallback(async () => {
