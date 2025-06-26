@@ -13,6 +13,8 @@ import { useDriverDashboardData } from "../hooks/useDashboardQueries";
 import { useDashboardMutations } from "../hooks/useEnhancedDashboardData";
 // Enhanced Redux hooks for automatic TanStack Query cache invalidation
 import { useEnhancedDriverActions } from "../hooks/useEnhancedRedux";
+// Import shared Philippine time and greeting hook
+import { usePhilippineTime } from "../hooks/usePhilippineTime";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
@@ -117,18 +119,8 @@ const DriverDashboard = () => {
       ? `${user.first_name} ${user.last_name}`
       : user?.username || "Driver";
 
-  // Helper to get greeting based on PH time
-  const getGreeting = () => {
-    const now = new Date().toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      hour: "2-digit",
-      hour12: false,
-    });
-    const hour = parseInt(now.split(":")[0], 10);
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
+  // Use shared Philippine time and greeting hook
+  const { systemTime, greeting } = usePhilippineTime();
 
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
@@ -1580,36 +1572,6 @@ const DriverDashboard = () => {
     );
   };
 
-  const [systemTime, setSystemTime] = useState(() =>
-    new Date().toLocaleString("en-PH", {
-      timeZone: "Asia/Manila",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-    })
-  );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSystemTime(
-        new Date().toLocaleString("en-PH", {
-          timeZone: "Asia/Manila",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-        })
-      );
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
   return (
     <PageLayout>
       {" "}
@@ -1624,17 +1586,10 @@ const DriverDashboard = () => {
       )}
       <div className="driver-dashboard">
         <LayoutRow
-          title="Driver Dashboard"
-          subtitle={
-            <>
-              {getGreeting()}, {userName}! &nbsp;|&nbsp; {systemTime}
-            </>
-          }
+          title={`${greeting}, ${userName}!`}
+          subtitle={<>{systemTime}</>}
         >
           <div className="action-buttons">
-            <p style={{ margin: 0 }}>
-              Welcome, {user?.first_name} {user?.last_name}!
-            </p>
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>

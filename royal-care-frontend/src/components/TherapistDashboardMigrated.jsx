@@ -22,6 +22,8 @@ import {
   useDashboardMutations,
 } from "../hooks/useAppointmentQueries";
 import { useOptimizedSelector } from "../hooks/usePerformanceOptimization";
+// Import shared Philippine time and greeting hook
+import { usePhilippineTime } from "../hooks/usePhilippineTime";
 
 // UI Components
 import LayoutRow from "../globals/LayoutRow";
@@ -46,6 +48,15 @@ const TherapistDashboardMigrated = () => {
 
   // Get user info from Redux (minimal Redux usage)
   const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
+
+  // Get user name from Redux state or fallback
+  const userName =
+    user?.first_name && user?.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : user?.username || "Therapist";
+
+  // Get greeting and Philippine time using shared hook
+  const { greeting, systemTime } = usePhilippineTime();
 
   // ✅ NEW: Enhanced dashboard data with role-based filtering
   const {
@@ -435,11 +446,11 @@ const TherapistDashboardMigrated = () => {
       />
 
       <div className="therapist-dashboard">
-        <LayoutRow title="Therapist Dashboard">
+        <LayoutRow
+          title={`${greeting}, ${userName}!`}
+          subtitle={<>{systemTime}</>}
+        >
           <div className="action-buttons">
-            <p style={{ margin: 0 }}>
-              Welcome, {user?.first_name} {user?.last_name}!
-            </p>
             {isRefetching && (
               <span className="refreshing-indicator">🔄 Updating...</span>
             )}
