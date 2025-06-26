@@ -85,10 +85,9 @@ const ServerPagination = ({
     return pageNumbers;
   };
 
-  // Commented out for debugging - uncomment in production
-  // if (totalPages <= 1) {
-  //   return null; // Don't render pagination if there's only one page
-  // }
+  if (totalPages <= 1) {
+    return null; // Don't render pagination if there's only one page
+  }
 
   // Simplified pagination for specific pages (like SettingsDataPage)
   if (simplified) {

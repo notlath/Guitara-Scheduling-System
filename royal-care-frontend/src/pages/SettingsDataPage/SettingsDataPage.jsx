@@ -1686,7 +1686,8 @@ const SettingsDataPage = () => {
         </div>
 
         {/* Pagination Controls */}
-        {hasDataForTab(activeTab) && (
+        {hasDataForTab(activeTab) &&
+          paginationData[activeTab].totalPages > 1 && (
             <div style={{ marginTop: "20px" }}>
               <ServerPagination
                 currentPage={paginationData[activeTab].currentPage}
