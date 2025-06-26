@@ -197,10 +197,23 @@ button:disabled {
 }
 
 .header-tabs-container {
-  position: sticky;
-  top: var(--spacing-md);
+  position: relative;
   z-index: 20;
   background: var(--background);
+  margin-bottom: 1rem;
+}
+
+/* Table scroll and container styles */
+.table-scroll-hide {
+  overflow-x: hidden;
+  position: relative;
+}
+
+.table-container {
+  position: relative;
+  margin-top: 1rem;
+  z-index: 10;
+  clear: both;
 }
 
 /* Override DataTable styles to match skeleton appearance (Option 1) */
