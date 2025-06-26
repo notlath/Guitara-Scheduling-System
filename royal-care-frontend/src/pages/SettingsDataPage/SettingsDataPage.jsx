@@ -236,9 +236,17 @@ const SettingsDataPage = () => {
       let newValue = value;
       let updatedData = { ...prev };
 
-      // Capitalize first and last names automatically
+      // Allow spaces in firstName and lastName, only capitalize each word
       if (name === "firstName" || name === "lastName") {
-        newValue = capitalizeName(value);
+        // Only capitalize each word, but preserve all spaces as entered
+        newValue = value
+          .split(/(\s+)/) // Split by whitespace, but keep the spaces
+          .map((part) =>
+            part.trim()
+              ? part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+              : part
+          )
+          .join("");
         updatedData[name] = newValue;
       } else {
         updatedData[name] = newValue;
