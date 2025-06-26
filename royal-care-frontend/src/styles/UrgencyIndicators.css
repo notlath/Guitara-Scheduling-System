@@ -89,7 +89,7 @@
 }
 
 /* Critical urgency pulse animation */
-@keyframes pulse-critical {
+/* @keyframes pulse-critical {
   0% {
     box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
   }
@@ -99,7 +99,7 @@
   100% {
     box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
   }
-}
+} */
 
 /* Hover effects for urgency badges */
 .urgency-badge:hover {
