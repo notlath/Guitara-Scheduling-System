@@ -43,10 +43,16 @@ export const invalidateAppointmentCaches = async (
       }),
       queryClient.invalidateQueries({
         queryKey: queryKeys.appointments.upcoming(),
-      })
+      }),
+      // Add legacy query keys for backward compatibility
+      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+      queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
+      queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
+      queryClient.invalidateQueries({ queryKey: ["appointments", "upcoming"] }),
+      queryClient.invalidateQueries({ queryKey: ["appointments", "date"] })
     );
 
-    // Role-specific invalidation
+    // Role-specific invalidation with comprehensive coverage
     if (userRole && userId) {
       switch (userRole) {
         case "therapist":
@@ -56,7 +62,12 @@ export const invalidateAppointmentCaches = async (
             }),
             queryClient.invalidateQueries({
               queryKey: queryKeys.dashboard.therapist(userId),
-            })
+            }),
+            // Legacy query keys
+            queryClient.invalidateQueries({ queryKey: ["appointments", "therapist", userId] }),
+            queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] }),
+            // Dashboard-specific keys
+            queryClient.invalidateQueries({ queryKey: ["dashboard", "therapist", userId] })
           );
           break;
         case "driver":
@@ -66,24 +77,57 @@ export const invalidateAppointmentCaches = async (
             }),
             queryClient.invalidateQueries({
               queryKey: queryKeys.dashboard.driver(userId),
-            })
+            }),
+            // Legacy query keys
+            queryClient.invalidateQueries({ queryKey: ["appointments", "driver", userId] }),
+            queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] }),
+            // Dashboard-specific keys
+            queryClient.invalidateQueries({ queryKey: ["dashboard", "driver", userId] })
           );
           break;
         case "operator":
           invalidationPromises.push(
             queryClient.invalidateQueries({
               queryKey: queryKeys.dashboard.operator,
-            })
+            }),
+            // Operator sees all data, so invalidate comprehensive set
+            queryClient.invalidateQueries({ queryKey: ["dashboard", "operator"] }),
+            queryClient.invalidateQueries({ queryKey: ["operator"] }),
+            // Operator-specific views
+            queryClient.invalidateQueries({ queryKey: ["rejected", "appointments"] }),
+            queryClient.invalidateQueries({ queryKey: ["pending", "appointments"] }),
+            queryClient.invalidateQueries({ queryKey: ["timeout", "appointments"] }),
+            queryClient.invalidateQueries({ queryKey: ["payment", "appointments"] }),
+            queryClient.invalidateQueries({ queryKey: ["workflow", "appointments"] }),
+            queryClient.invalidateQueries({ queryKey: ["sessions", "appointments"] }),
+            queryClient.invalidateQueries({ queryKey: ["pickup", "appointments"] })
           );
           break;
       }
+    }
+
+    // Comprehensive invalidation for all user roles affected by appointment changes
+    if (invalidateAll || userRole === "operator") {
+      // Invalidate all role-specific queries since appointment changes affect everyone
+      invalidationPromises.push(
+        // All therapist queries
+        queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard", "therapist"] }),
+        // All driver queries  
+        queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard", "driver"] }),
+        // All operator queries
+        queryClient.invalidateQueries({ queryKey: ["dashboard", "operator"] }),
+        queryClient.invalidateQueries({ queryKey: ["operator"] })
+      );
     }
 
     // Availability queries (status changes might affect availability)
     invalidationPromises.push(
       queryClient.invalidateQueries({ queryKey: queryKeys.availability.all }),
       queryClient.invalidateQueries({ queryKey: ["availableTherapists"] }),
-      queryClient.invalidateQueries({ queryKey: ["availableDrivers"] })
+      queryClient.invalidateQueries({ queryKey: ["availableDrivers"] }),
+      queryClient.invalidateQueries({ queryKey: ["availability"] })
     );
 
     // Notifications (appointment changes often trigger notifications)
@@ -91,7 +135,18 @@ export const invalidateAppointmentCaches = async (
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
       queryClient.invalidateQueries({
         queryKey: queryKeys.notifications.unread(),
-      })
+      }),
+      // Legacy notification keys
+      queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      queryClient.invalidateQueries({ queryKey: ["notifications", "unread"] })
+    );
+
+    // Driver coordination queries (for pickup assignments, etc.)
+    invalidationPromises.push(
+      queryClient.invalidateQueries({ queryKey: ["driver", "coordination"] }),
+      queryClient.invalidateQueries({ queryKey: ["driver", "assignments"] }),
+      queryClient.invalidateQueries({ queryKey: ["pickup", "requests"] }),
+      queryClient.invalidateQueries({ queryKey: ["driver", "availability"] })
     );
 
     // If invalidateAll is true, invalidate everything
@@ -100,7 +155,12 @@ export const invalidateAppointmentCaches = async (
         queryClient.invalidateQueries({ queryKey: queryKeys.clients.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.services.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.staff.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all })
+        queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
+        // Legacy keys
+        queryClient.invalidateQueries({ queryKey: ["clients"] }),
+        queryClient.invalidateQueries({ queryKey: ["services"] }),
+        queryClient.invalidateQueries({ queryKey: ["staff"] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance"] })
       );
     }
 
