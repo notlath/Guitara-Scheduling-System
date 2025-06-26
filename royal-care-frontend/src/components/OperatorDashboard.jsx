@@ -776,42 +776,38 @@ const OperatorDashboard = () => {
 
   // Helper function to get urgency level for visual display
   const getUrgencyLevel = (appointment) => {
+    // Only "pending" status appointments get urgency indicators
+    if (appointment.status !== "pending") {
+      return null;
+    }
+
+    if (!appointment.date || !appointment.start_time) {
+      return "normal";
+    }
+
     const now = new Date();
     const appointmentDateTime = new Date(
       `${appointment.date}T${appointment.start_time}`
     );
     const timeDiff = appointmentDateTime - now;
-    const hoursUntilAppointment = timeDiff / (1000 * 60 * 60);
+    const minutesUntilAppointment = timeDiff / (1000 * 60);
 
-    // Same logic as in sortAppointmentsByTimeAndUrgency
-    switch (appointment.status) {
-      case "pending":
-        if (appointment.response_deadline) {
-          const deadline = new Date(appointment.response_deadline);
-          const timeToDeadline = deadline - now;
-          const minutesToDeadline = timeToDeadline / (1000 * 60);
-          if (minutesToDeadline <= 5) return "critical";
-          if (minutesToDeadline <= 15) return "high";
-          if (minutesToDeadline <= 30) return "medium";
-        }
-        return "normal";
+    // Time-based urgency calculation for pending appointments only
+    // - Appointments starting in < 30 minutes: Critical
+    // - Appointments starting in < 1 hour and 20 minutes: High
+    // - Appointments starting in <= 2 hours and 20 minutes: Medium
+    // - Appointments starting in > 2 hours and 20 minutes: Normal
 
-      case "confirmed":
-      case "driver_confirmed":
-        if (hoursUntilAppointment <= 1) return "high";
-        if (hoursUntilAppointment <= 2) return "medium";
-        return "normal";
-
-      case "in_progress":
-      case "session_started":
-      case "journey_started":
-        return "critical";
-
-      case "awaiting_payment":
-        return "medium";
-
-      default:
-        return "normal";
+    if (minutesUntilAppointment <= 30) {
+      return "critical";
+    } else if (minutesUntilAppointment <= 80) {
+      // 1 hour 20 minutes
+      return "high";
+    } else if (minutesUntilAppointment <= 140) {
+      // 2 hours 20 minutes
+      return "medium";
+    } else {
+      return "normal";
     }
   };
 
@@ -1768,6 +1764,7 @@ const OperatorDashboard = () => {
       therapist_confirmed: "status-confirmed",
       rejected: "status-rejected",
       cancelled: "status-cancelled",
+      auto_cancelled: "status-overdue",
       completed: "status-completed",
       in_progress: "status-confirmed",
       awaiting_payment: "status-warning",
@@ -1799,6 +1796,7 @@ const OperatorDashboard = () => {
       therapist_confirmed: "Therapist Confirmed",
       rejected: "Rejected",
       cancelled: "Cancelled",
+      auto_cancelled: "Auto Cancelled",
       completed: "Completed",
       in_progress: "In Progress",
       awaiting_payment: "Awaiting Payment",
@@ -1822,6 +1820,15 @@ const OperatorDashboard = () => {
     console.log("📊 Status badge debug - Result length:", result.length);
     return result;
   };
+
+  // ✅ STANDARDIZED APPOINTMENT CARD RENDERING
+  // All appointment rendering functions now use consistent structure:
+  // - .appointment-card container with urgency level classes
+  // - .appointment-header with <h3> client name and .status-badges container
+  // - .appointment-details with <p><strong>Label:</strong> value</p> format
+  // - .appointment-actions for action buttons
+  // - Consistent urgency badges and operator-specific information preserved
+
   const renderRejectedAppointments = () => {
     const rejectedAppointments =
       currentView === "rejected" && Array.isArray(tabData) ? tabData : [];
@@ -1858,6 +1865,11 @@ const OperatorDashboard = () => {
                   >
                     {getStatusDisplayText(status)}
                   </span>
+                  {urgencyLevel && urgencyLevel !== "normal" && (
+                    <span className={`urgency-badge urgency-${urgencyLevel}`}>
+                      {urgencyLevel.toUpperCase()}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1876,6 +1888,11 @@ const OperatorDashboard = () => {
                   <strong>Location:</strong> {appointment.location || "N/A"}
                 </p>
                 {renderTherapistInfo(appointment)}
+
+                <div className="acceptance-status">
+                  <strong>Acceptance Status:</strong>{" "}
+                  {getTherapistAcceptanceStatus(appointment)}
+                </div>
 
                 {appointment.rejection_reason && (
                   <div className="rejection-reason">
@@ -1936,6 +1953,11 @@ const OperatorDashboard = () => {
                   >
                     {getStatusDisplayText(status)}
                   </span>
+                  {urgencyLevel && urgencyLevel !== "normal" && (
+                    <span className={`urgency-badge urgency-${urgencyLevel}`}>
+                      {urgencyLevel.toUpperCase()}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -2139,49 +2161,44 @@ const OperatorDashboard = () => {
                   >
                     {getStatusDisplayText(status)}
                   </span>
+                  {urgencyLevel && urgencyLevel !== "normal" && (
+                    <span className={`urgency-badge urgency-${urgencyLevel}`}>
+                      {urgencyLevel.toUpperCase()}
+                    </span>
+                  )}
                 </div>
               </div>
 
               <div className="appointment-details">
-                <div className="detail-row">
-                  <span className="label">Date:</span>
-                  <span className="value">
-                    {appointment.date
-                      ? new Date(appointment.date).toLocaleDateString()
-                      : "N/A"}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Time:</span>
-                  <span className="value">
-                    {appointment.start_time || "N/A"} -{" "}
-                    {appointment.end_time || "N/A"}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Location:</span>
-                  <span className="value">{appointment.location || "N/A"}</span>
-                </div>
+                <p>
+                  <strong>Date:</strong>{" "}
+                  {appointment.date
+                    ? new Date(appointment.date).toLocaleDateString()
+                    : "N/A"}
+                </p>
+                <p>
+                  <strong>Time:</strong> {appointment.start_time || "N/A"} -{" "}
+                  {appointment.end_time || "N/A"}
+                </p>
+                <p>
+                  <strong>Location:</strong> {appointment.location || "N/A"}
+                </p>
 
                 {renderTherapistInfo(appointment)}
 
-                <div className="detail-row">
-                  <span className="label">Services:</span>
-                  <span className="value">
-                    {Array.isArray(appointment.services_details)
-                      ? appointment.services_details
-                          .map((s) => s.name)
-                          .join(", ")
-                      : "N/A"}
-                  </span>
-                </div>
+                <p>
+                  <strong>Services:</strong>{" "}
+                  {Array.isArray(appointment.services_details)
+                    ? appointment.services_details.map((s) => s.name).join(", ")
+                    : "N/A"}
+                </p>
 
-                <div className="detail-row">
-                  <span className="label">Total Amount:</span>
-                  <span className="value total-amount">
+                <p>
+                  <strong>Total Amount:</strong>{" "}
+                  <span className="total-amount">
                     ₱{totalAmount.toFixed(2)}
                   </span>
-                </div>
+                </p>
               </div>
 
               <div className="appointment-actions">
@@ -2247,6 +2264,8 @@ const OperatorDashboard = () => {
 
     return (
       <div className="appointments-list">
+        {/* Urgency Legend */}
+
         {/* Appointments List */}
         <div className="appointments-container">
           {tabLoading ? (
@@ -2277,119 +2296,135 @@ const OperatorDashboard = () => {
             </div>
           ) : (
             <div className="appointments-grid">
-              {appointments.map((appointment) => (
-                <div key={appointment.id} className="appointment-card">
-                  <div className="appointment-header">
-                    <h4>
-                      {appointment.client_details?.first_name}{" "}
-                      {appointment.client_details?.last_name}
-                    </h4>
-                    <span
-                      className={`status-badge ${getStatusBadgeClass(
-                        appointment.status
-                      )}`}
-                    >
-                      {appointment.status?.replace("_", " ").toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="appointment-details">
-                    <p>
-                      <strong>Appointment ID:</strong> #{appointment.id}
-                    </p>
-                    <p>
-                      <strong>Date:</strong>{" "}
-                      {appointment.formatted_date || appointment.date}
-                    </p>
-                    <p>
-                      <strong>Time:</strong>{" "}
-                      {appointment.formatted_start_time ||
-                        appointment.start_time}
-                      {appointment.formatted_end_time &&
-                        ` - ${appointment.formatted_end_time}`}
-                    </p>
-                    <p>
-                      <strong>Location:</strong>{" "}
-                      {appointment.location || "Not specified"}
-                    </p>
-                    {/* Client Information */}
-                    {appointment.client_details && (
-                      <div className="client-info">
-                        <p>
-                          <strong>Client Phone:</strong>{" "}
-                          {appointment.client_details.phone_number || "N/A"}
-                        </p>
-                        <p>
-                          <strong>Client Address:</strong>{" "}
-                          {appointment.client_details.address || "N/A"}
-                        </p>
+              {appointments.map((appointment) => {
+                const urgencyLevel = getUrgencyLevel(appointment);
+
+                // Determine card classes based on status and urgency
+                let cardClasses = "appointment-card";
+
+                // Apply urgency styling only for pending appointments
+                if (appointment.status === "pending" && urgencyLevel) {
+                  cardClasses += ` ${urgencyLevel}`;
+                }
+
+                // Apply overdue styling for auto-cancelled appointments
+                if (appointment.status === "auto_cancelled") {
+                  cardClasses += " overdue";
+                }
+
+                return (
+                  <div key={appointment.id} className={cardClasses}>
+                    <div className="appointment-header">
+                      <h3>
+                        {appointment.client_details?.first_name}{" "}
+                        {appointment.client_details?.last_name}
+                      </h3>
+                      <div className="status-badges">
+                        <span
+                          className={`status-badge ${getStatusBadgeClass(
+                            appointment.status
+                          )}`}
+                        >
+                          {appointment.status?.replace("_", " ").toUpperCase()}
+                        </span>
+                        {/* Only show urgency badge for pending appointments */}
+                        {appointment.status === "pending" &&
+                          urgencyLevel &&
+                          urgencyLevel !== "normal" && (
+                            <span
+                              className={`urgency-badge urgency-${urgencyLevel}`}
+                            >
+                              {urgencyLevel.toUpperCase()}
+                            </span>
+                          )}
                       </div>
-                    )}
-                    {/* Therapist Information */}
-                    {renderTherapistInfo(appointment)}
-                    {/* Driver Information */}
-                    {appointment.driver_details && (
+                    </div>
+                    <div className="appointment-details">
                       <p>
-                        <strong>Driver:</strong>{" "}
-                        {appointment.driver_details.first_name}{" "}
-                        {appointment.driver_details.last_name}
-                        {appointment.driver_details.motorcycle_plate &&
-                          ` (${appointment.driver_details.motorcycle_plate})`}
+                        <strong>Appointment ID:</strong> #{appointment.id}
                       </p>
-                    )}
-                    {/* Services Information */}
-                    {appointment.services_details &&
-                      appointment.services_details.length > 0 && (
-                        <div className="services-info">
+                      <p>
+                        <strong>Date:</strong>{" "}
+                        {appointment.formatted_date || appointment.date}
+                      </p>
+                      <p>
+                        <strong>Time:</strong>{" "}
+                        {appointment.formatted_start_time ||
+                          appointment.start_time}
+                        {appointment.formatted_end_time &&
+                          ` - ${appointment.formatted_end_time}`}
+                      </p>
+                      <p>
+                        <strong>Location:</strong>{" "}
+                        {appointment.location || "Not specified"}
+                      </p>
+
+                      {/* Client Information */}
+                      {appointment.client_details && (
+                        <div className="client-info">
                           <p>
-                            <strong>Services:</strong>
-                          </p>
-                          <ul className="services-list">
-                            {appointment.services_details.map(
-                              (service, index) => (
-                                <li key={service.id || index}>
-                                  {service.name} - ₱{service.price}
-                                  {service.duration &&
-                                    ` (${Math.floor(
-                                      service.duration / 60
-                                    )}min)`}
-                                </li>
-                              )
-                            )}
-                          </ul>
-                          <p>
-                            <strong>Total Price:</strong> ₱
-                            {appointment.total_price || 0}
+                            <strong>Client Phone:</strong>{" "}
+                            {appointment.client_details.phone_number || "N/A"}
                           </p>
                           <p>
-                            <strong>Total Duration:</strong>{" "}
-                            {appointment.total_duration || 0} minutes
+                            <strong>Client Address:</strong>{" "}
+                            {appointment.client_details.address || "N/A"}
                           </p>
                         </div>
                       )}
-                    {/* Acceptance Status */}
-                    {getTherapistAcceptanceStatus(appointment)}
-                    {/* Additional Notes */}
-                    {appointment.notes && (
-                      <p>
-                        <strong>Notes:</strong> {appointment.notes}
-                      </p>
-                    )}
-                    {/* Urgency Level */}
-                    {appointment.urgency_level && (
-                      <p
-                        className={`urgency-indicator urgency-${appointment.urgency_level}`}
-                      >
-                        <strong>Priority:</strong>{" "}
-                        {appointment.urgency_level.toUpperCase()}
-                      </p>
-                    )}
+
+                      {/* Therapist Information */}
+                      {renderTherapistInfo(appointment)}
+
+                      {/* Driver Information */}
+                      {appointment.driver_details && (
+                        <p>
+                          <strong>Driver:</strong>{" "}
+                          {appointment.driver_details.first_name}{" "}
+                          {appointment.driver_details.last_name}
+                          {appointment.driver_details.motorcycle_plate &&
+                            ` (${appointment.driver_details.motorcycle_plate})`}
+                        </p>
+                      )}
+
+                      {/* Services Information */}
+                      {appointment.services_details &&
+                        appointment.services_details.length > 0 && (
+                          <div className="services-info">
+                            <p>
+                              <strong>Services:</strong>{" "}
+                              {appointment.services_details
+                                .map((service) => service.name)
+                                .join(", ")}
+                            </p>
+                            <p>
+                              <strong>Total Price:</strong> ₱
+                              {appointment.total_price || 0}
+                            </p>
+                            <p>
+                              <strong>Total Duration:</strong>{" "}
+                              {appointment.total_duration || 0} minutes
+                            </p>
+                          </div>
+                        )}
+
+                      {/* Acceptance Status */}
+                      {getTherapistAcceptanceStatus(appointment)}
+
+                      {/* Additional Notes */}
+                      {appointment.notes && (
+                        <p>
+                          <strong>Notes:</strong> {appointment.notes}
+                        </p>
+                      )}
+                    </div>
+                    <div className="appointment-actions">
+                      {/* Add action buttons based on appointment status */}
+                      {renderAppointmentActions(appointment)}
+                    </div>
                   </div>
-                  <div className="appointment-actions">
-                    {/* Add action buttons based on appointment status */}
-                    {renderAppointmentActions(appointment)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -2708,16 +2743,22 @@ const OperatorDashboard = () => {
     }
 
     return (
-      <div className="pickup-requests-list">
+      <div className="appointments-list">
         {pickupRequests.map((request) => (
-          <div key={request.id} className="pickup-request-card">
-            <div className="request-header">
+          <div key={request.id} className="appointment-card pickup-request">
+            <div className="appointment-header">
               <h3>Pickup Request - {request.therapist_name}</h3>
-              <span className={`urgency-badge ${request.urgency || "normal"}`}>
-                {request.urgency === "urgent" ? "🚨 URGENT" : "⏰ Normal"}
-              </span>
+              <div className="status-badges">
+                <span
+                  className={`urgency-badge urgency-${
+                    request.urgency || "normal"
+                  }`}
+                >
+                  {request.urgency === "urgent" ? "🚨 URGENT" : "⏰ Normal"}
+                </span>
+              </div>
             </div>
-            <div className="request-details">
+            <div className="appointment-details">
               <p>
                 <strong>Location:</strong> {request.location}
               </p>
@@ -2730,7 +2771,7 @@ const OperatorDashboard = () => {
                 {new Date(request.session_end_time).toLocaleString()}
               </p>
             </div>
-            <div className="request-actions">
+            <div className="appointment-actions">
               {driverAssignment.availableDrivers.length > 0 ? (
                 <div className="driver-assignment">
                   <select

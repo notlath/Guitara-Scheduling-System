@@ -47,7 +47,7 @@
   background-color: #dc3545;
   color: white;
   border-color: #dc3545;
-  animation: pulse-critical 2s infinite;
+  /* animation: pulse-critical 2s infinite; */
 }
 
 .urgency-high {
@@ -89,7 +89,7 @@
 }
 
 /* Critical urgency pulse animation */
-@keyframes pulse-critical {
+/* @keyframes pulse-critical {
   0% {
     box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
   }
@@ -99,7 +99,7 @@
   100% {
     box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
   }
-}
+} */
 
 /* Hover effects for urgency badges */
 .urgency-badge:hover {
@@ -174,7 +174,7 @@
   background: #f8f9fa;
   border-radius: 6px;
   font-size: 12px;
-  flex-wrap: wrap;
+  /* flex-wrap: wrap; */
 }
 
 .urgency-legend-item {
