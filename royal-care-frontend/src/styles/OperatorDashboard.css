@@ -193,7 +193,7 @@
   background-color: #f8d7da !important;
   color: #000 !important; /* Black text for maximum contrast */
   border-color: #f1aeb5 !important;
-  animation: pulse 2s infinite;
+  /* animation: pulse 2s infinite; */
 }
 
 .status-warning {
