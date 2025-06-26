@@ -37,15 +37,16 @@ const NotificationCenter = ({ onClose }) => {
         throw new Error("No authentication token found");
       }
 
-      const response = await fetch(
-        "http://localhost:8000/api/scheduling/notifications/",
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const baseURL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
+      const response = await fetch(`${baseURL}/scheduling/notifications/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -69,9 +70,12 @@ const NotificationCenter = ({ onClose }) => {
     async (notificationId) => {
       try {
         const token = localStorage.getItem("knoxToken");
+        const baseURL = import.meta.env.PROD
+          ? "https://charismatic-appreciation-production.up.railway.app/api"
+          : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
         const response = await fetch(
-          `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_read/`,
+          `${baseURL}/scheduling/notifications/${notificationId}/mark_as_read/`,
           {
             method: "POST",
             headers: {
@@ -147,9 +151,12 @@ const NotificationCenter = ({ onClose }) => {
   const markAsUnread = async (notificationId) => {
     try {
       const token = localStorage.getItem("knoxToken");
+      const baseURL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
       const response = await fetch(
-        `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark-unread/`,
+        `${baseURL}/scheduling/notifications/${notificationId}/mark-unread/`,
         {
           method: "POST",
           headers: {
@@ -176,9 +183,12 @@ const NotificationCenter = ({ onClose }) => {
   const deleteNotification = async (notificationId) => {
     try {
       const token = localStorage.getItem("knoxToken");
+      const baseURL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
       const response = await fetch(
-        `http://localhost:8000/api/scheduling/notifications/${notificationId}/`,
+        `${baseURL}/scheduling/notifications/${notificationId}/`,
         {
           method: "DELETE",
           headers: {
@@ -214,9 +224,12 @@ const NotificationCenter = ({ onClose }) => {
       // Fallback to direct API call if Redux action fails
       try {
         const token = localStorage.getItem("knoxToken");
+        const baseURL = import.meta.env.PROD
+          ? "https://charismatic-appreciation-production.up.railway.app/api"
+          : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
         const response = await fetch(
-          "http://localhost:8000/api/scheduling/notifications/mark_all_as_read/",
+          `${baseURL}/scheduling/notifications/mark_all_as_read/`,
           {
             method: "POST",
             headers: {

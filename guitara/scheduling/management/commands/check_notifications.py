@@ -16,6 +16,16 @@ class Command(BaseCommand):
             action="store_true",
             help="Fix found issues automatically",
         )
+        parser.add_argument(
+            "--create-samples",
+            action="store_true",
+            help="Create sample notifications for testing",
+        )
+        parser.add_argument(
+            "--test-filtering",
+            action="store_true",
+            help="Test role-based filtering logic",
+        )
 
     def handle(self, *args, **options):
         self.stdout.write(
@@ -126,6 +136,14 @@ class Command(BaseCommand):
                 self.style.ERROR(f"✗ Error checking appointment references: {e}")
             )
 
+        # New functionality: Test role filtering if requested
+        if options["test_filtering"]:
+            self.test_role_filtering()
+
+        # New functionality: Create samples if requested
+        if options["create_samples"]:
+            self.create_sample_notifications()
+
         # Summary
         self.stdout.write(self.style.SUCCESS("\n🏁 Health check complete!"))
 
@@ -138,4 +156,159 @@ class Command(BaseCommand):
                 self.style.WARNING(
                     "ℹ️  To fix issues automatically, run with --fix flag"
                 )
+            )
+
+    def test_role_filtering(self):
+        """Test role-based filtering that might be hiding notifications"""
+        self.stdout.write(self.style.WARNING("\n🔍 Testing Role-Based Filtering..."))
+
+        User = get_user_model()
+        from django.db import models
+
+        for role in ["operator", "therapist", "driver"]:
+            users = User.objects.filter(role=role)
+            if not users.exists():
+                self.stdout.write(f"⚠️  No {role} users found")
+                continue
+
+            user = users.first()
+
+            # Count all notifications for this user
+            all_notifications = Notification.objects.filter(user=user).count()
+
+            # Simulate the filtering logic from NotificationViewSet
+            queryset = Notification.objects.filter(user=user)
+
+            if role == "therapist":
+                filtered_queryset = queryset.exclude(
+                    notification_type__in=["appointment_auto_cancelled"]
+                ).filter(
+                    models.Q(appointment__therapist=user)
+                    | models.Q(appointment__therapists=user)
+                    | models.Q(appointment__isnull=True)
+                )
+            elif role == "driver":
+                filtered_queryset = queryset.exclude(
+                    notification_type__in=[
+                        "appointment_auto_cancelled",
+                        "rejection_reviewed",
+                        "therapist_disabled",
+                    ]
+                ).filter(
+                    models.Q(appointment__driver=user)
+                    | models.Q(appointment__isnull=True)
+                )
+            else:  # operator
+                filtered_queryset = queryset  # No filtering for operators
+
+            filtered_count = filtered_queryset.count()
+
+            self.stdout.write(
+                f"  {role} ({user.username}): {all_notifications} total → {filtered_count} after filtering"
+            )
+
+            if all_notifications > filtered_count:
+                difference = all_notifications - filtered_count
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"    ❌ {difference} notifications hidden by role filtering!"
+                    )
+                )
+
+                # Show what was filtered out
+                excluded_ids = filtered_queryset.values_list("id", flat=True)
+                filtered_out = queryset.exclude(id__in=excluded_ids)
+
+                self.stdout.write("    Filtered out notifications:")
+                for notif in filtered_out[:3]:  # Show first 3
+                    self.stdout.write(
+                        f"      - {notif.notification_type}: {notif.message[:50]}..."
+                    )
+            else:
+                self.stdout.write(
+                    self.style.SUCCESS("    ✅ All notifications visible")
+                )
+
+    def create_sample_notifications(self):
+        """Create sample notifications for testing"""
+        self.stdout.write(self.style.WARNING("\n🆕 Creating Sample Notifications..."))
+
+        User = get_user_model()
+        from django.db import transaction
+
+        # Get users for each role
+        operator = User.objects.filter(role="operator").first()
+        therapist = User.objects.filter(role="therapist").first()
+        driver = User.objects.filter(role="driver").first()
+
+        sample_notifications = []
+
+        if operator:
+            sample_notifications.extend(
+                [
+                    {
+                        "user": operator,
+                        "notification_type": "appointment_created",
+                        "message": "🆕 New appointment has been created and needs your review",
+                    },
+                    {
+                        "user": operator,
+                        "notification_type": "appointment_cancelled",
+                        "message": "❌ An appointment has been cancelled by the client",
+                    },
+                ]
+            )
+
+        if therapist:
+            sample_notifications.extend(
+                [
+                    {
+                        "user": therapist,
+                        "notification_type": "appointment_reminder",
+                        "message": "⏰ You have an appointment tomorrow at 2:00 PM",
+                    },
+                    {
+                        "user": therapist,
+                        "notification_type": "appointment_updated",
+                        "message": "📝 An appointment has been updated - please review",
+                    },
+                ]
+            )
+
+        if driver:
+            sample_notifications.extend(
+                [
+                    {
+                        "user": driver,
+                        "notification_type": "appointment_reminder",
+                        "message": "🚗 You have a pickup scheduled for tomorrow at 1:30 PM",
+                    }
+                ]
+            )
+
+        # Create notifications
+        created_count = 0
+        try:
+            with transaction.atomic():
+                for notif_data in sample_notifications:
+                    notification = Notification.objects.create(**notif_data)
+                    created_count += 1
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"  ✅ Created notification for {notification.user.username} ({notification.user.role})"
+                        )
+                    )
+
+            self.stdout.write(
+                f"\n📊 Successfully created {created_count} sample notifications"
+            )
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "🔧 To test: Refresh your browser and check the notification center"
+                )
+            )
+
+        except Exception as e:
+            self.stdout.write(
+                self.style.ERROR(f"❌ Error creating sample notifications: {e}")
             )

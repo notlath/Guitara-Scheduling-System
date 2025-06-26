@@ -3,6 +3,14 @@
  * Add this to your OperatorDashboard to test TanStack Query directly
  */
 
+// Helper function to get the correct API base URL
+const getBaseURL = () => {
+  if (import.meta.env.PROD) {
+    return "https://charismatic-appreciation-production.up.railway.app/api";
+  }
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+};
+
 import { useQueryClient } from "@tanstack/react-query";
 import { useOperatorDashboardData } from "../hooks/useDashboardQueries";
 
@@ -17,15 +25,12 @@ const TanStackQueryDebugger = () => {
       const token = localStorage.getItem("knoxToken");
       console.log("Token exists:", !!token);
 
-      const response = await fetch(
-        "http://localhost:8000/api/scheduling/appointments/",
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetch(`${getBaseURL()}/scheduling/appointments/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       console.log("Response status:", response.status);
       const data = await response.json();

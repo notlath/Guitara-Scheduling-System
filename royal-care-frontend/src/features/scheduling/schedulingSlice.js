@@ -1214,10 +1214,33 @@ export const fetchClients = createAsyncThunk(
     const token = getToken();
     if (!token) return rejectWithValue("Authentication required");
     try {
-      const response = await axios.get(`${API_URL}clients/`, {
-        headers: { Authorization: `Token ${token}` },
-      });
-      return response.data;
+      const response = await axios.get(
+        `${getBaseURL()}/registration/register/client/`,
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
+      // Normalize the client data structure for consistent usage
+      const clients = response.data.results || response.data || [];
+      const normalizedClients = clients.map((client) => ({
+        id: client.id,
+        first_name: client.first_name || client.Name?.split(" ")[0] || "",
+        last_name:
+          client.last_name || client.Name?.split(" ").slice(1).join(" ") || "",
+        phone_number: client.phone_number || client.Contact || "",
+        email: client.email || client.Email || "",
+        address: client.address || client.Address || "",
+        notes: client.notes || client.Notes || "",
+        // Keep original fields for compatibility
+        Name: client.Name,
+        Email: client.Email,
+        Contact: client.Contact,
+        Address: client.Address,
+        Notes: client.Notes,
+      }));
+
+      return normalizedClients;
     } catch (error) {
       return rejectWithValue(handleApiError(error, "Could not fetch clients"));
     }

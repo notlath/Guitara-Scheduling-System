@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { approveAttendance } from "../features/attendance/attendanceSlice";
-import { logout } from "../features/auth/authSlice";
 import {
-  autoCancelOverdueAppointments,
-  markAppointmentPaid,
-  reviewRejection,
-  updateAppointmentStatus,
-} from "../features/scheduling/schedulingSlice";
+  approveAttendance,
+  checkIn,
+  checkOut,
+  getTodayAttendanceStatus,
+} from "../features/attendance/attendanceSlice";
+import { logout } from "../features/auth/authSlice";
+import { updateAppointmentStatus } from "../features/scheduling/schedulingSlice";
+// ENHANCED REDUX: Import enhanced operator actions for cache synchronization
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
+import { useEnhancedOperatorActions } from "../hooks/useEnhancedRedux";
 // PERFORMANCE: Stable filtering imports to prevent render loops
 import ServerPagination from "./ServerPagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
@@ -82,6 +84,27 @@ const OperatorDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // ENHANCED REDUX: Initialize enhanced operator actions for cache synchronization
+  const {
+    startAppointment: enhancedStartAppointment,
+    verifyPayment: enhancedVerifyPayment,
+    reviewRejection: enhancedReviewRejection,
+    autoCancelOverdue: enhancedAutoCancelOverdue,
+  } = useEnhancedOperatorActions();
+
+  // Attendance state for operator's own check-in/check-out
+  const {
+    todayStatus,
+    isCheckedIn,
+    checkInTime,
+    checkOutTime,
+    checkInLoading,
+    checkOutLoading,
+    error: attendanceError,
+    checkInError,
+    checkOutError,
+  } = useSelector((state) => state.attendance);
+
   // Get user name from localStorage (or auth state if available)
   const user = JSON.parse(localStorage.getItem("user")) || {}; // fallback if not present
   const userName =
@@ -148,6 +171,12 @@ const OperatorDashboard = () => {
       return newWarnings;
     });
   }, [validateWarnings]);
+
+  // Fetch operator's attendance status on component mount
+  useEffect(() => {
+    dispatch(getTodayAttendanceStatus());
+  }, [dispatch]);
+
   // ✅ STEP 1: Memoized view/filter/page setters with stable callbacks
   const setView = useCallback(
     (newView) => {
@@ -234,6 +263,14 @@ const OperatorDashboard = () => {
   // Helper function to get authentication token
   const getToken = () => localStorage.getItem("knoxToken");
 
+  // Helper function to get the correct API base URL
+  const getBaseURL = () => {
+    if (import.meta.env.PROD) {
+      return "https://charismatic-appreciation-production.up.railway.app/api";
+    }
+    return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+  };
+
   // Enhanced fetch function with ad blocker protection and retry logic
   const enhancedFetch = useCallback(
     async (url, options = {}, retryCount = 0) => {
@@ -299,7 +336,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -311,7 +348,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/pending/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/pending/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -323,7 +360,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/rejected/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/rejected/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -335,7 +372,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/timeout/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/timeout/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -347,7 +384,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/awaiting_payment/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/awaiting_payment/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -359,7 +396,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/active_sessions/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/active_sessions/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -371,7 +408,7 @@ const OperatorDashboard = () => {
       if (!token) throw new Error("Authentication required");
 
       return await enhancedFetch(
-        `http://localhost:8000/api/scheduling/appointments/pickup_requests/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/pickup_requests/?page=${page}&page_size=${pageSize}`
       );
     },
     [enhancedFetch]
@@ -383,7 +420,7 @@ const OperatorDashboard = () => {
 
     const today = selectedDate || new Date().toISOString().split("T")[0];
     return await enhancedFetch(
-      `http://localhost:8000/api/attendance/records/?date=${today}`
+      `${getBaseURL()}/attendance/records/?date=${today}`
     );
   }, [selectedDate, enhancedFetch]);
 
@@ -393,7 +430,7 @@ const OperatorDashboard = () => {
 
     console.log("🔔 Fetching notifications...");
     const data = await enhancedFetch(
-      "http://localhost:8000/api/scheduling/notifications/?is_read=false"
+      `${getBaseURL()}/scheduling/notifications/?is_read=false`
     );
     console.log("🔔 Notifications fetched:", data);
     return data;
@@ -403,9 +440,7 @@ const OperatorDashboard = () => {
     const token = getToken();
     if (!token) throw new Error("Authentication required");
 
-    return await enhancedFetch(
-      "http://localhost:8000/api/scheduling/staff/?role=driver"
-    );
+    return await enhancedFetch(`${getBaseURL()}/scheduling/staff/?role=driver`);
   }, [enhancedFetch]);
   const fetchWorkflowData = useCallback(async () => {
     // Return mock workflow data with expected structure
@@ -822,15 +857,13 @@ const OperatorDashboard = () => {
     const actionKey = `review_${reviewModal.appointmentId}_${decision}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(
-        reviewRejection({
-          id: reviewModal.appointmentId,
-          reviewDecision: decision,
-          reviewNotes: reviewNotes,
-        })
-      ).unwrap();
-      // ✅ PERFORMANCE FIX: Use simple refresh instead of global forceRefresh
-      await refreshCurrentTab();
+      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
+      await enhancedReviewRejection(
+        reviewModal.appointmentId,
+        decision,
+        reviewNotes
+      );
+      // No need for manual refresh - enhanced action handles cache invalidation automatically
       setReviewModal({
         isOpen: false,
         appointmentId: null,
@@ -858,9 +891,9 @@ const OperatorDashboard = () => {
 
     setAutoCancelLoading(true);
     try {
-      await dispatch(autoCancelOverdueAppointments()).unwrap();
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await refreshCurrentTab();
+      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
+      await enhancedAutoCancelOverdue();
+      // No need for manual refresh - enhanced action handles cache invalidation automatically
       alert("Successfully processed overdue appointments");
     } catch {
       alert("Failed to process overdue appointments. Please try again.");
@@ -872,14 +905,9 @@ const OperatorDashboard = () => {
     const actionKey = `start_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointmentId,
-          status: "in_progress",
-          action: "start_appointment",
-        })
-      ).unwrap(); // Refresh dashboard data to get updated status      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      await refreshCurrentTab();
+      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
+      await enhancedStartAppointment(appointmentId);
+      // No need for manual refresh - enhanced action handles cache invalidation automatically
     } catch (error) {
       console.error("Failed to start appointment:", error);
       alert("Failed to start appointment. Please try again.");
@@ -943,18 +971,17 @@ const OperatorDashboard = () => {
 
       // Pass the appointment ID as a number, not an object
       const appointmentId = parseInt(paymentModal.appointmentId, 10);
-      console.log("🔍 handleMarkPaymentPaid: Dispatching markAppointmentPaid", {
-        appointmentId,
-        paymentData,
-        actionKey,
-      });
-
-      const result = await dispatch(
-        markAppointmentPaid({
+      console.log(
+        "🔍 handleMarkPaymentPaid: Using enhanced payment verification",
+        {
           appointmentId,
           paymentData,
-        })
-      ).unwrap();
+          actionKey,
+        }
+      );
+
+      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
+      const result = await enhancedVerifyPayment(appointmentId, paymentData);
 
       console.log(
         "✅ handleMarkPaymentPaid: Payment verification successful",
@@ -975,9 +1002,10 @@ const OperatorDashboard = () => {
         amount: "",
         notes: "",
       });
-      console.log("🔄 handleMarkPaymentPaid: Refreshing dashboard data");
-      // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-      refreshCurrentTab();
+      console.log(
+        "✅ handleMarkPaymentPaid: Enhanced action handles cache refresh automatically"
+      );
+      // No need for manual refresh - enhanced action handles cache invalidation automatically
 
       alert("Payment marked as received successfully!");
     } catch (error) {
@@ -1379,6 +1407,51 @@ const OperatorDashboard = () => {
   const handleDateChange = (newDate) => {
     setSelectedDate(newDate);
   };
+
+  // Operator's check-in/check-out handlers
+  const handleOperatorCheckIn = () => {
+    dispatch(checkIn());
+  };
+
+  const handleOperatorCheckOut = () => {
+    dispatch(checkOut());
+  };
+
+  // Format time for display
+  const formatTimeForDisplay = (timeString) => {
+    if (!timeString) return "--:--";
+
+    try {
+      // If it's already a full datetime string, parse it directly
+      if (timeString.includes("T") || timeString.includes(" ")) {
+        return new Date(timeString).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+      }
+
+      // If it's just a time string (HH:MM:SS), create a proper date
+      const [hours, minutes] = timeString.split(":").map(Number);
+      const today = new Date();
+      const dateTime = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+        hours,
+        minutes
+      );
+      return dateTime.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch (error) {
+      console.error("Error formatting time:", timeString, error);
+      return timeString;
+    }
+  };
+
   // ✅ PERFORMANCE FIX: No need to manually fetch on tab switch - data is cached
   // The useOptimizedAttendance hook automatically handles data fetching and caching
   // Remove the effect that was causing unnecessary refetches
@@ -1491,7 +1564,65 @@ const OperatorDashboard = () => {
             >
               Refresh
             </LoadingButton>
-          </div>{" "}
+          </div>
+
+          {/* Operator's own attendance controls */}
+          <div className="operator-attendance-controls">
+            <div className="operator-attendance-status">
+              <span className="operator-status-label">My Attendance:</span>
+              {todayStatus ? (
+                <div className="operator-times">
+                  <span className="check-time">
+                    In:{" "}
+                    {checkInTime ? formatTimeForDisplay(checkInTime) : "--:--"}
+                  </span>
+                  <span className="check-time">
+                    Out:{" "}
+                    {checkOutTime
+                      ? formatTimeForDisplay(checkOutTime)
+                      : "--:--"}
+                  </span>
+                </div>
+              ) : (
+                <span className="no-record">No record today</span>
+              )}
+            </div>
+
+            {/* Error display */}
+            {(attendanceError || checkInError || checkOutError) && (
+              <div
+                className="attendance-error"
+                style={{
+                  color: "#dc3545",
+                  fontSize: "12px",
+                  marginTop: "4px",
+                }}
+              >
+                {attendanceError || checkInError || checkOutError}
+              </div>
+            )}
+
+            <div className="operator-attendance-buttons">
+              <LoadingButton
+                onClick={handleOperatorCheckIn}
+                loading={checkInLoading}
+                disabled={isCheckedIn}
+                className="check-in-btn"
+                size="small"
+              >
+                {isCheckedIn ? "Checked In" : "Check In"}
+              </LoadingButton>
+              <LoadingButton
+                onClick={handleOperatorCheckOut}
+                loading={checkOutLoading}
+                disabled={!isCheckedIn || !!checkOutTime}
+                className="check-out-btn"
+                size="small"
+              >
+                {checkOutTime ? "Checked Out" : "Check Out"}
+              </LoadingButton>
+            </div>
+          </div>
         </div>
 
         {/* Minimal loading indicator for attendance data */}
@@ -2816,29 +2947,31 @@ const OperatorDashboard = () => {
           <div className="stats-card">
             <h4>Rejection Overview</h4>
             <div className="stats-grid">
-              <div className="stat-item">
-                <span className="stat-number">
+              <div className="operator-stat-item">
+                <span className="operator-stat-number">
                   {tabStats.rejectionStats.total}
                 </span>
-                <span className="stat-label">Total Rejections</span>
+                <span className="operator-stat-label">Total Rejections</span>
               </div>
-              <div className="stat-item therapist-stat">
-                <span className="stat-number">
+              <div className="operator-stat-item operator-therapist-stat">
+                <span className="operator-stat-number">
                   {tabStats.rejectionStats.therapist}
                 </span>
-                <span className="stat-label">Therapist Rejections</span>
+                <span className="operator-stat-label">
+                  Therapist Rejections
+                </span>
               </div>
-              <div className="stat-item driver-stat">
-                <span className="stat-number">
+              <div className="operator-stat-item operator-driver-stat">
+                <span className="operator-stat-number">
                   {tabStats.rejectionStats.driver}
                 </span>
-                <span className="stat-label">Driver Rejections</span>
+                <span className="operator-stat-label">Driver Rejections</span>
               </div>{" "}
-              <div className="stat-item pending-stat">
-                <span className="stat-number">
+              <div className="operator-stat-item operator-pending-stat">
+                <span className="operator-stat-number">
                   {tabStats.rejectionStats.pending}
                 </span>
-                <span className="stat-label">Pending Reviews</span>
+                <span className="operator-stat-label">Pending Reviews</span>
               </div>
             </div>
           </div>

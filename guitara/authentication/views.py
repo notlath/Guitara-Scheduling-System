@@ -65,27 +65,14 @@ class LoginAPI(generics.GenericAPIView):
             )
 
             if not user.is_active:
-                account_type = getattr(user, "role", "account").lower()
-                error_messages = {
-                    "therapist": "Your therapist account is currently disabled. Please contact your supervisor for assistance.",
-                    "driver": "Your driver account is currently disabled. Please contact your supervisor for assistance.",
-                    "operator": "Your operator account is currently disabled. Please contact the administrator for assistance.",
-                }
-                error_msg = error_messages.get(
-                    account_type,
-                    "Your account has been disabled. Please contact support for assistance.",
-                )
+                # Account is disabled - use standardized message
                 return Response(
                     {
-                        "error": error_msg,
-                        "error_code": f"{account_type.upper()}_DISABLED",
+                        "error": "Your account has been disabled. Please see your system administrator.",
+                        "error_code": "ACCOUNT_DISABLED",
                     },
                     status=403,
                 )
-
-            # Reset failed login attempts on successful login
-            user.failed_login_attempts = 0
-            user.save()
 
             # Generate and send 2FA code using TwoFactorCode model
             if user.two_factor_enabled:
@@ -119,7 +106,75 @@ class LoginAPI(generics.GenericAPIView):
             )
         except serializers.ValidationError as ve:
             logger.warning(f"[LOGIN] Validation error: {ve}")
-            return Response({"error": "Invalid credentials"}, status=401)
+            # Extract error message and code robustly
+            error_message = None
+            error_code = None
+
+            if hasattr(ve, "detail") and ve.detail:
+                # Try common keys for error message
+                for key in ["non_field_errors", "error"]:
+                    if (
+                        key in ve.detail
+                        and isinstance(ve.detail[key], list)
+                        and ve.detail[key]
+                    ):
+                        error_message = str(ve.detail[key][0])
+                        break
+
+                # Extract error code if available
+                if (
+                    "code" in ve.detail
+                    and isinstance(ve.detail["code"], list)
+                    and ve.detail["code"]
+                ):
+                    error_code = str(ve.detail["code"][0])
+
+                # Fallback: get first value from dict
+                if not error_message:
+                    first_val = next(iter(ve.detail.values()), None)
+                    if isinstance(first_val, list) and first_val:
+                        error_message = str(first_val[0])
+                    elif first_val:
+                        error_message = str(first_val)
+
+            if not error_message:
+                error_message = str(ve)
+
+            # Return response based on error code or message content
+            if error_code == "ACCOUNT_LOCKED" or any(
+                keyword in error_message.lower()
+                for keyword in [
+                    "temporarily locked due to multiple failed login attempts",
+                    "temporarily locked",
+                    "account locked for",
+                    "try again in",
+                ]
+            ):
+                return Response(
+                    {"error": error_message, "code": "ACCOUNT_LOCKED"}, status=400
+                )
+            elif (
+                error_code == "ACCOUNT_DISABLED" or "disabled" in error_message.lower()
+            ):
+                return Response(
+                    {"error": error_message, "code": "ACCOUNT_DISABLED"}, status=403
+                )
+            elif (
+                error_code == "INVALID_LOGIN"
+                or "attempts remaining" in error_message.lower()
+            ):
+                return Response(
+                    {"error": error_message, "code": "INVALID_LOGIN"}, status=401
+                )
+            else:
+                # Return generic error for other validation issues
+                return Response(
+                    {
+                        "error": "Incorrect username or password.",
+                        "code": "INVALID_LOGIN",
+                    },
+                    status=401,
+                )
         except Exception as exc:
             logger.exception(f"LoginAPI 500 error: {exc}")
             return Response({"error": f"Internal server error: {exc}"}, status=500)
@@ -165,9 +220,7 @@ class TwoFactorVerifyAPI(generics.GenericAPIView):
         )
         if not tf_code:
             logger.warning("[2FA VERIFY] Invalid or expired verification code attempt.")
-            return Response(
-                {"error": "Invalid or expired verification code"}, status=400
-            )
+            return Response({"error": "Invalid code."}, status=400)
 
         tf_code.is_used = True
         tf_code.save()

@@ -47,16 +47,16 @@
   gap: 20px;
 }
 
-.attendance-header {
-  display: flex;
+/* .attendance-header {
+  display: list-item;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  padding: 20px; */
+/* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+/* color: white;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
+} */
 
 .current-time {
   display: flex;
@@ -263,7 +263,7 @@
 }
 
 .attendance-header {
-  display: flex;
+  /* display: flex; */
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
@@ -274,8 +274,17 @@
 
 .date-selector {
   display: flex;
-  align-items: center;
+
   gap: 10px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
 }
 
 .date-selector label {

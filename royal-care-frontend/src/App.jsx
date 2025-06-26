@@ -1,8 +1,10 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
 import { shallowEqual, useDispatch } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { useOptimizedSelector } from "./hooks/usePerformanceOptimization";
+// WEBSOCKET CACHE SYNC: Import WebSocket cache synchronization hook
+import { useWebSocketCacheSync } from "./hooks/useWebSocketCacheSync";
 // Import debugger utilities for performance monitoring in development
 import DriverDashboard from "./components/DriverDashboard";
 import MainLayout from "./components/MainLayout";
@@ -12,84 +14,92 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RouteHandler from "./components/auth/RouteHandler";
 import ReactErrorBoundary from "./components/common/ReactErrorBoundary";
 import { AttendanceMemoProvider } from "./components/contexts/AttendanceContext";
-import AvailabilityManager from "./components/scheduling/AvailabilityManager";
+const AvailabilityManager = React.lazy(() =>
+  import("./components/scheduling/AvailabilityManager")
+);
 import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
 // Initialize service worker error suppression early
 import "./utils/serviceWorkerErrorSuppression";
-// Add browser extension error suppression
-const suppressBrowserExtensionErrors = () => {
-  // Store original console methods
-  const originalConsoleError = console.error;
-  const originalConsoleWarn = console.warn;
-
-  // List of browser extension error patterns to suppress
-  const extensionErrorPatterns = [
-    /Unchecked runtime\.lastError/,
-    /extension port is moved into back\/forward cache/,
-    /No tab with id:/,
-    /Frame with ID .* was removed/,
-    /Duplicate script ID/,
-    /Failed to start the connection.*Failed to fetch/,
-    /WebSocket closed with status code: 1006/,
-    /background\.js.*Error/,
-  ];
-
-  // Override console.error to filter out extension errors
-  console.error = (...args) => {
-    const message = args.join(" ");
-    const isExtensionError = extensionErrorPatterns.some((pattern) =>
-      pattern.test(message)
-    );
-
-    if (!isExtensionError) {
-      originalConsoleError.apply(console, args);
-    }
-  };
-
-  // Override console.warn for similar patterns
-  console.warn = (...args) => {
-    const message = args.join(" ");
-    const isExtensionWarning = extensionErrorPatterns.some((pattern) =>
-      pattern.test(message)
-    );
-
-    if (!isExtensionWarning) {
-      originalConsoleWarn.apply(console, args);
-    }
-  };
-};
-
-// Initialize error suppression
-suppressBrowserExtensionErrors();
 
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
-import CompanyInfoPage from "./pages/AboutPages/CompanyInfoPage";
-import DeveloperInfoPage from "./pages/AboutPages/DeveloperInfoPage";
-import SystemInfoPage from "./pages/AboutPages/SystemInfoPage";
-import AttendancePage from "./pages/AttendancePage/AttendancePage";
-import BookingsPage from "./pages/BookingsPage/BookingsPage";
-import ContactPage from "./pages/ContactPage/ContactPage";
-import EnterNewPasswordPage from "./pages/EnterNewPasswordPage/EnterNewPasswordPage";
-import FAQsPage from "./pages/FAQsPage/FAQsPage";
-import ForgotPasswordConfirmationPage from "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
-import InventoryPage from "./pages/InventoryPage/InventoryPage";
-import NotificationsPage from "./pages/NotificationsPage/NotificationsPage";
-import ProfilePage from "./pages/ProfilePage/ProfilePage";
-import RegisterPage from "./pages/RegisterPage/RegisterPage";
-import SalesReportsPage from "./pages/SalesReportsPage/SalesReportsPage";
-import SchedulingPage from "./pages/SchedulingPage/SchedulingPage";
-import SettingsAccountPage from "./pages/SettingsAccountPage/SettingsAccountPage";
-import SettingsDataPage from "./pages/SettingsDataPage/SettingsDataPage";
-import SettingsPage from "./pages/SettingsPage/SettingsPage";
-import StaffAttendancePage from "./pages/StaffAttendancePage/StaffAttendancePage";
-import TwoFactorAuthPage from "./pages/TwoFactorAuthPage/TwoFactorAuthPage";
-import UserGuidePage from "./pages/UserGuidePage/UserGuidePage";
+
+// Lazy load pages to enable code splitting and reduce initial bundle size
+// This ensures CSS modules are only loaded when the page is actually accessed
+const CompanyInfoPage = React.lazy(() =>
+  import("./pages/AboutPages/CompanyInfoPage")
+);
+const DeveloperInfoPage = React.lazy(() =>
+  import("./pages/AboutPages/DeveloperInfoPage")
+);
+const SystemInfoPage = React.lazy(() =>
+  import("./pages/AboutPages/SystemInfoPage")
+);
+const AttendancePage = React.lazy(() =>
+  import("./pages/AttendancePage/AttendancePage")
+);
+const BookingsPage = React.lazy(() =>
+  import("./pages/BookingsPage/BookingsPage")
+);
+const ContactPage = React.lazy(() => import("./pages/ContactPage/ContactPage"));
+const EnterNewPasswordPage = React.lazy(() =>
+  import("./pages/EnterNewPasswordPage/EnterNewPasswordPage")
+);
+const FAQsPage = React.lazy(() => import("./pages/FAQsPage/FAQsPage"));
+const ForgotPasswordConfirmationPage = React.lazy(() =>
+  import(
+    "./pages/ForgotPasswordConfirmationPage/ForgotPasswordConfirmationPage"
+  )
+);
+const ForgotPasswordPage = React.lazy(() =>
+  import("./pages/ForgotPasswordPage/ForgotPasswordPage")
+);
+const InventoryPage = React.lazy(() =>
+  import("./pages/InventoryPage/InventoryPage")
+);
+const NotificationsPage = React.lazy(() =>
+  import("./pages/NotificationsPage/NotificationsPage")
+);
+const ProfilePage = React.lazy(() => import("./pages/ProfilePage/ProfilePage"));
+const RegisterPage = React.lazy(() =>
+  import("./pages/RegisterPage/RegisterPage")
+);
+const SalesReportsPage = React.lazy(() =>
+  import("./pages/SalesReportsPage/SalesReportsPage")
+);
+const SchedulingPage = React.lazy(() =>
+  import("./pages/SchedulingPage/SchedulingPage")
+);
+const SettingsAccountPage = React.lazy(() =>
+  import("./pages/SettingsAccountPage/SettingsAccountPage")
+);
+const SettingsDataPage = React.lazy(() =>
+  import("./pages/SettingsDataPage/SettingsDataPage")
+);
+const SettingsPage = React.lazy(() =>
+  import("./pages/SettingsPage/SettingsPage")
+);
+const StaffAttendancePage = React.lazy(() =>
+  import("./pages/StaffAttendancePage/StaffAttendancePage")
+);
+const TwoFactorAuthPage = React.lazy(() =>
+  import("./pages/TwoFactorAuthPage/TwoFactorAuthPage")
+);
+const UserGuidePage = React.lazy(() =>
+  import("./pages/UserGuidePage/UserGuidePage")
+);
 import { validateToken } from "./services/auth";
 import { cleanupInvalidTokens } from "./utils/tokenManager";
 // import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
+
+// Full-screen loading component for lazy-loaded pages
+const LoadingOverlay = () => (
+  <div className="loading-overlay">
+    <div className="loading-overlay-spinner" />
+    <div className="loading-overlay-text">Loading...</div>
+  </div>
+);
 
 // Error Boundary Component
 class AppErrorBoundary extends React.Component {
@@ -165,6 +175,9 @@ const SafeApp = () => {
 const App = () => {
   const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
   const dispatch = useDispatch();
+
+  // WEBSOCKET CACHE SYNC: Enable real-time cache synchronization
+  useWebSocketCacheSync();
 
   useEffect(() => {
     // Clean up any invalid tokens on app startup
@@ -306,20 +319,53 @@ const App = () => {
       <div className="App">
         <Routes>
           <Route path="/" element={<RouteHandler />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/2fa" element={<TwoFactorAuthPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route
+            path="/register"
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <RegisterPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/2fa"
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <TwoFactorAuthPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <ForgotPasswordPage />
+              </Suspense>
+            }
+          />
           <Route
             path="/2fa-forgot-password"
-            element={<TwoFAForgotPasswordPage />}
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <TwoFAForgotPasswordPage />
+              </Suspense>
+            }
           />
           <Route
             path="/enter-new-password"
-            element={<EnterNewPasswordPage />}
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <EnterNewPasswordPage />
+              </Suspense>
+            }
           />
           <Route
             path="/forgot-password-confirmation"
-            element={<ForgotPasswordConfirmationPage />}
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <ForgotPasswordConfirmationPage />
+              </Suspense>
+            }
           />
           <Route
             path="/dashboard"
@@ -345,17 +391,49 @@ const App = () => {
                 )
               }
             />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="scheduling" element={<SchedulingPage />} />
-            <Route path="availability" element={<AvailabilityManager />} />
-            <Route path="bookings" element={<BookingsPage />} />
+            <Route
+              path="notifications"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <NotificationsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="scheduling"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <SchedulingPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="availability"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <AvailabilityManager />
+                </Suspense>
+              }
+            />
+            <Route
+              path="bookings"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <BookingsPage />
+                </Suspense>
+              }
+            />
             <Route
               path="attendance"
               element={
                 user?.role === "therapist" || user?.role === "driver" ? (
-                  <StaffAttendancePage />
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <StaffAttendancePage />
+                  </Suspense>
                 ) : (
-                  <AttendancePage />
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <AttendancePage />
+                  </Suspense>
                 )
               }
             />
@@ -365,35 +443,109 @@ const App = () => {
                 user?.role === "therapist" || user?.role === "driver" ? (
                   <Navigate to="/dashboard" replace />
                 ) : (
-                  <SalesReportsPage />
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <SalesReportsPage />
+                  </Suspense>
                 )
               }
             />
-            <Route path="inventory" element={<InventoryPage />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="settings/account" element={<SettingsAccountPage />} />
+            <Route
+              path="inventory"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <InventoryPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <ProfilePage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="settings"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <SettingsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="settings/account"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <SettingsAccountPage />
+                </Suspense>
+              }
+            />
             <Route
               path="settings/data"
               element={
                 user?.role === "therapist" || user?.role === "driver" ? (
                   <Navigate to="/dashboard" replace />
                 ) : (
-                  <SettingsDataPage />
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <SettingsDataPage />
+                  </Suspense>
                 )
               }
-            />{" "}
+            />
             {/* Help Pages */}
             <Route path="help">
-              <Route path="user-guide" element={<UserGuidePage />} />
-              <Route path="faqs" element={<FAQsPage />} />
-              <Route path="contact" element={<ContactPage />} />
+              <Route
+                path="user-guide"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <UserGuidePage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="faqs"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <FAQsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="contact"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <ContactPage />
+                  </Suspense>
+                }
+              />
             </Route>
             {/* About Pages */}
             <Route path="about">
-              <Route path="company" element={<CompanyInfoPage />} />
-              <Route path="system" element={<SystemInfoPage />} />
-              <Route path="developers" element={<DeveloperInfoPage />} />{" "}
+              <Route
+                path="company"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <CompanyInfoPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="system"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <SystemInfoPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="developers"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <DeveloperInfoPage />
+                  </Suspense>
+                }
+              />
             </Route>
           </Route>
         </Routes>

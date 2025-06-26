@@ -9,7 +9,7 @@ import {
   MdSchedule,
   MdUpdate,
 } from "react-icons/md";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { markNotificationAsRead } from "../../features/scheduling/schedulingSlice";
 import styles from "../../styles/NotificationCenter.module.css";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
@@ -25,19 +25,11 @@ const NotificationCenter = ({ onClose }) => {
   const notificationItemsRef = useRef(new Map());
 
   // Get user information for role-aware filtering
-  const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   // Fetch notifications directly from API
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
-
-    console.log("🔄 Fetching notifications...");
-    console.log(
-      `👤 User role: ${user?.role || "Unknown"} - ${
-        user?.username || "Unknown user"
-      }`
-    );
 
     try {
       const token = localStorage.getItem("knoxToken");
@@ -46,113 +38,86 @@ const NotificationCenter = ({ onClose }) => {
         throw new Error("No authentication token found");
       }
 
-      console.log("📡 Making request to notifications API...");
+      const baseURL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
-      const response = await fetch(
-        "http://localhost:8000/api/scheduling/notifications/",
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      // Try primary endpoint first, then fallback to debug endpoint if needed
+      const endpoints = [
+        `${baseURL}/scheduling/notifications/`,
+        `${baseURL}/scheduling/notifications/debug_all/`,
+      ];
 
-      console.log(
-        `📊 Response status: ${response.status} ${response.statusText}`
-      );
+      let data = null;
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Authentication failed - please log in again");
-        }
-
-        // Try to get error details from response
-        let errorMessage = `Failed to fetch notifications: ${response.status}`;
+      for (const endpoint of endpoints) {
         try {
-          const errorData = await response.json();
-          console.log("❌ Error response data:", errorData);
-          if (errorData.error) {
-            errorMessage = errorData.error;
-          } else if (errorData.detail) {
-            errorMessage = errorData.detail;
-          }
-        } catch (parseError) {
-          // If we can't parse the error response, use the status
-          console.warn("Could not parse error response:", parseError);
-        }
+          const response = await fetch(endpoint, {
+            headers: {
+              Authorization: `Token ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
 
-        throw new Error(errorMessage);
+          if (response.ok) {
+            data = await response.json();
+            break;
+          }
+        } catch (endpointError) {
+          console.warn(`Failed to fetch from ${endpoint}:`, endpointError);
+        }
       }
 
-      const data = await response.json();
-      console.log("📦 Received data:", data);
+      if (!data) {
+        throw new Error("Unable to fetch notifications from any endpoint");
+      }
 
-      // Handle the new backend response format which may include additional metadata
+      // Handle different response formats from the backend
       let notificationsList = [];
 
       if (Array.isArray(data)) {
-        // Old format - direct array
+        // Direct array format
         notificationsList = data;
-        console.log("✅ Using legacy array format");
       } else if (data && Array.isArray(data.notifications)) {
-        // New format - object with notifications array
+        // Object with notifications array
         notificationsList = data.notifications;
-        console.log(
-          `✅ Loaded ${notificationsList.length} notifications (${
-            data.unreadCount || 0
-          } unread) for ${user?.role || "unknown"} user`
-        );
-
-        // Log any warnings from backend
-        if (data.warning) {
-          console.warn("⚠️ Backend warning:", data.warning);
-        }
-        if (data.errors && data.errors > 0) {
-          console.warn(
-            `⚠️ Backend encountered ${data.errors} errors while loading notifications`
-          );
-        }
+      } else if (data && Array.isArray(data.results)) {
+        // Paginated format - notifications in 'results' array
+        notificationsList = data.results;
+      } else if (
+        data &&
+        data.results &&
+        Array.isArray(data.results.notifications)
+      ) {
+        // Nested paginated format
+        notificationsList = data.results.notifications;
       } else {
-        // Fallback - treat as empty array
-        console.warn("⚠️ Unexpected response format:", data);
+        // Unexpected format - log for debugging but don't break
+        console.warn("Unexpected response format:", data);
         notificationsList = [];
       }
 
-      // Log notification types for debugging role filtering
-      if (notificationsList.length > 0) {
-        const notificationTypes = notificationsList
-          .map((n) => n.notification_type || n.type)
-          .filter(Boolean);
-        const uniqueTypes = [...new Set(notificationTypes)];
-        console.log(
-          `🏷️ Notification types received for ${user?.role}: ${uniqueTypes.join(
-            ", "
-          )}`
-        );
-      }
-
-      console.log(`🎯 Setting ${notificationsList.length} notifications`);
       setNotifications(notificationsList);
     } catch (err) {
       console.error("Error fetching notifications:", err);
       setError(err.message);
-
-      // Set empty notifications array as fallback
       setNotifications([]);
     } finally {
       setLoading(false);
     }
-  }, [user?.role, user?.username]);
+  }, []);
 
   // Mark notification as read
   const markAsRead = useCallback(
     async (notificationId) => {
       try {
         const token = localStorage.getItem("knoxToken");
+        const baseURL = import.meta.env.PROD
+          ? "https://charismatic-appreciation-production.up.railway.app/api"
+          : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
         const response = await fetch(
-          `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_read/`,
+          `${baseURL}/scheduling/notifications/${notificationId}/mark_as_read/`,
           {
             method: "POST",
             headers: {
@@ -231,9 +196,12 @@ const NotificationCenter = ({ onClose }) => {
   const markAsUnread = async (notificationId) => {
     try {
       const token = localStorage.getItem("knoxToken");
+      const baseURL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
       const response = await fetch(
-        `http://localhost:8000/api/scheduling/notifications/${notificationId}/mark_as_unread/`,
+        `${baseURL}/scheduling/notifications/${notificationId}/mark_as_unread/`,
         {
           method: "POST",
           headers: {
@@ -263,9 +231,12 @@ const NotificationCenter = ({ onClose }) => {
   const deleteNotification = async (notificationId) => {
     try {
       const token = localStorage.getItem("knoxToken");
+      const baseURL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
       const response = await fetch(
-        `http://localhost:8000/api/scheduling/notifications/${notificationId}/`,
+        `${baseURL}/scheduling/notifications/${notificationId}/`,
         {
           method: "DELETE",
           headers: {

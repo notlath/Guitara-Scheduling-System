@@ -1,0 +1,12 @@
+{
+  "backend_url": "http://127.0.0.1:8000/",
+  "frontend_url": "http://localhost:5173/",
+  "backend_port": 8000,
+  "frontend_port": 5173,
+  "startup_timeout": 60,
+  "health_check_interval": 1,
+  "verbose_logging": false,
+  "auto_browser": true,
+  "kill_existing": true,
+  "force_restart": true
+}

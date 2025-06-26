@@ -2,12 +2,21 @@ import { useRef, useState } from "react";
 import PhotoCropModal from "../PhotoCropModal/PhotoCropModal";
 import styles from "./ProfilePhotoUpload.module.css";
 
+// API URL based on environment - ensure consistent URL handling
+const getBaseURL = () => {
+  if (import.meta.env.PROD) {
+    return "https://charismatic-appreciation-production.up.railway.app/api";
+  }
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+};
+
 const ProfilePhotoUpload = ({
   currentPhoto,
   onPhotoUpdate,
   size = "large",
 }) => {
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [preview, setPreview] = useState(currentPhoto);
   const [showCropModal, setShowCropModal] = useState(false);
   const [selectedImageSrc, setSelectedImageSrc] = useState(null);
@@ -58,13 +67,16 @@ const ProfilePhotoUpload = ({
       const formData = new FormData();
       formData.append("photo", croppedFile);
 
-      const response = await fetch("/api/registration/profile/photo/", {
-        method: "POST",
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        `${getBaseURL()}/registration/profile/photo/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+          body: formData,
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -99,15 +111,19 @@ const ProfilePhotoUpload = ({
   };
 
   const handleRemovePhoto = async () => {
+    setDeleting(true);
     try {
       const token = localStorage.getItem("knoxToken");
 
-      const response = await fetch("/api/registration/profile/photo/", {
-        method: "DELETE",
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
+      const response = await fetch(
+        `${getBaseURL()}/registration/profile/photo/`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -123,6 +139,8 @@ const ProfilePhotoUpload = ({
     } catch (error) {
       console.error("Delete failed:", error);
       alert(`Delete failed: ${error.message}`);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -144,46 +162,49 @@ const ProfilePhotoUpload = ({
               <span>Uploading...</span>
             </div>
           )}
+          {deleting && (
+            <div className={styles.uploadingOverlay}>
+              <div className={styles.uploadingSpinner}></div>
+              <span>Deleting...</span>
+            </div>
+          )}
         </div>
       </div>
 
       <div className={styles.photoActions}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={handleFileSelect}
-          disabled={uploading}
-          style={{ display: "none" }}
-        />
-
         <button
-          onClick={handleUploadClick}
-          disabled={uploading}
+          type="button"
           className={styles.uploadButton}
+          onClick={handleUploadClick}
+          disabled={uploading || deleting}
         >
-          {preview ? "Change Photo" : "Upload Photo"}
+          {uploading ? "Uploading..." : "Change Photo"}
         </button>
-
         {preview && (
           <button
-            onClick={handleRemovePhoto}
-            disabled={uploading}
+            type="button"
             className={styles.removeButton}
+            onClick={handleRemovePhoto}
+            disabled={uploading || deleting}
           >
-            Remove
+            {deleting ? "Deleting..." : "Remove"}
           </button>
         )}
       </div>
 
-      {/* Crop Modal */}
-      {showCropModal && selectedImageSrc && (
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        style={{ display: "none" }}
+      />
+
+      {showCropModal && (
         <PhotoCropModal
           imageSrc={selectedImageSrc}
           onCropComplete={handleCropComplete}
           onCancel={handleCropCancel}
-          aspectRatio={1}
-          cropShape="round"
         />
       )}
     </div>

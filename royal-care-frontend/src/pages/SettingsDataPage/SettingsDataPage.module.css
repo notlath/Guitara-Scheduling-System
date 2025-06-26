@@ -363,3 +363,13 @@ button:disabled {
   background: var(--border-light, #e5e7eb);
   margin: 0.25rem 0;
 }
+
+.global-content.no-page-scroll .tab-switcher,
+.view-selector {
+  display: flex;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-bottom: var(--spacing-mxs);
+  white-space: nowrap;
+  gap: 0;
+}

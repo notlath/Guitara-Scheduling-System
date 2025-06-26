@@ -266,6 +266,16 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 
+# Allow HTTP methods including DELETE for profile photo management
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
 # Security settings
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True

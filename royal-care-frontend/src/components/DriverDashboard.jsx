@@ -11,6 +11,8 @@ import { logout } from "../features/auth/authSlice";
 // TANSTACK QUERY: Replace optimized data manager with TanStack Query
 import { useDriverDashboardData } from "../hooks/useDashboardQueries";
 import { useDashboardMutations } from "../hooks/useEnhancedDashboardData";
+// Enhanced Redux hooks for automatic TanStack Query cache invalidation
+import { useEnhancedDriverActions } from "../hooks/useEnhancedRedux";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
@@ -99,10 +101,21 @@ const DriverDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // Get user from Redux state
+  const user = useSelector((state) => state.auth.user, shallowEqual);
+
+  // Enhanced Redux actions with automatic TanStack Query cache invalidation
+  const {
+    confirmAppointment: enhancedConfirmAppointment,
+    confirmPickup: enhancedConfirmPickup,
+    startJourney: enhancedStartJourney,
+    completeReturnJourney: enhancedCompleteReturnJourney,
+  } = useEnhancedDriverActions();
+
   const userName =
-    user.first_name && user.last_name
+    user?.first_name && user?.last_name
       ? `${user.first_name} ${user.last_name}`
-      : user.username || "Operator";
+      : user?.username || "Driver";
 
   // Helper to get greeting based on PH time
   const getGreeting = () => {
@@ -175,7 +188,6 @@ const DriverDashboard = () => {
     }
   };
 
-  const user = useSelector((state) => state.auth.user, shallowEqual);
   // TANSTACK QUERY: Replace optimized data manager with TanStack Query
   const {
     appointments: myAppointments,
@@ -279,10 +291,7 @@ const DriverDashboard = () => {
     const actionKey = `accept_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await updateStatus.mutateAsync({
-        appointmentId,
-        status: "driver_confirmed",
-      });
+      await enhancedConfirmAppointment(appointmentId);
     } catch (error) {
       // More user-friendly error message
       if (

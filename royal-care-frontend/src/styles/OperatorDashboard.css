@@ -964,47 +964,46 @@
   gap: 15px;
 }
 
-/* .stat-item {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 15px;
+.operator-stat-item {
   text-align: center;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: transform 0.2s, background-color 0.2s;
-} */
+  padding: var(--spacing-mmd);
+  background: var(--primary-50);
+  border-radius: var(--border-radius);
+  /* border-left: 4px solid;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); */
+}
 
-/* .stat-item:hover {
+/* .operator-stat-item:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s, box-shadow 0.2s;
 } */
 
-/* .stat-number {
+.operator-stat-number {
   display: block;
-  font-size: 1.8rem;
-  font-weight: 700;
-  line-height: 1;
-  margin-bottom: 5px;
-} */
-
-/* .stat-label {
-  display: block;
-  font-size: 0.8rem;
-  opacity: 0.8;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-} */
-/* 
-.therapist-stat {
-  border-left: 4px solid #2196f3;
+  font-size: var(--font-size-xxl);
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+  /* color: #2c3e50; */
 }
 
-.driver-stat {
-  border-left: 4px solid #9c27b0;
+.operator-stat-label {
+  display: block;
+  opacity: 0.6;
+  font-size: 0.9rem;
+  /* color: var(--text-600); */
 }
 
-.pending-stat {
-  border-left: 4px solid #ff9800;
+/* .operator-therapist-stat {
+  border-left-color: #2196f3;
+}
+
+.operator-driver-stat {
+  border-left-color: #9c27b0;
+}
+
+.operator-pending-stat {
+  border-left-color: #ff9800;
 } */
 
 .dashboard-container {
@@ -1438,4 +1437,120 @@
   background: red !important;
   color: white !important;
   padding: 2px !important;
+}
+
+/* Operator Attendance Controls */
+.operator-attendance-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.operator-attendance-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.operator-status-label {
+  font-weight: 600;
+  color: #495057;
+  min-width: fit-content;
+}
+
+.operator-times {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.check-time {
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.no-record {
+  font-size: 14px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.operator-attendance-buttons {
+  display: grid;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.check-in-btn {
+  background-color: #28a745 !important;
+  color: white !important;
+  border: none !important;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+}
+
+.check-in-btn:hover:not(:disabled) {
+  background-color: #218838 !important;
+}
+
+.check-in-btn:disabled {
+  background-color: #6c757d !important;
+  cursor: not-allowed !important;
+}
+
+.check-out-btn {
+  background-color: #dc3545 !important;
+  color: white !important;
+  border: none !important;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+}
+
+.check-out-btn:hover:not(:disabled) {
+  background-color: #c82333 !important;
+}
+
+.check-out-btn:disabled {
+  background-color: #6c757d !important;
+  cursor: not-allowed !important;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .operator-attendance-controls {
+    padding: 12px;
+  }
+
+  .operator-attendance-status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .operator-times {
+    gap: 12px;
+  }
+
+  .operator-attendance-buttons {
+    width: 100%;
+  }
+
+  .check-in-btn,
+  .check-out-btn {
+    flex: 1;
+    min-width: 120px;
+  }
 }

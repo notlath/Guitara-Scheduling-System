@@ -35,6 +35,29 @@ export const isDisabledAccountError = (error) => {
   );
 };
 
+export const isAccountLockedError = (error) => {
+  if (!error) return false;
+
+  const errorMessage = error.message || error.response?.data?.error || "";
+
+  // Check for account lockout keywords
+  const lockoutKeywords = [
+    "too many failed login attempts",
+    "account locked",
+    "account is temporarily locked",
+    "temporarily locked due to multiple failed login attempts",
+    "try again in",
+    "attempts remaining before lockout",
+    "locked for 5 minutes",
+    "temporarily locked",
+    "wait 5 minutes before trying again",
+  ];
+
+  return lockoutKeywords.some((keyword) =>
+    errorMessage.toLowerCase().includes(keyword)
+  );
+};
+
 export const getAccountTypeFromError = (error) => {
   if (!error) return "account";
 
@@ -74,13 +97,13 @@ export const getDisabledAccountMessage = (error, accountType = "account") => {
   // Generate a user-friendly message based on account type
   const typeMessages = {
     therapist:
-      "Your therapist account is currently inactive. Please contact your supervisor for assistance.",
+      "Your account has been disabled. Please see your system administrator.",
     driver:
-      "Your driver account is currently inactive. Please contact your supervisor for assistance.",
+      "Your account has been disabled. Please see your system administrator.",
     operator:
-      "Your operator account is currently inactive. Please contact your administrator for assistance.",
+      "Your account has been disabled. Please see your system administrator.",
     account:
-      "Your account has been disabled. Please contact support for assistance.",
+      "Your account has been disabled. Please see your system administrator.",
   };
 
   return typeMessages[accountType] || typeMessages.account;
@@ -115,12 +138,25 @@ export const getContactInfo = (accountType = "account") => {
 
 export const handleAuthError = (error) => {
   const isDisabled = isDisabledAccountError(error);
+  const isLocked = isAccountLockedError(error);
   const accountType = getAccountTypeFromError(error);
-  const message = getDisabledAccountMessage(error, accountType);
+
+  // For lockout errors, return the original message as it contains timing info
+  let message;
+  if (isLocked) {
+    message =
+      error.message ||
+      error.response?.data?.error ||
+      "Account is temporarily locked.";
+  } else {
+    message = getDisabledAccountMessage(error, accountType);
+  }
+
   const contactInfo = getContactInfo(accountType);
 
   return {
-    isDisabled,
+    isDisabled: isDisabled || isLocked,
+    isLocked,
     accountType,
     message,
     contactInfo,

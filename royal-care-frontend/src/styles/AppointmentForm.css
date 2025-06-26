@@ -39,11 +39,11 @@
   gap: 15px;
 }
 
-label {
+/* label {
   margin-bottom: 5px;
   font-weight: 500;
   color: #444;
-}
+} */
 
 input,
 select,
@@ -155,6 +155,17 @@ textarea {
   border-radius: 4px;
   margin-bottom: 15px;
   text-align: center;
+}
+
+.field-hint {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-top: 5px;
+  font-size: 0.85rem;
+  text-align: center;
+  border-left: 3px solid #1976d2;
 }
 
 .loading {
