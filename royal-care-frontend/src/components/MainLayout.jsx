@@ -20,6 +20,7 @@ import {
   MdTableChart,
   MdEventAvailable,
   MdCalendarMonth,
+  MdHistory, // Added for history logs
 } from "react-icons/md";
 import { useSelector } from "react-redux";
 import { NavLink, Outlet } from "react-router-dom";
@@ -98,75 +99,6 @@ const MainLayout = () => {
             {mobileMenuOpen ? <MdClose size={28} /> : <MdMenu size={28} />}
           </button>
         )}
-        {/* Desktop nav links (hidden on mobile if menu open) */}
-        {/* <div className={`nav-links${mobileMenuOpen ? " hide-on-mobile" : ""}`}>
-          <NavLink
-            to="/dashboard"
-            end
-            className={({ isActive }) => (isActive ? "active-link" : "")}
-          >
-            <MdDashboard className="main-layout__sidebar-icon" />
-            Dashboard
-          </NavLink>
-          {isTherapistOrDriver ? (
-            <>
-              <NavLink
-                to="/dashboard/scheduling"
-                className={({ isActive }) => (isActive ? "active-link" : "")}
-              >
-                <MdSchedule className="main-layout__sidebar-icon" />
-                Schedule
-              </NavLink>
-              <NavLink
-                to="/dashboard/attendance"
-                className={({ isActive }) => (isActive ? "active-link" : "")}
-              >
-                <MdEventAvailable className="main-layout__sidebar-icon" />
-                Attendance
-              </NavLink>
-            </>
-          ) : (
-            <>
-              <NavLink
-                to="/dashboard/scheduling"
-                className={({ isActive }) => (isActive ? "active-link" : "")}
-              >
-                <MdCalendarMonth className="main-layout__sidebar-icon" />
-                Bookings
-              </NavLink>
-              <NavLink
-                to="/dashboard/attendance"
-                className={({ isActive }) => (isActive ? "active-link" : "")}
-              >
-                <MdEventAvailable className="main-layout__sidebar-icon" />
-                Attendance
-              </NavLink>
-              <div className="divider"></div>
-              <NavLink
-                to="/dashboard/sales-reports"
-                className={({ isActive }) => (isActive ? "active-link" : "")}
-              >
-                <MdBarChart className="main-layout__sidebar-icon" />
-                Sales & Reports
-              </NavLink>
-              <NavLink
-                to="/dashboard/inventory"
-                className={({ isActive }) => (isActive ? "active-link" : "")}
-              >
-                <MdInventory className="main-layout__sidebar-icon" />
-                Inventory
-              </NavLink>
-              <NavLink
-                to="/dashboard/settings/data"
-                className={({ isActive }) => (isActive ? "active-link" : "")}
-              >
-                <MdTableChart className="main-layout__sidebar-icon" />
-                Data
-              </NavLink>
-            </>
-          )}
-        </div> */}
-        {/* Mobile drawer menu */}
         {mobileMenuOpen && (
           <div
             className="mobile-drawer"
@@ -275,13 +207,22 @@ const MainLayout = () => {
                         Inventory
                       </NavLink>
                       <NavLink
-                        to="/dashboard/settings/data"
+                        to="/dashboard/data"
                         className={({ isActive }) =>
                           isActive ? "active-link" : ""
                         }
                       >
                         <MdTableChart className="main-layout__sidebar-icon" />
                         Data
+                      </NavLink>
+                      <NavLink
+                        to="/dashboard/logs"
+                        className={({ isActive }) =>
+                          isActive ? "active-link" : ""
+                        }
+                      >
+                        <MdHistory className="main-layout__sidebar-icon" />
+                        Logs
                       </NavLink>
                     </>
                   )}

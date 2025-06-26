@@ -84,6 +84,9 @@ const TwoFactorAuthPage = React.lazy(() =>
 const UserGuidePage = React.lazy(() =>
   import("./pages/UserGuidePage/UserGuidePage")
 );
+const LogsPage = React.lazy(() =>
+  import("./pages/LogsPage/LogsPage")
+);
 import { validateToken } from "./services/auth";
 import { cleanupInvalidTokens } from "./utils/tokenManager";
 // import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
@@ -471,7 +474,7 @@ const App = () => {
               }
             />
             <Route
-              path="settings/data"
+              path="data"
               element={
                 user?.role === "therapist" || user?.role === "driver" ? (
                   <Navigate to="/dashboard" replace />
@@ -481,6 +484,22 @@ const App = () => {
                   </Suspense>
                 )
               }
+            />
+            <Route
+              path="logs"
+              element={
+                user?.role === "therapist" || user?.role === "driver" ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <LogsPage />
+                  </Suspense>
+                )
+              }
+            />
+            <Route
+              path="settings/data"
+              element={<Navigate to="/dashboard/data" replace />} // Redirect old route
             />
             {/* Help Pages */}
             <Route path="help">

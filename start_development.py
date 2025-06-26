@@ -3,6 +3,21 @@
 Enhanced Development Server Starter for Guitara Scheduling System
 Starts Django backend and React frontend in separate terminals with improved
 cross-platform support, better error handling, and enhanced monitoring.
+
+Key Features:
+- Always kills existing backend and frontend servers before starting new ones
+- Comprehensive terminal window cleanup (CMD, PowerShell, ConHost)
+- Supports both .venv and venv virtual environments
+- Enhanced process cleanup with multiple detection methods
+- Comprehensive port checking and cleanup
+- Robust error handling and logging
+- Cross-platform terminal support
+
+Usage:
+  python start_development.py           # Normal startup with cleanup
+  python start_development.py --cleanup # Cleanup only mode
+  python start_development.py -c        # Cleanup only mode (short)
+  python start_development.py --kill    # Cleanup only mode (alias)
 """
 
 import os
@@ -27,7 +42,7 @@ CONFIG = {
     "frontend_url": "http://localhost:5173/",
     "backend_port": 8000,
     "frontend_port": 5173,
-    "startup_timeout": 60,
+    "startup_timeout": 90,
     "health_check_interval": 1,
     "verbose_logging": False,
     "auto_browser": True,
@@ -333,9 +348,10 @@ def kill_existing_cmd_windows(window_title):
     """Kill all cmd.exe windows whose title contains the given string (Windows only)"""
     if not is_windows():
         return
-    try:
-        import subprocess
 
+    killed_count = 0
+    try:
+        # Method 1: Kill by window title
         result = subprocess.check_output(
             'tasklist /v /fi "IMAGENAME eq cmd.exe"',
             shell=True,
@@ -349,9 +365,55 @@ def kill_existing_cmd_windows(window_title):
                 columns = re.split(r"\s{2,}", line.strip())
                 if len(columns) > 2 and columns[1].isdigit():
                     pid = int(columns[1])
-                    subprocess.run(f"taskkill /PID {pid} /F", shell=True)
+                    result = subprocess.run(
+                        f"taskkill /PID {pid} /F", shell=True, capture_output=True
+                    )
+                    if result.returncode == 0:
+                        print(f"🔪 Killed CMD window {pid} (title: {window_title})")
+                        killed_count += 1
     except Exception as e:
-        print(f"⚠️ Could not close existing '{window_title}' windows: {e}")
+        logger.debug(f"Method 1 failed for '{window_title}': {e}")
+
+    # Method 2: More aggressive - kill all CMD windows that might be related to our project
+    try:
+        project_indicators = [
+            "Django Backend",
+            "React Frontend",
+            "Guitara",
+            "royal-care",
+            "manage.py",
+            "npm run dev",
+            "runserver",
+        ]
+
+        result = subprocess.check_output(
+            'tasklist /v /fi "IMAGENAME eq cmd.exe"',
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+
+        for line in result.splitlines():
+            if "cmd.exe" in line.lower():
+                line_lower = line.lower()
+                # Check if this CMD window is related to our project
+                if any(
+                    indicator.lower() in line_lower for indicator in project_indicators
+                ):
+                    columns = re.split(r"\s{2,}", line.strip())
+                    if len(columns) > 2 and columns[1].isdigit():
+                        pid = int(columns[1])
+                        result = subprocess.run(
+                            f"taskkill /PID {pid} /F", shell=True, capture_output=True
+                        )
+                        if result.returncode == 0:
+                            print(f"🔪 Killed project-related CMD window {pid}")
+                            killed_count += 1
+
+    except Exception as e:
+        logger.debug(f"Method 2 failed: {e}")
+
+    return killed_count
 
 
 def kill_by_command_snippet(snippet: str) -> int:
@@ -466,13 +528,22 @@ def start_backend() -> bool:
 
     if is_windows():
         # Windows: use cmd instead of PowerShell for better compatibility
-        venv_activate = project_root / "venv" / "Scripts" / "activate.bat"
+        # Check for both .venv and venv directories
+        venv_activate = project_root / ".venv" / "Scripts" / "activate.bat"
+        venv_path = ".venv"
         if not venv_activate.exists():
-            print("❌ Virtual environment activation script not found")
-            return False
+            venv_activate = project_root / "venv" / "Scripts" / "activate.bat"
+            venv_path = "venv"
+            if not venv_activate.exists():
+                print("❌ Virtual environment activation script not found")
+                print(
+                    "   Looking for: .venv\\Scripts\\activate.bat or venv\\Scripts\\activate.bat"
+                )
+                return False
 
-        # Use cmd instead of PowerShell for better reliability
-        cmd = f'start cmd /k "title Django Backend && cd /d \\"{project_root}\\" && venv\\Scripts\\activate && cd guitara && python manage.py runserver {backend_port}"'
+        # Use a dedicated batch file for more reliable startup
+        batch_file = project_root / "start_backend.bat"
+        cmd = f'start "Django Backend" "{batch_file}"'
 
         try:
             result = subprocess.run(cmd, shell=True, cwd=project_root)
@@ -485,12 +556,18 @@ def start_backend() -> bool:
             return False
     else:
         # Linux/macOS: enhanced terminal detection
-        venv_activate = project_root / "venv" / "bin" / "activate"
+        # Check for both .venv and venv directories
+        venv_activate = project_root / ".venv" / "bin" / "activate"
+        venv_path = ".venv"
         if not venv_activate.exists():
-            print("❌ Virtual environment activation script not found")
-            return False
+            venv_activate = project_root / "venv" / "bin" / "activate"
+            venv_path = "venv"
+            if not venv_activate.exists():
+                print("❌ Virtual environment activation script not found")
+                print("   Looking for: .venv/bin/activate or venv/bin/activate")
+                return False
 
-        cmd = f"source venv/bin/activate && cd guitara && python manage.py runserver {backend_port}"
+        cmd = f"source {venv_path}/bin/activate && cd guitara && python manage.py runserver {backend_port}"
         terminals = get_available_terminals()
 
         if not terminals:
@@ -544,8 +621,9 @@ def start_frontend() -> bool:
         return False
 
     if is_windows():
-        # Windows: use cmd with npm.cmd for better compatibility
-        cmd = f'start cmd /k "title React Frontend && cd /d \\"{frontend_dir}\\" && npm.cmd run dev"'
+        # Windows: use a dedicated batch file for more reliable startup
+        batch_file = project_root / "start_frontend.bat"
+        cmd = f'start "React Frontend" "{batch_file}"'
 
         try:
             result = subprocess.run(cmd, shell=True, cwd=project_root)
@@ -614,18 +692,25 @@ def check_requirements() -> bool:
         print("   ✅ Python version OK")
 
     # Check virtual environment
-    venv_path = project_root / "venv"
+    venv_path = project_root / ".venv"
+    venv_name = ".venv"
     if not venv_path.exists():
-        print("   ❌ Virtual environment not found")
-        print("      Create with: python -m venv venv")
-        if is_windows():
-            print("      Activate with: venv\\Scripts\\activate")
+        venv_path = project_root / "venv"
+        venv_name = "venv"
+        if not venv_path.exists():
+            print("   ❌ Virtual environment not found")
+            print("      Create with: python -m venv .venv")
+            if is_windows():
+                print("      Activate with: .venv\\Scripts\\activate")
+            else:
+                print("      Activate with: source .venv/bin/activate")
+            all_good = False
         else:
-            print("      Activate with: source venv/bin/activate")
-        all_good = False
+            print("   ✅ Virtual environment found")
     else:
         print("   ✅ Virtual environment found")
 
+    if venv_path.exists():
         # Check if venv has Django
         if is_windows():
             django_check = venv_path / "Scripts" / "django-admin.exe"
@@ -1050,33 +1135,244 @@ def kill_frontend_processes_robust() -> int:
     return killed_count
 
 
+def kill_all_project_terminals():
+    """Kill all terminal windows that might be related to our project (Windows only)"""
+    if not is_windows():
+        return 0
+
+    killed_count = 0
+    print("   🔍 Closing ALL project-related terminal windows...")
+
+    try:
+        # Get all cmd.exe processes with their window titles
+        result = subprocess.check_output(
+            'tasklist /v /fi "IMAGENAME eq cmd.exe"',
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+
+        project_keywords = [
+            "django",
+            "react",
+            "guitara",
+            "royal-care",
+            "manage.py",
+            "runserver",
+            "npm",
+            "vite",
+            "frontend",
+            "backend",
+            "8000",
+            "5173",
+            "development",
+        ]
+
+        lines = result.splitlines()
+        for line in lines:
+            if "cmd.exe" in line.lower():
+                line_lower = line.lower()
+                # Check if this CMD window contains any project-related keywords
+                if any(keyword in line_lower for keyword in project_keywords):
+                    # Extract PID
+                    columns = re.split(r"\s{2,}", line.strip())
+                    if len(columns) > 2 and columns[1].isdigit():
+                        pid = int(columns[1])
+                        # Don't kill our own process
+                        if pid != os.getpid():
+                            result = subprocess.run(
+                                f"taskkill /PID {pid} /F",
+                                shell=True,
+                                capture_output=True,
+                                text=True,
+                            )
+                            if result.returncode == 0:
+                                print(f"🔪 Killed project CMD window {pid}")
+                                killed_count += 1
+                            else:
+                                logger.debug(
+                                    f"Failed to kill CMD window {pid}: {result.stderr}"
+                                )
+
+    except Exception as e:
+        logger.debug(f"Error killing project terminals: {e}")
+
+    # Also try to kill PowerShell windows that might contain our project
+    try:
+        result = subprocess.check_output(
+            'tasklist /v /fi "IMAGENAME eq powershell.exe"',
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+
+        for line in result.splitlines():
+            if "powershell.exe" in line.lower():
+                line_lower = line.lower()
+                # Check if this PowerShell window contains any project-related keywords
+                if any(keyword in line_lower for keyword in project_keywords):
+                    columns = re.split(r"\s{2,}", line.strip())
+                    if len(columns) > 2 and columns[1].isdigit():
+                        pid = int(columns[1])
+                        if pid != os.getpid():
+                            result = subprocess.run(
+                                f"taskkill /PID {pid} /F",
+                                shell=True,
+                                capture_output=True,
+                                text=True,
+                            )
+                            if result.returncode == 0:
+                                print(f"🔪 Killed project PowerShell window {pid}")
+                                killed_count += 1
+
+    except Exception as e:
+        logger.debug(f"Error killing PowerShell windows: {e}")
+
+    if killed_count > 0:
+        print(f"   ✅ Killed {killed_count} project terminal window(s)")
+        time.sleep(2)  # Give windows time to close
+    else:
+        print("   ✅ No project terminal windows found")
+
+    return killed_count
+
+
 def cleanup_existing_servers():
     """Kill any existing development servers before starting new ones"""
     print("🧹 Cleaning up any existing development servers...")
 
-    # Only kill processes that are actually running
     total_killed = 0
 
-    # Kill Django processes
-    print("   Checking for Django processes...")
+    # Step 1: Kill Django processes by command snippet
+    print("   🔍 Searching for Django processes...")
     django_killed = kill_by_command_snippet("manage.py runserver")
     total_killed += django_killed
 
-    # Kill frontend processes with comprehensive method
-    print("   Checking for frontend processes...")
+    # Step 2: Kill frontend processes with comprehensive method
+    print("   🔍 Searching for frontend processes...")
     frontend_killed = kill_frontend_processes_robust()
     total_killed += frontend_killed
 
-    # Kill by ports as additional cleanup
-    if total_killed > 0:
-        print("   Freeing ports...")
-        backend_port_killed = kill_processes_by_port(CONFIG["backend_port"])
-        frontend_port_killed = kill_processes_by_port(CONFIG["frontend_port"])
-        time.sleep(2)  # Give time for cleanup
-        print(f"✅ Cleaned up {total_killed} existing processes")
-    else:
-        print("✅ No existing processes found")
+    # Step 3: Kill any processes running on our ports (more aggressive)
+    print("   🔍 Checking ports for any remaining processes...")
+    backend_port_killed = kill_processes_by_port(CONFIG["backend_port"])
+    frontend_port_killed = kill_processes_by_port(CONFIG["frontend_port"])
+    total_killed += backend_port_killed + frontend_port_killed
 
+    # Step 4: Kill ALL project-related terminal windows (Windows only)
+    if is_windows():
+        terminal_killed = kill_all_project_terminals()
+        total_killed += terminal_killed
+
+        # Also try the specific window titles as backup
+        print("   🔍 Closing specific terminal windows...")
+        killed_django = kill_existing_cmd_windows("Django Backend")
+        killed_react = kill_existing_cmd_windows("React Frontend")
+        total_killed += killed_django + killed_react
+
+    # Step 5: Final verification - check if ports are now free
+    backend_port = CONFIG["backend_port"]
+    frontend_port = CONFIG["frontend_port"]
+
+    backend_free = is_port_available(backend_port)
+    frontend_free = is_port_available(frontend_port)
+
+    if not backend_free:
+        print(f"   ⚠️ Backend port {backend_port} still in use - forcing cleanup...")
+        kill_processes_by_port(backend_port)
+        time.sleep(1)
+        backend_free = is_port_available(backend_port)
+
+    if not frontend_free:
+        print(f"   ⚠️ Frontend port {frontend_port} still in use - forcing cleanup...")
+        kill_processes_by_port(frontend_port)
+        time.sleep(1)
+        frontend_free = is_port_available(frontend_port)
+
+    # Give processes time to clean up
+    if total_killed > 0:
+        print(f"   ⏳ Waiting for processes to fully terminate...")
+        time.sleep(3)
+
+    # Final status
+    if total_killed > 0:
+        print(f"✅ Cleaned up {total_killed} existing processes")
+
+    if backend_free and frontend_free:
+        print("✅ All ports are now available")
+    else:
+        if not backend_free:
+            print(f"⚠️ Warning: Backend port {backend_port} may still be in use")
+        if not frontend_free:
+            print(f"⚠️ Warning: Frontend port {frontend_port} may still be in use")
+
+    return total_killed
+
+
+def manual_terminal_cleanup():
+    """Standalone function to manually clean up all project terminals - call this if terminals are stuck"""
+    if not is_windows():
+        print("This function is only for Windows systems")
+        return 0
+
+    print(
+        "🧹 Manual terminal cleanup - killing ALL project-related terminal windows..."
+    )
+
+    # Get all running terminal processes
+    terminal_processes = ["cmd.exe", "powershell.exe", "pwsh.exe", "conhost.exe"]
+    total_killed = 0
+
+    for process_name in terminal_processes:
+        try:
+            result = subprocess.check_output(
+                f'tasklist /v /fi "IMAGENAME eq {process_name}"',
+                shell=True,
+                encoding="utf-8",
+                errors="ignore",
+            )
+
+            project_keywords = [
+                "django",
+                "react",
+                "guitara",
+                "royal-care",
+                "manage.py",
+                "runserver",
+                "npm",
+                "vite",
+                "frontend",
+                "backend",
+                "8000",
+                "5173",
+                "development",
+                "start_backend",
+                "start_frontend",
+            ]
+
+            for line in result.splitlines():
+                if process_name.lower() in line.lower():
+                    line_lower = line.lower()
+                    # Check if this terminal contains any project-related keywords
+                    if any(keyword in line_lower for keyword in project_keywords):
+                        columns = re.split(r"\s{2,}", line.strip())
+                        if len(columns) > 2 and columns[1].isdigit():
+                            pid = int(columns[1])
+                            if pid != os.getpid():  # Don't kill ourselves
+                                result = subprocess.run(
+                                    f"taskkill /PID {pid} /F",
+                                    shell=True,
+                                    capture_output=True,
+                                    text=True,
+                                )
+                                if result.returncode == 0:
+                                    print(f"🔪 Killed {process_name} window {pid}")
+                                    total_killed += 1
+
+        except Exception as e:
+            logger.debug(f"Error checking {process_name}: {e}")
+
+    print(f"✅ Manual cleanup complete - killed {total_killed} terminal windows")
     return total_killed
 
 
@@ -1092,14 +1388,17 @@ def main():
     if CONFIG["verbose_logging"]:
         print_system_info()
 
-    # Clean up any existing servers first (original behavior)
+    # ALWAYS clean up any existing servers first (ensures clean slate)
     cleanup_existing_servers()
 
     # Basic checks
     print("🔍 Performing system checks...")
-    if not check_requirements():
+    requirements_ok = check_requirements()
+
+    if not requirements_ok:
         print("\n❌ Requirements check failed")
         print("💡 Please fix the issues above and try again")
+        print("💡 Note: Existing servers have been cleaned up")
         save_default_config()
         if not is_windows():
             print("\nPress Enter to exit...")
@@ -1107,6 +1406,24 @@ def main():
         return 1
 
     print("\n✅ All requirements satisfied")
+
+    # Double-check ports are available after cleanup
+    backend_port = CONFIG["backend_port"]
+    frontend_port = CONFIG["frontend_port"]
+
+    if not is_port_available(backend_port):
+        print(
+            f"⚠️ Backend port {backend_port} still occupied - forcing final cleanup..."
+        )
+        kill_processes_by_port(backend_port)
+        time.sleep(2)
+
+    if not is_port_available(frontend_port):
+        print(
+            f"⚠️ Frontend port {frontend_port} still occupied - forcing final cleanup..."
+        )
+        kill_processes_by_port(frontend_port)
+        time.sleep(2)
 
     # Start servers
     print("\n🚀 Starting development servers...")
@@ -1188,6 +1505,16 @@ def signal_handler(signum, frame):
 
 
 if __name__ == "__main__":
+    # Check for cleanup-only mode
+    if len(sys.argv) > 1 and sys.argv[1] in ["--cleanup", "-c", "--kill", "-k"]:
+        print("🧹 Cleanup mode - killing all project processes and terminals...")
+        load_config()
+        cleanup_count = cleanup_existing_servers()
+        manual_count = manual_terminal_cleanup()
+        total = cleanup_count + manual_count
+        print(f"\n✅ Cleanup complete - total processes/terminals killed: {total}")
+        sys.exit(0)
+
     # Register signal handlers for graceful shutdown
     if hasattr(signal, "SIGINT"):
         signal.signal(signal.SIGINT, signal_handler)

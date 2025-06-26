@@ -27,6 +27,7 @@ const pageTitles = {
   bookings: "Bookings" + BRAND_SUFFIX,
   attendance: "Attendance" + BRAND_SUFFIX,
   notifications: "Notifications" + BRAND_SUFFIX,
+  logs: "History Logs" + BRAND_SUFFIX,
   // Add more as needed
 };
 
