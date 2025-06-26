@@ -310,104 +310,231 @@ const App = () => {
   return (
     <BrowserRouter>
       <div className="App">
-        <Suspense fallback={<LoadingOverlay />}>
-          <Routes>
-            <Route path="/" element={<RouteHandler />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/2fa" element={<TwoFactorAuthPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Routes>
+          <Route path="/" element={<RouteHandler />} />
+          <Route
+            path="/register"
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <RegisterPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/2fa"
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <TwoFactorAuthPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <ForgotPasswordPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/2fa-forgot-password"
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <TwoFAForgotPasswordPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/enter-new-password"
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <EnterNewPasswordPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/forgot-password-confirmation"
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <ForgotPasswordConfirmationPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <AttendanceMemoProvider>
+                  <MainLayout />
+                </AttendanceMemoProvider>
+              </ProtectedRoute>
+            }
+          >
             <Route
-              path="/2fa-forgot-password"
-              element={<TwoFAForgotPasswordPage />}
-            />
-            <Route
-              path="/enter-new-password"
-              element={<EnterNewPasswordPage />}
-            />
-            <Route
-              path="/forgot-password-confirmation"
-              element={<ForgotPasswordConfirmationPage />}
-            />
-            <Route
-              path="/dashboard"
+              index
               element={
-                <ProtectedRoute>
-                  <AttendanceMemoProvider>
-                    <MainLayout />
-                  </AttendanceMemoProvider>
-                </ProtectedRoute>
+                user?.role === "operator" ? (
+                  <OperatorDashboard />
+                ) : user?.role === "therapist" ? (
+                  <TherapistDashboard />
+                ) : user?.role === "driver" ? (
+                  <DriverDashboard />
+                ) : (
+                  <Navigate to="/" />
+                )
               }
-            >
-              <Route
-                index
-                element={
-                  user?.role === "operator" ? (
-                    <OperatorDashboard />
-                  ) : user?.role === "therapist" ? (
-                    <TherapistDashboard />
-                  ) : user?.role === "driver" ? (
-                    <DriverDashboard />
-                  ) : (
-                    <Navigate to="/" />
-                  )
-                }
-              />
-              <Route path="notifications" element={<NotificationsPage />} />
-              <Route path="scheduling" element={<SchedulingPage />} />
-              <Route path="availability" element={<AvailabilityManager />} />
-              <Route path="bookings" element={<BookingsPage />} />
-              <Route
-                path="attendance"
-                element={
-                  user?.role === "therapist" || user?.role === "driver" ? (
+            />
+            <Route
+              path="notifications"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <NotificationsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="scheduling"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <SchedulingPage />
+                </Suspense>
+              }
+            />
+            <Route path="availability" element={<AvailabilityManager />} />
+            <Route
+              path="bookings"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <BookingsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="attendance"
+              element={
+                user?.role === "therapist" || user?.role === "driver" ? (
+                  <Suspense fallback={<LoadingOverlay />}>
                     <StaffAttendancePage />
-                  ) : (
+                  </Suspense>
+                ) : (
+                  <Suspense fallback={<LoadingOverlay />}>
                     <AttendancePage />
-                  )
-                }
-              />
-              <Route
-                path="sales-reports"
-                element={
-                  user?.role === "therapist" || user?.role === "driver" ? (
-                    <Navigate to="/dashboard" replace />
-                  ) : (
+                  </Suspense>
+                )
+              }
+            />
+            <Route
+              path="sales-reports"
+              element={
+                user?.role === "therapist" || user?.role === "driver" ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Suspense fallback={<LoadingOverlay />}>
                     <SalesReportsPage />
-                  )
-                }
-              />
-              <Route path="inventory" element={<InventoryPage />} />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route
-                path="settings/account"
-                element={<SettingsAccountPage />}
-              />
-              <Route
-                path="settings/data"
-                element={
-                  user?.role === "therapist" || user?.role === "driver" ? (
-                    <Navigate to="/dashboard" replace />
-                  ) : (
+                  </Suspense>
+                )
+              }
+            />
+            <Route
+              path="inventory"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <InventoryPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <ProfilePage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="settings"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <SettingsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="settings/account"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <SettingsAccountPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="settings/data"
+              element={
+                user?.role === "therapist" || user?.role === "driver" ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Suspense fallback={<LoadingOverlay />}>
                     <SettingsDataPage />
-                  )
+                  </Suspense>
+                )
+              }
+            />
+            {/* Help Pages */}
+            <Route path="help">
+              <Route
+                path="user-guide"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <UserGuidePage />
+                  </Suspense>
                 }
-              />{" "}
-              {/* Help Pages */}
-              <Route path="help">
-                <Route path="user-guide" element={<UserGuidePage />} />
-                <Route path="faqs" element={<FAQsPage />} />
-                <Route path="contact" element={<ContactPage />} />
-              </Route>
-              {/* About Pages */}
-              <Route path="about">
-                <Route path="company" element={<CompanyInfoPage />} />
-                <Route path="system" element={<SystemInfoPage />} />
-                <Route path="developers" element={<DeveloperInfoPage />} />{" "}
-              </Route>
+              />
+              <Route
+                path="faqs"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <FAQsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="contact"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <ContactPage />
+                  </Suspense>
+                }
+              />
             </Route>
-          </Routes>
-        </Suspense>
+            {/* About Pages */}
+            <Route path="about">
+              <Route
+                path="company"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <CompanyInfoPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="system"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <SystemInfoPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="developers"
+                element={
+                  <Suspense fallback={<LoadingOverlay />}>
+                    <DeveloperInfoPage />
+                  </Suspense>
+                }
+              />
+            </Route>
+          </Route>
+        </Routes>
       </div>
     </BrowserRouter>
   );
