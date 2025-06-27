@@ -664,7 +664,7 @@ const AppointmentFormTanStackComplete = ({
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   // Show loading while services are loading - but show the container
-  const isFormReady = !isLoadingServices;
+  const isFormReady = true;
 
   return (
     <div className="appointment-form-container">
