@@ -9,20 +9,32 @@ from rest_framework.exceptions import AuthenticationFailed
 def get_user(token_key):
     # Custom token authentication using Knox
     try:
+        print(f"[MIDDLEWARE] Attempting authentication with token: {token_key[:20]}...")
+        print(f"[MIDDLEWARE] Token type: {type(token_key)}, length: {len(token_key)}")
+        
         token_auth = TokenAuthentication()
         # Knox authenticate_credentials expects bytes, not string
         token_bytes = (
             token_key.encode("utf-8") if isinstance(token_key, str) else token_key
         )
+        
+        print(f"[MIDDLEWARE] Token bytes type: {type(token_bytes)}, length: {len(token_bytes)}")
+        
         user, auth_token = token_auth.authenticate_credentials(
             token_bytes
         )  # Authentication successful
+        
+        print(f"[MIDDLEWARE] ✅ Authentication successful for user: {user.id} ({user.username})")
         return user
     except AuthenticationFailed as e:
-        print(f"[MIDDLEWARE] Authentication failed for token: {e}")
+        print(f"[MIDDLEWARE] ❌ Authentication failed for token: {e}")
+        print(f"[MIDDLEWARE] Failed token was: {token_key}")
         return AnonymousUser()
     except Exception as e:
-        print(f"[MIDDLEWARE] Unexpected error during authentication: {e}")
+        print(f"[MIDDLEWARE] ❌ Unexpected error during authentication: {e}")
+        print(f"[MIDDLEWARE] Error token was: {token_key}")
+        import traceback
+        traceback.print_exc()
         return AnonymousUser()
 
 
@@ -56,6 +68,8 @@ class TokenAuthMiddleware:
 
             # Extract token from query params
             token_key = query_params.get("token", "")
+            print(f"[MIDDLEWARE] Extracted token: {token_key[:20] if token_key else 'None'}...")
+            print(f"[MIDDLEWARE] All query params: {query_params}")
 
             if token_key:
                 # Get user from token
@@ -66,6 +80,7 @@ class TokenAuthMiddleware:
                     )
                 else:
                     print("[MIDDLEWARE] ❌ Token provided but authentication failed")
+                    print(f"[MIDDLEWARE] User object: {scope['user']}, is_authenticated: {scope['user'].is_authenticated}")
             else:
                 scope["user"] = AnonymousUser()
                 print("[MIDDLEWARE] ⚠️ No token provided, using AnonymousUser")
