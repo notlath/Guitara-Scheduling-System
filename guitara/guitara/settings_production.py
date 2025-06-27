@@ -180,26 +180,45 @@ if REDIS_URL:
                     "hosts": [REDIS_URL],
                     "capacity": 1500,
                     "expiry": 60,
+                    "group_expiry": 86400,  # Groups expire after 24 hours
+                    "symmetric_encryption_keys": [SECRET_KEY],
                 },
             },
         }
-        print(f"[PRODUCTION SETTINGS] Using Redis for channels: {REDIS_URL[:20]}...")
+        print(
+            f"[PRODUCTION SETTINGS] ✅ Using Redis for WebSocket channels: {REDIS_URL[:20]}..."
+        )
+        print("[PRODUCTION SETTINGS] ✅ WebSocket support ENABLED with Redis")
     except Exception as e:
         print(f"[WARNING] Redis configuration failed: {e}")
+        # IMPORTANT: Don't fall back to in-memory for production WebSockets
+        # In-memory channels don't work across Railway instances
         CHANNEL_LAYERS = {
             "default": {
-                "BACKEND": "channels.layers.InMemoryChannelLayer",
+                "BACKEND": "channels_redis.core.RedisChannelLayer",
+                "CONFIG": {
+                    "hosts": [REDIS_URL],
+                    "capacity": 100,  # Reduced capacity for fallback
+                    "expiry": 30,
+                },
             },
         }
-        print("[PRODUCTION SETTINGS] Falling back to in-memory channel layer")
+        print("[PRODUCTION SETTINGS] ⚠️ Using Redis with reduced capacity (fallback)")
 else:
-    # Fallback to in-memory channel layer for Railway deployment
+    # CRITICAL: WebSockets require Redis for Railway deployment
+    # Railway runs multiple instances - in-memory won't work
+    print(
+        "[PRODUCTION SETTINGS] ❌ CRITICAL: Redis not available - WebSockets will NOT work"
+    )
+    print(
+        "[PRODUCTION SETTINGS] ❌ In-memory channels don't work with Railway's multi-instance deployment"
+    )
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
         },
     }
-    print("[PRODUCTION SETTINGS] Using in-memory channel layer (Redis not available)")
+    print("[PRODUCTION SETTINGS] ❌ WebSocket support DISABLED (no Redis)")
 
 # Celery configuration for Railway with Redis fallback
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
