@@ -31,14 +31,15 @@
 }
 
 .data-table th {
-  background: var(--background-50, #f9fafb);
+  background: var(--background-50);
   text-align: left;
   font-weight: 600;
-  color: var(--text-700, #374151);
+  /* color: var(--text-700, #374151); */
   border-bottom: 1px solid var(--border-light, #e5e7eb);
   position: sticky;
   top: 0;
   z-index: 10;
+  font-size: var(--font-size-sm);
 }
 
 .data-table td {
@@ -64,4 +65,107 @@
 
 .no-data {
   color: var(--muted);
+}
+
+/* =========================
+   TABLE LOADING STATES
+   ========================= */
+
+/* Table skeleton loading styles */
+.table-skeleton-row td {
+  padding: 0.75rem 1rem;
+}
+
+.table-skeleton-cell {
+  height: 1.25rem;
+  background: var(--skeleton-base, #f3f4f6);
+  border-radius: 4px;
+  width: 80%;
+  animation: skeleton-pulse 2s ease-in-out infinite;
+}
+
+/* Generic table loading state */
+.table-loading-state {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 0;
+}
+
+.table-loading-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.table-loading-cell {
+  flex: 1;
+}
+
+/* Enhanced table skeleton with grid layout */
+.table-skeleton-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 120px;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+
+.table-skeleton-grid .table-skeleton-cell {
+  height: 1.25rem;
+  background: var(--skeleton-base, #f3f4f6);
+  border-radius: 4px;
+}
+
+/* Loading animations */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes subtle-pulse {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading-state-subtle {
+  animation: subtle-pulse 2s ease-in-out infinite;
+}
+
+/* Responsive loading styles */
+@media (max-width: 768px) {
+  .table-skeleton-cell {
+    width: 95%;
+  }
+
+  .table-skeleton-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+/* Accessibility support */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-pulse,
+  .subtle-pulse,
+  .table-skeleton-cell {
+    animation: none !important;
+    opacity: 0.7 !important;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .table-skeleton-cell {
+    border: 2px solid var(--text, #000);
+  }
 }

@@ -1,3 +1,4 @@
+import tableStyles from "../../globals/DataTable.module.css";
 import "./LoadingComponents.css";
 
 // Enhanced Progress Bar with multiple variants
@@ -193,13 +194,13 @@ export const TableLoadingState = ({
   className = "",
 }) => {
   return (
-    <div className={`table-loading-state ${className}`}>
+    <div className={`${tableStyles["table-loading-state"]} ${className}`}>
       {Array.from({ length: rows }, (_, rowIndex) => (
-        <div key={rowIndex} className="table-loading-row">
+        <div key={rowIndex} className={tableStyles["table-loading-row"]}>
           {Array.from({ length: columns }, (_, colIndex) => (
             <div
               key={colIndex}
-              className="table-loading-cell"
+              className={tableStyles["table-loading-cell"]}
               style={{
                 width:
                   colIndex === 0

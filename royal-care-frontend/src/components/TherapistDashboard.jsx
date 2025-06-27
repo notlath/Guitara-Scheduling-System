@@ -8,7 +8,6 @@ import { useEnhancedTherapistActions } from "../hooks/useEnhancedRedux";
 // TANSTACK QUERY: Replace optimized hooks with TanStack Query
 import { useEnhancedDashboardData } from "../hooks/useEnhancedDashboardData";
 // Cache invalidation utility
-import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
 // Import the new instant updates hook
 import { useTherapistInstantActions } from "../hooks/useInstantUpdates";
 // Import shared Philippine time and greeting hook
@@ -185,17 +184,8 @@ const TherapistDashboard = () => {
     const actionKey = `confirm_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
+      // ✅ This already handles cache invalidation automatically
       await enhancedConfirmReadiness(appointmentId);
-
-      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
-      await Promise.all([
-        refetch(),
-        invalidateAppointmentCaches(queryClient, {
-          userId: user?.id,
-          userRole: "therapist",
-          appointmentId,
-        }),
-      ]);
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
@@ -203,21 +193,13 @@ const TherapistDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
+
   const handleStartSession = async (appointmentId) => {
     const actionKey = `start_session_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
+      // ✅ This already handles cache invalidation automatically
       await enhancedStartSession(appointmentId);
-
-      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
-      await Promise.all([
-        refetch(),
-        invalidateAppointmentCaches(queryClient, {
-          userId: user?.id,
-          userRole: "therapist",
-          appointmentId,
-        }),
-      ]);
     } catch (error) {
       console.error("Failed to start session:", error);
       alert("Failed to start session. Please try again.");
@@ -225,21 +207,13 @@ const TherapistDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
+
   const handleRequestPayment = async (appointmentId) => {
     const actionKey = `request_payment_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
+      // ✅ This already handles cache invalidation automatically
       await enhancedMarkPaymentRequest(appointmentId);
-
-      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
-      await Promise.all([
-        refetch(),
-        invalidateAppointmentCaches(queryClient, {
-          userId: user?.id,
-          userRole: "therapist",
-          appointmentId,
-        }),
-      ]);
     } catch (error) {
       console.error("Failed to request payment:", error);
       alert("Failed to request payment. Please try again.");
@@ -255,17 +229,8 @@ const TherapistDashboard = () => {
       const actionKey = `complete_session_${appointmentId}`;
       try {
         setActionLoading(actionKey, true);
+        // ✅ This already handles cache invalidation automatically
         await enhancedCompleteSession(appointmentId);
-
-        // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
-        await Promise.all([
-          refetch(),
-          invalidateAppointmentCaches(queryClient, {
-            userId: user?.id,
-            userRole: "therapist",
-            appointmentId,
-          }),
-        ]);
       } catch (error) {
         console.error("Failed to complete session:", error);
         alert("Failed to complete session. Please try again.");
@@ -279,17 +244,8 @@ const TherapistDashboard = () => {
     const actionKey = `request_pickup_${appointmentId}_${urgency}`;
     try {
       setActionLoading(actionKey, true);
+      // ✅ This already handles cache invalidation automatically
       await enhancedRequestPickup(appointmentId, urgency);
-
-      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
-      await Promise.all([
-        refetch(),
-        invalidateAppointmentCaches(queryClient, {
-          userId: user?.id,
-          userRole: "therapist",
-          appointmentId,
-        }),
-      ]);
 
       alert(
         urgency === "urgent"

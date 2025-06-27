@@ -44,18 +44,7 @@
   border-bottom: 1px solid var(--border-light, #e5e7eb);
 }
 
-/* Simple table skeleton styles */
-.table-skeleton-row td {
-  padding: 0.75rem 1rem;
-}
-
-.table-skeleton-cell {
-  height: 1.25rem;
-  background: var(--skeleton-base, #f3f4f6);
-  border-radius: 4px;
-  width: 80%;
-  animation: skeleton-pulse 2s ease-in-out infinite;
-}
+/* Table skeleton styles moved to DataTable.module.css for better organization */
 
 /* Simple form skeleton in modal */
 .form-skeleton {
@@ -83,21 +72,7 @@
   animation: skeleton-pulse 2s ease-in-out infinite;
 }
 
-/* Simple loading state animations */
-@keyframes skeleton-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-/* Loading state for subtle elements */
-.loading-state-subtle {
-  animation: skeleton-pulse 2s ease-in-out infinite;
-}
+/* Skeleton pulse animation moved to DataTable.module.css */
 
 /* Enhanced loading transitions */
 .global-content.faded {
@@ -203,6 +178,31 @@ button:disabled {
   margin-bottom: 1rem;
 }
 
+/* Header tabs flex layout */
+.header-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  justify-content: space-between;
+  flex-direction: row;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+/* Override tab-switcher styles within header-tabs */
+.header-tabs .tab-switcher,
+.header-tabs :global(.tab-switcher) {
+  margin-bottom: 0;
+  flex: 1;
+  display: flex;
+}
+
+/* Force tab switcher to be inline */
+.header-tabs :global(.tab-switcher) > div {
+  display: flex;
+  flex-direction: row;
+}
+
 /* Table scroll and container styles */
 .table-scroll-hide {
   overflow-x: hidden;
@@ -256,34 +256,7 @@ button:disabled {
   border-bottom: 1px solid var(--border-light, #e5e7eb);
 }
 
-/* Responsive design for mobile */
-@media (max-width: 768px) {
-  .table-skeleton-cell {
-    width: 95%;
-  }
-}
-
-/* Accessibility: Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  .skeleton-pulse {
-    animation: none !important;
-  }
-
-  .table-skeleton-cell,
-  .form-field-skeleton,
-  .form-button-skeleton {
-    opacity: 0.7 !important;
-  }
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .table-skeleton-cell,
-  .form-field-skeleton,
-  .form-button-skeleton {
-    border: 2px solid var(--text, #000);
-  }
-}
+/* Responsive and accessibility styles moved to DataTable.module.css */
 
 /* Backup status notification */
 .backup-status {
@@ -377,12 +350,91 @@ button:disabled {
   margin: 0.25rem 0;
 }
 
-.global-content.no-page-scroll .tab-switcher,
-.view-selector {
+/* Content container */
+.content-container {
+  overflow: hidden;
+}
+
+/* Backup dropdown container */
+.backup-dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+/* Search container */
+.search-container {
   display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  flex-shrink: 0; /* Prevent search from shrinking */
+}
+
+/* Search input wrapper for icon positioning */
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 220px;
+  min-width: 220px;
+  flex-shrink: 0;
+}
+
+/* Search icon positioning */
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Search input - increased specificity to override global styles */
+.search-container .search-input.global-form-field-input,
+.header-tabs .search-container .search-input {
+  width: 100%;
+  min-width: 100%;
+  flex-shrink: 0;
+  border-radius: 100px;
+  font-size: var(--font-size-sm);
+  background-color: var(--background-25);
+  /* padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-xs) 44px; Left padding for icon */
+  padding-left: var(--spacing-ms);
+  border: 1px solid var(--border-light, #e5e7eb);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Search input focus state */
+.search-container .search-input.global-form-field-input:focus,
+.header-tabs .search-container .search-input:focus {
+  outline: none;
+  border-color: var(--primary-500, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Pagination wrapper */
+.pagination-wrapper {
+  margin-top: 20px;
+}
+
+/* Debug pagination info */
+.debug-pagination {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f5f5f5;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+/* Error message */
+.error-message {
+  padding: 1rem;
+  margin: 1rem 0;
+  background: #fee;
+  border: 1px solid #fcc;
   border-radius: 4px;
-  overflow-x: auto;
-  margin-bottom: var(--spacing-mxs);
-  white-space: nowrap;
-  gap: 0;
+  color: #c33;
+  text-align: center;
 }
