@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { MdLocationOn } from "react-icons/md";
+import PageLayout from "../../globals/PageLayout";
+import LayoutRow from "../../globals/LayoutRow";
 import pageTitles from "../../constants/pageTitles";
 import "../../styles/CompanyInfo.css";
 
@@ -9,14 +11,14 @@ const CompanyInfoPage = () => {
   }, []);
 
   return (
-    <div className="company-info-container">
-      <div className="company-info-content">
-        <div className="company-info-header">
-          <h1>Royal Care</h1>
-          <p>Premium Home-based Massage Service Since 2010</p>
-        </div>
-
-        <div className="company-info-body">
+    <PageLayout>
+      <LayoutRow 
+        title="Royal Care" 
+        subtitle="Premium Home-based Massage Service Since 2010"
+      />
+      <div className="company-info-container">
+        <div className="company-info-content">
+          <div className="company-info-body">
           <section className="info-section">
             <h2>History and Background</h2>
             <p>
@@ -151,6 +153,7 @@ const CompanyInfoPage = () => {
         </div>
       </div>
     </div>
+    </PageLayout>
   );
 };
 

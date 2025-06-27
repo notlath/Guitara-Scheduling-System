@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import PageLayout from "../../globals/PageLayout";
+import LayoutRow from "../../globals/LayoutRow";
 import pageTitles from "../../constants/pageTitles";
 import "../../globals/theme.css";
 import "../../styles/SystemInfo.css";
@@ -9,14 +11,14 @@ const SystemInfoPage = () => {
   }, []);
 
   return (
-    <div className="system-info-container">
-      <div className="system-info-content">
-        <div className="system-info-header">
-          <h1>System Information</h1>
-          <p>Technical details and specifications of the Royal Care platform</p>
-        </div>
-
-        <div className="system-info-body">
+    <PageLayout>
+      <LayoutRow 
+        title="System Information" 
+        subtitle="Technical details and specifications of the Royal Care platform"
+      />
+      <div className="system-info-container">
+        <div className="system-info-content">
+          <div className="system-info-body">
           <section className="info-section">
             <h2>Current Version</h2>
             <div className="version-info">
@@ -174,6 +176,7 @@ const SystemInfoPage = () => {
         </div>
       </div>
     </div>
+    </PageLayout>
   );
 };
 
