@@ -65,23 +65,31 @@ class RegisterTherapist(APIView):
         # Pagination parameters - Set to 12 items per page for production use
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 12))
+        search = request.query_params.get("search", "").strip()
         offset = (page - 1) * page_size
 
+        # Build query with search filter
+        table_query = supabase.table("registration_therapist")
+
+        if search:
+            # Use Supabase's ilike for case-insensitive search across multiple fields
+            table_query = table_query.select("*").or_(
+                f"first_name.ilike.%{search}%,"
+                f"last_name.ilike.%{search}%,"
+                f"username.ilike.%{search}%,"
+                f"email.ilike.%{search}%,"
+                f"specialization.ilike.%{search}%"
+            )
+        else:
+            table_query = table_query.select("*")
+
         # Get total count first
-        count_result = (
-            supabase.table("registration_therapist")
-            .select("*", count="exact")
-            .execute()
-        )
+        count_result = table_query.select("*", count="exact").execute()
         total_count = count_result.count if hasattr(count_result, "count") else 0
 
         # Get paginated data
-        result = (
-            supabase.table("registration_therapist")
-            .select("*")
-            .range(offset, offset + page_size - 1)
-            .execute()
-        )
+        result = table_query.range(offset, offset + page_size - 1).execute()
+
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
         data = result.data if hasattr(result, "data") else []
@@ -248,15 +256,22 @@ class RegisterDriver(APIView):
         # Pagination parameters - Set to 12 items per page for production use
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 12))
+        search = request.query_params.get("search", "").strip()
         offset = (page - 1) * page_size
 
-        # Get total count first
+        # Build query with search filter
         def count_operation():
-            return (
-                supabase.table("registration_driver")
-                .select("*", count="exact")
-                .execute()
-            )
+            table_query = supabase.table("registration_driver")
+            if search:
+                table_query = table_query.select("*", count="exact").or_(
+                    f"first_name.ilike.%{search}%,"
+                    f"last_name.ilike.%{search}%,"
+                    f"username.ilike.%{search}%,"
+                    f"email.ilike.%{search}%"
+                )
+            else:
+                table_query = table_query.select("*", count="exact")
+            return table_query.execute()
 
         count_result, count_error = safe_supabase_operation(count_operation, timeout=10)
         total_count = (
@@ -264,13 +279,17 @@ class RegisterDriver(APIView):
         )
 
         def operation():
-            # Revert to select all fields
-            return (
-                supabase.table("registration_driver")
-                .select("*")
-                .range(offset, offset + page_size - 1)
-                .execute()
-            )
+            table_query = supabase.table("registration_driver")
+            if search:
+                table_query = table_query.select("*").or_(
+                    f"first_name.ilike.%{search}%,"
+                    f"last_name.ilike.%{search}%,"
+                    f"username.ilike.%{search}%,"
+                    f"email.ilike.%{search}%"
+                )
+            else:
+                table_query = table_query.select("*")
+            return table_query.range(offset, offset + page_size - 1).execute()
 
         result, error = safe_supabase_operation(operation, timeout=10)
         if error:
@@ -469,21 +488,38 @@ class RegisterOperator(APIView):
         # Pagination parameters - Set to 12 items per page for production use
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 12))
+        search = request.query_params.get("search", "").strip()
         offset = (page - 1) * page_size
 
+        # Build query with search filter
+        table_query = supabase.table("registration_operator")
+        if search:
+            table_query = table_query.select("*", count="exact").or_(
+                f"first_name.ilike.%{search}%,"
+                f"last_name.ilike.%{search}%,"
+                f"username.ilike.%{search}%,"
+                f"email.ilike.%{search}%"
+            )
+        else:
+            table_query = table_query.select("*", count="exact")
+
         # Get total count first
-        count_result = (
-            supabase.table("registration_operator").select("*", count="exact").execute()
-        )
+        count_result = table_query.execute()
         total_count = count_result.count if hasattr(count_result, "count") else 0
 
         # Get paginated data
-        result = (
-            supabase.table("registration_operator")
-            .select("*")
-            .range(offset, offset + page_size - 1)
-            .execute()
-        )
+        table_query = supabase.table("registration_operator")
+        if search:
+            table_query = table_query.select("*").or_(
+                f"first_name.ilike.%{search}%,"
+                f"last_name.ilike.%{search}%,"
+                f"username.ilike.%{search}%,"
+                f"email.ilike.%{search}%"
+            )
+        else:
+            table_query = table_query.select("*")
+
+        result = table_query.range(offset, offset + page_size - 1).execute()
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
         data = result.data if hasattr(result, "data") else []
@@ -721,17 +757,31 @@ class RegisterClient(APIView):
     def get(self, request):
         # Fetch all clients from scheduling app
         from scheduling.models import Client
+        from django.db.models import Q
 
         # Pagination parameters - Set to 12 items per page for production use
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 12))
+        search = request.query_params.get("search", "").strip()
         offset = (page - 1) * page_size
 
+        # Build queryset with search filter
+        queryset = Client.objects.all()
+        if search:
+            queryset = queryset.filter(
+                Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(email__icontains=search)
+                | Q(phone_number__icontains=search)
+                | Q(address__icontains=search)
+                | Q(notes__icontains=search)
+            )
+
         # Get total count
-        total_count = Client.objects.count()
+        total_count = queryset.count()
 
         # Get paginated data
-        clients = Client.objects.all().order_by("id")[offset : offset + page_size]
+        clients = queryset.order_by("id")[offset : offset + page_size]
 
         # Map to frontend table fields
         data = []
@@ -834,21 +884,33 @@ class RegisterMaterial(APIView):
         # Pagination parameters - Set to 12 items per page for production use
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 12))
+        search = request.query_params.get("search", "").strip()
         offset = (page - 1) * page_size
 
+        # Build query with search filter
+        table_query = supabase.table("registration_material")
+        if search:
+            table_query = table_query.select("*", count="exact").or_(
+                f"name.ilike.%{search}%," f"description.ilike.%{search}%"
+            )
+        else:
+            table_query = table_query.select("*", count="exact")
+
         # Get total count first
-        count_result = (
-            supabase.table("registration_material").select("*", count="exact").execute()
-        )
+        count_result = table_query.execute()
         total_count = count_result.count if hasattr(count_result, "count") else 0
 
         # Fetch paginated materials from Supabase
-        result = (
-            supabase.table("registration_material")
-            .select("*")
-            .range(offset, offset + page_size - 1)
-            .execute()
-        )
+        table_query = supabase.table("registration_material")
+        if search:
+            table_query = table_query.select("*").or_(
+                f"name.ilike.%{search}%," f"description.ilike.%{search}%"
+            )
+        else:
+            table_query = table_query.select("*")
+
+        result = table_query.range(offset, offset + page_size - 1).execute()
+
         if getattr(result, "error", None):
             return Response({"error": str(result.error)}, status=500)
         data = result.data if hasattr(result, "data") else []
@@ -901,21 +963,28 @@ class RegisterService(APIView):
 
         try:
             from registration.models import Service, Material
+            from django.db.models import Q
 
             # Pagination parameters - Set to 12 items per page for production use
             page = int(request.query_params.get("page", 1))
             page_size = int(request.query_params.get("page_size", 12))
+            search = request.query_params.get("search", "").strip()
             offset = (page - 1) * page_size
 
+            # Build queryset with search filter
+            queryset = Service.objects.prefetch_related("materials")
+            if search:
+                queryset = queryset.filter(
+                    Q(name__icontains=search)
+                    | Q(description__icontains=search)
+                    | Q(oil__icontains=search)
+                )
+
             # Get total count
-            total_count = Service.objects.count()
+            total_count = queryset.count()
 
             # Use prefetch_related for optimized query
-            services = (
-                Service.objects.prefetch_related("materials")
-                .all()
-                .order_by("id")[offset : offset + page_size]
-            )
+            services = queryset.order_by("id")[offset : offset + page_size]
 
             for service in services:
                 # Get materials for this service using the foreign key relationship

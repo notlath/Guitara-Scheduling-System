@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   MdAdd,
   MdBackup,
@@ -122,15 +122,21 @@ const SettingsDataPage = () => {
   const [showBackupDropdown, setShowBackupDropdown] = useState(false);
   const [usernameError, setUsernameError] = useState("");
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-  // Search bar state for full text search
+  // Search bar state for backend search
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
-  // TanStack Query hooks for data fetching
+  // TanStack Query hooks for data fetching with search support
   const {
     data: queryResult,
     isLoading,
     error,
-  } = useSettingsData(activeTab, currentPage, DEFAULT_PAGE_SIZE);
+  } = useSettingsData(
+    activeTab,
+    currentPage,
+    DEFAULT_PAGE_SIZE,
+    debouncedSearchTerm
+  );
 
   // TanStack Query hooks for mutations and prefetching
   const { prefetchTab } = usePrefetchSettingsData();
@@ -147,17 +153,46 @@ const SettingsDataPage = () => {
     hasPrevious: false,
   };
 
-  // Full text search filter for table data (case-insensitive, all fields)
-  const filteredTableData = useMemo(() => {
-    if (!searchTerm.trim()) return tableData;
-    const lower = searchTerm.trim().toLowerCase();
-    return tableData.filter((row) => {
-      // Check all string fields in the row for a match
-      return Object.values(row).some(
-        (val) => typeof val === "string" && val.toLowerCase().includes(lower)
-      );
-    });
-  }, [tableData, searchTerm]);
+  // Backend handles filtering, so no need for frontend filtering
+  const filteredTableData = tableData;
+
+  // URL parameter management functions (defined early to avoid hoisting issues)
+  const updateUrlParams = useCallback(
+    (newTab, newPage) => {
+      const params = new URLSearchParams();
+      if (newTab && newTab !== TABS[0]) {
+        params.set("tab", newTab);
+      }
+      if (newPage && newPage !== 1) {
+        params.set("page", newPage.toString());
+      }
+
+      // Only update if parameters actually changed
+      const newParamsString = params.toString();
+      const currentParamsString = searchParams.toString();
+      if (newParamsString !== currentParamsString) {
+        setSearchParams(params);
+      }
+    },
+    [searchParams, setSearchParams]
+  );
+
+  // Debounce search term to avoid too many API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset to page 1 when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== "") {
+      setCurrentPage(1);
+      updateUrlParams(activeTab, 1);
+    }
+  }, [debouncedSearchTerm, activeTab, updateUrlParams]);
 
   // Reset page to 1 when tab changes
   useEffect(() => {
@@ -168,42 +203,31 @@ const SettingsDataPage = () => {
   useEffect(() => {
     document.title = `${activeTab} | Royal Care`;
 
-    // Prefetch adjacent tabs for smoother navigation
-    const currentIndex = TABS.indexOf(activeTab);
-    const adjacentTabs = [
-      TABS[currentIndex - 1],
-      TABS[currentIndex + 1],
-    ].filter(Boolean);
+    // Prefetch adjacent tabs for smoother navigation (only when not searching)
+    if (!debouncedSearchTerm) {
+      const currentIndex = TABS.indexOf(activeTab);
+      const adjacentTabs = [
+        TABS[currentIndex - 1],
+        TABS[currentIndex + 1],
+      ].filter(Boolean);
 
-    if (adjacentTabs.length > 0) {
-      console.log(`🚀 SettingsData: Prefetching adjacent tabs:`, adjacentTabs);
-      adjacentTabs.forEach((tab) => {
-        prefetchTab(tab, 1, DEFAULT_PAGE_SIZE);
-      });
+      if (adjacentTabs.length > 0) {
+        console.log(
+          `🚀 SettingsData: Prefetching adjacent tabs:`,
+          adjacentTabs
+        );
+        adjacentTabs.forEach((tab) => {
+          prefetchTab(tab, 1, DEFAULT_PAGE_SIZE, ""); // Empty search term for prefetch
+        });
+      }
     }
-  }, [activeTab, prefetchTab]);
-
-  // URL parameter management functions
-  const updateUrlParams = (newTab, newPage) => {
-    const params = new URLSearchParams();
-    if (newTab && newTab !== TABS[0]) {
-      params.set("tab", newTab);
-    }
-    if (newPage && newPage !== 1) {
-      params.set("page", newPage.toString());
-    }
-
-    // Only update if parameters actually changed
-    const newParamsString = params.toString();
-    const currentParamsString = searchParams.toString();
-    if (newParamsString !== currentParamsString) {
-      setSearchParams(params);
-    }
-  };
+  }, [activeTab, prefetchTab, debouncedSearchTerm]);
 
   const handleTabChange = (newTab) => {
     setActiveTab(newTab);
     setCurrentPage(1); // Reset to page 1 when changing tabs
+    setSearchTerm(""); // Clear search when changing tabs
+    setDebouncedSearchTerm(""); // Clear debounced search immediately
     updateUrlParams(newTab, 1);
   };
 

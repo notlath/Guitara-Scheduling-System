@@ -123,62 +123,68 @@ export const queryKeys = {
     all: ["registration"],
     therapists: {
       all: ["registration", "therapists"],
-      list: (page = 1, pageSize = 12) => [
+      list: (page = 1, pageSize = 12, search = "") => [
         "registration",
         "therapists",
         "list",
         page,
         pageSize,
+        search,
       ],
     },
     drivers: {
       all: ["registration", "drivers"],
-      list: (page = 1, pageSize = 12) => [
+      list: (page = 1, pageSize = 12, search = "") => [
         "registration",
         "drivers",
         "list",
         page,
         pageSize,
+        search,
       ],
     },
     operators: {
       all: ["registration", "operators"],
-      list: (page = 1, pageSize = 12) => [
+      list: (page = 1, pageSize = 12, search = "") => [
         "registration",
         "operators",
         "list",
         page,
         pageSize,
+        search,
       ],
     },
     clients: {
       all: ["registration", "clients"],
-      list: (page = 1, pageSize = 12) => [
+      list: (page = 1, pageSize = 12, search = "") => [
         "registration",
         "clients",
         "list",
         page,
         pageSize,
+        search,
       ],
     },
     services: {
       all: ["registration", "services"],
-      list: (page = 1, pageSize = 12) => [
+      list: (page = 1, pageSize = 12, search = "") => [
         "registration",
         "services",
         "list",
         page,
         pageSize,
+        search,
       ],
     },
     materials: {
       all: ["registration", "materials"],
-      list: (page = 1, pageSize = 12) => [
+      list: (page = 1, pageSize = 12, search = "") => [
         "registration",
         "materials",
         "list",
         page,
         pageSize,
+        search,
       ],
     },
   },

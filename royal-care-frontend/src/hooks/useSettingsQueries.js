@@ -1,6 +1,93 @@
 /**
  * TanStack Query hooks for Settings Data Page
- * Replaces custom useSettingsData hook with proper React Query implementation
+ * Replaces custom useSettingsData hoo  therapists: async (page = 1, pageSize = DEFAULT_PA  operators: async (page = 1, pageSize = DEFAULT_PAGE_SIZE, search = "") => {
+    let url = `/registration/register/operator  services: async (page = 1, pageSize = DEFAULT_PAGE_SIZE, search = "") => {
+    let url = `/registration/register/service/?page=${page}&page_size=${pageSize}`;
+    // TODO: Backend doesn't support search yet - temporarily disabled
+    // if (search.trim()) {
+    //   url += `&search=${encodeURIComponent(search)}`;
+    // }
+    
+    const response = await api.get(url);
+    const data = response.data;
+
+    const items = data.results || (Array.isArray(data) ? data : []);
+    
+    // Apply frontend filtering as fallback until backend supports search
+    let filteredItems = items;
+    if (search.trim()) {
+      const searchLower = search.trim().toLowerCase();
+      filteredItems = items.filter((item) => {
+        const name = (item.name || "").toLowerCase();
+        const description = (item.description || "").toLowerCase();
+        
+        return name.includes(searchLower) ||
+               description.includes(searchLower);
+      });
+    }
+    
+    const mappedItems = filteredItems.map((item) => ({ge}&page_size=${pageSize}`;
+    // TODO: Backend doesn't support search yet - temporarily disabled
+    // if (search.trim()) {
+    //   url += `&search=${encodeURIComponent(search)}`;
+    // }
+    
+    const response = await api.get(url);
+    const data = response.data;
+
+    const items = data.results || (Array.isArray(data) ? data : []);
+    
+    // Apply frontend filtering as fallback until backend supports search
+    let filteredItems = items;
+    if (search.trim()) {
+      const searchLower = search.trim().toLowerCase();
+      filteredItems = items.filter((item) => {
+        const firstName = (item.first_name || "").toLowerCase();
+        const lastName = (item.last_name || "").toLowerCase();
+        const email = (item.email || "").toLowerCase();
+        const phoneNumber = (item.phone_number || "").toLowerCase();
+        const employeeId = (item.employee_id || "").toLowerCase();
+        
+        return firstName.includes(searchLower) ||
+               lastName.includes(searchLower) ||
+               email.includes(searchLower) ||
+               phoneNumber.includes(searchLower) ||
+               employeeId.includes(searchLower);
+      });
+    }
+    
+    const mappedItems = filteredItems.map((item) => ({arch = "") => {
+    let url = `/registration/register/therapist/?page=${page}&page_size=${pageSize}`;
+    // TODO: Backend doesn't support search yet - temporarily disabled
+    // if (search.trim()) {
+    //   url += `&search=${encodeURIComponent(search)}`;
+    // }
+    
+    const response = await api.get(url);
+    const data = response.data;
+
+    const items = data.results || (Array.isArray(data) ? data : []);
+    
+    // Apply frontend filtering as fallback until backend supports search
+    let filteredItems = items;
+    if (search.trim()) {
+      const searchLower = search.trim().toLowerCase();
+      filteredItems = items.filter((item) => {
+        const firstName = (item.first_name || "").toLowerCase();
+        const lastName = (item.last_name || "").toLowerCase();
+        const email = (item.email || "").toLowerCase();
+        const phoneNumber = (item.phone_number || "").toLowerCase();
+        const employeeId = (item.employee_id || "").toLowerCase();
+        
+        return firstName.includes(searchLower) ||
+               lastName.includes(searchLower) ||
+               email.includes(searchLower) ||
+               phoneNumber.includes(searchLower) ||
+               employeeId.includes(searchLower);
+      });
+    }
+    
+    const mappedItems = filteredItems.map((item) => ({er React Query implementation
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,10 +101,13 @@ const DEFAULT_PAGE_SIZE = 12;
  * Custom API fetcher functions for each settings data type
  */
 const settingsApiFetchers = {
-  therapists: async (page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
-    const response = await api.get(
-      `/registration/register/therapist/?page=${page}&page_size=${pageSize}`
-    );
+  therapists: async (page = 1, pageSize = DEFAULT_PAGE_SIZE, search = "") => {
+    let url = `/registration/register/therapist/?page=${page}&page_size=${pageSize}`;
+    if (search.trim()) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+
+    const response = await api.get(url);
     const data = response.data;
 
     // Handle both old format (direct array) and new format (with results)
@@ -49,10 +139,13 @@ const settingsApiFetchers = {
     };
   },
 
-  drivers: async (page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
-    const response = await api.get(
-      `/registration/register/driver/?page=${page}&page_size=${pageSize}`
-    );
+  drivers: async (page = 1, pageSize = DEFAULT_PAGE_SIZE, search = "") => {
+    let url = `/registration/register/driver/?page=${page}&page_size=${pageSize}`;
+    if (search.trim()) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+
+    const response = await api.get(url);
     const data = response.data;
 
     const items = data.results || (Array.isArray(data) ? data : []);
@@ -81,10 +174,13 @@ const settingsApiFetchers = {
     };
   },
 
-  operators: async (page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
-    const response = await api.get(
-      `/registration/register/operator/?page=${page}&page_size=${pageSize}`
-    );
+  operators: async (page = 1, pageSize = DEFAULT_PAGE_SIZE, search = "") => {
+    let url = `/registration/register/operator/?page=${page}&page_size=${pageSize}`;
+    if (search.trim()) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+
+    const response = await api.get(url);
     const data = response.data;
 
     const items = data.results || (Array.isArray(data) ? data : []);
@@ -118,10 +214,13 @@ const settingsApiFetchers = {
     };
   },
 
-  clients: async (page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
-    const response = await api.get(
-      `/registration/register/client/?page=${page}&page_size=${pageSize}`
-    );
+  clients: async (page = 1, pageSize = DEFAULT_PAGE_SIZE, search = "") => {
+    let url = `/registration/register/client/?page=${page}&page_size=${pageSize}`;
+    if (search.trim()) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+
+    const response = await api.get(url);
     const data = response.data;
 
     const items = data.results || (Array.isArray(data) ? data : []);
@@ -149,10 +248,13 @@ const settingsApiFetchers = {
     };
   },
 
-  services: async (page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
-    const response = await api.get(
-      `/registration/register/service/?page=${page}&page_size=${pageSize}`
-    );
+  services: async (page = 1, pageSize = DEFAULT_PAGE_SIZE, search = "") => {
+    let url = `/registration/register/service/?page=${page}&page_size=${pageSize}`;
+    if (search.trim()) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+
+    const response = await api.get(url);
     const data = response.data;
 
     const items = data.results || (Array.isArray(data) ? data : []);
@@ -202,10 +304,13 @@ const settingsApiFetchers = {
     };
   },
 
-  materials: async (page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
-    const response = await api.get(
-      `/registration/register/material/?page=${page}&page_size=${pageSize}`
-    );
+  materials: async (page = 1, pageSize = DEFAULT_PAGE_SIZE, search = "") => {
+    let url = `/registration/register/material/?page=${page}&page_size=${pageSize}`;
+    if (search.trim()) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+
+    const response = await api.get(url);
     const data = response.data;
 
     const items = data.results || (Array.isArray(data) ? data : []);
@@ -247,26 +352,25 @@ const capitalizeName = (name) => {
 export const useSettingsData = (
   tabName,
   page = 1,
-  pageSize = DEFAULT_PAGE_SIZE
+  pageSize = DEFAULT_PAGE_SIZE,
+  searchTerm = ""
 ) => {
   const tabNameLower = tabName.toLowerCase();
 
   return useQuery({
-    queryKey: queryKeys.registration[tabNameLower]?.list(page, pageSize) || [
-      "registration",
-      tabNameLower,
-      "list",
+    queryKey: queryKeys.registration[tabNameLower]?.list(
       page,
       pageSize,
-    ],
+      searchTerm
+    ) || ["registration", tabNameLower, "list", page, pageSize, searchTerm],
     queryFn: () => {
       const fetcher = settingsApiFetchers[tabNameLower];
       if (!fetcher) {
         throw new Error(`No fetcher available for tab: ${tabName}`);
       }
-      return fetcher(page, pageSize);
+      return fetcher(page, pageSize, searchTerm);
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: searchTerm ? 1 * 60 * 1000 : 5 * 60 * 1000, // Shorter stale time for search results
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: true,
     refetchOnMount: true,
@@ -280,21 +384,24 @@ export const useSettingsData = (
 export const usePrefetchSettingsData = () => {
   const queryClient = useQueryClient();
 
-  const prefetchTab = (tabName, page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
+  const prefetchTab = (
+    tabName,
+    page = 1,
+    pageSize = DEFAULT_PAGE_SIZE,
+    searchTerm = ""
+  ) => {
     const tabNameLower = tabName.toLowerCase();
     const fetcher = settingsApiFetchers[tabNameLower];
 
     if (!fetcher) return;
 
     queryClient.prefetchQuery({
-      queryKey: queryKeys.registration[tabNameLower]?.list(page, pageSize) || [
-        "registration",
-        tabNameLower,
-        "list",
+      queryKey: queryKeys.registration[tabNameLower]?.list(
         page,
         pageSize,
-      ],
-      queryFn: () => fetcher(page, pageSize),
+        searchTerm
+      ) || ["registration", tabNameLower, "list", page, pageSize, searchTerm],
+      queryFn: () => fetcher(page, pageSize, searchTerm),
       staleTime: 5 * 60 * 1000,
     });
   };
