@@ -240,7 +240,7 @@ export const useDriverInstantActions = () => {
           status: "journey_started",
           journey_started_at: new Date().toISOString(),
         },
-        errorMessage: "Failed to start journey. Please try again.",
+        // errorMessage: "Failed to start journey. Please try again.",
         onSuccess: () => setLoading?.(false),
         onError: () => setLoading?.(false),
       });
