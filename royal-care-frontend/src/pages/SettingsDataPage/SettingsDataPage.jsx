@@ -28,6 +28,7 @@ import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import styles from "./SettingsDataPage.module.css";
+import tableStyles from "../../globals/DataTable.module.css";
 
 const TABS = [
   "Therapists",
@@ -682,10 +683,13 @@ const SettingsDataPage = () => {
   const renderTableSkeleton = () => {
     const tableConfig = getTableConfig();
     const skeletonRows = Array.from({ length: 5 }, (_, index) => (
-      <tr key={`skeleton-${index}`} className={styles["table-skeleton-row"]}>
+      <tr
+        key={`skeleton-${index}`}
+        className={tableStyles["table-skeleton-row"]}
+      >
         {tableConfig.columns.map((col) => (
           <td key={`skeleton-${index}-${col.key}`}>
-            <div className={styles["table-skeleton-cell"]}></div>
+            <div className={tableStyles["table-skeleton-cell"]}></div>
           </td>
         ))}
       </tr>
