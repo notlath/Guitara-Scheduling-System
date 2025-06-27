@@ -5,6 +5,7 @@ import {
   MdClose,
   MdDownload,
   MdRestore,
+  MdSearch,
 } from "react-icons/md";
 import { useSearchParams } from "react-router-dom";
 import Select from "react-select";
@@ -1124,17 +1125,17 @@ const SettingsDataPage = () => {
 
       <div
         className={
-          "global-content no-page-scroll" + (showModal ? " faded" : "")
+          "global-content no-page-scroll" +
+          (showModal ? " faded" : "") +
+          ` ${styles["content-container"]}`
         }
-        style={{ overflow: "hidden" }}
       >
         <div className={styles["header-tabs-container"]}>
           <LayoutRow title="Data">
             <div className="action-buttons">
               {/* Backup/Restore Dropdown */}
               <div
-                className="backup-dropdown-container"
-                style={{ position: "relative", display: "inline-block" }}
+                className={`backup-dropdown-container ${styles["backup-dropdown-container"]}`}
               >
                 <button
                   className="secondary-action-btn"
@@ -1201,33 +1202,26 @@ const SettingsDataPage = () => {
               </button>
             </div>
           </LayoutRow>
-          {/* Full Text Search Bar (adopted from InventoryPage) */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              margin: "16px 0 8px 0",
-            }}
-          >
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={
-                styles && styles["search-input"]
-                  ? styles["search-input"]
-                  : "global-form-field-input"
-              }
-              style={{ minWidth: 220 }}
+          <div className={styles["header-tabs"]}>
+            {/* Full Text Search Bar (adopted from InventoryPage) */}
+            <div className={styles["search-container"]}>
+              <div className={styles["search-input-wrapper"]}>
+                <MdSearch className={styles["search-icon"]} size={20} />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={`global-form-field-input ${styles["search-input"]}`}
+                />
+              </div>
+            </div>
+            <TabSwitcher
+              tabs={TABS.map((tab) => ({ label: tab, value: tab }))}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
             />
           </div>
-          <TabSwitcher
-            tabs={TABS.map((tab) => ({ label: tab, value: tab }))}
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-          />
         </div>
 
         {/* Table container with pagination */}
@@ -1246,7 +1240,7 @@ const SettingsDataPage = () => {
 
         {/* Pagination Controls */}
         {hasDataForTab && paginationData.totalPages > 1 && (
-          <div style={{ marginTop: "20px" }}>
+          <div className={styles["pagination-wrapper"]}>
             <ServerPagination
               currentPage={paginationData.currentPage}
               totalPages={paginationData.totalPages}
@@ -1261,15 +1255,7 @@ const SettingsDataPage = () => {
 
         {/* Debug pagination info - remove this in production */}
         {import.meta.env.MODE === "development" && (
-          <div
-            style={{
-              marginTop: "10px",
-              padding: "10px",
-              backgroundColor: "#f5f5f5",
-              fontSize: "12px",
-              fontFamily: "monospace",
-            }}
-          >
+          <div className={styles["debug-pagination"]}>
             <strong>Debug Pagination [{activeTab}]:</strong>
             <br />
             hasDataForTab: {hasDataForTab ? "true" : "false"}
