@@ -275,7 +275,7 @@ const Register = () => {
         localStorage.setItem("knoxToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         dispatch(login(response.data.user)); // Ensure Redux state is updated
-        
+
         if (response.data.user && response.data.user.role) {
           navigate(getRedirectPath(response.data.user.role), { replace: true });
         } else {
@@ -287,7 +287,7 @@ const Register = () => {
       }
       // If no user/token returned, perform automatic login
       try {
-        const loginResponse = await api.post("/auth/login/", {
+        const loginResponse = await api.post("/api/auth/login/", {
           username: formData.email,
           password: formData.password,
         });

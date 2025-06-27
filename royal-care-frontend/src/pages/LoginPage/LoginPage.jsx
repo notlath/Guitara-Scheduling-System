@@ -139,7 +139,7 @@ function LoginPage() {
         let response;
         let errorHandled = false;
         try {
-          response = await api.post("/auth/login/", formData);
+          response = await api.post("/api/auth/login/", formData);
         } catch (authError) {
           // Robust error handling using error code from backend (for thrown errors)
           const errorData = authError.response?.data;
@@ -266,7 +266,7 @@ function LoginPage() {
         }
       } else {
         // Verify 2FA code
-        const response = await api.post("/auth/two-factor-verify/", {
+        const response = await api.post("/api/auth/two-factor-verify/", {
           email: formData.username, // could be email or username
           username: formData.username, // always include as username too
           code: verificationCode,

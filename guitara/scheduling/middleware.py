@@ -3,6 +3,7 @@ from django.contrib.auth.models import AnonymousUser
 from channels.db import database_sync_to_async
 from knox.auth import TokenAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+from urllib.parse import parse_qs
 
 
 @database_sync_to_async
@@ -38,15 +39,13 @@ class TokenAuthMiddleware:
             query_string = scope.get("query_string", b"").decode()
             print(f"[MIDDLEWARE] WebSocket connection attempt, query: {query_string}")
 
-            # Safely parse query parameters
-            query_params = {}
-            for param in query_string.split("&"):
-                if param and "=" in param:
-                    key, value = param.split("=", 1)
-                    query_params[key] = value
+            # Parse query parameters properly
+            query_params = parse_qs(query_string)
 
             # Extract token from query params
-            token_key = query_params.get("token", "")
+            token_key = ""
+            if "token" in query_params and query_params["token"]:
+                token_key = query_params["token"][0]  # parse_qs returns lists
 
             if token_key:
                 # Get user from token

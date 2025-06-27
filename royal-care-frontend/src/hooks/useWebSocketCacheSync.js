@@ -1,87 +1,51 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import webSocketService from "../services/webSocketService";
 import { handleWebSocketUpdate } from "../utils/cacheInvalidation";
 
-export const useWebSocketCacheSync = (webSocketService) => {
+export const useWebSocketCacheSync = (externalWebSocketService = null) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!webSocketService) {
-      // Clear any disabled flags from session storage
-      sessionStorage.removeItem("wsConnectionDisabled");
+    // Use the external service if provided, otherwise use the singleton
+    const wsService = externalWebSocketService || webSocketService;
 
-      // Get authentication token
+    // Always use the WebSocket service (no fallback mode)
+    if (wsService) {
       const token = localStorage.getItem("knoxToken");
       if (!token) {
         console.log(
-          "No authentication token found - skipping WebSocket connection"
+          "No authentication token found - cannot connect WebSocket service"
         );
         return;
       }
 
-      // Create authenticated WebSocket connection
-      const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-      const wsBase =
-        import.meta.env.VITE_WS_BASE_URL ||
-        wsProtocol +
-          "://" +
-          window.location.host +
-          "/ws/scheduling/appointments/";
+      // Clear any disabled flags from session storage
+      sessionStorage.removeItem("wsConnectionDisabled");
 
-      // Add token to WebSocket URL as query parameter (Django Channels auth method)
-      const wsUrl = `${wsBase}?token=${encodeURIComponent(token)}`;
+      // Connect the service if not already connected
+      if (!wsService.isConnected()) {
+        console.log("🔌 Connecting WebSocket service...");
+        wsService.connect(token);
+      }
 
-      console.log(
-        "🔌 Creating fallback WebSocket connection with authentication"
-      );
-      const ws = new window.WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        console.log("✅ Fallback WebSocket connected successfully");
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("📨 WebSocket message received:", data.type);
-          handleWebSocketUpdate(queryClient, data);
-        } catch (err) {
-          console.error("Failed to parse WebSocket message:", err);
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error("❌ WebSocket error:", error);
-      };
-
-      ws.onclose = (event) => {
-        console.log("🔌 WebSocket closed:", event.code, event.reason);
-        if (event.code === 1006) {
-          console.log(
-            "WebSocket closed abnormally - likely authentication issue"
-          );
-        }
-      };
-
-      return () => {
-        if (
-          ws.readyState === WebSocket.OPEN ||
-          ws.readyState === WebSocket.CONNECTING
-        ) {
-          ws.close();
-        }
-      };
-    } else {
-      // Use provided webSocketService with proper event handling
-      const handleAppointmentUpdate = (event) => {
+      // Handle WebSocket messages for cache updates
+      const handleWebSocketMessage = (event) => {
         const data = event.detail || event;
         console.log(
           "📨 WebSocket service event received:",
           data.type || event.type
         );
-        handleWebSocketUpdate(queryClient, data);
+
+        // Update TanStack Query cache with the received data
+        try {
+          handleWebSocketUpdate(queryClient, data);
+        } catch (error) {
+          console.error("Error handling WebSocket cache update:", error);
+        }
       };
 
+      // Listen for all relevant WebSocket events
       const events = [
         "appointment_created",
         "appointment_updated",
@@ -89,27 +53,34 @@ export const useWebSocketCacheSync = (webSocketService) => {
         "appointment_status_changed",
         "therapist_response",
         "driver_response",
-        "message", // Generic message event
+        "message",
+        "connected",
+        "disconnected",
+        "error",
       ];
 
-      // Add event listeners
+      // Add event listeners to the service
       events.forEach((event) => {
-        webSocketService.addEventListener(event, handleAppointmentUpdate);
+        wsService.addEventListener(event, handleWebSocketMessage);
       });
 
       return () => {
-        // Remove event listeners
+        // Remove event listeners on cleanup
         events.forEach((event) => {
-          webSocketService.removeEventListener(event, handleAppointmentUpdate);
+          wsService.removeEventListener(event, handleWebSocketMessage);
         });
       };
+    } else {
+      console.warn(
+        "No WebSocket service provided - skipping WebSocket cache sync"
+      );
+      return;
     }
-  }, [webSocketService, queryClient]);
+  }, [externalWebSocketService, queryClient]);
 };
 
 /**
  * Alternative hook for direct WebSocket message handling
- * Use this if you're handling WebSocket messages directly
  */
 export const useDirectWebSocketSync = () => {
   const queryClient = useQueryClient();
@@ -128,7 +99,6 @@ export const useDirectWebSocketSync = () => {
 
 /**
  * Hook for manual cache invalidation triggered by external events
- * Use this for custom integration points
  */
 export const useCacheInvalidation = () => {
   const queryClient = useQueryClient();

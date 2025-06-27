@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>API Test</title>
+  </head>
+  <body>
+    <h1>API Configuration Test</h1>
+    <button onclick="testAPI()">Test API Call</button>
+    <div id="result"></div>
+
+    <script>
+      // Check environment configuration
+      console.log("Environment check:");
+      console.log("Location:", window.location.href);
+
+      async function testAPI() {
+        const result = document.getElementById("result");
+        result.innerHTML = "Testing...";
+
+        try {
+          // Test the health endpoint first
+          const response = await fetch(
+            "http://localhost:8000/api/auth/check-username/?username=test"
+          );
+          result.innerHTML = `Response status: ${response.status}`;
+
+          if (response.ok) {
+            const data = await response.json();
+            result.innerHTML += `<br>Data: ${JSON.stringify(data)}`;
+          } else {
+            result.innerHTML += `<br>Error: ${response.statusText}`;
+          }
+        } catch (error) {
+          result.innerHTML = `Error: ${error.message}`;
+          console.error("API Test Error:", error);
+        }
+      }
+    </script>
+  </body>
+</html>

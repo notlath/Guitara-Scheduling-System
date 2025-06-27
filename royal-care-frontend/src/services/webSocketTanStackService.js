@@ -51,13 +51,20 @@ class WebSocketTanStackService {
 
       // Build WebSocket URL with authentication
       const wsUrl = import.meta.env.PROD
-        ? "✅ wss://charismatic-appreciation-production.up.railway.app/ws/scheduling/appointments/"
+        ? "wss://charismatic-appreciation-production.up.railway.app/ws/scheduling/appointments/"
         : import.meta.env.VITE_WS_URL ||
           "ws://localhost:8000/ws/scheduling/appointments/";
       const wsUrlWithAuth = authToken
         ? `${wsUrl}?token=${encodeURIComponent(authToken)}`
         : wsUrl;
 
+      console.log(
+        "🔗 WebSocket TanStack URL:",
+        wsUrlWithAuth.replace(
+          encodeURIComponent(authToken || ""),
+          "***TOKEN***"
+        )
+      );
       this.ws = new WebSocket(wsUrlWithAuth);
 
       // Set up event listeners

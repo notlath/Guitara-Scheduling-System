@@ -27,6 +27,7 @@
     "@tanstack/react-query-devtools": "^5.81.0",
     "@vercel/speed-insights": "^1.2.0",
     "axios": "^1.6.2",
+    "event-target-shim": "^6.0.2",
     "file-saver": "^2.0.5",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",

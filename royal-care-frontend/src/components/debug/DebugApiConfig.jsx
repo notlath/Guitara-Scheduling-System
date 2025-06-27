@@ -22,7 +22,7 @@ const DebugApiConfig = () => {
   const testLoginEndpoint = async () => {
     try {
       console.log("Testing login endpoint...");
-      const response = await api.post("/auth/login/", {
+      const response = await api.post("/api/auth/login/", {
         username: "test",
         password: "test",
       });
