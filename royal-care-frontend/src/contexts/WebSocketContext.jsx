@@ -33,7 +33,7 @@ export const WebSocketProvider = ({ children }) => {
     const initializeConnection = async () => {
       try {
         // Get auth token from localStorage
-        const authToken = localStorage.getItem("authToken");
+        const authToken = localStorage.getItem("knoxToken");
 
         if (authToken) {
           console.log("🔌 Initializing WebSocket connection...");
@@ -59,7 +59,7 @@ export const WebSocketProvider = ({ children }) => {
   // Handle authentication changes
   useEffect(() => {
     const handleStorageChange = async (event) => {
-      if (event.key === "authToken") {
+      if (event.key === "knoxToken") {
         if (event.newValue) {
           // User logged in - connect WebSocket
           console.log("🔑 Auth token detected, connecting WebSocket...");
@@ -84,7 +84,7 @@ export const WebSocketProvider = ({ children }) => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && !webSocketService.isConnected()) {
-        const authToken = localStorage.getItem("authToken");
+        const authToken = localStorage.getItem("knoxToken");
         if (authToken) {
           console.log("👁️ Tab became visible, reconnecting WebSocket...");
           webSocketService.connect(authToken);
