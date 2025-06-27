@@ -170,7 +170,14 @@ else:
     }
     print("[PRODUCTION SETTINGS] Using database cache (Redis not available)")
 
-# Channels layer configuration with Redis fallback
+# Ensure ASGI application points to correct module with WebSocket support
+ASGI_APPLICATION = "guitara.asgi.application"
+
+# WebSocket specific settings for Railway
+WEBSOCKET_ACCEPT_ALL = True  # Accept all WebSocket connections for Railway
+WEBSOCKET_ORIGIN_CHECK_DISABLED = True  # Disable origin check for Railway proxy
+
+# Channel layers configuration with InMemory fallback for Railway
 if REDIS_URL:
     try:
         CHANNEL_LAYERS = {
@@ -180,6 +187,7 @@ if REDIS_URL:
                     "hosts": [REDIS_URL],
                     "capacity": 1500,
                     "expiry": 60,
+                    "symmetric_encryption_keys": [SECRET_KEY[:32].encode()],
                 },
             },
         }

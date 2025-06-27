@@ -53,9 +53,9 @@ port = os.environ.get("PORT", "8000")
 def main():
     """Start production server with full database support"""
     print(f"\n🚀 Starting production server on 0.0.0.0:{port}")
-    print("🔧 Using Daphne ASGI server with database support")
+    print("🔧 Using Daphne ASGI server with WebSocket support")
 
-    # Build daphne command for production
+    # Build daphne command for production with WebSocket support
     cmd = [
         sys.executable,
         "-m",
@@ -65,14 +65,18 @@ def main():
         "-p",
         port,  # Use Railway's PORT
         "--proxy-headers",  # Handle Railway's proxy headers
+        "--websocket_timeout",
+        "20",  # WebSocket timeout
+        "--websocket_connect_timeout",
+        "5",  # WebSocket connection timeout
         "-v",
         "1",  # Normal logging (not too verbose)
-        "guitara.asgi:application",  # Use production ASGI, not emergency
+        "guitara.asgi:application",  # Use production ASGI with WebSocket support
     ]
 
     print(f"Command: {' '.join(cmd)}")
     print("🚀 Executing production Daphne server...")
-    print("📡 Server accessible from Railway proxy with full functionality...")
+    print("📡 Server accessible from Railway proxy with WebSocket support...")
 
     # Run daphne - this will block until the server stops
     try:

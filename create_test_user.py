@@ -13,11 +13,6 @@ django.setup()
 
 from core.models import CustomUser
 
-# Create a test superuser
-username = "admin"
-email = "admin@test.com"
-password = "admin123"
-
 try:
     # Check if user exists
     if CustomUser.objects.filter(username=username).exists():

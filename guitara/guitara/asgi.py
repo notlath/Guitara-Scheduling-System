@@ -1,45 +1,75 @@
 """
 ASGI config for guitara project.
-
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/5.1/howto/deployment/asgi/
+Enhanced for Railway production WebSocket support.
 """
 
 import os
-import traceback
 import sys
-from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
+import logging
+from pathlib import Path
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Add current directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Set Django settings module
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "guitara.settings")
 
-# Initialize Django ASGI application early to catch any startup errors
+print(f"[ASGI] Using Django settings: {os.environ.get('DJANGO_SETTINGS_MODULE')}")
+print(f"[ASGI] Python path: {sys.path[0]}")
+
 try:
+    # Initialize Django first
+    import django
+
+    django.setup()
+    print("[ASGI] ✅ Django setup completed")
+
+    from django.core.asgi import get_asgi_application
+
     django_asgi_app = get_asgi_application()
-    print("[ASGI] ✅ Django ASGI application initialized successfully")
+    print("[ASGI] ✅ Django ASGI application created")
+
 except Exception as e:
-    import logging
+    logger.error(f"[ASGI] ❌ Django setup failed: {e}")
+    import traceback
 
-    logger = logging.getLogger(__name__)
-    logger.error(f"Error initializing Django ASGI application: {e}")
-    traceback.print_exc(file=sys.stdout)
-    # Create a minimal ASGI app as fallback
-    from django.http import JsonResponse
-    from django.urls import path
-    from django.core.wsgi import get_wsgi_application
+    traceback.print_exc()
 
-    django_asgi_app = get_asgi_application()
-    print("[ASGI] ⚠️ Using fallback ASGI application")
+    # Create emergency ASGI app
+    async def emergency_app(scope, receive, send):
+        if scope["type"] == "http":
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 503,
+                    "headers": [[b"content-type", b"application/json"]],
+                }
+            )
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": b'{"error": "Django setup failed", "status": "emergency"}',
+                }
+            )
+        else:
+            await send({"type": "websocket.close", "code": 1011})
 
-# Import Django models and middleware after Django is initialized
+    django_asgi_app = emergency_app
+    print("[ASGI] ⚠️ Using emergency ASGI app")
+
+# Try to import WebSocket components
 try:
+    from channels.routing import ProtocolTypeRouter, URLRouter
     from scheduling.middleware import TokenAuthMiddleware
     import scheduling.routing
 
-    # Define the ASGI application with WebSocket support
+    print("[ASGI] ✅ WebSocket components imported successfully")
+
+    # Create full ASGI application with WebSocket support
     application = ProtocolTypeRouter(
         {
             "http": django_asgi_app,
@@ -48,50 +78,45 @@ try:
             ),
         }
     )
-    print("[ASGI] ✅ Full ASGI application configured with WebSocket support")
+
+    print("[ASGI] ✅ Full ASGI application with WebSocket support created")
+    print(f"[ASGI] WebSocket patterns: {len(scheduling.routing.websocket_urlpatterns)}")
 
 except ImportError as e:
-    import logging
+    logger.warning(f"[ASGI] ⚠️ WebSocket imports failed: {e}")
 
-    logger = logging.getLogger(__name__)
-    logger.warning(f"WebSocket middleware import failed: {e}")
-    logger.warning(
-        "⚠️ Falling back to HTTP-only ASGI application for Railway compatibility"
-    )
+    # HTTP-only fallback
+    from channels.routing import ProtocolTypeRouter
 
-    # HTTP-only ASGI application for Railway
     application = ProtocolTypeRouter(
         {
             "http": django_asgi_app,
         }
     )
-    print("[ASGI] ⚠️ HTTP-only ASGI application configured (WebSocket disabled)")
+
+    print("[ASGI] ⚠️ HTTP-only ASGI application (WebSocket disabled)")
 
 except Exception as e:
-    import logging
+    logger.error(f"[ASGI] ❌ Error creating ASGI application: {e}")
+    import traceback
 
-    logger = logging.getLogger(__name__)
-    logger.error(f"Error configuring ASGI application: {e}")
-    logger.error("Full traceback:")
-    traceback.print_exc(file=sys.stdout)
+    traceback.print_exc()
 
-    # Fallback to HTTP-only ASGI application
-    logger.warning("⚠️ Emergency fallback to HTTP-only ASGI application")
+    # Emergency fallback
+    from channels.routing import ProtocolTypeRouter
+
     application = ProtocolTypeRouter(
         {
             "http": django_asgi_app,
         }
     )
-    print("[ASGI] ⚠️ Emergency HTTP-only ASGI application configured")
 
-print(f"[ASGI] Application type: {type(application)}")
+    print("[ASGI] ⚠️ Emergency ASGI application created")
+
+# Log final configuration
+print(f"[ASGI] Final application type: {type(application)}")
 print(
     f"[ASGI] Available protocols: {list(application.application_mapping.keys()) if hasattr(application, 'application_mapping') else 'Unknown'}"
 )
-
-# Additional startup verification
-import sys
-
-print(f"[ASGI] Python version: {sys.version}")
-print(f"[ASGI] Django settings module: {os.environ.get('DJANGO_SETTINGS_MODULE')}")
-print(f"[ASGI] ✅ ASGI application ready for Railway deployment")
+print(f"[ASGI] Railway environment: {os.environ.get('RAILWAY_ENVIRONMENT', 'Not set')}")
+print(f"[ASGI] ✅ ASGI configuration complete")
