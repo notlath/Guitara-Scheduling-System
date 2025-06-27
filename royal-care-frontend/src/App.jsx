@@ -4,7 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { useOptimizedSelector } from "./hooks/usePerformanceOptimization";
 // WEBSOCKET CACHE SYNC: Import WebSocket cache synchronization hook
-import { useWebSocketCacheSync } from "./hooks/useWebSocketCacheSync";
+import { useAutoWebSocketCacheSync } from "./hooks/useWebSocketCacheSync";
 // Import debugger utilities for performance monitoring in development
 import DriverDashboard from "./components/DriverDashboard";
 import MainLayout from "./components/MainLayout";
@@ -177,7 +177,7 @@ const App = () => {
   const dispatch = useDispatch();
 
   // WEBSOCKET CACHE SYNC: Enable real-time cache synchronization
-  useWebSocketCacheSync();
+  useAutoWebSocketCacheSync();
 
   useEffect(() => {
     // Clean up any invalid tokens on app startup

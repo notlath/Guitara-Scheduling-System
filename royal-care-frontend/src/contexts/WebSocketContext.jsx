@@ -3,7 +3,7 @@
  * Manages WebSocket connection across the entire application
  */
 
-import { createContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import webSocketService from "../services/webSocketTanStackService";
 
 const WebSocketContext = createContext({
@@ -117,6 +117,7 @@ export const WebSocketProvider = ({ children }) => {
     connect,
     disconnect,
     send,
+    webSocketService, // Expose the service instance for cache sync
   };
 
   return (
@@ -124,6 +125,15 @@ export const WebSocketProvider = ({ children }) => {
       {children}
     </WebSocketContext.Provider>
   );
+};
+
+// Hook to use the WebSocket context
+export const useWebSocket = () => {
+  const context = useContext(WebSocketContext);
+  if (!context) {
+    throw new Error("useWebSocket must be used within a WebSocketProvider");
+  }
+  return context;
 };
 
 export default WebSocketContext;
