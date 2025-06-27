@@ -10,9 +10,12 @@ def get_user(token_key):
     # Custom token authentication using Knox
     try:
         token_auth = TokenAuthentication()
-        # Authenticate using raw token string (without encoding to bytes)
+        # Knox authenticate_credentials expects bytes, not string
+        token_bytes = (
+            token_key.encode("utf-8") if isinstance(token_key, str) else token_key
+        )
         user, auth_token = token_auth.authenticate_credentials(
-            token_key
+            token_bytes
         )  # Authentication successful
         return user
     except AuthenticationFailed as e:
@@ -43,7 +46,13 @@ class TokenAuthMiddleware:
             for param in query_string.split("&"):
                 if param and "=" in param:
                     key, value = param.split("=", 1)
-                    query_params[key] = value
+                    # URL decode the value (especially important for tokens)
+                    try:
+                        from urllib.parse import unquote
+
+                        query_params[key] = unquote(value)
+                    except:
+                        query_params[key] = value
 
             # Extract token from query params
             token_key = query_params.get("token", "")
