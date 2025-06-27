@@ -46,3 +46,6 @@ supabase==2.15.2                 # Python client for Supabase backend services
 
 # Django Celery Beat for periodic tasks
 django-celery-beat==2.7.0       # Django app for managing periodic tasks with Celery
+
+# WebSocket support - Updated to modern version
+websockets==14.2                 # Modern WebSocket support for Python
