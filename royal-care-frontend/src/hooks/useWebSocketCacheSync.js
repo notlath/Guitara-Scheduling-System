@@ -1,90 +1,86 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useWebSocket } from "../contexts/WebSocketContext";
 import { handleWebSocketUpdate } from "../utils/cacheInvalidation";
 
 export const useWebSocketCacheSync = (webSocketService) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    // Only set up event listeners if webSocketService is provided
     if (!webSocketService) {
-      // Fallback: create a default WebSocket connection if not provided
-      const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-      const wsBase =
-        import.meta.env.VITE_WS_BASE_URL ||
-        wsProtocol + "://" + window.location.host + "/ws/scheduling/appointments/";
-      const ws = new window.WebSocket(wsBase);
+      console.warn(
+        "useWebSocketCacheSync: No webSocketService provided. WebSocket cache sync disabled."
+      );
+      return;
+    }
 
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          handleWebSocketUpdate(queryClient, data);
-        } catch (error) {
-          // Optionally log or handle error
-          console.warn("WebSocket message parsing error:", error);
-        }
-      };
+    // Use provided webSocketService (must support addEventListener)
+    const handleAppointmentUpdate = (data) => {
+      handleWebSocketUpdate(queryClient, data);
+    };
 
-      return () => {
-        ws.close();
-      };
-    } else {
-      // Use provided webSocketService (must support addEventListener)
-      const handleAppointmentUpdate = (data) => {
-        handleWebSocketUpdate(queryClient, data);
-      };
-      webSocketService.addEventListener(
+    webSocketService.addEventListener(
+      "appointment_created",
+      handleAppointmentUpdate
+    );
+    webSocketService.addEventListener(
+      "appointment_updated",
+      handleAppointmentUpdate
+    );
+    webSocketService.addEventListener(
+      "appointment_deleted",
+      handleAppointmentUpdate
+    );
+    webSocketService.addEventListener(
+      "appointment_status_changed",
+      handleAppointmentUpdate
+    );
+    webSocketService.addEventListener(
+      "therapist_response",
+      handleAppointmentUpdate
+    );
+    webSocketService.addEventListener(
+      "driver_response",
+      handleAppointmentUpdate
+    );
+
+    return () => {
+      webSocketService.removeEventListener(
         "appointment_created",
         handleAppointmentUpdate
       );
-      webSocketService.addEventListener(
+      webSocketService.removeEventListener(
         "appointment_updated",
         handleAppointmentUpdate
       );
-      webSocketService.addEventListener(
+      webSocketService.removeEventListener(
         "appointment_deleted",
         handleAppointmentUpdate
       );
-      webSocketService.addEventListener(
+      webSocketService.removeEventListener(
         "appointment_status_changed",
         handleAppointmentUpdate
       );
-      webSocketService.addEventListener(
+      webSocketService.removeEventListener(
         "therapist_response",
         handleAppointmentUpdate
       );
-      webSocketService.addEventListener(
+      webSocketService.removeEventListener(
         "driver_response",
         handleAppointmentUpdate
       );
-
-      return () => {
-        webSocketService.removeEventListener(
-          "appointment_created",
-          handleAppointmentUpdate
-        );
-        webSocketService.removeEventListener(
-          "appointment_updated",
-          handleAppointmentUpdate
-        );
-        webSocketService.removeEventListener(
-          "appointment_deleted",
-          handleAppointmentUpdate
-        );
-        webSocketService.removeEventListener(
-          "appointment_status_changed",
-          handleAppointmentUpdate
-        );
-        webSocketService.removeEventListener(
-          "therapist_response",
-          handleAppointmentUpdate
-        );
-        webSocketService.removeEventListener(
-          "driver_response",
-          handleAppointmentUpdate
-        );
-      };
-    }
+    };
   }, [webSocketService, queryClient]);
+};
+
+/**
+ * Convenience hook that automatically uses the WebSocket service from context
+ * Use this in components instead of calling useWebSocketCacheSync() without parameters
+ */
+export const useAutoWebSocketCacheSync = () => {
+  const { webSocketService } = useWebSocket();
+  return useWebSocketCacheSync(webSocketService);
 };
 
 /**
@@ -140,6 +136,7 @@ export const useCacheInvalidation = () => {
 
 export default {
   useWebSocketCacheSync,
+  useAutoWebSocketCacheSync,
   useDirectWebSocketSync,
   useCacheInvalidation,
 };
