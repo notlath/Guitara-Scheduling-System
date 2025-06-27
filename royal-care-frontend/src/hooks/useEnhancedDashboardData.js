@@ -456,11 +456,36 @@ export const useDashboardMutations = () => {
 
   const startJourneyMutation = useMutation({
     mutationFn: async (appointmentId) => {
+      console.log(
+        "🔍 Starting journey mutation for appointment:",
+        appointmentId
+      );
       const result = await dispatch(startJourney(appointmentId));
-      if (result.error) throw new Error(result.error.message);
+
+      console.log("🔍 Redux dispatch result:", {
+        type: result.type,
+        meta: result.meta,
+        payload: result.payload,
+        error: result.error,
+      });
+
+      // More precise error detection - only throw if the thunk was actually rejected
+      if (result.type.endsWith("/rejected")) {
+        const errorMessage =
+          result.payload || result.error?.message || "Failed to start journey";
+        console.error("❌ Thunk was rejected:", errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      // If we get here, the thunk was fulfilled
+      console.log(
+        "✅ Thunk fulfilled successfully, returning payload:",
+        result.payload
+      );
       return result.payload;
     },
     onMutate: async (appointmentId) => {
+      console.log("🔄 Optimistic update for appointment:", appointmentId);
       await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
       queryClient.setQueryData(queryKeys.appointments.list(), (old) =>
         old?.map((apt) =>
@@ -468,8 +493,14 @@ export const useDashboardMutations = () => {
         )
       );
     },
-    onSuccess: () => {
+    onSuccess: (data, appointmentId) => {
+      console.log("✅ Start journey successful:", { appointmentId, data });
       queryClientUtils.invalidateAppointments();
+    },
+    onError: (error, appointmentId) => {
+      console.error("❌ Start journey failed:", { appointmentId, error });
+      // Rollback optimistic update
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
     },
   });
 

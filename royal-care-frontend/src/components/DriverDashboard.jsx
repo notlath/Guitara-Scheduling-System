@@ -315,10 +315,36 @@ const DriverDashboard = () => {
     const actionKey = `journey_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await startJourney.mutateAsync(appointmentId);
+      console.log("🚀 Starting journey for appointment:", appointmentId);
+      const result = await startJourney.mutateAsync(appointmentId);
+      console.log("✅ Journey started successfully:", result);
     } catch (error) {
-      console.error("Failed to start journey:", error);
-      alert("Failed to start journey. Please try again.");
+      console.error("❌ Failed to start journey - Full error details:", {
+        error,
+        message: error.message,
+        stack: error.stack,
+        appointmentId,
+      });
+
+      // Better error message based on the actual error
+      let errorMessage = "Failed to start journey. Please try again.";
+
+      if (
+        error?.message?.includes("401") ||
+        error?.message?.includes("Authentication")
+      ) {
+        errorMessage =
+          "Session expired. Please refresh the page and log in again.";
+      } else if (error?.message?.includes("404")) {
+        errorMessage = "Appointment not found. Please refresh the page.";
+      } else if (
+        error?.message &&
+        error.message !== "Failed to start journey"
+      ) {
+        errorMessage = `Failed to start journey: ${error.message}`;
+      }
+
+      alert(errorMessage);
     } finally {
       setActionLoading(actionKey, false);
     }
