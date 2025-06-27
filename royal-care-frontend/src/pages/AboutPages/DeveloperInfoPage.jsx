@@ -6,6 +6,8 @@ import {
   FaGithub,
   FaUsers,
 } from "react-icons/fa";
+import PageLayout from "../../globals/PageLayout";
+import LayoutRow from "../../globals/LayoutRow";
 import pageTitles from "../../constants/pageTitles";
 import "../../globals/theme.css";
 import "../../styles/SystemInfo.css";
@@ -16,14 +18,14 @@ const DeveloperInfoPage = () => {
   }, []);
 
   return (
-    <div className="system-info-container">
-      <div className="system-info-content">
-        <div className="system-info-header">
-          <h1>Developer Information</h1>
-          <p>Meet the team behind the Royal Care Scheduling System</p>
-        </div>
-
-        <div className="system-info-body">
+    <PageLayout>
+      <LayoutRow 
+        title="Developer Information" 
+        subtitle="Meet the team behind the Royal Care Scheduling System"
+      />
+      <div className="system-info-container">
+        <div className="system-info-content">
+          <div className="system-info-body">
           <section className="info-section">
             <h2>
               <FaUsers style={{ marginRight: "0.5rem" }} />
@@ -233,6 +235,7 @@ const DeveloperInfoPage = () => {
         </div>
       </div>
     </div>
+    </PageLayout>
   );
 };
 
