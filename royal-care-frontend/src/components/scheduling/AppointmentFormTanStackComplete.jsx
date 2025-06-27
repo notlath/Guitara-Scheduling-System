@@ -102,8 +102,9 @@ const getMinTime = (selectedDate) => {
 
   if (selectedDate === todayString) {
     const now = new Date();
-    // Add 1 hour buffer to current time for booking
-    now.setHours(now.getHours() + 1);
+    // Add 15 minute buffer to current time for booking (reduced from 1 hour)
+    // now.setMinutes(now.getMinutes() + 15);
+    now.setMinutes(now.getMinutes());
     return now.toTimeString().slice(0, 5);
   }
 
