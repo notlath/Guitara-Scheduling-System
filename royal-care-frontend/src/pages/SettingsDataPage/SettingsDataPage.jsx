@@ -30,6 +30,7 @@ import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
 import { sanitizeFormInput } from "../../utils/formSanitization";
 import styles from "./SettingsDataPage.module.css";
+import tableStyles from "../../globals/DataTable.module.css";
 
 const TABS = [
   "Therapists",
