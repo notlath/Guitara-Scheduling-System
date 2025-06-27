@@ -111,20 +111,9 @@
   border: 1px solid var(--border-color, #e1e5e9);
 }
 
-/* ✅ Table Skeleton Enhancement */
-.table-skeleton-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 120px;
-  gap: 1rem;
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-subtle, #e5e7eb);
-}
+/* ✅ Table Skeleton Enhancement - Moved to DataTable.module.css */
 
-.table-skeleton-cell {
-  height: 1.25rem;
-  background: var(--skeleton-base, #f3f4f6);
-  border-radius: 4px;
-}
+/* Table skeleton styles have been consolidated in DataTable.module.css */
 
 /* ✅ Loading State Animations */
 @keyframes subtle-pulse {

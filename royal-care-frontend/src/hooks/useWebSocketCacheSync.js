@@ -1,80 +1,109 @@
-/**
- * WebSocket Integration Hook for TanStack Query Cache Synchronization
- *
- * This hook integrates with your existing WebSocket service to automatically
- * invalidate TanStack Query cache when real-time updates are received.
- */
-
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { handleWebSocketUpdate } from "../utils/cacheInvalidation";
 
-/**
- * Hook to sync WebSocket updates with TanStack Query cache
- * Use this in your main App component or dashboard components
- */
 export const useWebSocketCacheSync = (webSocketService) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!webSocketService) return;
+    if (!webSocketService) {
+      // Clear any disabled flags from session storage
+      sessionStorage.removeItem("wsConnectionDisabled");
 
-    // Handle appointment updates from WebSocket
-    const handleAppointmentUpdate = (data) => {
-      console.log("📡 WebSocket update received:", data);
-      handleWebSocketUpdate(queryClient, data);
-    };
+      // Get authentication token
+      const token = localStorage.getItem("knoxToken");
+      if (!token) {
+        console.log(
+          "No authentication token found - skipping WebSocket connection"
+        );
+        return;
+      }
 
-    // Handle therapist/driver responses
-    const handleUserResponse = (data) => {
-      console.log("📡 User response received:", data);
-      handleWebSocketUpdate(queryClient, {
-        type: "therapist_response",
-        appointment: data.appointment,
-        user_id: data.user_id,
-        role: data.role,
-      });
-    };
+      // Create authenticated WebSocket connection
+      const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const wsBase =
+        import.meta.env.VITE_WS_BASE_URL ||
+        wsProtocol +
+          "://" +
+          window.location.host +
+          "/ws/scheduling/appointments/";
 
-    // Subscribe to WebSocket events
-    webSocketService.addEventListener(
-      "appointment_created",
-      handleAppointmentUpdate
-    );
-    webSocketService.addEventListener(
-      "appointment_updated",
-      handleAppointmentUpdate
-    );
-    webSocketService.addEventListener(
-      "appointment_deleted",
-      handleAppointmentUpdate
-    );
-    webSocketService.addEventListener("therapist_response", handleUserResponse);
-    webSocketService.addEventListener("driver_response", handleUserResponse);
+      // Add token to WebSocket URL as query parameter (Django Channels auth method)
+      const wsUrl = `${wsBase}?token=${encodeURIComponent(token)}`;
 
-    // Cleanup
-    return () => {
-      webSocketService.removeEventListener(
+      console.log(
+        "🔌 Creating fallback WebSocket connection with authentication"
+      );
+      const ws = new window.WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log("✅ Fallback WebSocket connected successfully");
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("📨 WebSocket message received:", data.type);
+          handleWebSocketUpdate(queryClient, data);
+        } catch (err) {
+          console.error("Failed to parse WebSocket message:", err);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("❌ WebSocket error:", error);
+      };
+
+      ws.onclose = (event) => {
+        console.log("🔌 WebSocket closed:", event.code, event.reason);
+        if (event.code === 1006) {
+          console.log(
+            "WebSocket closed abnormally - likely authentication issue"
+          );
+        }
+      };
+
+      return () => {
+        if (
+          ws.readyState === WebSocket.OPEN ||
+          ws.readyState === WebSocket.CONNECTING
+        ) {
+          ws.close();
+        }
+      };
+    } else {
+      // Use provided webSocketService with proper event handling
+      const handleAppointmentUpdate = (event) => {
+        const data = event.detail || event;
+        console.log(
+          "📨 WebSocket service event received:",
+          data.type || event.type
+        );
+        handleWebSocketUpdate(queryClient, data);
+      };
+
+      const events = [
         "appointment_created",
-        handleAppointmentUpdate
-      );
-      webSocketService.removeEventListener(
         "appointment_updated",
-        handleAppointmentUpdate
-      );
-      webSocketService.removeEventListener(
         "appointment_deleted",
-        handleAppointmentUpdate
-      );
-      webSocketService.removeEventListener(
+        "appointment_status_changed",
         "therapist_response",
-        handleUserResponse
-      );
-      webSocketService.removeEventListener(
         "driver_response",
-        handleUserResponse
-      );
-    };
+        "message", // Generic message event
+      ];
+
+      // Add event listeners
+      events.forEach((event) => {
+        webSocketService.addEventListener(event, handleAppointmentUpdate);
+      });
+
+      return () => {
+        // Remove event listeners
+        events.forEach((event) => {
+          webSocketService.removeEventListener(event, handleAppointmentUpdate);
+        });
+      };
+    }
   }, [webSocketService, queryClient]);
 };
 

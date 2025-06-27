@@ -468,25 +468,10 @@
 }
 
 /* =========================
-   TABLE LOADING STATE
+   TABLE LOADING STATE - Moved to DataTable.module.css
    ========================= */
 
-.table-loading-state {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem 0;
-}
-
-.table-loading-row {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.table-loading-cell {
-  flex: 1;
-}
+/* Table loading styles have been consolidated in DataTable.module.css */
 
 /* =========================
    PAGE LOADING STATE
