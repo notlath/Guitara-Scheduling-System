@@ -44,7 +44,12 @@ if ALLOWED_HOSTS_ENV:
     ]
     print(f"[SETTINGS] ALLOWED_HOSTS from env: {ALLOWED_HOSTS}")
 else:
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+    ALLOWED_HOSTS = [
+        "localhost",
+        "127.0.0.1",
+        "testserver",
+        "https://guitara-scheduling-system.vercel.app",
+    ]
     print(f"[SETTINGS] Using default ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
 print(f"[SETTINGS] Final ALLOWED_HOSTS: {ALLOWED_HOSTS}")

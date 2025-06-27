@@ -1,80 +1,88 @@
-/**
- * WebSocket Integration Hook for TanStack Query Cache Synchronization
- *
- * This hook integrates with your existing WebSocket service to automatically
- * invalidate TanStack Query cache when real-time updates are received.
- */
-
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { handleWebSocketUpdate } from "../utils/cacheInvalidation";
 
-/**
- * Hook to sync WebSocket updates with TanStack Query cache
- * Use this in your main App component or dashboard components
- */
 export const useWebSocketCacheSync = (webSocketService) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!webSocketService) return;
+    if (!webSocketService) {
+      // Fallback: create a default WebSocket connection if not provided
+      const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const wsBase =
+        import.meta.env.VITE_WS_BASE_URL ||
+        wsProtocol + "://" + window.location.host + "/ws/appointments/";
+      const ws = new window.WebSocket(wsBase);
 
-    // Handle appointment updates from WebSocket
-    const handleAppointmentUpdate = (data) => {
-      console.log("📡 WebSocket update received:", data);
-      handleWebSocketUpdate(queryClient, data);
-    };
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleWebSocketUpdate(queryClient, data);
+        } catch (err) {
+          // Optionally log or handle error
+        }
+      };
 
-    // Handle therapist/driver responses
-    const handleUserResponse = (data) => {
-      console.log("📡 User response received:", data);
-      handleWebSocketUpdate(queryClient, {
-        type: "therapist_response",
-        appointment: data.appointment,
-        user_id: data.user_id,
-        role: data.role,
-      });
-    };
-
-    // Subscribe to WebSocket events
-    webSocketService.addEventListener(
-      "appointment_created",
-      handleAppointmentUpdate
-    );
-    webSocketService.addEventListener(
-      "appointment_updated",
-      handleAppointmentUpdate
-    );
-    webSocketService.addEventListener(
-      "appointment_deleted",
-      handleAppointmentUpdate
-    );
-    webSocketService.addEventListener("therapist_response", handleUserResponse);
-    webSocketService.addEventListener("driver_response", handleUserResponse);
-
-    // Cleanup
-    return () => {
-      webSocketService.removeEventListener(
+      return () => {
+        ws.close();
+      };
+    } else {
+      // Use provided webSocketService (must support addEventListener)
+      const handleAppointmentUpdate = (data) => {
+        handleWebSocketUpdate(queryClient, data);
+      };
+      webSocketService.addEventListener(
         "appointment_created",
         handleAppointmentUpdate
       );
-      webSocketService.removeEventListener(
+      webSocketService.addEventListener(
         "appointment_updated",
         handleAppointmentUpdate
       );
-      webSocketService.removeEventListener(
+      webSocketService.addEventListener(
         "appointment_deleted",
         handleAppointmentUpdate
       );
-      webSocketService.removeEventListener(
+      webSocketService.addEventListener(
+        "appointment_status_changed",
+        handleAppointmentUpdate
+      );
+      webSocketService.addEventListener(
         "therapist_response",
-        handleUserResponse
+        handleAppointmentUpdate
       );
-      webSocketService.removeEventListener(
+      webSocketService.addEventListener(
         "driver_response",
-        handleUserResponse
+        handleAppointmentUpdate
       );
-    };
+
+      return () => {
+        webSocketService.removeEventListener(
+          "appointment_created",
+          handleAppointmentUpdate
+        );
+        webSocketService.removeEventListener(
+          "appointment_updated",
+          handleAppointmentUpdate
+        );
+        webSocketService.removeEventListener(
+          "appointment_deleted",
+          handleAppointmentUpdate
+        );
+        webSocketService.removeEventListener(
+          "appointment_status_changed",
+          handleAppointmentUpdate
+        );
+        webSocketService.removeEventListener(
+          "therapist_response",
+          handleAppointmentUpdate
+        );
+        webSocketService.removeEventListener(
+          "driver_response",
+          handleAppointmentUpdate
+        );
+      };
+    }
   }, [webSocketService, queryClient]);
 };
 
