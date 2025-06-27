@@ -13,6 +13,7 @@ import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
 import { useTherapistInstantActions } from "../hooks/useInstantUpdates";
 // Import shared Philippine time and greeting hook
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
+import { useWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 
@@ -33,6 +34,9 @@ const TherapistDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  
+  // Initialize real-time cache sync via WebSocket
+  useWebSocketCacheSync();
 
   // Enhanced Redux actions with automatic TanStack Query cache invalidation
   const {

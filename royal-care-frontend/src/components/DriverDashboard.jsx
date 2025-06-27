@@ -12,9 +12,10 @@ import { logout } from "../features/auth/authSlice";
 import { useDriverDashboardData } from "../hooks/useDashboardQueries";
 import { useDashboardMutations } from "../hooks/useEnhancedDashboardData";
 // Enhanced Redux hooks for automatic TanStack Query cache invalidation
-import { useEnhancedDriverActions } from "../hooks/useEnhancedRedux";
+
 // Import shared Philippine time and greeting hook
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
+import { useWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
@@ -103,16 +104,13 @@ const DriverDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // Initialize real-time cache sync via WebSocket
+  useWebSocketCacheSync();
+
   // Get user from Redux state
   const user = useSelector((state) => state.auth.user, shallowEqual);
 
-  // Enhanced Redux actions with automatic TanStack Query cache invalidation
-  const {
-    confirmAppointment: enhancedConfirmAppointment,
-    confirmPickup: enhancedConfirmPickup,
-    startJourney: enhancedStartJourney,
-    completeReturnJourney: enhancedCompleteReturnJourney,
-  } = useEnhancedDriverActions();
+
 
   const userName =
     user?.first_name && user?.last_name
@@ -283,7 +281,7 @@ const DriverDashboard = () => {
     const actionKey = `accept_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await enhancedConfirmAppointment(appointmentId);
+      await confirmPickup.mutateAsync(appointmentId);
     } catch (error) {
       // More user-friendly error message
       if (
