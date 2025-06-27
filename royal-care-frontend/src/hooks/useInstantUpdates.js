@@ -72,6 +72,9 @@ export const useInstantUpdates = () => {
       onSuccess = null,
       onError = null,
     }) => {
+      let backendSuccess = false;
+      let backendResult = null;
+
       try {
         // 1. INSTANT UI UPDATE - User sees change immediately
         if (optimisticUpdate) {
@@ -79,25 +82,34 @@ export const useInstantUpdates = () => {
         }
 
         // 2. BACKEND UPDATE - Process the actual change
-        const result = await dispatch(reduxAction).unwrap();
+        backendResult = await dispatch(reduxAction).unwrap();
+        backendSuccess = true;
 
         // 3. CACHE INVALIDATION - Ensure all dashboards are synced
-        await invalidateAppointmentCaches(queryClient, {
-          userId: user?.id,
-          userRole: user?.role,
-          appointmentId,
-          invalidateAll: true, // Updates all dashboards instantly
-        });
+        try {
+          await invalidateAppointmentCaches(queryClient, {
+            userId: user?.id,
+            userRole: user?.role,
+            appointmentId,
+            invalidateAll: true, // Updates all dashboards instantly
+          });
+        } catch (cacheError) {
+          console.warn(
+            "Cache invalidation failed, but backend operation succeeded:",
+            cacheError
+          );
+          // Don't throw here - the backend operation was successful
+        }
 
         // 4. SUCCESS CALLBACK
         if (onSuccess) {
-          onSuccess(result);
+          onSuccess(backendResult);
         }
 
-        return result;
+        return backendResult;
       } catch (error) {
-        // 5. ERROR HANDLING - Rollback and show user-friendly message
-        if (optimisticUpdate) {
+        // 5. ERROR HANDLING - Only rollback if backend operation failed
+        if (!backendSuccess && optimisticUpdate) {
           await rollbackOptimisticUpdate(queryClient);
         }
 
@@ -110,10 +122,19 @@ export const useInstantUpdates = () => {
         if (onError) {
           onError(error, userFriendlyMessage);
         } else {
-          alert(userFriendlyMessage);
+          // Only show alert if backend operation actually failed
+          if (!backendSuccess) {
+            alert(userFriendlyMessage);
+          }
         }
 
-        throw error;
+        // Only throw if backend operation failed
+        if (!backendSuccess) {
+          throw error;
+        }
+
+        // If backend succeeded but cache failed, return the successful result
+        return backendResult;
       }
     },
     [dispatch, queryClient, user]
@@ -240,7 +261,7 @@ export const useDriverInstantActions = () => {
           status: "journey_started",
           journey_started_at: new Date().toISOString(),
         },
-        // errorMessage: "Failed to start journey. Please try again.",
+        errorMessage: "Failed to start journey. Please try again.",
         onSuccess: () => setLoading?.(false),
         onError: () => setLoading?.(false),
       });

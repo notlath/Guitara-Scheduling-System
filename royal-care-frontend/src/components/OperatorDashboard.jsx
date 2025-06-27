@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
+// TANSTACK QUERY: Import TanStack Query hooks for data management
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   approveAttendance,
   checkIn,
@@ -9,11 +11,12 @@ import {
 } from "../features/attendance/attendanceSlice";
 import { logout } from "../features/auth/authSlice";
 import { updateAppointmentStatus } from "../features/scheduling/schedulingSlice";
-// ENHANCED REDUX: Import enhanced operator actions for cache synchronization
+// TANSTACK QUERY: Import TanStack Query optimized hooks
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
-import { useEnhancedOperatorActions } from "../hooks/useEnhancedRedux";
+import { useOperatorDashboardData } from "../hooks/useDashboardQueries";
+import { useInstantUpdates } from "../hooks/useInstantUpdates";
 // Import shared Philippine time and greeting hook
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
 // PERFORMANCE: Stable filtering imports to prevent render loops
@@ -83,21 +86,52 @@ const validateUrlParam = (param, validValues, defaultValue) => {
 };
 
 import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
+import { queryKeys } from "../lib/queryClient";
 
 const OperatorDashboard = () => {
+  // ✅ TANSTACK QUERY MIGRATION COMPLETE
+  //
+  // BEFORE: Custom data fetching with useEffect, manual caching, and complex state management
+  // AFTER: TanStack Query with automatic caching, background refetching, and optimistic updates
+  //
+  // Key improvements:
+  // - Replaced per-tab data fetching with unified TanStack Query hooks
+  // - Added optimistic updates for instant UI feedback
+  // - Automatic cache invalidation across all tabs
+  // - Real-time updates via WebSocket integration
+  // - Enhanced error handling with retry logic
+  // - Server-side pagination support
+  // - Background refetching on window focus
+  // - Improved loading states and error recovery
+
+  // TANSTACK QUERY: Initialize TanStack Query client for cache management
+  const queryClient = useQueryClient();
+
   // Initialize real-time cache sync via WebSocket
   useAutoWebSocketCacheSync();
 
+  // TANSTACK QUERY: Replace custom data fetching with TanStack Query optimized hook
+  const {
+    appointments,
+    todayAppointments,
+    upcomingAppointments,
+    notifications,
+    attendanceRecords: dashboardAttendanceRecords,
+    loading: dashboardLoading,
+    error: dashboardError,
+    // Unused but available: hasData, forceRefresh, isRefetching, queryStates, lastUpdated
+  } = useOperatorDashboardData();
+
+  // Initialize instant updates for optimistic UI feedback
+  const {
+    updateAppointmentInstantly,
+    markPaymentPaidInstantly,
+    reviewRejectionInstantly,
+    autoCancelOverdueInstantly,
+  } = useInstantUpdates();
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  // ENHANCED REDUX: Initialize enhanced operator actions for cache synchronization
-  const {
-    startAppointment: enhancedStartAppointment,
-    verifyPayment: enhancedVerifyPayment,
-    reviewRejection: enhancedReviewRejection,
-    autoCancelOverdue: enhancedAutoCancelOverdue,
-  } = useEnhancedOperatorActions();
 
   // Attendance state for operator's own check-in/check-out
   const {
@@ -243,19 +277,15 @@ const OperatorDashboard = () => {
     pendingPickups: [],
   });
 
-  // ✅ PER-TAB DATA FETCHING: Replace global data hooks with tab-specific fetching
-  const [tabData, setTabData] = useState(null);
-  const [tabLoading, setTabLoading] = useState(false);
-  const [tabError, setTabError] = useState(null);
+  // ✅ TANSTACK QUERY: Replace per-tab data fetching with unified TanStack Query approach
   const [paginationInfo, setPaginationInfo] = useState({
     count: 0,
     totalPages: 0,
     currentPage: 1,
-    pageSize: 100, // Increased to show all records
+    pageSize: 8, // Server-side pagination with 8 items per page
     hasNext: false,
     hasPrevious: false,
   });
-  const tabCache = useRef({});
 
   // Helper function to get authentication token
   const getToken = () => localStorage.getItem("knoxToken");
@@ -326,283 +356,304 @@ const OperatorDashboard = () => {
     },
     []
   );
-  // API fetch functions for each tab - updated for server-side pagination with enhanced error handling
-  const fetchAllAppointments = useCallback(
-    async (page = 1, pageSize = 100) => {
-      // Increased page size to show all records
+
+  // ✅ TANSTACK QUERY: Individual tab data queries with server-side pagination
+  const rejectedAppointmentsQuery = useQuery({
+    queryKey: ["operator", "rejected", currentPage],
+    queryFn: async () => {
       const token = getToken();
       if (!token) throw new Error("Authentication required");
-
       return await enhancedFetch(
-        `${getBaseURL()}/scheduling/appointments/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/rejected/?page=${currentPage}&page_size=${
+          paginationInfo.pageSize
+        }`
       );
     },
-    [enhancedFetch]
-  );
+    enabled: currentView === "rejected",
+    staleTime: 0,
+    cacheTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    keepPreviousData: true,
+  });
 
-  const fetchPendingAppointments = useCallback(
-    async (page = 1, pageSize = 100) => {
-      // Increased page size to show all records
+  const pendingAppointmentsQuery = useQuery({
+    queryKey: ["operator", "pending", currentPage],
+    queryFn: async () => {
       const token = getToken();
       if (!token) throw new Error("Authentication required");
-
       return await enhancedFetch(
-        `${getBaseURL()}/scheduling/appointments/pending/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/pending/?page=${currentPage}&page_size=${
+          paginationInfo.pageSize
+        }`
       );
     },
-    [enhancedFetch]
-  );
+    enabled: currentView === "pending",
+    staleTime: 0,
+    cacheTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    keepPreviousData: true,
+  });
 
-  const fetchRejectedAppointments = useCallback(
-    async (page = 1, pageSize = 100) => {
-      // Increased page size to show all records
+  const timeoutAppointmentsQuery = useQuery({
+    queryKey: ["operator", "timeout", currentPage],
+    queryFn: async () => {
       const token = getToken();
       if (!token) throw new Error("Authentication required");
-
       return await enhancedFetch(
-        `${getBaseURL()}/scheduling/appointments/rejected/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/timeout/?page=${currentPage}&page_size=${
+          paginationInfo.pageSize
+        }`
       );
     },
-    [enhancedFetch]
-  );
+    enabled: currentView === "timeout",
+    staleTime: 0,
+    cacheTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    keepPreviousData: true,
+  });
 
-  const fetchTimeoutAppointments = useCallback(
-    async (page = 1, pageSize = 100) => {
-      // Increased page size to show all records
+  const paymentAppointmentsQuery = useQuery({
+    queryKey: ["operator", "payment", currentPage],
+    queryFn: async () => {
       const token = getToken();
       if (!token) throw new Error("Authentication required");
-
       return await enhancedFetch(
-        `${getBaseURL()}/scheduling/appointments/timeout/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/awaiting_payment/?page=${currentPage}&page_size=${
+          paginationInfo.pageSize
+        }`
       );
     },
-    [enhancedFetch]
-  );
+    enabled: currentView === "payment",
+    staleTime: 0,
+    cacheTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    keepPreviousData: true,
+  });
 
-  const fetchAwaitingPaymentAppointments = useCallback(
-    async (page = 1, pageSize = 100) => {
-      // Increased page size to show all records
+  const allAppointmentsQuery = useQuery({
+    queryKey: ["operator", "all", currentPage],
+    queryFn: async () => {
+      // Use the TanStack Query data when available, otherwise fetch directly
+      if (appointments && appointments.length > 0) {
+        // Simulate pagination for client-side data
+        const startIndex = (currentPage - 1) * paginationInfo.pageSize;
+        const endIndex = startIndex + paginationInfo.pageSize;
+        const paginatedData = appointments.slice(startIndex, endIndex);
+
+        return {
+          results: paginatedData,
+          count: appointments.length,
+          total_pages: Math.ceil(appointments.length / paginationInfo.pageSize),
+          current_page: currentPage,
+          page_size: paginationInfo.pageSize,
+          has_next: endIndex < appointments.length,
+          has_previous: currentPage > 1,
+        };
+      }
+
+      // Fallback to direct API call
       const token = getToken();
       if (!token) throw new Error("Authentication required");
-
       return await enhancedFetch(
-        `${getBaseURL()}/scheduling/appointments/awaiting_payment/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/?page=${currentPage}&page_size=${
+          paginationInfo.pageSize
+        }`
       );
     },
-    [enhancedFetch]
-  );
+    enabled: currentView === "all",
+    staleTime: 0,
+    cacheTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    keepPreviousData: true,
+  });
 
-  const fetchActiveSessions = useCallback(
-    async (page = 1, pageSize = 100) => {
-      // Increased page size to show all records
+  const activeSessionsQuery = useQuery({
+    queryKey: ["operator", "sessions", currentPage],
+    queryFn: async () => {
       const token = getToken();
       if (!token) throw new Error("Authentication required");
-
       return await enhancedFetch(
-        `${getBaseURL()}/scheduling/appointments/active_sessions/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/active_sessions/?page=${currentPage}&page_size=${
+          paginationInfo.pageSize
+        }`
       );
     },
-    [enhancedFetch]
-  );
+    enabled: currentView === "sessions",
+    staleTime: 0,
+    cacheTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    keepPreviousData: true,
+  });
 
-  const fetchPickupRequests = useCallback(
-    async (page = 1, pageSize = 100) => {
-      // Increased page size to show all records
+  const pickupRequestsQuery = useQuery({
+    queryKey: ["operator", "pickup", currentPage],
+    queryFn: async () => {
       const token = getToken();
       if (!token) throw new Error("Authentication required");
-
       return await enhancedFetch(
-        `${getBaseURL()}/scheduling/appointments/pickup_requests/?page=${page}&page_size=${pageSize}`
+        `${getBaseURL()}/scheduling/appointments/pickup_requests/?page=${currentPage}&page_size=${
+          paginationInfo.pageSize
+        }`
       );
     },
-    [enhancedFetch]
-  );
+    enabled: currentView === "pickup",
+    staleTime: 0,
+    cacheTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    keepPreviousData: true,
+  });
 
-  const fetchAttendanceRecords = useCallback(async () => {
-    const token = getToken();
-    if (!token) throw new Error("Authentication required");
+  const notificationsQuery = useQuery({
+    queryKey: ["operator", "notifications", currentPage],
+    queryFn: async () => {
+      // Use the TanStack Query data when available
+      if (notifications && notifications.length > 0) {
+        return notifications;
+      }
 
-    const today = selectedDate || new Date().toISOString().split("T")[0];
-    return await enhancedFetch(
-      `${getBaseURL()}/attendance/records/?date=${today}`
-    );
-  }, [selectedDate, enhancedFetch]);
+      // Fallback to direct API call
+      const token = getToken();
+      if (!token) throw new Error("Authentication required");
+      console.log("🔔 Fetching notifications...");
+      const data = await enhancedFetch(
+        `${getBaseURL()}/scheduling/notifications/?is_read=false`
+      );
+      console.log("🔔 Notifications fetched:", data);
+      return data;
+    },
+    enabled: currentView === "notifications",
+    staleTime: 0,
+    cacheTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    keepPreviousData: true,
+  });
 
-  const fetchUnreadNotifications = useCallback(async () => {
-    const token = getToken();
-    if (!token) throw new Error("Authentication required");
+  const driverCoordinationQuery = useQuery({
+    queryKey: ["operator", "driver"],
+    queryFn: async () => {
+      const token = getToken();
+      if (!token) throw new Error("Authentication required");
+      return await enhancedFetch(
+        `${getBaseURL()}/scheduling/staff/?role=driver`
+      );
+    },
+    enabled: currentView === "driver",
+    staleTime: 2 * 60 * 1000,
+    cacheTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
 
-    console.log("🔔 Fetching notifications...");
-    const data = await enhancedFetch(
-      `${getBaseURL()}/scheduling/notifications/?is_read=false`
-    );
-    console.log("🔔 Notifications fetched:", data);
-    return data;
-  }, [enhancedFetch]);
+  const workflowDataQuery = useQuery({
+    queryKey: ["operator", "workflow"],
+    queryFn: async () => {
+      // Return mock workflow data with expected structure
+      return {
+        totalAppointments: appointments?.length || 0,
+        inProgress:
+          appointments?.filter((apt) => apt.status === "in_progress")?.length ||
+          0,
+        completed:
+          appointments?.filter((apt) => apt.status === "completed")?.length ||
+          0,
+        workflows: [],
+        todayAppointments: todayAppointments || [],
+        activeSessions:
+          appointments?.filter((apt) => apt.status === "session_started") || [],
+        upcomingAppointments: upcomingAppointments || [],
+      };
+    },
+    enabled: currentView === "workflow",
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
+  });
 
-  const fetchDriverAssignments = useCallback(async () => {
-    const token = getToken();
-    if (!token) throw new Error("Authentication required");
-
-    return await enhancedFetch(`${getBaseURL()}/scheduling/staff/?role=driver`);
-  }, [enhancedFetch]);
-  const fetchWorkflowData = useCallback(async () => {
-    // Return mock workflow data with expected structure
-    return {
-      totalAppointments: 0,
-      inProgress: 0,
-      completed: 0,
-      workflows: [],
-      todayAppointments: [], // Mock data for today's appointments
-      activeSessions: [], // Mock data for active sessions
-      upcomingAppointments: [], // Mock data for upcoming appointments
-    };
-  }, []);
-
-  // ✅ PER-TAB DATA FETCHING: Only fetch data for the active tab with pagination
-  useEffect(() => {
-    let isMounted = true;
-    setTabLoading(true);
-    setTabError(null);
-
-    // Skip caching for paginated data - always fetch fresh
-    const pageSize = 8;
-
-    let fetchPromise;
+  // ✅ TANSTACK QUERY: Get current tab data and loading states
+  const getCurrentTabQuery = () => {
     switch (currentView) {
-      case "all":
-        fetchPromise = fetchAllAppointments(currentPage, pageSize);
-        break;
-      case "pending":
-        fetchPromise = fetchPendingAppointments(currentPage, pageSize);
-        break;
       case "rejected":
-        fetchPromise = fetchRejectedAppointments(currentPage, pageSize);
-        break;
+        return rejectedAppointmentsQuery;
+      case "pending":
+        return pendingAppointmentsQuery;
       case "timeout":
-        fetchPromise = fetchTimeoutAppointments(currentPage, pageSize);
-        break;
+        return timeoutAppointmentsQuery;
       case "payment":
-        fetchPromise = fetchAwaitingPaymentAppointments(currentPage, pageSize);
-        break;
+        return paymentAppointmentsQuery;
+      case "all":
+        return allAppointmentsQuery;
       case "sessions":
-        fetchPromise = fetchActiveSessions(currentPage, pageSize);
-        break;
+        return activeSessionsQuery;
       case "pickup":
-        fetchPromise = fetchPickupRequests(currentPage, pageSize);
-        break;
-      case "attendance":
-        fetchPromise = fetchAttendanceRecords();
-        break;
+        return pickupRequestsQuery;
       case "notifications":
-        fetchPromise = fetchUnreadNotifications();
-        break;
+        return notificationsQuery;
       case "driver":
-        fetchPromise = fetchDriverAssignments();
-        break;
+        return driverCoordinationQuery;
       case "workflow":
-        fetchPromise = fetchWorkflowData();
-        break;
+        return workflowDataQuery;
+      case "attendance":
+        return {
+          data: dashboardAttendanceRecords,
+          isLoading: dashboardLoading,
+          error: dashboardError,
+        };
       default:
-        fetchPromise = Promise.resolve(null);
+        return { data: null, isLoading: false, error: null };
     }
+  };
 
-    fetchPromise
-      .then((data) => {
-        if (isMounted) {
-          // Handle paginated vs non-paginated responses
-          if (data && data.results) {
-            // Paginated response from DRF
-            setTabData(data.results);
-            setPaginationInfo({
-              count: data.count,
-              totalPages: data.total_pages,
-              currentPage: data.current_page,
-              pageSize: data.page_size,
-              hasNext: data.has_next,
-              hasPrevious: data.has_previous,
-            });
-          } else {
-            // Non-paginated response (for attendance, notifications, etc.)
-            setTabData(data);
-            setPaginationInfo({
-              count: Array.isArray(data) ? data.length : 0,
-              totalPages: 1,
-              currentPage: 1,
-              pageSize: Array.isArray(data) ? data.length : 0,
-              hasNext: false,
-              hasPrevious: false,
-            });
-          }
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          setTabError(err);
-
-          // Enhanced error logging with user-friendly messages
-          if (err.isBlocked) {
-            console.error(
-              "🚫 OperatorDashboard: Request blocked by ad blocker/extension"
-            );
-            console.log(
-              "💡 User action needed: Please check ad blocker settings or disable browser extensions"
-            );
-          } else {
-            console.error(
-              "❌ OperatorDashboard: Error fetching tab data:",
-              err.message || err
-            );
-          }
-
-          // Log the original error for debugging
-          if (err.originalError) {
-            console.error("🔍 Original error:", err.originalError);
-          }
-        }
-      })
-      .finally(() => {
-        if (isMounted) setTabLoading(false);
+  const currentTabQuery = getCurrentTabQuery();
+  const tabData = currentTabQuery?.data;
+  const tabLoading = currentTabQuery?.isLoading || false;
+  const tabError = currentTabQuery?.error;
+  // ✅ TANSTACK QUERY: Update pagination info when tab data changes
+  useEffect(() => {
+    if (tabData && tabData.results) {
+      // Paginated response from DRF
+      setPaginationInfo({
+        count: tabData.count,
+        totalPages: tabData.total_pages,
+        currentPage: tabData.current_page,
+        pageSize: tabData.page_size,
+        hasNext: tabData.has_next,
+        hasPrevious: tabData.has_previous,
       });
+    } else {
+      // Non-paginated response (for attendance, notifications, etc.)
+      setPaginationInfo({
+        count: Array.isArray(tabData) ? tabData.length : 0,
+        totalPages: 1,
+        currentPage: 1,
+        pageSize: Array.isArray(tabData) ? tabData.length : 0,
+        hasNext: false,
+        hasPrevious: false,
+      });
+    }
+  }, [tabData]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [
-    currentView,
-    currentPage, // Add currentPage as dependency
-    selectedDate,
-    fetchAllAppointments,
-    fetchPendingAppointments,
-    fetchRejectedAppointments,
-    fetchTimeoutAppointments,
-    fetchAwaitingPaymentAppointments,
-    fetchAttendanceRecords,
-    fetchUnreadNotifications,
-    fetchDriverAssignments,
-    fetchWorkflowData,
-    fetchActiveSessions,
-    fetchPickupRequests,
-  ]);
-  // ✅ SIMPLIFIED: Create filtered data based on current tab data
-  const processedTabData = useMemo(() => {
-    if (!tabData) return { appointments: [], filteredAppointments: [] };
+  // ✅ TANSTACK QUERY: Refresh current tab data
+  const refreshCurrentTab = useCallback(() => {
+    console.log("� Refreshing current tab data via TanStack Query...");
 
-    // For appointment-based tabs, we now get already filtered data from server
-    // No need for client-side filtering since server handles pagination and filtering
+    // Invalidate current tab query to trigger refetch
+    queryClient.invalidateQueries(["operator", currentView]);
+
+    // Also invalidate related dashboard data
     if (
-      Array.isArray(tabData) &&
-      currentView !== "attendance" &&
-      currentView !== "notifications" &&
-      currentView !== "driver" &&
-      currentView !== "workflow"
+      [
+        "rejected",
+        "pending",
+        "timeout",
+        "payment",
+        "all",
+        "sessions",
+        "pickup",
+      ].includes(currentView)
     ) {
-      return { appointments: tabData, filteredAppointments: tabData };
+      queryClient.invalidateQueries(queryKeys.appointments.all);
     }
 
-    // For non-appointment views (notifications, attendance, driver, workflow), return as-is
-    return { appointments: tabData || [], filteredAppointments: tabData || [] };
-  }, [tabData, currentView]);
+    console.log("✅ Tab refresh completed");
+  }, [currentView, queryClient]);
 
   // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
   const { buttonLoading, setActionLoading, forceClearLoading } =
@@ -657,12 +708,6 @@ const OperatorDashboard = () => {
       handleDriverUpdate
     );
     return () => unsubscribe();
-  }, [currentView]); // ✅ SIMPLIFIED: Tab refresh functionality
-  const refreshCurrentTab = useCallback(() => {
-    // Clear cache for current tab and refetch
-    delete tabCache.current[currentView];
-    // Trigger refetch by clearing tabData
-    setTabData(null);
   }, [currentView]);
 
   // ✅ SIMPLIFIED: Calculate stats from current tab data
@@ -673,19 +718,24 @@ const OperatorDashboard = () => {
       };
     }
 
-    if (Array.isArray(tabData)) {
-      const totalRejections = tabData.length;
-      const therapistRejections = tabData.filter(
+    // Handle both direct array and paginated response
+    const rejectedData = Array.isArray(tabData)
+      ? tabData
+      : tabData?.results || [];
+
+    if (Array.isArray(rejectedData)) {
+      const totalRejections = rejectedData.length;
+      const therapistRejections = rejectedData.filter(
         (apt) =>
           apt.rejection_reason &&
           apt.rejection_reason.toLowerCase().includes("therapist")
       ).length;
-      const driverRejections = tabData.filter(
+      const driverRejections = rejectedData.filter(
         (apt) =>
           apt.rejection_reason &&
           apt.rejection_reason.toLowerCase().includes("driver")
       ).length;
-      const pendingReviews = tabData.filter(
+      const pendingReviews = rejectedData.filter(
         (apt) => apt.status === "rejected" && !apt.review_completed
       ).length;
 
@@ -702,6 +752,34 @@ const OperatorDashboard = () => {
     return {
       rejectionStats: { total: 0, therapist: 0, driver: 0, pending: 0 },
     };
+  }, [tabData, currentView]);
+
+  // ✅ SIMPLIFIED: Create filtered data based on current tab data
+  const processedTabData = useMemo(() => {
+    if (!tabData) return { appointments: [], filteredAppointments: [] };
+
+    // Handle paginated responses
+    if (tabData && tabData.results && Array.isArray(tabData.results)) {
+      return {
+        appointments: tabData.results,
+        filteredAppointments: tabData.results,
+      };
+    }
+
+    // For appointment-based tabs, we now get already filtered data from server
+    // No need for client-side filtering since server handles pagination and filtering
+    if (
+      Array.isArray(tabData) &&
+      currentView !== "attendance" &&
+      currentView !== "notifications" &&
+      currentView !== "driver" &&
+      currentView !== "workflow"
+    ) {
+      return { appointments: tabData, filteredAppointments: tabData };
+    }
+
+    // For non-appointment views (notifications, attendance, driver, workflow), return as-is
+    return { appointments: tabData || [], filteredAppointments: tabData || [] };
   }, [tabData, currentView]);
 
   // Helper function to display therapist information (single or multiple)
@@ -857,20 +935,25 @@ const OperatorDashboard = () => {
     const actionKey = `review_${reviewModal.appointmentId}_${decision}`;
     try {
       setActionLoading(actionKey, true);
-      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
-      await enhancedReviewRejection(
+
+      // ✅ TANSTACK QUERY: Use optimistic updates for instant UI feedback
+      await reviewRejectionInstantly(
         reviewModal.appointmentId,
         decision,
         reviewNotes
       );
-      // No need for manual refresh - enhanced action handles cache invalidation automatically
+
+      // Auto-invalidate current tab data
+      await queryClient.invalidateQueries(["operator", currentView]);
+
       setReviewModal({
         isOpen: false,
         appointmentId: null,
         rejectionReason: "",
       });
       setReviewNotes("");
-    } catch {
+    } catch (error) {
+      console.error("Failed to review rejection:", error);
       alert("Failed to review rejection. Please try again.");
     } finally {
       setActionLoading(actionKey, false);
@@ -891,11 +974,18 @@ const OperatorDashboard = () => {
 
     setAutoCancelLoading(true);
     try {
-      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
-      await enhancedAutoCancelOverdue();
-      // No need for manual refresh - enhanced action handles cache invalidation automatically
+      // ✅ TANSTACK QUERY: Use optimistic updates for instant UI feedback
+      await autoCancelOverdueInstantly();
+
+      // Auto-invalidate all related data
+      await Promise.all([
+        queryClient.invalidateQueries(["operator"]),
+        queryClient.invalidateQueries(queryKeys.appointments.all),
+      ]);
+
       alert("Successfully processed overdue appointments");
-    } catch {
+    } catch (error) {
+      console.error("Failed to process overdue appointments:", error);
       alert("Failed to process overdue appointments. Please try again.");
     } finally {
       setAutoCancelLoading(false);
@@ -905,9 +995,14 @@ const OperatorDashboard = () => {
     const actionKey = `start_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
-      await enhancedStartAppointment(appointmentId);
-      // No need for manual refresh - enhanced action handles cache invalidation automatically
+
+      // ✅ TANSTACK QUERY: Use optimistic updates for instant UI feedback
+      await updateAppointmentInstantly(appointmentId, {
+        status: "in_progress",
+      });
+
+      // Auto-invalidate current tab data
+      await queryClient.invalidateQueries(["operator", currentView]);
     } catch (error) {
       console.error("Failed to start appointment:", error);
       alert("Failed to start appointment. Please try again.");
@@ -972,7 +1067,7 @@ const OperatorDashboard = () => {
       // Pass the appointment ID as a number, not an object
       const appointmentId = parseInt(paymentModal.appointmentId, 10);
       console.log(
-        "🔍 handleMarkPaymentPaid: Using enhanced payment verification",
+        "🔍 handleMarkPaymentPaid: Using optimistic payment verification",
         {
           appointmentId,
           paymentData,
@@ -980,16 +1075,16 @@ const OperatorDashboard = () => {
         }
       );
 
-      // ENHANCED REDUX: Use enhanced action with automatic cache invalidation
-      const result = await enhancedVerifyPayment(appointmentId, paymentData);
+      // ✅ TANSTACK QUERY: Use optimistic updates for instant UI feedback
+      await markPaymentPaidInstantly(appointmentId, paymentData);
 
-      console.log(
-        "✅ handleMarkPaymentPaid: Payment verification successful",
-        result
-      );
+      console.log("✅ handleMarkPaymentPaid: Payment verification successful");
 
       // Clear the safety timeout since operation completed successfully
       clearTimeout(safetyTimeout);
+
+      // Auto-invalidate current tab data
+      await queryClient.invalidateQueries(["operator", currentView]);
 
       // Close modal and refresh data
       setPaymentModal({
@@ -1003,9 +1098,8 @@ const OperatorDashboard = () => {
         notes: "",
       });
       console.log(
-        "✅ handleMarkPaymentPaid: Enhanced action handles cache refresh automatically"
+        "✅ handleMarkPaymentPaid: TanStack Query handles cache refresh automatically"
       );
-      // No need for manual refresh - enhanced action handles cache invalidation automatically
 
       alert("Payment marked as received successfully!");
     } catch (error) {
@@ -2972,10 +3066,7 @@ const OperatorDashboard = () => {
                     : tabError}
                 </p>
                 <button
-                  onClick={() => {
-                    setTabError(null);
-                    setTabLoading(true);
-                  }}
+                  onClick={refreshCurrentTab}
                   className="retry-button"
                   style={{
                     marginTop: "10px",
