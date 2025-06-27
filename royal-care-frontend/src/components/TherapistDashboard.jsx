@@ -34,7 +34,7 @@ const TherapistDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  
+
   // Initialize real-time cache sync via WebSocket
   useWebSocketCacheSync();
 

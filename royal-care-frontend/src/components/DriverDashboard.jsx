@@ -15,8 +15,8 @@ import { useDashboardMutations } from "../hooks/useEnhancedDashboardData";
 
 // Import shared Philippine time and greeting hook
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
-import { useWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
+import { useWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
@@ -109,8 +109,6 @@ const DriverDashboard = () => {
 
   // Get user from Redux state
   const user = useSelector((state) => state.auth.user, shallowEqual);
-
-
 
   const userName =
     user?.first_name && user?.last_name

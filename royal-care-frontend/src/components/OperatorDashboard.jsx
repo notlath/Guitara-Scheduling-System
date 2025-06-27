@@ -85,7 +85,6 @@ const validateUrlParam = (param, validValues, defaultValue) => {
 import { useWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 
 const OperatorDashboard = () => {
-
   // Initialize real-time cache sync via WebSocket
   useWebSocketCacheSync();
 
