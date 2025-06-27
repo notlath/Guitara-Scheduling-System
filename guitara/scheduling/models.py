@@ -449,7 +449,14 @@ class Appointment(models.Model):
 
     def can_start_journey(self):
         """Check if journey can be started"""
-        return self.status == "in_progress"
+        # Allow journey to start from multiple valid states
+        valid_statuses = [
+            "driver_confirmed",
+            "in_progress",
+            "confirmed",
+            "therapist_confirmed",
+        ]
+        return self.status in valid_statuses
 
     def can_arrive(self):
         """Check if therapist(s) can be marked as arrived"""

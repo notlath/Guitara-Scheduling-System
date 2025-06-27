@@ -315,7 +315,19 @@ const DriverDashboard = () => {
     const actionKey = `journey_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      console.log("🚀 Starting journey for appointment:", appointmentId);
+
+      // Debug: Find the appointment and log its current status
+      const appointment = myAppointments.find(
+        (apt) => apt.id === appointmentId
+      );
+      console.log("🚀 Starting journey for appointment:", {
+        id: appointmentId,
+        currentStatus: appointment?.status,
+        driverAccepted: appointment?.driver_accepted,
+        therapistAccepted: appointment?.therapist_accepted,
+        bothAccepted: appointment?.both_parties_accepted,
+      });
+
       const result = await startJourney.mutateAsync(appointmentId);
       console.log("✅ Journey started successfully:", result);
     } catch (error) {
@@ -341,7 +353,14 @@ const DriverDashboard = () => {
         error?.message &&
         error.message !== "Failed to start journey"
       ) {
-        errorMessage = `Failed to start journey: ${error.message}`;
+        // Include the actual status in error message for debugging
+        const appointment = myAppointments.find(
+          (apt) => apt.id === appointmentId
+        );
+        const statusInfo = appointment
+          ? ` (Current status: ${appointment.status})`
+          : "";
+        errorMessage = `Failed to start journey: ${error.message}${statusInfo}`;
       }
 
       alert(errorMessage);
@@ -852,16 +871,28 @@ const DriverDashboard = () => {
 
       case "confirmed":
         if (both_parties_accepted) {
+          // Both parties accepted, allow starting journey
           return (
             <div className="appointment-actions">
-              <div className="waiting-status">
-                <span className="waiting-badge">
-                  ⏳ Waiting for confirmations
-                </span>
-                <p>
-                  All parties accepted. Waiting for therapist and driver
-                  confirmation...
-                </p>
+              {isDisabledDueToPickup && (
+                <div className="pickup-priority-notice">
+                  ⚠️ <strong>Pickup Assignment Priority:</strong> Complete your
+                  active pickup assignment first.
+                </div>
+              )}
+              <LoadingButton
+                className={`start-journey-button ${
+                  isDisabledDueToPickup ? "disabled-due-pickup" : ""
+                }`}
+                onClick={() => !isDisabledDueToPickup && handleStartJourney(id)}
+                loading={buttonLoading[`journey_${id}`]}
+                loadingText="Starting..."
+                disabled={isDisabledDueToPickup}
+              >
+                Start Journey
+              </LoadingButton>
+              <div className="ready-info">
+                <p>🚀 Both parties confirmed. Ready to begin transport!</p>
               </div>
             </div>
           );
@@ -911,12 +942,28 @@ const DriverDashboard = () => {
           </div>
         );
       case "driver_confirmed":
-        // Both confirmed, operator will start appointment
+        // Both confirmed, operator will start appointment or allow journey start
         return (
           <div className="appointment-actions">
-            <div className="waiting-status">
-              <span className="ready-badge">✅ Driver confirmed</span>
-              <p>Waiting for operator to start appointment...</p>
+            {isDisabledDueToPickup && (
+              <div className="pickup-priority-notice">
+                ⚠️ <strong>Pickup Assignment Priority:</strong> Complete your
+                active pickup assignment first.
+              </div>
+            )}
+            <LoadingButton
+              className={`start-journey-button ${
+                isDisabledDueToPickup ? "disabled-due-pickup" : ""
+              }`}
+              onClick={() => !isDisabledDueToPickup && handleStartJourney(id)}
+              loading={buttonLoading[`journey_${id}`]}
+              loadingText="Starting..."
+              disabled={isDisabledDueToPickup}
+            >
+              Start Journey
+            </LoadingButton>
+            <div className="ready-info">
+              <p>✅ Driver confirmed. Ready to begin transport!</p>
             </div>
           </div>
         );

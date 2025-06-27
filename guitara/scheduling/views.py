@@ -1707,10 +1707,25 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        if appointment.status not in ["driver_confirmed", "in_progress"]:
+        # Debug log for troubleshooting
+        print(f"🔍 START JOURNEY DEBUG - Appointment {appointment.id}:")
+        print(f"   Current status: {appointment.status}")
+        print(f"   Driver: {appointment.driver}")
+        print(f"   Therapist accepted: {appointment.therapist_accepted}")
+        print(f"   Driver accepted: {appointment.driver_accepted}")
+        print(f"   Both parties accepted: {appointment.both_parties_accepted()}")
+
+        # More flexible status validation - allow common valid states
+        valid_statuses = [
+            "driver_confirmed",
+            "in_progress",
+            "confirmed",
+            "therapist_confirmed",
+        ]
+        if appointment.status not in valid_statuses:
             return Response(
                 {
-                    "error": "Journey can only be started when appointment is ready (driver confirmed) or in progress"
+                    "error": f"Journey cannot be started from current status '{appointment.status}'. Valid statuses: {', '.join(valid_statuses)}"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
