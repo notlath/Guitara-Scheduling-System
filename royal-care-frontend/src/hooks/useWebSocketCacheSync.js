@@ -11,15 +11,16 @@ export const useWebSocketCacheSync = (webSocketService) => {
       const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
       const wsBase =
         import.meta.env.VITE_WS_BASE_URL ||
-        wsProtocol + "://" + window.location.host + "/ws/appointments/";
+        wsProtocol + "://" + window.location.host + "/ws/scheduling/appointments/";
       const ws = new window.WebSocket(wsBase);
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           handleWebSocketUpdate(queryClient, data);
-        } catch (err) {
+        } catch (error) {
           // Optionally log or handle error
+          console.warn("WebSocket message parsing error:", error);
         }
       };
 
