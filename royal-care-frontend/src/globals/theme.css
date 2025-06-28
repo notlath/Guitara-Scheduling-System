@@ -71,15 +71,24 @@ small {
   --accent: #9ab096;
 
   /* other variables */
+
   --muted: var(--background-500);
+  --muted-100: var(--background-400);
   --muted-200: var(--background-700);
+
+  --muted-background: var(--background-100);
+  --muted-background-hover: var(--background-200);
+
   --error: #ff312e;
   --error-hover: #cc0300;
   --success: #99c21e;
+
   --border-color: var(--background-200);
   --border-light: var(--background-100);
-  --focus-color: var(--background-600);
+  --border-hover: var(--background-300);
   --border-radius: 8px;
+
+  --focus-color: var(--background-600);
   --input-bg: var(--background-35);
 
   /* Text color shades */

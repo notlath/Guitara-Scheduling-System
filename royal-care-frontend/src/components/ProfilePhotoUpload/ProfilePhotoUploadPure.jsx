@@ -278,14 +278,14 @@ const ProfilePhotoUploadPure = ({
       </div>
 
       <div className={styles.photoActions}>
-        <button
+        {/* <button
           type="button"
           className={styles.uploadButton}
           onClick={handleUploadClick}
           disabled={uploading}
         >
           {uploading && !isDeleting ? "Uploading..." : "Change Photo"}
-        </button>
+        </button> */}
         {preview && (
           <button
             type="button"
@@ -293,7 +293,7 @@ const ProfilePhotoUploadPure = ({
             onClick={handleRemovePhoto}
             disabled={uploading}
           >
-            {isDeleting ? "Deleting..." : "Remove"}
+            {isDeleting ? "Deleting..." : "Remove Photo"}
           </button>
         )}
       </div>
