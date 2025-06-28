@@ -3191,7 +3191,7 @@ const OperatorDashboard = () => {
       <div className={`operator-dashboard`}>
         <LayoutRow
           title={`${greeting}, ${userName}!`}
-          subtitle={<>{systemTime}</>}
+          subtitle={<>Today is {systemTime}</>}
         >
           <div className="action-buttons">
             <button onClick={handleLogout} className="logout-button">

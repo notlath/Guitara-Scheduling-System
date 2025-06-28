@@ -1,18 +1,18 @@
 /* Company Information Page Styles */
-.company-info-container {
+/* .company-info-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--spacing-md);
-}
+} */
 
-.company-info-content {
+/* .company-info-content {
   max-width: 1000px;
   margin: 0 auto;
   background-color: var(--background);
   border-radius: 12px;
   box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
   overflow: hidden;
-}
+} */
 
 .company-info-header {
   position: relative;
@@ -50,9 +50,9 @@
   font-size: 1.1rem;
 }
 
-.company-info-body {
+/* .company-info-body {
   padding: 2.5rem;
-}
+} */
 
 .info-section {
   margin-bottom: 3rem;
@@ -135,10 +135,10 @@
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
-.team-member:hover {
+/* .team-member:hover {
   transform: translateY(-5px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
+} */
 
 .team-member h3 {
   margin-top: 0;
@@ -170,9 +170,9 @@
   transition: transform 0.3s;
 }
 
-.location-card:hover {
+/* .location-card:hover {
   transform: translateY(-3px);
-}
+} */
 
 .location-card h3 {
   margin-top: 0;
@@ -213,9 +213,9 @@
   transition: transform 0.3s ease;
 }
 
-.address-link:hover .map-icon {
+/* .address-link:hover .map-icon {
   transform: translateY(-2px);
-}
+} */
 
 @media (max-width: 768px) {
   .company-info-header,

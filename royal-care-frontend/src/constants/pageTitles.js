@@ -23,7 +23,7 @@ const pageTitles = {
   contact: "Email Support" + BRAND_SUFFIX,
   systemInfo: "System Info" + BRAND_SUFFIX,
   developerInfo: "Developer Info" + BRAND_SUFFIX,
-  companyInfo: "About Us" + BRAND_SUFFIX,
+  companyInfo: "Company Information" + BRAND_SUFFIX,
   bookings: "Bookings" + BRAND_SUFFIX,
   attendance: "Attendance" + BRAND_SUFFIX,
   notifications: "Notifications" + BRAND_SUFFIX,

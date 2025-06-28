@@ -19,7 +19,7 @@ createRoot(document.getElementById("root")).render(
       <Provider store={store}>
         <WebSocketProvider>
           <App />
-          <DevTools />
+          {import.meta.env.DEV && <DevTools />}
         </WebSocketProvider>
       </Provider>
     </QueryClientProvider>

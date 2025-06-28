@@ -11,20 +11,12 @@
   position: relative;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid var(--background-200);
-  background: var(--background-100);
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.1s ease;
   cursor: pointer;
-  width: 100px;
-  height: 100px;
+  width: 70px;
+  height: 70px;
 }
 
-.photoContainer:hover {
-  border-color: var(--primary-400);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
 
 .photoPreview {
   width: 100%;
@@ -47,24 +39,48 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--text-400);
-  background: var(--background-100);
+  color: var(--muted-100);
+  background: var(--background-50);
   width: 100%;
   height: 100%;
+  gap: var(--spacing-xs);
+}
+
+.photoContainer:hover .photoPlaceholder {
+  background: var(--background-100);
+}
+
+.placeholderIconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--background-100);
+  transition: all 0.1s ease;
+}
+
+.photoContainer:hover .placeholderIconWrapper {
+  background: var(--background-200);
 }
 
 .placeholderIcon {
-  font-size: 2.5rem;
-  margin-bottom: var(--spacing-xxs);
-  opacity: 0.6;
+  font-size: 20px !important;
+  opacity: 0.8;
+  transition: all 0.1s ease;
+}
+
+.photoContainer:hover .placeholderIcon {
+  opacity: 1;
 }
 
 .placeholderText {
-  font-size: 0.7rem;
-  font-weight: 500;
+  font-size: var(--font-size-xs);
   margin: 0;
   text-align: center;
-  color: var(--text-500);
+  color: inherit;
+  opacity: 0.9;
 }
 
 .uploadingOverlay {
@@ -89,7 +105,7 @@
   width: 20px;
   height: 20px;
   border: 2px solid transparent;
-  border-top: 2px solid white;
+  border-top: 2px solid var(--background);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: var(--spacing-xxs);
@@ -112,8 +128,9 @@
   justify-content: center;
 }
 
-.uploadButton,
 .removeButton {
+  background: var(--muted-background);
+  color: var(--background-400);
   padding: var(--spacing-xs) var(--spacing-sm);
   border: none;
   border-radius: var(--border-radius);
@@ -126,37 +143,9 @@
   min-height: 32px;
 }
 
-.uploadButton {
-  background: var(--primary);
-  color: var(--background);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.uploadButton:hover:not(:disabled) {
-  background: var(--primary-600);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.uploadButton:disabled {
-  background: var(--background-300);
-  color: var(--text-400);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.removeButton {
-  background: var(--background-200);
-  color: var(--text-600);
-  border: 1px solid var(--background-300);
-}
-
 .removeButton:hover:not(:disabled) {
-  background: var(--error);
-  color: var(--background);
-  border-color: var(--error);
-  transform: translateY(-1px);
+  background: var(--muted-background-hover);
+  color: var(--background-500);
 }
 
 /* Size variations - All circular */
@@ -186,7 +175,6 @@
   font-size: 0.6rem;
 }
 
-.small .uploadButton,
 .small .removeButton {
   padding: var(--spacing-xxs) var(--spacing-xs);
   font-size: var(--font-size-xs);
@@ -207,7 +195,6 @@
     width: 100%;
   }
 
-  .uploadButton,
   .removeButton {
     width: 100%;
     max-width: 200px;
