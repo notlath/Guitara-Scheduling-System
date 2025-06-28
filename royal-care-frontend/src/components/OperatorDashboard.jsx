@@ -376,6 +376,21 @@ const OperatorDashboard = () => {
     keepPreviousData: true,
   });
 
+  // ✅ SEPARATE QUERY: Always fetch rejection statistics for the overview
+  const rejectionStatsQuery = useQuery({
+    queryKey: ["operator", "rejection-stats"],
+    queryFn: async () => {
+      const token = getToken();
+      if (!token) throw new Error("Authentication required");
+      return await enhancedFetch(
+        `${getBaseURL()}/scheduling/appointments/rejected/?page=1&page_size=100`
+      );
+    },
+    staleTime: 30 * 1000, // Cache for 30 seconds
+    cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    refetchOnWindowFocus: true,
+  });
+
   const pendingAppointmentsQuery = useQuery({
     queryKey: ["operator", "pending", currentPage],
     queryFn: async () => {
@@ -779,18 +794,14 @@ const OperatorDashboard = () => {
     return () => unsubscribe();
   }, [currentView]);
 
-  // ✅ SIMPLIFIED: Calculate stats from current tab data
+  // ✅ FIXED: Calculate rejection stats from rejection statistics query
   const tabStats = useMemo(() => {
-    if (!tabData || currentView !== "rejected") {
-      return {
-        rejectionStats: { total: 0, therapist: 0, driver: 0, pending: 0 },
-      };
-    }
-
-    // Handle both direct array and paginated response
-    const rejectedData = Array.isArray(tabData)
-      ? tabData
-      : tabData?.results || [];
+    // Get rejection statistics from the dedicated rejection stats query
+    const rejectedData = rejectionStatsQuery.data
+      ? Array.isArray(rejectionStatsQuery.data)
+        ? rejectionStatsQuery.data
+        : rejectionStatsQuery.data?.results || []
+      : [];
 
     if (Array.isArray(rejectedData)) {
       const totalRejections = rejectedData.length;
@@ -821,7 +832,7 @@ const OperatorDashboard = () => {
     return {
       rejectionStats: { total: 0, therapist: 0, driver: 0, pending: 0 },
     };
-  }, [tabData, currentView]);
+  }, [rejectionStatsQuery.data]);
 
   // ✅ SIMPLIFIED: Create filtered data based on current tab data
   const processedTabData = useMemo(() => {
@@ -2040,8 +2051,12 @@ const OperatorDashboard = () => {
   // - Consistent urgency badges and operator-specific information preserved
 
   const renderRejectedAppointments = () => {
-    const rejectedAppointments =
-      currentView === "rejected" && Array.isArray(tabData) ? tabData : [];
+    // ✅ FIXED: Use rejected appointments query data directly
+    const rejectedAppointments = rejectedAppointmentsQuery.data
+      ? Array.isArray(rejectedAppointmentsQuery.data)
+        ? rejectedAppointmentsQuery.data
+        : rejectedAppointmentsQuery.data?.results || []
+      : [];
 
     if (!rejectedAppointments || rejectedAppointments.length === 0) {
       return (
@@ -2127,8 +2142,12 @@ const OperatorDashboard = () => {
     );
   };
   const renderPendingAcceptanceAppointments = () => {
-    const pendingAppointments =
-      currentView === "pending" && Array.isArray(tabData) ? tabData : [];
+    // ✅ FIXED: Use pending appointments query data directly
+    const pendingAppointments = pendingAppointmentsQuery.data
+      ? Array.isArray(pendingAppointmentsQuery.data)
+        ? pendingAppointmentsQuery.data
+        : pendingAppointmentsQuery.data?.results || []
+      : [];
 
     if (!pendingAppointments || pendingAppointments.length === 0) {
       return (
