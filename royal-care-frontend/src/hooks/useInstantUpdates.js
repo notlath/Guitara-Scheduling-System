@@ -276,7 +276,7 @@ export const useTherapistInstantActions = () => {
 
       return performInstantUpdate({
         appointmentId,
-        reduxAction: rejectAppointment({ appointmentId, rejectionReason }),
+        reduxAction: rejectAppointment({ id: appointmentId, rejectionReason }),
         optimisticUpdate: {
           status: "rejected",
           rejection_reason: rejectionReason,
