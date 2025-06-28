@@ -61,7 +61,29 @@ const InventoryPage = React.lazy(() =>
 const NotificationsPage = React.lazy(() =>
   import("./pages/NotificationsPage/NotificationsPage")
 );
-const ProfilePage = React.lazy(() => import("./pages/ProfilePage/ProfilePage"));
+const ProfilePage = React.lazy(() => {
+  console.log("Loading ProfilePage...");
+  return import("./pages/ProfilePage/ProfilePage")
+    .then((module) => {
+      console.log("ProfilePage loaded successfully");
+      return module;
+    })
+    .catch((error) => {
+      console.error("Failed to load ProfilePage:", error);
+      // Return a fallback component instead of crashing
+      return {
+        default: () => (
+          <div style={{ padding: "20px", textAlign: "center" }}>
+            <h2>Unable to Load Profile</h2>
+            <p>There was an error loading the profile page.</p>
+            <button onClick={() => window.location.reload()}>
+              Refresh Page
+            </button>
+          </div>
+        ),
+      };
+    });
+});
 const RegisterPage = React.lazy(() =>
   import("./pages/RegisterPage/RegisterPage")
 );

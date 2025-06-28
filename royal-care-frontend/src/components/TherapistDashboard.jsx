@@ -992,67 +992,64 @@ const TherapistDashboard = () => {
         </LayoutRow>
         {/* OPTIMIZED: Simplified error handling */}
         {error && !hasData && (
-          <>
-            <div className="error-message">
-              <div>
-                {typeof error === "object"
-                  ? error.message || error.error || "An error occurred"
-                  : error}
-              </div>
-              <button
-                onClick={refetch}
-                className="retry-button"
-                style={{
-                  marginTop: "10px",
-                  padding: "5px 10px",
-                  backgroundColor: "var(--primary)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                Retry
-              </button>
+          <div className="error-message">
+            <div>
+              {typeof error === "object"
+                ? error.message || error.error || "An error occurred"
+                : error}
             </div>
-            <TabSwitcher
-              tabs={[
-                {
-                  id: "today",
-                  label: "Today's Appointments",
-                  count: Array.isArray(myTodayAppointments)
-                    ? myTodayAppointments.filter(
-                        (apt) => apt && !isTransportCompleted(apt)
-                      ).length
-                    : 0,
-                },
-                {
-                  id: "upcoming",
-                  label: "Upcoming Appointments",
-                  count: Array.isArray(myUpcomingAppointments)
-                    ? myUpcomingAppointments.filter(
-                        (apt) => apt && !isTransportCompleted(apt)
-                      ).length
-                    : 0,
-                },
-                {
-                  id: "all",
-                  label: "All My Appointments",
-                  count: Array.isArray(myAppointments)
-                    ? myAppointments.length
-                    : 0,
-                },
-                {
-                  id: "attendance",
-                  label: "My Attendance",
-                  count: undefined,
-                },
-              ]}
-              activeTab={currentView}
-              onTabChange={setView}
-            />
-          </>
+            <button
+              onClick={refetch}
+              className="retry-button"
+              style={{
+                marginTop: "10px",
+                padding: "5px 10px",
+                backgroundColor: "var(--primary)",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              Retry
+            </button>
+          </div>
         )}
+
+        <TabSwitcher
+          tabs={[
+            {
+              id: "today",
+              label: "Today's Appointments",
+              count: Array.isArray(myTodayAppointments)
+                ? myTodayAppointments.filter(
+                    (apt) => apt && !isTransportCompleted(apt)
+                  ).length
+                : 0,
+            },
+            {
+              id: "upcoming",
+              label: "Upcoming Appointments",
+              count: Array.isArray(myUpcomingAppointments)
+                ? myUpcomingAppointments.filter(
+                    (apt) => apt && !isTransportCompleted(apt)
+                  ).length
+                : 0,
+            },
+            {
+              id: "all",
+              label: "All My Appointments",
+              count: Array.isArray(myAppointments) ? myAppointments.length : 0,
+            },
+            {
+              id: "attendance",
+              label: "My Attendance",
+              count: undefined,
+            },
+          ]}
+          activeTab={currentView}
+          onTabChange={setView}
+        />
         <div className="dashboard-content">
           {currentView === "today" && (
             <div className="todays-appointments">
