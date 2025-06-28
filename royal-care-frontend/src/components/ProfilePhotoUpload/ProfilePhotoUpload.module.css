@@ -11,18 +11,12 @@
   position: relative;
   border-radius: 50%;
   overflow: hidden;
-  /* border: 1px solid var(--background-200); */
   transition: all 0.1s ease;
   cursor: pointer;
   width: 70px;
   height: 70px;
 }
 
-.photoContainer:hover {
-  /* border: 1px solid var(--accent); */
-  /* transform: translateY(-1px); */
-  /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); */
-}
 
 .photoPreview {
   width: 100%;
@@ -54,7 +48,6 @@
 
 .photoContainer:hover .photoPlaceholder {
   background: var(--background-100);
-  /* color: var(--primary-500); */
 }
 
 .placeholderIconWrapper {
@@ -66,13 +59,10 @@
   border-radius: 50%;
   background: var(--background-100);
   transition: all 0.1s ease;
-  /* border: 1px solid var(--background-200); */
 }
 
 .photoContainer:hover .placeholderIconWrapper {
   background: var(--background-200);
-  /* transform: scale(1.05); */
-  /* border: 1px solid var(--border-hover); */
 }
 
 .placeholderIcon {
@@ -87,11 +77,9 @@
 
 .placeholderText {
   font-size: var(--font-size-xs);
-  /* font-weight: 400; */
   margin: 0;
   text-align: center;
   color: inherit;
-  /* letter-spacing: 0.8px; */
   opacity: 0.9;
 }
 
@@ -140,8 +128,9 @@
   justify-content: center;
 }
 
-.uploadButton,
 .removeButton {
+  background: var(--muted-background);
+  color: var(--background-400);
   padding: var(--spacing-xs) var(--spacing-sm);
   border: none;
   border-radius: var(--border-radius);
@@ -154,37 +143,9 @@
   min-height: 32px;
 }
 
-.uploadButton {
-  background: var(--primary);
-  color: var(--background);
-  border: 1px solid var(--primary);
-}
-
-.uploadButton:hover:not(:disabled) {
-  background: var(--primary-600);
-  transform: translateY(-1px);
-  border: 2px solid var(--primary-400);
-}
-
-.uploadButton:disabled {
-  background: var(--background-300);
-  color: var(--text-400);
-  cursor: not-allowed;
-  transform: none;
-  border: 1px solid var(--background-300);
-}
-
-.removeButton {
-  background: var(--muted-background);
-  color: var(--background-400);
-  /* border: 1px solid var(--background-300); */
-}
-
 .removeButton:hover:not(:disabled) {
   background: var(--muted-background-hover);
   color: var(--background-500);
-  /* border-color: var(--error); */
-  /* transform: translateY(-1px); */
 }
 
 /* Size variations - All circular */
@@ -214,7 +175,6 @@
   font-size: 0.6rem;
 }
 
-.small .uploadButton,
 .small .removeButton {
   padding: var(--spacing-xxs) var(--spacing-xs);
   font-size: var(--font-size-xs);
@@ -235,7 +195,6 @@
     width: 100%;
   }
 
-  .uploadButton,
   .removeButton {
     width: 100%;
     max-width: 200px;

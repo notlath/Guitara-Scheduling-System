@@ -278,14 +278,6 @@ const ProfilePhotoUploadPure = ({
       </div>
 
       <div className={styles.photoActions}>
-        {/* <button
-          type="button"
-          className={styles.uploadButton}
-          onClick={handleUploadClick}
-          disabled={uploading}
-        >
-          {uploading && !isDeleting ? "Uploading..." : "Change Photo"}
-        </button> */}
         {preview && (
           <button
             type="button"

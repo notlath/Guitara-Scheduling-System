@@ -269,8 +269,6 @@ const ProfilePage = () => {
         dispatch(updateUserProfile({ profile_photo_url: photoUrl }));
       }
     }
-
-    console.log("Photo updated:", photoUrl);
   };
 
   // 2FA Toggle Handler
@@ -386,9 +384,6 @@ const ProfilePage = () => {
       <PageLayout>
         <div className={styles.container}>
           <div className={styles.content}>
-            {/* <div className={styles.header}>
-              <h1 className={styles.pageTitle}>My Profile</h1>
-            </div> */}
             <div className={styles.loadingContainer}>
               <div className="placeholder-loader"></div>
               <p>Loading your profile information...</p>
@@ -424,13 +419,6 @@ const ProfilePage = () => {
     <PageLayout>
       <div className={styles.container}>
         <div className={styles.content}>
-          {/* <div className={styles.header}>
-            <h1 className={styles.pageTitle}>My Profile</h1>
-            <p className={styles.pageSubtitle}>
-              Manage your account information, security, and preferences
-            </p>
-          </div> */}
-
           {/* User Profile Header */}
           <div className={styles.userProfileHeader}>
             <div className={styles.profilePhotoSection}>
