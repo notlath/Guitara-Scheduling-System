@@ -11,19 +11,19 @@
   position: relative;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid var(--background-200);
+  border: 1px solid var(--background-200);
   background: var(--background-100);
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.1s ease;
+  /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); */
   cursor: pointer;
   width: 100px;
   height: 100px;
 }
 
 .photoContainer:hover {
-  border-color: var(--primary-400);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 2px solid var(--accent);
+  /* transform: translateY(-1px); */
+  /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); */
 }
 
 .photoPreview {
@@ -48,23 +48,62 @@
   align-items: center;
   justify-content: center;
   color: var(--text-400);
-  background: var(--background-100);
+  background: linear-gradient(
+    135deg,
+    var(--background-50) 0%,
+    var(--background-100) 100%
+  );
   width: 100%;
   height: 100%;
+  transition: all 0.2s ease;
+  gap: var(--spacing-xs);
+}
+
+.photoContainer:hover .photoPlaceholder {
+  background: linear-gradient(
+    135deg,
+    var(--primary-50) 0%,
+    var(--primary-100) 100%
+  );
+  color: var(--primary-500);
+}
+
+.placeholderIconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  transition: all 0.2s ease;
+  border: 1px solid var(--background-200);
+}
+
+.photoContainer:hover .placeholderIconWrapper {
+  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.05);
+  border: 2px solid var(--primary-300);
 }
 
 .placeholderIcon {
-  font-size: 2.5rem;
-  margin-bottom: var(--spacing-xxs);
-  opacity: 0.6;
+  font-size: 20px !important;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+}
+
+.photoContainer:hover .placeholderIcon {
+  opacity: 1;
 }
 
 .placeholderText {
-  font-size: 0.7rem;
-  font-weight: 500;
+  font-size: 0.65rem;
+  font-weight: 600;
   margin: 0;
   text-align: center;
-  color: var(--text-500);
+  color: inherit;
+  letter-spacing: 0.8px;
+  opacity: 0.9;
 }
 
 .uploadingOverlay {
@@ -129,13 +168,13 @@
 .uploadButton {
   background: var(--primary);
   color: var(--background);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--primary);
 }
 
 .uploadButton:hover:not(:disabled) {
   background: var(--primary-600);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  border: 2px solid var(--primary-400);
 }
 
 .uploadButton:disabled {
@@ -143,7 +182,7 @@
   color: var(--text-400);
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
+  border: 1px solid var(--background-300);
 }
 
 .removeButton {

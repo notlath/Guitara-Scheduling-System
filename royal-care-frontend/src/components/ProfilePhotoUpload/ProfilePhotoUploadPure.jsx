@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateUserProfile } from "../../features/auth/authSlice";
 import PhotoCropModal from "../PhotoCropModal/PhotoCropModal";
+import { MdCameraAlt } from "react-icons/md";
 import styles from "./ProfilePhotoUpload.module.css";
 
 // API URL based on environment - ensure consistent URL handling
@@ -261,8 +262,10 @@ const ProfilePhotoUploadPure = ({
             <img src={preview} alt="Profile" className={styles.profilePhoto} />
           ) : (
             <div className={styles.photoPlaceholder}>
-              <div className={styles.placeholderIcon}>👤</div>
-              <p className={styles.placeholderText}>No Photo</p>
+              <div className={styles.placeholderIconWrapper}>
+                <MdCameraAlt className={styles.placeholderIcon} />
+              </div>
+              <p className={styles.placeholderText}>Add Photo</p>
             </div>
           )}
           {uploading && (

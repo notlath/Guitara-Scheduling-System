@@ -1,6 +1,18 @@
 # Royal Care Frontend
 
-This is the frontend for the Royal Care Scheduling System, built with **React** and **Vite**. It connects to a Django backend and provides a modern, responsive interface for operators, therapists, and drivers to manage home-service massage bookings.
+This is the frontend for the Royal Care Scheduling System, built with **React** and **Vite**. It connects to a Django backend and provides a modern, responsi6. **CSS Location & Inline Styles:**
+
+- Place all new CSS in the appropriate file in `src/styles/` or the relevant `.module.css` file for the component or page.
+- **Avoid doing inline styles as much as possible! Use the corresponding CSS files instead.**
+- Only use inline styles if absolutely necessary and there is no better alternative.
+
+7. **Component Placement:**
+
+   - Add new components in the correct directory based on their function.
+   - Avoid creating duplicate or redundant components.
+
+8. **Testing:**
+   - Test all features across different user roles and screen sizes before submitting changes.for operators, therapists, and drivers to manage home-service massage bookings.
 
 ## Features
 
@@ -174,18 +186,24 @@ This frontend connects to the Django backend located in the `/guitara` directory
      ```
    - This applies to overlays, modals, and any feature requiring background dimming or blur.
 
-5. **CSS Location & Inline Styles:**
+5. **Text Transformation:**
+
+   - **Do NOT use `text-transform: uppercase`.**
+   - Let text display in its natural case for better readability and user experience.
+   - If uppercase styling is absolutely necessary for design purposes, handle it in the content itself rather than CSS transformation.
+
+6. **CSS Location & Inline Styles:**
 
    - Place all new CSS in the appropriate file in `src/styles/` or the relevant `.module.css` file for the component or page.
    - **Avoid doing inline styles as much as possible! Use the corresponding CSS files instead.**
    - Only use inline styles if absolutely necessary and there is no better alternative.
 
-6. **Component Placement:**
+7. **Component Placement:**
 
    - Add new components in the correct directory based on their function.
    - Avoid creating duplicate or redundant components.
 
-7. **Testing:**
+8. **Testing:**
    - Test all features across different user roles and screen sizes before submitting changes.
 
 ## Pages Folder Structure
