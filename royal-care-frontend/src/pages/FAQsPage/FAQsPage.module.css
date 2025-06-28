@@ -14,11 +14,6 @@
   transition: box-shadow 0.2s, background 0.2s;
 }
 
-.faq-item:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  background: var(--background-100);
-}
-
 .faq-item strong {
   display: block;
   font-size: var(--font-size-base);
