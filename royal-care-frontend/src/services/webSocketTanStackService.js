@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { queryClient } from "../lib/queryClient";
+import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
 import { getToken } from "../utils/tokenManager";
 
 class WebSocketTanStackService {
@@ -258,13 +259,13 @@ class WebSocketTanStackService {
       );
     }
 
-    // Invalidate related queries to trigger refetch (for filtered lists, etc.)
-    queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "today"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "date"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] });
-    queryClient.invalidateQueries({ queryKey: ["availability"] });
+    // Use comprehensive cache invalidation that includes operator-specific queries
+    invalidateAppointmentCaches(queryClient, {
+      userRole: "operator", // Invalidate operator-specific caches
+      invalidateAll: true, // Comprehensive invalidation for WebSocket updates
+    }).catch((error) => {
+      console.error("❌ WebSocket cache invalidation failed:", error);
+    });
 
     // Dispatch event for listeners
     this.dispatchEvent("appointment_created", {
@@ -323,13 +324,13 @@ class WebSocketTanStackService {
       );
     }
 
-    // Invalidate related queries to trigger refetch (for filtered lists, etc.)
-    queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "today"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "date"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] });
-    queryClient.invalidateQueries({ queryKey: ["availability"] });
+    // Use comprehensive cache invalidation that includes operator-specific queries
+    invalidateAppointmentCaches(queryClient, {
+      userRole: "operator", // Invalidate operator-specific caches
+      invalidateAll: true, // Comprehensive invalidation for WebSocket updates
+    }).catch((error) => {
+      console.error("❌ WebSocket cache invalidation failed:", error);
+    });
 
     // Dispatch event for listeners
     this.dispatchEvent("appointment_updated", {
@@ -377,13 +378,13 @@ class WebSocketTanStackService {
       );
     }
 
-    // Invalidate related queries to trigger refetch (for filtered lists, etc.)
-    queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "today"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "date"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] });
-    queryClient.invalidateQueries({ queryKey: ["availability"] });
+    // Use comprehensive cache invalidation that includes operator-specific queries
+    invalidateAppointmentCaches(queryClient, {
+      userRole: "operator", // Invalidate operator-specific caches
+      invalidateAll: true, // Comprehensive invalidation for WebSocket updates
+    }).catch((error) => {
+      console.error("❌ WebSocket cache invalidation failed:", error);
+    });
 
     // Dispatch event for listeners
     this.dispatchEvent("appointment_deleted", {
