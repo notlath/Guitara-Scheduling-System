@@ -98,14 +98,27 @@ class WebSocketTanStackService {
       // Get auth token from localStorage if not provided
       const authToken = token || getToken();
 
+      // Debug environment variables
+      console.log("🔍 WebSocket Environment Debug:", {
+        PROD: import.meta.env.PROD,
+        DEV: import.meta.env.DEV,
+        MODE: import.meta.env.MODE,
+        VITE_WS_BASE_URL: import.meta.env.VITE_WS_BASE_URL,
+      });
+
       // Build WebSocket URL with authentication
       const wsUrl = import.meta.env.PROD
         ? "wss://charismatic-appreciation-production.up.railway.app/ws/scheduling/appointments/"
         : import.meta.env.VITE_WS_BASE_URL ||
           "ws://localhost:8000/ws/scheduling/appointments/";
+
+      console.log("🔗 WebSocket URL constructed:", wsUrl);
+
       const wsUrlWithAuth = authToken
         ? `${wsUrl}?token=${encodeURIComponent(authToken)}`
         : wsUrl;
+
+      console.log("🔗 Final WebSocket URL with auth:", wsUrlWithAuth);
 
       this.ws = new WebSocket(wsUrlWithAuth);
 

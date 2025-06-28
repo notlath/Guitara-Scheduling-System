@@ -140,7 +140,102 @@ export const useInstantUpdates = () => {
     [dispatch, queryClient, user]
   );
 
-  return { performInstantUpdate };
+  /**
+   * Operator-specific instant update functions
+   */
+  const updateAppointmentInstantly = useCallback(
+    async (appointmentId, updates) => {
+      const { updateAppointmentStatus } = await import(
+        "../features/scheduling/schedulingSlice"
+      );
+
+      return performInstantUpdate({
+        appointmentId,
+        reduxAction: updateAppointmentStatus({ appointmentId, ...updates }),
+        optimisticUpdate: { ...updates, updated_at: new Date().toISOString() },
+        errorMessage: "Failed to update appointment. Please try again.",
+      });
+    },
+    [performInstantUpdate]
+  );
+
+  const markPaymentPaidInstantly = useCallback(
+    async (appointmentId, paymentData) => {
+      const { markAppointmentPaid } = await import(
+        "../features/scheduling/schedulingSlice"
+      );
+
+      return performInstantUpdate({
+        appointmentId,
+        reduxAction: markAppointmentPaid({ appointmentId, ...paymentData }),
+        optimisticUpdate: {
+          status: "paid",
+          payment_status: "paid",
+          payment_verified_at: new Date().toISOString(),
+          payment_method: paymentData.method,
+        },
+        errorMessage: "Failed to mark payment as paid. Please try again.",
+      });
+    },
+    [performInstantUpdate]
+  );
+
+  const reviewRejectionInstantly = useCallback(
+    async (appointmentId, reviewDecision, reviewNotes) => {
+      const { reviewRejection } = await import(
+        "../features/scheduling/schedulingSlice"
+      );
+
+      return performInstantUpdate({
+        appointmentId,
+        reduxAction: reviewRejection({
+          appointmentId,
+          reviewDecision,
+          reviewNotes,
+        }),
+        optimisticUpdate: {
+          status: reviewDecision === "approve" ? "pending" : "cancelled",
+          rejection_reviewed: true,
+          rejection_review_decision: reviewDecision,
+          rejection_review_notes: reviewNotes,
+          rejection_reviewed_at: new Date().toISOString(),
+        },
+        errorMessage: "Failed to review rejection. Please try again.",
+      });
+    },
+    [performInstantUpdate]
+  );
+
+  const autoCancelOverdueInstantly = useCallback(async () => {
+    const { autoCancelOverdue } = await import(
+      "../features/scheduling/schedulingSlice"
+    );
+
+    try {
+      const result = await dispatch(autoCancelOverdue()).unwrap();
+
+      // Invalidate all appointment caches to refresh the data
+      await invalidateAppointmentCaches(queryClient, {
+        userId: user?.id,
+        userRole: user?.role,
+        invalidateAll: true,
+      });
+
+      return result;
+    } catch {
+      throw new Error(
+        "Failed to auto-cancel overdue appointments. Please try again."
+      );
+    }
+  }, [dispatch, queryClient, user]);
+
+  return {
+    performInstantUpdate,
+    updateAppointmentInstantly,
+    markPaymentPaidInstantly,
+    reviewRejectionInstantly,
+    autoCancelOverdueInstantly,
+  };
 };
 
 /**

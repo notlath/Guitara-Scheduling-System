@@ -189,23 +189,134 @@ const fetchNotificationsAPI = async () => {
 
     console.log("✅ Direct API: Notifications fetched successfully", {
       status: response.status,
-      count: response.data?.length || 0,
+      count: response.data?.length || response.data?.count || 0,
       dataType: typeof response.data,
       isArray: Array.isArray(response.data),
+      hasResults: response.data?.results !== undefined,
+      hasCount: response.data?.count !== undefined,
+      hasTotalPages: response.data?.total_pages !== undefined,
+      fullStructure: response.data,
     });
 
     // Process the response data to ensure we always return an array
     if (Array.isArray(response.data)) {
+      console.log("✅ Notifications: Direct array format detected");
       return response.data;
     } else if (response.data && Array.isArray(response.data.notifications)) {
+      console.log(
+        "✅ Notifications: Nested notifications array format detected"
+      );
       return response.data.notifications;
     } else if (response.data && Array.isArray(response.data.results)) {
+      console.log("✅ Notifications: Paginated results array format detected", {
+        count: response.data.count,
+        totalPages: response.data.total_pages,
+        currentPage: response.data.current_page,
+        resultsLength: response.data.results.length,
+      });
       return response.data.results;
-    } else {
-      console.warn(
-        "⚠️ Notifications response is not an array, converting to empty array",
-        response.data
+    } else if (
+      response.data &&
+      typeof response.data === "object" &&
+      ("count" in response.data || "total_pages" in response.data)
+    ) {
+      // Handle paginated response with enhanced logging
+      console.log("🔍 Notifications: Paginated response detected", {
+        count: response.data.count,
+        totalPages: response.data.total_pages,
+        currentPage: response.data.current_page,
+        pageSize: response.data.page_size,
+        hasResults: "results" in response.data,
+        resultsType: typeof response.data.results,
+        resultsIsArray: Array.isArray(response.data.results),
+        hasNotifications: "notifications" in response.data,
+        notificationsType: typeof response.data.notifications,
+        notificationsIsArray: Array.isArray(response.data.notifications),
+        allKeys: Object.keys(response.data),
+        fullData: response.data,
+      });
+
+      if (Array.isArray(response.data.results)) {
+        console.log("✅ Notifications: Returning paginated results array");
+        return response.data.results;
+      } else if (Array.isArray(response.data.notifications)) {
+        console.log(
+          "✅ Notifications: Returning paginated notifications array"
+        );
+        return response.data.notifications;
+      } else if (
+        response.data.results === null ||
+        response.data.results === undefined
+      ) {
+        console.warn(
+          "⚠️ Notifications: Paginated response missing results field",
+          response.data
+        );
+        // Check if this is a case where the API is returning paginated metadata without data
+        if (response.data.count === 0) {
+          console.log(
+            "✅ Notifications: Empty dataset with pagination metadata"
+          );
+          return [];
+        } else {
+          console.error(
+            "❌ Notifications: API returned pagination metadata but no results field despite count > 0",
+            {
+              count: response.data.count,
+              hasNext: !!response.data.next,
+              hasPrevious: !!response.data.previous,
+              currentPage: response.data.current_page,
+              totalPages: response.data.total_pages,
+            }
+          );
+          // Return empty array but log this as a backend API issue
+          return [];
+        }
+      } else {
+        console.warn(
+          "⚠️ Notifications: Paginated response has non-array results",
+          {
+            resultsType: typeof response.data.results,
+            results: response.data.results,
+            fullResponse: response.data,
+          }
+        );
+        return [];
+      }
+    } else if (
+      response.data &&
+      typeof response.data === "object" &&
+      response.data.count !== undefined
+    ) {
+      // Handle edge case: pagination metadata exists but no results/notifications field
+      console.error(
+        "❌ Notifications: Paginated response with count but no data array",
+        {
+          count: response.data.count,
+          totalPages: response.data.total_pages,
+          allKeys: Object.keys(response.data),
+          sampleData: response.data,
+        }
       );
+
+      // This suggests a backend API issue - pagination metadata without data
+      if (response.data.count === 0) {
+        console.log("✅ Notifications: Empty result set");
+        return [];
+      } else {
+        console.error(
+          "🚨 Notifications: Backend API error - has count but no data field"
+        );
+        return [];
+      }
+    } else {
+      console.warn("⚠️ Notifications: Unrecognized response format", {
+        dataType: typeof response.data,
+        isArray: Array.isArray(response.data),
+        hasCount: response.data?.count !== undefined,
+        hasResults: response.data?.results !== undefined,
+        fullData: response.data,
+      });
       return [];
     }
   } catch (error) {
