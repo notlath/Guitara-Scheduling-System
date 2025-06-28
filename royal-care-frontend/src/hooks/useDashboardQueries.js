@@ -245,6 +245,20 @@ const fetchNotificationsAPI = async () => {
         );
         return response.data.notifications;
       } else if (
+        response.data.results &&
+        typeof response.data.results === "object" &&
+        Array.isArray(response.data.results.notifications)
+      ) {
+        // Handle nested notifications structure: { results: { notifications: [...] } }
+        console.log(
+          "✅ Notifications: Returning nested paginated notifications array",
+          {
+            notificationsLength: response.data.results.notifications.length,
+            unreadCount: response.data.results.unreadCount,
+          }
+        );
+        return response.data.results.notifications;
+      } else if (
         response.data.results === null ||
         response.data.results === undefined
       ) {
