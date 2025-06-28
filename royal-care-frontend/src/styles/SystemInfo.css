@@ -1,18 +1,4 @@
 /* System Information Page Styles */
-/* .system-info-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--spacing-md);
-}
-
-.system-info-content {
-  max-width: 1000px;
-  margin: 0 auto;
-  background-color: var(--background);
-  border-radius: 12px;
-  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-} */
 
 .system-info-header {
   position: relative;
@@ -49,10 +35,6 @@
   opacity: 0.9;
   font-size: 1.1rem;
 }
-
-/* .system-info-body {
-  padding: 2.5rem;
-} */
 
 .info-section {
   margin-bottom: 3rem;
@@ -123,11 +105,6 @@
   line-height: 1.7;
   transition: all 0.2s ease;
 }
-/* 
-.info-section li:hover {
-  padding-left: 2.2rem;
-  color: var(--primary-700);
-} */
 
 .info-section li::before {
   content: "";
@@ -141,11 +118,6 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
 }
-
-/* .info-section li:hover::before {
-  transform: scale(1.2);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-} */
 
 /* Nested List Support */
 .info-section ul ul {
@@ -244,11 +216,6 @@
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
-/* .stack-group:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-} */
-
 .stack-group h3 {
   margin-top: 0;
   color: var(--primary);
@@ -276,11 +243,6 @@
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
-/* .architecture-item:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-} */
-
 .architecture-item h4 {
   margin-top: 0;
   color: var(--primary);
@@ -303,11 +265,6 @@
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
-/* .security-item:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-} */
-
 .security-item h4 {
   margin-top: 0;
   color: var(--primary);
@@ -329,11 +286,6 @@
   padding: 1.5rem;
   transition: transform 0.3s, box-shadow 0.3s;
 }
-
-/* .requirements-group:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-} */
 
 .requirements-group h4 {
   margin-top: 0;
@@ -359,15 +311,6 @@
   line-height: 1.7;
   transition: all 0.2s ease;
 }
-
-/* .roadmap-list li:hover {
-  padding-left: 2.5rem;
-  color: var(--primary-700);
-} */
-
-/* .roadmap-list li:hover::before {
-  transform: scale(1.1);
-} */
 
 .roadmap-list li:last-child {
   margin-bottom: 0;
