@@ -53,11 +53,13 @@
 
 .userInfoSection {
   flex: 1;
+  align-self: flex-start;
+  padding-top: var(--spacing-mxl);
 }
 
 .fullName {
   margin: 0 0 var(--spacing-xs) 0;
-  color: var(--primary-800);
+  /* color: var(--primary-800); */
   font-size: 2rem;
   font-weight: 700;
 }
@@ -126,16 +128,10 @@
   transition: all 0.2s ease;
 }
 
-.infoCard:hover {
-  background: var(--background-25);
-  border-color: var(--background-200);
-}
-
 .infoLabel {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-600);
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: var(--spacing-xs);
 }
@@ -156,7 +152,6 @@
   border-radius: 16px;
   font-size: 0.75rem;
   font-weight: 500;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
@@ -217,18 +212,18 @@
 }
 
 /* Main Container */
-.container {
+/* .container {
   padding: var(--spacing-lg) 0;
-}
+} */
 
-.content {
+/* .content {
   max-width: var(--container-max-width);
   margin: 0 auto;
   background: var(--background);
   border-radius: 8px;
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
   overflow: hidden;
-}
+} */
 
 /* Loading and Error States */
 .loadingContainer {
@@ -262,7 +257,7 @@
 
 /* User Email */
 .userEmail {
-  color: var(--text-600);
+  /* color: var(--text-600) ; */
   margin: 0 0 var(--spacing-xs) 0;
   font-size: 0.9rem;
 }
@@ -495,6 +490,7 @@
 
   .fullName {
     font-size: var(--font-size-lg);
+    /* font-weight: 700; */
   }
 
   .infoGrid {
