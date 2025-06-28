@@ -236,8 +236,8 @@
 
 .loadingContainer p {
   margin-top: var(--spacing-sm);
-  color: var(--text-600);
-  font-size: 0.9rem;
+  color: var(--muted);
+  font-size: var(--font-size-sm);
 }
 
 .noDataMessage {

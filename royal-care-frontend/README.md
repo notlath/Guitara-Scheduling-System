@@ -1,6 +1,18 @@
 # Royal Care Frontend
 
-This is the frontend for the Royal Care Scheduling System, built with **React** and **Vite**. It connects to a Django backend and provides a modern, responsi6. **CSS Location & Inline Styles:**
+This is the frontend for the Royal Care Scheduling System, built with **React** and **Vite**. It connects to a Django backend and provides a modern, responsi6. **CSS Location &7. **CSS Location & Inline Styles:**
+
+   - Place all new CSS in the appropriate file in `src/styles/` or the relevant `.module.css` file for the component or page.
+   - **Avoid doing inline styles as much as possible! Use the corresponding CSS files instead.**
+   - Only use inline styles if absolutely necessary and there is no better alternative.
+
+8. **Component Placement:**
+
+   - Add new components in the correct directory based on their function.
+   - Avoid creating duplicate or redundant components.
+
+9. **Testing:**
+   - Test all features across different user roles and screen sizes before submitting changes.s:**
 
 - Place all new CSS in the appropriate file in `src/styles/` or the relevant `.module.css` file for the component or page.
 - **Avoid doing inline styles as much as possible! Use the corresponding CSS files instead.**
@@ -192,7 +204,14 @@ This frontend connects to the Django backend located in the `/guitara` directory
    - Let text display in its natural case for better readability and user experience.
    - If uppercase styling is absolutely necessary for design purposes, handle it in the content itself rather than CSS transformation.
 
-6. **CSS Location & Inline Styles:**
+6. **Icons:**
+
+   - **ONLY use Material Design icons from `react-icons/md`.**
+   - Import Material Design icons like: `import { MdIconName } from "react-icons/md";`
+   - Do not use icons from other libraries (FontAwesome, Heroicons, etc.) to maintain design consistency.
+   - Material Design icons ensure consistent visual language throughout the application.
+
+7. **CSS Location & Inline Styles:**
 
    - Place all new CSS in the appropriate file in `src/styles/` or the relevant `.module.css` file for the component or page.
    - **Avoid doing inline styles as much as possible! Use the corresponding CSS files instead.**
