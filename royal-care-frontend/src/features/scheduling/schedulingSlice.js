@@ -686,13 +686,32 @@ export const reviewRejection = createAsyncThunk(
     const token = getToken();
     if (!token) return rejectWithValue("Authentication required");
 
+    console.log("🔍 reviewRejection thunk - DETAILED DEBUG:", {
+      id,
+      idType: typeof id,
+      reviewDecision,
+      reviewDecisionType: typeof reviewDecision,
+      reviewNotes,
+      reviewNotesType: typeof reviewNotes,
+      token: token ? "present" : "missing",
+      apiUrl: `${API_URL}appointments/${id}/review_rejection/`,
+    });
+
     try {
+      const payload = {
+        action: reviewDecision,
+        reason: reviewNotes,
+      };
+
+      console.log("🔍 reviewRejection thunk - Making API request:", {
+        url: `${API_URL}appointments/${id}/review_rejection/`,
+        payload,
+        headers: { Authorization: `Token ${token}` },
+      });
+
       const response = await axios.post(
         `${API_URL}appointments/${id}/review_rejection/`,
-        {
-          action: reviewDecision,
-          reason: reviewNotes,
-        },
+        payload,
         {
           headers: { Authorization: `Token ${token}` },
         }

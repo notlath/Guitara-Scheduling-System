@@ -182,6 +182,15 @@ export const useInstantUpdates = () => {
 
   const reviewRejectionInstantly = useCallback(
     async (appointmentId, reviewDecision, reviewNotes) => {
+      console.log("🔍 reviewRejectionInstantly - ENTRY DEBUG:", {
+        appointmentId,
+        appointmentIdType: typeof appointmentId,
+        reviewDecision,
+        reviewDecisionType: typeof reviewDecision,
+        reviewNotes,
+        reviewNotesType: typeof reviewNotes,
+      });
+
       const { reviewRejection } = await import(
         "../features/scheduling/schedulingSlice"
       );
@@ -189,12 +198,12 @@ export const useInstantUpdates = () => {
       return performInstantUpdate({
         appointmentId,
         reduxAction: reviewRejection({
-          appointmentId,
+          id: appointmentId,
           reviewDecision,
           reviewNotes,
         }),
         optimisticUpdate: {
-          status: reviewDecision === "approve" ? "pending" : "cancelled",
+          status: reviewDecision === "accept" ? "cancelled" : "confirmed",
           rejection_reviewed: true,
           rejection_review_decision: reviewDecision,
           rejection_review_notes: reviewNotes,
