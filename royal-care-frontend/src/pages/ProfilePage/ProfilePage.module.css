@@ -5,46 +5,12 @@
 
 /* If you need to add ProfilePage-specific tweaks, use more specific selectors: */
 
-/* Header Section */
-.header {
-  background: linear-gradient(
-    135deg,
-    var(--primary-50) 0%,
-    var(--primary-100) 100%
-  );
-  padding: var(--spacing-lg);
-  text-align: center;
-  border-bottom: 1px solid var(--background-100);
-}
-
-.pageTitle {
-  margin: 0 0 var(--spacing-xs) 0;
-  color: var(--primary-800);
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.pageSubtitle {
-  color: var(--text-600);
-  margin: 0;
-  font-size: 0.9rem;
-}
-
 /* User Profile Header with Photo */
 .userProfileHeader {
-  /* background: linear-gradient(
-    135deg,
-    var(--primary-50) 0%,
-    var(--primary-100) 100%
-  ); */
-  /* border-radius: 8px; */
-  /* padding: var(--spacing-lg); */
   margin: var(--spacing-lg);
-  /* border: 1px solid var(--primary-200); */
   display: flex;
   align-items: center;
   gap: var(--spacing-lg);
-  /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); */
 }
 
 .profilePhotoSection {
@@ -59,7 +25,6 @@
 
 .fullName {
   margin: 0 0 var(--spacing-xs) 0;
-  /* color: var(--primary-800); */
   font-size: 2rem;
   font-weight: 700;
 }
@@ -257,7 +222,6 @@
 
 /* User Email */
 .userEmail {
-  /* color: var(--text-600) ; */
   margin: 0 0 var(--spacing-xs) 0;
   font-size: 0.9rem;
 }
