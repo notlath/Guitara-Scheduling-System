@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket URL Debug</title>
+</head>
+<body>
+    <h1>WebSocket URL Debug</h1>
+    
+    <div id="env-vars">
+        <h2>Environment Variables:</h2>
+        <div id="env-output"></div>
+    </div>
+    
+    <div id="websocket-test">
+        <h2>WebSocket URL Test:</h2>
+        <div id="websocket-output"></div>
+    </div>
+
+    <script type="module">
+        // Get environment variables
+        const envVars = {
+            'VITE_API_BASE_URL': import.meta.env.VITE_API_BASE_URL,
+            'VITE_WS_BASE_URL': import.meta.env.VITE_WS_BASE_URL,
+            'PROD': import.meta.env.PROD,
+            'DEV': import.meta.env.DEV,
+            'MODE': import.meta.env.MODE
+        };
+        
+        const envOutput = document.getElementById('env-output');
+        const websocketOutput = document.getElementById('websocket-output');
+        
+        // Display environment variables
+        let envHtml = '<ul>';
+        for (const [key, value] of Object.entries(envVars)) {
+            envHtml += `<li><strong>${key}:</strong> ${value}</li>`;
+        }
+        envHtml += '</ul>';
+        envOutput.innerHTML = envHtml;
+        
+        // Test WebSocket URL construction (same logic as webSocketTanStackService.js)
+        const token = 'test-token';
+        const wsUrl = import.meta.env.PROD
+            ? "wss://charismatic-appreciation-production.up.railway.app/ws/scheduling/appointments/"
+            : import.meta.env.VITE_WS_BASE_URL ||
+              "ws://localhost:8000/ws/scheduling/appointments/";
+        const wsUrlWithAuth = token
+            ? `${wsUrl}?token=${encodeURIComponent(token)}`
+            : wsUrl;
+            
+        websocketOutput.innerHTML = `
+            <ul>
+                <li><strong>Base WebSocket URL:</strong> ${wsUrl}</li>
+                <li><strong>WebSocket URL with Auth:</strong> ${wsUrlWithAuth}</li>
+                <li><strong>Is Production:</strong> ${import.meta.env.PROD}</li>
+                <li><strong>Environment Mode:</strong> ${import.meta.env.MODE}</li>
+            </ul>
+        `;
+        
+        // Log to console as well
+        console.log('🔍 WebSocket URL Debug:', {
+            envVars,
+            wsUrl,
+            wsUrlWithAuth,
+            isProd: import.meta.env.PROD,
+            mode: import.meta.env.MODE
+        });
+    </script>
+</body>
+</html>

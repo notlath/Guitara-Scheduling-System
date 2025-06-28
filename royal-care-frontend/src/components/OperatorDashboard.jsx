@@ -437,19 +437,21 @@ const OperatorDashboard = () => {
       // This ensures we get consistent server-side pagination
       const token = getToken();
       if (!token) throw new Error("Authentication required");
-      
+
       console.log("🔄 All Appointments Query: Fetching from API", {
         currentPage,
         pageSize: paginationInfo.pageSize,
-        url: `${getBaseURL()}/scheduling/appointments/?page=${currentPage}&page_size=${paginationInfo.pageSize}`
+        url: `${getBaseURL()}/scheduling/appointments/?page=${currentPage}&page_size=${
+          paginationInfo.pageSize
+        }`,
       });
-      
+
       const result = await enhancedFetch(
         `${getBaseURL()}/scheduling/appointments/?page=${currentPage}&page_size=${
           paginationInfo.pageSize
         }`
       );
-      
+
       console.log("✅ All Appointments Query: API result", {
         hasResults: !!result?.results,
         resultsCount: result?.results?.length || 0,
@@ -457,9 +459,9 @@ const OperatorDashboard = () => {
         totalPages: result?.total_pages || 0,
         currentPage: result?.current_page || 1,
         hasNext: result?.has_next || false,
-        hasPrevious: result?.has_previous || false
+        hasPrevious: result?.has_previous || false,
       });
-      
+
       return result;
     },
     enabled: currentView === "all",
@@ -615,34 +617,34 @@ const OperatorDashboard = () => {
         exists: !!tabData,
         type: typeof tabData,
         isArray: Array.isArray(tabData),
-        hasResults: !!(tabData?.results),
+        hasResults: !!tabData?.results,
         resultsLength: tabData?.results?.length,
         count: tabData?.count,
         totalPages: tabData?.total_pages,
         currentPage: tabData?.current_page,
         pageSize: tabData?.page_size,
         hasNext: tabData?.has_next,
-        hasPrevious: tabData?.has_previous
-      }
+        hasPrevious: tabData?.has_previous,
+      },
     });
 
-    if (tabData && typeof tabData === 'object') {
+    if (tabData && typeof tabData === "object") {
       if (tabData.results && Array.isArray(tabData.results)) {
         // Paginated response from DRF
         const safeTotalPages = Math.max(1, tabData.total_pages || 1);
         const safeCount = Math.max(0, tabData.count || 0);
         const safeCurrentPage = Math.max(1, tabData.current_page || 1);
         const safePageSize = Math.max(1, tabData.page_size || 8);
-        
+
         console.log("📄 Setting paginated pagination info:", {
           count: safeCount,
           totalPages: safeTotalPages,
           currentPage: safeCurrentPage,
           pageSize: safePageSize,
           hasNext: tabData.has_next || false,
-          hasPrevious: tabData.has_previous || false
+          hasPrevious: tabData.has_previous || false,
         });
-        
+
         setPaginationInfo({
           count: safeCount,
           totalPages: safeTotalPages,
@@ -660,9 +662,9 @@ const OperatorDashboard = () => {
           currentPage: 1,
           pageSize: Math.max(1, dataLength),
           hasNext: false,
-          hasPrevious: false
+          hasPrevious: false,
         });
-        
+
         setPaginationInfo({
           count: dataLength,
           totalPages: 1,
@@ -829,10 +831,12 @@ const OperatorDashboard = () => {
         exists: !!tabData,
         type: typeof tabData,
         isArray: Array.isArray(tabData),
-        hasResults: !!(tabData?.results),
+        hasResults: !!tabData?.results,
         resultsLength: tabData?.results?.length,
-        directArrayLength: Array.isArray(tabData) ? tabData.length : 'not array'
-      }
+        directArrayLength: Array.isArray(tabData)
+          ? tabData.length
+          : "not array",
+      },
     });
 
     if (!tabData) {
@@ -841,8 +845,17 @@ const OperatorDashboard = () => {
     }
 
     // Handle paginated responses (DRF standard format)
-    if (tabData && typeof tabData === 'object' && tabData.results && Array.isArray(tabData.results)) {
-      console.log("✅ Processing paginated response:", tabData.results.length, "items");
+    if (
+      tabData &&
+      typeof tabData === "object" &&
+      tabData.results &&
+      Array.isArray(tabData.results)
+    ) {
+      console.log(
+        "✅ Processing paginated response:",
+        tabData.results.length,
+        "items"
+      );
       return {
         appointments: tabData.results,
         filteredAppointments: tabData.results,
@@ -851,8 +864,12 @@ const OperatorDashboard = () => {
 
     // Handle direct arrays (non-paginated responses)
     if (Array.isArray(tabData)) {
-      console.log("✅ Processing direct array response:", tabData.length, "items");
-      
+      console.log(
+        "✅ Processing direct array response:",
+        tabData.length,
+        "items"
+      );
+
       // For appointment-based tabs, return the array directly
       if (
         currentView !== "attendance" &&
@@ -2489,7 +2506,7 @@ const OperatorDashboard = () => {
 
   const renderAllAppointments = () => {
     const appointments = processedTabData.filteredAppointments || [];
-    
+
     console.log("🔍 Render All Appointments Debug:", {
       currentView,
       tabLoading,
@@ -2498,18 +2515,21 @@ const OperatorDashboard = () => {
         exists: !!tabData,
         type: typeof tabData,
         isArray: Array.isArray(tabData),
-        hasResults: !!(tabData?.results),
+        hasResults: !!tabData?.results,
         resultsCount: tabData?.results?.length,
-        directArrayLength: Array.isArray(tabData) ? tabData.length : 'not array'
+        directArrayLength: Array.isArray(tabData)
+          ? tabData.length
+          : "not array",
       },
       processedTabData: {
         exists: !!processedTabData,
         appointmentsLength: processedTabData?.appointments?.length,
-        filteredAppointmentsLength: processedTabData?.filteredAppointments?.length
+        filteredAppointmentsLength:
+          processedTabData?.filteredAppointments?.length,
       },
       appointments: {
         length: appointments.length,
-        isArray: Array.isArray(appointments)
+        isArray: Array.isArray(appointments),
       },
       paginationInfo: {
         count: paginationInfo.count,
@@ -2517,8 +2537,8 @@ const OperatorDashboard = () => {
         currentPage: paginationInfo.currentPage,
         pageSize: paginationInfo.pageSize,
         hasNext: paginationInfo.hasNext,
-        hasPrevious: paginationInfo.hasPrevious
-      }
+        hasPrevious: paginationInfo.hasPrevious,
+      },
     });
 
     return (
@@ -2710,27 +2730,35 @@ const OperatorDashboard = () => {
             className="appointments-pagination"
           />
         )}
-        
+
         {/* Debug Information (only in development) */}
         {import.meta.env.DEV && (
-          <div className="debug-info" style={{
-            position: 'fixed',
-            bottom: '10px',
-            right: '10px',
-            background: 'rgba(0,0,0,0.8)',
-            color: 'white',
-            padding: '10px',
-            borderRadius: '5px',
-            fontSize: '12px',
-            zIndex: 9999,
-            maxWidth: '300px'
-          }}>
-            <strong>Debug - All Appointments:</strong><br/>
-            Data: {appointments.length} items<br/>
-            Page: {paginationInfo.currentPage}/{paginationInfo.totalPages}<br/>
-            Total: {paginationInfo.count} appointments<br/>
-            Loading: {tabLoading ? 'Yes' : 'No'}<br/>
-            Error: {tabError ? 'Yes' : 'No'}
+          <div
+            className="debug-info"
+            style={{
+              position: "fixed",
+              bottom: "10px",
+              right: "10px",
+              background: "rgba(0,0,0,0.8)",
+              color: "white",
+              padding: "10px",
+              borderRadius: "5px",
+              fontSize: "12px",
+              zIndex: 9999,
+              maxWidth: "300px",
+            }}
+          >
+            <strong>Debug - All Appointments:</strong>
+            <br />
+            Data: {appointments.length} items
+            <br />
+            Page: {paginationInfo.currentPage}/{paginationInfo.totalPages}
+            <br />
+            Total: {paginationInfo.count} appointments
+            <br />
+            Loading: {tabLoading ? "Yes" : "No"}
+            <br />
+            Error: {tabError ? "Yes" : "No"}
           </div>
         )}
       </div>
