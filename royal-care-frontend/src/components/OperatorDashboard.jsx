@@ -433,32 +433,34 @@ const OperatorDashboard = () => {
   const allAppointmentsQuery = useQuery({
     queryKey: ["operator", "all", currentPage],
     queryFn: async () => {
-      // Use the TanStack Query data when available, otherwise fetch directly
-      if (appointments && appointments.length > 0) {
-        // Simulate pagination for client-side data
-        const startIndex = (currentPage - 1) * paginationInfo.pageSize;
-        const endIndex = startIndex + paginationInfo.pageSize;
-        const paginatedData = appointments.slice(startIndex, endIndex);
-
-        return {
-          results: paginatedData,
-          count: appointments.length,
-          total_pages: Math.ceil(appointments.length / paginationInfo.pageSize),
-          current_page: currentPage,
-          page_size: paginationInfo.pageSize,
-          has_next: endIndex < appointments.length,
-          has_previous: currentPage > 1,
-        };
-      }
-
-      // Fallback to direct API call
+      // Always fetch directly from API for "All Appointments" to avoid pagination issues
+      // This ensures we get consistent server-side pagination
       const token = getToken();
       if (!token) throw new Error("Authentication required");
-      return await enhancedFetch(
+      
+      console.log("🔄 All Appointments Query: Fetching from API", {
+        currentPage,
+        pageSize: paginationInfo.pageSize,
+        url: `${getBaseURL()}/scheduling/appointments/?page=${currentPage}&page_size=${paginationInfo.pageSize}`
+      });
+      
+      const result = await enhancedFetch(
         `${getBaseURL()}/scheduling/appointments/?page=${currentPage}&page_size=${
           paginationInfo.pageSize
         }`
       );
+      
+      console.log("✅ All Appointments Query: API result", {
+        hasResults: !!result?.results,
+        resultsCount: result?.results?.length || 0,
+        totalCount: result?.count || 0,
+        totalPages: result?.total_pages || 0,
+        currentPage: result?.current_page || 1,
+        hasNext: result?.has_next || false,
+        hasPrevious: result?.has_previous || false
+      });
+      
+      return result;
     },
     enabled: currentView === "all",
     staleTime: 0,
@@ -607,28 +609,93 @@ const OperatorDashboard = () => {
   const tabError = currentTabQuery?.error;
   // ✅ TANSTACK QUERY: Update pagination info when tab data changes
   useEffect(() => {
-    if (tabData && tabData.results) {
-      // Paginated response from DRF
-      setPaginationInfo({
-        count: tabData.count,
-        totalPages: tabData.total_pages,
-        currentPage: tabData.current_page,
-        pageSize: tabData.page_size,
-        hasNext: tabData.has_next,
-        hasPrevious: tabData.has_previous,
-      });
+    console.log("🔍 Pagination Info Update - Debug:", {
+      currentView,
+      tabData: {
+        exists: !!tabData,
+        type: typeof tabData,
+        isArray: Array.isArray(tabData),
+        hasResults: !!(tabData?.results),
+        resultsLength: tabData?.results?.length,
+        count: tabData?.count,
+        totalPages: tabData?.total_pages,
+        currentPage: tabData?.current_page,
+        pageSize: tabData?.page_size,
+        hasNext: tabData?.has_next,
+        hasPrevious: tabData?.has_previous
+      }
+    });
+
+    if (tabData && typeof tabData === 'object') {
+      if (tabData.results && Array.isArray(tabData.results)) {
+        // Paginated response from DRF
+        const safeTotalPages = Math.max(1, tabData.total_pages || 1);
+        const safeCount = Math.max(0, tabData.count || 0);
+        const safeCurrentPage = Math.max(1, tabData.current_page || 1);
+        const safePageSize = Math.max(1, tabData.page_size || 8);
+        
+        console.log("📄 Setting paginated pagination info:", {
+          count: safeCount,
+          totalPages: safeTotalPages,
+          currentPage: safeCurrentPage,
+          pageSize: safePageSize,
+          hasNext: tabData.has_next || false,
+          hasPrevious: tabData.has_previous || false
+        });
+        
+        setPaginationInfo({
+          count: safeCount,
+          totalPages: safeTotalPages,
+          currentPage: safeCurrentPage,
+          pageSize: safePageSize,
+          hasNext: tabData.has_next || false,
+          hasPrevious: tabData.has_previous || false,
+        });
+      } else if (Array.isArray(tabData)) {
+        // Direct array response (for non-paginated views)
+        const dataLength = tabData.length;
+        console.log("📄 Setting array pagination info:", {
+          count: dataLength,
+          totalPages: 1,
+          currentPage: 1,
+          pageSize: Math.max(1, dataLength),
+          hasNext: false,
+          hasPrevious: false
+        });
+        
+        setPaginationInfo({
+          count: dataLength,
+          totalPages: 1,
+          currentPage: 1,
+          pageSize: Math.max(1, dataLength),
+          hasNext: false,
+          hasPrevious: false,
+        });
+      } else {
+        // Other data types - set default pagination
+        console.log("📄 Setting default pagination info for unknown data type");
+        setPaginationInfo({
+          count: 0,
+          totalPages: 1,
+          currentPage: 1,
+          pageSize: 8,
+          hasNext: false,
+          hasPrevious: false,
+        });
+      }
     } else {
-      // Non-paginated response (for attendance, notifications, etc.)
+      // No data or null data
+      console.log("📄 Setting empty pagination info");
       setPaginationInfo({
-        count: Array.isArray(tabData) ? tabData.length : 0,
+        count: 0,
         totalPages: 1,
         currentPage: 1,
-        pageSize: Array.isArray(tabData) ? tabData.length : 0,
+        pageSize: 8,
         hasNext: false,
         hasPrevious: false,
       });
     }
-  }, [tabData]);
+  }, [tabData, currentView]);
 
   // ✅ TANSTACK QUERY: Refresh current tab data
   const refreshCurrentTab = useCallback(() => {
@@ -756,29 +823,49 @@ const OperatorDashboard = () => {
 
   // ✅ SIMPLIFIED: Create filtered data based on current tab data
   const processedTabData = useMemo(() => {
-    if (!tabData) return { appointments: [], filteredAppointments: [] };
+    console.log("🔍 Processing Tab Data:", {
+      currentView,
+      tabData: {
+        exists: !!tabData,
+        type: typeof tabData,
+        isArray: Array.isArray(tabData),
+        hasResults: !!(tabData?.results),
+        resultsLength: tabData?.results?.length,
+        directArrayLength: Array.isArray(tabData) ? tabData.length : 'not array'
+      }
+    });
 
-    // Handle paginated responses
-    if (tabData && tabData.results && Array.isArray(tabData.results)) {
+    if (!tabData) {
+      console.log("❌ No tabData available");
+      return { appointments: [], filteredAppointments: [] };
+    }
+
+    // Handle paginated responses (DRF standard format)
+    if (tabData && typeof tabData === 'object' && tabData.results && Array.isArray(tabData.results)) {
+      console.log("✅ Processing paginated response:", tabData.results.length, "items");
       return {
         appointments: tabData.results,
         filteredAppointments: tabData.results,
       };
     }
 
-    // For appointment-based tabs, we now get already filtered data from server
-    // No need for client-side filtering since server handles pagination and filtering
-    if (
-      Array.isArray(tabData) &&
-      currentView !== "attendance" &&
-      currentView !== "notifications" &&
-      currentView !== "driver" &&
-      currentView !== "workflow"
-    ) {
-      return { appointments: tabData, filteredAppointments: tabData };
+    // Handle direct arrays (non-paginated responses)
+    if (Array.isArray(tabData)) {
+      console.log("✅ Processing direct array response:", tabData.length, "items");
+      
+      // For appointment-based tabs, return the array directly
+      if (
+        currentView !== "attendance" &&
+        currentView !== "notifications" &&
+        currentView !== "driver" &&
+        currentView !== "workflow"
+      ) {
+        return { appointments: tabData, filteredAppointments: tabData };
+      }
     }
 
     // For non-appointment views (notifications, attendance, driver, workflow), return as-is
+    console.log("✅ Processing non-appointment view data");
     return { appointments: tabData || [], filteredAppointments: tabData || [] };
   }, [tabData, currentView]);
 
@@ -2402,11 +2489,40 @@ const OperatorDashboard = () => {
 
   const renderAllAppointments = () => {
     const appointments = processedTabData.filteredAppointments || [];
+    
+    console.log("🔍 Render All Appointments Debug:", {
+      currentView,
+      tabLoading,
+      tabError: !!tabError,
+      tabData: {
+        exists: !!tabData,
+        type: typeof tabData,
+        isArray: Array.isArray(tabData),
+        hasResults: !!(tabData?.results),
+        resultsCount: tabData?.results?.length,
+        directArrayLength: Array.isArray(tabData) ? tabData.length : 'not array'
+      },
+      processedTabData: {
+        exists: !!processedTabData,
+        appointmentsLength: processedTabData?.appointments?.length,
+        filteredAppointmentsLength: processedTabData?.filteredAppointments?.length
+      },
+      appointments: {
+        length: appointments.length,
+        isArray: Array.isArray(appointments)
+      },
+      paginationInfo: {
+        count: paginationInfo.count,
+        totalPages: paginationInfo.totalPages,
+        currentPage: paginationInfo.currentPage,
+        pageSize: paginationInfo.pageSize,
+        hasNext: paginationInfo.hasNext,
+        hasPrevious: paginationInfo.hasPrevious
+      }
+    });
 
     return (
       <div className="appointments-list">
-        {/* Urgency Legend */}
-
         {/* Appointments List */}
         <div className="appointments-container">
           {tabLoading ? (
@@ -2428,12 +2544,25 @@ const OperatorDashboard = () => {
                   </p>
                 </div>
               ) : (
-                <div>Error loading appointments: {tabError.message}</div>
+                <div>
+                  <h4>❌ Error loading appointments</h4>
+                  <p>{tabError.message || tabError}</p>
+                  <button onClick={refreshCurrentTab} className="retry-btn">
+                    🔄 Retry
+                  </button>
+                </div>
               )}
             </div>
           ) : appointments.length === 0 ? (
             <div className="no-appointments">
-              No appointments found for the current view.
+              <div className="empty-state">
+                <i className="fas fa-calendar-alt"></i>
+                <h3>No appointments found</h3>
+                <p>There are currently no appointments to display.</p>
+                <button onClick={refreshCurrentTab} className="refresh-btn">
+                  🔄 Refresh Data
+                </button>
+              </div>
             </div>
           ) : (
             <div className="appointments-grid">
@@ -2570,15 +2699,40 @@ const OperatorDashboard = () => {
           )}
         </div>
 
-        {/* Server-side Pagination */}
-        <ServerPagination
-          currentPage={paginationInfo.currentPage}
-          totalPages={paginationInfo.totalPages}
-          hasNext={paginationInfo.hasNext}
-          hasPrevious={paginationInfo.hasPrevious}
-          onPageChange={setPage}
-          className="appointments-pagination"
-        />
+        {/* Server-side Pagination - Only show if totalPages > 1 */}
+        {paginationInfo.totalPages > 1 && (
+          <ServerPagination
+            currentPage={paginationInfo.currentPage}
+            totalPages={paginationInfo.totalPages}
+            hasNext={paginationInfo.hasNext}
+            hasPrevious={paginationInfo.hasPrevious}
+            onPageChange={setPage}
+            className="appointments-pagination"
+          />
+        )}
+        
+        {/* Debug Information (only in development) */}
+        {import.meta.env.DEV && (
+          <div className="debug-info" style={{
+            position: 'fixed',
+            bottom: '10px',
+            right: '10px',
+            background: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            padding: '10px',
+            borderRadius: '5px',
+            fontSize: '12px',
+            zIndex: 9999,
+            maxWidth: '300px'
+          }}>
+            <strong>Debug - All Appointments:</strong><br/>
+            Data: {appointments.length} items<br/>
+            Page: {paginationInfo.currentPage}/{paginationInfo.totalPages}<br/>
+            Total: {paginationInfo.count} appointments<br/>
+            Loading: {tabLoading ? 'Yes' : 'No'}<br/>
+            Error: {tabError ? 'Yes' : 'No'}
+          </div>
+        )}
       </div>
     );
   };

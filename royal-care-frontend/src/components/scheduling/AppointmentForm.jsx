@@ -1305,7 +1305,7 @@ const AppointmentForm = ({
     <div className="appointment-form-container">
       {/* Debug component for troubleshooting client search */}
       {import.meta.env.DEV && <ClientSearchDebug />}
-      
+
       <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
 
       {/* Error Handler Display */}

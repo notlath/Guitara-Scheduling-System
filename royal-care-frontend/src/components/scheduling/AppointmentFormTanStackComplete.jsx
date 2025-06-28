@@ -177,6 +177,7 @@ const AppointmentFormTanStackComplete = ({
   const {
     data: materialsWithStock = [],
     isLoading: isLoadingMaterials,
+    error: materialsError,
     refetch: refetchMaterialsWithStock,
   } = useMaterialsWithStock(formData.services);
 
@@ -326,15 +327,33 @@ const AppointmentFormTanStackComplete = ({
 
   // Update materials when service or materialsWithStock changes (prevent infinite loop)
   useEffect(() => {
+    console.log("🔍 Materials useEffect triggered:", {
+      serviceSelected: !!formData.services,
+      serviceId: formData.services,
+      materialsWithStockLength: materialsWithStock.length,
+      materialsWithStock: materialsWithStock,
+      isLoadingMaterials,
+      materialsError: materialsError?.message || materialsError,
+    });
+
     // Only process materials if a service is selected
     if (!formData.services) {
+      console.log("🚫 No service selected, clearing materials");
+      setMaterials([]);
+      setMaterialQuantities({});
+      return;
+    }
+
+    // If there's an error, clear materials and log it
+    if (materialsError) {
+      console.error("❌ Materials API error:", materialsError);
       setMaterials([]);
       setMaterialQuantities({});
       return;
     }
 
     if (materialsWithStock.length > 0) {
-      console.log("DEBUG materialsWithStock from API:", materialsWithStock);
+      console.log("✅ DEBUG materialsWithStock from API:", materialsWithStock);
       const processedMats = materialsWithStock.map((mat) => ({
         ...mat,
         name:
@@ -357,11 +376,12 @@ const AppointmentFormTanStackComplete = ({
       });
       setMaterialQuantities(initialQuantities);
     } else {
+      console.log("⚠️ No materials found, clearing materials state");
       setMaterials([]);
       setMaterialQuantities({});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.services, materialsWithStock.length]); // Use length instead of the full array to prevent frequent re-renders
+  }, [formData.services, materialsWithStock.length, materialsError]); // Use length instead of the full array to prevent frequent re-renders
 
   // Handle material quantity change
   const handleMaterialQuantityChange = (materialId, value) => {
@@ -791,6 +811,33 @@ const AppointmentFormTanStackComplete = ({
                   }}
                 >
                   Loading materials...
+                </div>
+              ) : materialsError ? (
+                <div
+                  style={{
+                    padding: "12px 0",
+                    color: "#d32f2f",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Error loading materials. Please try refreshing or contact
+                  support if the issue persists.
+                  <button
+                    type="button"
+                    onClick={() => refetchMaterialsWithStock()}
+                    style={{
+                      marginLeft: "8px",
+                      padding: "4px 8px",
+                      fontSize: "12px",
+                      background: "#1976d2",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Retry
+                  </button>
                 </div>
               ) : materials.length === 0 ? (
                 <span style={{ color: "#888" }}>

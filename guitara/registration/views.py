@@ -738,6 +738,7 @@ class RegisterClient(APIView):
         for client in clients:
             data.append(
                 {
+                    "id": client.id,  # ✅ FIX: Add missing ID field for frontend search
                     "first_name": client.first_name,
                     "last_name": client.last_name,
                     "email": client.email or "",
@@ -1435,8 +1436,90 @@ class UserProfileUpdateView(APIView):
 
 class RegistrationMaterialWithStockList(APIView):
     def get(self, request, service_id):
-        materials = RegistrationMaterial.objects.filter(
-            service_id=service_id
-        ).select_related("inventory_item")
-        serializer = RegistrationMaterialSerializer(materials, many=True)
-        return Response(serializer.data)
+        try:
+            logger.info(f"🔍 Fetching materials for service {service_id}")
+
+            # First check if service exists
+            from registration.models import Service
+
+            if not Service.objects.filter(id=service_id).exists():
+                logger.warning(f"Service with ID {service_id} not found")
+                return Response(
+                    {"error": f"Service with ID {service_id} not found"}, status=404
+                )
+
+            # ✅ FIX: Enhanced materials retrieval with better error handling
+            # Remove select_related to avoid potential FK issues
+            materials = RegistrationMaterial.objects.filter(service_id=service_id)
+
+            logger.info(f"Found {materials.count()} materials for service {service_id}")
+
+            if not materials.exists():
+                # Service exists but has no materials - return empty list with helpful message
+                logger.info(f"No materials found for service {service_id}")
+                return Response(
+                    {
+                        "results": [],
+                        "message": "No materials required for this service",
+                        "service_id": service_id,
+                    }
+                )
+
+            # Try to serialize without select_related first
+            try:
+                serializer = RegistrationMaterialSerializer(materials, many=True)
+                serialized_data = serializer.data
+                logger.info(f"Successfully serialized {len(serialized_data)} materials")
+
+                return Response(
+                    {
+                        "results": serialized_data,
+                        "count": materials.count(),
+                        "service_id": service_id,
+                    }
+                )
+            except Exception as serializer_error:
+                logger.error(
+                    f"Serializer error for service {service_id}: {serializer_error}"
+                )
+                # Fallback: return basic material data without using serializer
+                basic_materials = []
+                for mat in materials:
+                    try:
+                        basic_materials.append(
+                            {
+                                "id": mat.id,
+                                "name": mat.name or "Unnamed Material",
+                                "description": mat.description or "No description",
+                                "category": mat.category or "Other",
+                                "unit_of_measure": mat.unit_of_measure or "Unit",
+                                "stock_quantity": mat.stock_quantity or 0,
+                                "current_stock": mat.stock_quantity or 0,  # Fallback
+                                "auto_deduct": mat.auto_deduct,
+                                "reusable": mat.reusable,
+                                "service": mat.service_id,
+                            }
+                        )
+                    except Exception as mat_error:
+                        logger.error(f"Error processing material {mat.id}: {mat_error}")
+                        continue
+
+                logger.info(
+                    f"Fallback serialization successful: {len(basic_materials)} materials"
+                )
+                return Response(
+                    {
+                        "results": basic_materials,
+                        "count": len(basic_materials),
+                        "service_id": service_id,
+                        "fallback": True,
+                    }
+                )
+
+        except Exception as e:
+            logger.error(
+                f"Error fetching materials for service {service_id}: {e}", exc_info=True
+            )
+            return Response(
+                {"error": "Failed to fetch materials", "details": str(e)}, status=500
+            )

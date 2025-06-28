@@ -113,10 +113,12 @@ const LazyClientSearch = ({
       let page = 1;
       let hasMore = true;
       const pageSize = 100; // Use a larger page size to reduce requests
-      
+
       while (hasMore) {
-        console.log(`🔍 LazyClientSearch - Fetching page ${page} with page_size=${pageSize}`);
-        
+        console.log(
+          `🔍 LazyClientSearch - Fetching page ${page} with page_size=${pageSize}`
+        );
+
         const response = await axios.get(
           `${getBaseURL()}/registration/register/client/?page=${page}&page_size=${pageSize}`,
           {
@@ -130,18 +132,20 @@ const LazyClientSearch = ({
           totalPages: response.data.total_pages,
           count: response.data.count,
           hasNext: response.data.has_next,
-          resultsLength: response.data.results?.length
+          resultsLength: response.data.results?.length,
         });
 
         const pageClients = response.data.results || [];
         allClients = [...allClients, ...pageClients];
-        
+
         hasMore = response.data.has_next;
         page++;
-        
+
         // Safety check to prevent infinite loops
         if (page > 20) {
-          console.warn("🔍 LazyClientSearch - Breaking after 20 pages to prevent infinite loop");
+          console.warn(
+            "🔍 LazyClientSearch - Breaking after 20 pages to prevent infinite loop"
+          );
           break;
         }
       }
@@ -150,10 +154,11 @@ const LazyClientSearch = ({
         totalPages: page - 1,
         totalClients: allClients.length,
         firstClient: allClients[0],
-        jessClientsFound: allClients.filter(c => 
-          (c.first_name || '').toLowerCase().includes('jess') || 
-          (c.last_name || '').toLowerCase().includes('jess')
-        ).length
+        jessClientsFound: allClients.filter(
+          (c) =>
+            (c.first_name || "").toLowerCase().includes("jess") ||
+            (c.last_name || "").toLowerCase().includes("jess")
+        ).length,
       });
 
       const clients = allClients;
@@ -163,9 +168,7 @@ const LazyClientSearch = ({
         id: client.id,
         first_name: client.first_name || client.Name?.split(" ")[0] || "",
         last_name:
-          client.last_name ||
-          client.Name?.split(" ").slice(1).join(" ") ||
-          "",
+          client.last_name || client.Name?.split(" ").slice(1).join(" ") || "",
         phone_number: client.phone_number || client.Contact || "",
         email: client.email || client.Email || "",
         address: client.address || client.Address || "",
@@ -195,14 +198,17 @@ const LazyClientSearch = ({
         originalCount: clients.length,
         normalizedCount: normalizedClients.length,
         validatedCount: validatedClients.length,
-        jessClients: validatedClients.filter((c) =>
-          (c.first_name || "").toLowerCase().includes("jess") ||
-          (c.last_name || "").toLowerCase().includes("jess")
-        ).map((c) => ({
-          name: `${c.first_name || ""} ${c.last_name || ""}`.trim(),
-          phone: c.phone_number,
-          original: { first_name: c.first_name, last_name: c.last_name },
-        })),
+        jessClients: validatedClients
+          .filter(
+            (c) =>
+              (c.first_name || "").toLowerCase().includes("jess") ||
+              (c.last_name || "").toLowerCase().includes("jess")
+          )
+          .map((c) => ({
+            name: `${c.first_name || ""} ${c.last_name || ""}`.trim(),
+            phone: c.phone_number,
+            original: { first_name: c.first_name, last_name: c.last_name },
+          })),
       });
 
       // Cache the results
@@ -210,17 +216,19 @@ const LazyClientSearch = ({
         clientCache.setAll(validatedClients);
         console.log("📋 LazyClientSearch - Cached clients:", {
           count: validatedClients.length,
-          sampleNames: validatedClients.slice(0, 3).map(
-            (c) => `${c.first_name || ""} ${c.last_name || ""}`
-          ),
-          jessClients: validatedClients.filter((c) =>
-            (c.first_name || "").toLowerCase().includes("jess") ||
-            (c.last_name || "").toLowerCase().includes("jess")
-          ).map((c) => `${c.first_name || ""} ${c.last_name || ""}`),
+          sampleNames: validatedClients
+            .slice(0, 3)
+            .map((c) => `${c.first_name || ""} ${c.last_name || ""}`),
+          jessClients: validatedClients
+            .filter(
+              (c) =>
+                (c.first_name || "").toLowerCase().includes("jess") ||
+                (c.last_name || "").toLowerCase().includes("jess")
+            )
+            .map((c) => `${c.first_name || ""} ${c.last_name || ""}`),
         });
       }
       setAllClients(validatedClients);
-
     } catch (apiError) {
       console.error("❌ API Error fetching clients:", apiError);
       console.error("❌ API Error details:", {
@@ -264,75 +272,95 @@ const LazyClientSearch = ({
     if (debouncedSearchTerm.length === 0) {
       // Show first 10 clients when no search term
       const result = allClients.slice(0, 10);
-      console.log("🔍 No search term - showing first 10 clients:", result.length);
+      console.log(
+        "🔍 No search term - showing first 10 clients:",
+        result.length
+      );
       return result;
     }
 
     // SIMPLIFIED SEARCH - Use consistent logic for all search term lengths
     const searchLower = debouncedSearchTerm.toLowerCase();
     console.log("🔍 Starting filter with searchLower:", searchLower);
-    
-    const filtered = allClients.filter((client, index) => {
-      // Handle both field naming conventions
-      const firstName = (client.first_name || client.Name?.split(" ")[0] || "").toLowerCase();
-      const lastName = (client.last_name || client.Name?.split(" ").slice(1).join(" ") || "").toLowerCase();
-      const fullName = `${firstName} ${lastName}`.trim();
-      const phone = client.phone_number || client.Contact || "";
-      const email = (client.email || client.Email || "").toLowerCase();
-      
-      // Check if search term appears anywhere in name, phone, or email
-      const nameMatch = fullName.includes(searchLower) || 
-                       firstName.includes(searchLower) || 
-                       lastName.includes(searchLower);
-      const phoneMatch = phone.includes(debouncedSearchTerm);
-      const emailMatch = email.includes(searchLower);
-      
-      const isMatch = nameMatch || phoneMatch || emailMatch;
-      
-      // Enhanced debug logging for all searches, especially "jess"
-      if (searchLower === "jess" || firstName.includes("jess") || lastName.includes("jess")) {
-        console.log(`🔍 SEARCH DEBUG [${index}]:`, {
-          searchTerm: debouncedSearchTerm,
-          client: {
-            id: client.id,
-            original: {
-              first_name: client.first_name,
-              last_name: client.last_name,
-              Name: client.Name,
-              phone_number: client.phone_number,
-              Contact: client.Contact
+
+    const filtered = allClients
+      .filter((client, index) => {
+        // Handle both field naming conventions
+        const firstName = (
+          client.first_name ||
+          client.Name?.split(" ")[0] ||
+          ""
+        ).toLowerCase();
+        const lastName = (
+          client.last_name ||
+          client.Name?.split(" ").slice(1).join(" ") ||
+          ""
+        ).toLowerCase();
+        const fullName = `${firstName} ${lastName}`.trim();
+        const phone = client.phone_number || client.Contact || "";
+        const email = (client.email || client.Email || "").toLowerCase();
+
+        // Check if search term appears anywhere in name, phone, or email
+        const nameMatch =
+          fullName.includes(searchLower) ||
+          firstName.includes(searchLower) ||
+          lastName.includes(searchLower);
+        const phoneMatch = phone.includes(debouncedSearchTerm);
+        const emailMatch = email.includes(searchLower);
+
+        const isMatch = nameMatch || phoneMatch || emailMatch;
+
+        // Enhanced debug logging for all searches, especially "jess"
+        if (
+          searchLower === "jess" ||
+          firstName.includes("jess") ||
+          lastName.includes("jess")
+        ) {
+          console.log(`🔍 SEARCH DEBUG [${index}]:`, {
+            searchTerm: debouncedSearchTerm,
+            client: {
+              id: client.id,
+              original: {
+                first_name: client.first_name,
+                last_name: client.last_name,
+                Name: client.Name,
+                phone_number: client.phone_number,
+                Contact: client.Contact,
+              },
+              computed: {
+                firstName,
+                lastName,
+                fullName,
+                phone,
+                email,
+              },
             },
-            computed: {
-              firstName,
-              lastName,
-              fullName,
-              phone,
-              email
-            }
-          },
-          matches: {
-            nameMatch,
-            phoneMatch,
-            emailMatch,
-            isMatch
-          }
-        });
-      }
-      
-      return isMatch;
-    }).slice(0, 50);
-    
+            matches: {
+              nameMatch,
+              phoneMatch,
+              emailMatch,
+              isMatch,
+            },
+          });
+        }
+
+        return isMatch;
+      })
+      .slice(0, 50);
+
     console.log("🔍 LazyClientSearch - Filter results:", {
       searchTerm: debouncedSearchTerm,
       totalClients: allClients.length,
       matchCount: filtered.length,
-      matches: filtered.map(c => ({ 
-        name: `${c.first_name || ''} ${c.last_name || ''}`,
-        phone: c.phone_number,
-        id: c.id
-      })).slice(0, 5)
+      matches: filtered
+        .map((c) => ({
+          name: `${c.first_name || ""} ${c.last_name || ""}`,
+          phone: c.phone_number,
+          id: c.id,
+        }))
+        .slice(0, 5),
     });
-    
+
     return filtered;
   }, [allClients, debouncedSearchTerm]);
 
@@ -448,14 +476,18 @@ const LazyClientSearch = ({
     <div className="lazy-client-search" ref={dropdownRef}>
       {/* Debug info - temporary */}
       {import.meta.env.DEV && (
-        <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
-          Debug: {allClients.length} clients loaded | Search: "{debouncedSearchTerm}" | Filtered: {filteredClients.length}
+        <div style={{ fontSize: "12px", color: "#666", marginBottom: "4px" }}>
+          Debug: {allClients.length} clients loaded | Search: "
+          {debouncedSearchTerm}" | Filtered: {filteredClients.length}
           {allClients.length > 0 && (
-            <span> | Sample: {allClients[0]?.first_name} {allClients[0]?.last_name}</span>
+            <span>
+              {" "}
+              | Sample: {allClients[0]?.first_name} {allClients[0]?.last_name}
+            </span>
           )}
         </div>
       )}
-      
+
       <input
         ref={searchInputRef}
         type="text"
