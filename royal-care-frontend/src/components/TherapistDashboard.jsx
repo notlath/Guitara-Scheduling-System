@@ -560,14 +560,18 @@ const TherapistDashboard = () => {
           </div>
         );
       case "driver_confirmed":
-        // Both confirmed, status will change to in_progress when operator starts
+        // Both confirmed, but operator must start appointment before journey can begin
         return (
           <div className="appointment-actions">
             <div className="ready-status">
-              <span className="ready-badge">🚀 Ready to start</span>
+              <span className="ready-badge">⏳ Waiting for Operator</span>
               <p>
-                Driver confirmed. Waiting for operator to start appointment.
+                Both you and driver confirmed. Waiting for operator to start
+                appointment.
               </p>
+              <div className="workflow-reminder">
+                <small>🔐 Operator must approve before transport begins</small>
+              </div>
             </div>
           </div>
         );

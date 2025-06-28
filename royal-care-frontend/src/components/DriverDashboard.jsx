@@ -809,7 +809,7 @@ const DriverDashboard = () => {
     }
   };
   const renderActionButtons = (appointment) => {
-    const { status, id, both_parties_accepted, requires_car } = appointment;
+    const { status, id, requires_car } = appointment;
     // Enhanced multi-therapist detection logic
     const isGroupTransport =
       (appointment.therapists_details &&
@@ -870,46 +870,29 @@ const DriverDashboard = () => {
         );
 
       case "confirmed":
-        if (both_parties_accepted) {
-          // Both parties accepted, allow starting journey
-          return (
-            <div className="appointment-actions">
-              {isDisabledDueToPickup && (
-                <div className="pickup-priority-notice">
-                  ⚠️ <strong>Pickup Assignment Priority:</strong> Complete your
-                  active pickup assignment first.
-                </div>
-              )}
-              <LoadingButton
-                className={`start-journey-button ${
-                  isDisabledDueToPickup ? "disabled-due-pickup" : ""
-                }`}
-                onClick={() => !isDisabledDueToPickup && handleStartJourney(id)}
-                loading={buttonLoading[`journey_${id}`]}
-                loadingText="Starting..."
-                disabled={isDisabledDueToPickup}
-              >
-                Start Journey
-              </LoadingButton>
-              <div className="ready-info">
-                <p>🚀 Both parties confirmed. Ready to begin transport!</p>
+        // This is legacy status - should also wait for operator approval
+        return (
+          <div className="appointment-actions">
+            {isDisabledDueToPickup && (
+              <div className="pickup-priority-notice">
+                ⚠️ <strong>Pickup Assignment Priority:</strong> Complete your
+                active pickup assignment first.
               </div>
-            </div>
-          );
-        } else {
-          return (
-            <div className="appointment-actions">
-              <div className="warning-status">
-                ⚠ Waiting for all parties to accept before starting
-              </div>
-              {appointment.pending_acceptances?.length > 0 && (
-                <small className="waiting-text">
-                  Waiting for: {appointment.pending_acceptances.join(", ")}
+            )}
+            <div className="waiting-operator-status">
+              <span className="waiting-badge">⏳ Waiting for Operator</span>
+              <p>
+                Appointment confirmed. Waiting for operator to start the
+                appointment.
+              </p>
+              <div className="workflow-reminder">
+                <small>
+                  🔐 Operator authorization required before journey can begin
                 </small>
-              )}
+              </div>
             </div>
-          );
-        }
+          </div>
+        );
       case "therapist_confirmed":
         // Driver always needs to confirm regardless of vehicle type
         return (
@@ -942,7 +925,7 @@ const DriverDashboard = () => {
           </div>
         );
       case "driver_confirmed":
-        // Both confirmed, operator will start appointment or allow journey start
+        // Both confirmed, but operator must start appointment before journey can begin
         return (
           <div className="appointment-actions">
             {isDisabledDueToPickup && (
@@ -951,19 +934,17 @@ const DriverDashboard = () => {
                 active pickup assignment first.
               </div>
             )}
-            <LoadingButton
-              className={`start-journey-button ${
-                isDisabledDueToPickup ? "disabled-due-pickup" : ""
-              }`}
-              onClick={() => !isDisabledDueToPickup && handleStartJourney(id)}
-              loading={buttonLoading[`journey_${id}`]}
-              loadingText="Starting..."
-              disabled={isDisabledDueToPickup}
-            >
-              Start Journey
-            </LoadingButton>
-            <div className="ready-info">
-              <p>✅ Driver confirmed. Ready to begin transport!</p>
+            <div className="waiting-operator-status">
+              <span className="waiting-badge">⏳ Waiting for Operator</span>
+              <p>
+                Both therapist and driver confirmed. Waiting for operator to
+                start the appointment.
+              </p>
+              <div className="workflow-reminder">
+                <small>
+                  🔐 Operator authorization required before journey can begin
+                </small>
+              </div>
             </div>
           </div>
         );
@@ -1032,15 +1013,17 @@ const DriverDashboard = () => {
                 active pickup assignment first.
               </div>
             )}
-            <button
+            <LoadingButton
               className={`drop-off-button ${
                 isDisabledDueToPickup ? "disabled-due-pickup" : ""
               }`}
               onClick={() => !isDisabledDueToPickup && handleDropOff(id)}
+              loading={buttonLoading[`dropoff_${id}`]}
+              loadingText="Dropping Off..."
               disabled={isDisabledDueToPickup}
             >
               Drop Off Therapist
-            </button>
+            </LoadingButton>
             <div className="arrived-status">
               <span className="arrived-badge">
                 📍 Arrived at pickup location

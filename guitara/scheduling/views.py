@@ -1715,20 +1715,30 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         print(f"   Driver accepted: {appointment.driver_accepted}")
         print(f"   Both parties accepted: {appointment.both_parties_accepted()}")
 
-        # More flexible status validation - allow common valid states
-        valid_statuses = [
-            "driver_confirmed",
-            "in_progress",
-            "confirmed",
-            "therapist_confirmed",
-        ]
-        if appointment.status not in valid_statuses:
-            return Response(
-                {
-                    "error": f"Journey cannot be started from current status '{appointment.status}'. Valid statuses: {', '.join(valid_statuses)}"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # Enforce proper authorization flow: only allow journey start after operator approval
+        # Valid status is ONLY "in_progress" (after operator starts the appointment)
+        if appointment.status != "in_progress":
+            if appointment.status == "driver_confirmed":
+                return Response(
+                    {
+                        "error": "Operator must start the appointment before journey can begin. Please wait for operator approval."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            elif appointment.status in ["pending", "therapist_confirmed"]:
+                return Response(
+                    {
+                        "error": f"Journey cannot be started from status '{appointment.status}'. Appointment must be in 'in_progress' status (after operator approval)."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            else:
+                return Response(
+                    {
+                        "error": f"Journey cannot be started from current status '{appointment.status}'. Only 'in_progress' status is allowed."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         appointment.status = "journey"
         appointment.journey_started_at = timezone.now()
