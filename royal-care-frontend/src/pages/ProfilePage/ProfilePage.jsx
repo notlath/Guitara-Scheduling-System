@@ -11,7 +11,6 @@ import {
   updateUserProfile as updateUserProfileAPI,
 } from "../../services/api";
 import "../../styles/Placeholders.css";
-import "../../styles/Settings.css";
 import { profileCache } from "../../utils/profileCache";
 import styles from "./ProfilePage.module.css";
 
