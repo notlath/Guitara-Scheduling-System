@@ -27,6 +27,8 @@ import {
 import { useAppointmentFormCache } from "../../hooks/useAppointmentFormCache";
 // Removed CachedDriverSelect and CachedTherapistSelect
 import LazyClientSearch from "../common/LazyClientSearch";
+// Debug component for troubleshooting client search
+import ClientSearchDebug from "../debug/ClientSearchDebug";
 
 // Legacy Client Search Component (kept for fallback)
 const ClientSearchDropdown = ({
@@ -1301,6 +1303,9 @@ const AppointmentForm = ({
   // Return the form once we have essential data
   return (
     <div className="appointment-form-container">
+      {/* Debug component for troubleshooting client search */}
+      {import.meta.env.DEV && <ClientSearchDebug />}
+      
       <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
 
       {/* Error Handler Display */}
