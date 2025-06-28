@@ -3,7 +3,7 @@
  * Manages WebSocket connection across the entire application
  */
 
-import { createContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import webSocketService from "../services/webSocketTanStackService";
 
 const WebSocketContext = createContext({
@@ -33,7 +33,7 @@ export const WebSocketProvider = ({ children }) => {
     const initializeConnection = async () => {
       try {
         // Get auth token from localStorage
-        const authToken = localStorage.getItem("authToken");
+        const authToken = localStorage.getItem("knoxToken");
 
         if (authToken) {
           console.log("🔌 Initializing WebSocket connection...");
@@ -59,7 +59,7 @@ export const WebSocketProvider = ({ children }) => {
   // Handle authentication changes
   useEffect(() => {
     const handleStorageChange = async (event) => {
-      if (event.key === "authToken") {
+      if (event.key === "knoxToken") {
         if (event.newValue) {
           // User logged in - connect WebSocket
           console.log("🔑 Auth token detected, connecting WebSocket...");
@@ -84,7 +84,7 @@ export const WebSocketProvider = ({ children }) => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && !webSocketService.isConnected()) {
-        const authToken = localStorage.getItem("authToken");
+        const authToken = localStorage.getItem("knoxToken");
         if (authToken) {
           console.log("👁️ Tab became visible, reconnecting WebSocket...");
           webSocketService.connect(authToken);
@@ -117,6 +117,7 @@ export const WebSocketProvider = ({ children }) => {
     connect,
     disconnect,
     send,
+    webSocketService, // Expose the service instance for cache sync
   };
 
   return (
@@ -124,6 +125,15 @@ export const WebSocketProvider = ({ children }) => {
       {children}
     </WebSocketContext.Provider>
   );
+};
+
+// Hook to use the WebSocket context
+export const useWebSocket = () => {
+  const context = useContext(WebSocketContext);
+  if (!context) {
+    throw new Error("useWebSocket must be used within a WebSocketProvider");
+  }
+  return context;
 };
 
 export default WebSocketContext;

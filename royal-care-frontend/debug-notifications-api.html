@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Notifications API Response Test</title>
+  </head>
+  <body>
+    <h1>Notifications API Response Structure Test</h1>
+    <div id="status">Ready to test...</div>
+    <button onclick="testNotificationsAPI()">Test Notifications API</button>
+    <div id="result"></div>
+
+    <script>
+      async function testNotificationsAPI() {
+        const statusDiv = document.getElementById("status");
+        const resultDiv = document.getElementById("result");
+
+        statusDiv.textContent = "Testing...";
+        resultDiv.innerHTML = "";
+
+        try {
+          // Get token from localStorage (if running in the actual app context)
+          const token = localStorage.getItem("knoxToken");
+          if (!token) {
+            throw new Error(
+              "No knoxToken found in localStorage. Run this in the context of the logged-in app."
+            );
+          }
+
+          const baseURL =
+            window.location.hostname === "localhost"
+              ? "http://localhost:8000/api"
+              : "https://charismatic-appreciation-production.up.railway.app/api";
+
+          console.log("🧪 Testing notifications API...");
+          console.log("Base URL:", baseURL);
+          console.log(
+            "Token (first 20 chars):",
+            token.substring(0, 20) + "..."
+          );
+
+          const response = await fetch(`${baseURL}/scheduling/notifications/`, {
+            headers: {
+              Authorization: `Token ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          console.log("Response status:", response.status);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+
+          console.log("📋 Full response data:", data);
+
+          // Analyze structure
+          const analysis = {
+            type: typeof data,
+            isArray: Array.isArray(data),
+            keys:
+              typeof data === "object" && !Array.isArray(data)
+                ? Object.keys(data)
+                : null,
+            hasCount: data && typeof data === "object" && "count" in data,
+            hasResults: data && typeof data === "object" && "results" in data,
+            hasNotifications:
+              data && typeof data === "object" && "notifications" in data,
+            hasTotalPages:
+              data && typeof data === "object" && "total_pages" in data,
+            resultsType:
+              data && data.results ? typeof data.results : "undefined",
+            resultsIsArray: data && Array.isArray(data.results),
+            notificationsType:
+              data && data.notifications
+                ? typeof data.notifications
+                : "undefined",
+            notificationsIsArray: data && Array.isArray(data.notifications),
+          };
+
+          console.log("📊 Structure analysis:", analysis);
+
+          statusDiv.textContent = "✅ Test completed successfully!";
+          resultDiv.innerHTML = `
+                    <h3>Response Analysis:</h3>
+                    <pre>${JSON.stringify(analysis, null, 2)}</pre>
+                    
+                    <h3>Full Response (first 1000 chars):</h3>
+                    <pre>${JSON.stringify(data, null, 2).substring(0, 1000)}${
+            JSON.stringify(data, null, 2).length > 1000 ? "..." : ""
+          }</pre>
+                    
+                    <h3>Recommendations:</h3>
+                    <ul>
+                        <li><strong>Response Type:</strong> ${
+                          analysis.isArray ? "Direct Array" : "Object"
+                        }</li>
+                        <li><strong>Pagination:</strong> ${
+                          analysis.hasCount || analysis.hasTotalPages
+                            ? "Yes"
+                            : "No"
+                        }</li>
+                        <li><strong>Data Location:</strong> 
+                            ${
+                              analysis.resultsIsArray
+                                ? "data.results (array)"
+                                : analysis.notificationsIsArray
+                                ? "data.notifications (array)"
+                                : analysis.isArray
+                                ? "Direct array"
+                                : "Unknown"
+                            }
+                        </li>
+                        <li><strong>Issue:</strong> ${
+                          analysis.hasCount &&
+                          !analysis.resultsIsArray &&
+                          !analysis.notificationsIsArray &&
+                          !analysis.isArray
+                            ? "❌ Paginated response but no array data found!"
+                            : "✅ Structure looks normal"
+                        }</li>
+                    </ul>
+                `;
+        } catch (error) {
+          console.error("❌ Test failed:", error);
+          statusDiv.textContent = "❌ Test failed!";
+          resultDiv.innerHTML = `
+                    <h3>Error:</h3>
+                    <p style="color: red;">${error.message}</p>
+                    <p><strong>Note:</strong> Make sure you're running this in the context of the logged-in app where localStorage.knoxToken is available.</p>
+                `;
+        }
+      }
+
+      // Auto-run if we have a token
+      window.addEventListener("load", () => {
+        if (localStorage.getItem("knoxToken")) {
+          document.getElementById("status").textContent =
+            "Token found! Ready to test.";
+        } else {
+          document.getElementById("status").textContent =
+            "No token found. Open this page in the logged-in app context.";
+        }
+      });
+    </script>
+  </body>
+</html>

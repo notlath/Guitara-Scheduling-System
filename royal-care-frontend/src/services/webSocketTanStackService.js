@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { queryClient } from "../lib/queryClient";
+import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
 import { getToken } from "../utils/tokenManager";
 
 class WebSocketTanStackService {
@@ -15,7 +16,7 @@ class WebSocketTanStackService {
     this.reconnectDelay = 1000;
     this.heartbeatInterval = null;
     this.connectionStatus = "disconnected";
-    this.eventListeners = new Set();
+    this.eventListeners = new Map(); // Store event listeners by event type
     this.messageQueue = [];
     this.isConnecting = false;
 
@@ -29,6 +30,55 @@ class WebSocketTanStackService {
     this.handleOpen = this.handleOpen.bind(this);
     this.handleClose = this.handleClose.bind(this);
     this.handleError = this.handleError.bind(this);
+    this.addEventListener = this.addEventListener.bind(this);
+    this.removeEventListener = this.removeEventListener.bind(this);
+    this.dispatchEvent = this.dispatchEvent.bind(this);
+  }
+
+  /**
+   * Add event listener for WebSocket events
+   * @param {string} eventType - The event type to listen for
+   * @param {function} listener - The callback function
+   */
+  addEventListener(eventType, listener) {
+    if (!this.eventListeners.has(eventType)) {
+      this.eventListeners.set(eventType, new Set());
+    }
+    this.eventListeners.get(eventType).add(listener);
+    console.log(`📡 Event listener added for: ${eventType}`);
+  }
+
+  /**
+   * Remove event listener for WebSocket events
+   * @param {string} eventType - The event type to stop listening for
+   * @param {function} listener - The callback function to remove
+   */
+  removeEventListener(eventType, listener) {
+    if (this.eventListeners.has(eventType)) {
+      this.eventListeners.get(eventType).delete(listener);
+      // Clean up empty sets
+      if (this.eventListeners.get(eventType).size === 0) {
+        this.eventListeners.delete(eventType);
+      }
+      console.log(`📡 Event listener removed for: ${eventType}`);
+    }
+  }
+
+  /**
+   * Dispatch custom events to registered listeners
+   * @param {string} eventType - The event type to dispatch
+   * @param {any} data - The event data
+   */
+  dispatchEvent(eventType, data) {
+    if (this.eventListeners.has(eventType)) {
+      this.eventListeners.get(eventType).forEach((listener) => {
+        try {
+          listener(data);
+        } catch (error) {
+          console.error(`Error in event listener for ${eventType}:`, error);
+        }
+      });
+    }
   }
 
   /**
@@ -49,14 +99,27 @@ class WebSocketTanStackService {
       // Get auth token from localStorage if not provided
       const authToken = token || getToken();
 
+      // Debug environment variables
+      console.log("🔍 WebSocket Environment Debug:", {
+        PROD: import.meta.env.PROD,
+        DEV: import.meta.env.DEV,
+        MODE: import.meta.env.MODE,
+        VITE_WS_BASE_URL: import.meta.env.VITE_WS_BASE_URL,
+      });
+
       // Build WebSocket URL with authentication
       const wsUrl = import.meta.env.PROD
-        ? "wss://charismatic-appreciation-production.up.railway.app/ws"
-        : import.meta.env.VITE_WS_URL ||
+        ? "wss://charismatic-appreciation-production.up.railway.app/ws/scheduling/appointments/"
+        : import.meta.env.VITE_WS_BASE_URL ||
           "ws://localhost:8000/ws/scheduling/appointments/";
+
+      console.log("🔗 WebSocket URL constructed:", wsUrl);
+
       const wsUrlWithAuth = authToken
         ? `${wsUrl}?token=${encodeURIComponent(authToken)}`
         : wsUrl;
+
+      console.log("🔗 Final WebSocket URL with auth:", wsUrlWithAuth);
 
       this.ws = new WebSocket(wsUrlWithAuth);
 
@@ -104,6 +167,13 @@ class WebSocketTanStackService {
           break;
         case "appointment_update":
           this.handleAppointmentUpdate(data.message);
+          // Also dispatch status change event if status was updated
+          if (data.message.status) {
+            this.dispatchEvent("appointment_status_changed", {
+              appointment: data.message,
+              type: "appointment_status_changed",
+            });
+          }
           break;
         case "appointment_delete":
           this.handleAppointmentDelete(data.message);
@@ -116,9 +186,19 @@ class WebSocketTanStackService {
           break;
         case "driver_assigned":
           this.handleDriverAssigned(data.message);
+          // Dispatch status change event since driver assignment changes status
+          this.dispatchEvent("appointment_status_changed", {
+            appointment: data.message,
+            type: "appointment_status_changed",
+          });
           break;
         case "therapist_acceptance":
           this.handleTherapistAcceptance(data.message);
+          // Dispatch status change event since acceptance changes status
+          this.dispatchEvent("appointment_status_changed", {
+            appointment: data.message,
+            type: "appointment_status_changed",
+          });
           break;
         default:
           console.log("Unknown WebSocket message type:", data.type);
@@ -179,13 +259,19 @@ class WebSocketTanStackService {
       );
     }
 
-    // Invalidate related queries to trigger refetch (for filtered lists, etc.)
-    queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "today"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "date"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] });
-    queryClient.invalidateQueries({ queryKey: ["availability"] });
+    // Use comprehensive cache invalidation that includes operator-specific queries
+    invalidateAppointmentCaches(queryClient, {
+      userRole: "operator", // Invalidate operator-specific caches
+      invalidateAll: true, // Comprehensive invalidation for WebSocket updates
+    }).catch((error) => {
+      console.error("❌ WebSocket cache invalidation failed:", error);
+    });
+
+    // Dispatch event for listeners
+    this.dispatchEvent("appointment_created", {
+      appointment,
+      type: "appointment_created",
+    });
   }
 
   /**
@@ -238,13 +324,19 @@ class WebSocketTanStackService {
       );
     }
 
-    // Invalidate related queries to trigger refetch (for filtered lists, etc.)
-    queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "today"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "date"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] });
-    queryClient.invalidateQueries({ queryKey: ["availability"] });
+    // Use comprehensive cache invalidation that includes operator-specific queries
+    invalidateAppointmentCaches(queryClient, {
+      userRole: "operator", // Invalidate operator-specific caches
+      invalidateAll: true, // Comprehensive invalidation for WebSocket updates
+    }).catch((error) => {
+      console.error("❌ WebSocket cache invalidation failed:", error);
+    });
+
+    // Dispatch event for listeners
+    this.dispatchEvent("appointment_updated", {
+      appointment: updatedAppointment,
+      type: "appointment_updated",
+    });
   }
 
   /**
@@ -286,13 +378,19 @@ class WebSocketTanStackService {
       );
     }
 
-    // Invalidate related queries to trigger refetch (for filtered lists, etc.)
-    queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "today"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "date"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "therapist"] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] });
-    queryClient.invalidateQueries({ queryKey: ["availability"] });
+    // Use comprehensive cache invalidation that includes operator-specific queries
+    invalidateAppointmentCaches(queryClient, {
+      userRole: "operator", // Invalidate operator-specific caches
+      invalidateAll: true, // Comprehensive invalidation for WebSocket updates
+    }).catch((error) => {
+      console.error("❌ WebSocket cache invalidation failed:", error);
+    });
+
+    // Dispatch event for listeners
+    this.dispatchEvent("appointment_deleted", {
+      appointment: deletedAppointment,
+      type: "appointment_deleted",
+    });
   }
 
   /**
@@ -332,6 +430,9 @@ class WebSocketTanStackService {
     queryClient.setQueryData(["appointments", "upcoming"], updateWithDriver);
 
     console.log("✅ Driver assigned - cache updated");
+
+    // Dispatch event for listeners
+    this.dispatchEvent("driver_response", { data, type: "driver_response" });
   }
 
   /**
@@ -363,6 +464,12 @@ class WebSocketTanStackService {
     );
 
     console.log("✅ Therapist acceptance updated - cache updated");
+
+    // Dispatch event for listeners
+    this.dispatchEvent("therapist_response", {
+      data,
+      type: "therapist_response",
+    });
   }
 
   /**

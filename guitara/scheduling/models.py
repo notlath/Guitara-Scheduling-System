@@ -449,7 +449,12 @@ class Appointment(models.Model):
 
     def can_start_journey(self):
         """Check if journey can be started"""
-        return self.status == "in_progress"
+        # Journey can only start AFTER operator has started the appointment
+        # This ensures proper authorization flow: therapist accepts -> driver accepts -> operator starts -> driver can begin journey
+        valid_statuses = [
+            "in_progress",  # Only after operator clicks "Start Appointment"
+        ]
+        return self.status in valid_statuses
 
     def can_arrive(self):
         """Check if therapist(s) can be marked as arrived"""

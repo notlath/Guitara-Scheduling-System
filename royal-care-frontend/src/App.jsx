@@ -1,10 +1,10 @@
-import React, { useEffect, Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import { shallowEqual, useDispatch } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { useOptimizedSelector } from "./hooks/usePerformanceOptimization";
 // WEBSOCKET CACHE SYNC: Import WebSocket cache synchronization hook
-import { useWebSocketCacheSync } from "./hooks/useWebSocketCacheSync";
+import { useAutoWebSocketCacheSync } from "./hooks/useWebSocketCacheSync";
 // Import debugger utilities for performance monitoring in development
 import DriverDashboard from "./components/DriverDashboard";
 import MainLayout from "./components/MainLayout";
@@ -14,14 +14,16 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RouteHandler from "./components/auth/RouteHandler";
 import ReactErrorBoundary from "./components/common/ReactErrorBoundary";
 import { AttendanceMemoProvider } from "./components/contexts/AttendanceContext";
+import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
 const AvailabilityManager = React.lazy(() =>
   import("./components/scheduling/AvailabilityManager")
 );
-import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
 // Initialize service worker error suppression early
 import "./utils/serviceWorkerErrorSuppression";
 
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
+import { validateToken } from "./services/auth";
+import { cleanupInvalidTokens } from "./utils/tokenManager";
 
 // Lazy load pages to enable code splitting and reduce initial bundle size
 // This ensures CSS modules are only loaded when the page is actually accessed
@@ -59,7 +61,29 @@ const InventoryPage = React.lazy(() =>
 const NotificationsPage = React.lazy(() =>
   import("./pages/NotificationsPage/NotificationsPage")
 );
-const ProfilePage = React.lazy(() => import("./pages/ProfilePage/ProfilePage"));
+const ProfilePage = React.lazy(() => {
+  console.log("Loading ProfilePage...");
+  return import("./pages/ProfilePage/ProfilePage")
+    .then((module) => {
+      console.log("ProfilePage loaded successfully");
+      return module;
+    })
+    .catch((error) => {
+      console.error("Failed to load ProfilePage:", error);
+      // Return a fallback component instead of crashing
+      return {
+        default: () => (
+          <div style={{ padding: "20px", textAlign: "center" }}>
+            <h2>Unable to Load Profile</h2>
+            <p>There was an error loading the profile page.</p>
+            <button onClick={() => window.location.reload()}>
+              Refresh Page
+            </button>
+          </div>
+        ),
+      };
+    });
+});
 const RegisterPage = React.lazy(() =>
   import("./pages/RegisterPage/RegisterPage")
 );
@@ -84,11 +108,7 @@ const TwoFactorAuthPage = React.lazy(() =>
 const UserGuidePage = React.lazy(() =>
   import("./pages/UserGuidePage/UserGuidePage")
 );
-const LogsPage = React.lazy(() =>
-  import("./pages/LogsPage/LogsPage")
-);
-import { validateToken } from "./services/auth";
-import { cleanupInvalidTokens } from "./utils/tokenManager";
+const LogsPage = React.lazy(() => import("./pages/LogsPage/LogsPage"));
 // import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
@@ -177,7 +197,7 @@ const App = () => {
   const dispatch = useDispatch();
 
   // WEBSOCKET CACHE SYNC: Enable real-time cache synchronization
-  useWebSocketCacheSync();
+  useAutoWebSocketCacheSync();
 
   useEffect(() => {
     // Clean up any invalid tokens on app startup

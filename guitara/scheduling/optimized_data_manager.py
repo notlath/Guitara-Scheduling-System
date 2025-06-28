@@ -31,11 +31,25 @@ class OptimizedDataManager:
         return f"{prefix}_{'_'.join(str(arg) for arg in args)}"
 
     def invalidate_cache_pattern(self, pattern: str):
-        """Invalidate caches matching a pattern"""
+        """Invalidate caches matching a pattern - with Redis fallback"""
         try:
+            # Try Redis pattern deletion first
             cache.delete_pattern(pattern)
+        except AttributeError:
+            # Fallback for non-Redis cache backends (e.g., LocMemCache)
+            logger.warning(
+                f"Cache backend doesn't support pattern deletion for {pattern}"
+            )
+            # For local memory cache, we'll clear the entire cache as fallback
+            # This isn't ideal but ensures the app doesn't crash
+            try:
+                cache.clear()
+                logger.info("Cleared entire cache as fallback for pattern deletion")
+            except Exception as clear_error:
+                logger.error(f"Failed to clear cache as fallback: {clear_error}")
         except Exception as e:
             logger.error(f"Error invalidating cache pattern {pattern}: {e}")
+            # Don't re-raise the exception to prevent crashing the view
 
     # ==========================================
     # APPOINTMENT OPTIMIZATION METHODS
@@ -185,6 +199,7 @@ class OptimizedDataManager:
         """
         import time
         from django.db import connection
+
         cache_key = self.get_cache_key(
             "availability", date.isoformat(), role or "all", specialization or "none"
         )
@@ -197,9 +212,24 @@ class OptimizedDataManager:
         from core.models import CustomUser
 
         # Build optimized query
-        queryset = Availability.objects.select_related("user").only(
-            "id", "user", "date", "start_time", "end_time", "is_available", "user__id", "user__first_name", "user__last_name", "user__role", "user__specialization", "user__last_available_at"
-        ).filter(date=date, is_available=True)
+        queryset = (
+            Availability.objects.select_related("user")
+            .only(
+                "id",
+                "user",
+                "date",
+                "start_time",
+                "end_time",
+                "is_available",
+                "user__id",
+                "user__first_name",
+                "user__last_name",
+                "user__role",
+                "user__specialization",
+                "user__last_available_at",
+            )
+            .filter(date=date, is_available=True)
+        )
 
         if role:
             queryset = queryset.filter(user__role=role, user__is_active=True)
@@ -213,10 +243,17 @@ class OptimizedDataManager:
 
         # Debug: log SQL and timing if DEBUG is True
         from django.conf import settings
+
         if getattr(settings, "DEBUG", False):
             queries = connection.queries[-1] if connection.queries else None
-            logger.debug(f"[Availability] SQL: {queries['sql'][:300]}..." if queries else "[Availability] No SQL recorded.")
-            logger.debug(f"[Availability] Query duration: {duration:.3f}s, count: {len(availabilities)}")
+            logger.debug(
+                f"[Availability] SQL: {queries['sql'][:300]}..."
+                if queries
+                else "[Availability] No SQL recorded."
+            )
+            logger.debug(
+                f"[Availability] Query duration: {duration:.3f}s, count: {len(availabilities)}"
+            )
 
         serialized_data = self._serialize_availability(availabilities)
 
@@ -401,31 +438,43 @@ class OptimizedDataManager:
             logger.error(f"Error broadcasting appointment update: {e}")
 
     def _invalidate_appointment_caches(self, appointment_data):
-        """Invalidate all caches related to an appointment"""
-        appointment_id = appointment_data.get("id")
-        date = appointment_data.get("date")
-        therapist_id = appointment_data.get("therapist_id")
-        driver_id = appointment_data.get("driver_id")
+        """Invalidate all caches related to an appointment - with error handling"""
+        try:
+            appointment_id = appointment_data.get("id")
+            date = appointment_data.get("date")
+            therapist_id = appointment_data.get("therapist_id")
+            driver_id = appointment_data.get("driver_id")
 
-        # Invalidate patterns
-        patterns_to_invalidate = [
-            "appointments_*",
-            "today_appointments_*",
-            "conflicts_*",
-            "available_staff_*",
-        ]
+            # Invalidate patterns
+            patterns_to_invalidate = [
+                "appointments_*",
+                "today_appointments_*",
+                "conflicts_*",
+                "available_staff_*",
+            ]
 
-        if date:
-            patterns_to_invalidate.append(f"*_{date}*")
+            if date:
+                patterns_to_invalidate.append(f"*_{date}*")
 
-        for pattern in patterns_to_invalidate:
-            self.invalidate_cache_pattern(pattern)
+            for pattern in patterns_to_invalidate:
+                self.invalidate_cache_pattern(pattern)
 
-        # Invalidate specific user caches
-        if therapist_id:
-            cache.delete(f"user_appointments_{therapist_id}")
-        if driver_id:
-            cache.delete(f"user_appointments_{driver_id}")
+            # Invalidate specific user caches with error handling
+            if therapist_id:
+                try:
+                    cache.delete(f"user_appointments_{therapist_id}")
+                except Exception as e:
+                    logger.error(f"Failed to delete therapist cache: {e}")
+
+            if driver_id:
+                try:
+                    cache.delete(f"user_appointments_{driver_id}")
+                except Exception as e:
+                    logger.error(f"Failed to delete driver cache: {e}")
+
+        except Exception as e:
+            logger.error(f"Error in _invalidate_appointment_caches: {e}")
+            # Don't re-raise to prevent view crashes
 
     # ==========================================
     # SERIALIZATION METHODS

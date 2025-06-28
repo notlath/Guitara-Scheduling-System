@@ -14,8 +14,9 @@ import {
   fetchUpcomingAppointments,
   updateAppointment,
 } from "../features/scheduling/schedulingSlice";
-import { queryKeys, queryUtils } from "../lib/queryClient";
+import { queryKeys } from "../lib/queryClient";
 import { isValidToken } from "../utils/authUtils";
+import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
 import { useWebSocketConnection } from "./useWebSocket";
 
 /**
@@ -183,13 +184,11 @@ export const useCreateAppointment = () => {
     },
 
     // Refetch on success to ensure consistency and notify via WebSocket
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.today(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.upcoming(),
+    onSuccess: async (result) => {
+      // Use comprehensive cache invalidation that includes operator-specific queries
+      await invalidateAppointmentCaches(queryClient, {
+        userRole: "operator", // Invalidate operator-specific caches
+        invalidateAll: true, // Comprehensive invalidation for new appointments
       });
 
       // Also invalidate availability queries (they might have changed)
@@ -251,13 +250,11 @@ export const useUpdateAppointment = () => {
       );
     },
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.today(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.upcoming(),
+    onSuccess: async () => {
+      // Use comprehensive cache invalidation that includes operator-specific queries
+      await invalidateAppointmentCaches(queryClient, {
+        userRole: "operator", // Invalidate operator-specific caches
+        invalidateAll: true, // Comprehensive invalidation for updated appointments
       });
     },
   });
@@ -295,8 +292,12 @@ export const useDeleteAppointment = () => {
         context.previousAppointments
       );
     },
-    onSuccess: () => {
-      queryUtils.invalidateAppointments();
+    onSuccess: async () => {
+      // Use comprehensive cache invalidation that includes operator-specific queries
+      await invalidateAppointmentCaches(queryClient, {
+        userRole: "operator", // Invalidate operator-specific caches
+        invalidateAll: true, // Comprehensive invalidation for deleted appointments
+      });
     },
   });
 };

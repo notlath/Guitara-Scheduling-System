@@ -91,7 +91,9 @@ class CompleteRegistrationSerializer(serializers.Serializer):
             raise serializers.ValidationError("No user found with this email.")
         # Only allow if user has no usable password
         if user.has_usable_password() and user.password not in (None, "", "!"):
-            raise serializers.ValidationError("This email has already completed registration.")
+            raise serializers.ValidationError(
+                "This email has already completed registration."
+            )
         return value
 
     def validate_password(self, value):
@@ -104,13 +106,30 @@ class CompleteRegistrationSerializer(serializers.Serializer):
 class RegistrationMaterialSerializer(serializers.ModelSerializer):
     # Include the current stock from the related inventory item
     current_stock = serializers.SerializerMethodField()
-    
+
     def get_current_stock(self, obj):
         """Get current stock from the related inventory item"""
-        if obj.inventory_item:
-            return obj.inventory_item.current_stock
-        return obj.stock_quantity  # Fallback to registration material stock
-    
+        try:
+            if obj.inventory_item:
+                # Use only() to fetch only the current_stock field to avoid missing column issues
+                from inventory.models import InventoryItem
+
+                inventory_item = (
+                    InventoryItem.objects.only("current_stock")
+                    .filter(id=obj.inventory_item_id)
+                    .first()
+                )
+                if inventory_item:
+                    return inventory_item.current_stock
+            return obj.stock_quantity or 0  # Fallback to registration material stock
+        except Exception as e:
+            # Log the error but don't break the API response
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error getting current_stock for material {obj.id}: {e}")
+            return obj.stock_quantity or 0  # Safe fallback
+
     class Meta:
         model = RegistrationMaterial
-        fields = '__all__'
+        fields = "__all__"

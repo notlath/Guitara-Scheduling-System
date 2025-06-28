@@ -12,6 +12,7 @@ import Select from "react-select";
 import MinimalLoadingIndicator from "../../components/common/MinimalLoadingIndicator";
 import ServerPagination from "../../components/ServerPagination";
 import DataTable from "../../globals/DataTable";
+import tableStyles from "../../globals/DataTable.module.css";
 import { FormField } from "../../globals/FormField";
 import LayoutRow from "../../globals/LayoutRow";
 import "../../globals/LayoutRow.css";
@@ -95,8 +96,8 @@ const generateDefaultUsername = (role, firstName, lastName) => {
   return `${prefix}_${name}`;
 };
 
-// Pagination defaults - Set to 12 items per page for production use
-const DEFAULT_PAGE_SIZE = 12; // Display 12 items per page with navigation buttons
+// Pagination defaults - Set to 100 items per page for production use
+const DEFAULT_PAGE_SIZE = 100; // Display 100 items per page with navigation buttons
 
 const SettingsDataPage = () => {
   // URL search params for tab and page persistence

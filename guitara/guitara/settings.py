@@ -121,18 +121,45 @@ ASGI_APPLICATION = "guitara.asgi.application"
 # Channels layer configuration
 # Use Redis if available, otherwise fall back to InMemory
 REDIS_URL = os.environ.get("REDIS_URL", None)
-if REDIS_URL:
+
+
+# Test Redis availability for channels
+def is_redis_available():
+    if not REDIS_URL:
+        return False
+    try:
+        import redis
+
+        r = redis.from_url(REDIS_URL)
+        r.ping()
+        return True
+    except Exception as e:
+        print(f"[CHANNELS] Redis not available for channels: {e}")
+        return False
+
+
+if is_redis_available():
+    print("[CHANNELS] Using Redis for WebSocket channels")
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
                 "hosts": [REDIS_URL],
+                "capacity": 1500,
+                "expiry": 60,
             },
         },
     }
 else:
+    print("[CHANNELS] Using InMemory for WebSocket channels (development)")
     CHANNEL_LAYERS = {
-        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+            "CONFIG": {
+                "capacity": 1500,
+                "expiry": 60,
+            },
+        }
     }
 
 
@@ -373,8 +400,36 @@ APPEND_SLASH = True
 
 import os
 
-CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
-CELERY_RESULT_BACKEND = "django-db"
+# Use Redis for Celery if available, otherwise use database
+CELERY_REDIS_URL = os.environ.get(
+    "CELERY_BROKER_URL", os.environ.get("REDIS_URL", None)
+)
+
+
+# Test if Redis is available for Celery
+def is_celery_redis_available():
+    if not CELERY_REDIS_URL:
+        return False
+    try:
+        import redis
+
+        r = redis.from_url(CELERY_REDIS_URL)
+        r.ping()
+        return True
+    except Exception as e:
+        print(f"[CELERY] Redis not available: {e}")
+        return False
+
+
+if is_celery_redis_available():
+    print("[CELERY] Using Redis broker")
+    CELERY_BROKER_URL = CELERY_REDIS_URL
+    CELERY_RESULT_BACKEND = CELERY_REDIS_URL
+else:
+    print("[CELERY] Using database broker (development)")
+    CELERY_BROKER_URL = "django://localhost/"
+    CELERY_RESULT_BACKEND = "django-db"
+
 CELERY_CACHE_BACKEND = "django-cache"
 
 # Task execution settings
@@ -428,7 +483,26 @@ except ImportError:
 
 # Redis Configuration for WebSockets and Caching
 REDIS_URL = os.environ.get("REDIS_URL", None)
-if REDIS_URL:
+
+
+# Test Redis connection before using it
+def test_redis_connection(redis_url):
+    try:
+        import redis
+
+        r = redis.from_url(redis_url)
+        r.ping()
+        return True
+    except Exception as e:
+        print(f"[REDIS] Connection test failed: {e}")
+        return False
+
+
+# Use Redis only if it's available and accessible
+USE_REDIS = REDIS_URL and test_redis_connection(REDIS_URL)
+
+if USE_REDIS:
+    print("[REDIS] Using Redis for caching and channels")
     # Production Redis setup
     CACHES = {
         "default": {
@@ -453,11 +527,17 @@ if REDIS_URL:
     USER_DATA_CACHE_TIMEOUT = 300  # 5 minutes for user data
 
 else:
-    # Development fallback
+    print("[REDIS] Redis not available, using local memory cache")
+    # Development fallback - works without Redis
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "unique-snowflake",
+            "TIMEOUT": 300,
+            "OPTIONS": {
+                "MAX_ENTRIES": 1000,
+                "CULL_FREQUENCY": 3,
+            },
         }
     }
     APPOINTMENT_CACHE_TIMEOUT = 30

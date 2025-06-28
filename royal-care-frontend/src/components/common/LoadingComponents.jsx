@@ -1,3 +1,4 @@
+import tableStyles from "../../globals/DataTable.module.css";
 import "./LoadingComponents.css";
 import tableStyles from "../../globals/DataTable.module.css";
 

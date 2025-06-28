@@ -128,6 +128,22 @@ export const invalidateAppointmentCaches = async (
             }),
             queryClient.invalidateQueries({
               queryKey: ["pickup", "appointments"],
+            }),
+            // OperatorDashboard specific query patterns
+            queryClient.invalidateQueries({
+              queryKey: ["operator", "rejected"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["operator", "pending"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["operator", "timeout"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["operator", "payment"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["operator", "rejection-stats"],
             })
           );
           break;
@@ -148,7 +164,15 @@ export const invalidateAppointmentCaches = async (
         queryClient.invalidateQueries({ queryKey: ["dashboard", "driver"] }),
         // All operator queries
         queryClient.invalidateQueries({ queryKey: ["dashboard", "operator"] }),
-        queryClient.invalidateQueries({ queryKey: ["operator"] })
+        queryClient.invalidateQueries({ queryKey: ["operator"] }),
+        // OperatorDashboard specific queries
+        queryClient.invalidateQueries({ queryKey: ["operator", "rejected"] }),
+        queryClient.invalidateQueries({ queryKey: ["operator", "pending"] }),
+        queryClient.invalidateQueries({ queryKey: ["operator", "timeout"] }),
+        queryClient.invalidateQueries({ queryKey: ["operator", "payment"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["operator", "rejection-stats"],
+        })
       );
     }
 

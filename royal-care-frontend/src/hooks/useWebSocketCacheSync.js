@@ -1,11 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useWebSocket } from "../contexts/WebSocketContext";
 import { handleWebSocketUpdate } from "../utils/cacheInvalidation";
 
 export const useWebSocketCacheSync = (webSocketService) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    // Only set up event listeners if webSocketService is provided
     if (!webSocketService) {
       // Clear any disabled flags from session storage
       sessionStorage.removeItem("wsConnectionDisabled");
@@ -108,6 +110,15 @@ export const useWebSocketCacheSync = (webSocketService) => {
 };
 
 /**
+ * Convenience hook that automatically uses the WebSocket service from context
+ * Use this in components instead of calling useWebSocketCacheSync() without parameters
+ */
+export const useAutoWebSocketCacheSync = () => {
+  const { webSocketService } = useWebSocket();
+  return useWebSocketCacheSync(webSocketService);
+};
+
+/**
  * Alternative hook for direct WebSocket message handling
  * Use this if you're handling WebSocket messages directly
  */
@@ -160,6 +171,7 @@ export const useCacheInvalidation = () => {
 
 export default {
   useWebSocketCacheSync,
+  useAutoWebSocketCacheSync,
   useDirectWebSocketSync,
   useCacheInvalidation,
 };

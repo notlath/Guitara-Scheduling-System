@@ -72,6 +72,9 @@ export const useInstantUpdates = () => {
       onSuccess = null,
       onError = null,
     }) => {
+      let backendSuccess = false;
+      let backendResult = null;
+
       try {
         // 1. INSTANT UI UPDATE - User sees change immediately
         if (optimisticUpdate) {
@@ -79,25 +82,34 @@ export const useInstantUpdates = () => {
         }
 
         // 2. BACKEND UPDATE - Process the actual change
-        const result = await dispatch(reduxAction).unwrap();
+        backendResult = await dispatch(reduxAction).unwrap();
+        backendSuccess = true;
 
         // 3. CACHE INVALIDATION - Ensure all dashboards are synced
-        await invalidateAppointmentCaches(queryClient, {
-          userId: user?.id,
-          userRole: user?.role,
-          appointmentId,
-          invalidateAll: true, // Updates all dashboards instantly
-        });
+        try {
+          await invalidateAppointmentCaches(queryClient, {
+            userId: user?.id,
+            userRole: user?.role,
+            appointmentId,
+            invalidateAll: true, // Updates all dashboards instantly
+          });
+        } catch (cacheError) {
+          console.warn(
+            "Cache invalidation failed, but backend operation succeeded:",
+            cacheError
+          );
+          // Don't throw here - the backend operation was successful
+        }
 
         // 4. SUCCESS CALLBACK
         if (onSuccess) {
-          onSuccess(result);
+          onSuccess(backendResult);
         }
 
-        return result;
+        return backendResult;
       } catch (error) {
-        // 5. ERROR HANDLING - Rollback and show user-friendly message
-        if (optimisticUpdate) {
+        // 5. ERROR HANDLING - Only rollback if backend operation failed
+        if (!backendSuccess && optimisticUpdate) {
           await rollbackOptimisticUpdate(queryClient);
         }
 
@@ -110,16 +122,129 @@ export const useInstantUpdates = () => {
         if (onError) {
           onError(error, userFriendlyMessage);
         } else {
-          alert(userFriendlyMessage);
+          // Only show alert if backend operation actually failed
+          if (!backendSuccess) {
+            alert(userFriendlyMessage);
+          }
         }
 
-        throw error;
+        // Only throw if backend operation failed
+        if (!backendSuccess) {
+          throw error;
+        }
+
+        // If backend succeeded but cache failed, return the successful result
+        return backendResult;
       }
     },
     [dispatch, queryClient, user]
   );
 
-  return { performInstantUpdate };
+  /**
+   * Operator-specific instant update functions
+   */
+  const updateAppointmentInstantly = useCallback(
+    async (appointmentId, updates) => {
+      const { updateAppointmentStatus } = await import(
+        "../features/scheduling/schedulingSlice"
+      );
+
+      return performInstantUpdate({
+        appointmentId,
+        reduxAction: updateAppointmentStatus({ appointmentId, ...updates }),
+        optimisticUpdate: { ...updates, updated_at: new Date().toISOString() },
+        errorMessage: "Failed to update appointment. Please try again.",
+      });
+    },
+    [performInstantUpdate]
+  );
+
+  const markPaymentPaidInstantly = useCallback(
+    async (appointmentId, paymentData) => {
+      const { markAppointmentPaid } = await import(
+        "../features/scheduling/schedulingSlice"
+      );
+
+      return performInstantUpdate({
+        appointmentId,
+        reduxAction: markAppointmentPaid({ appointmentId, ...paymentData }),
+        optimisticUpdate: {
+          status: "paid",
+          payment_status: "paid",
+          payment_verified_at: new Date().toISOString(),
+          payment_method: paymentData.method,
+        },
+        errorMessage: "Failed to mark payment as paid. Please try again.",
+      });
+    },
+    [performInstantUpdate]
+  );
+
+  const reviewRejectionInstantly = useCallback(
+    async (appointmentId, reviewDecision, reviewNotes) => {
+      console.log("🔍 reviewRejectionInstantly - ENTRY DEBUG:", {
+        appointmentId,
+        appointmentIdType: typeof appointmentId,
+        reviewDecision,
+        reviewDecisionType: typeof reviewDecision,
+        reviewNotes,
+        reviewNotesType: typeof reviewNotes,
+      });
+
+      const { reviewRejection } = await import(
+        "../features/scheduling/schedulingSlice"
+      );
+
+      return performInstantUpdate({
+        appointmentId,
+        reduxAction: reviewRejection({
+          id: appointmentId,
+          reviewDecision,
+          reviewNotes,
+        }),
+        optimisticUpdate: {
+          status: reviewDecision === "accept" ? "cancelled" : "confirmed",
+          rejection_reviewed: true,
+          rejection_review_decision: reviewDecision,
+          rejection_review_notes: reviewNotes,
+          rejection_reviewed_at: new Date().toISOString(),
+        },
+        errorMessage: "Failed to review rejection. Please try again.",
+      });
+    },
+    [performInstantUpdate]
+  );
+
+  const autoCancelOverdueInstantly = useCallback(async () => {
+    const { autoCancelOverdue } = await import(
+      "../features/scheduling/schedulingSlice"
+    );
+
+    try {
+      const result = await dispatch(autoCancelOverdue()).unwrap();
+
+      // Invalidate all appointment caches to refresh the data
+      await invalidateAppointmentCaches(queryClient, {
+        userId: user?.id,
+        userRole: user?.role,
+        invalidateAll: true,
+      });
+
+      return result;
+    } catch {
+      throw new Error(
+        "Failed to auto-cancel overdue appointments. Please try again."
+      );
+    }
+  }, [dispatch, queryClient, user]);
+
+  return {
+    performInstantUpdate,
+    updateAppointmentInstantly,
+    markPaymentPaidInstantly,
+    reviewRejectionInstantly,
+    autoCancelOverdueInstantly,
+  };
 };
 
 /**
@@ -160,7 +285,7 @@ export const useTherapistInstantActions = () => {
 
       return performInstantUpdate({
         appointmentId,
-        reduxAction: rejectAppointment({ appointmentId, rejectionReason }),
+        reduxAction: rejectAppointment({ id: appointmentId, rejectionReason }),
         optimisticUpdate: {
           status: "rejected",
           rejection_reason: rejectionReason,
@@ -240,7 +365,7 @@ export const useDriverInstantActions = () => {
           status: "journey_started",
           journey_started_at: new Date().toISOString(),
         },
-        // errorMessage: "Failed to start journey. Please try again.",
+        errorMessage: "Failed to start journey. Please try again.",
         onSuccess: () => setLoading?.(false),
         onError: () => setLoading?.(false),
       });

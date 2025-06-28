@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebSocket Debug Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .warning {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      code {
+        background-color: #f1f1f1;
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>WebSocket Debug Test</h1>
+
+    <div id="env-test" class="test-section">
+      <h2>1. Environment Variables Test</h2>
+      <div id="env-output"></div>
+    </div>
+
+    <div id="url-test" class="test-section">
+      <h2>2. WebSocket URL Construction Test</h2>
+      <div id="url-output"></div>
+    </div>
+
+    <div id="connection-test" class="test-section">
+      <h2>3. WebSocket Connection Test</h2>
+      <button onclick="testWebSocketConnection()">Test Connection</button>
+      <div id="connection-output"></div>
+    </div>
+
+    <script>
+      // Test 1: Environment Variables
+      function testEnvironmentVariables() {
+          const envOutput = document.getElementById('env-output');
+          const envVars = {
+              'VITE_API_BASE_URL': import.meta?.env?.VITE_API_BASE_URL || 'NOT_DEFINED',
+              'VITE_WS_BASE_URL': import.meta?.env?.VITE_WS_BASE_URL || 'NOT_DEFINED',
+              'PROD': import.meta?.env?.PROD || false,
+              'DEV': import.meta?.env?.DEV || false,
+              'MODE': import.meta?.env?.MODE || 'NOT_DEFINED'
+          };
+
+          let html = '<table border="1" style="width: 100%; border-collapse: collapse;">';
+          html += '<tr><th>Variable</th><th>Value</th><th>Status</th></tr>';
+
+          for (const [key, value] of Object.entries(envVars)) {
+              const status = value !== 'NOT_DEFINED' ? '✅ Defined' : '❌ Not Defined';
+              html += `<tr><td><code>${key}</code></td><td><code>${value}</code></td><td>${status}</td></tr>`;
+          }
+          html += '</table>';
+
+          envOutput.innerHTML = html;
+      }
+
+      // Test 2: WebSocket URL Construction
+      function testWebSocketURLConstruction() {
+          const urlOutput = document.getElementById('url-output');
+
+          // Same logic as webSocketTanStackService.js
+          const wsUrl = import.meta?.env?.PROD
+              ? "wss://charismatic-appreciation-production.up.railway.app/ws/scheduling/appointments/"
+              : import.meta?.env?.VITE_WS_BASE_URL ||
+                "ws://localhost:8000/ws/scheduling/appointments/";
+
+          const token = "test-token-123";
+          const wsUrlWithAuth = `${wsUrl}?token=${encodeURIComponent(token)}`;
+
+          let html = '<div>';
+          html += `<p><strong>Base URL:</strong> <code>${wsUrl}</code></p>`;
+          html += `<p><strong>With Token:</strong> <code>${wsUrlWithAuth}</code></p>`;
+
+          // Check if URL is correct
+          if (wsUrl.includes('/ws/scheduling/appointments/')) {
+              html += '<p class="success">✅ URL construction is correct</p>';
+          } else {
+              html += '<p class="error">❌ URL construction is incorrect - missing /scheduling/appointments/</p>';
+          }
+          html += '</div>';
+
+          urlOutput.innerHTML = html;
+      }
+
+      // Test 3: WebSocket Connection
+      function testWebSocketConnection() {
+          const connectionOutput = document.getElementById('connection-output');
+          connectionOutput.innerHTML = '<p>🔄 Testing connection...</p>';
+
+          // Use the same URL construction logic
+          const wsUrl = import.meta?.env?.PROD
+              ? "wss://charismatic-appreciation-production.up.railway.app/ws/scheduling/appointments/"
+              : import.meta?.env?.VITE_WS_BASE_URL ||
+                "ws://localhost:8000/ws/scheduling/appointments/";
+
+          const token = localStorage.getItem('knoxToken') || 'test-token';
+          const wsUrlWithAuth = `${wsUrl}?token=${encodeURIComponent(token)}`;
+
+          console.log('🔍 Testing WebSocket connection to:', wsUrlWithAuth);
+
+          try {
+              const ws = new WebSocket(wsUrlWithAuth);
+
+              const timeout = setTimeout(() => {
+                  ws.close();
+                  connectionOutput.innerHTML += '<p class="warning">⚠️ Connection timed out after 10 seconds</p>';
+              }, 10000);
+
+              ws.onopen = function(event) {
+                  clearTimeout(timeout);
+                  connectionOutput.innerHTML = '<p class="success">✅ WebSocket connected successfully!</p>';
+                  ws.close();
+              };
+
+              ws.onerror = function(error) {
+                  clearTimeout(timeout);
+                  connectionOutput.innerHTML = '<p class="error">❌ WebSocket connection failed</p>';
+                  console.error('WebSocket error:', error);
+              };
+
+              ws.onclose = function(event) {
+                  if (event.code !== 1000) {
+                      connectionOutput.innerHTML += `<p class="error">❌ Connection closed with code: ${event.code}</p>`;
+                  }
+              };
+
+          } catch (error) {
+              connectionOutput.innerHTML = `<p class="error">❌ Connection failed: ${error.message}</p>`;
+          }
+      }
+
+      // Run tests on load
+      window.addEventListener('load', function() {
+          testEnvironmentVariables();
+          testWebSocketURLConstruction();
+      });
+    </script>
+  </body>
+</html>

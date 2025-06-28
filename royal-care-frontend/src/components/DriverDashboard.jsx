@@ -16,7 +16,7 @@ import { useDashboardMutations } from "../hooks/useEnhancedDashboardData";
 // Import shared Philippine time and greeting hook
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
-import { useWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
+import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
@@ -105,7 +105,7 @@ const DriverDashboard = () => {
   const navigate = useNavigate();
 
   // Initialize real-time cache sync via WebSocket
-  useWebSocketCacheSync();
+  useAutoWebSocketCacheSync();
 
   // Get user from Redux state
   const user = useSelector((state) => state.auth.user, shallowEqual);
@@ -315,10 +315,55 @@ const DriverDashboard = () => {
     const actionKey = `journey_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await startJourney.mutateAsync(appointmentId);
+
+      // Debug: Find the appointment and log its current status
+      const appointment = myAppointments.find(
+        (apt) => apt.id === appointmentId
+      );
+      console.log("🚀 Starting journey for appointment:", {
+        id: appointmentId,
+        currentStatus: appointment?.status,
+        driverAccepted: appointment?.driver_accepted,
+        therapistAccepted: appointment?.therapist_accepted,
+        bothAccepted: appointment?.both_parties_accepted,
+      });
+
+      const result = await startJourney.mutateAsync(appointmentId);
+      console.log("✅ Journey started successfully:", result);
     } catch (error) {
-      console.error("Failed to start journey:", error);
-      alert("Failed to start journey. Please try again.");
+      console.error("❌ Failed to start journey - Full error details:", {
+        error,
+        message: error.message,
+        stack: error.stack,
+        appointmentId,
+      });
+
+      // Better error message based on the actual error
+      let errorMessage = "Failed to start journey. Please try again.";
+
+      if (
+        error?.message?.includes("401") ||
+        error?.message?.includes("Authentication")
+      ) {
+        errorMessage =
+          "Session expired. Please refresh the page and log in again.";
+      } else if (error?.message?.includes("404")) {
+        errorMessage = "Appointment not found. Please refresh the page.";
+      } else if (
+        error?.message &&
+        error.message !== "Failed to start journey"
+      ) {
+        // Include the actual status in error message for debugging
+        const appointment = myAppointments.find(
+          (apt) => apt.id === appointmentId
+        );
+        const statusInfo = appointment
+          ? ` (Current status: ${appointment.status})`
+          : "";
+        errorMessage = `Failed to start journey: ${error.message}${statusInfo}`;
+      }
+
+      alert(errorMessage);
     } finally {
       setActionLoading(actionKey, false);
     }
@@ -764,7 +809,7 @@ const DriverDashboard = () => {
     }
   };
   const renderActionButtons = (appointment) => {
-    const { status, id, both_parties_accepted, requires_car } = appointment;
+    const { status, id, requires_car } = appointment;
     // Enhanced multi-therapist detection logic
     const isGroupTransport =
       (appointment.therapists_details &&
@@ -825,34 +870,29 @@ const DriverDashboard = () => {
         );
 
       case "confirmed":
-        if (both_parties_accepted) {
-          return (
-            <div className="appointment-actions">
-              <div className="waiting-status">
-                <span className="waiting-badge">
-                  ⏳ Waiting for confirmations
-                </span>
-                <p>
-                  All parties accepted. Waiting for therapist and driver
-                  confirmation...
-                </p>
+        // This is legacy status - should also wait for operator approval
+        return (
+          <div className="appointment-actions">
+            {isDisabledDueToPickup && (
+              <div className="pickup-priority-notice">
+                ⚠️ <strong>Pickup Assignment Priority:</strong> Complete your
+                active pickup assignment first.
               </div>
-            </div>
-          );
-        } else {
-          return (
-            <div className="appointment-actions">
-              <div className="warning-status">
-                ⚠ Waiting for all parties to accept before starting
-              </div>
-              {appointment.pending_acceptances?.length > 0 && (
-                <small className="waiting-text">
-                  Waiting for: {appointment.pending_acceptances.join(", ")}
+            )}
+            <div className="waiting-operator-status">
+              <span className="waiting-badge">⏳ Waiting for Operator</span>
+              <p>
+                Appointment confirmed. Waiting for operator to start the
+                appointment.
+              </p>
+              <div className="workflow-reminder">
+                <small>
+                  🔐 Operator authorization required before journey can begin
                 </small>
-              )}
+              </div>
             </div>
-          );
-        }
+          </div>
+        );
       case "therapist_confirmed":
         // Driver always needs to confirm regardless of vehicle type
         return (
@@ -885,12 +925,26 @@ const DriverDashboard = () => {
           </div>
         );
       case "driver_confirmed":
-        // Both confirmed, operator will start appointment
+        // Both confirmed, but operator must start appointment before journey can begin
         return (
           <div className="appointment-actions">
-            <div className="waiting-status">
-              <span className="ready-badge">✅ Driver confirmed</span>
-              <p>Waiting for operator to start appointment...</p>
+            {isDisabledDueToPickup && (
+              <div className="pickup-priority-notice">
+                ⚠️ <strong>Pickup Assignment Priority:</strong> Complete your
+                active pickup assignment first.
+              </div>
+            )}
+            <div className="waiting-operator-status">
+              <span className="waiting-badge">⏳ Waiting for Operator</span>
+              <p>
+                Both therapist and driver confirmed. Waiting for operator to
+                start the appointment.
+              </p>
+              <div className="workflow-reminder">
+                <small>
+                  🔐 Operator authorization required before journey can begin
+                </small>
+              </div>
             </div>
           </div>
         );
@@ -959,15 +1013,17 @@ const DriverDashboard = () => {
                 active pickup assignment first.
               </div>
             )}
-            <button
+            <LoadingButton
               className={`drop-off-button ${
                 isDisabledDueToPickup ? "disabled-due-pickup" : ""
               }`}
               onClick={() => !isDisabledDueToPickup && handleDropOff(id)}
+              loading={buttonLoading[`dropoff_${id}`]}
+              loadingText="Dropping Off..."
               disabled={isDisabledDueToPickup}
             >
               Drop Off Therapist
-            </button>
+            </LoadingButton>
             <div className="arrived-status">
               <span className="arrived-badge">
                 📍 Arrived at pickup location
