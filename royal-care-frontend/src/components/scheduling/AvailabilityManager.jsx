@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  createAvailability,
-  deleteAvailability,
   fetchAvailability,
   fetchStaffMembers,
-  updateAvailability,
 } from "../../features/scheduling/schedulingSlice";
+import {
+  useCreateAvailability,
+  useDeleteAvailability,
+  useUpdateAvailability,
+} from "../../hooks/useAvailabilityMutations";
 import useSyncEventHandlers from "../../hooks/useSyncEventHandlers";
 import "../../styles/AvailabilityManager.css";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
@@ -61,7 +63,14 @@ const AvailabilityManager = () => {
   const { user } = useSelector((state) => state.auth);
   const { staffMembers, availabilities, loading, error } = useSelector(
     (state) => state.scheduling
-  ); // Ensure availabilities is always an array to prevent undefined errors
+  );
+
+  // TanStack Query hooks for availability mutations with automatic cache invalidation
+  const createAvailabilityMutation = useCreateAvailability();
+  const updateAvailabilityMutation = useUpdateAvailability();
+  const deleteAvailabilityMutation = useDeleteAvailability();
+
+  // Ensure availabilities is always an array to prevent undefined errors
   const safeAvailabilities = useMemo(
     () => availabilities || [],
     [availabilities]
@@ -398,127 +407,117 @@ const AvailabilityManager = () => {
     }
 
     setFormLoading(true);
-    dispatch(
-      createAvailability({
+    createAvailabilityMutation.mutate(
+      {
         user: staffId,
         date: newAvailabilityForm.date,
         start_time: newAvailabilityForm.startTime,
         end_time: newAvailabilityForm.endTime,
         is_available: newAvailabilityForm.isAvailable,
-      })
-    ).then((result) => {
-      setFormLoading(false);
-      if (createAvailability.fulfilled.match(result)) {
-        console.log("✅ Availability created successfully:", result.payload); // Success - reset form to selected date (not today)
-        const currentFormDate = formatDateToString(selectedDate);
-        setNewAvailabilityForm({
-          date: currentFormDate,
-          startTime: "13:00",
-          endTime: "14:00", // Changed from "1:00" to "14:00" for better UX
-          isAvailable: true,
-        }); // Force refresh availability to show the new data immediately
-        if (selectedStaff) {
-          const formattedDate = formatDateToString(selectedDate);
-          console.log("🔄 Force refreshing availability after creation...");
-          dispatch(
-            fetchAvailability({
-              staffId: selectedStaff,
-              date: formattedDate,
-              forceRefresh: true, // Force fresh data after creation
-            })
-          );
-        }
-        alert("Availability created successfully!");
-      } else if (createAvailability.rejected.match(result)) {
-        // Enhanced error handling with specific messages
-        let errorMsg = "Failed to create availability";
-        const errorData = result.payload;
+      },
+      {
+        onSuccess: (result) => {
+          setFormLoading(false);
+          console.log("✅ Availability created successfully:", result);
 
-        if (errorData) {
-          if (errorData.non_field_errors) {
-            // Handle unique constraint violations
-            if (
-              errorData.non_field_errors.some((err) => err.includes("unique"))
-            ) {
-              errorMsg =
-                "This exact time slot already exists. Please choose different times or modify the existing slot.";
+          // Success - reset form to selected date (not today)
+          const currentFormDate = formatDateToString(selectedDate);
+          setNewAvailabilityForm({
+            date: currentFormDate,
+            startTime: "13:00",
+            endTime: "14:00", // Changed from "1:00" to "14:00" for better UX
+            isAvailable: true,
+          });
+
+          // Cache invalidation is handled automatically by the mutation
+          // No need for manual fetchAvailability dispatch - TanStack Query handles it
+          alert("Availability created successfully!");
+        },
+        onError: (error) => {
+          setFormLoading(false);
+
+          // Enhanced error handling with specific messages
+          let errorMsg = "Failed to create availability";
+          const errorData = error.response?.data || error;
+
+          if (errorData) {
+            if (errorData.non_field_errors) {
+              // Handle unique constraint violations
+              if (
+                errorData.non_field_errors.some((err) => err.includes("unique"))
+              ) {
+                errorMsg =
+                  "This exact time slot already exists. Please choose different times or modify the existing slot.";
+              } else {
+                errorMsg = errorData.non_field_errors.join(", ");
+              }
+            } else if (typeof errorData === "string") {
+              errorMsg = errorData;
+            } else if (errorData.error) {
+              errorMsg = errorData.error;
+            } else if (errorData.detail) {
+              errorMsg = errorData.detail;
             } else {
-              errorMsg = errorData.non_field_errors.join(", ");
-            }
-          } else if (typeof errorData === "string") {
-            errorMsg = errorData;
-          } else if (errorData.error) {
-            errorMsg = errorData.error;
-          } else if (errorData.detail) {
-            errorMsg = errorData.detail;
-          } else {
-            // Format validation errors
-            const errors = Object.entries(errorData)
-              .map(([field, msgs]) => {
-                const messages = Array.isArray(msgs) ? msgs : [msgs];
-                return `${field}: ${messages.join(", ")}`;
-              })
-              .join("\n");
+              // Format validation errors
+              const errors = Object.entries(errorData)
+                .map(([field, msgs]) => {
+                  const messages = Array.isArray(msgs) ? msgs : [msgs];
+                  return `${field}: ${messages.join(", ")}`;
+                })
+                .join("\n");
 
-            if (errors) {
-              errorMsg = `Validation errors:\n${errors}`;
+              if (errors) {
+                errorMsg = `Validation errors:\n${errors}`;
+              }
             }
           }
-        }
 
-        console.error("❌ Availability creation failed:", errorMsg);
-        alert(`Error: ${errorMsg}`);
+          console.error("❌ Availability creation failed:", errorMsg);
+          alert(`Error: ${errorMsg}`);
+        },
       }
-    });
+    );
   };
 
   const handleDeleteAvailability = (availabilityId) => {
     if (window.confirm("Are you sure you want to delete this availability?")) {
-      dispatch(deleteAvailability(availabilityId)).then((result) => {
-        if (deleteAvailability.fulfilled.match(result)) {
-          console.log("✅ Availability deleted successfully"); // Force refresh availability to show updated data immediately
-          if (selectedStaff) {
-            const formattedDate = formatDateToString(selectedDate);
-            console.log("🔄 Force refreshing availability after deletion...");
-            dispatch(
-              fetchAvailability({
-                staffId: selectedStaff,
-                date: formattedDate,
-                forceRefresh: true, // Force fresh data after deletion
-              })
-            );
-          }
-        }
+      deleteAvailabilityMutation.mutate(availabilityId, {
+        onSuccess: () => {
+          console.log("✅ Availability deleted successfully");
+          // Cache invalidation is handled automatically by the mutation
+          // No need for manual fetchAvailability dispatch - TanStack Query handles it
+        },
+        onError: (error) => {
+          console.error("❌ Failed to delete availability:", error);
+          alert("Failed to delete availability. Please try again.");
+        },
       });
     }
   };
   const handleToggleAvailability = (availability) => {
     setToggleLoading(true);
-    dispatch(
-      updateAvailability({
+    updateAvailabilityMutation.mutate(
+      {
         id: availability.id,
         data: {
           ...availability,
           is_available: !availability.is_available,
         },
-      })
-    ).then((result) => {
-      setToggleLoading(false);
-      if (updateAvailability.fulfilled.match(result)) {
-        console.log("✅ Availability updated successfully"); // Force refresh availability to show updated data immediately
-        if (selectedStaff) {
-          const formattedDate = formatDateToString(selectedDate);
-          console.log("🔄 Force refreshing availability after update...");
-          dispatch(
-            fetchAvailability({
-              staffId: selectedStaff,
-              date: formattedDate,
-              forceRefresh: true, // Force fresh data after update
-            })
-          );
-        }
+      },
+      {
+        onSuccess: () => {
+          setToggleLoading(false);
+          console.log("✅ Availability updated successfully");
+          // Cache invalidation is handled automatically by the mutation
+          // No need for manual fetchAvailability dispatch - TanStack Query handles it
+        },
+        onError: (error) => {
+          setToggleLoading(false);
+          console.error("❌ Failed to update availability:", error);
+          alert("Failed to update availability. Please try again.");
+        },
       }
-    });
+    );
   };
   const handleToggleAccountStatus = async () => {
     if (!selectedStaffData) return;

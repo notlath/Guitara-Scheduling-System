@@ -230,6 +230,68 @@ export const invalidateAppointmentCaches = async (
 };
 
 /**
+ * Availability-specific cache invalidation helper
+ * Use this after availability mutations (create, update, delete)
+ */
+export const invalidateAvailabilityCaches = async (
+  queryClient,
+  options = {}
+) => {
+  const { staffId = null, date = null, userRole = null } = options;
+
+  console.log("🔄 Invalidating availability caches", {
+    staffId,
+    date,
+    userRole,
+  });
+
+  try {
+    const invalidationPromises = [];
+
+    // Core availability queries
+    invalidationPromises.push(
+      queryClient.invalidateQueries({ queryKey: queryKeys.availability.all }),
+      queryClient.invalidateQueries({ queryKey: ["availability"] }),
+      queryClient.invalidateQueries({ queryKey: ["availableTherapists"] }),
+      queryClient.invalidateQueries({ queryKey: ["availableDrivers"] })
+    );
+
+    // Specific staff availability if provided
+    if (staffId && date) {
+      invalidationPromises.push(
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.availability.staff(staffId, date),
+        })
+      );
+    }
+
+    // Role-specific invalidation for availability checking
+    if (userRole === "therapist" && staffId) {
+      invalidationPromises.push(
+        queryClient.invalidateQueries({
+          queryKey: ["availability", "therapists"],
+        })
+      );
+    } else if (userRole === "driver" && staffId) {
+      invalidationPromises.push(
+        queryClient.invalidateQueries({
+          queryKey: ["availability", "drivers"],
+        })
+      );
+    }
+
+    // Execute all invalidations
+    await Promise.all(invalidationPromises);
+
+    console.log("✅ Availability cache invalidation completed successfully");
+    return true;
+  } catch (error) {
+    console.error("❌ Failed to invalidate availability cache:", error);
+    return false;
+  }
+};
+
+/**
  * Optimistic update helper for immediate UI feedback
  * Use this before Redux mutations for better UX
  */
@@ -339,6 +401,7 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
 
 export default {
   invalidateAppointmentCaches,
+  invalidateAvailabilityCaches,
   optimisticUpdate,
   rollbackOptimisticUpdate,
   invalidateByStatus,
