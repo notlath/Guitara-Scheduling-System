@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import styles from "./TwoFAForgotPasswordPage.module.css";
+import { useLocation, useNavigate } from "react-router-dom";
+import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import pageTitles from "../../constants/pageTitles";
 import FormBlueprint from "../../globals/FormBlueprint";
 import { FormField } from "../../globals/FormField";
-import loginSidepic from "../../assets/images/login-sidepic.jpg";
+import styles from "./TwoFAForgotPasswordPage.module.css";
 
 function TwoFAForgotPasswordPage() {
   useEffect(() => {

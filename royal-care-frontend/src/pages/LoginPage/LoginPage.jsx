@@ -257,6 +257,7 @@ function LoginPage() {
         ) {
           setNeeds2FA(true); // Show 2FA input
           setFieldErrors({}); // Clear previous field errors when switching to 2FA
+          setShowFieldErrors(false); // Reset field errors display for 2FA step
         } else if (response && response.data && response.data.user) {
           // Handle non-2FA login (if allowed)
           localStorage.setItem("knoxToken", response.data.token);

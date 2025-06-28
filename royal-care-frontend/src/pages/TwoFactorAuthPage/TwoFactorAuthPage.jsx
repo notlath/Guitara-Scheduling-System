@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import styles from "./TwoFactorAuthPage.module.css";
 
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
-import { FormField } from "../../globals/FormField";
 import pageTitles from "../../constants/pageTitles";
+import { FormField } from "../../globals/FormField";
 
 function TwoFactorAuthPage() {
   useEffect(() => {
