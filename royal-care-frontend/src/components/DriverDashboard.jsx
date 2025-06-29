@@ -4,7 +4,8 @@ const isTransportCompleted = (appointment) =>
     appointment.status
   );
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { MdClose } from "react-icons/md";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
@@ -203,6 +204,27 @@ const DriverDashboard = () => {
   const myAllTransports = myAppointments; // Use appointments as transport data
   const hasActivePickupAssignment = false; // Simplified for optimization
   const activePickupAssignment = null; // Simplified for optimization
+
+  // State for completed transports modal
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+
+  // Filter today's transports into pending and completed
+  const todayPendingTransports = useMemo(() => {
+    return (
+      Array.isArray(myTodayAppointments) ? myTodayAppointments : []
+    ).filter((apt) => apt && !isTransportCompleted(apt));
+  }, [myTodayAppointments]);
+
+  const todayCompletedTransports = useMemo(() => {
+    return (
+      Array.isArray(myTodayAppointments) ? myTodayAppointments : []
+    ).filter((apt) => apt && isTransportCompleted(apt));
+  }, [myTodayAppointments]);
+
+  const handleCloseCompletedModal = () => {
+    setShowCompletedModal(false);
+  };
+
   // Debug: Log all appointments data
   console.log("🔍 Driver Dashboard Debug:", {
     user: user,
@@ -328,6 +350,17 @@ const DriverDashboard = () => {
         bothAccepted: appointment?.both_parties_accepted,
       });
 
+      // Validate that appointment is in correct status before starting journey
+      if (!appointment) {
+        throw new Error("Appointment not found. Please refresh the page.");
+      }
+
+      if (appointment.status !== "in_progress") {
+        throw new Error(
+          `Cannot start journey from status '${appointment.status}'. Appointment must be in 'in_progress' status first.`
+        );
+      }
+
       const result = await startJourney.mutateAsync(appointmentId);
       console.log("✅ Journey started successfully:", result);
     } catch (error) {
@@ -349,6 +382,8 @@ const DriverDashboard = () => {
           "Session expired. Please refresh the page and log in again.";
       } else if (error?.message?.includes("404")) {
         errorMessage = "Appointment not found. Please refresh the page.";
+      } else if (error?.message?.includes("Cannot start journey")) {
+        errorMessage = error.message;
       } else if (
         error?.message &&
         error.message !== "Failed to start journey"
@@ -1729,9 +1764,26 @@ const DriverDashboard = () => {
         )}{" "}
         <TabSwitcher
           tabs={[
-            { label: "Today's Transports", value: "today" },
-            { label: "Upcoming Transports", value: "upcoming" },
-            { label: "All My Transports", value: "all" },
+            {
+              label: "Today's Transports",
+              value: "today",
+              count: todayPendingTransports.length,
+            },
+            {
+              label: "Upcoming Transports",
+              value: "upcoming",
+              count: (Array.isArray(myUpcomingAppointments)
+                ? myUpcomingAppointments
+                : []
+              ).filter((apt) => !isTransportCompleted(apt)).length,
+            },
+            {
+              label: "All My Transports",
+              value: "all",
+              count: Array.isArray(myAllTransports)
+                ? myAllTransports.length
+                : 0,
+            },
             { label: "My Attendance", value: "attendance" },
           ]}
           activeTab={currentView}
@@ -1740,13 +1792,18 @@ const DriverDashboard = () => {
         <div className="dashboard-content">
           {currentView === "today" && (
             <div className="todays-appointments">
-              <h2>Today's Transports</h2>
-              {renderAppointmentsList(
-                (Array.isArray(myTodayAppointments)
-                  ? myTodayAppointments
-                  : []
-                ).filter((apt) => !isTransportCompleted(apt))
-              )}
+              <div className="section-header">
+                <h2>Today's Transports (Pending)</h2>
+                {todayCompletedTransports.length > 0 && (
+                  <button
+                    className="view-completed-btn"
+                    onClick={() => setShowCompletedModal(true)}
+                  >
+                    View Completed ({todayCompletedTransports.length})
+                  </button>
+                )}
+              </div>
+              {renderAppointmentsList(todayPendingTransports)}
             </div>
           )}
           {currentView === "upcoming" && (
@@ -1867,6 +1924,82 @@ const DriverDashboard = () => {
           )}
         </div>
         <WebSocketStatus />
+        {/* Completed Transports Modal */}
+        {showCompletedModal && (
+          <div
+            className="modal-overlay"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(8px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}
+          >
+            <div
+              className="modal"
+              style={{
+                backgroundColor: "white",
+                borderRadius: "12px",
+                padding: "0",
+                maxWidth: "90vw",
+                maxHeight: "80vh",
+                overflow: "hidden",
+                boxShadow:
+                  "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              }}
+            >
+              <div
+                className="modal-header"
+                style={{
+                  padding: "1.5rem",
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <h2
+                  style={{ margin: 0, fontSize: "1.25rem", fontWeight: "600" }}
+                >
+                  Today's Completed Transports
+                </h2>
+                <button
+                  className="close-btn"
+                  onClick={handleCloseCompletedModal}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "0.5rem",
+                    borderRadius: "6px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <MdClose size={20} />
+                </button>
+              </div>
+              <div
+                className="modal-content"
+                style={{
+                  padding: "1.5rem",
+                  maxHeight: "60vh",
+                  overflowY: "auto",
+                }}
+              >
+                {renderAppointmentsList(todayCompletedTransports)}
+              </div>
+            </div>
+          </div>
+        )}
         <RejectionModal
           isOpen={rejectionModal.isOpen}
           onClose={handleRejectionCancel}

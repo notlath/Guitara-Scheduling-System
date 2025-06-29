@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { MdClose } from "react-icons/md";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
@@ -968,6 +969,26 @@ const TherapistDashboard = () => {
       appointment.status
     );
 
+  // State for completed appointments modal
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+
+  // Filter today's appointments into pending and completed
+  const todayPendingAppointments = useMemo(() => {
+    return (
+      Array.isArray(myTodayAppointments) ? myTodayAppointments : []
+    ).filter((apt) => apt && !isTransportCompleted(apt));
+  }, [myTodayAppointments]);
+
+  const todayCompletedAppointments = useMemo(() => {
+    return (
+      Array.isArray(myTodayAppointments) ? myTodayAppointments : []
+    ).filter((apt) => apt && isTransportCompleted(apt));
+  }, [myTodayAppointments]);
+
+  const handleCloseCompletedModal = () => {
+    setShowCompletedModal(false);
+  };
+
   return (
     <PageLayout>
       {/* OPTIMIZED: Simplified loading indicator */}
@@ -1025,11 +1046,7 @@ const TherapistDashboard = () => {
             {
               id: "today",
               label: "Today's Appointments",
-              count: Array.isArray(myTodayAppointments)
-                ? myTodayAppointments.filter(
-                    (apt) => apt && !isTransportCompleted(apt)
-                  ).length
-                : 0,
+              count: todayPendingAppointments.length,
             },
             {
               id: "upcoming",
@@ -1057,13 +1074,18 @@ const TherapistDashboard = () => {
         <div className="dashboard-content">
           {currentView === "today" && (
             <div className="todays-appointments">
-              <h2>Today's Appointments</h2>
-              {renderAppointmentsList(
-                (Array.isArray(myTodayAppointments)
-                  ? myTodayAppointments
-                  : []
-                ).filter((apt) => apt && !isTransportCompleted(apt))
-              )}
+              <div className="section-header">
+                <h2>Today's Appointments (Pending)</h2>
+                {todayCompletedAppointments.length > 0 && (
+                  <button
+                    className="view-completed-btn"
+                    onClick={() => setShowCompletedModal(true)}
+                  >
+                    View Completed ({todayCompletedAppointments.length})
+                  </button>
+                )}
+              </div>
+              {renderAppointmentsList(todayPendingAppointments)}
             </div>
           )}
           {currentView === "upcoming" && (
@@ -1103,6 +1125,85 @@ const TherapistDashboard = () => {
           )}
         </div>
         <WebSocketStatus />
+
+        {/* Completed Appointments Modal */}
+        {/* Completed Appointments Modal */}
+        {showCompletedModal && (
+          <div
+            className="modal-overlay"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(8px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}
+          >
+            <div
+              className="modal"
+              style={{
+                backgroundColor: "white",
+                borderRadius: "12px",
+                padding: "0",
+                maxWidth: "90vw",
+                maxHeight: "80vh",
+                overflow: "hidden",
+                boxShadow:
+                  "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              }}
+            >
+              <div
+                className="modal-header"
+                style={{
+                  padding: "1.5rem",
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <h2
+                  style={{ margin: 0, fontSize: "1.25rem", fontWeight: "600" }}
+                >
+                  Today's Completed Appointments
+                </h2>
+                <button
+                  className="close-btn"
+                  onClick={handleCloseCompletedModal}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "0.5rem",
+                    borderRadius: "6px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <MdClose size={20} />
+                </button>
+              </div>
+              <div
+                className="modal-content"
+                style={{
+                  padding: "1.5rem",
+                  maxHeight: "60vh",
+                  overflowY: "auto",
+                }}
+              >
+                {renderAppointmentsList(todayCompletedAppointments)}
+              </div>
+            </div>
+          </div>
+        )}
+
         <RejectionModal
           isOpen={rejectionModal.isOpen}
           onClose={handleRejectionCancel}

@@ -149,9 +149,19 @@ export const useInstantUpdates = () => {
         "../features/scheduling/schedulingSlice"
       );
 
+      // Ensure appointmentId is valid
+      if (!appointmentId || appointmentId === "undefined") {
+        throw new Error("Invalid appointment ID provided");
+      }
+
       return performInstantUpdate({
         appointmentId,
-        reduxAction: updateAppointmentStatus({ appointmentId, ...updates }),
+        reduxAction: updateAppointmentStatus({
+          id: appointmentId,
+          status: updates.status,
+          action: updates.action || "update_status",
+          ...updates,
+        }),
         optimisticUpdate: { ...updates, updated_at: new Date().toISOString() },
         errorMessage: "Failed to update appointment. Please try again.",
       });
