@@ -31,21 +31,6 @@
   font-size: 1.1rem;
 }
 
-/* .logout-button {
-  background-color: var(--error);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s;
-} */
-
-/* .logout-button:hover {
-  background-color: #c0392b;
-} */
-
 .loading-spinner {
   text-align: center;
   padding: 40px;
@@ -787,12 +772,6 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); */
 }
 
-/* .operator-stat-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s, box-shadow 0.2s;
-} */
-
 .operator-stat-number {
   display: block;
   font-size: var(--font-size-xxl);
@@ -807,18 +786,6 @@
   font-size: 0.9rem;
   /* color: var(--text-600); */
 }
-
-/* .operator-therapist-stat {
-  border-left-color: #2196f3;
-}
-
-.operator-driver-stat {
-  border-left-color: #9c27b0;
-}
-
-.operator-pending-stat {
-  border-left-color: #ff9800;
-} */
 
 .dashboard-container {
   display: flex;
