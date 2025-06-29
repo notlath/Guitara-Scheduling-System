@@ -190,3 +190,6 @@ export function FormField({
     </div>
   );
 }
+
+// Default export for backward compatibility
+export default FormField;

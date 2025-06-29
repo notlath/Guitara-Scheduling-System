@@ -93,8 +93,11 @@
 }
 
 .time-slot.has-appointment {
-  background-color: #f9f9f9;
+  background-color: #f7f9fc;
   cursor: default;
+  min-height: 80px; /* Increased minimum height for appointments */
+  height: auto; /* Allow height to expand based on content */
+  overflow: visible; /* Ensure content is fully visible */
 }
 
 .time-slot.time-label {
@@ -107,18 +110,21 @@
 }
 
 .appointment-item {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative; /* Changed from absolute to relative for better visibility */
   padding: 5px;
-  overflow: hidden;
+  margin: 2px;
+  overflow: visible;
   border-left: 4px solid #4a69bd;
   background-color: rgba(74, 105, 189, 0.1);
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  z-index: 2; /* Ensure appointment is above other elements */
+  min-height: 60px; /* Minimum height for visibility */
+  height: auto; /* Allow height to grow with content */
+  width: calc(100% - 4px); /* Full width minus margins */
+  border-radius: 3px; /* Rounded corners */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Light shadow for definition */
 }
 
 .appointment-item:hover {
@@ -173,19 +179,49 @@
 .appointment-time {
   font-size: 0.8rem;
   font-weight: 600;
+  background-color: rgba(0, 0, 0, 0.03);
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-bottom: 3px;
 }
 
 .appointment-client {
   font-size: 0.9rem;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
+  font-weight: 600;
+  margin-bottom: 2px;
 }
 
 .appointment-service {
   font-size: 0.8rem;
   color: #666;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
+}
+
+/* Add styles for therapist and driver */
+.appointment-therapist,
+.appointment-driver {
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: ellipsis;
+  font-style: italic;
+  color: #555;
+  margin-top: 2px;
+}
+
+/* Improved layout for appointments containers - works for both single and multiple appointments */
+.appointments-container {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  width: 100%;
+  overflow: visible;
+  position: relative;
+  height: 100%;
+  min-height: 60px;
 }

@@ -1,0 +1,169 @@
+/* Enhanced WeekView styles for overlapping appointments */
+
+/* Make day columns expand based on content */
+.week-calendar {
+  overflow-x: auto;
+  width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+.day-column {
+  min-width: 150px;
+  border-right: 1px solid #eee;
+  /* Remove flex: 1 to allow columns to expand based on content */
+  flex: 0 0 auto; /* Don't allow shrinking */
+}
+
+/* Adjust the day column width based on appointments count */
+.day-column .multiple-appointments {
+  /* .day-column:has() selector not supported in all browsers, so applying style directly */
+  width: auto;
+}
+
+/* Fallback for browsers that don't support :has() selector */
+.day-column .time-slot.multiple-appointments {
+  width: auto;
+}
+
+/* Use data attributes as a more reliable way to control width based on appointment count */
+.appointments-container[data-count="2"] {
+  min-width: 300px; /* Two appointments */
+  width: auto;
+}
+
+.appointments-container[data-count="3"] {
+  min-width: 450px; /* Three appointments */
+  width: auto;
+}
+
+.appointments-container[data-count="4"] {
+  min-width: 600px; /* Four appointments */
+  width: auto;
+}
+
+.appointments-container[data-count="5"] {
+  min-width: 750px; /* Five appointments */
+  width: auto;
+}
+
+/* Still include :has() for modern browsers as progressive enhancement */
+.day-column
+  .multiple-appointments:has(
+    > .appointments-container > .appointment-item:nth-child(2)
+  ) {
+  min-width: 250px; /* Two appointments */
+}
+
+.day-column
+  .multiple-appointments:has(
+    > .appointments-container > .appointment-item:nth-child(3)
+  ) {
+  min-width: 350px; /* Three appointments */
+}
+
+.day-column
+  .multiple-appointments:has(
+    > .appointments-container > .appointment-item:nth-child(4)
+  ) {
+  min-width: 450px; /* Four appointments */
+}
+
+/* Style for time slots with appointments */
+.time-slot.has-appointment {
+  background-color: #f7f9fc;
+  min-height: 80px; /* Increased minimum height for appointments */
+  height: auto; /* Allow height to expand based on content */
+  overflow: visible; /* Ensure content is fully visible */
+}
+
+/* Update appointment items for side-by-side display when there are multiple appointments */
+.appointments-container[data-count="2"] .appointment-item {
+  flex: 1;
+  max-width: calc(50% - 4px); /* Two appointments side-by-side */
+  min-width: 120px; /* Minimum width for readability */
+}
+
+/* For 3 or more appointments */
+.appointments-container[data-count="3"] .appointment-item {
+  max-width: calc(33.33% - 4px);
+}
+
+.appointments-container[data-count="4"] .appointment-item {
+  max-width: calc(25% - 4px);
+}
+
+/* Support for modern browsers using :has() */
+.appointments-container:has(.appointment-item:nth-child(3)) .appointment-item {
+  max-width: calc(33.33% - 4px);
+}
+
+.appointments-container:has(.appointment-item:nth-child(4)) .appointment-item {
+  max-width: calc(25% - 4px);
+}
+
+/* Multiple appointments should have smaller text */
+.appointments-container[data-count="2"] .appointment-time,
+.appointments-container[data-count="3"] .appointment-time,
+.appointments-container[data-count="4"] .appointment-time,
+.appointments-container[data-count="5"] .appointment-time {
+  font-size: 0.7rem;
+}
+
+.appointments-container[data-count="2"] .appointment-client,
+.appointments-container[data-count="3"] .appointment-client,
+.appointments-container[data-count="4"] .appointment-client,
+.appointments-container[data-count="5"] .appointment-client {
+  font-size: 0.75rem;
+}
+
+.appointments-container[data-count="2"] .appointment-service,
+.appointments-container[data-count="3"] .appointment-service,
+.appointments-container[data-count="4"] .appointment-service,
+.appointments-container[data-count="5"] .appointment-service {
+  font-size: 0.7rem;
+}
+
+.appointments-container[data-count="2"] .appointment-therapist,
+.appointments-container[data-count="3"] .appointment-therapist,
+.appointments-container[data-count="4"] .appointment-therapist,
+.appointments-container[data-count="5"] .appointment-therapist,
+.appointments-container[data-count="2"] .appointment-driver,
+.appointments-container[data-count="3"] .appointment-driver,
+.appointments-container[data-count="4"] .appointment-driver,
+.appointments-container[data-count="5"] .appointment-driver {
+  font-size: 0.65rem;
+}
+
+/* Fix for time labels to ensure they're properly displayed */
+.time-slot.time-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  font-size: 0.85rem;
+  cursor: default;
+  white-space: nowrap;
+  font-weight: 500;
+  border-right: 1px solid #e0e0e0;
+  background-color: #f5f5f5;
+}
+
+/* Make the time column a bit wider to fit AM/PM format */
+.time-column {
+  min-width: 100px;
+  width: 100px;
+  border-right: 1px solid #eee;
+  background-color: #f9f9f9;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .day-column {
+    min-width: 120px;
+  }
+
+  .multiple-appointments .appointment-item {
+    min-width: 80px;
+  }
+}

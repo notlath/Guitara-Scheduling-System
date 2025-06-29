@@ -1,13 +1,48 @@
+// Generate time options from 13:00 to 01:00 (cross-day window)
+const generateTimeOptions = () => {
+  const options = [];
+  // 13:00 to 23:30 (every 30 min)
+  for (let h = 13; h <= 23; h++) {
+    options.push(`${h.toString().padStart(2, "0")}:00`);
+    options.push(`${h.toString().padStart(2, "0")}:30`);
+  }
+  // 00:00, 00:30, 01:00
+  options.push("00:00");
+  options.push("00:30");
+  options.push("01:00");
+  return options;
+};
+
+// Helper: Check if a time string is within allowed window (13:00-23:59 or 00:00-01:00)
+const isTimeInAllowedWindow = (time) => {
+  if (!time) return false;
+  const [h, m] = time.split(":").map(Number);
+  if (h >= 13 && h <= 23) return true;
+  if (h === 0) return true;
+  if (h === 1 && m === 0) return true;
+  return false;
+};
 /**
  * COMPLETE TanStack Query Migration Example
  * Shows the dramatic simplification possible with TanStack Query
  */
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
+import { MdClose } from "react-icons/md";
 import { useDispatch } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import { fetchClients } from "../../features/scheduling/schedulingSlice";
+import FormField from "../../globals/FormField";
+import modalStyles from "../../pages/SettingsDataPage/SettingsDataPage.module.css";
 import { registerClient } from "../../services/api";
 import "../../styles/AppointmentForm.css";
+import {
+  clearFormData,
+  hasSavedFormData,
+  loadFormData,
+  saveFormData,
+} from "../../utils/appointmentFormPersistence";
 
 // TanStack Query hooks - Replace ALL your custom caching
 import {
@@ -17,6 +52,7 @@ import {
 import { useFormAvailability } from "../../hooks/useAvailabilityQueries";
 import { useMaterialsWithStock } from "../../hooks/useMaterialsWithStock";
 import { useFormStaticData } from "../../hooks/useStaticDataQueries";
+import { queryKeys } from "../../lib/queryClient";
 
 // Components
 import LazyClientSearch from "../common/LazyClientSearch";
@@ -111,6 +147,8 @@ const getMinTime = (selectedDate) => {
   return ""; // No minimum time for future dates
 };
 
+// Removed duplicate import of useEffect
+
 const AppointmentFormTanStackComplete = ({
   appointment = null,
   onSubmitSuccess,
@@ -120,6 +158,14 @@ const AppointmentFormTanStackComplete = ({
 }) => {
   // Form state (simplified)
   const [formData, setFormData] = useState(initialFormState);
+
+  // Always fetch fresh therapist/driver options when form is opened or date/time changes
+  useEffect(() => {
+    // This effect triggers the TanStack Query hooks for therapist/driver availability
+    // No-op here, but ensures hooks re-run on relevant changes
+    // If you use a custom cache for therapist/driver, clear it here
+    // (No-op: TanStack Query handles this if query keys use date/time)
+  }, [formData.date, formData.start_time, formData.end_time]);
   const [clientDetails, setClientDetails] = useState({
     first_name: "",
     last_name: "",
@@ -127,11 +173,86 @@ const AppointmentFormTanStackComplete = ({
     email: "",
   });
   const [errors, setErrors] = useState({});
+  const [materialQuantities, setMaterialQuantities] = useState({});
+
+  // Load saved form data on component mount (only if not editing existing appointment)
+  useEffect(() => {
+    if (!appointment && hasSavedFormData()) {
+      try {
+        const savedData = loadFormData();
+        if (savedData) {
+          console.log("📥 Loading saved form data for better UX");
+          setFormData(savedData.formData);
+          setClientDetails(savedData.clientDetails);
+          setMaterialQuantities(savedData.materialQuantities);
+        }
+      } catch (error) {
+        console.error("Failed to load saved form data:", error);
+        clearFormData(); // Clear corrupted data
+      }
+    }
+  }, [appointment]);
+
+  // Auto-save form data when user makes changes (debounced)
+  useEffect(() => {
+    if (!appointment) {
+      // Only save for new appointments
+      const saveTimer = setTimeout(() => {
+        // Only save if there's meaningful data
+        const hasData =
+          formData.client ||
+          formData.services ||
+          formData.date ||
+          formData.start_time ||
+          formData.location ||
+          formData.notes;
+
+        if (hasData) {
+          saveFormData(formData, clientDetails, materialQuantities);
+        }
+      }, 1000); // 1 second debounce
+
+      return () => clearTimeout(saveTimer);
+    }
+  }, [formData, clientDetails, materialQuantities, appointment]);
+
+  // Handle form close with data preservation
+  const handleFormClose = useCallback(() => {
+    // Check if user has entered any data
+    const hasData =
+      formData.client ||
+      formData.services ||
+      formData.date ||
+      formData.start_time ||
+      formData.location ||
+      formData.notes;
+
+    if (!appointment && hasData) {
+      // For new appointments with data, just close - data will be saved automatically
+      console.log(
+        "📝 Form closed with unsaved data - data will be preserved for next time"
+      );
+    }
+
+    onCancel?.();
+  }, [formData, appointment, onCancel]);
+
+  // Client registration modal state
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [clientFormData, setClientFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    address: "",
+    phoneNumber: "",
+    notes: "",
+  });
+  const [isSubmittingClient, setIsSubmittingClient] = useState(false);
 
   // Redux dispatch for client fetching
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
   const [materials, setMaterials] = useState([]);
-  const [materialQuantities, setMaterialQuantities] = useState({});
 
   // 🔥 BEFORE: 600+ lines of custom cache logic
   // 🎉 AFTER: 3 simple hooks that handle everything!
@@ -202,7 +323,7 @@ const AppointmentFormTanStackComplete = ({
   // Handle form changes
   const handleChange = useCallback(
     (e) => {
-      const { name, value, type, checked } = e.target;
+      const { name, value, type, checked, multiple, options } = e.target;
 
       if (type === "checkbox") {
         setFormData((prev) => ({ ...prev, [name]: checked }));
@@ -240,7 +361,7 @@ const AppointmentFormTanStackComplete = ({
         }
       }
 
-      // Validate start time - prevent past times for today
+      // Validate start time - prevent past times for today and restrict to allowed window
       if (name === "start_time") {
         if (formData.date && isDateTimeInPast(formData.date, value)) {
           setErrors((prev) => ({
@@ -248,10 +369,16 @@ const AppointmentFormTanStackComplete = ({
             start_time: "Cannot book appointments in the past",
           }));
           return; // Don't update the form data
+        } else if (!isTimeInAllowedWindow(value)) {
+          setErrors((prev) => ({
+            ...prev,
+            start_time: "Start time must be between 13:00 and 01:00",
+          }));
+          return;
         }
       }
 
-      // Validate end time - ensure it's after start time
+      // Validate end time - ensure it's after start time and restrict to allowed window
       if (name === "end_time") {
         if (formData.start_time && value && value <= formData.start_time) {
           setErrors((prev) => ({
@@ -259,10 +386,24 @@ const AppointmentFormTanStackComplete = ({
             end_time: "End time must be after start time",
           }));
           return; // Don't update the form data
+        } else if (!isTimeInAllowedWindow(value)) {
+          setErrors((prev) => ({
+            ...prev,
+            end_time: "End time must be between 13:00 and 01:00",
+          }));
+          return;
         }
       }
 
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      let newValue = value;
+      if (multiple) {
+        // For multi-select, collect all selected options as an array
+        newValue = Array.from(options)
+          .filter((opt) => opt.selected)
+          .map((opt) => opt.value);
+      }
+
+      setFormData((prev) => ({ ...prev, [name]: newValue }));
     },
     [errors, formData.date, formData.start_time]
   );
@@ -304,6 +445,9 @@ const AppointmentFormTanStackComplete = ({
 
       // Refetch clients to get the newly created client
       await dispatch(fetchClients()).unwrap();
+
+      // Invalidate TanStack Query cache for clients
+      await queryClient.invalidateQueries({ queryKey: queryKeys.clients.all });
 
       // Try to find the client by email or phone number
       const updatedClients = clients || [];
@@ -386,6 +530,84 @@ const AppointmentFormTanStackComplete = ({
   // Handle material quantity change
   const handleMaterialQuantityChange = (materialId, value) => {
     setMaterialQuantities((prev) => ({ ...prev, [materialId]: value }));
+  };
+
+  // Client registration modal handlers
+  const handleRegisterClientClick = () => {
+    setShowClientModal(true);
+  };
+
+  const handleCloseClientModal = () => {
+    setShowClientModal(false);
+    setClientFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      address: "",
+      phoneNumber: "",
+      notes: "",
+    });
+  };
+
+  const handleClientFormChange = (e) => {
+    const { name, value } = e.target;
+    setClientFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleClientSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmittingClient(true);
+
+    try {
+      const clientData = {
+        first_name: clientFormData.firstName,
+        last_name: clientFormData.lastName,
+        email: clientFormData.email,
+        phone_number: clientFormData.phoneNumber,
+        address: clientFormData.address,
+        notes: clientFormData.notes,
+      };
+
+      console.log("📋 Registering new client from modal:", clientData);
+      const response = await registerClient(clientData);
+
+      const newClientId = response.data?.id || response.data?.client?.id;
+
+      if (newClientId) {
+        // Refresh clients list
+        await dispatch(fetchClients()).unwrap();
+
+        // Invalidate TanStack Query cache for clients to ensure fresh data
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.clients.all,
+        });
+
+        // Auto-select the newly registered client
+        const newClient = {
+          id: newClientId,
+          ...clientData,
+          database_id: newClientId,
+          is_existing_client: true,
+        };
+
+        setFormData((prev) => ({ ...prev, client: newClient }));
+
+        // Clear client error if it exists
+        if (errors.client) {
+          setErrors((prev) => ({ ...prev, client: "" }));
+        }
+
+        console.log("✅ Client registered and selected:", newClient);
+        handleCloseClientModal();
+      } else {
+        throw new Error("No client ID returned from registration");
+      }
+    } catch (error) {
+      console.error("❌ Failed to register client:", error);
+      alert("Failed to register client. Please try again.");
+    } finally {
+      setIsSubmittingClient(false);
+    }
   };
 
   // Handle form submission
@@ -595,6 +817,10 @@ const AppointmentFormTanStackComplete = ({
 
       // Success - form is automatically reset by the mutation
       onSubmitSuccess?.();
+
+      // Clear saved form data only after successful appointment creation
+      clearFormData();
+
       setFormData(initialFormState);
       setClientDetails({
         first_name: "",
@@ -686,10 +912,102 @@ const AppointmentFormTanStackComplete = ({
   // Show loading while services are loading - but show the container
   const isFormReady = true;
 
+  // URL param management for modal state
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    // Add ?showAppointmentForm=1 when form is mounted
+    const currentParams = new URLSearchParams(searchParams);
+    currentParams.set("showAppointmentForm", "1");
+
+    // Add appointment context to URL if editing
+    if (appointment) {
+      currentParams.set("appointmentId", appointment.id.toString());
+      currentParams.set("mode", "edit");
+    } else {
+      currentParams.set("mode", "create");
+    }
+
+    setSearchParams(currentParams, { replace: true });
+    return () => {
+      // Remove params on unmount
+      const cleanupParams = new URLSearchParams(searchParams);
+      cleanupParams.delete("showAppointmentForm");
+      cleanupParams.delete("appointmentId");
+      cleanupParams.delete("mode");
+      setSearchParams(cleanupParams, { replace: true });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appointment]);
   return (
     <div className="appointment-form-container">
-      <div className="form-header">
-        <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
+      <div
+        className="form-header"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
+          {/* {!appointment && hasSavedFormData() && (
+            <div
+              style={{
+                fontSize: "0.85em",
+                color: "#666",
+                marginTop: "4px",
+                fontStyle: "italic",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              💾 Previous form data restored for your convenience
+              <button
+                type="button"
+                onClick={() => {
+                  clearFormData();
+                  setFormData(initialFormState);
+                  setClientDetails({
+                    first_name: "",
+                    last_name: "",
+                    phone_number: "",
+                    email: "",
+                  });
+                  setMaterialQuantities({});
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#666",
+                  fontSize: "0.8em",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                Clear
+              </button>
+            </div>
+          )} */}
+        </div>
+        <button
+          type="button"
+          className="close-btn"
+          aria-label="Close appointment form"
+          style={{
+            background: "none",
+            border: "none",
+            fontSize: 24,
+            cursor: "pointer",
+            color: "#888",
+            marginLeft: 8,
+            lineHeight: 1,
+          }}
+          onClick={handleFormClose}
+        >
+          &times;
+        </button>
       </div>
 
       {!isFormReady ? (
@@ -770,6 +1088,7 @@ const AppointmentFormTanStackComplete = ({
                   setErrors((prev) => ({ ...prev, client: "" }));
                 }
               }}
+              onRegisterClientClick={handleRegisterClientClick}
               error={errors.client}
               disabled={isSubmitting}
             />
@@ -893,34 +1212,52 @@ const AppointmentFormTanStackComplete = ({
 
             <div className="form-group">
               <label>Start Time *</label>
-              <input
-                type="time"
+              <select
                 name="start_time"
                 value={formData.start_time}
                 onChange={handleChange}
                 disabled={isSubmitting}
-                min={getMinTime(formData.date)}
                 className={errors.start_time ? "error" : ""}
-              />
+                required
+              >
+                <option value="">Select start time</option>
+                {generateTimeOptions().map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
               {errors.start_time && (
                 <div className="error-message">{errors.start_time}</div>
               )}
+              {/* <div className="helper-text">
+                Allowed: 13:00 (1 PM) to 01:00 (next day)
+              </div> */}
             </div>
 
             <div className="form-group">
               <label>End Time *</label>
-              <input
-                type="time"
+              <select
                 name="end_time"
                 value={formData.end_time}
                 onChange={handleChange}
                 disabled={isSubmitting}
-                min={formData.start_time || ""}
                 className={errors.end_time ? "error" : ""}
-              />
+                required
+              >
+                <option value="">Select end time</option>
+                {generateTimeOptions().map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
               {errors.end_time && (
                 <div className="error-message">{errors.end_time}</div>
               )}
+              {/* <div className="helper-text">
+                Allowed: 13:00 (1 PM) to 01:00 (next day)
+              </div> */}
             </div>
           </div>
           {/* 🔥 BEFORE: 200+ lines of complex availability checking */}
@@ -953,70 +1290,32 @@ const AppointmentFormTanStackComplete = ({
               )}
             </div>
           )}
-          {/* Multiple Therapists Option */}
+          {/* Therapist Multi-Select (Always Visible) */}
           <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                name="multipleTherapists"
-                checked={formData.multipleTherapists}
-                onChange={handleChange}
-                disabled={isSubmitting}
-              />
-              <span>Book multiple therapists</span>
-            </label>
+            <label>Select Therapist(s) *</label>
+            <select
+              name="therapists"
+              multiple
+              value={formData.therapists}
+              onChange={handleChange}
+              disabled={isSubmitting || !canFetchAvailability}
+              className={
+                errors.therapists ? "error multi-select" : "multi-select"
+              }
+              size="5"
+            >
+              {Array.isArray(availableTherapists) &&
+                availableTherapists.map((therapist) => (
+                  <option key={therapist.id} value={therapist.id}>
+                    {therapist.first_name} {therapist.last_name} -{" "}
+                    {therapist.specialization}
+                  </option>
+                ))}
+            </select>
+            {errors.therapists && (
+              <div className="error-message">{errors.therapists}</div>
+            )}
           </div>
-          {/* Therapist Selection */}
-          {!formData.multipleTherapists ? (
-            <div className="form-group">
-              <label>Therapist *</label>
-              <select
-                name="therapist"
-                value={formData.therapist}
-                onChange={handleChange}
-                disabled={isSubmitting || !canFetchAvailability}
-                className={errors.therapist ? "error" : ""}
-              >
-                <option value="">Select a therapist</option>
-                {Array.isArray(availableTherapists) &&
-                  availableTherapists.map((therapist) => (
-                    <option key={therapist.id} value={therapist.id}>
-                      {therapist.first_name} {therapist.last_name} -{" "}
-                      {therapist.specialization}
-                    </option>
-                  ))}
-              </select>
-              {errors.therapist && (
-                <div className="error-message">{errors.therapist}</div>
-              )}
-            </div>
-          ) : (
-            <div className="form-group">
-              <label>Select Multiple Therapists *</label>
-              <select
-                name="therapists"
-                multiple
-                value={formData.therapists}
-                onChange={handleChange}
-                disabled={isSubmitting || !canFetchAvailability}
-                className={
-                  errors.therapists ? "error multi-select" : "multi-select"
-                }
-                size="5"
-              >
-                {Array.isArray(availableTherapists) &&
-                  availableTherapists.map((therapist) => (
-                    <option key={therapist.id} value={therapist.id}>
-                      {therapist.first_name} {therapist.last_name} -{" "}
-                      {therapist.specialization}
-                    </option>
-                  ))}
-              </select>
-              {errors.therapists && (
-                <div className="error-message">{errors.therapists}</div>
-              )}
-            </div>
-          )}
           {/* Driver Selection */}
           <div className="form-group">
             <label>Driver (Optional)</label>
@@ -1072,7 +1371,7 @@ const AppointmentFormTanStackComplete = ({
             <button
               type="button"
               className="cancel-button"
-              onClick={onCancel}
+              onClick={handleFormClose}
               disabled={isSubmitting}
             >
               Cancel
@@ -1092,6 +1391,88 @@ const AppointmentFormTanStackComplete = ({
             </LoadingButton>
           </div>
         </form>
+      )}
+
+      {/* Client Registration Modal */}
+      {showClientModal && (
+        <div className={modalStyles["modal-overlay"]}>
+          <div className={modalStyles["modal"]}>
+            <div className={modalStyles["modal-header"]}>
+              <h2>Register New Client</h2>
+              <button
+                className={modalStyles["close-btn"]}
+                onClick={handleCloseClientModal}
+                disabled={isSubmittingClient}
+              >
+                <MdClose size={20} />
+              </button>
+            </div>
+            <form
+              className={modalStyles["modal-form"]}
+              onSubmit={handleClientSubmit}
+            >
+              <div style={{ display: "flex", gap: "16px" }}>
+                <FormField
+                  name="firstName"
+                  label="First Name"
+                  value={clientFormData.firstName}
+                  onChange={handleClientFormChange}
+                  inputProps={{ autoComplete: "off", maxLength: 50 }}
+                  style={{ flex: 1 }}
+                />
+                <FormField
+                  name="lastName"
+                  label="Last Name"
+                  value={clientFormData.lastName}
+                  onChange={handleClientFormChange}
+                  inputProps={{ autoComplete: "off", maxLength: 50 }}
+                  style={{ flex: 1 }}
+                />
+              </div>
+              <FormField
+                name="email"
+                label="Email"
+                type="email"
+                value={clientFormData.email}
+                onChange={handleClientFormChange}
+                inputProps={{ maxLength: 100 }}
+              />
+              <FormField
+                name="address"
+                label="Address"
+                value={clientFormData.address}
+                onChange={handleClientFormChange}
+                inputProps={{ maxLength: 200 }}
+              />
+              <FormField
+                name="phoneNumber"
+                label="Contact Number"
+                value={clientFormData.phoneNumber}
+                onChange={handleClientFormChange}
+                inputProps={{ maxLength: 20 }}
+              />
+              <FormField
+                name="notes"
+                label="Notes"
+                as="textarea"
+                value={clientFormData.notes}
+                onChange={handleClientFormChange}
+                inputProps={{
+                  maxLength: 500,
+                  rows: 3,
+                }}
+                required={false}
+              />
+              <button
+                type="submit"
+                className="action-btn"
+                disabled={isSubmittingClient}
+              >
+                {isSubmittingClient ? "Registering..." : "Register Client"}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

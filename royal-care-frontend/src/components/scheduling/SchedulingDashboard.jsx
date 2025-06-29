@@ -44,11 +44,23 @@ const SchedulingDashboard = () => {
   const currentView = searchParams.get("view") || "calendar";
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
 
-  // Helper function to update view in URL
+  // Helper function to update view in URL and close form if open
   const setView = (newView) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set("view", newView);
-    setSearchParams(newSearchParams);
+    // Always close the form and clear selected appointment first
+    if (isFormVisible) {
+      setIsFormVisible(false);
+      setSelectedAppointment(null);
+      // Use setTimeout to ensure state updates before changing URL
+      setTimeout(() => {
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.set("view", newView);
+        setSearchParams(newSearchParams);
+      }, 0);
+    } else {
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.set("view", newView);
+      setSearchParams(newSearchParams);
+    }
   };
   const dispatch = useDispatch();
   // MIGRATED TO TANSTACK QUERY: Use TanStack Query hooks instead of legacy optimizedDataManager
