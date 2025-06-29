@@ -1,27 +1,30 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
-import { useDispatch } from "react-redux";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import pageTitles from "../constants/pageTitles";
-import { logout } from "../features/auth/authSlice";
+// SHARED HOOKS: Import shared dashboard logic to eliminate code duplication
+import { useDashboardCommon } from "../hooks/useDashboardCommon";
+import { useUrlParams } from "../hooks/useUrlParams";
+import { useButtonLoading } from "../hooks/useButtonLoading";
+// SHARED UTILITIES: Import shared status utilities to eliminate code duplication  
+import { getStatusBadgeClass, getStatusDisplayText } from "../utils/appointmentStatusUtils";
 // Enhanced Redux hooks for automatic TanStack Query cache invalidation
 import { useEnhancedTherapistActions } from "../hooks/useEnhancedRedux";
 // TANSTACK QUERY: Replace optimized hooks with TanStack Query
 import { useEnhancedDashboardData } from "../hooks/useEnhancedDashboardData";
 // Import the new instant updates hook
 import { useTherapistInstantActions } from "../hooks/useInstantUpdates";
-// Import shared Philippine time and greeting hook
-import { usePhilippineTime } from "../hooks/usePhilippineTime";
-import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 
-import { shallowEqual } from "react-redux";
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
-import { useOptimizedSelector } from "../hooks/usePerformanceOptimization";
+import "../styles/DriverCoordination.css";
+import "../styles/TherapistDashboard.css";
+
+/* ✅ NEW: Component-based CSS imports - Single Source of Truth */
+import "../styles/components/AppointmentCard.css";
+import "../styles/components/StatusBadge.css";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css";
 
@@ -33,11 +36,31 @@ import RejectionModal from "./RejectionModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
 const TherapistDashboard = () => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+  // ✅ SHARED LOGIC: Use common dashboard functionality to eliminate code duplication
+  const { 
+    handleLogout, 
+    user,
+    userName, 
+    systemTime, 
+    greeting,
+    navigate,
+    // WebSocket and sync handlers are initialized automatically
+  } = useDashboardCommon("Therapist");
 
-  // Initialize real-time cache sync via WebSocket
-  useAutoWebSocketCacheSync();
+  // ✅ SHARED URL PARAMS: Use shared URL parameter management
+  const {
+    currentView,
+    setView
+  } = useUrlParams([], [], "today"); // No validation arrays needed for therapist
+
+  // ✅ SHARED BUTTON LOADING: Use shared button loading state management
+  const { buttonLoading, setActionLoading } = useButtonLoading();
+
+  // ✅ REMOVED: dispatch and navigate - now handled by shared hook
+
+  // ✅ REMOVED: Getting user from localStorage - now handled by shared hook
+
+  // Initialize real-time cache sync via WebSocket - REMOVED: Now handled by shared hook
 
   // Enhanced Redux actions with automatic TanStack Query cache invalidation
   const {
@@ -53,46 +76,29 @@ const TherapistDashboard = () => {
     acceptAppointment: instantAcceptAppointment,
     rejectAppointment: instantRejectAppointment,
   } = useTherapistInstantActions();
-  // Remove the sync event handlers - TanStack Query handles real-time updates automatically
+  // Remove the sync event handlers - TanStack Query handles real-time updates automatically - REMOVED: Now handled by shared hook
 
-  // Get user from Redux state
-  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
+  // Get user from Redux state - REMOVED: Now handled by shared hook
 
-  // Get user name from Redux state or fallback
-  const userName =
-    user?.first_name && user?.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user?.username || "Therapist";
+  // Get user name from Redux state or fallback - REMOVED: Now handled by shared hook
 
-  // Use shared Philippine time and greeting hook
-  const { systemTime, greeting } = usePhilippineTime();
+  // Use shared Philippine time and greeting hook - REMOVED: Now handled by shared hook
 
-  // URL search params for view persistence
-  const [searchParams, setSearchParams] = useSearchParams();
+  // URL search params for view persistence - REMOVED: Now handled by shared hook
+  // const [searchParams, setSearchParams] = useSearchParams(); - REMOVED
   // Get view from URL params, default to 'today'
-  const currentView = searchParams.get("view") || "today";
+  // const currentView = searchParams.get("view") || "today"; - REMOVED
 
-  // Helper function to update view in URL
-  const setView = (newView) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set("view", newView);
-    setSearchParams(newSearchParams);
-  };
+  // Helper function to update view in URL - REMOVED: Now handled by shared hook
   const [rejectionModal, setRejectionModal] = useState({
     isOpen: false,
     appointmentId: null,
   });
 
-  // Loading states for individual button actions
-  const [buttonLoading, setButtonLoading] = useState({});
+  // Loading states for individual button actions - REMOVED: Now handled by shared hook
+  // const [buttonLoading, setButtonLoading] = useState({}); - REMOVED
 
-  // Helper function to set loading state for specific action
-  const setActionLoading = (actionKey, isLoading) => {
-    setButtonLoading((prev) => ({
-      ...prev,
-      [actionKey]: isLoading,
-    }));
-  };
+  // Helper function to set loading state for specific action - REMOVED: Now handled by shared hook
   // TANSTACK QUERY: Replace optimized data manager with TanStack Query
   const {
     appointments: myAppointments,
@@ -128,17 +134,9 @@ const TherapistDashboard = () => {
   // TANSTACK QUERY: Automatic background refreshes handled by TanStack Query
   // No manual refresh logic needed - TanStack Query handles it automatically
 
-  const handleLogout = () => {
-    localStorage.removeItem("knoxToken");
-    localStorage.removeItem("user");
-    dispatch(logout());
-    navigate("/");
-  };
+  // handleLogout - REMOVED: Now handled by shared hook
 
-  // Set page title
-  useEffect(() => {
-    document.title = pageTitles.dashboard;
-  }, []);
+  // Set page title - REMOVED: Now handled by shared hook
 
   // Handle appointment status changes with INSTANT UPDATES (immediate UI feedback)
   const handleAcceptAppointment = async (appointmentId) => {
@@ -268,78 +266,9 @@ const TherapistDashboard = () => {
   const handleRejectionCancel = () => {
     setRejectionModal({ isOpen: false, appointmentId: null });
   };
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case "pending":
-        return "status-pending";
-      case "confirmed":
-        return "status-confirmed";
-      case "therapist_confirmed":
-        return "status-therapist-confirmed";
-      case "driver_confirmed":
-        return "status-driver-confirmed";
-      case "journey_started":
-        return "status-journey-started";
-      case "arrived":
-        return "status-arrived";
-      case "dropped_off":
-        return "status-dropped-off";
-      case "session_started":
-        return "status-session-started";
-      case "payment_requested":
-        return "status-payment-requested";
-      case "payment_completed":
-        return "status-payment-completed";
-      case "pickup_requested":
-        return "status-pickup-requested";
-      case "in_progress":
-        return "status-in-progress";
-      case "completed":
-        return "status-completed";
-      case "cancelled":
-        return "status-cancelled";
-      default:
-        return "";
-    }
-  };
 
-  // Helper function to display user-friendly status text
-  const getStatusDisplayText = (status) => {
-    switch (status) {
-      case "pending":
-        return "Pending";
-      case "confirmed":
-        return "Confirmed";
-      case "therapist_confirmed":
-        return "Confirmed by Therapist";
-      case "driver_confirmed":
-        return "Driver Assigned";
-      case "journey_started":
-        return "En Route";
-      case "arrived":
-        return "Driver Arrived";
-      case "dropped_off":
-        return "Ready to Start";
-      case "session_in_progress":
-        return "Session in Progress";
-      case "awaiting_payment":
-        return "Awaiting Payment";
-      case "payment_completed":
-        return "Payment Completed";
-      case "pickup_requested":
-        return "Pickup Requested";
-      case "transport_completed":
-        return "Transport Completed";
-      case "completed":
-        return "Completed";
-      case "cancelled":
-        return "Cancelled";
-      default:
-        return (
-          status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ")
-        );
-    }
-  };
+  // ✅ REMOVED: getStatusBadgeClass and getStatusDisplayText functions - now using shared utilities
+
   // Helper function to display therapist team information
   const renderTherapistTeam = (appointment) => {
     if (

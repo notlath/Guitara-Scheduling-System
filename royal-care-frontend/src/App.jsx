@@ -14,6 +14,8 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RouteHandler from "./components/auth/RouteHandler";
 import ReactErrorBoundary from "./components/common/ReactErrorBoundary";
 import { AttendanceMemoProvider } from "./components/contexts/AttendanceContext";
+// DEVELOPMENT TOOL: User role switcher for testing (only in dev mode)
+import UserRoleSwitcher from "./components/development/UserRoleSwitcher";
 import { authInitialized, login } from "./features/auth/authSlice"; // Import new action
 const AvailabilityManager = React.lazy(() =>
   import("./components/scheduling/AvailabilityManager")
@@ -337,6 +339,9 @@ const App = () => {
   return (
     <BrowserRouter>
       <div className="App">
+        {/* DEVELOPMENT TOOL: Quick role switcher for testing */}
+        <UserRoleSwitcher />
+        
         <Routes>
           <Route path="/" element={<RouteHandler />} />
           <Route

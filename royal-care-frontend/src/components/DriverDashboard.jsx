@@ -4,22 +4,20 @@ const isTransportCompleted = (appointment) =>
     appointment.status
   );
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { MdClose } from "react-icons/md";
-import { shallowEqual, useDispatch, useSelector } from "react-redux";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import pageTitles from "../constants/pageTitles";
-import { logout } from "../features/auth/authSlice";
+// SHARED HOOKS: Import shared dashboard logic to eliminate code duplication
+import { useDashboardCommon } from "../hooks/useDashboardCommon";
+import { useUrlParams } from "../hooks/useUrlParams";
+import { useButtonLoading } from "../hooks/useButtonLoading";
+// SHARED UTILITIES: Import shared status utilities to eliminate code duplication  
+import { getStatusBadgeClass, getStatusDisplayText } from "../utils/appointmentStatusUtils";
 // TANSTACK QUERY: Replace optimized data manager with TanStack Query
 import { useDriverDashboardData } from "../hooks/useDashboardQueries";
 import { useDashboardMutations } from "../hooks/useEnhancedDashboardData";
 // Enhanced Redux hooks for automatic TanStack Query cache invalidation
-
-// Import shared Philippine time and greeting hook
-import { usePhilippineTime } from "../hooks/usePhilippineTime";
-import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
-import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import syncService from "../services/syncService";
+
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 
@@ -105,59 +103,43 @@ const formatLocationKey = (location) => {
 };
 
 const DriverDashboard = () => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+  // ✅ SHARED LOGIC: Use common dashboard functionality to eliminate code duplication
+  const { 
+    handleLogout, 
+    user,
+    userName, 
+    systemTime, 
+    greeting,
+    // WebSocket and sync handlers are initialized automatically
+  } = useDashboardCommon("Driver");
 
-  // Initialize real-time cache sync via WebSocket
-  useAutoWebSocketCacheSync();
+  // ✅ SHARED URL PARAMS: Use shared URL parameter management
+  const {
+    currentView,
+    setView
+  } = useUrlParams([], [], "today"); // No validation arrays needed for driver
 
-  // Get user from Redux state
-  const user = useSelector((state) => state.auth.user, shallowEqual);
+  // ✅ SHARED BUTTON LOADING: Use shared button loading state management
+  const { buttonLoading, setActionLoading } = useButtonLoading();
 
-  const userName =
-    user?.first_name && user?.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user?.username || "Driver";
-
-  // Set page title
-  useEffect(() => {
-    document.title = pageTitles.dashboard;
-  }, []);
-
-  // Use shared Philippine time and greeting hook
-  const { systemTime, greeting } = usePhilippineTime();
-
-  // Set up sync event handlers to update Redux state
-  useSyncEventHandlers();
-
-  // URL search params for view persistence
-  const [searchParams, setSearchParams] = useSearchParams();
-  // Get view from URL params, default to 'today'
-  const currentView = searchParams.get("view") || "today";
-
-  // Helper function to update view in URL
-  const setView = (newView) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set("view", newView);
-    setSearchParams(newSearchParams);
-  };
+  // ✅ REMOVED: All duplicated logic now handled by shared hooks
+  // - dispatch, navigate: now from shared hook
+  // - useAutoWebSocketCacheSync: now handled by shared hook
+  // - user from Redux: now from shared hook  
+  // - userName extraction: now from shared hook
+  // - useEffect for page title: now handled by shared hook
+  // - usePhilippineTime: now from shared hook
+  // - useSyncEventHandlers: now handled by shared hook
+  // - URL search params: now from shared hook
+  // - buttonLoading state: now from shared hook
   const [rejectionModal, setRejectionModal] = useState({
     isOpen: false,
     appointmentId: null,
   });
-  // 🔥 REMOVED: Redundant isInitialLoad - now provided by centralized hook
-  // Loading states for individual button actions
-  const [buttonLoading, setButtonLoading] = useState({});
+  
+  // ✅ REMOVED: Redundant isInitialLoad, buttonLoading state, and setActionLoading - now provided by shared hooks
   // Pickup assignment timer state
   const [_pickupTimers, setPickupTimers] = useState({});
-
-  // Helper function to set loading state for specific action
-  const setActionLoading = (actionKey, isLoading) => {
-    setButtonLoading((prev) => ({
-      ...prev,
-      [actionKey]: isLoading,
-    }));
-  };
   const handleConfirmPickup = async (appointmentId) => {
     const actionKey = `confirm-pickup-${appointmentId}`;
     setActionLoading(actionKey, true);
@@ -299,12 +281,8 @@ const DriverDashboard = () => {
     };
   }, [user, refetch]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("knoxToken");
-    localStorage.removeItem("user");
-    dispatch(logout());
-    navigate("/");
-  };
+  // ✅ REMOVED: handleLogout function - now handled by shared hook
+  
   const handleAcceptAppointment = async (appointmentId) => {
     const actionKey = `accept_${appointmentId}`;
     try {
@@ -810,47 +788,9 @@ const DriverDashboard = () => {
   const handleRejectionCancel = () => {
     setRejectionModal({ isOpen: false, appointmentId: null });
   };
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case "pending":
-        return "status-badge--pending";
-      case "confirmed":
-        return "status-badge--confirmed";
-      case "therapist_confirmed":
-        return "status-badge--therapist-confirmed";
-      case "driver_confirmed":
-        return "status-badge--driver-confirmed";
-      case "journey_started":
-      case "journey":
-        return "status-badge--journey-started";
-      case "arrived":
-        return "status-badge--arrived";
-      case "dropped_off":
-        return "status-badge--arrived";
-      case "driver_transport_completed":
-        return "status-badge--completed"; // Driver's transport is complete
-      case "session_started":
-        return "status-badge--session-started";
-      case "payment_requested":
-        return "status-badge--payment-requested";
-      case "payment_completed":
-        return "status-badge--payment-completed";
-      case "pickup_requested":
-        return "status-badge--pickup-requested";
-      case "driving_to_location":
-        return "status-badge--in-progress";
-      case "at_location":
-        return "status-badge--confirmed";
-      case "transport_completed":
-        return "status-badge--completed";
-      case "completed":
-        return "status-badge--completed";
-      case "cancelled":
-        return "status-badge--cancelled";
-      default:
-        return "";
-    }
-  };
+
+  // ✅ REMOVED: getStatusBadgeClass function - now using shared utility
+
   const renderActionButtons = (appointment) => {
     const { status, id, requires_car } = appointment;
     // Enhanced multi-therapist detection logic
@@ -1481,8 +1421,7 @@ const DriverDashboard = () => {
                       appointment.status
                     )}`}
                   >
-                    {appointment.status.charAt(0).toUpperCase() +
-                      appointment.status.slice(1).replace(/_/g, " ")}
+                    {getStatusDisplayText(appointment.status)}
                   </span>
                   {requiresCompanyCar && (
                     <span className="vehicle-badge company-car">
