@@ -1,4 +1,6 @@
-import { useEffect, useMutation, useQuery, useQueryClient, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
+import { useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -16,6 +18,9 @@ import { useUrlParams } from "../hooks/useUrlParams";
 import { useButtonLoading } from "../hooks/useButtonLoading";
 // SHARED UTILITIES: Import shared status utilities to eliminate code duplication
 import { getStatusBadgeClass, getStatusDisplayText } from "../utils/appointmentStatusUtils";
+// Import shared Philippine time and greeting hook
+import { usePhilippineTime } from "../hooks/usePhilippineTime";
+import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
