@@ -49,6 +49,7 @@ import "../styles/ErrorHandling.css";
 import "../styles/OperatorDashboard.css";
 import "../styles/Performance.css";
 import "../styles/UrgencyIndicators.css";
+import PostServiceMaterialModal from "./scheduling/PostServiceMaterialModal";
 
 // ✅ ROBUST FILTERING: Valid values for URL parameters
 const VALID_VIEW_VALUES = Object.freeze([
@@ -263,7 +264,67 @@ const OperatorDashboard = () => {
     isUploading: false,
     uploadError: "",
   });
-  // ✅ PERFORMANCE FIX: Use optimized attendance context with caching
+
+  // Post-service material modal state
+  const [materialModal, setMaterialModal] = useState({
+    isOpen: false,
+    appointmentId: null,
+    materials: [],
+    isSubmitting: false,
+  });
+  // Post-service material modal handlers
+  const handleMaterialModalSubmit = async (materialStatus) => {
+    setMaterialModal(prev => ({ ...prev, isSubmitting: true }));
+    
+    try {
+      // Process each material's status
+      for (const material of materialModal.materials) {
+        const isEmpty = materialStatus[material.id];
+        
+        if (isEmpty !== undefined) {
+          const response = await fetch(`/api/inventory/items/${material.id}/update_material_status/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            },
+            body: JSON.stringify({
+              is_empty: isEmpty,
+              quantity: material.quantity_used,
+              notes: `Post-service update for appointment #${materialModal.appointmentId}`
+            }),
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to update material ${material.name}`);
+          }
+        }
+      }
+      
+      // Success - close modal and show success message
+      alert('Material status updated successfully!');
+      setMaterialModal({
+        isOpen: false,
+        appointmentId: null,
+        materials: [],
+        isSubmitting: false,
+      });
+      
+    } catch (error) {
+      console.error('Error updating material status:', error);
+      alert(`Error updating material status: ${error.message}`);
+      setMaterialModal(prev => ({ ...prev, isSubmitting: false }));
+    }
+  };
+
+  const handleMaterialModalClose = () => {
+    setMaterialModal({
+      isOpen: false,
+      appointmentId: null,
+      materials: [],
+      isSubmitting: false,
+    });
+  };
   const {
     attendanceRecords,
     loading: attendanceLoading,
@@ -2491,6 +2552,7 @@ const OperatorDashboard = () => {
                     className={`status-badge ${getStatusBadgeClass(status)}`}
                   >
                     {getStatusDisplayText(status)}
+
                   </span>
                   {urgencyLevel && urgencyLevel !== "normal" && (
                     <span className={`urgency-badge urgency-${urgencyLevel}`}>
@@ -3821,6 +3883,14 @@ const OperatorDashboard = () => {
           </div>
         </div>
       )}
+      {/* Post-Service Material Modal */}
+      <PostServiceMaterialModal
+        isOpen={materialModal.isOpen}
+        onClose={handleMaterialModalClose}
+        materials={materialModal.materials}
+        onSubmit={handleMaterialModalSubmit}
+        isSubmitting={materialModal.isSubmitting}
+      />
       {/* End of PageLayout */}
     </PageLayout>
   );

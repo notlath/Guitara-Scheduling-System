@@ -57,7 +57,6 @@ const InventoryPage = () => {
     min_stock: 0,
     unit: "",
     cost_per_unit: 0,
-    size_per_unit: "",
   });
   const [showUsageLog, setShowUsageLog] = useState(false);
   const [usageLogs, setUsageLogs] = useState([]);
@@ -124,7 +123,6 @@ const InventoryPage = () => {
         min_stock: newItem.min_stock,
         unit: newItem.unit,
         cost_per_unit: newItem.cost_per_unit,
-        size_per_unit: newItem.size_per_unit,
       });
       setShowAddModal(false);
       setNewItem({
@@ -134,7 +132,6 @@ const InventoryPage = () => {
         min_stock: 0,
         unit: "",
         cost_per_unit: 0,
-        size_per_unit: "",
       });
     } catch {
       showError("Failed to add item.");
@@ -186,7 +183,7 @@ const InventoryPage = () => {
   const categories = [
     "all",
     "Oils & Lotions",
-    "Linens",
+    "Linens", 
     "Hygiene",
     "Equipment",
     ...Array.from(new Set(inventoryItems.map((item) => item.category))).filter(
@@ -251,7 +248,9 @@ const InventoryPage = () => {
   const columns = [
     { key: "name", label: "Item Name" },
     { key: "category", label: "Category" },
-    { key: "currentStock", label: "Current Stock" },
+    { key: "currentStock", label: "In Stock" },
+    { key: "inUse", label: "In Use" },
+    { key: "empty", label: "Empty" },
     { key: "minStock", label: "Min Stock" },
     { key: "status", label: "Status" },
     { key: "costPerUnit", label: "Cost/Unit" },
@@ -283,6 +282,8 @@ const InventoryPage = () => {
       ),
       category: item.category,
       currentStock: `${item.current_stock} ${item.unit}`,
+      inUse: `${item.in_use || 0} ${item.unit}`,
+      empty: `${item.empty || 0} ${item.unit}`,
       minStock: `${item.min_stock} ${item.unit}`,
       status: (
         <span className={styles[stockStatus.class]}>{stockStatus.label}</span>
@@ -312,7 +313,7 @@ const InventoryPage = () => {
             className={styles["restock-button"]}
             onClick={() => handleRestockClick(item)}
           >
-            Restock
+            Refill
           </button>
         </div>
       ),
@@ -629,70 +630,41 @@ const InventoryPage = () => {
                     />
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 16 }}>
-                  <div className={styles["form-group"]}>
-                    <label>Unit</label>
-                    <input
-                      type="text"
-                      value={newItem.unit}
-                      onChange={(e) =>
-                        setNewItem({ ...newItem, unit: e.target.value })
-                      }
-                      placeholder="e.g., bottles, pieces, kg"
-                      required
-                    />
-                  </div>
-                  <div className={styles["form-group"]}>
-                    <label>Size per Unit</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={newItem.size_per_unit}
-                      onChange={(e) =>
-                        setNewItem({
-                          ...newItem,
-                          size_per_unit:
-                            e.target.value === ""
-                              ? ""
-                              : parseFloat(e.target.value),
-                        })
-                      }
-                      placeholder="e.g., 500"
-                      required
-                    />
-                  </div>
-                  <div className={styles["form-group"]}>
-                    <label>Cost per Unit</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={newItem.cost_per_unit}
-                      onChange={(e) =>
-                        setNewItem({
-                          ...newItem,
-                          cost_per_unit: parseFloat(e.target.value),
-                        })
-                      }
-                      required
-                    />
-                  </div>
+                <div className={styles["form-group"]}>
+                  <label>Unit</label>
+                  <input
+                    type="text"
+                    value={newItem.unit}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, unit: e.target.value })
+                    }
+                    placeholder="e.g., bottles, pieces, kg"
+                    required
+                  />
+                </div>
+                <div className={styles["form-group"]}>
+                  <label>Cost per Unit</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newItem.cost_per_unit}
+                    onChange={(e) =>
+                      setNewItem({
+                        ...newItem,
+                        cost_per_unit: parseFloat(e.target.value),
+                      })
+                    }
+                    required
+                  />
                 </div>
                 <div
                   style={{
                     display: "flex",
-                    gap: 10,
                     justifyContent: "flex-end",
                     marginTop: 20,
                   }}
                 >
-                  <button
-                    type="button"
-                    className={styles["cancel-button"]}
-                    onClick={() => setShowAddModal(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className={styles["save-button"]}>
+                  <button type="submit" className={styles["action-btn"]}>
                     Add Item
                   </button>
                 </div>
@@ -705,95 +677,102 @@ const InventoryPage = () => {
         {showEditModal && editItem && (
           <div className={styles["modal-overlay"]}>
             <div className={styles["modal-content"]}>
-              <h2>Edit Item</h2>
-              <button
-                className={styles["close-modal"]}
-                onClick={() => setShowEditModal(false)}
-              >
-                Close
-              </button>
+              <div className={styles["modal-header"]}>
+                <h3>Edit Inventory Item</h3>
+                <button
+                  className={styles["close-button"]}
+                  onClick={() => setShowEditModal(false)}
+                >
+                  ×
+                </button>
+              </div>
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleEditSave(editItem);
                 }}
               >
-                <label>
-                  Name:{" "}
+                <div className={styles["form-group"]}>
+                  <label>Item Name</label>
                   <input
+                    type="text"
                     value={editItem.name}
                     onChange={(e) =>
                       setEditItem({ ...editItem, name: e.target.value })
                     }
+                    required
                   />
-                </label>
-                <br />
-                <label>
-                  Category:{" "}
-                  <input
+                </div>
+                <div className={styles["form-group"]}>
+                  <label>Category</label>
+                  <Select
                     value={editItem.category}
                     onChange={(e) =>
                       setEditItem({ ...editItem, category: e.target.value })
                     }
-                  />
-                </label>
-                <br />
-                <label>
-                  Current Stock:{" "}
+                    displayEmpty
+                    size="small"
+                    style={{ width: "100%", background: "#fff" }}
+                  >
+                    <MenuItem value="">
+                      <em>Select Category</em>
+                    </MenuItem>
+                    {categories
+                      .filter((cat) => cat !== "all")
+                      .map((category) => (
+                        <MenuItem key={category} value={category}>
+                          {category}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </div>
+                <div style={{ display: "flex", gap: 16 }}>
+                  <div className={styles["form-group"]}>
+                    <label>Current Stock</label>
+                    <input
+                      type="number"
+                      value={editItem.current_stock}
+                      onChange={(e) =>
+                        setEditItem({
+                          ...editItem,
+                          current_stock: Number(e.target.value),
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className={styles["form-group"]}>
+                    <label>Minimum Stock</label>
+                    <input
+                      type="number"
+                      value={editItem.min_stock}
+                      onChange={(e) =>
+                        setEditItem({
+                          ...editItem,
+                          min_stock: Number(e.target.value),
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+                <div className={styles["form-group"]}>
+                  <label>Unit</label>
                   <input
-                    type="number"
-                    value={editItem.current_stock}
-                    onChange={(e) =>
-                      setEditItem({
-                        ...editItem,
-                        current_stock: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <br />
-                <label>
-                  Min Stock:{" "}
-                  <input
-                    type="number"
-                    value={editItem.min_stock}
-                    onChange={(e) =>
-                      setEditItem({
-                        ...editItem,
-                        min_stock: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <br />
-                <label>
-                  Unit:{" "}
-                  <input
+                    type="text"
                     value={editItem.unit}
                     onChange={(e) =>
                       setEditItem({ ...editItem, unit: e.target.value })
                     }
+                    placeholder="e.g., bottles, pieces, kg"
+                    required
                   />
-                </label>
-                <br />
-                <label>
-                  Size per Unit:{" "}
-                  <input
-                    type="text"
-                    value={editItem.size_per_unit || ""}
-                    onChange={(e) =>
-                      setEditItem({
-                        ...editItem,
-                        size_per_unit: e.target.value,
-                      })
-                    }
-                  />
-                </label>
-                <br />
-                <label>
-                  Cost Per Unit:{" "}
+                </div>
+                <div className={styles["form-group"]}>
+                  <label>Cost per Unit</label>
                   <input
                     type="number"
+                    step="0.01"
                     value={editItem.cost_per_unit}
                     onChange={(e) =>
                       setEditItem({
@@ -801,10 +780,20 @@ const InventoryPage = () => {
                         cost_per_unit: Number(e.target.value),
                       })
                     }
+                    required
                   />
-                </label>
-                <br />
-                <button type="submit">Save</button>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginTop: 20,
+                  }}
+                >
+                  <button type="submit" className={styles["action-btn"]}>
+                    Save Changes
+                  </button>
+                </div>
               </form>
             </div>
           </div>
@@ -814,16 +803,32 @@ const InventoryPage = () => {
         {showRestockModal && restockItem && (
           <div className={styles["modal-overlay"]}>
             <div className={styles["modal-content"]}>
-              <h2>Restock Item</h2>
-              <button
-                className={styles["close-modal"]}
-                onClick={() => setShowRestockModal(false)}
-              >
-                Close
-              </button>
-              <div>Item: {restockItem.name}</div>
-              <div>
-                Current Stock: {restockItem.current_stock} {restockItem.unit}
+              <div className={styles["modal-header"]}>
+                <h3>Refill Item</h3>
+                <button
+                  className={styles["close-button"]}
+                  onClick={() => setShowRestockModal(false)}
+                >
+                  ×
+                </button>
+              </div>
+              <div className={styles["form-group"]}>
+                <label>Item</label>
+                <input
+                  type="text"
+                  value={restockItem.name}
+                  disabled
+                  style={{ background: '#f5f5f5', color: '#666' }}
+                />
+              </div>
+              <div className={styles["form-group"]}>
+                <label>Current Stock</label>
+                <input
+                  type="text"
+                  value={`${restockItem.current_stock} ${restockItem.unit}`}
+                  disabled
+                  style={{ background: '#f5f5f5', color: '#666' }}
+                />
               </div>
               <form
                 onSubmit={(e) => {
@@ -831,8 +836,8 @@ const InventoryPage = () => {
                   handleRestockSave();
                 }}
               >
-                <label>
-                  Amount to Add:{" "}
+                <div className={styles["form-group"]}>
+                  <label>Amount to Add</label>
                   <input
                     type="number"
                     value={restockAmount === 0 ? "" : restockAmount}
@@ -842,21 +847,30 @@ const InventoryPage = () => {
                       )
                     }
                     min={1}
-                    placeholder="Enter amount"
+                    placeholder="Enter amount to add"
+                    required
                   />
-                </label>
-                <br />
-                <label>
-                  Notes (optional):{" "}
+                </div>
+                <div className={styles["form-group"]}>
+                  <label>Notes (optional)</label>
                   <input
                     type="text"
                     value={restockNotes}
                     onChange={(e) => setRestockNotes(e.target.value)}
-                    placeholder="Enter notes (optional)"
+                    placeholder="Enter refill notes (optional)"
                   />
-                </label>
-                <br />
-                <button type="submit">Restock</button>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginTop: 20,
+                  }}
+                >
+                  <button type="submit" className={styles["action-btn"]}>
+                    Refill Item
+                  </button>
+                </div>
               </form>
             </div>
           </div>

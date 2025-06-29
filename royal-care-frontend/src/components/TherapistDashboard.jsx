@@ -3,7 +3,9 @@ import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { useNavigate, useSearchParams } from "react-router-dom";
-// TanStack Query hooks for data management (removing Redux dependencies)
+// Cache invalidation utility
+import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
+// Import shared Philippine time and greeting hook
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
 import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import { LoadingButton } from "./common/LoadingComponents";
@@ -21,6 +23,7 @@ import "../styles/TherapistDashboard.css";
 import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
 import Calendar from "./scheduling/Calendar";
+import PostServiceMaterialModal from "./scheduling/PostServiceMaterialModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
 // API base URL configuration
@@ -1382,6 +1385,14 @@ const TherapistDashboard = () => {
     appointmentId: null,
   });
 
+  // Post-service material modal state
+  const [materialModal, setMaterialModal] = useState({
+    isOpen: false,
+    appointmentId: null,
+    materials: [],
+    isSubmitting: false,
+  });
+
   // Loading states for individual button actions
   const [buttonLoading, setButtonLoading] = useState({});
 
@@ -1519,8 +1530,35 @@ const TherapistDashboard = () => {
     const actionKey = `request_payment_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await requestPaymentMutation.mutateAsync(appointmentId);
-      console.log("✅ Payment request successful");
+
+      // Get the appointment details to check for materials
+      const appointment = myAppointments?.find(apt => apt.id === appointmentId) ||
+                         myTodayAppointments?.find(apt => apt.id === appointmentId) ||
+                         myUpcomingAppointments?.find(apt => apt.id === appointmentId);
+
+      const appointmentMaterials = appointment?.appointment_materials || [];
+      
+      if (appointmentMaterials.length > 0) {
+        // Show material modal for post-service material checking
+        setMaterialModal({
+          isOpen: true,
+          appointmentId: appointmentId,
+          materials: appointmentMaterials.map(mat => ({
+            id: mat.inventory_item?.id || mat.material_id,
+            name: mat.inventory_item?.name || mat.material_name || 'Material',
+            quantity_used: mat.quantity_used,
+            unit: mat.inventory_item?.unit_of_measure || 'units'
+          })),
+          isSubmitting: false,
+        });
+        
+        // Don't proceed with payment request yet - wait for material modal completion
+        return;
+      } else {
+        // No materials to check, proceed with payment request directly
+        await requestPaymentMutation.mutateAsync(appointmentId);
+        console.log("✅ Payment request successful");
+      }
     } catch (error) {
       console.error("Failed to request payment:", error);
       alert("Failed to request payment. Please try again.");
@@ -1569,6 +1607,75 @@ const TherapistDashboard = () => {
   // Legacy handlers (keeping for backward compatibility)
   const handleRejectionCancel = () => {
     setRejectionModal({ isOpen: false, appointmentId: null });
+  };
+
+  // Post-service material modal handlers
+  const handleMaterialModalSubmit = async (materialStatus) => {
+    setMaterialModal(prev => ({ ...prev, isSubmitting: true }));
+    
+    try {
+      // Process each material's status
+      for (const material of materialModal.materials) {
+        const isEmpty = materialStatus[material.id];
+        
+        if (isEmpty !== undefined) {
+          const response = await fetch(`/api/inventory/items/${material.id}/update_material_status/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            },
+            body: JSON.stringify({
+              is_empty: isEmpty,
+              quantity: material.quantity_used,
+              notes: `Post-service update for appointment #${materialModal.appointmentId}`
+            }),
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to update material ${material.name}`);
+          }
+        }
+      }
+      
+      // Success - close modal and continue with payment request
+      setMaterialModal({
+        isOpen: false,
+        appointmentId: null,
+        materials: [],
+        isSubmitting: false,
+      });
+      
+      // Now proceed with the payment request
+      const appointmentId = materialModal.appointmentId;
+      await requestPaymentMutation.mutateAsync(appointmentId);
+
+      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+      await Promise.all([
+        refetch(),
+        invalidateAppointmentCaches(queryClient, {
+          userId: user?.id,
+          userRole: "therapist",
+          appointmentId,
+        }),
+      ]);
+
+      alert('Material status updated and payment requested successfully!');
+      
+    } catch (error) {
+      console.error('Error updating material status:', error);
+      alert(`Error updating material status: ${error.message}`);
+      setMaterialModal(prev => ({ ...prev, isSubmitting: false }));
+    }
+  };
+
+  const handleMaterialModalClose = () => {
+    setMaterialModal({
+      isOpen: false,
+      appointmentId: null,
+      materials: [],
+      isSubmitting: false,
+    });
   };
   const getStatusBadgeClass = (status) => {
     switch (status) {
@@ -2611,6 +2718,14 @@ const TherapistDashboard = () => {
           onSubmit={handleRejectionSubmit}
           appointmentId={rejectionModal.appointmentId}
           loading={loading}
+        />
+        {/* Post-Service Material Modal */}
+        <PostServiceMaterialModal
+          isOpen={materialModal.isOpen}
+          onClose={handleMaterialModalClose}
+          materials={materialModal.materials}
+          onSubmit={handleMaterialModalSubmit}
+          isSubmitting={materialModal.isSubmitting}
         />
       </div>
     </PageLayout>
