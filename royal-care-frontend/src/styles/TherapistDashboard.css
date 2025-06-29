@@ -1,3 +1,9 @@
+/* Therapist Dashboard Styles */
+
+/* Import component styles - SINGLE SOURCE OF TRUTH */
+@import "./components/AppointmentCard.css";
+@import "./components/StatusBadge.css";
+
 .therapist-dashboard {
   max-width: 1200px;
   margin: 0 auto;
@@ -51,37 +57,16 @@
   gap: var(--spacing-md);
 }
 
-.appointment-card {
-  background-color: var(--background);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
-  overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
+/* THERAPIST-SPECIFIC APPOINTMENT CARD OVERRIDES */
+/* These extend the base AppointmentCard component with therapist context */
+.therapist-dashboard .appointment-card {
   border-left: 4px solid var(--primary);
+  background-color: var(--background);
 }
 
-.appointment-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.appointment-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: var(--background-50);
-  padding: var(--spacing-sm);
-  border-bottom: 1px solid var(--background-200);
-}
-
-.appointment-header h3 {
-  margin: 0;
-  font-size: var(--font-size-md);
-  color: var(--text);
-  font-weight: 700;
-}
-
-.status-badge {
+/* THERAPIST-SPECIFIC STATUS BADGE OVERRIDES */
+/* Base status badge styles are imported from components/StatusBadge.css */
+.therapist-dashboard .status-badge {
   padding: 4px 8px;
   border-radius: 4px;
   font-size: var(--font-size-sm);
@@ -554,4 +539,50 @@
 
 .modal-content .appointment-card {
   margin-bottom: 0;
+}
+
+/* Quick Actions Navigation */
+.dashboard-quick-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: var(--background-25);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-light);
+}
+
+.nav-action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--background);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.nav-action-btn:hover {
+  background: var(--primary);
+  color: var(--background);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.nav-action-btn.scheduling-btn:hover {
+  background: var(--primary-600);
+  border-color: var(--primary-600);
+}
+
+.nav-action-btn.attendance-btn:hover {
+  background: var(--secondary-600);
+  border-color: var(--secondary-600);
 }

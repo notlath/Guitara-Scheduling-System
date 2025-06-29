@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 // TANSTACK QUERY: Import TanStack Query hooks for data management
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import pageTitles from "../constants/pageTitles";
 import {
   approveAttendance,
   checkIn,
@@ -17,8 +18,12 @@ import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 import { useOperatorDashboardData } from "../hooks/useDashboardQueries";
 import { useInstantUpdates } from "../hooks/useInstantUpdates";
-// Import shared Philippine time and greeting hook
-import { usePhilippineTime } from "../hooks/usePhilippineTime";
+// SHARED HOOKS: Import shared dashboard logic to eliminate code duplication
+import { useDashboardCommon } from "../hooks/useDashboardCommon";
+import { useUrlParams } from "../hooks/useUrlParams";
+import { useButtonLoading } from "../hooks/useButtonLoading";
+// SHARED UTILITIES: Import shared status utilities to eliminate code duplication  
+import { getStatusBadgeClass, getStatusDisplayText } from "../utils/appointmentStatusUtils";
 // PERFORMANCE: Stable filtering imports to prevent render loops
 import ServerPagination from "./ServerPagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
@@ -44,21 +49,27 @@ import {
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
-import "../styles/EnhancedAppointmentCards.css";
 import "../styles/ErrorHandling.css";
 import "../styles/OperatorDashboard.css";
 import "../styles/Performance.css";
+
+/* ✅ NEW: Component-based CSS imports - Single Source of Truth */
+import "../styles/components/AppointmentCard.css";
+import "../styles/components/StatusBadge.css";
+
+/* ✅ OPERATOR-SPECIFIC: Urgency indicators for medical priority system */
 import "../styles/UrgencyIndicators.css";
 
-// ✅ ROBUST FILTERING: Valid values for URL parameters
+/* ❌ REMOVED: Duplicate/conflicting CSS files
+import "../styles/EnhancedAppointmentCards.css";
+*/
+
+// ✅ ROBUST FILTERING: Valid values for URL parameters (updated after removing redundant tabs)
 const VALID_VIEW_VALUES = Object.freeze([
   "rejected",
   "pending",
   "timeout",
   "payment",
-  "all",
-  "attendance",
-  "notifications",
   "driver",
   "workflow",
   "sessions",
@@ -79,16 +90,34 @@ const VALID_FILTER_VALUES = Object.freeze([
   "overdue",
 ]);
 
-// ✅ ROBUST FILTERING: Validation helpers
-const validateUrlParam = (param, validValues, defaultValue) => {
-  if (!param || typeof param !== "string") return defaultValue;
-  return validValues.includes(param) ? param : defaultValue;
-};
+// ✅ REMOVED: validateUrlParam function - now handled by shared hook
 
 import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import { queryKeys } from "../lib/queryClient";
 
 const OperatorDashboard = () => {
+  // ✅ SHARED LOGIC: Use common dashboard functionality to eliminate code duplication
+  const { 
+    handleLogout, 
+    userName, 
+    systemTime, 
+    greeting,
+    // WebSocket and sync handlers are initialized automatically
+  } = useDashboardCommon("Operator");
+
+  // ✅ SHARED URL PARAMS: Use shared URL parameter management
+  const {
+    currentView,
+    currentFilter,
+    currentPage,
+    validationWarnings,
+    setView,
+    setFilter,
+    setPage
+  } = useUrlParams(VALID_VIEW_VALUES, VALID_FILTER_VALUES, "rejected");
+
+  // ✅ SHARED BUTTON LOADING: Use shared button loading state management
+  const { buttonLoading, setActionLoading, forceClearLoading } = useButtonLoading();
   // ✅ TANSTACK QUERY MIGRATION COMPLETE
   //
   // BEFORE: Custom data fetching with useEffect, manual caching, and complex state management
@@ -146,99 +175,33 @@ const OperatorDashboard = () => {
     checkOutError,
   } = useSelector((state) => state.attendance);
 
-  // Get user name from localStorage (or auth state if available)
-  const user = JSON.parse(localStorage.getItem("user")) || {}; // fallback if not present
-  const userName =
-    user.first_name && user.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user.username || "Operator";
-
-  // Use shared Philippine time and greeting hook
-  const { systemTime, greeting } = usePhilippineTime();
-
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
-  // URL search params for view persistence
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  // ✅ ROBUST FILTERING: Validate URL parameters against allowed values
-  const rawView = searchParams.get("view");
-  const rawFilter = searchParams.get("filter");
-  const rawPage = searchParams.get("page");
-
-  const currentView = validateUrlParam(rawView, VALID_VIEW_VALUES, "rejected");
-  const _currentFilter = validateUrlParam(
-    rawFilter,
-    VALID_FILTER_VALUES,
-    "all"
-  );
-  const currentPage = Math.max(1, parseInt(rawPage || "1", 10));
-
-  // Track validation warnings for user feedback
-  const [validationWarnings, setValidationWarnings] = useState([]);
-
-  // Check for invalid URL parameters and warn user
-  // OPTIMIZATION: useCallback for stable validation, and only update if changed
-  const validateWarnings = useCallback(() => {
-    const warnings = [];
-    if (rawView && !VALID_VIEW_VALUES.includes(rawView)) {
-      warnings.push(`Invalid view "${rawView}" reset to "rejected"`);
-    }
-    if (rawFilter && !VALID_FILTER_VALUES.includes(rawFilter)) {
-      warnings.push(`Invalid filter "${rawFilter}" reset to "all"`);
-    }
-    return warnings;
-  }, [rawView, rawFilter]);
-
-  useEffect(() => {
-    const newWarnings = validateWarnings();
-    setValidationWarnings((prev) => {
-      if (
-        prev.length === newWarnings.length &&
-        prev.every((w, i) => w === newWarnings[i])
-      ) {
-        return prev;
-      }
-      return newWarnings;
-    });
-  }, [validateWarnings]);
-
+  
   // Fetch operator's attendance status on component mount
   useEffect(() => {
     dispatch(getTodayAttendanceStatus());
   }, [dispatch]);
+  
+  // URL search params for view persistence - REMOVED: Now handled by shared hook
+  // const [searchParams, setSearchParams] = useSearchParams(); - REMOVED
 
-  // ✅ STEP 1: Memoized view/filter/page setters with stable callbacks
-  const setView = useCallback(
-    (newView) => {
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set("view", newView);
-      // Reset page when changing views
-      newSearchParams.set("page", "1");
-      setSearchParams(newSearchParams);
-    },
-    [searchParams, setSearchParams]
-  );
+  // ✅ ROBUST FILTERING: Validate URL parameters - REMOVED: Now handled by shared hook
+  // const rawView = searchParams.get("view"); - REMOVED
+  // const rawFilter = searchParams.get("filter"); - REMOVED
+  // const rawPage = searchParams.get("page"); - REMOVED
 
-  // Filter and page management
-  const _setFilter = useCallback(
-    (newFilter) => {
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set("filter", newFilter);
-      newSearchParams.set("page", "1"); // Reset to first page
-      setSearchParams(newSearchParams);
-    },
-    [searchParams, setSearchParams]
-  );
+  // const currentView = validateUrlParam(rawView, VALID_VIEW_VALUES, "rejected"); - REMOVED
+  const _currentFilter = currentFilter; // Keep reference for compatibility
+  // const currentPage = Math.max(1, parseInt(rawPage || "1", 10)); - REMOVED
 
-  const setPage = useCallback(
-    (page) => {
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set("page", page.toString());
-      setSearchParams(newSearchParams);
-    },
-    [searchParams, setSearchParams]
-  );
+  // Track validation warnings - REMOVED: Now handled by shared hook
+  // const [validationWarnings, setValidationWarnings] = useState([]); - REMOVED
+
+  // Check for invalid URL parameters and warn user
+  // OPTIMIZATION: useCallback for stable validation - REMOVED: Now handled by shared hook
+
+  // Set page title - REMOVED: Now handled by shared hook
   // Modal states - memoized to prevent unnecessary re-renders
   const [reviewModal, setReviewModal] = useState({
     isOpen: false,
@@ -739,24 +702,20 @@ const OperatorDashboard = () => {
     console.log("✅ Tab refresh completed");
   }, [currentView, queryClient]);
 
-  // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
-  const { buttonLoading, setActionLoading, forceClearLoading } =
-    useOptimizedButtonLoading(); // 🚀 ULTRA-PERFORMANCE: Simplified dashboard tabs without counts
+  // 🚀 ULTRA-PERFORMANCE: Button loading management - REMOVED: Now handled by shared hook
+  // const { buttonLoading, setActionLoading, forceClearLoading } = useOptimizedButtonLoading(); - REMOVED // 🚀 ULTRA-PERFORMANCE: Simplified dashboard tabs without counts
   const dashboardTabs = useMemo(() => {
     return [
       { id: "rejected", label: "Rejection Reviews" },
       { id: "pending", label: "Pending Acceptance" },
       { id: "timeout", label: "Timeout Monitoring" },
       { id: "payment", label: "Payment Verification" },
-      { id: "all", label: "All Appointments" },
-      { id: "attendance", label: "Attendance" },
-      // { id: "notifications", label: "Notifications" }, // Removed as requested
       { id: "driver", label: "Driver Coordination" },
       { id: "workflow", label: "Service Workflow" },
       { id: "sessions", label: "Active Sessions" },
       { id: "pickup", label: "Pickup Requests" },
     ];
-  }, []); // The optimized data manager handles background refreshes automatically
+  }, []); // Removed redundant tabs: "All Appointments" and "Attendance" - use dedicated pages instead
   // ✅ SIMPLIFIED: Remove unused timeout and driver variables since we're using per-tab data fetching
   // ✅ SIMPLIFIED: Basic driver data loading (if needed for driver tab)
   const loadDriverData = useCallback(async () => {
@@ -1031,12 +990,7 @@ const OperatorDashboard = () => {
     return badges[urgencyLevel] || badges.normal;
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("knoxToken");
-    localStorage.removeItem("user");
-    dispatch(logout());
-    navigate("/");
-  };
+  // handleLogout - REMOVED: Now handled by shared hook
 
   const handleReviewRejection = (appointment) => {
     setReviewModal({
@@ -1705,382 +1659,9 @@ const OperatorDashboard = () => {
   // The useOptimizedAttendance hook automatically handles data fetching and caching
   // Remove the effect that was causing unnecessary refetches
 
-  // Render attendance management view
-  const renderAttendanceView = () => {
-    const getStatusColor = (status) => {
-      switch (status) {
-        case "present":
-          return "#28a745";
-        case "late":
-          return "#ffc107";
-        case "absent":
-          return "#dc3545";
-        case "pending_approval":
-          return "#007bff";
-        default:
-          return "#6c757d";
-      }
-    };
-
-    const getStatusBadge = (status) => {
-      const configs = {
-        present: { icon: "✅", label: "Present" },
-        late: { icon: "⏰", label: "Late" },
-        absent: { icon: "❌", label: "Absent" },
-        pending_approval: { icon: "⏳", label: "Pending Approval" },
-      };
-      const config = configs[status] || { icon: "❓", label: "Unknown" };
-      return (
-        <span
-          className="status-badge"
-          style={{
-            backgroundColor: getStatusColor(status),
-            color: "white",
-            padding: "4px 8px",
-            borderRadius: "4px",
-            fontSize: "12px",
-          }}
-        >
-          {config.icon} {config.label}
-        </span>
-      );
-    };
-    const formatTime = (timeString) => {
-      if (!timeString) return "--:--";
-
-      // If it's already a full datetime string, parse it directly
-      if (timeString.includes("T") || timeString.includes(" ")) {
-        return new Date(timeString).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        });
-      }
-
-      // If it's just a time string (HH:MM:SS), create a proper date
-      try {
-        const [hours, minutes, seconds] = timeString.split(":").map(Number);
-
-        // Validate the time components
-        if (
-          isNaN(hours) ||
-          isNaN(minutes) ||
-          hours < 0 ||
-          hours > 23 ||
-          minutes < 0 ||
-          minutes > 59
-        ) {
-          console.error("Invalid time format:", timeString);
-          return timeString; // Return original string if invalid
-        }
-
-        const today = new Date();
-        const dateTime = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate(),
-          hours,
-          minutes,
-          seconds || 0
-        );
-        return dateTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        });
-      } catch (error) {
-        console.error("Error formatting time:", timeString, error);
-        return timeString; // Return original string on error
-      }
-    };
-
-    return (
-      <div className="attendance-management-panel">
-        <div className="attendance-header">
-          <div className="date-selector">
-            <label htmlFor="attendance-date">Select Date:</label>
-            <input
-              id="attendance-date"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => handleDateChange(e.target.value)}
-              className="date-input"
-            />
-            <LoadingButton
-              onClick={handleFetchAttendanceRecords}
-              loading={attendanceLoading}
-              className="refresh-btn"
-            >
-              Refresh
-            </LoadingButton>
-          </div>
-
-          {/* Operator's own attendance controls */}
-          <div className="operator-attendance-controls">
-            <div className="operator-attendance-status">
-              <span className="operator-status-label">My Attendance:</span>
-              {todayStatus ? (
-                <div className="operator-times">
-                  <span className="check-time">
-                    In:{" "}
-                    {checkInTime ? formatTimeForDisplay(checkInTime) : "--:--"}
-                  </span>
-                  <span className="check-time">
-                    Out:{" "}
-                    {checkOutTime
-                      ? formatTimeForDisplay(checkOutTime)
-                      : "--:--"}
-                  </span>
-                </div>
-              ) : (
-                <span className="no-record">No record today</span>
-              )}
-            </div>
-
-            {/* Error display */}
-            {(attendanceError || checkInError || checkOutError) && (
-              <div
-                className="attendance-error"
-                style={{
-                  color: "#dc3545",
-                  fontSize: "12px",
-                  marginTop: "4px",
-                }}
-              >
-                {attendanceError || checkInError || checkOutError}
-              </div>
-            )}
-
-            <div className="operator-attendance-buttons">
-              <LoadingButton
-                onClick={handleOperatorCheckIn}
-                loading={checkInLoading}
-                disabled={isCheckedIn}
-                className="check-in-btn"
-                size="small"
-              >
-                {isCheckedIn ? "Checked In" : "Check In"}
-              </LoadingButton>
-              <LoadingButton
-                onClick={handleOperatorCheckOut}
-                loading={checkOutLoading}
-                disabled={!isCheckedIn || !!checkOutTime}
-                className="check-out-btn"
-                size="small"
-              >
-                {checkOutTime ? "Checked Out" : "Check Out"}
-              </LoadingButton>
-            </div>
-          </div>
-        </div>
-
-        {/* Minimal loading indicator for attendance data */}
-        <MinimalLoadingIndicator
-          show={attendanceLoading}
-          position="center-right"
-          size="micro"
-          variant="ghost"
-          tooltip="Loading attendance records..."
-          pulse={true}
-          fadeIn={true}
-        />
-
-        {attendanceRecords.length === 0 ? (
-          <div className="empty-state">
-            <i className="fas fa-calendar-check"></i>
-            <p>No attendance records found for {selectedDate}</p>
-          </div>
-        ) : (
-          <div className="attendance-records">
-            <div className="attendance-summary">
-              <div className="summary-stats">
-                <div className="stat-card present">
-                  <span className="stat-number">
-                    {
-                      attendanceRecords.filter((r) => r.status === "present")
-                        .length
-                    }
-                  </span>
-                  <span className="stat-label">Present</span>
-                </div>
-                <div className="stat-card late">
-                  <span className="stat-number">
-                    {
-                      attendanceRecords.filter((r) => r.status === "late")
-                        .length
-                    }
-                  </span>
-                  <span className="stat-label">Late</span>
-                </div>
-                <div className="stat-card absent">
-                  <span className="stat-number">
-                    {
-                      attendanceRecords.filter((r) => r.status === "absent")
-                        .length
-                    }
-                  </span>
-                  <span className="stat-label">Absent</span>
-                </div>
-                <div className="stat-card pending">
-                  <span className="stat-number">
-                    {
-                      attendanceRecords.filter(
-                        (r) => r.status === "pending_approval"
-                      ).length
-                    }
-                  </span>
-                  <span className="stat-label">Pending Approval</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="attendance-list">
-              {attendanceRecords.map((record) => (
-                <div key={record.id} className="attendance-card">
-                  <div className="attendance-info">
-                    <div className="staff-details">
-                      <h4>
-                        {record.staff_member.first_name}{" "}
-                        {record.staff_member.last_name}
-                      </h4>
-                      <span className="role-badge">
-                        {record.staff_member.role}
-                      </span>
-                    </div>
-                    <div className="time-details">
-                      <div className="time-row">
-                        <span className="label">Check-in:</span>
-                        <span className="value">
-                          {record.check_in_time
-                            ? formatTime(record.check_in_time)
-                            : "Not checked in"}
-                        </span>
-                      </div>
-                      <div className="time-row">
-                        <span className="label">Check-out:</span>
-                        <span className="value">
-                          {record.check_out_time
-                            ? formatTime(record.check_out_time)
-                            : "Not checked out"}
-                        </span>
-                      </div>
-                      {record.hours_worked && (
-                        <div className="time-row">
-                          <span className="label">Hours worked:</span>
-                          <span className="value">{record.hours_worked}h</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="attendance-status">
-                    {getStatusBadge(record.status)}
-                    {record.status === "pending_approval" && (
-                      <LoadingButton
-                        onClick={() => handleApproveAttendance(record.id)}
-                        loading={buttonLoading[`approve_${record.id}`]}
-                        className="approve-btn"
-                        size="small"
-                      >
-                        Approve
-                      </LoadingButton>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="attendance-guidelines">
-          <h4>Attendance Rules</h4>
-          <ul>
-            <li>
-              <strong>Present:</strong> Check-in before 1:15 PM
-            </li>
-            <li>
-              <strong>Late:</strong> Check-in after 1:15 PM but before 1:30 AM
-              (next day)
-            </li>
-            <li>
-              <strong>Absent:</strong> No check-in recorded by 1:30 AM (next
-              day)
-            </li>
-            <li>
-              <strong>Pending Approval:</strong> Requires operator review
-            </li>
-          </ul>
-        </div>
-      </div>
-    );
-  };
-
   // ✅ PERFORMANCE: Old implementations removed - using ultra-optimized versions above
 
-  // Helper functions for status badge mapping
-  const getStatusBadgeClass = (status) => {
-    const statusMap = {
-      pending: "status-pending",
-      confirmed: "status-confirmed",
-      driver_confirmed: "status-confirmed",
-      therapist_confirmed: "status-confirmed",
-      rejected: "status-rejected",
-      cancelled: "status-cancelled",
-      auto_cancelled: "status-overdue",
-      completed: "status-completed",
-      in_progress: "status-confirmed",
-      awaiting_payment: "status-warning",
-      pickup_requested: "status-pending",
-      overdue: "status-overdue",
-      timeout: "status-overdue",
-      journey_started: "status-confirmed",
-      arrived: "status-confirmed",
-      dropped_off: "status-confirmed",
-      session_started: "status-confirmed",
-      payment_requested: "status-warning",
-      payment_completed: "status-completed",
-    };
-
-    return statusMap[status] || "status-pending";
-  };
-  const getStatusDisplayText = (status) => {
-    // Debug logging
-    console.log("📊 Status badge debug - Input status:", status);
-    console.log("📊 Status badge debug - Type:", typeof status);
-    console.log("📊 Status badge debug - Is undefined?", status === undefined);
-    console.log("📊 Status badge debug - Is null?", status === null);
-    console.log("📊 Status badge debug - Is empty string?", status === "");
-
-    const statusTextMap = {
-      pending: "Pending",
-      confirmed: "Confirmed",
-      driver_confirmed: "Driver Confirmed",
-      therapist_confirmed: "Therapist Confirmed",
-      rejected: "Rejected",
-      cancelled: "Cancelled",
-      auto_cancelled: "Auto Cancelled",
-      completed: "Completed",
-      in_progress: "In Progress",
-      awaiting_payment: "Awaiting Payment",
-      pickup_requested: "Pickup Requested",
-      overdue: "Overdue",
-      timeout: "Timeout",
-      journey_started: "Journey Started",
-      arrived: "Arrived",
-      dropped_off: "Dropped Off",
-      session_started: "Session Started",
-      payment_requested: "Payment Requested",
-      payment_completed: "Payment Completed",
-    };
-
-    const result =
-      statusTextMap[status] ||
-      status?.charAt(0).toUpperCase() + status?.slice(1).replace(/_/g, " ") ||
-      "Unknown Status";
-
-    console.log("📊 Status badge debug - Output text:", result);
-    console.log("📊 Status badge debug - Result length:", result.length);
-    return result;
-  };
+  // ✅ Status badge functions - REMOVED: Now using shared utilities from appointmentStatusUtils
 
   // ✅ STANDARDIZED APPOINTMENT CARD RENDERING
   // All appointment rendering functions now use consistent structure:
@@ -2116,7 +1697,7 @@ const OperatorDashboard = () => {
           return (
             <div
               key={appointment.id}
-              className={`appointment-card rejected ${urgencyLevel}`}
+              className={`appointment-card appointment-card--rejected ${urgencyLevel}`}
             >
               <div className="appointment-header">
                 <h3>
@@ -2209,7 +1790,7 @@ const OperatorDashboard = () => {
             return (
               <div
                 key={appointment.id}
-                className={`appointment-card pending ${urgencyLevel}`}
+                className={`appointment-card appointment-card--pending ${urgencyLevel}`}
               >
                 <div className="appointment-header">
                   <h3>
@@ -2309,7 +1890,7 @@ const OperatorDashboard = () => {
                 return (
                   <div
                     key={appointment.id}
-                    className="appointment-card overdue"
+                    className="appointment-card appointment-card--overdue"
                   >
                     <div className="appointment-header">
                       <h3>
@@ -2319,7 +1900,7 @@ const OperatorDashboard = () => {
                       </h3>
                       <div className="status-badges">
                         {" "}
-                        <span className="status-badge status-overdue">
+                        <span className="status-badge status-badge--overdue">
                           Overdue
                         </span>
                       </div>
@@ -2354,7 +1935,7 @@ const OperatorDashboard = () => {
                 return (
                   <div
                     key={appointment.id}
-                    className="appointment-card approaching-deadline"
+                    className="appointment-card appointment-card--approaching-deadline"
                   >
                     <div className="appointment-header">
                       <h3>
@@ -2364,7 +1945,7 @@ const OperatorDashboard = () => {
                       </h3>
                       <div className="status-badges">
                         {" "}
-                        <span className="status-badge status-warning">
+                        <span className="status-badge status-badge--warning">
                           Approaching Deadline
                         </span>
                         <span className="countdown-badge warning">
@@ -2441,7 +2022,7 @@ const OperatorDashboard = () => {
           return (
             <div
               key={appointment.id}
-              className={`appointment-card payment-pending ${urgencyLevel}`}
+              className={`appointment-card appointment-card--payment-pending ${urgencyLevel}`}
             >
               <div className="appointment-header">
                 <h3>
@@ -3239,6 +2820,23 @@ const OperatorDashboard = () => {
             </button>
           </div>
         </LayoutRow>
+        {/* Quick Actions Navigation */}
+        <div className="dashboard-quick-actions">
+          <button
+            className="nav-action-btn scheduling-btn"
+            onClick={() => navigate("/dashboard/scheduling")}
+            title="Go to full scheduling interface"
+          >
+            📅 Full Scheduling
+          </button>
+          <button
+            className="nav-action-btn attendance-btn"
+            onClick={() => navigate("/dashboard/attendance")}
+            title="Go to attendance management"
+          >
+            👥 Staff Attendance
+          </button>
+        </div>
         {/* OPTIMIZED: Simplified loading indicator */}
         <MinimalLoadingIndicator
           show={tabLoading}
@@ -3325,8 +2923,8 @@ const OperatorDashboard = () => {
             )}
           </div>
         )}
-        {/* ✅ ROBUST FILTERING: Display validation warnings and errors */}{" "}
-        {validationWarnings.length > 0 && (
+        {/* ✅ ROBUST FILTERING: Display validation warnings and errors */}
+        {validationWarnings && validationWarnings.length > 0 && (
           <div
             className="validation-warnings"
             style={{
@@ -3342,7 +2940,7 @@ const OperatorDashboard = () => {
               ⚠️ Parameter Validation Issues:
             </h5>
             <ul style={{ margin: "0", paddingLeft: "20px" }}>
-              {validationWarnings.map((warning, index) => (
+              {(validationWarnings || []).map((warning, index) => (
                 <li key={index} style={{ fontSize: "13px" }}>
                   {warning}
                 </li>
@@ -3403,67 +3001,41 @@ const OperatorDashboard = () => {
           /> */}
             {currentView === "rejected" && (
               <div className="rejected-appointments">
-                <h2>Rejection Reviews</h2>
                 {renderRejectedAppointments()}
               </div>
             )}
             {currentView === "pending" && (
               <div className="pending-appointments">
-                <h2>Pending Acceptance Appointments</h2>
                 {renderPendingAcceptanceAppointments()}
               </div>
             )}{" "}
             {currentView === "timeout" && (
               <div className="timeout-monitoring">
-                <h2>Timeout Monitoring</h2>
                 {renderTimeoutMonitoring()}
               </div>
             )}
             {currentView === "payment" && (
               <div className="payment-verification">
-                <h2>Payment Verification</h2>
                 {renderPaymentVerificationView()}
               </div>
             )}
-            {currentView === "all" && (
-              <div className="all-appointments">
-                <h2>All Appointments</h2>
-                {renderAllAppointments()}
-              </div>
-            )}{" "}
-            {currentView === "attendance" && (
-              <div className="attendance-management">
-                <h2>Attendance Management</h2>
-                {renderAttendanceView()}
-              </div>
-            )}{" "}
-            {currentView === "notifications" && (
-              <div className="notifications">
-                <h2>Notifications</h2>
-                {renderNotifications()}
-              </div>
-            )}{" "}
             {currentView === "driver" && (
               <div className="driver-coordination">
-                <h2>Driver Coordination Center</h2>
                 {renderDriverCoordinationPanel()}
               </div>
             )}
             {currentView === "workflow" && (
               <div className="service-workflow">
-                <h2>Service Workflow Overview</h2>
                 {renderServiceWorkflowView()}
               </div>
             )}
             {currentView === "sessions" && (
               <div className="active-sessions">
-                <h2>Active Therapy Sessions</h2>
                 {renderActiveSessionsView()}
               </div>
             )}{" "}
             {currentView === "pickup" && (
               <div className="pickup-requests">
-                <h2>Therapist Pickup Requests</h2>
                 {renderPickupRequestsView()}
               </div>
             )}

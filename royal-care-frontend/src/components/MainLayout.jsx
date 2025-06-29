@@ -120,6 +120,22 @@ const MainLayout = () => {
               <div className="drawer-content">
                 <div className="notification-link">
                   <NavLink
+                    to="/dashboard/profile"
+                    className={({ isActive }) =>
+                      isActive ? "active-link" : ""
+                    }
+                  >
+                    <MdPerson className="main-layout__sidebar-icon" />
+                    {(() => {
+                      const displayName = user?.first_name || user?.username;
+
+                      if (displayName && displayName.length > 15) {
+                        return `${displayName.substring(0, 15)}...`;
+                      }
+                      return displayName || "Profile";
+                    })()}
+                  </NavLink>
+                  <NavLink
                     to="/dashboard/notifications"
                     className={({ isActive }) =>
                       isActive ? "active-link" : ""
@@ -189,15 +205,6 @@ const MainLayout = () => {
                       </NavLink>
                       <div className="divider"></div>
                       <NavLink
-                        to="/dashboard/sales-reports"
-                        className={({ isActive }) =>
-                          isActive ? "active-link" : ""
-                        }
-                      >
-                        <MdBarChart className="main-layout__sidebar-icon" />
-                        Sales & Reports
-                      </NavLink>
-                      <NavLink
                         to="/dashboard/inventory"
                         className={({ isActive }) =>
                           isActive ? "active-link" : ""
@@ -206,6 +213,16 @@ const MainLayout = () => {
                         <MdInventory className="main-layout__sidebar-icon" />
                         Inventory
                       </NavLink>
+                      <NavLink
+                        to="/dashboard/sales-reports"
+                        className={({ isActive }) =>
+                          isActive ? "active-link" : ""
+                        }
+                      >
+                        <MdBarChart className="main-layout__sidebar-icon" />
+                        Sales & Reports
+                      </NavLink>
+
                       <NavLink
                         to="/dashboard/data"
                         className={({ isActive }) =>
@@ -229,15 +246,6 @@ const MainLayout = () => {
                 </nav>
                 <div className="divider"></div>
                 <div className="bottom-links">
-                  <NavLink
-                    to="/dashboard/profile"
-                    className={({ isActive }) =>
-                      isActive ? "active-link" : ""
-                    }
-                  >
-                    <MdPerson className="main-layout__sidebar-icon" />
-                    Profile
-                  </NavLink>
                   {/* Help Section with Sublinks */}
                   <button
                     type="button"
