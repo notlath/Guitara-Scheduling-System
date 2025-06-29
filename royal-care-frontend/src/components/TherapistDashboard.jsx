@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { useDispatch } from "react-redux";
@@ -9,7 +8,6 @@ import { logout } from "../features/auth/authSlice";
 import { useEnhancedTherapistActions } from "../hooks/useEnhancedRedux";
 // TANSTACK QUERY: Replace optimized hooks with TanStack Query
 import { useEnhancedDashboardData } from "../hooks/useEnhancedDashboardData";
-// Cache invalidation utility
 // Import the new instant updates hook
 import { useTherapistInstantActions } from "../hooks/useInstantUpdates";
 // Import shared Philippine time and greeting hook
@@ -31,23 +29,18 @@ import "../styles/TherapistDashboard.css";
 import "../styles/components/AppointmentCard.css";
 import "../styles/components/StatusBadge.css";
 
-import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
-import Calendar from "./scheduling/Calendar";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
 const TherapistDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   // Initialize real-time cache sync via WebSocket
   useAutoWebSocketCacheSync();
 
   // Enhanced Redux actions with automatic TanStack Query cache invalidation
   const {
-    acceptAppointment: enhancedAcceptAppointment,
-    rejectAppointment: enhancedRejectAppointment,
     confirmReadiness: enhancedConfirmReadiness,
     startSession: enhancedStartSession,
     completeSession: enhancedCompleteSession,
@@ -59,7 +52,6 @@ const TherapistDashboard = () => {
   const {
     acceptAppointment: instantAcceptAppointment,
     rejectAppointment: instantRejectAppointment,
-    requestPickup: instantRequestPickup,
   } = useTherapistInstantActions();
   // Remove the sync event handlers - TanStack Query handles real-time updates automatically
 
@@ -1052,6 +1044,24 @@ const TherapistDashboard = () => {
           </div>
         )}
 
+        {/* Quick Actions Navigation */}
+        <div className="dashboard-quick-actions">
+          <button
+            className="nav-action-btn scheduling-btn"
+            onClick={() => navigate("/dashboard/scheduling")}
+            title="Go to full scheduling interface"
+          >
+            📅 Full Scheduling
+          </button>
+          <button
+            className="nav-action-btn attendance-btn"
+            onClick={() => navigate("/dashboard/attendance")}
+            title="Go to attendance management"
+          >
+            👥 My Attendance
+          </button>
+        </div>
+
         <TabSwitcher
           tabs={[
             {
@@ -1072,11 +1082,6 @@ const TherapistDashboard = () => {
               id: "all",
               label: "All My Appointments",
               count: Array.isArray(myAppointments) ? myAppointments.length : 0,
-            },
-            {
-              id: "attendance",
-              label: "My Attendance",
-              count: undefined,
             },
           ]}
           activeTab={currentView}
@@ -1116,22 +1121,6 @@ const TherapistDashboard = () => {
               {renderAppointmentsList(
                 Array.isArray(myAppointments) ? myAppointments : []
               )}
-            </div>
-          )}
-          {currentView === "attendance" && (
-            <div className="attendance-view">
-              <AttendanceComponent />
-            </div>
-          )}
-          {currentView === "calendar" && (
-            <div className="calendar-view">
-              <h2>Calendar View</h2>
-              <Calendar
-                showClientLabels={true}
-                context="therapist"
-                onDateSelected={() => {}}
-                onTimeSelected={() => {}}
-              />
             </div>
           )}
         </div>

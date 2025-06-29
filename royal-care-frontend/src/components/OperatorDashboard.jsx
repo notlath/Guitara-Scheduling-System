@@ -60,15 +60,12 @@ import "../styles/UrgencyIndicators.css";
 import "../styles/EnhancedAppointmentCards.css";
 */
 
-// ✅ ROBUST FILTERING: Valid values for URL parameters
+// ✅ ROBUST FILTERING: Valid values for URL parameters (updated after removing redundant tabs)
 const VALID_VIEW_VALUES = Object.freeze([
   "rejected",
   "pending",
   "timeout",
   "payment",
-  "all",
-  "attendance",
-  "notifications",
   "driver",
   "workflow",
   "sessions",
@@ -763,15 +760,12 @@ const OperatorDashboard = () => {
       { id: "pending", label: "Pending Acceptance" },
       { id: "timeout", label: "Timeout Monitoring" },
       { id: "payment", label: "Payment Verification" },
-      { id: "all", label: "All Appointments" },
-      { id: "attendance", label: "Attendance" },
-      // { id: "notifications", label: "Notifications" }, // Removed as requested
       { id: "driver", label: "Driver Coordination" },
       { id: "workflow", label: "Service Workflow" },
       { id: "sessions", label: "Active Sessions" },
       { id: "pickup", label: "Pickup Requests" },
     ];
-  }, []); // The optimized data manager handles background refreshes automatically
+  }, []); // Removed redundant tabs: "All Appointments" and "Attendance" - use dedicated pages instead
   // ✅ SIMPLIFIED: Remove unused timeout and driver variables since we're using per-tab data fetching
   // ✅ SIMPLIFIED: Basic driver data loading (if needed for driver tab)
   const loadDriverData = useCallback(async () => {
@@ -1698,315 +1692,6 @@ const OperatorDashboard = () => {
   // ✅ PERFORMANCE FIX: No need to manually fetch on tab switch - data is cached
   // The useOptimizedAttendance hook automatically handles data fetching and caching
   // Remove the effect that was causing unnecessary refetches
-
-  // Render attendance management view
-  const renderAttendanceView = () => {
-    const getStatusColor = (status) => {
-      switch (status) {
-        case "present":
-          return "#28a745";
-        case "late":
-          return "#ffc107";
-        case "absent":
-          return "#dc3545";
-        case "pending_approval":
-          return "#007bff";
-        default:
-          return "#6c757d";
-      }
-    };
-
-    const getStatusBadge = (status) => {
-      const configs = {
-        present: { icon: "✅", label: "Present" },
-        late: { icon: "⏰", label: "Late" },
-        absent: { icon: "❌", label: "Absent" },
-        pending_approval: { icon: "⏳", label: "Pending Approval" },
-      };
-      const config = configs[status] || { icon: "❓", label: "Unknown" };
-      return (
-        <span
-          className="status-badge"
-          style={{
-            backgroundColor: getStatusColor(status),
-            color: "white",
-            padding: "4px 8px",
-            borderRadius: "4px",
-            fontSize: "12px",
-          }}
-        >
-          {config.icon} {config.label}
-        </span>
-      );
-    };
-    const formatTime = (timeString) => {
-      if (!timeString) return "--:--";
-
-      // If it's already a full datetime string, parse it directly
-      if (timeString.includes("T") || timeString.includes(" ")) {
-        return new Date(timeString).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        });
-      }
-
-      // If it's just a time string (HH:MM:SS), create a proper date
-      try {
-        const [hours, minutes, seconds] = timeString.split(":").map(Number);
-
-        // Validate the time components
-        if (
-          isNaN(hours) ||
-          isNaN(minutes) ||
-          hours < 0 ||
-          hours > 23 ||
-          minutes < 0 ||
-          minutes > 59
-        ) {
-          console.error("Invalid time format:", timeString);
-          return timeString; // Return original string if invalid
-        }
-
-        const today = new Date();
-        const dateTime = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate(),
-          hours,
-          minutes,
-          seconds || 0
-        );
-        return dateTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        });
-      } catch (error) {
-        console.error("Error formatting time:", timeString, error);
-        return timeString; // Return original string on error
-      }
-    };
-
-    return (
-      <div className="attendance-management-panel">
-        <div className="attendance-header">
-          <div className="date-selector">
-            <label htmlFor="attendance-date">Select Date:</label>
-            <input
-              id="attendance-date"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => handleDateChange(e.target.value)}
-              className="date-input"
-            />
-            <LoadingButton
-              onClick={handleFetchAttendanceRecords}
-              loading={attendanceLoading}
-              className="refresh-btn"
-            >
-              Refresh
-            </LoadingButton>
-          </div>
-
-          {/* Operator's own attendance controls */}
-          <div className="operator-attendance-controls">
-            <div className="operator-attendance-status">
-              <span className="operator-status-label">My Attendance:</span>
-              {todayStatus ? (
-                <div className="operator-times">
-                  <span className="check-time">
-                    In:{" "}
-                    {checkInTime ? formatTimeForDisplay(checkInTime) : "--:--"}
-                  </span>
-                  <span className="check-time">
-                    Out:{" "}
-                    {checkOutTime
-                      ? formatTimeForDisplay(checkOutTime)
-                      : "--:--"}
-                  </span>
-                </div>
-              ) : (
-                <span className="no-record">No record today</span>
-              )}
-            </div>
-
-            {/* Error display */}
-            {(attendanceError || checkInError || checkOutError) && (
-              <div
-                className="attendance-error"
-                style={{
-                  color: "#dc3545",
-                  fontSize: "12px",
-                  marginTop: "4px",
-                }}
-              >
-                {attendanceError || checkInError || checkOutError}
-              </div>
-            )}
-
-            <div className="operator-attendance-buttons">
-              <LoadingButton
-                onClick={handleOperatorCheckIn}
-                loading={checkInLoading}
-                disabled={isCheckedIn}
-                className="check-in-btn"
-                size="small"
-              >
-                {isCheckedIn ? "Checked In" : "Check In"}
-              </LoadingButton>
-              <LoadingButton
-                onClick={handleOperatorCheckOut}
-                loading={checkOutLoading}
-                disabled={!isCheckedIn || !!checkOutTime}
-                className="check-out-btn"
-                size="small"
-              >
-                {checkOutTime ? "Checked Out" : "Check Out"}
-              </LoadingButton>
-            </div>
-          </div>
-        </div>
-
-        {/* Minimal loading indicator for attendance data */}
-        <MinimalLoadingIndicator
-          show={attendanceLoading}
-          position="center-right"
-          size="micro"
-          variant="ghost"
-          tooltip="Loading attendance records..."
-          pulse={true}
-          fadeIn={true}
-        />
-
-        {attendanceRecords.length === 0 ? (
-          <div className="empty-state">
-            <i className="fas fa-calendar-check"></i>
-            <p>No attendance records found for {selectedDate}</p>
-          </div>
-        ) : (
-          <div className="attendance-records">
-            <div className="attendance-summary">
-              <div className="summary-stats">
-                <div className="stat-card present">
-                  <span className="stat-number">
-                    {
-                      attendanceRecords.filter((r) => r.status === "present")
-                        .length
-                    }
-                  </span>
-                  <span className="stat-label">Present</span>
-                </div>
-                <div className="stat-card late">
-                  <span className="stat-number">
-                    {
-                      attendanceRecords.filter((r) => r.status === "late")
-                        .length
-                    }
-                  </span>
-                  <span className="stat-label">Late</span>
-                </div>
-                <div className="stat-card absent">
-                  <span className="stat-number">
-                    {
-                      attendanceRecords.filter((r) => r.status === "absent")
-                        .length
-                    }
-                  </span>
-                  <span className="stat-label">Absent</span>
-                </div>
-                <div className="stat-card pending">
-                  <span className="stat-number">
-                    {
-                      attendanceRecords.filter(
-                        (r) => r.status === "pending_approval"
-                      ).length
-                    }
-                  </span>
-                  <span className="stat-label">Pending Approval</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="attendance-list">
-              {attendanceRecords.map((record) => (
-                <div key={record.id} className="attendance-card">
-                  <div className="attendance-info">
-                    <div className="staff-details">
-                      <h4>
-                        {record.staff_member.first_name}{" "}
-                        {record.staff_member.last_name}
-                      </h4>
-                      <span className="role-badge">
-                        {record.staff_member.role}
-                      </span>
-                    </div>
-                    <div className="time-details">
-                      <div className="time-row">
-                        <span className="label">Check-in:</span>
-                        <span className="value">
-                          {record.check_in_time
-                            ? formatTime(record.check_in_time)
-                            : "Not checked in"}
-                        </span>
-                      </div>
-                      <div className="time-row">
-                        <span className="label">Check-out:</span>
-                        <span className="value">
-                          {record.check_out_time
-                            ? formatTime(record.check_out_time)
-                            : "Not checked out"}
-                        </span>
-                      </div>
-                      {record.hours_worked && (
-                        <div className="time-row">
-                          <span className="label">Hours worked:</span>
-                          <span className="value">{record.hours_worked}h</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="attendance-status">
-                    {getStatusBadge(record.status)}
-                    {record.status === "pending_approval" && (
-                      <LoadingButton
-                        onClick={() => handleApproveAttendance(record.id)}
-                        loading={buttonLoading[`approve_${record.id}`]}
-                        className="approve-btn"
-                        size="small"
-                      >
-                        Approve
-                      </LoadingButton>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="attendance-guidelines">
-          <h4>Attendance Rules</h4>
-          <ul>
-            <li>
-              <strong>Present:</strong> Check-in before 1:15 PM
-            </li>
-            <li>
-              <strong>Late:</strong> Check-in after 1:15 PM but before 1:30 AM
-              (next day)
-            </li>
-            <li>
-              <strong>Absent:</strong> No check-in recorded by 1:30 AM (next
-              day)
-            </li>
-            <li>
-              <strong>Pending Approval:</strong> Requires operator review
-            </li>
-          </ul>
-        </div>
-      </div>
-    );
-  };
 
   // ✅ PERFORMANCE: Old implementations removed - using ultra-optimized versions above
 
@@ -3233,6 +2918,23 @@ const OperatorDashboard = () => {
             </button>
           </div>
         </LayoutRow>
+        {/* Quick Actions Navigation */}
+        <div className="dashboard-quick-actions">
+          <button
+            className="nav-action-btn scheduling-btn"
+            onClick={() => navigate("/dashboard/scheduling")}
+            title="Go to full scheduling interface"
+          >
+            📅 Full Scheduling
+          </button>
+          <button
+            className="nav-action-btn attendance-btn"
+            onClick={() => navigate("/dashboard/attendance")}
+            title="Go to attendance management"
+          >
+            👥 Staff Attendance
+          </button>
+        </div>
         {/* OPTIMIZED: Simplified loading indicator */}
         <MinimalLoadingIndicator
           show={tabLoading}
@@ -3415,17 +3117,6 @@ const OperatorDashboard = () => {
                 {renderPaymentVerificationView()}
               </div>
             )}
-            {currentView === "all" && (
-              <div className="all-appointments">{renderAllAppointments()}</div>
-            )}{" "}
-            {currentView === "attendance" && (
-              <div className="attendance-management">
-                {renderAttendanceView()}
-              </div>
-            )}{" "}
-            {currentView === "notifications" && (
-              <div className="notifications">{renderNotifications()}</div>
-            )}{" "}
             {currentView === "driver" && (
               <div className="driver-coordination">
                 {renderDriverCoordinationPanel()}
