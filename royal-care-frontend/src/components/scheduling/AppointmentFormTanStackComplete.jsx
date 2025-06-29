@@ -1279,7 +1279,7 @@ const AppointmentFormTanStackComplete = ({
               )}
               {hasAvailabilityError && (
                 <div className="availability-error">
-                  ⚠️ Error checking availability
+                  ⚠️ Error checking availability - Please check your login status or refresh the page
                 </div>
               )}
               {!isLoadingAvailability && !hasAvailabilityError && (

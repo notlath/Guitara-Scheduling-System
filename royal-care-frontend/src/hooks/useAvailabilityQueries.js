@@ -53,14 +53,38 @@ export const useAvailableTherapists = (
   return useQuery({
     queryKey: queryKeys.availability.therapists(date, startTime, serviceId),
     queryFn: async () => {
+      // Enhanced debugging for availability issues
+      console.log("🔍 AVAILABILITY DEBUG - useAvailableTherapists:");
+      console.log("  Token exists:", !!isValidToken());
+      console.log("  Parameters:", {
+        date: formatDateForAPI(date),
+        startTime,
+        serviceId,
+        endTime: computedEndTime,
+      });
+
       const params = {
         date: formatDateForAPI(date),
         start_time: startTime,
         service_id: serviceId,
         end_time: computedEndTime,
       };
-      const result = await dispatch(fetchAvailableTherapists(params)).unwrap();
-      return result;
+
+      try {
+        const result = await dispatch(fetchAvailableTherapists(params)).unwrap();
+        console.log("✅ AVAILABILITY SUCCESS - therapists:", result.length);
+        return result;
+      } catch (error) {
+        console.error("❌ AVAILABILITY ERROR - therapists:", error);
+        // Provide more helpful error message for authentication issues
+        if (
+          error?.error === "Authentication required" ||
+          error?.detail?.includes("Authentication")
+        ) {
+          throw new Error("Please log in again - your session may have expired");
+        }
+        throw error;
+      }
     },
     enabled: !!(
       date &&
@@ -95,13 +119,36 @@ export const useAvailableDrivers = (date, startTime, endTime = null) => {
   return useQuery({
     queryKey: queryKeys.availability.drivers(date, startTime),
     queryFn: async () => {
+      // Enhanced debugging for availability issues
+      console.log("🔍 AVAILABILITY DEBUG - useAvailableDrivers:");
+      console.log("  Token exists:", !!isValidToken());
+      console.log("  Parameters:", {
+        date: formatDateForAPI(date),
+        startTime,
+        endTime: computedEndTime,
+      });
+
       const params = {
         date: formatDateForAPI(date),
         start_time: startTime,
         end_time: computedEndTime,
       };
-      const result = await dispatch(fetchAvailableDrivers(params)).unwrap();
-      return result;
+
+      try {
+        const result = await dispatch(fetchAvailableDrivers(params)).unwrap();
+        console.log("✅ AVAILABILITY SUCCESS - drivers:", result.length);
+        return result;
+      } catch (error) {
+        console.error("❌ AVAILABILITY ERROR - drivers:", error);
+        // Provide more helpful error message for authentication issues
+        if (
+          error?.error === "Authentication required" ||
+          error?.detail?.includes("Authentication")
+        ) {
+          throw new Error("Please log in again - your session may have expired");
+        }
+        throw error;
+      }
     },
     enabled: !!(date && startTime && computedEndTime && isValidToken()),
     staleTime: 2 * 60 * 1000, // 2 minutes
