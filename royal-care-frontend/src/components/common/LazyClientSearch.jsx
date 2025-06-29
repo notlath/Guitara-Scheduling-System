@@ -12,6 +12,7 @@ import "./LazyClientSearch.css";
  * @param {string} props.error - Error message to display
  * @param {boolean} props.disabled - Whether the component is disabled
  * @param {string} props.placeholder - Placeholder text for search input
+ * @param {Function} props.onRegisterClientClick - Callback when "Register Client" is clicked
  */
 const LazyClientSearch = ({
   selectedClient,
@@ -19,6 +20,7 @@ const LazyClientSearch = ({
   error,
   disabled = false,
   placeholder = "Search client by name or phone...",
+  onRegisterClientClick,
 }) => {
   const { clientCache } = useAppointmentFormCache();
 
@@ -572,6 +574,29 @@ const LazyClientSearch = ({
                     }}
                   >
                     Client details can be added when creating the appointment.
+                    {onRegisterClientClick && (
+                      <>
+                        {" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsOpen(false);
+                            onRegisterClientClick();
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#1976d2",
+                            textDecoration: "underline",
+                            cursor: "pointer",
+                            fontSize: "inherit",
+                            padding: 0,
+                          }}
+                        >
+                          Click here to register a new client.
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
