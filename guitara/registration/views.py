@@ -1448,27 +1448,36 @@ class RegistrationMaterialWithStockList(APIView):
                     {"error": f"Service with ID {service_id} not found"}, status=404
                 )
 
-            # ✅ FIX: Enhanced materials retrieval with better error handling
-            # Remove select_related to avoid potential FK issues
-            materials = RegistrationMaterial.objects.filter(service_id=service_id)
+            # ✅ FIX: Enhanced materials retrieval with filtering for valid inventory items
+            # Only get materials that have valid inventory items linked
+            materials = RegistrationMaterial.objects.filter(
+                service_id=service_id,
+                inventory_item__isnull=False  # Filter out orphaned materials
+            ).select_related("inventory_item")
 
-            logger.info(f"Found {materials.count()} materials for service {service_id}")
+            logger.info(f"Found {materials.count()} materials with valid inventory items for service {service_id}")
 
             if not materials.exists():
-                # Service exists but has no materials - return empty list with helpful message
-                logger.info(f"No materials found for service {service_id}")
+                # Service exists but has no valid materials - return empty list with helpful message
+                logger.info(f"No materials with valid inventory items found for service {service_id}")
                 return Response(
                     {
                         "results": [],
-                        "message": "No materials required for this service",
+                        "message": "No materials with valid inventory items required for this service",
                         "service_id": service_id,
                     }
                 )
 
-            # Try to serialize without select_related first
+            # Try to serialize the materials
             try:
                 serializer = RegistrationMaterialSerializer(materials, many=True)
                 serialized_data = serializer.data
+                
+                # Override category with inventory item data
+                for i, material in enumerate(materials):
+                    if material.inventory_item:
+                        serialized_data[i]['category'] = material.inventory_item.category
+                
                 logger.info(f"Successfully serialized {len(serialized_data)} materials")
 
                 return Response(
@@ -1491,10 +1500,10 @@ class RegistrationMaterialWithStockList(APIView):
                                 "id": mat.id,
                                 "name": mat.name or "Unnamed Material",
                                 "description": mat.description or "No description",
-                                "category": mat.category or "Other",
+                                "category": mat.inventory_item.category if mat.inventory_item else (mat.category or "Other"),
                                 "unit_of_measure": mat.unit_of_measure or "Unit",
                                 "stock_quantity": mat.stock_quantity or 0,
-                                "current_stock": mat.stock_quantity or 0,  # Fallback
+                                "current_stock": mat.inventory_item.current_stock if mat.inventory_item else (mat.stock_quantity or 0),
                                 "auto_deduct": mat.auto_deduct,
                                 "reusable": mat.reusable,
                                 "service": mat.service_id,

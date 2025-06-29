@@ -202,6 +202,8 @@ export const queryClientUtils = {
     queryClient.invalidateQueries({
       queryKey: queryKeys.appointments.upcoming(),
     });
+    // Also invalidate inventory when appointments change (material deduction/return)
+    queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
   },
 
   // Update appointment optimistically

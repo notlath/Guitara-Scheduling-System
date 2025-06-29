@@ -699,7 +699,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = AppointmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]  # Restored authentication
     pagination_class = AppointmentsPagination
     filter_backends = [
         DjangoFilterBackend,
@@ -765,6 +765,42 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Temporarily allow any authenticated user to create appointments
         # if self.request.user.role != "operator":
         #     raise permissions.PermissionDenied("Only operators can create appointments")
+
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"=== APPOINTMENT VIEW DEBUG - ENHANCED ===")
+        logger.info(f"Request method: {self.request.method}")
+        logger.info(f"Request content type: {self.request.content_type}")
+        logger.info(f"Request data type: {type(self.request.data)}")
+        logger.info(f"Full request data received: {dict(self.request.data)}")
+        
+        # Check for materials in various forms
+        materials_raw = self.request.data.get('materials')
+        logger.info(f"Materials in request data (raw): {repr(materials_raw)}")
+        logger.info(f"Materials data type: {type(materials_raw)}")
+        
+        if materials_raw:
+            logger.info(f"Materials length: {len(materials_raw) if hasattr(materials_raw, '__len__') else 'N/A'}")
+            if isinstance(materials_raw, list):
+                for i, material in enumerate(materials_raw):
+                    logger.info(f"Material {i}: {material}")
+        
+        # Check if materials is in the initial data passed to serializer
+        if hasattr(serializer, 'initial_data'):
+            logger.info(f"Serializer initial_data: {serializer.initial_data}")
+            logger.info(f"Materials in serializer initial_data: {serializer.initial_data.get('materials', 'NOT_FOUND')}")
+        
+        # Check serializer validated data
+        if hasattr(serializer, 'validated_data'):
+            logger.info(f"Serializer validated_data keys: {list(serializer.validated_data.keys())}")
+            materials_validated = serializer.validated_data.get('materials')
+            logger.info(f"Materials in validated_data: {repr(materials_validated)}")
+        
+        # Check if serializer is valid
+        logger.info(f"Serializer is_valid: {serializer.is_valid()}")
+        if not serializer.is_valid():
+            logger.error(f"Serializer errors: {serializer.errors}")
 
         # Extract therapists data from request before saving
         therapists_data = self.request.data.get("therapists", [])
@@ -1162,7 +1198,28 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
 
         appointment.status = "in_progress"
-        appointment.save()  # Create notifications
+        appointment.save()
+        
+        # Move appointment materials from current_stock to in_use
+        for material in appointment.appointment_materials.all():
+            inventory_item = material.inventory_item
+            if inventory_item.move_to_in_use(material.quantity_used):
+                # Log the material usage
+                from inventory.models import UsageLog
+                UsageLog.objects.create(
+                    item=inventory_item,
+                    quantity_used=material.quantity_used,
+                    operator=request.user if request.user.is_authenticated else None,
+                    action_type='usage',
+                    notes=f'Material moved to in_use for appointment #{appointment.id}'
+                )
+            else:
+                return Response(
+                    {"error": f"Insufficient stock for {inventory_item.name}. Required: {material.quantity_used}, Available: {inventory_item.current_stock}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        
+        # Create notifications
         self._create_notifications(
             appointment,
             "appointment_started",

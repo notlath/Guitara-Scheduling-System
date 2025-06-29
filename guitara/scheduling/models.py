@@ -669,3 +669,60 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.notification_type} for {self.user.username}"
+
+
+class AppointmentMaterial(models.Model):
+    """Track material usage for appointments with support for reusable items"""
+
+    USAGE_TYPE_CHOICES = [
+        ("consumable", "Consumable"),
+        ("reusable", "Reusable"),
+    ]
+
+    appointment = models.ForeignKey(
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name="appointment_materials",
+    )
+    inventory_item = models.ForeignKey(
+        "inventory.InventoryItem",
+        on_delete=models.CASCADE,
+        related_name="appointment_usages",
+    )
+    quantity_used = models.PositiveIntegerField(
+        help_text="Quantity used (number of bottles/units)",
+    )
+    usage_type = models.CharField(
+        max_length=20,
+        choices=USAGE_TYPE_CHOICES,
+        default="consumable",
+        help_text="Type of material usage",
+    )
+    is_reusable = models.BooleanField(
+        default=False,
+        help_text="Whether this material is reusable (Ventosa/Hot Stone kits)",
+    )
+    deducted_at = models.DateTimeField(
+        auto_now_add=True, help_text="When material was deducted from inventory"
+    )
+    returned_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When reusable material was returned to inventory",
+    )
+    notes = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Additional notes about material usage",
+    )
+
+    class Meta:
+        verbose_name = "Appointment Material Usage"
+        verbose_name_plural = "Appointment Material Usages"
+
+    def __str__(self):
+        return f"{self.inventory_item.name} - {self.quantity_used} ({self.usage_type}) for Appointment #{self.appointment.id}"
+
+    def is_returned(self):
+        """Check if reusable material has been returned"""
+        return self.is_reusable and self.returned_at is not None
