@@ -18,8 +18,12 @@ import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 import { useOperatorDashboardData } from "../hooks/useDashboardQueries";
 import { useInstantUpdates } from "../hooks/useInstantUpdates";
-// Import shared Philippine time and greeting hook
-import { usePhilippineTime } from "../hooks/usePhilippineTime";
+// SHARED HOOKS: Import shared dashboard logic to eliminate code duplication
+import { useDashboardCommon } from "../hooks/useDashboardCommon";
+import { useUrlParams } from "../hooks/useUrlParams";
+import { useButtonLoading } from "../hooks/useButtonLoading";
+// SHARED UTILITIES: Import shared status utilities to eliminate code duplication  
+import { getStatusBadgeClass, getStatusDisplayText } from "../utils/appointmentStatusUtils";
 // PERFORMANCE: Stable filtering imports to prevent render loops
 import ServerPagination from "./ServerPagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
@@ -86,16 +90,34 @@ const VALID_FILTER_VALUES = Object.freeze([
   "overdue",
 ]);
 
-// ✅ ROBUST FILTERING: Validation helpers
-const validateUrlParam = (param, validValues, defaultValue) => {
-  if (!param || typeof param !== "string") return defaultValue;
-  return validValues.includes(param) ? param : defaultValue;
-};
+// ✅ REMOVED: validateUrlParam function - now handled by shared hook
 
 import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import { queryKeys } from "../lib/queryClient";
 
 const OperatorDashboard = () => {
+  // ✅ SHARED LOGIC: Use common dashboard functionality to eliminate code duplication
+  const { 
+    handleLogout, 
+    userName, 
+    systemTime, 
+    greeting,
+    // WebSocket and sync handlers are initialized automatically
+  } = useDashboardCommon("Operator");
+
+  // ✅ SHARED URL PARAMS: Use shared URL parameter management
+  const {
+    currentView,
+    currentFilter,
+    currentPage,
+    validationWarnings,
+    setView,
+    setFilter,
+    setPage
+  } = useUrlParams(VALID_VIEW_VALUES, VALID_FILTER_VALUES, "rejected");
+
+  // ✅ SHARED BUTTON LOADING: Use shared button loading state management
+  const { buttonLoading, setActionLoading, forceClearLoading } = useButtonLoading();
   // ✅ TANSTACK QUERY MIGRATION COMPLETE
   //
   // BEFORE: Custom data fetching with useEffect, manual caching, and complex state management
@@ -153,104 +175,33 @@ const OperatorDashboard = () => {
     checkOutError,
   } = useSelector((state) => state.attendance);
 
-  // Get user name from localStorage (or auth state if available)
-  const user = JSON.parse(localStorage.getItem("user")) || {}; // fallback if not present
-  const userName =
-    user.first_name && user.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user.username || "Operator";
-
-  // Use shared Philippine time and greeting hook
-  const { systemTime, greeting } = usePhilippineTime();
-
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
-  // URL search params for view persistence
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  // ✅ ROBUST FILTERING: Validate URL parameters against allowed values
-  const rawView = searchParams.get("view");
-  const rawFilter = searchParams.get("filter");
-  const rawPage = searchParams.get("page");
-
-  const currentView = validateUrlParam(rawView, VALID_VIEW_VALUES, "rejected");
-  const _currentFilter = validateUrlParam(
-    rawFilter,
-    VALID_FILTER_VALUES,
-    "all"
-  );
-  const currentPage = Math.max(1, parseInt(rawPage || "1", 10));
-
-  // Track validation warnings for user feedback
-  const [validationWarnings, setValidationWarnings] = useState([]);
-
-  // Check for invalid URL parameters and warn user
-  // OPTIMIZATION: useCallback for stable validation, and only update if changed
-  const validateWarnings = useCallback(() => {
-    const warnings = [];
-    if (rawView && !VALID_VIEW_VALUES.includes(rawView)) {
-      warnings.push(`Invalid view "${rawView}" reset to "rejected"`);
-    }
-    if (rawFilter && !VALID_FILTER_VALUES.includes(rawFilter)) {
-      warnings.push(`Invalid filter "${rawFilter}" reset to "all"`);
-    }
-    return warnings;
-  }, [rawView, rawFilter]);
-
-  // Set page title
-  useEffect(() => {
-    document.title = pageTitles.dashboard;
-  }, []);
-
-  useEffect(() => {
-    const newWarnings = validateWarnings();
-    setValidationWarnings((prev) => {
-      if (
-        prev.length === newWarnings.length &&
-        prev.every((w, i) => w === newWarnings[i])
-      ) {
-        return prev;
-      }
-      return newWarnings;
-    });
-  }, [validateWarnings]);
-
+  
   // Fetch operator's attendance status on component mount
   useEffect(() => {
     dispatch(getTodayAttendanceStatus());
   }, [dispatch]);
+  
+  // URL search params for view persistence - REMOVED: Now handled by shared hook
+  // const [searchParams, setSearchParams] = useSearchParams(); - REMOVED
 
-  // ✅ STEP 1: Memoized view/filter/page setters with stable callbacks
-  const setView = useCallback(
-    (newView) => {
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set("view", newView);
-      // Reset page when changing views
-      newSearchParams.set("page", "1");
-      setSearchParams(newSearchParams);
-    },
-    [searchParams, setSearchParams]
-  );
+  // ✅ ROBUST FILTERING: Validate URL parameters - REMOVED: Now handled by shared hook
+  // const rawView = searchParams.get("view"); - REMOVED
+  // const rawFilter = searchParams.get("filter"); - REMOVED
+  // const rawPage = searchParams.get("page"); - REMOVED
 
-  // Filter and page management
-  const _setFilter = useCallback(
-    (newFilter) => {
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set("filter", newFilter);
-      newSearchParams.set("page", "1"); // Reset to first page
-      setSearchParams(newSearchParams);
-    },
-    [searchParams, setSearchParams]
-  );
+  // const currentView = validateUrlParam(rawView, VALID_VIEW_VALUES, "rejected"); - REMOVED
+  const _currentFilter = currentFilter; // Keep reference for compatibility
+  // const currentPage = Math.max(1, parseInt(rawPage || "1", 10)); - REMOVED
 
-  const setPage = useCallback(
-    (page) => {
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set("page", page.toString());
-      setSearchParams(newSearchParams);
-    },
-    [searchParams, setSearchParams]
-  );
+  // Track validation warnings - REMOVED: Now handled by shared hook
+  // const [validationWarnings, setValidationWarnings] = useState([]); - REMOVED
+
+  // Check for invalid URL parameters and warn user
+  // OPTIMIZATION: useCallback for stable validation - REMOVED: Now handled by shared hook
+
+  // Set page title - REMOVED: Now handled by shared hook
   // Modal states - memoized to prevent unnecessary re-renders
   const [reviewModal, setReviewModal] = useState({
     isOpen: false,
@@ -751,9 +702,8 @@ const OperatorDashboard = () => {
     console.log("✅ Tab refresh completed");
   }, [currentView, queryClient]);
 
-  // 🚀 ULTRA-PERFORMANCE: Optimized button loading management
-  const { buttonLoading, setActionLoading, forceClearLoading } =
-    useOptimizedButtonLoading(); // 🚀 ULTRA-PERFORMANCE: Simplified dashboard tabs without counts
+  // 🚀 ULTRA-PERFORMANCE: Button loading management - REMOVED: Now handled by shared hook
+  // const { buttonLoading, setActionLoading, forceClearLoading } = useOptimizedButtonLoading(); - REMOVED // 🚀 ULTRA-PERFORMANCE: Simplified dashboard tabs without counts
   const dashboardTabs = useMemo(() => {
     return [
       { id: "rejected", label: "Rejection Reviews" },
@@ -1040,12 +990,7 @@ const OperatorDashboard = () => {
     return badges[urgencyLevel] || badges.normal;
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("knoxToken");
-    localStorage.removeItem("user");
-    dispatch(logout());
-    navigate("/");
-  };
+  // handleLogout - REMOVED: Now handled by shared hook
 
   const handleReviewRejection = (appointment) => {
     setReviewModal({
@@ -1716,71 +1661,7 @@ const OperatorDashboard = () => {
 
   // ✅ PERFORMANCE: Old implementations removed - using ultra-optimized versions above
 
-  // ✅ UPDATED: Helper functions for status badge mapping (BEM format)
-  const getStatusBadgeClass = (status) => {
-    const statusMap = {
-      pending: "status-badge--pending",
-      confirmed: "status-badge--confirmed",
-      driver_confirmed: "status-badge--driver-confirmed",
-      therapist_confirmed: "status-badge--therapist-confirmed",
-      rejected: "status-badge--rejected",
-      cancelled: "status-badge--cancelled",
-      auto_cancelled: "status-badge--overdue",
-      completed: "status-badge--completed",
-      in_progress: "status-badge--in-progress",
-      awaiting_payment: "status-badge--warning",
-      pickup_requested: "status-badge--pickup-requested",
-      overdue: "status-badge--overdue",
-      timeout: "status-badge--timeout",
-      journey_started: "status-badge--journey-started",
-      arrived: "status-badge--arrived",
-      dropped_off: "status-badge--dropped-off",
-      session_started: "status-badge--session-started",
-      payment_requested: "status-badge--payment-requested",
-      payment_completed: "status-badge--payment-completed",
-    };
-
-    return statusMap[status] || "status-badge--pending";
-  };
-  const getStatusDisplayText = (status) => {
-    // Debug logging
-    console.log("📊 Status badge debug - Input status:", status);
-    console.log("📊 Status badge debug - Type:", typeof status);
-    console.log("📊 Status badge debug - Is undefined?", status === undefined);
-    console.log("📊 Status badge debug - Is null?", status === null);
-    console.log("📊 Status badge debug - Is empty string?", status === "");
-
-    const statusTextMap = {
-      pending: "Pending",
-      confirmed: "Confirmed",
-      driver_confirmed: "Driver Confirmed",
-      therapist_confirmed: "Therapist Confirmed",
-      rejected: "Rejected",
-      cancelled: "Cancelled",
-      auto_cancelled: "Auto Cancelled",
-      completed: "Completed",
-      in_progress: "In Progress",
-      awaiting_payment: "Awaiting Payment",
-      pickup_requested: "Pickup Requested",
-      overdue: "Overdue",
-      timeout: "Timeout",
-      journey_started: "Journey Started",
-      arrived: "Arrived",
-      dropped_off: "Dropped Off",
-      session_started: "Session Started",
-      payment_requested: "Payment Requested",
-      payment_completed: "Payment Completed",
-    };
-
-    const result =
-      statusTextMap[status] ||
-      status?.charAt(0).toUpperCase() + status?.slice(1).replace(/_/g, " ") ||
-      "Unknown Status";
-
-    console.log("📊 Status badge debug - Output text:", result);
-    console.log("📊 Status badge debug - Result length:", result.length);
-    return result;
-  };
+  // ✅ Status badge functions - REMOVED: Now using shared utilities from appointmentStatusUtils
 
   // ✅ STANDARDIZED APPOINTMENT CARD RENDERING
   // All appointment rendering functions now use consistent structure:
@@ -3042,8 +2923,8 @@ const OperatorDashboard = () => {
             )}
           </div>
         )}
-        {/* ✅ ROBUST FILTERING: Display validation warnings and errors */}{" "}
-        {validationWarnings.length > 0 && (
+        {/* ✅ ROBUST FILTERING: Display validation warnings and errors */}
+        {validationWarnings && validationWarnings.length > 0 && (
           <div
             className="validation-warnings"
             style={{
@@ -3059,7 +2940,7 @@ const OperatorDashboard = () => {
               ⚠️ Parameter Validation Issues:
             </h5>
             <ul style={{ margin: "0", paddingLeft: "20px" }}>
-              {validationWarnings.map((warning, index) => (
+              {(validationWarnings || []).map((warning, index) => (
                 <li key={index} style={{ fontSize: "13px" }}>
                   {warning}
                 </li>
