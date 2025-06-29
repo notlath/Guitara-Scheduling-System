@@ -450,9 +450,11 @@ class Appointment(models.Model):
     def can_start_journey(self):
         """Check if journey can be started"""
         # Journey can only start AFTER operator has started the appointment
+        # Allow restart if already in journey status (for retries/updates)
         # This ensures proper authorization flow: therapist accepts -> driver accepts -> operator starts -> driver can begin journey
         valid_statuses = [
-            "in_progress",  # Only after operator clicks "Start Appointment"
+            "in_progress",  # After operator clicks "Start Appointment"
+            "journey",  # Allow restart/update of existing journey
         ]
         return self.status in valid_statuses
 

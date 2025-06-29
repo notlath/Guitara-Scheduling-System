@@ -923,20 +923,25 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             "appointment_cancelled",
             f"Appointment for {appointment.client} on {appointment.date} at {appointment.start_time} has been cancelled.",
         )
-        from guitara.scheduling.optimized_data_manager import data_manager
 
-        data_manager._invalidate_appointment_caches(
-            {
-                "id": appointment.id,
-                "date": appointment.date,
-                "therapist_id": getattr(appointment.therapist, "id", None),
-                "driver_id": getattr(appointment.driver, "id", None),
-            }
-        )
-        data_manager.broadcast_appointment_update(
-            {"id": appointment.id, "status": appointment.status},
-            update_type="cancelled",
-        )
+        try:
+            from guitara.scheduling.optimized_data_manager import data_manager
+
+            data_manager._invalidate_appointment_caches(
+                {
+                    "id": appointment.id,
+                    "date": appointment.date,
+                    "therapist_id": getattr(appointment.therapist, "id", None),
+                    "driver_id": getattr(appointment.driver, "id", None),
+                }
+            )
+            data_manager.broadcast_appointment_update(
+                {"id": appointment.id, "status": appointment.status},
+                update_type="cancelled",
+            )
+        except (ImportError, AttributeError) as e:
+            print(f"⚠️ Warning: Could not import optimized_data_manager: {e}")
+            # Continue without cache invalidation - the operation will still succeed
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
@@ -970,20 +975,25 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             "appointment_updated",
             f"Appointment for {appointment.client} on {appointment.date} at {appointment.start_time} has been completed.",
         )
-        from guitara.scheduling.optimized_data_manager import data_manager
 
-        data_manager._invalidate_appointment_caches(
-            {
-                "id": appointment.id,
-                "date": appointment.date,
-                "therapist_id": getattr(appointment.therapist, "id", None),
-                "driver_id": getattr(appointment.driver, "id", None),
-            }
-        )
-        data_manager.broadcast_appointment_update(
-            {"id": appointment.id, "status": appointment.status},
-            update_type="completed",
-        )
+        try:
+            from guitara.scheduling.optimized_data_manager import data_manager
+
+            data_manager._invalidate_appointment_caches(
+                {
+                    "id": appointment.id,
+                    "date": appointment.date,
+                    "therapist_id": getattr(appointment.therapist, "id", None),
+                    "driver_id": getattr(appointment.driver, "id", None),
+                }
+            )
+            data_manager.broadcast_appointment_update(
+                {"id": appointment.id, "status": appointment.status},
+                update_type="completed",
+            )
+        except (ImportError, AttributeError) as e:
+            print(f"⚠️ Warning: Could not import optimized_data_manager: {e}")
+            # Continue without cache invalidation - the operation will still succeed
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
 
@@ -1715,9 +1725,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         print(f"   Driver accepted: {appointment.driver_accepted}")
         print(f"   Both parties accepted: {appointment.both_parties_accepted()}")
 
-        # Enforce proper authorization flow: only allow journey start after operator approval
-        # Valid status is ONLY "in_progress" (after operator starts the appointment)
-        if appointment.status != "in_progress":
+        # Refresh appointment from database to avoid race conditions
+        appointment.refresh_from_db()
+        print(f"   Status after refresh: {appointment.status}")
+
+        # Enforce proper authorization flow: allow journey start from "in_progress" or already "journey" status
+        # Valid statuses: "in_progress" (after operator starts) or "journey" (already started, can restart)
+        if appointment.status not in ["in_progress", "journey"]:
             if appointment.status == "driver_confirmed":
                 return Response(
                     {
@@ -1735,42 +1749,58 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             else:
                 return Response(
                     {
-                        "error": f"Journey cannot be started from current status '{appointment.status}'. Only 'in_progress' status is allowed."
+                        "error": f"Journey cannot be started from current status '{appointment.status}'. Only 'in_progress' status is allowed (current: {appointment.status})."
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        appointment.status = "journey"
-        appointment.journey_started_at = timezone.now()
+        # Set status to journey - or update journey_started_at if already in journey
+        if appointment.status == "journey":
+            print(
+                f"🔄 Journey already started for appointment {appointment.id}, updating timestamp"
+            )
+            appointment.journey_started_at = (
+                timezone.now()
+            )  # Update timestamp for restart
+        else:
+            print(f"🚀 Starting new journey for appointment {appointment.id}")
+            appointment.status = "journey"
+            appointment.journey_started_at = timezone.now()
+
         appointment.save()
 
         # Create notifications
+        journey_message = f"Driver {request.user.get_full_name()} has started the journey to {appointment.client} at {appointment.location}."
         self._create_notifications(
             appointment,
             "journey_started",
-            f"Driver {request.user.get_full_name()} has started the journey to {appointment.client} at {appointment.location}.",
+            journey_message,
         )
 
         # Invalidate cache and broadcast update for real-time dashboard sync
-        from guitara.scheduling.optimized_data_manager import data_manager
+        try:
+            from guitara.scheduling.optimized_data_manager import data_manager
 
-        data_manager._invalidate_appointment_caches(
-            {
-                "id": appointment.id,
-                "date": appointment.date,
-                "therapist_id": getattr(appointment.therapist, "id", None),
-                "driver_id": getattr(appointment.driver, "id", None),
-            }
-        )
-        data_manager.broadcast_appointment_update(
-            {"id": appointment.id, "status": appointment.status},
-            update_type="journey_started",
-        )
+            data_manager._invalidate_appointment_caches(
+                {
+                    "id": appointment.id,
+                    "date": appointment.date,
+                    "therapist_id": getattr(appointment.therapist, "id", None),
+                    "driver_id": getattr(appointment.driver, "id", None),
+                }
+            )
+            data_manager.broadcast_appointment_update(
+                {"id": appointment.id, "status": appointment.status},
+                update_type="journey_started",
+            )
+        except (ImportError, AttributeError) as e:
+            print(f"⚠️ Warning: Could not import optimized_data_manager: {e}")
+            # Continue without cache invalidation - the operation will still succeed
 
         serializer = self.get_serializer(appointment)
         return Response(
             {
-                "message": "Journey started. Driving to client location.",
+                "message": "Journey started successfully. Driving to client location.",
                 "appointment": serializer.data,
             }
         )

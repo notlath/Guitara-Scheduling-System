@@ -4,6 +4,7 @@ const isTransportCompleted = (appointment) =>
     appointment.status
   );
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
@@ -104,6 +105,7 @@ const formatLocationKey = (location) => {
 const DriverDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Initialize real-time cache sync via WebSocket
   useAutoWebSocketCacheSync();
@@ -362,7 +364,17 @@ const DriverDashboard = () => {
       }
 
       const result = await startJourney.mutateAsync(appointmentId);
-      console.log("✅ Journey started successfully:", result);
+
+      // ✅ Force immediate cache refresh to ensure UI shows updated state
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active", // Only refetch currently active queries
+      });
+
+      console.log(
+        "✅ Journey started successfully - cache invalidated:",
+        result
+      );
     } catch (error) {
       console.error("❌ Failed to start journey - Full error details:", {
         error,
@@ -446,10 +458,19 @@ const DriverDashboard = () => {
     const actionKey = `arrive_location_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
+
       await updateStatus.mutateAsync({
         appointmentId,
         status: "at_location",
       });
+
+      // ✅ Force immediate cache refresh to ensure UI shows updated state
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active", // Only refetch currently active queries
+      });
+
+      console.log("✅ Arrival marked successfully - cache invalidated");
     } catch (error) {
       console.error("Failed to mark arrival:", error);
       if (

@@ -1159,7 +1159,7 @@ const OperatorDashboard = () => {
     });
     setPaymentData({
       method: "cash",
-      amount: totalAmount.toFixed(2), // totalAmount is guaranteed to be a number
+      amount: Math.round(totalAmount).toString(), // Round to nearest whole number
       notes: "",
     });
   };
@@ -1174,12 +1174,12 @@ const OperatorDashboard = () => {
     });
 
     // Validate payment data
-    if (!paymentData.amount || parseFloat(paymentData.amount) <= 0) {
+    if (!paymentData.amount || parseInt(paymentData.amount) <= 0) {
       console.log(
         "❌ handleMarkPaymentPaid: Invalid payment amount",
         paymentData.amount
       );
-      alert("Please enter a valid payment amount.");
+      alert("Please enter a valid payment amount (whole numbers only).");
       return;
     }
 
@@ -3540,9 +3540,14 @@ const OperatorDashboard = () => {
                   onChange={(e) =>
                     setPaymentData({ ...paymentData, amount: e.target.value })
                   }
-                  placeholder="Enter amount received"
+                  placeholder="Enter amount received (whole numbers only)"
                   min="0"
-                  step="0.01"
+                  step="1"
+                  pattern="[0-9]*"
+                  onInput={(e) => {
+                    // Ensure only integers are allowed
+                    e.target.value = e.target.value.replace(/[^0-9]/g, "");
+                  }}
                 />
               </div>{" "}
               {/* GCash Receipt Upload */}
