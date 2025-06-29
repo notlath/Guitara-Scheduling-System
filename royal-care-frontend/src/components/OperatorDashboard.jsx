@@ -53,9 +53,11 @@ import "../styles/Performance.css";
 import "../styles/components/AppointmentCard.css";
 import "../styles/components/StatusBadge.css";
 
+/* ✅ OPERATOR-SPECIFIC: Urgency indicators for medical priority system */
+import "../styles/UrgencyIndicators.css";
+
 /* ❌ REMOVED: Duplicate/conflicting CSS files
 import "../styles/EnhancedAppointmentCards.css";
-import "../styles/UrgencyIndicators.css"; 
 */
 
 // ✅ ROBUST FILTERING: Valid values for URL parameters
@@ -2033,7 +2035,7 @@ const OperatorDashboard = () => {
   const getStatusBadgeClass = (status) => {
     const statusMap = {
       pending: "status-badge--pending",
-      confirmed: "status-badge--confirmed", 
+      confirmed: "status-badge--confirmed",
       driver_confirmed: "status-badge--driver-confirmed",
       therapist_confirmed: "status-badge--therapist-confirmed",
       rejected: "status-badge--rejected",

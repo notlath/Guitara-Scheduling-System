@@ -14,6 +14,8 @@ import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
 import "../../globals/TabSwitcher.css";
 import "../../styles/SchedulingDashboard.css";
+import "../../styles/components/AppointmentCard.css";
+import "../../styles/components/StatusBadge.css";
 import APIErrorDisplay from "../common/APIErrorDisplay";
 import ErrorBoundary from "../common/ErrorBoundary";
 // Legacy forms (comment out when ready)
@@ -151,15 +153,15 @@ const SchedulingDashboard = () => {
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case "pending":
-        return "status-pending";
+        return "status-badge--pending";
       case "confirmed":
-        return "status-confirmed";
+        return "status-badge--confirmed";
       case "in_progress":
-        return "status-in-progress";
+        return "status-badge--in-progress";
       case "completed":
-        return "status-completed";
+        return "status-badge--completed";
       case "cancelled":
-        return "status-cancelled";
+        return "status-badge--cancelled";
       default:
         return "";
     }
@@ -210,7 +212,7 @@ const SchedulingDashboard = () => {
       <div className="appointments-list">
         {appointmentsList.map((appointment) => (
           <div key={appointment.id} className="appointment-card">
-            <div className="appointment-header">
+            <div className="appointment-card__header">
               <h3>
                 {appointment.client_details.first_name}{" "}
                 {appointment.client_details.last_name}
@@ -225,7 +227,7 @@ const SchedulingDashboard = () => {
               </span>
             </div>
 
-            <div className="appointment-details">
+            <div className="appointment-card__content">
               <p>
                 <strong>Date:</strong>{" "}
                 {new Date(appointment.date).toLocaleDateString()}
@@ -290,15 +292,15 @@ const SchedulingDashboard = () => {
             </div>
 
             {user.role === "operator" && (
-              <div className="appointment-actions">
+              <div className="appointment-card__actions">
                 <button
-                  className="edit-button"
+                  className="appointment-card__edit-btn"
                   onClick={() => handleEditAppointment(appointment)}
                 >
                   Edit
                 </button>
                 <button
-                  className="delete-button"
+                  className="appointment-card__delete-btn"
                   onClick={() => handleDeleteAppointment(appointment.id)}
                 >
                   Delete

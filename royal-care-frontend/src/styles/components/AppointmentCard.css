@@ -15,11 +15,11 @@
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 16px;
-  
+
   /* Visual */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: box-shadow 0.3s ease, transform 0.2s ease;
-  
+
   /* Performance */
   contain: layout style paint;
   will-change: transform;
@@ -160,13 +160,13 @@
     padding: 16px;
     margin-bottom: 12px;
   }
-  
+
   .appointment-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
   }
-  
+
   .appointment-actions {
     justify-content: center;
     flex-wrap: wrap;
@@ -177,7 +177,7 @@
   .appointment-card {
     padding: 12px;
   }
-  
+
   .appointment-header h3,
   .appointment-header h4 {
     font-size: 1.1rem;
@@ -189,9 +189,15 @@
    ========================================================================== */
 
 @keyframes appointment-pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .appointment-card--timeout {
@@ -209,7 +215,7 @@
     break-inside: avoid;
     margin-bottom: 12px;
   }
-  
+
   .appointment-card:hover {
     transform: none;
   }

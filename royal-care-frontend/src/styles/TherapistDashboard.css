@@ -1,8 +1,8 @@
 /* Therapist Dashboard Styles */
 
 /* Import component styles - SINGLE SOURCE OF TRUTH */
-@import './components/AppointmentCard.css';
-@import './components/StatusBadge.css';
+@import "./components/AppointmentCard.css";
+@import "./components/StatusBadge.css";
 
 .therapist-dashboard {
   max-width: 1200px;

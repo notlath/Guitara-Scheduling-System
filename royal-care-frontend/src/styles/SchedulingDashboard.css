@@ -27,123 +27,15 @@
   font-style: italic;
 }
 
+/* Import component styles */
+@import "./components/AppointmentCard.css";
+@import "./components/StatusBadge.css";
+
 .appointments-list {
   display: inline;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: var(--spacing-md);
   margin-top: var(--spacing-md);
-}
-
-.appointment-card {
-  background-color: var(--background);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
-  overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.appointment-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.appointment-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: var(--background-50);
-  padding: var(--spacing-sm);
-  border-bottom: 1px solid var(--background-200);
-}
-
-.appointment-header h3 {
-  margin: 0;
-  font-size: var(--font-size-md);
-  color: var(--text);
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-weight: 700;
-}
-
-.status-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  font-family: "Plus Jakarta Sans", sans-serif;
-}
-
-.status-pending {
-  background-color: var(--primary-100);
-  color: var(--primary-700);
-}
-
-.status-confirmed {
-  background-color: var(--accent-100);
-  color: var(--accent-700);
-}
-
-.status-in-progress {
-  background-color: var(--secondary-100);
-  color: var(--secondary-700);
-}
-
-.status-completed {
-  background-color: var(--secondary-50);
-  color: var(--secondary-800);
-}
-
-.status-cancelled {
-  background-color: var(--error);
-  color: var(--background);
-}
-
-.appointment-details {
-  padding: var(--spacing-sm);
-}
-
-.appointment-details p {
-  margin: 8px 0;
-  line-height: 1.4;
-  color: var(--text);
-  font-size: var(--font-size-sm);
-}
-
-.appointment-actions {
-  display: flex;
-  padding: var(--spacing-sm);
-  border-top: 1px solid var(--background-100);
-  justify-content: flex-end;
-  gap: var(--spacing-xs);
-}
-
-.edit-button,
-.delete-button {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-weight: 700;
-  transition: background-color 0.2s;
-}
-
-.edit-button {
-  background-color: var(--primary);
-  color: var(--background);
-}
-
-.edit-button:hover {
-  background-color: var(--primary-700);
-}
-
-.delete-button {
-  background-color: var(--error);
-  color: var(--background);
-}
-
-.delete-button:hover {
-  background-color: var(--error);
 }
 
 .dashboard-content {
