@@ -859,6 +859,52 @@
   /* font-weight: 400;  */
 }
 
+/* Quick Actions Navigation */
+.dashboard-quick-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: var(--background-25);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-light);
+}
+
+.nav-action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--background);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.nav-action-btn:hover {
+  background: var(--primary);
+  color: var(--background);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.nav-action-btn.scheduling-btn:hover {
+  background: var(--primary-600);
+  border-color: var(--primary-600);
+}
+
+.nav-action-btn.attendance-btn:hover {
+  background: var(--secondary-600);
+  border-color: var(--secondary-600);
+}
+
 /* Responsive stats */
 @media (max-width: 768px) {
   .stats-grid {

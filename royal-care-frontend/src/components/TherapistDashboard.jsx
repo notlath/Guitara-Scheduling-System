@@ -30,9 +30,7 @@ import "../styles/TherapistDashboard.css";
 import "../styles/components/AppointmentCard.css";
 import "../styles/components/StatusBadge.css";
 
-import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
-import Calendar from "./scheduling/Calendar";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 
 // API base URL configuration
@@ -285,6 +283,21 @@ const TherapistDashboard = () => {
 
   // Get user from localStorage instead of Redux
   const user = getUser();
+
+  // Enhanced Redux actions with automatic TanStack Query cache invalidation
+  const {
+    confirmReadiness: enhancedConfirmReadiness,
+    startSession: enhancedStartSession,
+    completeSession: enhancedCompleteSession,
+    requestPickup: enhancedRequestPickup,
+    markPaymentRequest: enhancedMarkPaymentRequest,
+  } = useEnhancedTherapistActions();
+
+  // ✅ NEW: Instant updates for immediate UI feedback
+  const {
+    acceptAppointment: instantAcceptAppointment,
+    rejectAppointment: instantRejectAppointment,
+  } = useTherapistInstantActions();
 
   // TanStack Query mutations for therapist actions
   const acceptAppointmentMutation = useMutation({
@@ -1972,6 +1985,24 @@ const TherapistDashboard = () => {
           </div>
         )}
 
+        {/* Quick Actions Navigation */}
+        <div className="dashboard-quick-actions">
+          <button
+            className="nav-action-btn scheduling-btn"
+            onClick={() => navigate("/dashboard/scheduling")}
+            title="Go to full scheduling interface"
+          >
+            📅 Full Scheduling
+          </button>
+          <button
+            className="nav-action-btn attendance-btn"
+            onClick={() => navigate("/dashboard/attendance")}
+            title="Go to attendance management"
+          >
+            👥 My Attendance
+          </button>
+        </div>
+
         <TabSwitcher
           tabs={[
             {
@@ -1992,11 +2023,6 @@ const TherapistDashboard = () => {
               id: "all",
               label: "All My Appointments",
               count: Array.isArray(myAppointments) ? myAppointments.length : 0,
-            },
-            {
-              id: "attendance",
-              label: "My Attendance",
-              count: undefined,
             },
           ]}
           activeTab={currentView}
@@ -2036,22 +2062,6 @@ const TherapistDashboard = () => {
               {renderAppointmentsList(
                 Array.isArray(myAppointments) ? myAppointments : []
               )}
-            </div>
-          )}
-          {currentView === "attendance" && (
-            <div className="attendance-view">
-              <AttendanceComponent />
-            </div>
-          )}
-          {currentView === "calendar" && (
-            <div className="calendar-view">
-              <h2>Calendar View</h2>
-              <Calendar
-                showClientLabels={true}
-                context="therapist"
-                onDateSelected={() => {}}
-                onTimeSelected={() => {}}
-              />
             </div>
           )}
         </div>
