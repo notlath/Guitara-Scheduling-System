@@ -856,7 +856,7 @@ const AppointmentFormTanStackComplete = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTime]);
 
-  // Populate form for editing - Prevent infinite loops by checking if form is already populated
+  // Populate form for editing - Prevent infinite loops by removing formData.date dependency
   useEffect(() => {
     if (appointment && !formData.date) {
       // Handle client data - can be ID or object
@@ -887,7 +887,7 @@ const AppointmentFormTanStackComplete = ({
         multipleTherapists: !!(appointment.therapists?.length > 0),
       });
     }
-  }, [appointment, clients, formData.date]); // Keep all dependencies but check formData.date to prevent loops
+  }, [appointment, clients]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Loading states
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
