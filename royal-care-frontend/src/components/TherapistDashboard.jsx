@@ -1,8 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import pageTitles from "../constants/pageTitles";
 import { logout } from "../features/auth/authSlice";
 // Enhanced Redux hooks for automatic TanStack Query cache invalidation
 import { useEnhancedTherapistActions } from "../hooks/useEnhancedRedux";
@@ -25,6 +26,11 @@ import "../globals/TabSwitcher.css";
 import { useOptimizedSelector } from "../hooks/usePerformanceOptimization";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css";
+
+/* ✅ NEW: Component-based CSS imports - Single Source of Truth */
+import "../styles/components/AppointmentCard.css";
+import "../styles/components/StatusBadge.css";
+
 import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
 import Calendar from "./scheduling/Calendar";
@@ -136,6 +142,11 @@ const TherapistDashboard = () => {
     dispatch(logout());
     navigate("/");
   };
+
+  // Set page title
+  useEffect(() => {
+    document.title = pageTitles.dashboard;
+  }, []);
 
   // Handle appointment status changes with INSTANT UPDATES (immediate UI feedback)
   const handleAcceptAppointment = async (appointmentId) => {
