@@ -1753,7 +1753,10 @@ export const markAppointmentPaid = createAsyncThunk(
       receipt_url: paymentData?.receiptUrl || null,
     };
 
-    console.log("📦 markAppointmentPaid: Request payload being sent:", requestPayload);
+    console.log(
+      "📦 markAppointmentPaid: Request payload being sent:",
+      requestPayload
+    );
 
     try {
       const response = await axios.post(

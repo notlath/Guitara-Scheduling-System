@@ -1200,13 +1200,13 @@ const OperatorDashboard = () => {
 
       // Pass the appointment ID as a number, not an object
       const appointmentId = parseInt(paymentModal.appointmentId, 10);
-      
+
       // Ensure payment amount is properly formatted as a number
       const processedPaymentData = {
         ...paymentData,
         amount: parseInt(paymentData.amount) || 0, // Ensure it's an integer
       };
-      
+
       console.log(
         "🔍 handleMarkPaymentPaid: Using optimistic payment verification",
         {
@@ -1635,14 +1635,14 @@ const OperatorDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await dispatch(approveAttendance(attendanceId)).unwrap();
-      
+
       // ✅ TANSTACK QUERY: Invalidate attendance-related queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["attendance"] }),
         queryClient.invalidateQueries({ queryKey: ["attendance", "records"] }),
         queryClient.invalidateQueries({ queryKey: ["operator", "attendance"] }),
       ]);
-      
+
       // Refresh attendance records
       await handleFetchAttendanceRecords();
     } catch (error) {

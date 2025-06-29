@@ -35,16 +35,20 @@ const API_URL = `${getBaseURL()}/scheduling/`;
 // Helper function for TanStack Query-only cache invalidation
 const invalidateAppointmentQueries = async (queryClient, delay = 0) => {
   console.log("🔄 Invalidating appointment queries (TanStack Query only)");
-  
+
   // Add optional delay for backend propagation
   if (delay > 0) {
     console.log(`⏳ Waiting ${delay}ms for backend propagation...`);
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
   // Get current data before invalidation for debugging
   const beforeInvalidation = queryClient.getQueryData(["appointments"]);
-  console.log("📊 Data before invalidation:", beforeInvalidation?.length, "appointments");
+  console.log(
+    "📊 Data before invalidation:",
+    beforeInvalidation?.length,
+    "appointments"
+  );
 
   // Invalidate all appointment-related queries
   await Promise.all(
@@ -76,7 +80,11 @@ const invalidateAppointmentQueries = async (queryClient, delay = 0) => {
   // Wait a bit and check the data after invalidation
   setTimeout(() => {
     const afterInvalidation = queryClient.getQueryData(["appointments"]);
-    console.log("📊 Data after invalidation:", afterInvalidation?.length, "appointments");
+    console.log(
+      "📊 Data after invalidation:",
+      afterInvalidation?.length,
+      "appointments"
+    );
   }, 100);
 };
 
@@ -429,8 +437,11 @@ const TherapistDashboard = () => {
   const startSessionMutation = useMutation({
     mutationFn: therapistAPI.startSession,
     onMutate: async (appointmentId) => {
-      console.log("🚀 startSessionMutation.onMutate - Starting optimistic update for ID:", appointmentId);
-      
+      console.log(
+        "🚀 startSessionMutation.onMutate - Starting optimistic update for ID:",
+        appointmentId
+      );
+
       await queryClient.cancelQueries({ queryKey: ["appointments"] });
 
       const previousData = {
@@ -440,8 +451,13 @@ const TherapistDashboard = () => {
       };
 
       // Debug: Log current appointment before optimistic update
-      const currentAppointment = previousData.appointments?.find(apt => apt.id === appointmentId);
-      console.log("🔍 Current appointment status before optimistic update:", currentAppointment?.status);
+      const currentAppointment = previousData.appointments?.find(
+        (apt) => apt.id === appointmentId
+      );
+      console.log(
+        "🔍 Current appointment status before optimistic update:",
+        currentAppointment?.status
+      );
 
       // Optimistic update to show "session_in_progress" status immediately
       const optimisticUpdate = (oldData) => {
@@ -470,14 +486,22 @@ const TherapistDashboard = () => {
 
       // Debug: Verify optimistic update
       const updatedData = queryClient.getQueryData(["appointments"]);
-      const updatedAppointment = updatedData?.find(apt => apt.id === appointmentId);
-      console.log("✅ Optimistic update applied - New status:", updatedAppointment?.status);
+      const updatedAppointment = updatedData?.find(
+        (apt) => apt.id === appointmentId
+      );
+      console.log(
+        "✅ Optimistic update applied - New status:",
+        updatedAppointment?.status
+      );
 
       return { previousData };
     },
     onSuccess: async (backendData, appointmentId) => {
-      console.log("🎉 startSessionMutation.onSuccess - Backend response:", backendData);
-      
+      console.log(
+        "🎉 startSessionMutation.onSuccess - Backend response:",
+        backendData
+      );
+
       // First, check what the backend actually returned
       if (backendData?.appointment) {
         console.log("� Backend appointment data:", {
@@ -485,7 +509,7 @@ const TherapistDashboard = () => {
           status: backendData.appointment.status,
           session_started_at: backendData.appointment.session_started_at,
         });
-        
+
         // If backend returned the appointment data, use it directly
         const optimisticUpdate = (oldData) => {
           if (!oldData) return oldData;
@@ -498,12 +522,17 @@ const TherapistDashboard = () => {
 
         queryClient.setQueryData(["appointments"], optimisticUpdate);
         queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
-        queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
-        
+        queryClient.setQueryData(
+          ["appointments", "upcoming"],
+          optimisticUpdate
+        );
+
         console.log("✅ Applied backend data directly to cache");
       } else {
-        console.log("⚠️ Backend didn't return appointment data, maintaining optimistic update");
-        
+        console.log(
+          "⚠️ Backend didn't return appointment data, maintaining optimistic update"
+        );
+
         // Ensure the optimistic update persists by re-applying it
         const maintainOptimisticUpdate = (oldData) => {
           if (!oldData) return oldData;
@@ -520,12 +549,18 @@ const TherapistDashboard = () => {
         };
 
         queryClient.setQueryData(["appointments"], maintainOptimisticUpdate);
-        queryClient.setQueryData(["appointments", "today"], maintainOptimisticUpdate);
-        queryClient.setQueryData(["appointments", "upcoming"], maintainOptimisticUpdate);
-        
+        queryClient.setQueryData(
+          ["appointments", "today"],
+          maintainOptimisticUpdate
+        );
+        queryClient.setQueryData(
+          ["appointments", "upcoming"],
+          maintainOptimisticUpdate
+        );
+
         console.log("✅ Maintained optimistic update in cache");
       }
-      
+
       // Only invalidate other related queries, not the main appointments
       setTimeout(async () => {
         // Invalidate related queries but preserve our updated appointment data
@@ -559,8 +594,11 @@ const TherapistDashboard = () => {
   const requestPaymentMutation = useMutation({
     mutationFn: therapistAPI.requestPayment,
     onMutate: async (appointmentId) => {
-      console.log("🚀 requestPaymentMutation.onMutate - Starting optimistic update for ID:", appointmentId);
-      
+      console.log(
+        "🚀 requestPaymentMutation.onMutate - Starting optimistic update for ID:",
+        appointmentId
+      );
+
       // Cancel ongoing queries to prevent race conditions
       await queryClient.cancelQueries({ queryKey: ["appointments"] });
 
@@ -571,8 +609,13 @@ const TherapistDashboard = () => {
       };
 
       // Debug: Log current appointment before optimistic update
-      const currentAppointment = previousData.appointments?.find(apt => apt.id === appointmentId);
-      console.log("🔍 Current appointment status before payment request:", currentAppointment?.status);
+      const currentAppointment = previousData.appointments?.find(
+        (apt) => apt.id === appointmentId
+      );
+      console.log(
+        "🔍 Current appointment status before payment request:",
+        currentAppointment?.status
+      );
 
       // Optimistic update to show "awaiting_payment" status immediately
       const optimisticUpdate = (oldData) => {
@@ -600,14 +643,22 @@ const TherapistDashboard = () => {
 
       // Debug: Verify optimistic update
       const updatedData = queryClient.getQueryData(["appointments"]);
-      const updatedAppointment = updatedData?.find(apt => apt.id === appointmentId);
-      console.log("✅ Payment request optimistic update applied - New status:", updatedAppointment?.status);
+      const updatedAppointment = updatedData?.find(
+        (apt) => apt.id === appointmentId
+      );
+      console.log(
+        "✅ Payment request optimistic update applied - New status:",
+        updatedAppointment?.status
+      );
 
       return { previousData };
     },
     onSuccess: async (backendData, appointmentId) => {
-      console.log("🎉 requestPaymentMutation.onSuccess - Backend response:", backendData);
-      
+      console.log(
+        "🎉 requestPaymentMutation.onSuccess - Backend response:",
+        backendData
+      );
+
       // Always apply the backend data if available, otherwise maintain optimistic update
       if (backendData?.appointment) {
         console.log("📦 Backend payment appointment data:", {
@@ -615,7 +666,7 @@ const TherapistDashboard = () => {
           status: backendData.appointment.status,
           payment_initiated_at: backendData.appointment.payment_initiated_at,
         });
-        
+
         // Apply backend data while preserving cache structure
         const updateWithBackendData = (oldData) => {
           if (!oldData) return oldData;
@@ -627,13 +678,21 @@ const TherapistDashboard = () => {
         };
 
         queryClient.setQueryData(["appointments"], updateWithBackendData);
-        queryClient.setQueryData(["appointments", "today"], updateWithBackendData);
-        queryClient.setQueryData(["appointments", "upcoming"], updateWithBackendData);
-        
+        queryClient.setQueryData(
+          ["appointments", "today"],
+          updateWithBackendData
+        );
+        queryClient.setQueryData(
+          ["appointments", "upcoming"],
+          updateWithBackendData
+        );
+
         console.log("✅ Applied backend payment data directly to cache");
       } else {
-        console.log("⚠️ Backend didn't return appointment data, maintaining optimistic payment update");
-        
+        console.log(
+          "⚠️ Backend didn't return appointment data, maintaining optimistic payment update"
+        );
+
         // Ensure the optimistic update persists by re-applying it
         const maintainOptimisticUpdate = (oldData) => {
           if (!oldData) return oldData;
@@ -650,12 +709,18 @@ const TherapistDashboard = () => {
         };
 
         queryClient.setQueryData(["appointments"], maintainOptimisticUpdate);
-        queryClient.setQueryData(["appointments", "today"], maintainOptimisticUpdate);
-        queryClient.setQueryData(["appointments", "upcoming"], maintainOptimisticUpdate);
-        
+        queryClient.setQueryData(
+          ["appointments", "today"],
+          maintainOptimisticUpdate
+        );
+        queryClient.setQueryData(
+          ["appointments", "upcoming"],
+          maintainOptimisticUpdate
+        );
+
         console.log("✅ Maintained optimistic payment update in cache");
       }
-      
+
       // Only invalidate other related queries, not the main appointments
       setTimeout(async () => {
         // Invalidate related queries but preserve our updated appointment data
@@ -670,7 +735,7 @@ const TherapistDashboard = () => {
     },
     onError: (error, variables, context) => {
       console.error("❌ requestPaymentMutation.onError:", error);
-      
+
       // Rollback optimistic updates on error
       if (context?.previousData) {
         queryClient.setQueryData(
@@ -693,8 +758,11 @@ const TherapistDashboard = () => {
   const completeSessionMutation = useMutation({
     mutationFn: therapistAPI.completeSession,
     onMutate: async (appointmentId) => {
-      console.log("🚀 completeSessionMutation.onMutate - Starting optimistic update for ID:", appointmentId);
-      
+      console.log(
+        "🚀 completeSessionMutation.onMutate - Starting optimistic update for ID:",
+        appointmentId
+      );
+
       await queryClient.cancelQueries({ queryKey: ["appointments"] });
 
       const previousData = {
@@ -732,8 +800,11 @@ const TherapistDashboard = () => {
       return { previousData };
     },
     onSuccess: async (backendData, appointmentId) => {
-      console.log("🎉 completeSessionMutation.onSuccess - Backend response:", backendData);
-      
+      console.log(
+        "🎉 completeSessionMutation.onSuccess - Backend response:",
+        backendData
+      );
+
       // Always apply the backend data if available, otherwise maintain optimistic update
       if (backendData?.appointment) {
         console.log("📦 Backend completion appointment data:", {
@@ -741,7 +812,7 @@ const TherapistDashboard = () => {
           status: backendData.appointment.status,
           session_end_time: backendData.appointment.session_end_time,
         });
-        
+
         // Apply backend data while preserving cache structure
         const updateWithBackendData = (oldData) => {
           if (!oldData) return oldData;
@@ -753,13 +824,21 @@ const TherapistDashboard = () => {
         };
 
         queryClient.setQueryData(["appointments"], updateWithBackendData);
-        queryClient.setQueryData(["appointments", "today"], updateWithBackendData);
-        queryClient.setQueryData(["appointments", "upcoming"], updateWithBackendData);
-        
+        queryClient.setQueryData(
+          ["appointments", "today"],
+          updateWithBackendData
+        );
+        queryClient.setQueryData(
+          ["appointments", "upcoming"],
+          updateWithBackendData
+        );
+
         console.log("✅ Applied backend completion data directly to cache");
       } else {
-        console.log("⚠️ Backend didn't return appointment data, maintaining optimistic completion update");
-        
+        console.log(
+          "⚠️ Backend didn't return appointment data, maintaining optimistic completion update"
+        );
+
         // Ensure the optimistic update persists by re-applying it
         const maintainOptimisticUpdate = (oldData) => {
           if (!oldData) return oldData;
@@ -776,12 +855,18 @@ const TherapistDashboard = () => {
         };
 
         queryClient.setQueryData(["appointments"], maintainOptimisticUpdate);
-        queryClient.setQueryData(["appointments", "today"], maintainOptimisticUpdate);
-        queryClient.setQueryData(["appointments", "upcoming"], maintainOptimisticUpdate);
-        
+        queryClient.setQueryData(
+          ["appointments", "today"],
+          maintainOptimisticUpdate
+        );
+        queryClient.setQueryData(
+          ["appointments", "upcoming"],
+          maintainOptimisticUpdate
+        );
+
         console.log("✅ Maintained optimistic completion update in cache");
       }
-      
+
       // Only invalidate other related queries, not the main appointments
       setTimeout(async () => {
         // Invalidate related queries but preserve our updated appointment data
@@ -797,7 +882,7 @@ const TherapistDashboard = () => {
     },
     onError: (error, variables, context) => {
       console.error("❌ completeSessionMutation.onError:", error);
-      
+
       if (context?.previousData) {
         queryClient.setQueryData(
           ["appointments"],
@@ -811,7 +896,9 @@ const TherapistDashboard = () => {
           ["appointments", "upcoming"],
           context.previousData.upcoming
         );
-        console.log("🔄 Rolled back completion optimistic updates due to error");
+        console.log(
+          "🔄 Rolled back completion optimistic updates due to error"
+        );
       }
     },
   });
@@ -1007,22 +1094,29 @@ const TherapistDashboard = () => {
     const actionKey = `start_session_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      
+
       // Debug: Log appointment state before starting session
       const currentData = queryClient.getQueryData(["appointments"]);
-      const appointment = currentData?.find(apt => apt.id === appointmentId);
-      console.log("🔍 Before startSession - Appointment status:", appointment?.status);
-      
+      const appointment = currentData?.find((apt) => apt.id === appointmentId);
+      console.log(
+        "🔍 Before startSession - Appointment status:",
+        appointment?.status
+      );
+
       const result = await startSessionMutation.mutateAsync(appointmentId);
       console.log("✅ Session start successful, backend response:", result);
-      
+
       // Debug: Log appointment state after mutation
       setTimeout(() => {
         const updatedData = queryClient.getQueryData(["appointments"]);
-        const updatedAppointment = updatedData?.find(apt => apt.id === appointmentId);
-        console.log("🔍 After startSession - Appointment status:", updatedAppointment?.status);
+        const updatedAppointment = updatedData?.find(
+          (apt) => apt.id === appointmentId
+        );
+        console.log(
+          "🔍 After startSession - Appointment status:",
+          updatedAppointment?.status
+        );
       }, 100);
-      
     } catch (error) {
       console.error("Failed to start session:", error);
       alert("Failed to start session. Please try again.");
