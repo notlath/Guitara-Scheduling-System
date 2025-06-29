@@ -175,6 +175,13 @@ export const useInstantUpdates = () => {
         "../features/scheduling/schedulingSlice"
       );
 
+      // Debug logging for payment data
+      console.log("🔍 markPaymentPaidInstantly: Received payment data:", {
+        appointmentId,
+        paymentData,
+        processedAmount: parseInt(paymentData.amount) || 0,
+      });
+
       return performInstantUpdate({
         appointmentId,
         reduxAction: markAppointmentPaid({ appointmentId, ...paymentData }),

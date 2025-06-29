@@ -1200,17 +1200,25 @@ const OperatorDashboard = () => {
 
       // Pass the appointment ID as a number, not an object
       const appointmentId = parseInt(paymentModal.appointmentId, 10);
+      
+      // Ensure payment amount is properly formatted as a number
+      const processedPaymentData = {
+        ...paymentData,
+        amount: parseInt(paymentData.amount) || 0, // Ensure it's an integer
+      };
+      
       console.log(
         "🔍 handleMarkPaymentPaid: Using optimistic payment verification",
         {
           appointmentId,
-          paymentData,
+          originalPaymentData: paymentData,
+          processedPaymentData,
           actionKey,
         }
       );
 
       // ✅ TANSTACK QUERY: Use optimistic updates for instant UI feedback
-      await markPaymentPaidInstantly(appointmentId, paymentData);
+      await markPaymentPaidInstantly(appointmentId, processedPaymentData);
 
       console.log("✅ handleMarkPaymentPaid: Payment verification successful");
 
@@ -1230,6 +1238,11 @@ const OperatorDashboard = () => {
         method: "cash",
         amount: "",
         notes: "",
+        receiptFile: null,
+        receiptHash: "",
+        receiptUrl: "",
+        isUploading: false,
+        uploadError: "",
       });
       console.log(
         "✅ handleMarkPaymentPaid: TanStack Query handles cache refresh automatically"
@@ -1622,6 +1635,14 @@ const OperatorDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await dispatch(approveAttendance(attendanceId)).unwrap();
+      
+      // ✅ TANSTACK QUERY: Invalidate attendance-related queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["attendance"] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance", "records"] }),
+        queryClient.invalidateQueries({ queryKey: ["operator", "attendance"] }),
+      ]);
+      
       // Refresh attendance records
       await handleFetchAttendanceRecords();
     } catch (error) {

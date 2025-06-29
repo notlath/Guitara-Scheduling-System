@@ -11,6 +11,7 @@ import {
   MdSave,
 } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   addAttendanceNote,
   checkIn,
@@ -26,6 +27,7 @@ import { LoadingButton } from "./common/LoadingComponents";
 
 const AttendanceComponent = () => {
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
   const {
     todayStatus,
     isCheckedIn,
@@ -89,11 +91,19 @@ const AttendanceComponent = () => {
   }, [todayStatus, checkInTime, checkOutTime]);
 
   const handleCheckIn = () => {
-    dispatch(checkIn());
+    dispatch(checkIn()).then(() => {
+      // ✅ TANSTACK QUERY: Invalidate attendance queries after check-in
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "today"] });
+    });
   };
 
   const handleCheckOut = () => {
-    dispatch(checkOut());
+    dispatch(checkOut()).then(() => {
+      // ✅ TANSTACK QUERY: Invalidate attendance queries after check-out
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "today"] });
+    });
   };
 
   const handleRefresh = () => {
@@ -144,6 +154,14 @@ const AttendanceComponent = () => {
       ).unwrap();
 
       setIsEditing(false);
+      
+      // ✅ TANSTACK QUERY: Invalidate attendance queries after update
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["attendance"] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance", "today"] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance", "records"] }),
+      ]);
+      
       // Refresh the data
       dispatch(getTodayAttendanceStatus());
     } catch (error) {
@@ -173,6 +191,14 @@ const AttendanceComponent = () => {
       ).unwrap();
 
       setShowNoteModal(false);
+      
+      // ✅ TANSTACK QUERY: Invalidate attendance queries after note update
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["attendance"] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance", "today"] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance", "records"] }),
+      ]);
+      
       // Refresh the data
       dispatch(getTodayAttendanceStatus());
     } catch (error) {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { shallowEqual, useDispatch } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 import "../../../src/styles/Placeholders.css";
 import pageTitles from "../../constants/pageTitles";
 import {
@@ -16,6 +17,7 @@ import styles from "./AttendancePage.module.css";
 
 const AttendancePage = () => {
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
 
   // Initialize with current date in Asia/Manila Time (UTC+08:00)
   const getCurrentDate = () => {
@@ -235,6 +237,14 @@ const AttendancePage = () => {
   const handleApproveAttendance = async (attendanceId) => {
     try {
       await dispatch(approveAttendance(attendanceId)).unwrap();
+      
+      // ✅ TANSTACK QUERY: Invalidate attendance queries after approval
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["attendance"] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance", "records"] }),
+        queryClient.invalidateQueries({ queryKey: ["operator", "attendance"] }),
+      ]);
+      
       // Refetch attendance records to get updated data
       dispatch(fetchAttendanceRecords({ date: selectedDate }));
     } catch (error) {

@@ -157,6 +157,13 @@ const DriverDashboard = () => {
     setActionLoading(actionKey, true);
     try {
       await confirmPickup.mutateAsync(appointmentId);
+      
+      // ✅ TANSTACK QUERY: Ensure cache invalidation for pickup confirmation
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+      
       console.log(`Pickup confirmed for appointment ${appointmentId}`);
     } catch (error) {
       console.error("Failed to confirm pickup:", error);
@@ -170,6 +177,13 @@ const DriverDashboard = () => {
     setActionLoading(actionKey, true);
     try {
       await rejectPickup.mutateAsync({ appointmentId, reason });
+      
+      // ✅ TANSTACK QUERY: Ensure cache invalidation for pickup rejection
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+      
       console.log(`Pickup rejected for appointment ${appointmentId}`);
     } catch (error) {
       console.error("Failed to reject pickup:", error);
@@ -304,6 +318,13 @@ const DriverDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await confirmPickup.mutateAsync(appointmentId);
+      
+      // ✅ TANSTACK QUERY: Ensure cache invalidation for appointment acceptance
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+      
     } catch (error) {
       // More user-friendly error message
       if (
@@ -327,6 +348,13 @@ const DriverDashboard = () => {
         appointmentId,
         status: "driver_confirmed",
       });
+      
+      // ✅ TANSTACK QUERY: Ensure cache invalidation for driver confirmation
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+      
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
@@ -424,6 +452,13 @@ const DriverDashboard = () => {
         appointmentId,
         status: "arrived",
       });
+      
+      // ✅ TANSTACK QUERY: Ensure cache invalidation for arrival status
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+      
     } catch (error) {
       console.error("Failed to mark arrived:", error);
       alert("Failed to mark arrived. Please try again.");
@@ -439,6 +474,13 @@ const DriverDashboard = () => {
         appointmentId,
         status: "driving_to_location",
       });
+      
+      // ✅ TANSTACK QUERY: Ensure cache invalidation for driving status
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+      
     } catch (error) {
       console.error("Failed to start driving:", error);
       if (
@@ -494,6 +536,13 @@ const DriverDashboard = () => {
           appointmentId,
           status: "transport_completed",
         });
+        
+        // ✅ TANSTACK QUERY: Ensure cache invalidation for transport completion
+        await queryClient.invalidateQueries({
+          queryKey: ["appointments"],
+          refetchType: "active",
+        });
+        
       } catch (error) {
         console.error("Failed to complete transport:", error);
         if (
@@ -523,6 +572,13 @@ const DriverDashboard = () => {
           appointment.location
         } at ${new Date().toISOString()}`,
       });
+      
+      // ✅ TANSTACK QUERY: Ensure cache invalidation for drop-off completion
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+      
     } catch (error) {
       console.error("Failed to mark drop-off complete:", error);
       if (
@@ -549,6 +605,12 @@ const DriverDashboard = () => {
         notes: `Therapist dropped off at client location at ${new Date().toISOString()}. Transport completed for driver.`,
       });
 
+      // ✅ TANSTACK QUERY: Ensure cache invalidation for drop-off status
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+
       // Show success message indicating transport is complete
       alert(
         "Transport completed successfully! Therapist dropped off. You are now available for new assignments."
@@ -566,6 +628,13 @@ const DriverDashboard = () => {
     try {
       setActionLoading(actionKey, true);
       await completeReturnJourney.mutateAsync(appointmentId);
+      
+      // ✅ TANSTACK QUERY: Ensure cache invalidation for return journey completion
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+      
       alert(
         "Return journey completed successfully! You are now available for new assignments."
       );
