@@ -44,6 +44,18 @@ export const useWebSocketCacheSync = (webSocketService) => {
       "driver_response",
       handleAppointmentUpdate
     );
+    webSocketService.addEventListener(
+      "session_started",
+      handleAppointmentUpdate
+    );
+    webSocketService.addEventListener(
+      "awaiting_payment",
+      handleAppointmentUpdate
+    );
+    webSocketService.addEventListener(
+      "appointment_started",
+      handleAppointmentUpdate
+    );
 
     return () => {
       webSocketService.removeEventListener(
@@ -68,6 +80,18 @@ export const useWebSocketCacheSync = (webSocketService) => {
       );
       webSocketService.removeEventListener(
         "driver_response",
+        handleAppointmentUpdate
+      );
+      webSocketService.removeEventListener(
+        "session_started",
+        handleAppointmentUpdate
+      );
+      webSocketService.removeEventListener(
+        "awaiting_payment",
+        handleAppointmentUpdate
+      );
+      webSocketService.removeEventListener(
+        "appointment_started",
         handleAppointmentUpdate
       );
     };

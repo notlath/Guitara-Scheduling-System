@@ -200,6 +200,45 @@ class WebSocketTanStackService {
             type: "appointment_status_changed",
           });
           break;
+        case "session_started":
+          this.handleSessionStarted(data.message);
+          // Dispatch status change event since session start changes status
+          this.dispatchEvent("appointment_status_changed", {
+            appointment: data.message,
+            type: "appointment_status_changed",
+          });
+          break;
+        case "awaiting_payment":
+          this.handleAwaitingPayment(data.message);
+          // Dispatch status change event since payment waiting changes status
+          this.dispatchEvent("appointment_status_changed", {
+            appointment: data.message,
+            type: "appointment_status_changed",
+          });
+          break;
+        case "appointment_started":
+          this.handleAppointmentStarted(data.message);
+          // Dispatch status change event since appointment start changes status
+          this.dispatchEvent("appointment_status_changed", {
+            appointment: data.message,
+            type: "appointment_status_changed",
+          });
+          break;
+        // Handle nested message types from Django's _create_notifications
+        case "appointment_message":
+          // Django sends nested messages via _create_notifications
+          if (data.message && data.message.type) {
+            const nestedMessage = {
+              type: data.message.type,
+              message: {
+                appointment_id: data.message.appointment_id,
+                ...data.message,
+              }
+            };
+            // Recursively handle the nested message
+            this.handleMessage({ data: JSON.stringify(nestedMessage) });
+          }
+          break;
         default:
           console.log("Unknown WebSocket message type:", data.type);
       }
@@ -469,6 +508,135 @@ class WebSocketTanStackService {
     this.dispatchEvent("therapist_response", {
       data,
       type: "therapist_response",
+    });
+  }
+
+  /**
+   * Handle session started
+   */
+  handleSessionStarted(data) {
+    // Update appointment with session started status
+    const updateWithSessionStart = (oldData) => {
+      if (!oldData) return oldData;
+      return oldData.map((appointment) =>
+        appointment.id === data.appointment_id
+          ? {
+              ...appointment,
+              status: "session_in_progress",
+              session_started_at: data.session_started_at || new Date().toISOString(),
+            }
+          : appointment
+      );
+    };
+
+    // Update all relevant queries
+    queryClient.setQueryData(["appointments"], updateWithSessionStart);
+    queryClient.setQueryData(["appointments", "today"], updateWithSessionStart);
+    queryClient.setQueryData(
+      ["appointments", "upcoming"],
+      updateWithSessionStart
+    );
+
+    // Use comprehensive cache invalidation for real-time dashboard sync
+    invalidateAppointmentCaches(queryClient, {
+      userRole: "operator",
+      invalidateAll: true,
+    }).catch((error) => {
+      console.error("❌ WebSocket session start cache invalidation failed:", error);
+    });
+
+    console.log("✅ Session started - cache updated");
+
+    // Dispatch event for listeners
+    this.dispatchEvent("session_started", {
+      data,
+      type: "session_started",
+    });
+  }
+
+  /**
+   * Handle awaiting payment
+   */
+  handleAwaitingPayment(data) {
+    // Update appointment with awaiting payment status
+    const updateWithPaymentStatus = (oldData) => {
+      if (!oldData) return oldData;
+      return oldData.map((appointment) =>
+        appointment.id === data.appointment_id
+          ? {
+              ...appointment,
+              status: "awaiting_payment",
+              session_completed_at: data.session_completed_at || new Date().toISOString(),
+            }
+          : appointment
+      );
+    };
+
+    // Update all relevant queries
+    queryClient.setQueryData(["appointments"], updateWithPaymentStatus);
+    queryClient.setQueryData(["appointments", "today"], updateWithPaymentStatus);
+    queryClient.setQueryData(
+      ["appointments", "upcoming"],
+      updateWithPaymentStatus
+    );
+
+    // Use comprehensive cache invalidation for real-time dashboard sync
+    invalidateAppointmentCaches(queryClient, {
+      userRole: "operator",
+      invalidateAll: true,
+    }).catch((error) => {
+      console.error("❌ WebSocket awaiting payment cache invalidation failed:", error);
+    });
+
+    console.log("✅ Awaiting payment status - cache updated");
+
+    // Dispatch event for listeners
+    this.dispatchEvent("awaiting_payment", {
+      data,
+      type: "awaiting_payment",
+    });
+  }
+
+  /**
+   * Handle appointment started by operator
+   */
+  handleAppointmentStarted(data) {
+    // Update appointment with started status
+    const updateWithStartStatus = (oldData) => {
+      if (!oldData) return oldData;
+      return oldData.map((appointment) =>
+        appointment.id === data.appointment_id
+          ? {
+              ...appointment,
+              status: "in_progress",
+              started_at: data.started_at || new Date().toISOString(),
+            }
+          : appointment
+      );
+    };
+
+    // Update all relevant queries
+    queryClient.setQueryData(["appointments"], updateWithStartStatus);
+    queryClient.setQueryData(["appointments", "today"], updateWithStartStatus);
+    queryClient.setQueryData(
+      ["appointments", "upcoming"],
+      updateWithStartStatus
+    );
+
+    // Use comprehensive cache invalidation for real-time dashboard sync
+    invalidateAppointmentCaches(queryClient, {
+      userRole: "operator",
+      invalidateAll: true,
+    }).catch((error) => {
+      console.error("❌ WebSocket appointment start cache invalidation failed:", error);
+    });
+
+    console.log("✅ Appointment started - cache updated");
+
+    // Dispatch event for listeners
+    this.dispatchEvent("appointment_started", {
+      data,
+      type: "appointment_started",
     });
   }
 
