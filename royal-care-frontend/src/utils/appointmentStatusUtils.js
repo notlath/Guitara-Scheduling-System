@@ -15,7 +15,7 @@ export const getStatusBadgeClass = (status) => {
     driver_confirmed: "status-badge--driver-confirmed",
     rejected: "status-badge--rejected",
     cancelled: "status-badge--cancelled",
-    auto_cancelled: "status-badge--overdue",
+    auto_cancelled: "status-badge--auto-cancelled",
     completed: "status-badge--completed",
     in_progress: "status-badge--in-progress",
     awaiting_payment: "status-badge--warning",
