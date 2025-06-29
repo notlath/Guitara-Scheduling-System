@@ -187,7 +187,7 @@ const InventoryPage = () => {
   const categories = [
     "all",
     "Oils & Lotions",
-    "Linens",
+    "Linens", 
     "Hygiene",
     "Equipment",
     ...Array.from(new Set(inventoryItems.map((item) => item.category))).filter(

@@ -451,12 +451,12 @@ const TherapistDashboard = () => {
     });
   };
 
-  const openMaterialModal = ({ appointmentId, materials = [] }) => {
+  const openMaterialModal = ({ appointmentId, materials, isSubmitting }) => {
     setMaterialModal({
       isOpen: true,
       appointmentId,
       materials,
-      isSubmitting: false,
+      isSubmitting,
     });
   };
 
@@ -591,7 +591,7 @@ const TherapistDashboard = () => {
     const actionKey = `request_payment_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-
+      
       // Get the appointment details to check for materials
       const appointment =
         myAppointments?.find((apt) => apt.id === appointmentId) ||
@@ -616,7 +616,7 @@ const TherapistDashboard = () => {
         // Don't proceed with payment request yet - wait for material modal completion
         return;
       } else {
-        // No materials to check, proceed with payment request directly
+        // No materials, proceed directly with payment request
         await requestPaymentMutation.mutateAsync(appointmentId);
         console.log("✅ Payment request successful");
       }

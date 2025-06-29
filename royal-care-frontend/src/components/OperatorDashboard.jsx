@@ -272,48 +272,46 @@ const OperatorDashboard = () => {
   });
   // Post-service material modal handlers
   const handleMaterialModalSubmit = async (materialStatus) => {
-    setMaterialModal((prev) => ({ ...prev, isSubmitting: true }));
-
+    setMaterialModal(prev => ({ ...prev, isSubmitting: true }));
+    
     try {
       // Process each material's status
       for (const material of materialModal.materials) {
         const isEmpty = materialStatus[material.id];
-
+        
         if (isEmpty !== undefined) {
-          const response = await fetch(
-            `/api/inventory/items/${material.id}/update_material_status/`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-              },
-              body: JSON.stringify({
-                is_empty: isEmpty,
-                quantity: material.quantity_used,
-                notes: `Post-service update for appointment #${materialModal.appointmentId}`,
-              }),
-            }
-          );
-
+          const response = await fetch(`/api/inventory/items/${material.id}/update_material_status/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            },
+            body: JSON.stringify({
+              is_empty: isEmpty,
+              quantity: material.quantity_used,
+              notes: `Post-service update for appointment #${materialModal.appointmentId}`
+            }),
+          });
+          
           if (!response.ok) {
             throw new Error(`Failed to update material ${material.name}`);
           }
         }
       }
-
+      
       // Success - close modal and show success message
-      alert("Material status updated successfully!");
+      alert('Material status updated successfully!');
       setMaterialModal({
         isOpen: false,
         appointmentId: null,
         materials: [],
         isSubmitting: false,
       });
+      
     } catch (error) {
-      console.error("Error updating material status:", error);
+      console.error('Error updating material status:', error);
       alert(`Error updating material status: ${error.message}`);
-      setMaterialModal((prev) => ({ ...prev, isSubmitting: false }));
+      setMaterialModal(prev => ({ ...prev, isSubmitting: false }));
     }
   };
 
