@@ -593,7 +593,7 @@ export const useEnhancedOperatorActions = () => {
             payment_verified_at: new Date().toISOString(),
             payment_verified_by: user.id,
             payment_method: paymentData.method,
-            payment_amount: paymentData.amount,
+            payment_amount: parseInt(paymentData.amount) || 0,
           },
           appointmentId,
           userRole: "operator",

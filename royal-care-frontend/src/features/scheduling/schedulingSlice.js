@@ -1748,7 +1748,7 @@ export const markAppointmentPaid = createAsyncThunk(
         `${API_URL}appointments/${appointmentId}/mark_payment_received/`,
         {
           payment_method: paymentData?.method || "cash",
-          payment_amount: parseFloat(paymentData?.amount) || 0,
+          payment_amount: parseInt(paymentData?.amount) || 0,
           payment_notes: paymentData?.notes || "",
           receipt_hash: paymentData?.receiptHash || null,
           receipt_url: paymentData?.receiptUrl || null,
@@ -1776,7 +1776,7 @@ export const markAppointmentPaid = createAsyncThunk(
             `${API_URL}appointments/${appointmentId}/mark_completed/`,
             {
               payment_method: paymentData?.method || "cash",
-              payment_amount: parseFloat(paymentData?.amount) || 0,
+              payment_amount: parseInt(paymentData?.amount) || 0,
               payment_notes: paymentData?.notes || "",
               receipt_hash: paymentData?.receiptHash || null,
               receipt_url: paymentData?.receiptUrl || null,

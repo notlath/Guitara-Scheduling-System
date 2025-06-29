@@ -199,6 +199,26 @@ const App = () => {
   // WEBSOCKET CACHE SYNC: Enable real-time cache synchronization
   useAutoWebSocketCacheSync();
 
+  // ✅ CONFIGURE REDUX BRIDGE: Enable automatic Redux refetch when TanStack Query cache is invalidated
+  // This ensures components using Redux selectors (like SalesReportsPage) get updated data
+  useEffect(() => {
+    const configureReduxBridge = async () => {
+      try {
+        const { setReduxDispatchBridge } = await import(
+          "./utils/cacheInvalidation"
+        );
+        setReduxDispatchBridge(dispatch);
+        console.log(
+          "✅ Redux dispatch bridge configured for automatic cache sync"
+        );
+      } catch (error) {
+        console.error("❌ Failed to configure Redux dispatch bridge:", error);
+      }
+    };
+
+    configureReduxBridge();
+  }, [dispatch]);
+
   useEffect(() => {
     // Clean up any invalid tokens on app startup
     cleanupInvalidTokens();

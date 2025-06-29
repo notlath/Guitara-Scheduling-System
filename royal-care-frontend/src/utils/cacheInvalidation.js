@@ -7,6 +7,51 @@
 
 import { queryKeys } from "../lib/queryClient";
 
+// ✅ REDUX BRIDGE: Store reference to dispatch for triggering Redux refetch
+// This ensures that Redux-based components like SalesReportsPage automatically
+// get updated data when TanStack Query cache is invalidated
+let reduxDispatch = null;
+
+/**
+ * Set Redux dispatch for automatic refetch bridge
+ * Call this from your App component or root to enable automatic Redux refetch
+ */
+export const setReduxDispatchBridge = (dispatch) => {
+  reduxDispatch = dispatch;
+  console.log("🔗 Redux dispatch bridge configured for cache invalidation");
+};
+
+/**
+ * Trigger Redux refetch when TanStack Query cache is invalidated
+ * This ensures components using Redux selectors (like SalesReportsPage) get fresh data
+ */
+const triggerReduxRefetch = async () => {
+  if (!reduxDispatch) {
+    console.warn(
+      "⚠️ Redux dispatch bridge not configured - skipping Redux refetch"
+    );
+    return;
+  }
+
+  try {
+    console.log(
+      "🔄 Triggering Redux fetchAppointments after cache invalidation"
+    );
+
+    // Import fetchAppointments dynamically to avoid circular dependencies
+    const { fetchAppointments } = await import(
+      "../features/scheduling/schedulingSlice"
+    );
+
+    // Dispatch fetchAppointments to update Redux state
+    await reduxDispatch(fetchAppointments());
+
+    console.log("✅ Redux appointments refetch completed");
+  } catch (error) {
+    console.error("❌ Failed to trigger Redux refetch:", error);
+  }
+};
+
 /**
  * Comprehensive cache invalidation helper
  * Use this after any Redux mutation that changes appointment data
@@ -29,203 +74,131 @@ export const invalidateAppointmentCaches = async (
     invalidateAll,
   });
 
+  // Debug: Check if queryKeys is properly imported
+  if (!queryKeys) {
+    console.error(
+      "❌ queryKeys is undefined - check import in cacheInvalidation.js"
+    );
+    return;
+  }
+
+  console.log("🔍 DEBUG: queryKeys object:", queryKeys);
+  console.log("🔍 DEBUG: queryKeys.appointments:", queryKeys.appointments);
+
   try {
     const invalidationPromises = [];
 
     // Core appointment queries - always invalidate these
-    invalidationPromises.push(
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.list(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.today(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.upcoming(),
-      }),
-      // Add legacy query keys for backward compatibility
-      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "upcoming"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "date"] })
-    );
-
-    // Role-specific invalidation with comprehensive coverage
-    if (userRole && userId) {
-      switch (userRole) {
-        case "therapist":
-          invalidationPromises.push(
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.appointments.byTherapist(userId),
-            }),
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.dashboard.therapist(userId),
-            }),
-            // Legacy query keys
-            queryClient.invalidateQueries({
-              queryKey: ["appointments", "therapist", userId],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["appointments", "therapist"],
-            }),
-            // Dashboard-specific keys
-            queryClient.invalidateQueries({
-              queryKey: ["dashboard", "therapist", userId],
-            })
-          );
-          break;
-        case "driver":
-          invalidationPromises.push(
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.appointments.byDriver(userId),
-            }),
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.dashboard.driver(userId),
-            }),
-            // Legacy query keys
-            queryClient.invalidateQueries({
-              queryKey: ["appointments", "driver", userId],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["appointments", "driver"],
-            }),
-            // Dashboard-specific keys
-            queryClient.invalidateQueries({
-              queryKey: ["dashboard", "driver", userId],
-            })
-          );
-          break;
-        case "operator":
-          invalidationPromises.push(
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.dashboard.operator,
-            }),
-            // Operator sees all data, so invalidate comprehensive set
-            queryClient.invalidateQueries({
-              queryKey: ["dashboard", "operator"],
-            }),
-            queryClient.invalidateQueries({ queryKey: ["operator"] }),
-            // Operator-specific views
-            queryClient.invalidateQueries({
-              queryKey: ["rejected", "appointments"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["pending", "appointments"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["timeout", "appointments"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["payment", "appointments"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["workflow", "appointments"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["sessions", "appointments"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["pickup", "appointments"],
-            }),
-            // OperatorDashboard specific query patterns
-            queryClient.invalidateQueries({
-              queryKey: ["operator", "rejected"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["operator", "pending"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["operator", "timeout"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["operator", "payment"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["operator", "rejection-stats"],
-            })
-          );
-          break;
-      }
-    }
-
-    // Comprehensive invalidation for all user roles affected by appointment changes
-    if (invalidateAll || userRole === "operator") {
-      // Invalidate all role-specific queries since appointment changes affect everyone
+    // Use failsafe approach in case queryKeys has issues
+    if (queryKeys?.appointments) {
       invalidationPromises.push(
-        // All therapist queries
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
         queryClient.invalidateQueries({
-          queryKey: ["appointments", "therapist"],
+          queryKey: queryKeys.appointments.list(),
         }),
-        queryClient.invalidateQueries({ queryKey: ["dashboard", "therapist"] }),
-        // All driver queries
-        queryClient.invalidateQueries({ queryKey: ["appointments", "driver"] }),
-        queryClient.invalidateQueries({ queryKey: ["dashboard", "driver"] }),
-        // All operator queries
-        queryClient.invalidateQueries({ queryKey: ["dashboard", "operator"] }),
-        queryClient.invalidateQueries({ queryKey: ["operator"] }),
-        // OperatorDashboard specific queries
-        queryClient.invalidateQueries({ queryKey: ["operator", "rejected"] }),
-        queryClient.invalidateQueries({ queryKey: ["operator", "pending"] }),
-        queryClient.invalidateQueries({ queryKey: ["operator", "timeout"] }),
-        queryClient.invalidateQueries({ queryKey: ["operator", "payment"] }),
         queryClient.invalidateQueries({
-          queryKey: ["operator", "rejection-stats"],
+          queryKey: queryKeys.appointments.today(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.appointments.upcoming(),
+        })
+      );
+    } else {
+      // Fallback: use literal query keys
+      console.warn("⚠️ Using fallback literal query keys");
+      invalidationPromises.push(
+        queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+        queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["appointments", "upcoming"],
         })
       );
     }
 
-    // Availability queries (status changes might affect availability)
+    // ✅ SALES/REPORTS DASHBOARD CACHE INVALIDATION
+    // These are essential for ensuring Sales and Reports dashboards show updated payment amounts
     invalidationPromises.push(
-      queryClient.invalidateQueries({ queryKey: queryKeys.availability.all }),
-      queryClient.invalidateQueries({ queryKey: ["availableTherapists"] }),
-      queryClient.invalidateQueries({ queryKey: ["availableDrivers"] }),
-      queryClient.invalidateQueries({ queryKey: ["availability"] })
+      queryClient.invalidateQueries({ queryKey: ["reports"] }),
+      queryClient.invalidateQueries({ queryKey: ["sales"] }),
+      queryClient.invalidateQueries({ queryKey: ["revenue"] }),
+      queryClient.invalidateQueries({ queryKey: ["commission"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "sales"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "reports"] })
     );
 
-    // Notifications (appointment changes often trigger notifications)
-    invalidationPromises.push(
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.notifications.unread(),
-      }),
-      // Legacy notification keys
-      queryClient.invalidateQueries({ queryKey: ["notifications"] }),
-      queryClient.invalidateQueries({ queryKey: ["notifications", "unread"] })
-    );
+    // User-specific invalidations
+    if (userId && queryKeys?.appointments) {
+      if (userRole === "therapist") {
+        invalidationPromises.push(
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.appointments.byTherapist(userId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.appointments.byTherapist(userId, "today"),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.appointments.byTherapist(userId, "upcoming"),
+          })
+        );
+      } else if (userRole === "driver") {
+        invalidationPromises.push(
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.appointments.byDriver(userId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.appointments.byDriver(userId, "today"),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.appointments.byDriver(userId, "upcoming"),
+          })
+        );
+      }
+    }
 
-    // Driver coordination queries (for pickup assignments, etc.)
-    invalidationPromises.push(
-      queryClient.invalidateQueries({ queryKey: ["driver", "coordination"] }),
-      queryClient.invalidateQueries({ queryKey: ["driver", "assignments"] }),
-      queryClient.invalidateQueries({ queryKey: ["pickup", "requests"] }),
-      queryClient.invalidateQueries({ queryKey: ["driver", "availability"] })
-    );
+    // Operator-specific queries (for comprehensive dashboard updates)
+    if (userRole === "operator" || invalidateAll) {
+      invalidationPromises.push(
+        queryClient.invalidateQueries({ queryKey: ["operator"] }),
+        queryClient.invalidateQueries({ queryKey: ["operator", "pending"] }),
+        queryClient.invalidateQueries({ queryKey: ["operator", "rejected"] }),
+        queryClient.invalidateQueries({ queryKey: ["operator", "timeout"] }),
+        queryClient.invalidateQueries({ queryKey: ["operator", "pickup"] }),
+        queryClient.invalidateQueries({ queryKey: ["operator", "all"] }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys?.notifications?.list?.() || [
+            "notifications",
+            "list",
+          ],
+        })
+      );
+    }
 
-    // If invalidateAll is true, invalidate everything
+    // Dashboard-specific invalidations for real-time updates
     if (invalidateAll) {
       invalidationPromises.push(
-        queryClient.invalidateQueries({ queryKey: queryKeys.clients.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.services.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.staff.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
-        // Legacy keys
-        queryClient.invalidateQueries({ queryKey: ["clients"] }),
-        queryClient.invalidateQueries({ queryKey: ["services"] }),
-        queryClient.invalidateQueries({ queryKey: ["staff"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["therapist"] }),
+        queryClient.invalidateQueries({ queryKey: ["driver"] }),
         queryClient.invalidateQueries({ queryKey: ["attendance"] })
       );
     }
 
-    // Execute all invalidations
+    // Execute all invalidations in parallel
     await Promise.all(invalidationPromises);
 
-    console.log("✅ TanStack Query cache invalidation completed successfully");
-    return true;
+    console.log("✅ TanStack Query cache invalidation completed", {
+      invalidatedQueries: invalidationPromises.length,
+      userRole,
+      invalidateAll,
+    });
+
+    // ✅ CRITICAL: Trigger Redux refetch for components using Redux selectors
+    // This ensures SalesReportsPage and similar components get updated data
+    await triggerReduxRefetch();
   } catch (error) {
-    console.error("❌ Failed to invalidate TanStack Query cache:", error);
-    return false;
+    console.error("❌ Cache invalidation failed:", error);
+    throw error;
   }
 };
 
@@ -249,15 +222,24 @@ export const invalidateAvailabilityCaches = async (
     const invalidationPromises = [];
 
     // Core availability queries
-    invalidationPromises.push(
-      queryClient.invalidateQueries({ queryKey: queryKeys.availability.all }),
-      queryClient.invalidateQueries({ queryKey: ["availability"] }),
-      queryClient.invalidateQueries({ queryKey: ["availableTherapists"] }),
-      queryClient.invalidateQueries({ queryKey: ["availableDrivers"] })
-    );
+    if (queryKeys?.availability) {
+      invalidationPromises.push(
+        queryClient.invalidateQueries({ queryKey: queryKeys.availability.all }),
+        queryClient.invalidateQueries({ queryKey: ["availability"] }),
+        queryClient.invalidateQueries({ queryKey: ["availableTherapists"] }),
+        queryClient.invalidateQueries({ queryKey: ["availableDrivers"] })
+      );
+    } else {
+      // Fallback to literal query keys
+      invalidationPromises.push(
+        queryClient.invalidateQueries({ queryKey: ["availability"] }),
+        queryClient.invalidateQueries({ queryKey: ["availableTherapists"] }),
+        queryClient.invalidateQueries({ queryKey: ["availableDrivers"] })
+      );
+    }
 
     // Specific staff availability if provided
-    if (staffId && date) {
+    if (staffId && date && queryKeys?.availability?.staff) {
       invalidationPromises.push(
         queryClient.invalidateQueries({
           queryKey: queryKeys.availability.staff(staffId, date),
@@ -312,9 +294,16 @@ export const optimisticUpdate = (queryClient, appointmentId, updateData) => {
     );
   };
 
-  queryClient.setQueryData(queryKeys.appointments.list(), updateFunction);
-  queryClient.setQueryData(queryKeys.appointments.today(), updateFunction);
-  queryClient.setQueryData(queryKeys.appointments.upcoming(), updateFunction);
+  if (queryKeys?.appointments) {
+    queryClient.setQueryData(queryKeys.appointments.list(), updateFunction);
+    queryClient.setQueryData(queryKeys.appointments.today(), updateFunction);
+    queryClient.setQueryData(queryKeys.appointments.upcoming(), updateFunction);
+  } else {
+    // Fallback to literal query keys
+    queryClient.setQueryData(["appointments", "list"], updateFunction);
+    queryClient.setQueryData(["appointments", "today"], updateFunction);
+    queryClient.setQueryData(["appointments", "upcoming"], updateFunction);
+  }
 };
 
 /**
@@ -349,19 +338,31 @@ export const invalidateByStatus = async (queryClient, status, options = {}) => {
   for (const queryType of additionalQueries) {
     switch (queryType) {
       case "availability":
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.availability.all,
-        });
+        if (queryKeys?.availability?.all) {
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.availability.all,
+          });
+        } else {
+          await queryClient.invalidateQueries({ queryKey: ["availability"] });
+        }
         break;
       case "notifications":
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.notifications.all,
-        });
+        if (queryKeys?.notifications?.all) {
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.notifications.all,
+          });
+        } else {
+          await queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        }
         break;
       case "attendance":
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.attendance.all,
-        });
+        if (queryKeys?.attendance?.all) {
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.attendance.all,
+          });
+        } else {
+          await queryClient.invalidateQueries({ queryKey: ["attendance"] });
+        }
         break;
     }
   }
