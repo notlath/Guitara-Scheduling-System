@@ -224,6 +224,9 @@ class WebSocketTanStackService {
             type: "appointment_status_changed",
           });
           break;
+        case "initial_data":
+          this.handleInitialData(data);
+          break;
         // Handle nested message types from Django's _create_notifications
         case "appointment_message":
           // Django sends nested messages via _create_notifications
@@ -637,6 +640,49 @@ class WebSocketTanStackService {
     this.dispatchEvent("appointment_started", {
       data,
       type: "appointment_started",
+    });
+  }
+
+  /**
+   * Handle initial data from WebSocket connection
+   */
+  handleInitialData(data) {
+    console.log("📋 WebSocket initial data received:", {
+      appointmentCount: data.appointments?.length || 0,
+      connectionId: data.connection_id,
+      timestamp: data.timestamp
+    });
+
+    // If appointments are provided in initial data, update the cache
+    if (data.appointments && Array.isArray(data.appointments)) {
+      // Update global appointments list with initial data
+      queryClient.setQueryData(["appointments"], (old = []) => {
+        // Merge with existing data, preventing duplicates
+        const existingIds = new Set(old.map(a => a.id));
+        const newAppointments = data.appointments.filter(a => !existingIds.has(a.id));
+        return [...old, ...newAppointments];
+      });
+
+      // Update today's appointments if applicable
+      const today = new Date().toISOString().split("T")[0];
+      const todaysAppointments = data.appointments.filter(apt => apt.date === today);
+      
+      if (todaysAppointments.length > 0) {
+        queryClient.setQueryData(["appointments", "today"], (old = []) => {
+          const existingIds = new Set(old.map(a => a.id));
+          const newTodayAppointments = todaysAppointments.filter(a => !existingIds.has(a.id));
+          return [...old, ...newTodayAppointments];
+        });
+      }
+
+      console.log("✅ Initial appointment data synchronized with cache");
+    }
+
+    // Dispatch event for listeners
+    this.dispatchEvent("initial_data", {
+      appointments: data.appointments,
+      connectionId: data.connection_id,
+      type: "initial_data",
     });
   }
 
