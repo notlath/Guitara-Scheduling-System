@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 // TANSTACK QUERY: Import TanStack Query hooks for data management
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import pageTitles from "../constants/pageTitles";
 import {
   approveAttendance,
   checkIn,
@@ -44,11 +45,18 @@ import {
 
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
-import "../styles/EnhancedAppointmentCards.css";
 import "../styles/ErrorHandling.css";
 import "../styles/OperatorDashboard.css";
 import "../styles/Performance.css";
-import "../styles/UrgencyIndicators.css";
+
+/* ✅ NEW: Component-based CSS imports - Single Source of Truth */
+import "../styles/components/AppointmentCard.css";
+import "../styles/components/StatusBadge.css";
+
+/* ❌ REMOVED: Duplicate/conflicting CSS files
+import "../styles/EnhancedAppointmentCards.css";
+import "../styles/UrgencyIndicators.css"; 
+*/
 
 // ✅ ROBUST FILTERING: Valid values for URL parameters
 const VALID_VIEW_VALUES = Object.freeze([
@@ -189,6 +197,11 @@ const OperatorDashboard = () => {
     }
     return warnings;
   }, [rawView, rawFilter]);
+
+  // Set page title
+  useEffect(() => {
+    document.title = pageTitles.dashboard;
+  }, []);
 
   useEffect(() => {
     const newWarnings = validateWarnings();
@@ -2016,31 +2029,31 @@ const OperatorDashboard = () => {
 
   // ✅ PERFORMANCE: Old implementations removed - using ultra-optimized versions above
 
-  // Helper functions for status badge mapping
+  // ✅ UPDATED: Helper functions for status badge mapping (BEM format)
   const getStatusBadgeClass = (status) => {
     const statusMap = {
-      pending: "status-pending",
-      confirmed: "status-confirmed",
-      driver_confirmed: "status-confirmed",
-      therapist_confirmed: "status-confirmed",
-      rejected: "status-rejected",
-      cancelled: "status-cancelled",
-      auto_cancelled: "status-overdue",
-      completed: "status-completed",
-      in_progress: "status-confirmed",
-      awaiting_payment: "status-warning",
-      pickup_requested: "status-pending",
-      overdue: "status-overdue",
-      timeout: "status-overdue",
-      journey_started: "status-confirmed",
-      arrived: "status-confirmed",
-      dropped_off: "status-confirmed",
-      session_started: "status-confirmed",
-      payment_requested: "status-warning",
-      payment_completed: "status-completed",
+      pending: "status-badge--pending",
+      confirmed: "status-badge--confirmed", 
+      driver_confirmed: "status-badge--driver-confirmed",
+      therapist_confirmed: "status-badge--therapist-confirmed",
+      rejected: "status-badge--rejected",
+      cancelled: "status-badge--cancelled",
+      auto_cancelled: "status-badge--overdue",
+      completed: "status-badge--completed",
+      in_progress: "status-badge--in-progress",
+      awaiting_payment: "status-badge--warning",
+      pickup_requested: "status-badge--pickup-requested",
+      overdue: "status-badge--overdue",
+      timeout: "status-badge--timeout",
+      journey_started: "status-badge--journey-started",
+      arrived: "status-badge--arrived",
+      dropped_off: "status-badge--dropped-off",
+      session_started: "status-badge--session-started",
+      payment_requested: "status-badge--payment-requested",
+      payment_completed: "status-badge--payment-completed",
     };
 
-    return statusMap[status] || "status-pending";
+    return statusMap[status] || "status-badge--pending";
   };
   const getStatusDisplayText = (status) => {
     // Debug logging
@@ -2116,7 +2129,7 @@ const OperatorDashboard = () => {
           return (
             <div
               key={appointment.id}
-              className={`appointment-card rejected ${urgencyLevel}`}
+              className={`appointment-card appointment-card--rejected ${urgencyLevel}`}
             >
               <div className="appointment-header">
                 <h3>
@@ -2209,7 +2222,7 @@ const OperatorDashboard = () => {
             return (
               <div
                 key={appointment.id}
-                className={`appointment-card pending ${urgencyLevel}`}
+                className={`appointment-card appointment-card--pending ${urgencyLevel}`}
               >
                 <div className="appointment-header">
                   <h3>
@@ -2309,7 +2322,7 @@ const OperatorDashboard = () => {
                 return (
                   <div
                     key={appointment.id}
-                    className="appointment-card overdue"
+                    className="appointment-card appointment-card--overdue"
                   >
                     <div className="appointment-header">
                       <h3>
@@ -2319,7 +2332,7 @@ const OperatorDashboard = () => {
                       </h3>
                       <div className="status-badges">
                         {" "}
-                        <span className="status-badge status-overdue">
+                        <span className="status-badge status-badge--overdue">
                           Overdue
                         </span>
                       </div>
@@ -2354,7 +2367,7 @@ const OperatorDashboard = () => {
                 return (
                   <div
                     key={appointment.id}
-                    className="appointment-card approaching-deadline"
+                    className="appointment-card appointment-card--approaching-deadline"
                   >
                     <div className="appointment-header">
                       <h3>
@@ -2364,7 +2377,7 @@ const OperatorDashboard = () => {
                       </h3>
                       <div className="status-badges">
                         {" "}
-                        <span className="status-badge status-warning">
+                        <span className="status-badge status-badge--warning">
                           Approaching Deadline
                         </span>
                         <span className="countdown-badge warning">
@@ -2441,7 +2454,7 @@ const OperatorDashboard = () => {
           return (
             <div
               key={appointment.id}
-              className={`appointment-card payment-pending ${urgencyLevel}`}
+              className={`appointment-card appointment-card--payment-pending ${urgencyLevel}`}
             >
               <div className="appointment-header">
                 <h3>
@@ -3403,67 +3416,52 @@ const OperatorDashboard = () => {
           /> */}
             {currentView === "rejected" && (
               <div className="rejected-appointments">
-                <h2>Rejection Reviews</h2>
                 {renderRejectedAppointments()}
               </div>
             )}
             {currentView === "pending" && (
               <div className="pending-appointments">
-                <h2>Pending Acceptance Appointments</h2>
                 {renderPendingAcceptanceAppointments()}
               </div>
             )}{" "}
             {currentView === "timeout" && (
               <div className="timeout-monitoring">
-                <h2>Timeout Monitoring</h2>
                 {renderTimeoutMonitoring()}
               </div>
             )}
             {currentView === "payment" && (
               <div className="payment-verification">
-                <h2>Payment Verification</h2>
                 {renderPaymentVerificationView()}
               </div>
             )}
             {currentView === "all" && (
-              <div className="all-appointments">
-                <h2>All Appointments</h2>
-                {renderAllAppointments()}
-              </div>
+              <div className="all-appointments">{renderAllAppointments()}</div>
             )}{" "}
             {currentView === "attendance" && (
               <div className="attendance-management">
-                <h2>Attendance Management</h2>
                 {renderAttendanceView()}
               </div>
             )}{" "}
             {currentView === "notifications" && (
-              <div className="notifications">
-                <h2>Notifications</h2>
-                {renderNotifications()}
-              </div>
+              <div className="notifications">{renderNotifications()}</div>
             )}{" "}
             {currentView === "driver" && (
               <div className="driver-coordination">
-                <h2>Driver Coordination Center</h2>
                 {renderDriverCoordinationPanel()}
               </div>
             )}
             {currentView === "workflow" && (
               <div className="service-workflow">
-                <h2>Service Workflow Overview</h2>
                 {renderServiceWorkflowView()}
               </div>
             )}
             {currentView === "sessions" && (
               <div className="active-sessions">
-                <h2>Active Therapy Sessions</h2>
                 {renderActiveSessionsView()}
               </div>
             )}{" "}
             {currentView === "pickup" && (
               <div className="pickup-requests">
-                <h2>Therapist Pickup Requests</h2>
                 {renderPickupRequestsView()}
               </div>
             )}

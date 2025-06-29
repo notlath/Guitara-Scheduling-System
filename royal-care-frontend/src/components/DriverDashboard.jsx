@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import pageTitles from "../constants/pageTitles";
 import { logout } from "../features/auth/authSlice";
 // TANSTACK QUERY: Replace optimized data manager with TanStack Query
 import { useDriverDashboardData } from "../hooks/useDashboardQueries";
@@ -117,6 +118,11 @@ const DriverDashboard = () => {
     user?.first_name && user?.last_name
       ? `${user.first_name} ${user.last_name}`
       : user?.username || "Driver";
+
+  // Set page title
+  useEffect(() => {
+    document.title = pageTitles.dashboard;
+  }, []);
 
   // Use shared Philippine time and greeting hook
   const { systemTime, greeting } = usePhilippineTime();

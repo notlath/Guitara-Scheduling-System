@@ -1,0 +1,330 @@
+/* ==========================================================================
+   STATUS BADGE COMPONENT - SINGLE SOURCE OF TRUTH
+   ========================================================================== */
+
+/* 
+   🎯 BASE STATUS BADGE 
+   This is the ONLY place where base status badge styles are defined.
+   Fixes the visibility issues and provides consistent styling.
+*/
+
+.status-badge {
+  /* Layout */
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 2px solid transparent;
+  min-height: 26px;
+  vertical-align: middle;
+  
+  /* Typography */
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+  
+  /* Visibility - Force readable text */
+  color: #000 !important;
+  text-shadow: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Visual */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  /* Performance */
+  contain: layout style paint;
+  
+  /* Accessibility */
+  opacity: 1;
+  visibility: visible;
+}
+
+.status-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Force text visibility for all child elements */
+.status-badge * {
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+}
+
+/* Debug empty badges */
+.status-badge:empty::before {
+  content: "EMPTY BADGE";
+  color: #dc3545 !important;
+  font-weight: bold !important;
+  background: #fff3cd;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   STATUS VARIANTS - Apply these for different status types
+   ========================================================================== */
+
+.status-badge--pending {
+  background-color: #fff3cd;
+  color: #856404 !important;
+  border-color: #ffecb5;
+}
+
+.status-badge--confirmed {
+  background-color: #d4edda;
+  color: #155724 !important;
+  border-color: #badbcc;
+}
+
+.status-badge--rejected {
+  background-color: #f8d7da;
+  color: #721c24 !important;
+  border-color: #f1aeb5;
+}
+
+.status-badge--cancelled {
+  background-color: #f8d7da;
+  color: #721c24 !important;
+  border-color: #f1aeb5;
+}
+
+.status-badge--completed {
+  background-color: #d1ecf1;
+  color: #0c5460 !important;
+  border-color: #b6effb;
+}
+
+.status-badge--overdue {
+  background-color: #f8d7da;
+  color: #721c24 !important;
+  border-color: #f1aeb5;
+  animation: status-pulse 2s infinite;
+}
+
+.status-badge--warning {
+  background-color: #fff3cd;
+  color: #856404 !important;
+  border-color: #ffecb5;
+}
+
+.status-badge--unknown {
+  background-color: #e9ecef;
+  color: #212529 !important;
+  border-color: #c9ccce;
+}
+
+.status-badge--in-progress {
+  background-color: #cce5ff;
+  color: #003d82 !important;
+  border-color: #9ec5fe;
+}
+
+.status-badge--driver-confirmed {
+  background-color: #e3f2fd;
+  color: #0d47a1 !important;
+  border-color: #bbdefb;
+}
+
+.status-badge--therapist-confirmed {
+  background-color: #f3e5f5;
+  color: #4a148c !important;
+  border-color: #ce93d8;
+}
+
+.status-badge--pickup-requested {
+  background-color: #fff8e1;
+  color: #e65100 !important;
+  border-color: #ffcc02;
+}
+
+.status-badge--journey-started {
+  background-color: #e8f5e9;
+  color: #1b5e20 !important;
+  border-color: #a5d6a7;
+}
+
+.status-badge--arrived {
+  background-color: #e1f5fe;
+  color: #01579b !important;
+  border-color: #81d4fa;
+}
+
+.status-badge--dropped-off {
+  background-color: #f1f8e9;
+  color: #33691e !important;
+  border-color: #aed581;
+}
+
+.status-badge--session-started {
+  background-color: #fce4ec;
+  color: #880e4f !important;
+  border-color: #f48fb1;
+}
+
+.status-badge--payment-requested {
+  background-color: #fff3e0;
+  color: #bf360c !important;
+  border-color: #ffb74d;
+}
+
+.status-badge--payment-completed {
+  background-color: #e8f5e9;
+  color: #2e7d32 !important;
+  border-color: #81c784;
+}
+
+.status-badge--timeout {
+  background-color: #ffebee;
+  color: #b71c1c !important;
+  border-color: #ef9a9a;
+  animation: status-pulse 2s infinite;
+}
+
+/* ==========================================================================
+   STATUS BADGE SIZES
+   ========================================================================== */
+
+.status-badge--small {
+  padding: 4px 8px;
+  font-size: 12px;
+  min-height: 20px;
+}
+
+.status-badge--large {
+  padding: 8px 16px;
+  font-size: 16px;
+  min-height: 32px;
+}
+
+/* ==========================================================================
+   STATUS BADGE SHAPES
+   ========================================================================== */
+
+.status-badge--rounded {
+  border-radius: 4px;
+}
+
+.status-badge--square {
+  border-radius: 0;
+}
+
+.status-badge--pill {
+  border-radius: 50px;
+}
+
+/* ==========================================================================
+   CONTAINER ENHANCEMENTS
+   ========================================================================== */
+
+.status-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.status-badges--vertical {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.status-badges--center {
+  justify-content: center;
+}
+
+.status-badges--end {
+  justify-content: flex-end;
+}
+
+/* ==========================================================================
+   ANIMATIONS
+   ========================================================================== */
+
+@keyframes status-pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+@keyframes status-glow {
+  0% { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  50% { box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3); }
+  100% { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+}
+
+.status-badge--animated {
+  animation: status-glow 2s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   ACCESSIBILITY
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .status-badge {
+    transition: none;
+  }
+  
+  .status-badge--overdue,
+  .status-badge--timeout,
+  .status-badge--animated {
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .status-badge {
+    border: 2px solid currentColor;
+    font-weight: 900;
+  }
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .status-badge {
+    font-size: 12px;
+    padding: 4px 8px;
+    min-height: 20px;
+  }
+  
+  .status-badges {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .status-badge {
+    font-size: 11px;
+    padding: 3px 6px;
+    min-height: 18px;
+  }
+}
+
+/* ==========================================================================
+   PRINT STYLES
+   ========================================================================== */
+
+@media print {
+  .status-badge {
+    background: transparent !important;
+    color: #000 !important;
+    border: 1px solid #000 !important;
+    box-shadow: none;
+  }
+  
+  .status-badge:hover {
+    transform: none;
+  }
+}

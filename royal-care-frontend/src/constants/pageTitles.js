@@ -12,7 +12,7 @@ const pageTitles = {
   enterNewPassword: "Set New Password" + BRAND_SUFFIX,
   twoFactorAuth: "2FA Verification" + BRAND_SUFFIX,
   twoFAForgotPassword: "2FA Password Reset" + BRAND_SUFFIX,
-  profile: "My Profile" + BRAND_SUFFIX,
+  profile: "Profile" + BRAND_SUFFIX,
   settings: "Settings" + BRAND_SUFFIX,
   accountSettings: "Account Settings" + BRAND_SUFFIX,
   scheduling: "Scheduling" + BRAND_SUFFIX,
@@ -28,6 +28,7 @@ const pageTitles = {
   attendance: "Attendance" + BRAND_SUFFIX,
   notifications: "Notifications" + BRAND_SUFFIX,
   logs: "History Logs" + BRAND_SUFFIX,
+  dashboard: "Dashboard" + BRAND_SUFFIX,
   // Add more as needed
 };
 

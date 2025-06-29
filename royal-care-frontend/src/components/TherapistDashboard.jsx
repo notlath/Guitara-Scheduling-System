@@ -1,9 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { useNavigate, useSearchParams } from "react-router-dom";
-// TanStack Query hooks for data management (removing Redux dependencies)
+import pageTitles from "../constants/pageTitles";
+import { logout } from "../features/auth/authSlice";
+// Enhanced Redux hooks for automatic TanStack Query cache invalidation
+import { useEnhancedTherapistActions } from "../hooks/useEnhancedRedux";
+// TANSTACK QUERY: Replace optimized hooks with TanStack Query
+import { useEnhancedDashboardData } from "../hooks/useEnhancedDashboardData";
+// Import the new instant updates hook
+import { useTherapistInstantActions } from "../hooks/useInstantUpdates";
+// Import shared Philippine time and greeting hook
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
 import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import { LoadingButton } from "./common/LoadingComponents";
@@ -17,6 +25,11 @@ import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css";
+
+/* ✅ NEW: Component-based CSS imports - Single Source of Truth */
+import "../styles/components/AppointmentCard.css";
+import "../styles/components/StatusBadge.css";
+
 import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
 import Calendar from "./scheduling/Calendar";
@@ -1031,9 +1044,12 @@ const TherapistDashboard = () => {
     localStorage.removeItem("knoxToken");
     localStorage.removeItem("user");
     navigate("/");
-  };
+  };  // Set page title
+  useEffect(() => {
+    document.title = pageTitles.dashboard;
+  }, []);
 
-  // Handle appointment status changes with TanStack Query mutations
+  // Handle appointment status changes with INSTANT UPDATES (immediate UI feedback)
   const handleAcceptAppointment = async (appointmentId) => {
     const actionKey = `accept_${appointmentId}`;
     try {
