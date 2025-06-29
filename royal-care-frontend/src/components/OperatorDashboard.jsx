@@ -1111,16 +1111,35 @@ const OperatorDashboard = () => {
     try {
       setActionLoading(actionKey, true);
 
+      // Validate appointmentId before proceeding
+      if (!appointmentId || appointmentId === "undefined") {
+        throw new Error("Invalid appointment ID provided");
+      }
+
       // ✅ TANSTACK QUERY: Use optimistic updates for instant UI feedback
       await updateAppointmentInstantly(appointmentId, {
         status: "in_progress",
+        action: "start_appointment",
       });
 
       // Auto-invalidate current tab data
       await queryClient.invalidateQueries(["operator", currentView]);
     } catch (error) {
       console.error("Failed to start appointment:", error);
-      alert("Failed to start appointment. Please try again.");
+
+      // Better error messaging
+      let errorMessage = "Failed to start appointment. Please try again.";
+      if (error.message && error.message.includes("Invalid appointment ID")) {
+        errorMessage =
+          "Invalid appointment selected. Please refresh the page and try again.";
+      } else if (
+        error.message &&
+        error.message !== "Failed to start appointment"
+      ) {
+        errorMessage = `Failed to start appointment: ${error.message}`;
+      }
+
+      alert(errorMessage);
     } finally {
       setActionLoading(actionKey, false);
     }

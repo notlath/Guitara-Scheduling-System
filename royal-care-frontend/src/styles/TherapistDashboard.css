@@ -430,3 +430,128 @@
     width: 100%;
   }
 }
+
+/* Section header with button */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.section-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+
+.view-completed-btn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.view-completed-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Modal styles - consistent with SettingsDataPage */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Frosted glass effect */
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.modal {
+  background: var(--background);
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  min-width: 500px;
+  max-width: 90vw;
+  max-height: 90vh;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  position: relative;
+  animation: fadeIn 0.2s;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  flex-shrink: 0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.close-btn:hover {
+  color: var(--text);
+  background-color: var(--background-hover);
+}
+
+.modal-content {
+  flex: 1;
+  overflow-y: auto;
+  margin-right: -0.5rem;
+  padding-right: 0.5rem;
+}
+
+/* Override appointments list styles within modal */
+.modal-content .appointments-list {
+  grid-template-columns: 1fr;
+  gap: var(--spacing-sm);
+}
+
+.modal-content .appointment-card {
+  margin-bottom: 0;
+}
