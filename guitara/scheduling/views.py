@@ -1954,10 +1954,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         """Operator verifies payment received and marks appointment complete"""
         appointment = self.get_object()
 
-        # Debug logging to track payment amount issue  
+        # Debug logging to track payment amount issue
         print(f"🔍 mark_completed: Request data received: {request.data}")
         print(f"🔍 mark_completed: Appointment ID: {appointment.id}")
-        print(f"🔍 mark_completed: Current payment_amount in DB: {appointment.payment_amount}")
+        print(
+            f"🔍 mark_completed: Current payment_amount in DB: {appointment.payment_amount}"
+        )
 
         # Only operators can verify payments and mark appointments as completed
         if request.user.role != "operator":
@@ -1981,12 +1983,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Debug logging for payment amount processing
         print(f"🔍 mark_completed: Extracted payment_method: {payment_method}")
-        print(f"🔍 mark_completed: Extracted payment_amount: {payment_amount} (type: {type(payment_amount)})")
+        print(
+            f"🔍 mark_completed: Extracted payment_amount: {payment_amount} (type: {type(payment_amount)})"
+        )
 
         # Ensure payment_amount is properly converted to Decimal
         try:
             payment_amount = float(payment_amount) if payment_amount else 0
-            print(f"🔍 mark_completed: Converted payment_amount to float: {payment_amount}")
+            print(
+                f"🔍 mark_completed: Converted payment_amount to float: {payment_amount}"
+            )
         except (ValueError, TypeError) as e:
             print(f"❌ mark_completed: Error converting payment_amount: {e}")
             payment_amount = 0
@@ -1997,10 +2003,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.payment_amount = payment_amount
         appointment.payment_verified_at = timezone.now()
         appointment.session_end_time = timezone.now()  # Set when session actually ends
-        
-        print(f"🔍 mark_completed: Before save - appointment.payment_amount: {appointment.payment_amount}")
+
+        print(
+            f"🔍 mark_completed: Before save - appointment.payment_amount: {appointment.payment_amount}"
+        )
         appointment.save()
-        print(f"✅ mark_completed: After save - appointment.payment_amount: {appointment.payment_amount}")
+        print(
+            f"✅ mark_completed: After save - appointment.payment_amount: {appointment.payment_amount}"
+        )
 
         # Create notifications
         self._create_notifications(
@@ -2025,7 +2035,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Debug logging to track payment amount issue
         print(f"🔍 mark_payment_received: Request data received: {request.data}")
         print(f"🔍 mark_payment_received: Appointment ID: {appointment.id}")
-        print(f"🔍 mark_payment_received: Current payment_amount in DB: {appointment.payment_amount}")
+        print(
+            f"🔍 mark_payment_received: Current payment_amount in DB: {appointment.payment_amount}"
+        )
 
         # Only operators can verify payments and mark appointments as completed
         if request.user.role != "operator":
@@ -2050,13 +2062,17 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Debug logging for payment amount processing
         print(f"🔍 mark_payment_received: Extracted payment_method: {payment_method}")
-        print(f"🔍 mark_payment_received: Extracted payment_amount: {payment_amount} (type: {type(payment_amount)})")
+        print(
+            f"🔍 mark_payment_received: Extracted payment_amount: {payment_amount} (type: {type(payment_amount)})"
+        )
         print(f"🔍 mark_payment_received: Extracted payment_notes: {payment_notes}")
 
         # Ensure payment_amount is properly converted to Decimal
         try:
             payment_amount = float(payment_amount) if payment_amount else 0
-            print(f"🔍 mark_payment_received: Converted payment_amount to float: {payment_amount}")
+            print(
+                f"🔍 mark_payment_received: Converted payment_amount to float: {payment_amount}"
+            )
         except (ValueError, TypeError) as e:
             print(f"❌ mark_payment_received: Error converting payment_amount: {e}")
             payment_amount = 0
@@ -2073,10 +2089,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 if appointment.notes
                 else f"Payment Notes: {payment_notes}"
             )
-        
-        print(f"🔍 mark_payment_received: Before save - appointment.payment_amount: {appointment.payment_amount}")
+
+        print(
+            f"🔍 mark_payment_received: Before save - appointment.payment_amount: {appointment.payment_amount}"
+        )
         appointment.save()
-        print(f"✅ mark_payment_received: After save - appointment.payment_amount: {appointment.payment_amount}")
+        print(
+            f"✅ mark_payment_received: After save - appointment.payment_amount: {appointment.payment_amount}"
+        )
 
         # Create notifications
         self._create_notifications(
@@ -2087,8 +2107,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(appointment)
         response_data = serializer.data
-        print(f"🔍 mark_payment_received: Serialized response payment_amount: {response_data.get('payment_amount')}")
-        
+        print(
+            f"🔍 mark_payment_received: Serialized response payment_amount: {response_data.get('payment_amount')}"
+        )
+
         return Response(
             {
                 "message": f"Payment verified successfully. Received {payment_amount} via {payment_method}.",
