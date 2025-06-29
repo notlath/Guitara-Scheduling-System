@@ -767,7 +767,24 @@ const AppointmentFormTanStackComplete = ({
         return;
       }
 
-      // Prepare appointment data - use address as location
+      console.log("📋 Final client ID for submission:", numericClientId);
+
+      // Debug: Log materials state before preparing appointment data
+      console.log("🔍 DEBUG - Materials state before submission:");
+      console.log("  materialQuantities:", materialQuantities);
+      console.log("  materials array:", materials);
+      console.log("  materials length:", materials.length);
+      
+      // Check if we have any materials with quantities
+      const materialsWithQuantities = Object.entries(materialQuantities)
+        .filter((entry) => entry[1] && !isNaN(Number(entry[1])));
+      console.log("  materials with quantities:", materialsWithQuantities);
+      
+      if (materialsWithQuantities.length === 0) {
+        console.log("⚠️ WARNING: No materials with quantities found!");
+      }
+
+      // Prepare appointment data
       const appointmentData = {
         ...formData,
         client: numericClientId,
@@ -783,6 +800,7 @@ const AppointmentFormTanStackComplete = ({
         materials: Object.entries(materialQuantities)
           .filter((entry) => entry[1] && !isNaN(Number(entry[1])))
           .map(([materialId, qty]) => {
+            // Find the material in our materials array to validate it has inventory_item
             const material = materials.find(m => m.id === parseInt(materialId, 10));
             if (!material || !material.inventory_item) {
               console.warn(`⚠️ Skipping material ${materialId} - no valid inventory item`);
@@ -793,12 +811,26 @@ const AppointmentFormTanStackComplete = ({
               quantity: Number(qty),
             };
           })
-          .filter(Boolean),
+          .filter(Boolean), // Remove null values
         date: formatDateForInput(formData.date),
       };
 
-      console.log("📋 Appointment data being submitted:", appointmentData);
+      // Debug: Log the materials preparation process
+      console.log("🔍 DEBUG - Materials preparation process:");
+      console.log("  materialQuantities entries:", Object.entries(materialQuantities));
+      console.log("  filtered entries:", Object.entries(materialQuantities).filter((entry) => entry[1] && !isNaN(Number(entry[1]))));
+      console.log("  final materials array:", appointmentData.materials);
 
+      console.log("📋 Appointment data being submitted:", appointmentData);
+      console.log("🔍 DEBUG - Final materials check:");
+      console.log("  appointmentData.materials:", appointmentData.materials);
+      console.log("  materials count:", appointmentData.materials?.length || 0);
+
+      // 🔥 BEFORE: Complex manual Redux dispatch + cache management
+      // 🎉 AFTER: One simple mutation call with automatic cache updates!
+
+      console.log("🚀 About to call createMutation.mutateAsync...");
+      
       if (appointment) {
         await updateMutation.mutateAsync({
           id: appointment.id,

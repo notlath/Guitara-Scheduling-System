@@ -38,6 +38,7 @@ import "../styles/TherapistDashboard.css";
 import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
 import Calendar from "./scheduling/Calendar";
+import PostServiceMaterialModal from "./scheduling/PostServiceMaterialModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 import StatusDropdown from "./StatusDropdown";
 
@@ -646,7 +647,8 @@ const TherapistDashboard = () => {
 
       if (appointmentMaterials.length > 0) {
         // Show material modal for post-service material checking
-        openMaterialModal({
+        setMaterialModal({
+          isOpen: true,
           appointmentId: appointmentId,
           materials: appointmentMaterials.map((mat) => ({
             id: mat.inventory_item?.id || mat.material_id,
@@ -973,6 +975,7 @@ const TherapistDashboard = () => {
   const handleRejectionCancel = () => {
     setRejectionModal({ isOpen: false, appointmentId: null });
   };
+
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case "pending":
@@ -1840,6 +1843,7 @@ const TherapistDashboard = () => {
           appointmentId={rejectionModal.appointmentId}
           loading={loading}
         />
+        {/* Post-Service Material Modal */}
         <PostServiceMaterialModal
           isOpen={materialModal.isOpen}
           onClose={handleMaterialModalClose}
