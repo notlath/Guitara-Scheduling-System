@@ -11,7 +11,10 @@ import useSyncEventHandlers from "./useSyncEventHandlers";
  * Shared dashboard functionality for all role-based dashboards
  * Eliminates code duplication across OperatorDashboard, TherapistDashboard, and DriverDashboard
  */
-export const useDashboardCommon = (userOrRole = "user", fallbackRole = null) => {
+export const useDashboardCommon = (
+  userOrRole = "user",
+  fallbackRole = null
+) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { systemTime, greeting } = usePhilippineTime();
@@ -38,31 +41,21 @@ export const useDashboardCommon = (userOrRole = "user", fallbackRole = null) => 
 
   // Extract user name with role fallback
   const userName = useMemo(() => {
-    // Try first_name + last_name combination
-    if (user?.first_name && user?.last_name) {
-      return `${user.first_name} ${user.last_name}`;
-    }
-    
     // Try first_name only
     if (user?.first_name) {
       return user.first_name;
     }
-    
-    // Try last_name only
-    if (user?.last_name) {
-      return user.last_name;
-    }
-    
+
     // Try username
     if (user?.username) {
       return user.username;
     }
-    
+
     // Try email (before @ symbol)
     if (user?.email) {
-      return user.email.split('@')[0];
+      return user.email.split("@")[0];
     }
-    
+
     // Capitalize role as final fallback
     return role.charAt(0).toUpperCase() + role.slice(1);
   }, [user, role]);
