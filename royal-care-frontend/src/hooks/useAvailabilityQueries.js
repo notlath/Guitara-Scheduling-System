@@ -40,15 +40,23 @@ export const useAvailableTherapists = (
 ) => {
   const dispatch = useDispatch();
 
-  // Calculate endTime if not provided
+  // Calculate endTime if not provided - ensure HH:MM format only
   let computedEndTime = endTime;
   if (!computedEndTime && startTime && serviceId) {
-    // Example: Assume 1 hour duration for fallback, replace with real logic if available
-    const [h, m] = startTime.split(":").map(Number);
+    // Ensure startTime is in HH:MM format (remove seconds if present)
+    const cleanStartTime = startTime.slice(0, 5);
+    const [h, m] = cleanStartTime.split(":").map(Number);
     const start = new Date(0, 0, 0, h, m);
     start.setMinutes(start.getMinutes() + 60); // +60 min
-    computedEndTime = start.toTimeString().slice(0, 5);
+    // Format as HH:MM only (not HH:MM:SS)
+    const hours = start.getHours().toString().padStart(2, '0');
+    const minutes = start.getMinutes().toString().padStart(2, '0');
+    computedEndTime = `${hours}:${minutes}`;
   }
+  
+  // Ensure all times are in HH:MM format
+  const cleanStartTime = startTime ? startTime.slice(0, 5) : startTime;
+  const cleanEndTime = computedEndTime ? computedEndTime.slice(0, 5) : computedEndTime;
 
   return useQuery({
     queryKey: queryKeys.availability.therapists(date, startTime, serviceId),
@@ -58,16 +66,16 @@ export const useAvailableTherapists = (
       console.log("  Token exists:", !!isValidToken());
       console.log("  Parameters:", {
         date: formatDateForAPI(date),
-        startTime,
+        startTime: cleanStartTime,
         serviceId,
-        endTime: computedEndTime,
+        endTime: cleanEndTime,
       });
 
       const params = {
         date: formatDateForAPI(date),
-        start_time: startTime,
+        start_time: cleanStartTime,
         service_id: serviceId,
-        end_time: computedEndTime,
+        end_time: cleanEndTime,
       };
 
       try {
@@ -106,15 +114,23 @@ export const useAvailableTherapists = (
 export const useAvailableDrivers = (date, startTime, endTime = null) => {
   const dispatch = useDispatch();
 
-  // Calculate endTime if not provided
+  // Calculate endTime if not provided - ensure HH:MM format only
   let computedEndTime = endTime;
   if (!computedEndTime && startTime) {
-    // Example: Assume 1 hour duration for fallback
-    const [h, m] = startTime.split(":").map(Number);
+    // Ensure startTime is in HH:MM format (remove seconds if present)
+    const cleanStartTime = startTime.slice(0, 5);
+    const [h, m] = cleanStartTime.split(":").map(Number);
     const start = new Date(0, 0, 0, h, m);
     start.setMinutes(start.getMinutes() + 60);
-    computedEndTime = start.toTimeString().slice(0, 5);
+    // Format as HH:MM only (not HH:MM:SS)
+    const hours = start.getHours().toString().padStart(2, '0');
+    const minutes = start.getMinutes().toString().padStart(2, '0');
+    computedEndTime = `${hours}:${minutes}`;
   }
+  
+  // Ensure all times are in HH:MM format
+  const cleanStartTime = startTime ? startTime.slice(0, 5) : startTime;
+  const cleanEndTime = computedEndTime ? computedEndTime.slice(0, 5) : computedEndTime;
 
   return useQuery({
     queryKey: queryKeys.availability.drivers(date, startTime),
@@ -124,14 +140,14 @@ export const useAvailableDrivers = (date, startTime, endTime = null) => {
       console.log("  Token exists:", !!isValidToken());
       console.log("  Parameters:", {
         date: formatDateForAPI(date),
-        startTime,
-        endTime: computedEndTime,
+        startTime: cleanStartTime,
+        endTime: cleanEndTime,
       });
 
       const params = {
         date: formatDateForAPI(date),
-        start_time: startTime,
-        end_time: computedEndTime,
+        start_time: cleanStartTime,
+        end_time: cleanEndTime,
       };
 
       try {

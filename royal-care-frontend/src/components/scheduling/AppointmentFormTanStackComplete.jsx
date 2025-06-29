@@ -130,23 +130,6 @@ const getMinDate = () => {
 };
 
 // Utility function to get minimum time for today
-const getMinTime = (selectedDate) => {
-  const today = new Date();
-  const todayString = `${today.getFullYear()}-${String(
-    today.getMonth() + 1
-  ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-  if (selectedDate === todayString) {
-    const now = new Date();
-    // Add 15 minute buffer to current time for booking (reduced from 1 hour)
-    // now.setMinutes(now.getMinutes() + 15);
-    now.setMinutes(now.getMinutes());
-    return now.toTimeString().slice(0, 5);
-  }
-
-  return ""; // No minimum time for future dates
-};
-
 // Removed duplicate import of useEffect
 
 const AppointmentFormTanStackComplete = ({
@@ -873,9 +856,9 @@ const AppointmentFormTanStackComplete = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTime]);
 
-  // Populate form for editing
+  // Populate form for editing - Prevent infinite loops by checking if form is already populated
   useEffect(() => {
-    if (appointment) {
+    if (appointment && !formData.date) {
       // Handle client data - can be ID or object
       let clientData = appointment.client;
       if (typeof appointment.client === "object") {
@@ -904,7 +887,7 @@ const AppointmentFormTanStackComplete = ({
         multipleTherapists: !!(appointment.therapists?.length > 0),
       });
     }
-  }, [appointment, clients]);
+  }, [appointment, clients, formData.date]); // Keep all dependencies but check formData.date to prevent loops
 
   // Loading states
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
