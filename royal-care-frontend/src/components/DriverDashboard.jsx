@@ -28,6 +28,8 @@ import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
+import "../styles/components/AppointmentCard.css";
+import "../styles/components/StatusBadge.css";
 import "../styles/TherapistDashboard.css"; // Reuse therapist styles for consistency
 import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
@@ -811,40 +813,40 @@ const DriverDashboard = () => {
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case "pending":
-        return "status-pending";
+        return "status-badge--pending";
       case "confirmed":
-        return "status-confirmed";
+        return "status-badge--confirmed";
       case "therapist_confirmed":
-        return "status-therapist-confirmed";
+        return "status-badge--therapist-confirmed";
       case "driver_confirmed":
-        return "status-driver-confirmed";
+        return "status-badge--driver-confirmed";
       case "journey_started":
       case "journey":
-        return "status-journey-started";
+        return "status-badge--journey-started";
       case "arrived":
-        return "status-arrived";
+        return "status-badge--arrived";
       case "dropped_off":
-        return "status-arrived";
+        return "status-badge--arrived";
       case "driver_transport_completed":
-        return "status-completed"; // Driver's transport is complete
+        return "status-badge--completed"; // Driver's transport is complete
       case "session_started":
-        return "status-session-started";
+        return "status-badge--session-started";
       case "payment_requested":
-        return "status-payment-requested";
+        return "status-badge--payment-requested";
       case "payment_completed":
-        return "status-payment-completed";
+        return "status-badge--payment-completed";
       case "pickup_requested":
-        return "status-pickup-requested";
+        return "status-badge--pickup-requested";
       case "driving_to_location":
-        return "status-in-progress";
+        return "status-badge--in-progress";
       case "at_location":
-        return "status-confirmed";
+        return "status-badge--confirmed";
       case "transport_completed":
-        return "status-completed";
+        return "status-badge--completed";
       case "completed":
-        return "status-completed";
+        return "status-badge--completed";
       case "cancelled":
-        return "status-cancelled";
+        return "status-badge--cancelled";
       default:
         return "";
     }
@@ -1464,16 +1466,16 @@ const DriverDashboard = () => {
             <div
               key={appointment.id}
               className={`appointment-card ${
-                requiresCompanyCar ? "group-transport" : ""
+                requiresCompanyCar ? "appointment-card--group-transport" : ""
               }`}
             >
-              <div className="appointment-header">
+              <div className="appointment-card__header">
                 <h3>
                   {isGroupTransport ? "Group Transport" : "Transport"} for{" "}
                   {appointment.client_details?.first_name}{" "}
                   {appointment.client_details?.last_name}
                 </h3>
-                <div className="header-badges">
+                <div className="appointment-card__badges">
                   <span
                     className={`status-badge ${getStatusBadgeClass(
                       appointment.status
@@ -1495,7 +1497,7 @@ const DriverDashboard = () => {
                 </div>
               </div>
 
-              <div className="appointment-details">
+              <div className="appointment-card__content">
                 <p>
                   <strong>Date:</strong>{" "}
                   {new Date(appointment.date).toLocaleDateString()}

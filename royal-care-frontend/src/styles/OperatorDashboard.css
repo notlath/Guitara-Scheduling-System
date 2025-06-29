@@ -1,8 +1,8 @@
 /* Operator Dashboard Styles */
 
 /* Import component styles - SINGLE SOURCE OF TRUTH */
-@import './components/AppointmentCard.css';
-@import './components/StatusBadge.css';
+@import "./components/AppointmentCard.css";
+@import "./components/StatusBadge.css";
 
 .operator-dashboard {
   max-width: 1200px;
@@ -70,7 +70,9 @@
 
 /* OPERATOR-SPECIFIC APPOINTMENT CARD OVERRIDES */
 /* These extend the base AppointmentCard component */
-.operator-dashboard .appointment-card.appointment-card--payment-pending .total-amount {
+.operator-dashboard
+  .appointment-card.appointment-card--payment-pending
+  .total-amount {
   font-weight: bold;
   font-size: 1.1rem;
   color: #28a745;

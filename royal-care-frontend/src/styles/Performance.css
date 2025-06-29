@@ -1,4 +1,7 @@
 /* PERFORMANCE: GPU-accelerated animations and optimizations */
+/* Import component styles */
+@import "./components/AppointmentCard.css";
+
 .appointments-container {
   contain: content; /* CSS containment for better performance */
   will-change: scroll-position; /* Optimize for scrolling */
@@ -12,10 +15,10 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.appointment-card {
+/* Performance-specific appointment card enhancements */
+.appointment-card--virtualized {
   contain: layout style paint; /* Isolate card rendering */
-  /* Optimize transforms for virtual positioning */
-  will-change: transform;
+  will-change: transform; /* Optimize transforms for virtual positioning */
 }
 
 .performance-toggle {

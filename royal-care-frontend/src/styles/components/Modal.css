@@ -1,0 +1,419 @@
+/* ==========================================================================
+   MODAL COMPONENT - SINGLE SOURCE OF TRUTH
+   ========================================================================== */
+
+/* 
+   🎯 BASE MODAL SYSTEM
+   This is the ONLY place where modal styles are defined.
+   Use BEM modifiers for variants and sizes.
+*/
+
+.modal {
+  /* Position & Layer */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  
+  /* Background & Backdrop */
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  
+  /* Animation */
+  animation: modal-fade-in 0.2s ease-out;
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   MODAL CONTENT CONTAINER
+   ========================================================================== */
+
+.modal__content {
+  /* Layout */
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  
+  /* Sizing */
+  min-width: 400px;
+  max-width: 90vw;
+  max-height: 90vh;
+  width: 100%;
+  max-width: 500px; /* default size */
+  
+  /* Visual */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  
+  /* Animation */
+  animation: modal-content-slide-in 0.3s ease-out;
+}
+
+@keyframes modal-content-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ==========================================================================
+   MODAL SIZE MODIFIERS
+   ========================================================================== */
+
+.modal--small .modal__content {
+  max-width: 400px;
+  min-width: 300px;
+}
+
+.modal--medium .modal__content {
+  max-width: 600px;
+  min-width: 500px;
+}
+
+.modal--large .modal__content {
+  max-width: 800px;
+  min-width: 600px;
+}
+
+.modal--extra-large .modal__content {
+  max-width: 1000px;
+  min-width: 800px;
+}
+
+.modal--fullscreen .modal__content {
+  max-width: 95vw;
+  max-height: 95vh;
+  min-width: 320px;
+}
+
+/* ==========================================================================
+   MODAL HEADER
+   ========================================================================== */
+
+.modal__header {
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-shrink: 0;
+  
+  /* Visual */
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 16px;
+}
+
+.modal__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #212529;
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.modal__close {
+  /* Reset */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  
+  /* Visual */
+  border-radius: 6px;
+  color: #6c757d;
+  font-size: 18px;
+  
+  /* Interaction */
+  transition: all 0.2s ease;
+}
+
+.modal__close:hover {
+  background-color: #f8f9fa;
+  color: #495057;
+}
+
+.modal__close:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   MODAL BODY
+   ========================================================================== */
+
+.modal__body {
+  /* Layout */
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 24px;
+  
+  /* Scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: #ced4da #f8f9fa;
+}
+
+.modal__body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal__body::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 3px;
+}
+
+.modal__body::-webkit-scrollbar-thumb {
+  background: #ced4da;
+  border-radius: 3px;
+}
+
+.modal__body::-webkit-scrollbar-thumb:hover {
+  background: #adb5bd;
+}
+
+/* ==========================================================================
+   MODAL FOOTER
+   ========================================================================== */
+
+.modal__footer {
+  /* Layout */
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+  
+  /* Visual */
+  border-top: 1px solid #e9ecef;
+  padding-top: 16px;
+}
+
+.modal__footer--centered {
+  justify-content: center;
+}
+
+.modal__footer--space-between {
+  justify-content: space-between;
+}
+
+/* ==========================================================================
+   MODAL VARIANTS
+   ========================================================================== */
+
+.modal--warning .modal__content {
+  border-top: 4px solid #ffc107;
+}
+
+.modal--danger .modal__content {
+  border-top: 4px solid #dc3545;
+}
+
+.modal--success .modal__content {
+  border-top: 4px solid #28a745;
+}
+
+.modal--info .modal__content {
+  border-top: 4px solid #17a2b8;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .modal {
+    padding: 16px;
+  }
+  
+  .modal__content {
+    min-width: 280px;
+    padding: 20px;
+    border-radius: 8px;
+  }
+  
+  .modal--small .modal__content,
+  .modal--medium .modal__content,
+  .modal--large .modal__content,
+  .modal--extra-large .modal__content {
+    max-width: 95vw;
+    min-width: 280px;
+  }
+  
+  .modal__header {
+    margin-bottom: 20px;
+  }
+  
+  .modal__title {
+    font-size: 18px;
+  }
+  
+  .modal__footer {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  
+  .modal__footer .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal {
+    padding: 8px;
+  }
+  
+  .modal__content {
+    padding: 16px;
+    min-width: 260px;
+  }
+}
+
+/* ==========================================================================
+   ACCESSIBILITY ENHANCEMENTS
+   ========================================================================== */
+
+.modal[aria-hidden="true"] {
+  display: none;
+}
+
+.modal__content:focus {
+  outline: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .modal {
+    background: rgba(0, 0, 0, 0.8);
+  }
+  
+  .modal__content {
+    border: 2px solid #000;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .modal,
+  .modal__content {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   LEGACY CLASS MAPPINGS (For gradual migration)
+   ========================================================================== */
+
+/* Map legacy modal classes to BEM equivalents */
+.modal-overlay {
+  /* Legacy support - maps to .modal */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: modal-fade-in 0.2s ease-out;
+}
+
+.modal-content {
+  /* Legacy support - maps to .modal__content */
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 400px;
+  max-width: 90vw;
+  max-height: 90vh;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  animation: modal-content-slide-in 0.3s ease-out;
+}
+
+.modal-header {
+  /* Legacy support - maps to .modal__header */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 16px;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #212529;
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.close-btn {
+  /* Legacy support - maps to .modal__close */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: #6c757d;
+  font-size: 18px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background-color: #f8f9fa;
+  color: #495057;
+}
+
+.modal-actions {
+  /* Legacy support - maps to .modal__footer */
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+  border-top: 1px solid #e9ecef;
+  padding-top: 16px;
+}

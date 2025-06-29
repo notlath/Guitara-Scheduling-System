@@ -1,0 +1,425 @@
+/* ==========================================================================
+   FILTER CONTROLS COMPONENT - SINGLE SOURCE OF TRUTH
+   ========================================================================== */
+
+/* 
+   🎯 BASE FILTER CONTROLS
+   This is the ONLY place where filter control styles are defined.
+   Use BEM modifiers for variants and states.
+*/
+
+.filter {
+  /* Layout */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  
+  /* Spacing */
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  
+  /* Visual */
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  
+  /* Typography */
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.filter--compact {
+  padding: 12px 16px;
+  gap: 12px;
+}
+
+.filter--inline {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   FILTER SECTIONS/GROUPS
+   ========================================================================== */
+
+.filter__section {
+  /* Layout */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 120px;
+}
+
+.filter__section--horizontal {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter__label {
+  /* Typography */
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  margin: 0;
+  
+  /* Layout */
+  white-space: nowrap;
+}
+
+.filter__label--required::after {
+  content: " *";
+  color: #dc3545;
+}
+
+/* ==========================================================================
+   FILTER FORM CONTROLS
+   ========================================================================== */
+
+.filter__select,
+.filter__input {
+  /* Reset */
+  border: 1px solid #ced4da;
+  background: white;
+  font-family: inherit;
+  
+  /* Layout */
+  padding: 8px 12px;
+  border-radius: 6px;
+  min-width: 120px;
+  
+  /* Typography */
+  font-size: 14px;
+  color: #495057;
+  
+  /* Interaction */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.filter__select:focus,
+.filter__input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.filter__select:disabled,
+.filter__input:disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   FILTER DROPDOWN ENHANCEMENTS
+   ========================================================================== */
+
+.filter__dropdown {
+  /* Position */
+  position: relative;
+  display: inline-block;
+}
+
+.filter__dropdown--active .filter__select {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.filter__multiselect {
+  /* Custom styling for multi-select dropdowns */
+  min-height: 36px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* ==========================================================================
+   FILTER BUTTONS & ACTIONS
+   ========================================================================== */
+
+.filter__actions {
+  /* Layout */
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto; /* Push to right */
+}
+
+.filter__clear {
+  /* Reset button styling */
+  background: none;
+  border: 1px solid #6c757d;
+  color: #6c757d;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  
+  /* Interaction */
+  transition: all 0.2s ease;
+}
+
+.filter__clear:hover {
+  background-color: #6c757d;
+  color: white;
+}
+
+.filter__apply {
+  /* Primary button for apply */
+  background-color: #007bff;
+  border: 1px solid #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  
+  /* Interaction */
+  transition: all 0.2s ease;
+}
+
+.filter__apply:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+/* ==========================================================================
+   FILTER PILLS/CHIPS (Active filters display)
+   ========================================================================== */
+
+.filter__pills {
+  /* Layout */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.filter__pill {
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  
+  /* Styling */
+  background-color: #e3f2fd;
+  color: #1976d2;
+  border: 1px solid #bbdefb;
+  border-radius: 16px;
+  padding: 4px 12px;
+  
+  /* Typography */
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.filter__pill-remove {
+  /* Remove button in pill */
+  background: none;
+  border: none;
+  color: #1976d2;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  
+  /* Interaction */
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.filter__pill-remove:hover {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   FILTER INFO/RESULTS
+   ========================================================================== */
+
+.filter__info {
+  /* Layout */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  /* Typography */
+  font-size: 13px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.filter__count {
+  /* Highlighted count */
+  font-weight: 600;
+  color: #495057;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .filter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .filter__section {
+    min-width: unset;
+  }
+  
+  .filter__section--horizontal {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter__select,
+  .filter__input {
+    min-width: unset;
+    width: 100%;
+  }
+  
+  .filter__actions {
+    margin-left: 0;
+    justify-content: space-between;
+  }
+  
+  .filter__pills {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .filter {
+    padding: 12px;
+  }
+  
+  .filter__actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .filter__clear,
+  .filter__apply {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ==========================================================================
+   LEGACY CLASS MAPPINGS (For gradual migration)
+   ========================================================================== */
+
+/* Map legacy filter classes to BEM equivalents */
+.filter-controls {
+  /* Legacy support - maps to .filter */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.filter-section {
+  /* Legacy support - maps to .filter__section */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 120px;
+}
+
+.filter-section label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.filter-select {
+  /* Legacy support - maps to .filter__select */
+  border: 1px solid #ced4da;
+  background: white;
+  font-family: inherit;
+  padding: 8px 12px;
+  border-radius: 6px;
+  min-width: 120px;
+  font-size: 14px;
+  color: #495057;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.filter-info {
+  /* Legacy support - maps to .filter__info */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* AvailabilityManager legacy classes */
+.filters {
+  /* Legacy support - maps to .filter */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+}
+
+.filter-group {
+  /* Legacy support - maps to .filter__section */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 120px;
+}
+
+.filter-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  margin: 0;
+}
+
+.filter-group select,
+.filter-group input {
+  border: 1px solid #ced4da;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  min-width: 120px;
+  font-size: 14px;
+  color: #495057;
+}
+
+/* BookingsPage legacy classes */
+.filter-tabs {
+  /* Legacy support for tab-style filters */
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 8px;
+}
