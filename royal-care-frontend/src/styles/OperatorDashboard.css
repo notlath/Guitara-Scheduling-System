@@ -105,35 +105,43 @@
 }
 
 .status-badge {
+  /* Layout */
+  display: inline-block;
   padding: 6px 14px;
   border-radius: 20px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  display: inline-block;
-  white-space: nowrap;
-  line-height: 1.2;
   border: 2px solid transparent;
   min-height: 26px;
   vertical-align: middle;
-  /* Debug styles - remove after testing */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
   position: relative;
   z-index: 10;
-}
 
-/* ✅ EMERGENCY FIX: Force text visibility in status badges */
-.status-badge {
+  /* Typography */
   font-family: "Plus Jakarta Sans", Arial, sans-serif !important;
   font-size: 14px !important;
   font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px !important;
+  line-height: 1.2;
+  white-space: nowrap;
+
+  /* Visibility - Force readable text */
   color: #000 !important; /* Force black text for visibility */
   text-shadow: none !important;
-  letter-spacing: 0.5px !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
+
+  /* Visual */
   background: #fff !important; /* Force white background for testing */
   border: 2px solid #333 !important; /* Add border for visibility */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  /* Performance */
+  contain: layout style paint;
+
+  /* Accessibility */
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Force all status badge text to be visible */
