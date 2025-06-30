@@ -351,6 +351,7 @@
 
 .cancel-button:hover:not(:disabled) {
   background: var(--background-400);
+  background-color: #7f8c8d;
 }
 
 .restock-button {
