@@ -17,8 +17,9 @@ import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 import { useOperatorDashboardData } from "../hooks/useDashboardQueries";
 import { useInstantUpdates } from "../hooks/useInstantUpdates";
-// Import shared Philippine time and greeting hook
+// ✅ REFACTORED: Use common dashboard utilities for shared logic
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
+import { getUserDisplayName } from "../utils/userUtils";
 // PERFORMANCE: Stable filtering imports to prevent render loops
 import ServerPagination from "./ServerPagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
@@ -147,12 +148,9 @@ const OperatorDashboard = () => {
     checkOutError,
   } = useSelector((state) => state.attendance);
 
-  // Get user name from localStorage (or auth state if available)
+  // ✅ REFACTORED: Use common user utility for consistent user data handling
   const user = JSON.parse(localStorage.getItem("user")) || {}; // fallback if not present
-  const userName =
-    user.first_name && user.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user.username || "Operator";
+  const userName = getUserDisplayName(user, "Operator");
 
   // Use shared Philippine time and greeting hook
   const { systemTime, greeting } = usePhilippineTime();
@@ -274,46 +272,48 @@ const OperatorDashboard = () => {
   });
   // Post-service material modal handlers
   const handleMaterialModalSubmit = async (materialStatus) => {
-    setMaterialModal(prev => ({ ...prev, isSubmitting: true }));
-    
+    setMaterialModal((prev) => ({ ...prev, isSubmitting: true }));
+
     try {
       // Process each material's status
       for (const material of materialModal.materials) {
         const isEmpty = materialStatus[material.id];
-        
+
         if (isEmpty !== undefined) {
-          const response = await fetch(`/api/inventory/items/${material.id}/update_material_status/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-            },
-            body: JSON.stringify({
-              is_empty: isEmpty,
-              quantity: material.quantity_used,
-              notes: `Post-service update for appointment #${materialModal.appointmentId}`
-            }),
-          });
-          
+          const response = await fetch(
+            `/api/inventory/items/${material.id}/update_material_status/`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+              },
+              body: JSON.stringify({
+                is_empty: isEmpty,
+                quantity: material.quantity_used,
+                notes: `Post-service update for appointment #${materialModal.appointmentId}`,
+              }),
+            }
+          );
+
           if (!response.ok) {
             throw new Error(`Failed to update material ${material.name}`);
           }
         }
       }
-      
+
       // Success - close modal and show success message
-      alert('Material status updated successfully!');
+      alert("Material status updated successfully!");
       setMaterialModal({
         isOpen: false,
         appointmentId: null,
         materials: [],
         isSubmitting: false,
       });
-      
     } catch (error) {
-      console.error('Error updating material status:', error);
+      console.error("Error updating material status:", error);
       alert(`Error updating material status: ${error.message}`);
-      setMaterialModal(prev => ({ ...prev, isSubmitting: false }));
+      setMaterialModal((prev) => ({ ...prev, isSubmitting: false }));
     }
   };
 
@@ -983,7 +983,8 @@ const OperatorDashboard = () => {
     if (appointment.therapist_details) {
       return (
         <p>
-          <strong>Therapist:</strong> {appointment.therapist_details?.first_name || "Unknown"}{" "}
+          <strong>Therapist:</strong>{" "}
+          {appointment.therapist_details?.first_name || "Unknown"}{" "}
           {appointment.therapist_details?.last_name || "Therapist"}
           {appointment.therapist_details?.specialization &&
             ` (${appointment.therapist_details.specialization})`}
@@ -1419,7 +1420,9 @@ const OperatorDashboard = () => {
           .map((apt) => ({
             id: apt.therapist,
             name: apt.therapist_details
-              ? `${apt.therapist_details?.first_name || "Unknown"} ${apt.therapist_details?.last_name || "Therapist"}`
+              ? `${apt.therapist_details?.first_name || "Unknown"} ${
+                  apt.therapist_details?.last_name || "Therapist"
+                }`
               : "Unknown Therapist",
             location: apt.location,
             appointment_id: apt.id,
@@ -2515,7 +2518,6 @@ const OperatorDashboard = () => {
                     className={`status-badge ${getStatusBadgeClass(status)}`}
                   >
                     {getStatusDisplayText(status)}
-
                   </span>
                   {urgencyLevel && urgencyLevel !== "normal" && (
                     <span className={`urgency-badge urgency-${urgencyLevel}`}>
