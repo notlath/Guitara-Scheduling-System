@@ -250,11 +250,11 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
                             className="appointment-service"
                             title={appointment.services_details
                               ?.map((s) => s.name)
-                              .join(", ")}
+                              .join(", ") || "No services"}
                           >
                             {appointment.services_details
                               ?.map((s) => s.name)
-                              .join(", ")}
+                              .join(", ") || "No services"}
                           </div>
                           {appointment.therapist_details && (
                             <div

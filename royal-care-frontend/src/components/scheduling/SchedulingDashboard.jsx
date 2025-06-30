@@ -180,7 +180,10 @@ const SchedulingDashboard = () => {
     }
   };
   const renderAppointmentsList = (appointmentsList) => {
-    if (loading && appointmentsList.length === 0) {
+    // Ensure appointmentsList is always an array - handle all possible undefined/null/non-array values
+    const safeAppointmentsList = Array.isArray(appointmentsList) ? appointmentsList : [];
+
+    if (loading && safeAppointmentsList.length === 0) {
       return (
         <div className="appointments-list">
           <SkeletonLoader
@@ -202,13 +205,13 @@ const SchedulingDashboard = () => {
       );
     }
 
-    if (appointmentsList.length === 0) {
+    if (safeAppointmentsList.length === 0) {
       return <p className="no-appointments">No bookings found.</p>;
     }
 
     return (
       <div className="appointments-list">
-        {appointmentsList.map((appointment) => (
+        {safeAppointmentsList.map((appointment) => (
           <div key={appointment.id} className="appointment-card">
             <div className="appointment-header">
               <h3>
@@ -242,7 +245,9 @@ const SchedulingDashboard = () => {
               </p>
               <p>
                 <strong>Services:</strong>{" "}
-                {appointment.services_details.map((s) => s.name).join(", ")}
+                {(appointment.services_details && Array.isArray(appointment.services_details))
+                  ? appointment.services_details.map((s) => s.name).join(", ")
+                  : "No services listed"}
               </p>
               {appointment.therapists_details &&
               appointment.therapists_details.length > 0 ? (
@@ -407,14 +412,14 @@ const SchedulingDashboard = () => {
           {currentView === "today" && !isFormVisible && (
             <div className="todays-appointments">
               <h2>Today's Bookings</h2>
-              {renderAppointmentsList(todayAppointments)}
+              {renderAppointmentsList(todayAppointments || [])}
             </div>
           )}
 
           {currentView === "list" && !isFormVisible && (
             <div className="upcoming-appointments">
               <h2>Upcoming Bookings</h2>
-              {renderAppointmentsList(upcomingAppointments)}
+              {renderAppointmentsList(upcomingAppointments || [])}
             </div>
           )}
 
