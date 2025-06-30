@@ -787,7 +787,7 @@ const AppointmentFormTanStackComplete = ({
         formDataTherapists: formData.therapists,
         isArray: Array.isArray(formData.therapists),
         length: formData.therapists?.length,
-        therapistIds: formData.therapists
+        therapistIds: formData.therapists,
       });
 
       // Prepare appointment data
@@ -797,7 +797,7 @@ const AppointmentFormTanStackComplete = ({
         services: [parseInt(formData.services, 10)],
         // Always use the therapists array since the form only has multi-select
         therapist: null, // Always null for new multi-therapist structure
-        therapists: Array.isArray(formData.therapists) 
+        therapists: Array.isArray(formData.therapists)
           ? formData.therapists.map((id) => parseInt(id, 10))
           : [], // Convert therapist IDs to integers
         driver: formData.driver ? parseInt(formData.driver, 10) : null,
@@ -815,8 +815,8 @@ const AppointmentFormTanStackComplete = ({
         therapistData: {
           therapist: appointmentData.therapist,
           therapists: appointmentData.therapists,
-          therapistsCount: appointmentData.therapists?.length
-        }
+          therapistsCount: appointmentData.therapists?.length,
+        },
       });
 
       console.log("📋 Appointment data being submitted:", appointmentData);
@@ -917,9 +917,9 @@ const AppointmentFormTanStackComplete = ({
         therapist: "", // No longer used since we only use multi-select
         therapists: Array.isArray(appointment.therapists)
           ? appointment.therapists
-          : appointment.therapist 
-            ? [appointment.therapist] // Convert single therapist to array
-            : [],
+          : appointment.therapist
+          ? [appointment.therapist] // Convert single therapist to array
+          : [],
         driver: appointment.driver || "",
         multipleTherapists: false, // Always false since we use multi-select for both single and multiple
       });
