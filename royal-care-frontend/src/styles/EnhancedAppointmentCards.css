@@ -267,3 +267,220 @@
   color: #495057;
   border: 1px solid #d6d8db;
 }
+
+/* ==========================================================================
+   APPOINTMENT CARD COMPONENT - SINGLE SOURCE OF TRUTH
+   ========================================================================== */
+
+/* 
+   🎯 BASE APPOINTMENT CARD 
+   This is the ONLY place where base appointment card styles are defined.
+   All other files should ONLY extend or modify these base styles.
+*/
+
+.appointment-card {
+  /* Base Layout */
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+  
+  /* Visual */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  
+  /* Performance */
+  contain: layout style paint;
+  will-change: transform;
+}
+
+.appointment-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   STATE MODIFIERS - Apply these for different appointment states
+   ========================================================================== */
+
+.appointment-card--rejected {
+  border-left: 4px solid #e74c3c;
+  background-color: #fdf2f2;
+}
+
+.appointment-card--overdue {
+  border-left: 4px solid #dc3545;
+  background-color: #f8d7da;
+}
+
+.appointment-card--approaching-deadline {
+  border-left: 4px solid #ffc107;
+  background-color: #fff3cd;
+}
+
+.appointment-card--payment-pending {
+  border-left: 4px solid #28a745;
+  background-color: #f8fff9;
+}
+
+.appointment-card--pending-acceptance {
+  border-left: 4px solid #ffc107;
+}
+
+/* ==========================================================================
+   URGENCY MODIFIERS - Apply these for urgency levels
+   ========================================================================== */
+
+.appointment-card--critical {
+  border-left: 4px solid #dc3545;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
+}
+
+.appointment-card--high {
+  border-left: 4px solid #fd7e14;
+  box-shadow: 0 4px 12px rgba(253, 126, 20, 0.15);
+}
+
+.appointment-card--medium {
+  border-left: 4px solid #ffc107;
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.15);
+}
+
+.appointment-card--normal {
+  border-left: 4px solid #6c757d;
+}
+
+/* ==========================================================================
+   CONTEXT MODIFIERS - Apply these for different dashboard contexts
+   ========================================================================== */
+
+/* Operator Dashboard specific styles */
+/* .operator-dashboard .appointment-card {
+  Add operator-specific overrides here when needed
+} */
+
+/* Therapist Dashboard specific styles */
+.therapist-dashboard .appointment-card {
+  border-left: 4px solid var(--primary, #3498db);
+}
+
+/* Scheduling Dashboard specific styles */
+/* .scheduling-dashboard .appointment-card {
+  Add scheduling-specific overrides here when needed
+} */
+
+/* ==========================================================================
+   PERFORMANCE MODIFIERS - Apply these for optimized rendering
+   ========================================================================== */
+
+.appointment-card--virtualized {
+  box-sizing: border-box;
+  margin-bottom: 0;
+  border-bottom: 1px solid #eee;
+  /* Optimized for virtual scrolling */
+  contain: content;
+  will-change: scroll-position;
+}
+
+/* ==========================================================================
+   APPOINTMENT CARD INNER ELEMENTS
+   ========================================================================== */
+
+.appointment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.appointment-header h3,
+.appointment-header h4 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.appointment-details {
+  margin-bottom: 15px;
+}
+
+.appointment-details p {
+  margin: 8px 0;
+  color: #495057;
+  line-height: 1.5;
+}
+
+.appointment-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .appointment-card {
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  
+  .appointment-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .appointment-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .appointment-card {
+    padding: 12px;
+  }
+  
+  .appointment-header h3,
+  .appointment-header h4 {
+    font-size: 1.1rem;
+  }
+}
+
+/* ==========================================================================
+   ANIMATION UTILITIES
+   ========================================================================== */
+
+@keyframes appointment-pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.appointment-card--timeout {
+  animation: appointment-pulse 2s infinite;
+}
+
+/* ==========================================================================
+   PRINT STYLES
+   ========================================================================== */
+
+@media print {
+  .appointment-card {
+    box-shadow: none;
+    border: 1px solid #ccc;
+    break-inside: avoid;
+    margin-bottom: 12px;
+  }
+  
+  .appointment-card:hover {
+    transform: none;
+  }
+}

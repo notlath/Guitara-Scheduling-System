@@ -264,7 +264,9 @@ const SalesReportsPage = () => {
     const formattedItems = currentItems.map((apt) => {
       const commission = parseFloat(apt.payment_amount || 0) * COMMISSION_RATE;
       const therapistName = apt.therapist_details
-        ? `${apt.therapist_details.first_name || ""} ${apt.therapist_details.last_name || ""}`
+        ? `${apt.therapist_details.first_name || ""} ${
+            apt.therapist_details.last_name || ""
+          }`
         : apt.therapists_details
             ?.map((t) => `${t.first_name || ""} ${t.last_name || ""}`)
             .join(", ") || "Unknown";

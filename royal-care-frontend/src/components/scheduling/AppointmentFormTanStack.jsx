@@ -112,8 +112,23 @@ const AppointmentFormTanStack = ({
       );
       if (!service?.duration) return "";
 
-      const startTime = new Date(`2000-01-01T${formData.start_time}:00`);
+      // Validate start time format
+      const [h, m] = formData.start_time.split(":").map(Number);
+      if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+        console.error("Invalid start time format:", formData.start_time);
+        return "";
+      }
+
+      // Use proper date calculation that handles cross-day scenarios
+      const startTime = new Date();
+      startTime.setHours(h, m, 0, 0);
       const endTime = new Date(startTime.getTime() + service.duration * 60000);
+
+      // Validate the result before using toTimeString
+      if (isNaN(endTime.getTime())) {
+        console.error("Invalid date calculation result");
+        return "";
+      }
 
       return endTime.toTimeString().slice(0, 5);
     } catch (error) {
@@ -509,7 +524,8 @@ const AppointmentFormTanStack = ({
             )}
             {hasAvailabilityError && (
               <div className="availability-error">
-                ⚠️ Error checking availability - Please check your login status or refresh the page
+                ⚠️ Error checking availability - Please check your login status
+                or refresh the page
               </div>
             )}
             {!isLoadingAvailability && !hasAvailabilityError && (

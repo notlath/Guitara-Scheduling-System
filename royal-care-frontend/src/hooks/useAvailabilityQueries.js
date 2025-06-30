@@ -43,20 +43,40 @@ export const useAvailableTherapists = (
   // Calculate endTime if not provided - ensure HH:MM format only
   let computedEndTime = endTime;
   if (!computedEndTime && startTime && serviceId) {
-    // Ensure startTime is in HH:MM format (remove seconds if present)
-    const cleanStartTime = startTime.slice(0, 5);
-    const [h, m] = cleanStartTime.split(":").map(Number);
-    const start = new Date(0, 0, 0, h, m);
-    start.setMinutes(start.getMinutes() + 60); // +60 min
-    // Format as HH:MM only (not HH:MM:SS)
-    const hours = start.getHours().toString().padStart(2, '0');
-    const minutes = start.getMinutes().toString().padStart(2, '0');
-    computedEndTime = `${hours}:${minutes}`;
+    try {
+      // Ensure startTime is in HH:MM format (remove seconds if present)
+      const cleanStartTime = startTime.slice(0, 5);
+      const [h, m] = cleanStartTime.split(":").map(Number);
+
+      // Validate input time
+      if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+        console.error("Invalid start time format:", startTime);
+        computedEndTime = null;
+      } else {
+        // Use current date to properly handle cross-day calculations
+        const start = new Date();
+        start.setHours(h, m, 0, 0);
+        start.setMinutes(start.getMinutes() + 60); // +60 min as default
+
+        // Format as HH:MM only (handles cross-day properly)
+        const hours = start.getHours().toString().padStart(2, "0");
+        const minutes = start.getMinutes().toString().padStart(2, "0");
+        computedEndTime = `${hours}:${minutes}`;
+      }
+    } catch (error) {
+      console.error("Error calculating end time:", error);
+      computedEndTime = null;
+    }
   }
-  
-  // Ensure all times are in HH:MM format
-  const cleanStartTime = startTime ? startTime.slice(0, 5) : startTime;
-  const cleanEndTime = computedEndTime ? computedEndTime.slice(0, 5) : computedEndTime;
+
+  // Ensure all times are in HH:MM format and handle null/invalid values
+  const cleanStartTime = startTime ? startTime.slice(0, 5) : null;
+  const cleanEndTime =
+    computedEndTime &&
+    typeof computedEndTime === "string" &&
+    computedEndTime.length >= 5
+      ? computedEndTime.slice(0, 5)
+      : null;
 
   return useQuery({
     queryKey: queryKeys.availability.therapists(date, startTime, serviceId),
@@ -79,7 +99,9 @@ export const useAvailableTherapists = (
       };
 
       try {
-        const result = await dispatch(fetchAvailableTherapists(params)).unwrap();
+        const result = await dispatch(
+          fetchAvailableTherapists(params)
+        ).unwrap();
         console.log("✅ AVAILABILITY SUCCESS - therapists:", result.length);
         return result;
       } catch (error) {
@@ -89,16 +111,18 @@ export const useAvailableTherapists = (
           error?.error === "Authentication required" ||
           error?.detail?.includes("Authentication")
         ) {
-          throw new Error("Please log in again - your session may have expired");
+          throw new Error(
+            "Please log in again - your session may have expired"
+          );
         }
         throw error;
       }
     },
     enabled: !!(
       date &&
-      startTime &&
+      cleanStartTime &&
       serviceId &&
-      computedEndTime &&
+      cleanEndTime &&
       isValidToken()
     ),
     staleTime: 2 * 60 * 1000, // 2 minutes (your current therapist TTL)
@@ -117,20 +141,40 @@ export const useAvailableDrivers = (date, startTime, endTime = null) => {
   // Calculate endTime if not provided - ensure HH:MM format only
   let computedEndTime = endTime;
   if (!computedEndTime && startTime) {
-    // Ensure startTime is in HH:MM format (remove seconds if present)
-    const cleanStartTime = startTime.slice(0, 5);
-    const [h, m] = cleanStartTime.split(":").map(Number);
-    const start = new Date(0, 0, 0, h, m);
-    start.setMinutes(start.getMinutes() + 60);
-    // Format as HH:MM only (not HH:MM:SS)
-    const hours = start.getHours().toString().padStart(2, '0');
-    const minutes = start.getMinutes().toString().padStart(2, '0');
-    computedEndTime = `${hours}:${minutes}`;
+    try {
+      // Ensure startTime is in HH:MM format (remove seconds if present)
+      const cleanStartTime = startTime.slice(0, 5);
+      const [h, m] = cleanStartTime.split(":").map(Number);
+
+      // Validate input time
+      if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+        console.error("Invalid start time format:", startTime);
+        computedEndTime = null;
+      } else {
+        // Use current date to properly handle cross-day calculations
+        const start = new Date();
+        start.setHours(h, m, 0, 0);
+        start.setMinutes(start.getMinutes() + 60); // +60 min
+
+        // Format as HH:MM only (handles cross-day properly)
+        const hours = start.getHours().toString().padStart(2, "0");
+        const minutes = start.getMinutes().toString().padStart(2, "0");
+        computedEndTime = `${hours}:${minutes}`;
+      }
+    } catch (error) {
+      console.error("Error calculating end time:", error);
+      computedEndTime = null;
+    }
   }
-  
-  // Ensure all times are in HH:MM format
-  const cleanStartTime = startTime ? startTime.slice(0, 5) : startTime;
-  const cleanEndTime = computedEndTime ? computedEndTime.slice(0, 5) : computedEndTime;
+
+  // Ensure all times are in HH:MM format and handle null/invalid values
+  const cleanStartTime = startTime ? startTime.slice(0, 5) : null;
+  const cleanEndTime =
+    computedEndTime &&
+    typeof computedEndTime === "string" &&
+    computedEndTime.length >= 5
+      ? computedEndTime.slice(0, 5)
+      : null;
 
   return useQuery({
     queryKey: queryKeys.availability.drivers(date, startTime),
@@ -161,12 +205,14 @@ export const useAvailableDrivers = (date, startTime, endTime = null) => {
           error?.error === "Authentication required" ||
           error?.detail?.includes("Authentication")
         ) {
-          throw new Error("Please log in again - your session may have expired");
+          throw new Error(
+            "Please log in again - your session may have expired"
+          );
         }
         throw error;
       }
     },
-    enabled: !!(date && startTime && computedEndTime && isValidToken()),
+    enabled: !!(date && cleanStartTime && cleanEndTime && isValidToken()),
     staleTime: 2 * 60 * 1000, // 2 minutes
     retry: 1,
     refetchOnWindowFocus: false,
