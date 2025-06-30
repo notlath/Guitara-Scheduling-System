@@ -2,17 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
-import { useNavigate, useSearchParams } from "react-router-dom";
 // Cache invalidation utility
 import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
-// Import shared Philippine time and greeting hook
-import { usePhilippineTime } from "../hooks/usePhilippineTime";
-import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
+// ✅ REFACTORED: Use common dashboard hook instead of individual imports
+import useDashboardCommon from "../hooks/useDashboardCommon";
+import { getUser, getUserDisplayName } from "../utils/userUtils";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
 import { queryKeys } from "../lib/queryClient";
 import { syncMutationSuccess } from "../services/realTimeSyncService";
+import { useAutoWebSocketCacheSync } from "../services/realTimeSyncService";
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -146,21 +146,6 @@ const invalidateAppointmentQueries = async (queryClient, delay = 0) => {
 
 // Helper to get auth token
 const getToken = () => localStorage.getItem("knoxToken");
-
-// Helper to get user from localStorage
-const getUser = () => {
-  const storedUser = localStorage.getItem("user");
-  if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
-    try {
-      return JSON.parse(storedUser);
-    } catch (error) {
-      console.error("Failed to parse user data:", error);
-      localStorage.removeItem("user");
-      return null;
-    }
-  }
-  return null;
-};
 
 // TanStack Query functions for fetching appointments data
 // ✅ CRITICAL FIX: Use main appointments endpoint with authentication
@@ -412,7 +397,6 @@ const therapistAPI = {
 };
 
 const TherapistDashboard = () => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // ✅ CRITICAL FIX: Add standardized WebSocket cache sync like DriverDashboard
@@ -465,6 +449,9 @@ const TherapistDashboard = () => {
     hasData,
     user?.id,
   ]);
+
+  // Get user display name consistently
+  const userName = getUserDisplayName(user, "Therapist");
 
   // TanStack Query mutations for therapist actions
   const acceptAppointmentMutation = useMutation({
@@ -1360,26 +1347,17 @@ const TherapistDashboard = () => {
     },
   });
 
-  // Get user name from user object or fallback
-  const userName =
-    user?.first_name && user?.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user?.username || "Therapist";
+  // ✅ REFACTORED: Use common dashboard hook for shared functionality
+  const {
+    systemTime,
+    greeting,
+    currentView,
+    setView,
+    handleLogout,
+    buttonLoading,
+    setActionLoading,
+  } = useDashboardCommon("today");
 
-  // Use shared Philippine time and greeting hook
-  const { systemTime, greeting } = usePhilippineTime();
-
-  // URL search params for view persistence
-  const [searchParams, setSearchParams] = useSearchParams();
-  // Get view from URL params, default to 'today'
-  const currentView = searchParams.get("view") || "today";
-
-  // Helper function to update view in URL
-  const setView = (newView) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set("view", newView);
-    setSearchParams(newSearchParams);
-  };
   const [rejectionModal, setRejectionModal] = useState({
     isOpen: false,
     appointmentId: null,
@@ -1393,15 +1371,41 @@ const TherapistDashboard = () => {
     isSubmitting: false,
   });
 
-  // Loading states for individual button actions
-  const [buttonLoading, setButtonLoading] = useState({});
+  // Modal helper functions
+  const openRejectionModal = ({ appointmentId }) => {
+    setRejectionModal({
+      isOpen: true,
+      appointmentId,
+    });
+  };
 
-  // Helper function to set loading state for specific action
-  const setActionLoading = (actionKey, isLoading) => {
-    setButtonLoading((prev) => ({
-      ...prev,
-      [actionKey]: isLoading,
-    }));
+  const closeRejectionModal = () => {
+    setRejectionModal({
+      isOpen: false,
+      appointmentId: null,
+    });
+  };
+
+  const openMaterialModal = ({ appointmentId, materials = [] }) => {
+    setMaterialModal({
+      isOpen: true,
+      appointmentId,
+      materials,
+      isSubmitting: false,
+    });
+  };
+
+  const closeMaterialModal = () => {
+    setMaterialModal({
+      isOpen: false,
+      appointmentId: null,
+      materials: [],
+      isSubmitting: false,
+    });
+  };
+
+  const updateMaterialModal = (updates) => {
+    setMaterialModal((prev) => ({ ...prev, ...updates }));
   };
 
   // Debug logging for troubleshooting the "No appointments found" issue
@@ -1425,14 +1429,7 @@ const TherapistDashboard = () => {
     });
   }
 
-  // TANSTACK QUERY: Automatic background refreshes handled by TanStack Query
-  // No manual refresh logic needed - TanStack Query handles it automatically
-
-  const handleLogout = () => {
-    localStorage.removeItem("knoxToken");
-    localStorage.removeItem("user");
-    navigate("/");
-  };
+  // ✅ REMOVED: Duplicate handleLogout - now using common dashboard hook
 
   // Handle appointment status changes with TanStack Query mutations
   const handleAcceptAppointment = async (appointmentId) => {
@@ -1449,8 +1446,7 @@ const TherapistDashboard = () => {
   };
 
   const handleRejectAppointment = (appointmentId) => {
-    setRejectionModal({
-      isOpen: true,
+    openRejectionModal({
       appointmentId: appointmentId,
     });
   };
@@ -1468,11 +1464,11 @@ const TherapistDashboard = () => {
         appointmentId,
         rejectionReason: cleanReason,
       });
-      setRejectionModal({ isOpen: false, appointmentId: null });
+      closeRejectionModal();
     } catch (error) {
       console.error("Reject appointment failed:", error);
       alert("Failed to reject appointment. Please try again.");
-      setRejectionModal({ isOpen: false, appointmentId: null });
+      closeRejectionModal();
     }
   };
 
@@ -1532,26 +1528,26 @@ const TherapistDashboard = () => {
       setActionLoading(actionKey, true);
 
       // Get the appointment details to check for materials
-      const appointment = myAppointments?.find(apt => apt.id === appointmentId) ||
-                         myTodayAppointments?.find(apt => apt.id === appointmentId) ||
-                         myUpcomingAppointments?.find(apt => apt.id === appointmentId);
+      const appointment =
+        myAppointments?.find((apt) => apt.id === appointmentId) ||
+        myTodayAppointments?.find((apt) => apt.id === appointmentId) ||
+        myUpcomingAppointments?.find((apt) => apt.id === appointmentId);
 
       const appointmentMaterials = appointment?.appointment_materials || [];
-      
+
       if (appointmentMaterials.length > 0) {
         // Show material modal for post-service material checking
-        setMaterialModal({
-          isOpen: true,
+        openMaterialModal({
           appointmentId: appointmentId,
-          materials: appointmentMaterials.map(mat => ({
+          materials: appointmentMaterials.map((mat) => ({
             id: mat.inventory_item?.id || mat.material_id,
-            name: mat.inventory_item?.name || mat.material_name || 'Material',
+            name: mat.inventory_item?.name || mat.material_name || "Material",
             quantity_used: mat.quantity_used,
-            unit: mat.inventory_item?.unit_of_measure || 'units'
+            unit: mat.inventory_item?.unit_of_measure || "units",
           })),
           isSubmitting: false,
         });
-        
+
         // Don't proceed with payment request yet - wait for material modal completion
         return;
       } else {
@@ -1606,46 +1602,44 @@ const TherapistDashboard = () => {
 
   // Legacy handlers (keeping for backward compatibility)
   const handleRejectionCancel = () => {
-    setRejectionModal({ isOpen: false, appointmentId: null });
+    closeRejectionModal();
   };
 
   // Post-service material modal handlers
   const handleMaterialModalSubmit = async (materialStatus) => {
-    setMaterialModal(prev => ({ ...prev, isSubmitting: true }));
-    
+    updateMaterialModal({ isSubmitting: true });
+
     try {
       // Process each material's status
       for (const material of materialModal.materials) {
         const isEmpty = materialStatus[material.id];
-        
+
         if (isEmpty !== undefined) {
-          const response = await fetch(`/api/inventory/items/${material.id}/update_material_status/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-            },
-            body: JSON.stringify({
-              is_empty: isEmpty,
-              quantity: material.quantity_used,
-              notes: `Post-service update for appointment #${materialModal.appointmentId}`
-            }),
-          });
-          
+          const response = await fetch(
+            `/api/inventory/items/${material.id}/update_material_status/`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+              },
+              body: JSON.stringify({
+                is_empty: isEmpty,
+                quantity: material.quantity_used,
+                notes: `Post-service update for appointment #${materialModal.appointmentId}`,
+              }),
+            }
+          );
+
           if (!response.ok) {
             throw new Error(`Failed to update material ${material.name}`);
           }
         }
       }
-      
+
       // Success - close modal and continue with payment request
-      setMaterialModal({
-        isOpen: false,
-        appointmentId: null,
-        materials: [],
-        isSubmitting: false,
-      });
-      
+      closeMaterialModal();
+
       // Now proceed with the payment request
       const appointmentId = materialModal.appointmentId;
       await requestPaymentMutation.mutateAsync(appointmentId);
@@ -1660,22 +1654,16 @@ const TherapistDashboard = () => {
         }),
       ]);
 
-      alert('Material status updated and payment requested successfully!');
-      
+      alert("Material status updated and payment requested successfully!");
     } catch (error) {
-      console.error('Error updating material status:', error);
+      console.error("Error updating material status:", error);
       alert(`Error updating material status: ${error.message}`);
-      setMaterialModal(prev => ({ ...prev, isSubmitting: false }));
+      updateMaterialModal({ isSubmitting: false });
     }
   };
 
   const handleMaterialModalClose = () => {
-    setMaterialModal({
-      isOpen: false,
-      appointmentId: null,
-      materials: [],
-      isSubmitting: false,
-    });
+    closeMaterialModal();
   };
   const getStatusBadgeClass = (status) => {
     switch (status) {

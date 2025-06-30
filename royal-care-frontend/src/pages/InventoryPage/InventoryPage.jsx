@@ -9,7 +9,11 @@ import { getToken } from "../../utils/tokenManager";
 import styles from "./InventoryPage.module.css";
 import { MenuItem, Select } from "./MUISelect";
 import { useInventoryItems } from "../../hooks/useInventoryItems";
-import { useUpdateInventoryItem, useRestockInventoryItem, useAddInventoryItem } from "../../hooks/useInventoryMutations";
+import {
+  useUpdateInventoryItem,
+  useRestockInventoryItem,
+  useAddInventoryItem,
+} from "../../hooks/useInventoryMutations";
 import { useQueryClient } from "@tanstack/react-query";
 
 const API_BASE_URL = import.meta.env.PROD
@@ -36,11 +40,11 @@ axiosAuth.interceptors.request.use((config) => {
 
 const InventoryPage = () => {
   // TanStack Query hooks for data fetching and mutations
-  const { 
-    data: inventoryData, 
-    isLoading: inventoryLoading, 
+  const {
+    data: inventoryData,
+    isLoading: inventoryLoading,
     isRefetching: inventoryRefetching,
-    error: inventoryError
+    error: inventoryError,
   } = useInventoryItems();
   const updateInventoryMutation = useUpdateInventoryItem();
   const restockInventoryMutation = useRestockInventoryItem();
@@ -66,7 +70,7 @@ const InventoryPage = () => {
   const [restockItem, setRestockItem] = useState(null);
   const [restockAmount, setRestockAmount] = useState(0);
   const [restockNotes, setRestockNotes] = useState("");
-  const activeTab = "inventory"; // Use a constant since activeTab never changes
+  // Removed activeTab constant; use showUsageLog directly in conditionals
 
   // Get inventory items from TanStack Query data
   const inventoryItems = Array.isArray(inventoryData) ? inventoryData : [];
@@ -151,7 +155,7 @@ const InventoryPage = () => {
       setShowEditModal(false);
       setEditItem(null);
     } catch (error) {
-      console.error('Inventory update failed:', error);
+      console.error("Inventory update failed:", error);
       showError("Failed to update item.");
     }
   };
@@ -183,7 +187,7 @@ const InventoryPage = () => {
   const categories = [
     "all",
     "Oils & Lotions",
-    "Linens", 
+    "Linens",
     "Hygiene",
     "Equipment",
     ...Array.from(new Set(inventoryItems.map((item) => item.category))).filter(
@@ -416,7 +420,9 @@ const InventoryPage = () => {
                   onClick={() => {
                     // console.log('Manual refresh clicked - invalidating cache and refetching...');
                     // Invalidate cache to trigger refetch while keeping data visible
-                    queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
+                    queryClient.invalidateQueries({
+                      queryKey: ["inventory-items"],
+                    });
                   }}
                   style={{ marginRight: 8 }}
                 >
@@ -440,7 +446,7 @@ const InventoryPage = () => {
         </LayoutRow>
 
         {/* Inventory Statistics */}
-        {!showUsageLog && activeTab === "inventory" && (
+        {!showUsageLog && (
           <div className={styles["inventory-stats"]}>
             <div className={styles["stat-card"]}>
               <div className={styles["stat-number"]}>{stats.totalItems}</div>
@@ -467,7 +473,7 @@ const InventoryPage = () => {
         )}
 
         {/* Controls */}
-        {!showUsageLog && activeTab === "inventory" && (
+        {!showUsageLog && (
           <div className={styles["inventory-controls"]}>
             <input
               type="text"
@@ -514,31 +520,35 @@ const InventoryPage = () => {
         )}
 
         {/* Inventory Table */}
-        {!showUsageLog && activeTab === "inventory" && (
+        {!showUsageLog && (
           <div className={styles["inventory-table-container"]}>
             {/* Show loading state only when there's no data yet (initial load) */}
             {inventoryLoading && !inventoryData ? (
-              <div style={{ textAlign: 'center', padding: '20px' }}>
+              <div style={{ textAlign: "center", padding: "20px" }}>
                 Loading inventory items...
               </div>
             ) : inventoryError ? (
-              <div style={{ textAlign: 'center', padding: '20px', color: 'red' }}>
+              <div
+                style={{ textAlign: "center", padding: "20px", color: "red" }}
+              >
                 Error loading inventory: {inventoryError.message}
               </div>
             ) : (
               <div>
                 {/* Show subtle refetching indicator when updating in background */}
                 {inventoryRefetching && inventoryData && (
-                  <div style={{ 
-                    textAlign: 'center', 
-                    padding: '5px', 
-                    backgroundColor: '#f0f8ff', 
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '4px',
-                    marginBottom: '10px',
-                    fontSize: '14px',
-                    color: '#666'
-                  }}>
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "5px",
+                      backgroundColor: "#f0f8ff",
+                      border: "1px solid #e0e0e0",
+                      borderRadius: "4px",
+                      marginBottom: "10px",
+                      fontSize: "14px",
+                      color: "#666",
+                    }}
+                  >
                     🔄 Updating inventory data...
                   </div>
                 )}
@@ -818,7 +828,7 @@ const InventoryPage = () => {
                   type="text"
                   value={restockItem.name}
                   disabled
-                  style={{ background: '#f5f5f5', color: '#666' }}
+                  style={{ background: "#f5f5f5", color: "#666" }}
                 />
               </div>
               <div className={styles["form-group"]}>
@@ -827,7 +837,7 @@ const InventoryPage = () => {
                   type="text"
                   value={`${restockItem.current_stock} ${restockItem.unit}`}
                   disabled
-                  style={{ background: '#f5f5f5', color: '#666' }}
+                  style={{ background: "#f5f5f5", color: "#666" }}
                 />
               </div>
               <form

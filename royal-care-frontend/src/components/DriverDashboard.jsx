@@ -7,18 +7,15 @@ const isTransportCompleted = (appointment) =>
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
-import { shallowEqual, useDispatch, useSelector } from "react-redux";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { logout } from "../features/auth/authSlice";
+import { shallowEqual, useSelector } from "react-redux";
 // TANSTACK QUERY: Replace optimized data manager with TanStack Query
 import { useDriverDashboardData } from "../hooks/useDashboardQueries";
 import { useDashboardMutations } from "../hooks/useEnhancedDashboardData";
-// Enhanced Redux hooks for automatic TanStack Query cache invalidation
-
-// Import shared Philippine time and greeting hook
-import { usePhilippineTime } from "../hooks/usePhilippineTime";
+// ✅ REFACTORED: Use common dashboard hook instead of individual imports
+import useDashboardCommon from "../hooks/useDashboardCommon";
+import { useRejectionModal } from "../hooks/useModalState";
+import { getUserDisplayName } from "../utils/userUtils";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
-import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
@@ -103,55 +100,38 @@ const formatLocationKey = (location) => {
 };
 
 const DriverDashboard = () => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Initialize real-time cache sync via WebSocket
-  useAutoWebSocketCacheSync();
+  // ✅ REFACTORED: Use common dashboard hook for shared functionality
+  const {
+    systemTime,
+    greeting,
+    currentView,
+    setView,
+    handleLogout,
+    buttonLoading,
+    setActionLoading,
+  } = useDashboardCommon("today");
+
+  // ✅ REFACTORED: Use common modal hook
+  const {
+    modalState: rejectionModal,
+    openModal: openRejectionModal,
+    closeModal: closeRejectionModal,
+  } = useRejectionModal();
 
   // Get user from Redux state
   const user = useSelector((state) => state.auth.user, shallowEqual);
 
-  const userName =
-    user?.first_name && user?.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user?.username || "Driver";
-
-  // Use shared Philippine time and greeting hook
-  const { systemTime, greeting } = usePhilippineTime();
+  // Get user display name consistently
+  const userName = getUserDisplayName(user, "Driver");
 
   // Set up sync event handlers to update Redux state
   useSyncEventHandlers();
 
-  // URL search params for view persistence
-  const [searchParams, setSearchParams] = useSearchParams();
-  // Get view from URL params, default to 'today'
-  const currentView = searchParams.get("view") || "today";
-
-  // Helper function to update view in URL
-  const setView = (newView) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set("view", newView);
-    setSearchParams(newSearchParams);
-  };
-  const [rejectionModal, setRejectionModal] = useState({
-    isOpen: false,
-    appointmentId: null,
-  });
-  // 🔥 REMOVED: Redundant isInitialLoad - now provided by centralized hook
-  // Loading states for individual button actions
-  const [buttonLoading, setButtonLoading] = useState({});
   // Pickup assignment timer state
   const [_pickupTimers, setPickupTimers] = useState({});
 
-  // Helper function to set loading state for specific action
-  const setActionLoading = (actionKey, isLoading) => {
-    setButtonLoading((prev) => ({
-      ...prev,
-      [actionKey]: isLoading,
-    }));
-  };
   const handleConfirmPickup = async (appointmentId) => {
     const actionKey = `confirm-pickup-${appointmentId}`;
     setActionLoading(actionKey, true);
@@ -307,12 +287,8 @@ const DriverDashboard = () => {
     };
   }, [user, refetch]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("knoxToken");
-    localStorage.removeItem("user");
-    dispatch(logout());
-    navigate("/");
-  };
+  // ✅ REMOVED: Duplicate handleLogout - now using common dashboard hook
+
   const handleAcceptAppointment = async (appointmentId) => {
     const actionKey = `accept_${appointmentId}`;
     try {
@@ -819,8 +795,7 @@ const DriverDashboard = () => {
   };
 
   const handleRejectAppointment = (appointmentId) => {
-    setRejectionModal({
-      isOpen: true,
+    openRejectionModal({
       appointmentId: appointmentId,
     });
   };
@@ -851,7 +826,7 @@ const DriverDashboard = () => {
         });
       }
 
-      setRejectionModal({ isOpen: false, appointmentId: null });
+      closeRejectionModal();
     } catch (error) {
       // Better error message handling with authentication awareness
       let errorMessage = "Failed to reject. Please try again.";
@@ -877,14 +852,14 @@ const DriverDashboard = () => {
       }
 
       alert(`Failed to reject: ${errorMessage}`);
-      setRejectionModal({ isOpen: false, appointmentId: null });
+      closeRejectionModal();
     } finally {
       setActionLoading(actionKey, false);
     }
   };
 
   const handleRejectionCancel = () => {
-    setRejectionModal({ isOpen: false, appointmentId: null });
+    closeRejectionModal();
   };
   const getStatusBadgeClass = (status) => {
     switch (status) {

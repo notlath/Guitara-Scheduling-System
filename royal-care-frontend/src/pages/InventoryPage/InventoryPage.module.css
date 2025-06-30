@@ -354,6 +354,22 @@
   background-color: #7f8c8d;
 }
 
+.restock-button {
+  background-color: #f1c40f;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.restock-button:hover:not(:disabled) {
+  background-color: #d4ac0d;
+}
+
 .inventory-stats {
   display: flex;
   gap: 20px;
@@ -483,6 +499,10 @@
 }
 
 @keyframes highlightFade {
-  0% { background-color: #ffe066; }
-  100% { background-color: transparent; }
+  0% {
+    background-color: #ffe066;
+  }
+  100% {
+    background-color: transparent;
+  }
 }
