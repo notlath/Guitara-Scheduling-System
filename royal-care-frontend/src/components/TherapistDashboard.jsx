@@ -125,7 +125,7 @@ const useTherapistDashboardData = (userId) => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["appointments"],
+    queryKey: ["appointments", "therapist", userId],
     queryFn: fetchAppointments,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: true,
@@ -1362,7 +1362,8 @@ const TherapistDashboard = () => {
           {/* Driver Information */}
           {appointment.driver_details && (
             <p>
-              <strong>Driver:</strong> {appointment.driver_details?.first_name || "Unknown"}{" "}
+              <strong>Driver:</strong>{" "}
+              {appointment.driver_details?.first_name || "Unknown"}{" "}
               {appointment.driver_details?.last_name || "Driver"}
             </p>
           )}
