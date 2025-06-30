@@ -480,8 +480,17 @@ const AppointmentFormTanStackComplete = ({
     }
 
     if (materialsWithStock.length > 0) {
-      console.log("✅ DEBUG materialsWithStock from API:", materialsWithStock);
-      const processedMats = materialsWithStock.map((mat) => ({
+      console.log("DEBUG materialsWithStock from API:", materialsWithStock);
+      
+      // Filter out materials without valid inventory_item_id to prevent deduction failures
+      const validMaterials = materialsWithStock.filter(mat => mat.inventory_item !== null && mat.inventory_item !== undefined);
+      console.log("DEBUG filtered valid materials:", validMaterials);
+      
+      if (validMaterials.length !== materialsWithStock.length) {
+        console.warn(`⚠️ Filtered out ${materialsWithStock.length - validMaterials.length} materials without inventory items`);
+      }
+      
+      const processedMats = validMaterials.map((mat) => ({
         ...mat,
         name:
           mat.name ||
@@ -512,7 +521,12 @@ const AppointmentFormTanStackComplete = ({
 
   // Handle material quantity change
   const handleMaterialQuantityChange = (materialId, value) => {
-    setMaterialQuantities((prev) => ({ ...prev, [materialId]: value }));
+    console.log(`🔍 DEBUG - Material quantity changed: ID ${materialId} = ${value}`);
+    setMaterialQuantities((prev) => {
+      const updated = { ...prev, [materialId]: value };
+      console.log("🔍 DEBUG - Updated materialQuantities:", updated);
+      return updated;
+    });
   };
 
   // Client registration modal handlers
@@ -763,6 +777,21 @@ const AppointmentFormTanStackComplete = ({
 
       console.log("📋 Final client ID for submission:", numericClientId);
 
+      // Debug: Log materials state before preparing appointment data
+      console.log("🔍 DEBUG - Materials state before submission:");
+      console.log("  materialQuantities:", materialQuantities);
+      console.log("  materials array:", materials);
+      console.log("  materials length:", materials.length);
+      
+      // Check if we have any materials with quantities
+      const materialsWithQuantities = Object.entries(materialQuantities)
+        .filter((entry) => entry[1] && !isNaN(Number(entry[1])));
+      console.log("  materials with quantities:", materialsWithQuantities);
+      
+      if (materialsWithQuantities.length === 0) {
+        console.log("⚠️ WARNING: No materials with quantities found!");
+      }
+
       // Prepare appointment data
       const appointmentData = {
         ...formData,
@@ -777,25 +806,46 @@ const AppointmentFormTanStackComplete = ({
         driver: formData.driver ? parseInt(formData.driver, 10) : null,
         materials: Object.entries(materialQuantities)
           .filter((entry) => entry[1] && !isNaN(Number(entry[1])))
-          .map(([materialId, qty]) => ({
-            material: parseInt(materialId, 10),
-            quantity: Number(qty),
-          })),
+          .map(([materialId, qty]) => {
+            // Find the material in our materials array to validate it has inventory_item
+            const material = materials.find(m => m.id === parseInt(materialId, 10));
+            if (!material || !material.inventory_item) {
+              console.warn(`⚠️ Skipping material ${materialId} - no valid inventory item`);
+              return null;
+            }
+            return {
+              material: parseInt(materialId, 10),
+              quantity: Number(qty),
+            };
+          })
+          .filter(Boolean), // Remove null values
         date: formatDateForInput(formData.date),
       };
 
+      // Debug: Log the materials preparation process
+      console.log("🔍 DEBUG - Materials preparation process:");
+      console.log("  materialQuantities entries:", Object.entries(materialQuantities));
+      console.log("  filtered entries:", Object.entries(materialQuantities).filter((entry) => entry[1] && !isNaN(Number(entry[1]))));
+      console.log("  final materials array:", appointmentData.materials);
+
       console.log("📋 Appointment data being submitted:", appointmentData);
+      console.log("🔍 DEBUG - Final materials check:");
+      console.log("  appointmentData.materials:", appointmentData.materials);
+      console.log("  materials count:", appointmentData.materials?.length || 0);
 
       // 🔥 BEFORE: Complex manual Redux dispatch + cache management
       // 🎉 AFTER: One simple mutation call with automatic cache updates!
 
+      console.log("🚀 About to call createMutation.mutateAsync...");
+      
       if (appointment) {
         await updateMutation.mutateAsync({
           id: appointment.id,
           data: appointmentData,
         });
       } else {
-        await createMutation.mutateAsync(appointmentData);
+        const result = await createMutation.mutateAsync(appointmentData);
+        console.log("✅ Create mutation result:", result);
       }
 
       // Success - form is automatically reset by the mutation
@@ -1148,30 +1198,53 @@ const AppointmentFormTanStackComplete = ({
                     : "Select a service to see required materials."}
                 </span>
               ) : (
-                materials.map((mat) => (
-                  <div key={mat.id} className="material-item">
-                    <span>
-                      {mat.name ||
-                        mat.material_name ||
-                        mat.item_name ||
-                        "Material"}{" "}
-                      <span style={{ color: "#888", fontSize: "0.9em" }}>
-                        (In stock: {mat.current_stock}{" "}
-                        {mat.unit_of_measure || ""})
-                      </span>
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={materialQuantities[mat.id] || ""}
-                      onChange={(e) =>
-                        handleMaterialQuantityChange(mat.id, e.target.value)
-                      }
-                      placeholder="Qty"
-                      style={{ width: 60, marginLeft: 8 }}
-                    />
-                  </div>
-                ))
+                materials.map((mat) => {
+                  return (
+                    <div key={mat.id} className="material-item" style={{ 
+                      marginBottom: '12px', 
+                      padding: '8px', 
+                      border: '1px solid #e0e0e0', 
+                      borderRadius: '4px',
+                      backgroundColor: '#ffffff'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '500' }}>
+                            {mat.name || mat.material_name || mat.item_name || "Material"}
+                          </div>
+                          <div style={{ color: "#666", fontSize: "0.85em", marginTop: '2px' }}>
+                            Category: {mat.category} | In stock: {mat.current_stock} {mat.unit_of_measure || 'units'}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={materialQuantities[mat.id] || ""}
+                            onChange={(e) =>
+                              handleMaterialQuantityChange(mat.id, e.target.value)
+                            }
+                            placeholder="Qty"
+                            style={{ 
+                              width: 60, 
+                              padding: '4px 8px',
+                              border: '1px solid #ccc',
+                              borderRadius: '3px'
+                            }}
+                          />
+                          <span style={{ 
+                            fontSize: '0.85em', 
+                            color: '#666',
+                            minWidth: '30px'
+                          }}>
+                            {mat.unit_of_measure || 'units'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
