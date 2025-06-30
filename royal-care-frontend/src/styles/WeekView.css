@@ -216,7 +216,7 @@
 
 /* Improved layout for appointments containers - works for both single and multiple appointments */
 .appointments-container {
-  display: grid;
+  display: flex;
   flex-direction: row;
   gap: 4px;
   width: 100%;
