@@ -1128,15 +1128,15 @@ const Calendar = ({
                           {appointment.therapist_details && (
                             <p>
                               <strong>Therapist:</strong>{" "}
-                              {appointment.therapist_details.first_name}{" "}
-                              {appointment.therapist_details.last_name}
+                              {appointment.therapist_details?.first_name || "Unknown"}{" "}
+                              {appointment.therapist_details?.last_name || "Therapist"}
                             </p>
                           )}
                           {appointment.driver_details && (
                             <p>
                               <strong>Driver:</strong>{" "}
-                              {appointment.driver_details.first_name}{" "}
-                              {appointment.driver_details.last_name}
+                              {appointment.driver_details?.first_name || "Unknown"}{" "}
+                              {appointment.driver_details?.last_name || "Driver"}
                             </p>
                           )}
                           <p>

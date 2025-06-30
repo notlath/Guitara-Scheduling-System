@@ -235,7 +235,7 @@ const AppointmentFormMigrated = ({
             <option value="">Select a client...</option>
             {clients.map((client) => (
               <option key={client.id} value={client.id}>
-                {client.first_name} {client.last_name} - {client.phone_number}
+                {client.first_name || "Unknown"} {client.last_name || "Client"} - {client.phone_number || "No phone"}
               </option>
             ))}
           </select>

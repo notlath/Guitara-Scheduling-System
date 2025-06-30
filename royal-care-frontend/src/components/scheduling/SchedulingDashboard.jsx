@@ -212,8 +212,8 @@ const SchedulingDashboard = () => {
           <div key={appointment.id} className="appointment-card">
             <div className="appointment-header">
               <h3>
-                {appointment.client_details.first_name}{" "}
-                {appointment.client_details.last_name}
+                {appointment.client_details?.first_name || "Unknown"}{" "}
+                {appointment.client_details?.last_name || "Client"}
               </h3>
               <span
                 className={`status-badge ${getStatusBadgeClass(
@@ -261,9 +261,9 @@ const SchedulingDashboard = () => {
               ) : appointment.therapist_details ? (
                 <p>
                   <strong>Therapist:</strong>{" "}
-                  {appointment.therapist_details.first_name}{" "}
-                  {appointment.therapist_details.last_name}
-                  {appointment.therapist_details.specialization &&
+                  {appointment.therapist_details?.first_name || "Unknown"}{" "}
+                  {appointment.therapist_details?.last_name || "Therapist"}
+                  {appointment.therapist_details?.specialization &&
                     ` (${appointment.therapist_details.specialization})`}
                 </p>
               ) : (
@@ -274,8 +274,8 @@ const SchedulingDashboard = () => {
               {appointment.driver_details && (
                 <p>
                   <strong>Driver:</strong>{" "}
-                  {appointment.driver_details.first_name}{" "}
-                  {appointment.driver_details.last_name}
+                  {appointment.driver_details?.first_name || "Unknown"}{" "}
+                  {appointment.driver_details?.last_name || "Driver"}
                 </p>
               )}
               <p>

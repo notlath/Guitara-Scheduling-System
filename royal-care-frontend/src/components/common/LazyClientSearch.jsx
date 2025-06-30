@@ -29,8 +29,8 @@ const LazyClientSearch = ({
     if (selectedClient) {
       console.log(
         "🔍 LazyClientSearch selectedClient:",
-        selectedClient.first_name,
-        selectedClient.last_name
+        selectedClient?.first_name || "Unknown",
+        selectedClient?.last_name || "Client"
       );
     }
   }, [selectedClient]);
@@ -400,7 +400,7 @@ const LazyClientSearch = ({
   // Handle client selection
   const handleClientSelect = useCallback(
     (client) => {
-      console.log("✅ Client selected:", client.first_name, client.last_name);
+      console.log("✅ Client selected:", client?.first_name || "Unknown", client?.last_name || "Client");
       onClientSelect(client);
       setSearchTerm("");
       setIsOpen(false);

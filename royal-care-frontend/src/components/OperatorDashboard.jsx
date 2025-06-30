@@ -922,9 +922,9 @@ const OperatorDashboard = () => {
     if (appointment.therapist_details) {
       return (
         <p>
-          <strong>Therapist:</strong> {appointment.therapist_details.first_name}{" "}
-          {appointment.therapist_details.last_name}
-          {appointment.therapist_details.specialization &&
+          <strong>Therapist:</strong> {appointment.therapist_details?.first_name || "Unknown"}{" "}
+          {appointment.therapist_details?.last_name || "Therapist"}
+          {appointment.therapist_details?.specialization &&
             ` (${appointment.therapist_details.specialization})`}
         </p>
       );
@@ -1358,7 +1358,7 @@ const OperatorDashboard = () => {
           .map((apt) => ({
             id: apt.therapist,
             name: apt.therapist_details
-              ? `${apt.therapist_details.first_name} ${apt.therapist_details.last_name}`
+              ? `${apt.therapist_details?.first_name || "Unknown"} ${apt.therapist_details?.last_name || "Therapist"}`
               : "Unknown Therapist",
             location: apt.location,
             appointment_id: apt.id,
@@ -2729,9 +2729,9 @@ const OperatorDashboard = () => {
                       {appointment.driver_details && (
                         <p>
                           <strong>Driver:</strong>{" "}
-                          {appointment.driver_details.first_name}{" "}
-                          {appointment.driver_details.last_name}
-                          {appointment.driver_details.motorcycle_plate &&
+                          {appointment.driver_details?.first_name || "Unknown"}{" "}
+                          {appointment.driver_details?.last_name || "Driver"}
+                          {appointment.driver_details?.motorcycle_plate &&
                             ` (${appointment.driver_details.motorcycle_plate})`}
                         </p>
                       )}

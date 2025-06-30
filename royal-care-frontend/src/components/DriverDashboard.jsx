@@ -1633,9 +1633,9 @@ const DriverDashboard = () => {
                     <div>
                       <strong>Therapist:</strong>
                       <div className="therapist-name">
-                        {appointment.therapist_details.first_name}{" "}
-                        {appointment.therapist_details.last_name}
-                        {appointment.therapist_details.specialization && (
+                        {appointment.therapist_details?.first_name || "Unknown"}{" "}
+                        {appointment.therapist_details?.last_name || "Therapist"}
+                        {appointment.therapist_details?.specialization && (
                           <span className="therapist-specialization">
                             {" "}
                             ({appointment.therapist_details.specialization})

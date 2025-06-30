@@ -1362,8 +1362,8 @@ const TherapistDashboard = () => {
           {/* Driver Information */}
           {appointment.driver_details && (
             <p>
-              <strong>Driver:</strong> {appointment.driver_details.first_name}{" "}
-              {appointment.driver_details.last_name}
+              <strong>Driver:</strong> {appointment.driver_details?.first_name || "Unknown"}{" "}
+              {appointment.driver_details?.last_name || "Driver"}
             </p>
           )}
         </div>
@@ -1844,8 +1844,8 @@ const TherapistDashboard = () => {
                 {appointment.driver_details && (
                   <p>
                     <strong>Driver:</strong>{" "}
-                    {appointment.driver_details.first_name}{" "}
-                    {appointment.driver_details.last_name}
+                    {appointment.driver_details?.first_name || "Unknown"}{" "}
+                    {appointment.driver_details?.last_name || "Driver"}
                   </p>
                 )}
                 {appointment.notes && (

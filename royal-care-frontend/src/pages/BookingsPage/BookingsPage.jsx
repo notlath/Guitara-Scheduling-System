@@ -236,9 +236,9 @@ const BookingsPage = () => {
                         </div>
                       ) : appointment.therapist_details ? (
                         <div className="therapist-name">
-                          {appointment.therapist_details.first_name}{" "}
-                          {appointment.therapist_details.last_name}
-                          {appointment.therapist_details.specialization && (
+                          {appointment.therapist_details?.first_name || "Unknown"}{" "}
+                          {appointment.therapist_details?.last_name || "Therapist"}
+                          {appointment.therapist_details?.specialization && (
                             <span className="therapist-specialization">
                               {" "}
                               ({appointment.therapist_details.specialization})
@@ -254,8 +254,8 @@ const BookingsPage = () => {
                     <div className="detail-row">
                       <span className="label">Driver:</span>
                       <span className="value">
-                        {appointment.driver_details.first_name}{" "}
-                        {appointment.driver_details.last_name}
+                        {appointment.driver_details?.first_name || "Unknown"}{" "}
+                        {appointment.driver_details?.last_name || "Driver"}
                       </span>
                     </div>
                   )}

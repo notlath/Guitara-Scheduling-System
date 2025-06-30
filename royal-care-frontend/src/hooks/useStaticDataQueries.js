@@ -117,7 +117,7 @@ export const useClientSearch = (searchTerm, options = {}) => {
       }
 
       const searchLower = searchTerm.toLowerCase();
-      const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
+      const fullName = `${client.first_name || ""} ${client.last_name || ""}`.toLowerCase();
       const email = client.email?.toLowerCase() || "";
       const phone = client.phone_number || "";
 
