@@ -845,36 +845,39 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         """
         try:
             instance = self.get_object()
-            
+
             # Only operators can delete appointments
             if request.user.role != "operator":
                 return Response(
                     {"error": "Only operators can delete appointments"},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            
+
             # Check if appointment can be deleted (optional business logic)
             if instance.status in ["in_progress", "completed"]:
                 return Response(
-                    {"error": "Cannot delete appointments that are in progress or completed"},
+                    {
+                        "error": "Cannot delete appointments that are in progress or completed"
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            
+
             # Perform the deletion
             appointment_id = instance.id
             instance.delete()
-            
+
             return Response(
                 {"message": f"Appointment {appointment_id} deleted successfully"},
-                status=status.HTTP_204_NO_CONTENT
+                status=status.HTTP_204_NO_CONTENT,
             )
-            
+
         except Exception as e:
             # Log the error for debugging
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"Error deleting appointment: {str(e)}", exc_info=True)
-            
+
             return Response(
                 {"error": "An error occurred while deleting the appointment"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

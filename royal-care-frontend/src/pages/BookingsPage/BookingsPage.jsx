@@ -236,8 +236,10 @@ const BookingsPage = () => {
                         </div>
                       ) : appointment.therapist_details ? (
                         <div className="therapist-name">
-                          {appointment.therapist_details?.first_name || "Unknown"}{" "}
-                          {appointment.therapist_details?.last_name || "Therapist"}
+                          {appointment.therapist_details?.first_name ||
+                            "Unknown"}{" "}
+                          {appointment.therapist_details?.last_name ||
+                            "Therapist"}
                           {appointment.therapist_details?.specialization && (
                             <span className="therapist-specialization">
                               {" "}

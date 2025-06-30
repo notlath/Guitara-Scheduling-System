@@ -922,7 +922,8 @@ const OperatorDashboard = () => {
     if (appointment.therapist_details) {
       return (
         <p>
-          <strong>Therapist:</strong> {appointment.therapist_details?.first_name || "Unknown"}{" "}
+          <strong>Therapist:</strong>{" "}
+          {appointment.therapist_details?.first_name || "Unknown"}{" "}
           {appointment.therapist_details?.last_name || "Therapist"}
           {appointment.therapist_details?.specialization &&
             ` (${appointment.therapist_details.specialization})`}
@@ -1358,7 +1359,9 @@ const OperatorDashboard = () => {
           .map((apt) => ({
             id: apt.therapist,
             name: apt.therapist_details
-              ? `${apt.therapist_details?.first_name || "Unknown"} ${apt.therapist_details?.last_name || "Therapist"}`
+              ? `${apt.therapist_details?.first_name || "Unknown"} ${
+                  apt.therapist_details?.last_name || "Therapist"
+                }`
               : "Unknown Therapist",
             location: apt.location,
             appointment_id: apt.id,

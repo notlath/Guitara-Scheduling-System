@@ -181,7 +181,9 @@ const SchedulingDashboard = () => {
   };
   const renderAppointmentsList = (appointmentsList) => {
     // Ensure appointmentsList is always an array - handle all possible undefined/null/non-array values
-    const safeAppointmentsList = Array.isArray(appointmentsList) ? appointmentsList : [];
+    const safeAppointmentsList = Array.isArray(appointmentsList)
+      ? appointmentsList
+      : [];
 
     if (loading && safeAppointmentsList.length === 0) {
       return (
@@ -245,7 +247,8 @@ const SchedulingDashboard = () => {
               </p>
               <p>
                 <strong>Services:</strong>{" "}
-                {(appointment.services_details && Array.isArray(appointment.services_details))
+                {appointment.services_details &&
+                Array.isArray(appointment.services_details)
                   ? appointment.services_details.map((s) => s.name).join(", ")
                   : "No services listed"}
               </p>

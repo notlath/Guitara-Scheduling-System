@@ -248,9 +248,11 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
                           </div>
                           <div
                             className="appointment-service"
-                            title={appointment.services_details
-                              ?.map((s) => s.name)
-                              .join(", ") || "No services"}
+                            title={
+                              appointment.services_details
+                                ?.map((s) => s.name)
+                                .join(", ") || "No services"
+                            }
                           >
                             {appointment.services_details
                               ?.map((s) => s.name)
@@ -259,19 +261,37 @@ const WeekView = ({ selectedDate, onAppointmentSelect }) => {
                           {appointment.therapist_details && (
                             <div
                               className="appointment-therapist"
-                              title={`Therapist: ${appointment.therapist_details?.first_name || "Unknown"} ${appointment.therapist_details?.last_name || "Therapist"}`}
+                              title={`Therapist: ${
+                                appointment.therapist_details?.first_name ||
+                                "Unknown"
+                              } ${
+                                appointment.therapist_details?.last_name ||
+                                "Therapist"
+                              }`}
                             >
-                              🧖 {appointment.therapist_details?.first_name || "Unknown"}{" "}
-                              {appointment.therapist_details?.last_name || "Therapist"}
+                              🧖{" "}
+                              {appointment.therapist_details?.first_name ||
+                                "Unknown"}{" "}
+                              {appointment.therapist_details?.last_name ||
+                                "Therapist"}
                             </div>
                           )}
                           {appointment.driver_details && (
                             <div
                               className="appointment-driver"
-                              title={`Driver: ${appointment.driver_details?.first_name || "Unknown"} ${appointment.driver_details?.last_name || "Driver"}`}
+                              title={`Driver: ${
+                                appointment.driver_details?.first_name ||
+                                "Unknown"
+                              } ${
+                                appointment.driver_details?.last_name ||
+                                "Driver"
+                              }`}
                             >
-                              🚗 {appointment.driver_details?.first_name || "Unknown"}{" "}
-                              {appointment.driver_details?.last_name || "Driver"}
+                              🚗{" "}
+                              {appointment.driver_details?.first_name ||
+                                "Unknown"}{" "}
+                              {appointment.driver_details?.last_name ||
+                                "Driver"}
                             </div>
                           )}
                         </div>
