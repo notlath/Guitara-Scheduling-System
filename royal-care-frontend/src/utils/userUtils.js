@@ -28,9 +28,9 @@ export const getUser = () => {
 export const getUserDisplayName = (user, fallback = "User") => {
   if (!user) return fallback;
 
-  // Try first_name + last_name combination
-  if (user.first_name && user.last_name) {
-    return `${user.first_name} ${user.last_name}`;
+  // Try first_name only (don't display last name)
+  if (user.first_name) {
+    return user.first_name;
   }
 
   // Fallback to username
