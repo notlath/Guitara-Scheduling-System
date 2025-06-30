@@ -432,11 +432,31 @@ const OperatorDashboard = () => {
     queryFn: async () => {
       const token = getToken();
       if (!token) throw new Error("Authentication required");
-      return await enhancedFetch(
+
+      console.log("🔍 Fetching payment appointments...", {
+        currentPage,
+        pageSize: paginationInfo.pageSize,
+        url: `${getBaseURL()}/scheduling/appointments/awaiting_payment/?page=${currentPage}&page_size=${
+          paginationInfo.pageSize
+        }`,
+      });
+
+      const result = await enhancedFetch(
         `${getBaseURL()}/scheduling/appointments/awaiting_payment/?page=${currentPage}&page_size=${
           paginationInfo.pageSize
         }`
       );
+
+      console.log("✅ Payment appointments result:", {
+        hasResult: !!result,
+        isArray: Array.isArray(result),
+        hasResults: !!result?.results,
+        resultsLength: result?.results?.length,
+        directLength: Array.isArray(result) ? result.length : 0,
+        result: result,
+      });
+
+      return result;
     },
     enabled: currentView === "payment",
     staleTime: 0,
@@ -2417,7 +2437,21 @@ const OperatorDashboard = () => {
     );
   };
   const renderPaymentVerificationView = () => {
-    const awaitingPaymentAppointments = tabData?.appointments || [];
+    // Handle both paginated (with results field) and direct array responses
+    const awaitingPaymentAppointments = Array.isArray(tabData)
+      ? tabData
+      : tabData?.results || [];
+
+    console.log("🔍 Payment Verification View Debug:", {
+      tabData: tabData,
+      isTabDataArray: Array.isArray(tabData),
+      hasResults: !!tabData?.results,
+      resultsLength: tabData?.results?.length,
+      awaitingPaymentAppointments: awaitingPaymentAppointments,
+      appointmentsLength: awaitingPaymentAppointments.length,
+      tabDataType: typeof tabData,
+      tabDataKeys: tabData ? Object.keys(tabData) : null,
+    });
 
     if (awaitingPaymentAppointments.length === 0) {
       return (
@@ -3084,7 +3118,10 @@ const OperatorDashboard = () => {
     );
   };
   const renderActiveSessionsView = () => {
-    const activeSessions = Array.isArray(tabData) ? tabData : [];
+    // Handle both paginated (with results field) and direct array responses
+    const activeSessions = Array.isArray(tabData)
+      ? tabData
+      : tabData?.results || [];
 
     if (activeSessions.length === 0) {
       return (
@@ -3136,7 +3173,10 @@ const OperatorDashboard = () => {
     );
   };
   const renderPickupRequestsView = () => {
-    const pickupRequests = Array.isArray(tabData) ? tabData : [];
+    // Handle both paginated (with results field) and direct array responses
+    const pickupRequests = Array.isArray(tabData)
+      ? tabData
+      : tabData?.results || [];
 
     if (pickupRequests.length === 0) {
       return (
