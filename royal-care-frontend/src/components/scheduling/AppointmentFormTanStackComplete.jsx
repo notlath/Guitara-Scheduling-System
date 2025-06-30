@@ -783,17 +783,23 @@ const AppointmentFormTanStackComplete = ({
 
       console.log("📋 Final client ID for submission:", numericClientId);
 
+      console.log("🧑‍⚕️ Therapist data debug:", {
+        formDataTherapists: formData.therapists,
+        isArray: Array.isArray(formData.therapists),
+        length: formData.therapists?.length,
+        therapistIds: formData.therapists
+      });
+
       // Prepare appointment data
       const appointmentData = {
         ...formData,
         client: numericClientId,
         services: [parseInt(formData.services, 10)],
-        therapist: formData.multipleTherapists
-          ? null
-          : parseInt(formData.therapist, 10) || null,
-        therapists: formData.multipleTherapists
+        // Always use the therapists array since the form only has multi-select
+        therapist: null, // Always null for new multi-therapist structure
+        therapists: Array.isArray(formData.therapists) 
           ? formData.therapists.map((id) => parseInt(id, 10))
-          : [],
+          : [], // Convert therapist IDs to integers
         driver: formData.driver ? parseInt(formData.driver, 10) : null,
         materials: Object.entries(materialQuantities)
           .filter((entry) => entry[1] && !isNaN(Number(entry[1])))
@@ -803,6 +809,15 @@ const AppointmentFormTanStackComplete = ({
           })),
         date: formatDateForInput(formData.date),
       };
+
+      console.log("📋 Final appointment data being submitted:", {
+        ...appointmentData,
+        therapistData: {
+          therapist: appointmentData.therapist,
+          therapists: appointmentData.therapists,
+          therapistsCount: appointmentData.therapists?.length
+        }
+      });
 
       console.log("📋 Appointment data being submitted:", appointmentData);
 
@@ -899,12 +914,14 @@ const AppointmentFormTanStackComplete = ({
         end_time: appointment.end_time || "",
         location: appointment.location || "",
         notes: appointment.notes || "",
-        therapist: appointment.therapist || "",
+        therapist: "", // No longer used since we only use multi-select
         therapists: Array.isArray(appointment.therapists)
           ? appointment.therapists
-          : [],
+          : appointment.therapist 
+            ? [appointment.therapist] // Convert single therapist to array
+            : [],
         driver: appointment.driver || "",
-        multipleTherapists: !!(appointment.therapists?.length > 0),
+        multipleTherapists: false, // Always false since we use multi-select for both single and multiple
       });
     }
   }, [appointment, clients]); // eslint-disable-line react-hooks/exhaustive-deps
