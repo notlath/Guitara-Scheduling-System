@@ -11,6 +11,7 @@ import {
 } from "../features/scheduling/schedulingSlice";
 import { queryKeys } from "../lib/queryClient";
 import { isValidToken } from "../utils/authUtils";
+import { useFormStaticData } from "./useStaticDataQueries";
 
 // Utility function to format date to yyyy-MM-dd
 const formatDateForAPI = (dateValue) => {
@@ -36,13 +37,14 @@ export const useAvailableTherapists = (
   date,
   startTime,
   serviceId,
-  endTime = null
+  endTime = null,
+  services = []
 ) => {
   const dispatch = useDispatch();
 
   // Calculate endTime if not provided - ensure HH:MM format only
   let computedEndTime = endTime;
-  if (!computedEndTime && startTime && serviceId) {
+  if (!computedEndTime && startTime && serviceId && Array.isArray(services)) {
     try {
       // Ensure startTime is in HH:MM format (remove seconds if present)
       const cleanStartTime = startTime.slice(0, 5);
@@ -53,15 +55,25 @@ export const useAvailableTherapists = (
         console.error("Invalid start time format:", startTime);
         computedEndTime = null;
       } else {
+        // Find the actual service to get its duration
+        const service = services.find(s => s.id === parseInt(serviceId, 10));
+        const serviceDuration = service?.duration || 60; // Default to 60 minutes if service not found
+
         // Use current date to properly handle cross-day calculations
         const start = new Date();
         start.setHours(h, m, 0, 0);
-        start.setMinutes(start.getMinutes() + 60); // +60 min as default
+        start.setMinutes(start.getMinutes() + serviceDuration);
 
-        // Format as HH:MM only (handles cross-day properly)
-        const hours = start.getHours().toString().padStart(2, "0");
-        const minutes = start.getMinutes().toString().padStart(2, "0");
-        computedEndTime = `${hours}:${minutes}`;
+        // Validate the calculated time before formatting
+        if (isNaN(start.getTime())) {
+          console.error("Invalid calculated end time");
+          computedEndTime = null;
+        } else {
+          // Format as HH:MM only (handles cross-day properly)
+          const hours = start.getHours().toString().padStart(2, "0");
+          const minutes = start.getMinutes().toString().padStart(2, "0");
+          computedEndTime = `${hours}:${minutes}`;
+        }
       }
     } catch (error) {
       console.error("Error calculating end time:", error);
@@ -229,11 +241,15 @@ export const useAvailableDrivers = (date, startTime, endTime = null) => {
 export const useFormAvailability = (formData) => {
   const { date, start_time, services, end_time } = formData;
 
+  // Get services array from static data hook to calculate proper end times
+  const { services: servicesArray = [] } = useFormStaticData();
+
   const therapistsQuery = useAvailableTherapists(
     date,
     start_time,
     services,
-    end_time
+    end_time,
+    servicesArray
   );
 
   const driversQuery = useAvailableDrivers(date, start_time, end_time);
@@ -293,7 +309,10 @@ export const useFormAvailabilityWithRefetch = (formData, options = {}) => {
  * Integrates with your WebSocket updates
  */
 export const useRealtimeAvailability = (date, startTime, serviceId) => {
-  const therapists = useAvailableTherapists(date, startTime, serviceId);
+  // Get services array for proper end time calculation
+  const { services: servicesArray = [] } = useFormStaticData();
+  
+  const therapists = useAvailableTherapists(date, startTime, serviceId, null, servicesArray);
   const drivers = useAvailableDrivers(date, startTime);
 
   // This would integrate with your WebSocket service
