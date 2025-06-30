@@ -1555,7 +1555,6 @@
   }
 }
 
-
 /* ==========================================================================
    STATUS BADGE COMPONENT - SINGLE SOURCE OF TRUTH
    ========================================================================== */
@@ -1574,29 +1573,30 @@
   border: 2px solid transparent;
   min-height: 26px;
   vertical-align: middle;
-  
+
   /* Typography */
-  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Arial, sans-serif;
   font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   line-height: 1.2;
   white-space: nowrap;
-  
+
   /* Visibility - Force readable text */
   color: #000 !important;
   text-shadow: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  
+
   /* Visual */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  
+
   /* Performance */
   contain: layout style paint;
-  
+
   /* Accessibility */
   opacity: 1;
   visibility: visible;
@@ -1807,15 +1807,27 @@
    ========================================================================== */
 
 @keyframes status-pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 @keyframes status-glow {
-  0% { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
-  50% { box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3); }
-  100% { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  0% {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+  }
+  100% {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
 }
 
 .status-badge--animated {
@@ -1830,7 +1842,7 @@
   .status-badge {
     transition: none;
   }
-  
+
   .status-badge--overdue,
   .status-badge--timeout,
   .status-badge--animated {
@@ -1856,7 +1868,7 @@
     padding: 4px 8px;
     min-height: 20px;
   }
-  
+
   .status-badges {
     gap: 4px;
   }
@@ -1881,7 +1893,7 @@
     border: 1px solid #000 !important;
     box-shadow: none;
   }
-  
+
   .status-badge:hover {
     transform: none;
   }
