@@ -46,33 +46,53 @@ export const useAvailableTherapists = (
   let computedEndTime = endTime;
   if (!computedEndTime && startTime && serviceId && Array.isArray(services)) {
     try {
-      // Ensure startTime is in HH:MM format (remove seconds if present)
-      const cleanStartTime = startTime.slice(0, 5);
-      const [h, m] = cleanStartTime.split(":").map(Number);
-
-      // Validate input time
-      if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
-        console.error("Invalid start time format:", startTime);
+      // Validate startTime is a string before processing
+      if (typeof startTime !== 'string' || !startTime.includes(':')) {
+        console.error("Invalid start time format - not a valid time string:", startTime);
         computedEndTime = null;
       } else {
-        // Find the actual service to get its duration
-        const service = services.find(s => s.id === parseInt(serviceId, 10));
-        const serviceDuration = service?.duration || 60; // Default to 60 minutes if service not found
-
-        // Use current date to properly handle cross-day calculations
-        const start = new Date();
-        start.setHours(h, m, 0, 0);
-        start.setMinutes(start.getMinutes() + serviceDuration);
-
-        // Validate the calculated time before formatting
-        if (isNaN(start.getTime())) {
-          console.error("Invalid calculated end time");
+        // Ensure startTime is in HH:MM format (remove seconds if present)
+        const cleanStartTime = startTime.slice(0, 5);
+        const timeParts = cleanStartTime.split(":");
+        
+        if (timeParts.length !== 2) {
+          console.error("Invalid start time format - wrong format:", startTime);
           computedEndTime = null;
         } else {
-          // Format as HH:MM only (handles cross-day properly)
-          const hours = start.getHours().toString().padStart(2, "0");
-          const minutes = start.getMinutes().toString().padStart(2, "0");
-          computedEndTime = `${hours}:${minutes}`;
+          const [h, m] = timeParts.map(Number);
+
+          // Validate input time
+          if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+            console.error("Invalid start time format - invalid numbers:", startTime, { h, m });
+            computedEndTime = null;
+          } else {
+            // Find the actual service to get its duration
+            const service = services.find(s => s.id === parseInt(serviceId, 10));
+            const serviceDuration = service?.duration || 60; // Default to 60 minutes if service not found
+
+            // Use current date to properly handle cross-day calculations
+            const start = new Date();
+            start.setHours(h, m, 0, 0);
+            
+            // Validate the date is valid before adding minutes
+            if (isNaN(start.getTime())) {
+              console.error("Invalid date created from time components:", { h, m });
+              computedEndTime = null;
+            } else {
+              start.setMinutes(start.getMinutes() + serviceDuration);
+
+              // Validate the calculated time before formatting
+              if (isNaN(start.getTime())) {
+                console.error("Invalid calculated end time after adding duration");
+                computedEndTime = null;
+              } else {
+                // Format as HH:MM only (handles cross-day properly)
+                const hours = start.getHours().toString().padStart(2, "0");
+                const minutes = start.getMinutes().toString().padStart(2, "0");
+                computedEndTime = `${hours}:${minutes}`;
+              }
+            }
+          }
         }
       }
     } catch (error) {
@@ -103,8 +123,30 @@ export const useAvailableTherapists = (
         endTime: cleanEndTime,
       });
 
+      // Validate all parameters before making API call
+      const formattedDate = formatDateForAPI(date);
+      if (!formattedDate || !cleanStartTime || !serviceId || !cleanEndTime) {
+        console.error("❌ AVAILABILITY ABORTED - Missing required parameters:", {
+          date: formattedDate,
+          startTime: cleanStartTime,
+          serviceId,
+          endTime: cleanEndTime,
+        });
+        throw new Error("Invalid parameters: Missing required values for availability check");
+      }
+
+      // Validate time format (HH:MM)
+      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(cleanStartTime) || !timeRegex.test(cleanEndTime)) {
+        console.error("❌ AVAILABILITY ABORTED - Invalid time format:", {
+          startTime: cleanStartTime,
+          endTime: cleanEndTime,
+        });
+        throw new Error("Invalid time format - must be HH:MM");
+      }
+
       const params = {
-        date: formatDateForAPI(date),
+        date: formattedDate,
         start_time: cleanStartTime,
         service_id: serviceId,
         end_time: cleanEndTime,
@@ -154,24 +196,50 @@ export const useAvailableDrivers = (date, startTime, endTime = null) => {
   let computedEndTime = endTime;
   if (!computedEndTime && startTime) {
     try {
-      // Ensure startTime is in HH:MM format (remove seconds if present)
-      const cleanStartTime = startTime.slice(0, 5);
-      const [h, m] = cleanStartTime.split(":").map(Number);
-
-      // Validate input time
-      if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
-        console.error("Invalid start time format:", startTime);
+      // Validate startTime is a string before processing
+      if (typeof startTime !== 'string' || !startTime.includes(':')) {
+        console.error("Invalid start time format - not a valid time string:", startTime);
         computedEndTime = null;
       } else {
-        // Use current date to properly handle cross-day calculations
-        const start = new Date();
-        start.setHours(h, m, 0, 0);
-        start.setMinutes(start.getMinutes() + 60); // +60 min
+        // Ensure startTime is in HH:MM format (remove seconds if present)
+        const cleanStartTime = startTime.slice(0, 5);
+        const timeParts = cleanStartTime.split(":");
+        
+        if (timeParts.length !== 2) {
+          console.error("Invalid start time format - wrong format:", startTime);
+          computedEndTime = null;
+        } else {
+          const [h, m] = timeParts.map(Number);
 
-        // Format as HH:MM only (handles cross-day properly)
-        const hours = start.getHours().toString().padStart(2, "0");
-        const minutes = start.getMinutes().toString().padStart(2, "0");
-        computedEndTime = `${hours}:${minutes}`;
+          // Validate input time
+          if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+            console.error("Invalid start time format - invalid numbers:", startTime, { h, m });
+            computedEndTime = null;
+          } else {
+            // Use current date to properly handle cross-day calculations
+            const start = new Date();
+            start.setHours(h, m, 0, 0);
+            
+            // Validate the date is valid before adding minutes
+            if (isNaN(start.getTime())) {
+              console.error("Invalid date created from time components:", { h, m });
+              computedEndTime = null;
+            } else {
+              start.setMinutes(start.getMinutes() + 60); // +60 min
+
+              // Validate the calculated time before formatting
+              if (isNaN(start.getTime())) {
+                console.error("Invalid calculated end time after adding duration");
+                computedEndTime = null;
+              } else {
+                // Format as HH:MM only (handles cross-day properly)
+                const hours = start.getHours().toString().padStart(2, "0");
+                const minutes = start.getMinutes().toString().padStart(2, "0");
+                computedEndTime = `${hours}:${minutes}`;
+              }
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("Error calculating end time:", error);
@@ -200,8 +268,29 @@ export const useAvailableDrivers = (date, startTime, endTime = null) => {
         endTime: cleanEndTime,
       });
 
+      // Validate all parameters before making API call
+      const formattedDate = formatDateForAPI(date);
+      if (!formattedDate || !cleanStartTime || !cleanEndTime) {
+        console.error("❌ AVAILABILITY ABORTED - Missing required parameters:", {
+          date: formattedDate,
+          startTime: cleanStartTime,
+          endTime: cleanEndTime,
+        });
+        throw new Error("Invalid parameters: Missing required values for availability check");
+      }
+
+      // Validate time format (HH:MM)
+      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(cleanStartTime) || !timeRegex.test(cleanEndTime)) {
+        console.error("❌ AVAILABILITY ABORTED - Invalid time format:", {
+          startTime: cleanStartTime,
+          endTime: cleanEndTime,
+        });
+        throw new Error("Invalid time format - must be HH:MM");
+      }
+
       const params = {
-        date: formatDateForAPI(date),
+        date: formattedDate,
         start_time: cleanStartTime,
         end_time: cleanEndTime,
       };

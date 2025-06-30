@@ -91,7 +91,7 @@ const ProgressiveAppointmentList = ({
 
       {/* Appointment list */}
       <div className="appointment-items">
-        {partialData.map((appointment) => (
+        {Array.isArray(partialData) && partialData.map((appointment) => (
           <div
             key={appointment.id}
             className={`appointment-item ${
