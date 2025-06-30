@@ -1195,7 +1195,7 @@ const OperatorDashboard = () => {
     });
 
     // Validate payment data
-    if (!paymentData.amount || parseInt(paymentData.amount) <= 0) {
+    if (!paymentData.amount || parseFloat(paymentData.amount) <= 0) {
       console.log(
         "❌ handleMarkPaymentPaid: Invalid payment amount",
         paymentData.amount
@@ -1225,7 +1225,7 @@ const OperatorDashboard = () => {
       // Ensure payment amount is properly formatted as a number
       const processedPaymentData = {
         ...paymentData,
-        amount: parseInt(paymentData.amount) || 0, // Ensure it's an integer
+        amount: parseFloat(paymentData.amount) || 0, // Ensure it's a number
       };
 
       console.log(

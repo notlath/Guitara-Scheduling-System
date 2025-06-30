@@ -145,6 +145,46 @@ class Appointment(models.Model):
     )
     payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
+    # Payment verification fields
+    PAYMENT_METHOD_CHOICES = [
+        ("cash", "Cash"),
+        ("gcash", "GCash"),
+        ("bank_transfer", "Bank Transfer"),
+        ("credit_card", "Credit Card"),
+    ]
+
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_METHOD_CHOICES,
+        default="cash",
+        blank=True,
+        null=True,
+        help_text="Method used for payment",
+    )
+    payment_verified_at = models.DateTimeField(
+        blank=True, null=True, help_text="When payment was verified by operator"
+    )
+    payment_verified_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="verified_payments",
+        help_text="Operator who verified the payment",
+    )
+    payment_notes = models.TextField(
+        blank=True, null=True, help_text="Additional notes about the payment"
+    )
+    receipt_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        help_text="SHA-256 hash of uploaded payment receipt",
+    )
+    receipt_url = models.URLField(
+        blank=True, null=True, help_text="URL to uploaded payment receipt"
+    )
+
     location = models.TextField()
     notes = models.TextField(blank=True, null=True)
     required_materials = models.TextField(

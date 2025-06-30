@@ -596,7 +596,7 @@ const AvailabilityManager = () => {
     );
 
     return filtered;
-  }, [staffMembers, user.role, user.id]);
+  }, [staffMembers, user]);
 
   return (
     <div className="availability-manager">

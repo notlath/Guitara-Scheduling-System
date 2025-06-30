@@ -22,6 +22,37 @@ const isTimeInAllowedWindow = (time) => {
   if (h === 1 && m === 0) return true;
   return false;
 };
+
+// Helper: Check if end time is after start time, accounting for cross-day scheduling
+const isValidEndTime = (startTime, endTime) => {
+  if (!startTime || !endTime) return false;
+
+  const [startH, startM] = startTime.split(":").map(Number);
+  const [endH, endM] = endTime.split(":").map(Number);
+
+  // Convert to minutes for easier comparison
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  // If end time is in early morning (00:00-01:00) and start time is afternoon/evening (13:00-23:59)
+  // this is a valid cross-day appointment
+  if (endH >= 0 && endH <= 1 && startH >= 13 && startH <= 23) {
+    return true; // Cross-day is valid
+  }
+
+  // If both times are on the same day, end must be after start
+  if (startH >= 13 && endH >= 13) {
+    return endMinutes > startMinutes;
+  }
+
+  // If start is afternoon/evening and end is not early morning, it's invalid
+  if (startH >= 13 && endH < 13 && endH > 1) {
+    return false;
+  }
+
+  // For same-day appointments, end must be after start
+  return endMinutes > startMinutes;
+};
 /**
  * COMPLETE TanStack Query Migration Example
  * Shows the dramatic simplification possible with TanStack Query
@@ -383,7 +414,11 @@ const AppointmentFormTanStackComplete = ({
 
       // Validate end time - ensure it's after start time and restrict to allowed window
       if (name === "end_time") {
-        if (formData.start_time && value && value <= formData.start_time) {
+        if (
+          formData.start_time &&
+          value &&
+          !isValidEndTime(formData.start_time, value)
+        ) {
           setErrors((prev) => ({
             ...prev,
             end_time: "End time must be after start time",
@@ -651,7 +686,7 @@ const AppointmentFormTanStackComplete = ({
     if (
       formData.start_time &&
       formData.end_time &&
-      formData.end_time <= formData.start_time
+      !isValidEndTime(formData.start_time, formData.end_time)
     ) {
       newErrors.end_time = "End time must be after start time";
     }

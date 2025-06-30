@@ -1005,7 +1005,7 @@ export const fetchStaffMembers = createAsyncThunk(
     console.log("fetchStaffMembers: Starting API call");
 
     try {
-      const response = await axios.get(`${API_URL}staff/`, {
+      const response = await axios.get(`${API_URL}staff/active_staff/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
@@ -1024,6 +1024,9 @@ export const fetchStaffMembers = createAsyncThunk(
         staffMembers = data;
       } else if (data && Array.isArray(data.results)) {
         staffMembers = data.results;
+      } else if (data && Array.isArray(data.staff)) {
+        // Handle response structure: {staff: Array, count: number, filter: object}
+        staffMembers = data.staff;
       } else {
         console.warn(
           "⚠️ fetchStaffMembers: API returned unexpected data structure:",
@@ -1740,14 +1743,14 @@ export const markAppointmentPaid = createAsyncThunk(
     console.log("🔍 markAppointmentPaid: Starting payment verification", {
       appointmentId,
       paymentData,
-      processedAmount: parseInt(paymentData?.amount) || 0,
+      processedAmount: parseFloat(paymentData?.amount) || 0,
       endpoint: `${API_URL}appointments/${appointmentId}/mark_payment_received/`,
     });
 
     // Prepare the request payload with explicit data conversion
     const requestPayload = {
       payment_method: paymentData?.method || "cash",
-      payment_amount: parseInt(paymentData?.amount) || 0,
+      payment_amount: parseFloat(paymentData?.amount) || 0,
       payment_notes: paymentData?.notes || "",
       receipt_hash: paymentData?.receiptHash || null,
       receipt_url: paymentData?.receiptUrl || null,
