@@ -127,17 +127,12 @@ const MainLayout = () => {
                   >
                     <MdPerson className="main-layout__sidebar-icon" />
                     {(() => {
-                      const fullName =
-                        user?.first_name && user?.last_name
-                          ? `${user.first_name} ${user.last_name}`.trim()
-                          : user?.first_name ||
-                            user?.last_name ||
-                            user?.username;
+                      const displayName = user?.first_name || user?.username;
 
-                      if (fullName && fullName.length > 15) {
-                        return `${fullName.substring(0, 15)}...`;
+                      if (displayName && displayName.length > 15) {
+                        return `${displayName.substring(0, 15)}...`;
                       }
-                      return fullName || "Profile";
+                      return displayName || "Profile";
                     })()}
                   </NavLink>
                   <NavLink
