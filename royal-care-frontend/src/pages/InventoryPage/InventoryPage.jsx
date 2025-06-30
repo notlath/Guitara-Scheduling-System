@@ -66,7 +66,7 @@ const InventoryPage = () => {
   const [restockItem, setRestockItem] = useState(null);
   const [restockAmount, setRestockAmount] = useState(0);
   const [restockNotes, setRestockNotes] = useState("");
-  const [activeTab] = useState("inventory"); // Only use activeTab if needed
+  const activeTab = "inventory"; // Use a constant since activeTab never changes
 
   // Get inventory items from TanStack Query data
   const inventoryItems = Array.isArray(inventoryData) ? inventoryData : [];
