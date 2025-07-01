@@ -51,13 +51,21 @@ export const queryKeys = {
     upcoming: () => ["appointments", "upcoming"],
     byWeek: (date) => ["appointments", "week", date],
     byId: (id) => ["appointments", id],
-    byTherapist: (therapistId, type) => [
-      "appointments",
-      "therapist",
-      therapistId,
-      type,
-    ],
-    byDriver: (driverId, type) => ["appointments", "driver", driverId, type],
+    byTherapist: (therapistId, type = null) => {
+      // ✅ ENHANCED: Support both with and without type parameter
+      return type 
+        ? ["appointments", "therapist", therapistId, type]
+        : ["appointments", "therapist", therapistId];
+    },
+    byDriver: (driverId, type = null) => {
+      return type
+        ? ["appointments", "driver", driverId, type] 
+        : ["appointments", "driver", driverId];
+    },
+    // ✅ NEW: Specific patterns for TherapistDashboard
+    therapistDashboard: (therapistId) => ["appointments", "therapist", therapistId],
+    driverDashboard: (driverId) => ["appointments", "driver", driverId],
+    operatorDashboard: (view) => ["appointments", "operator", view],
   },
 
   // Availability

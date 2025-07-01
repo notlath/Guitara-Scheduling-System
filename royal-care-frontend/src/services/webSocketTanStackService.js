@@ -262,9 +262,10 @@ class WebSocketTanStackService {
           break;
         case "appointment_update":
         case "appointment_updated":
+          console.log("🔄 Processing appointment_updated message:", data.message);
           this.handleAppointmentUpdate(data.message);
           // Also dispatch status change event if status was updated
-          if (data.message.status) {
+          if (data.message?.status) {
             this.dispatchEvent("appointment_status_changed", {
               appointment: data.message,
               type: "appointment_status_changed",
@@ -280,6 +281,8 @@ class WebSocketTanStackService {
           break;
         case "heartbeat":
         case "heartbeat_response":
+          // ✅ FIX: Handle heartbeat responses properly (don't log as unknown)
+          console.log("💓 Heartbeat response received");
           this.handleHeartbeat(data.message);
           break;
         case "driver_assigned":
@@ -341,7 +344,24 @@ class WebSocketTanStackService {
           }
           break;
         default:
-          console.log("Unknown WebSocket message type:", data.type);
+          // ✅ ENHANCED: Better logging for unknown message types
+          if (data.type === "heartbeat_response") {
+            // Don't spam console with heartbeat responses
+            return;
+          }
+          console.log("⚠️ Unknown WebSocket message type:", data.type, "Message:", data);
+          
+          // ✅ FALLBACK: Try to handle as appointment update if it has appointment data
+          if (data.message?.id || data.appointment_id) {
+            console.log("🔄 Attempting to handle unknown message as appointment update");
+            try {
+              const appointmentData = data.message || { id: data.appointment_id, ...data };
+              this.handleAppointmentUpdate(appointmentData);
+            } catch (fallbackError) {
+              console.error("❌ Fallback handling failed:", fallbackError);
+            }
+          }
+          break;
       }
     } catch (error) {
       console.error("Error parsing WebSocket message:", error);

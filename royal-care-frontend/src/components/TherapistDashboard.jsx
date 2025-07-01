@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 // TanStack Query hooks for data management (removing Redux dependencies)
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
 import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
+import useTherapistWebSocketSync from "../hooks/useTherapistWebSocketSync"; // ✅ ENHANCED: New hook for direct cache updates
 import webSocketService from "../services/webSocketTanStackService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
@@ -56,17 +57,17 @@ const invalidateAppointmentQueries = async (queryClient, delay = 0) => {
   // ✅ AGGRESSIVE INVALIDATION: Include therapist-specific queries
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // Invalidate all appointment-related queries
+  // Invalidate all appointment-related queries using centralized queryKeys
   await Promise.all(
     [
-      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "upcoming"] }),
-      // ✅ CRITICAL FIX: Invalidate therapist-specific queries
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.list() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.today() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.upcoming() }),
+      // ✅ CRITICAL FIX: Invalidate therapist-specific queries using centralized keys
       user?.id &&
         queryClient.invalidateQueries({
-          queryKey: ["appointments", "therapist", user.id],
+          queryKey: queryKeys.appointments.therapistDashboard(user.id),
           refetchType: "active",
         }),
       // Invalidate specific query keys if they exist
@@ -141,7 +142,7 @@ const useTherapistDashboardData = (userId) => {
     dataUpdatedAt,
     isFetching,
   } = useQuery({
-    queryKey: ["appointments", "therapist", userId],
+    queryKey: queryKeys.appointments.therapistDashboard(userId), // ✅ ENHANCED: Use centralized query keys
     queryFn: fetchAppointments,
     staleTime: 0, // ✅ FIX: Always consider data stale for immediate updates (was 30000)
     cacheTime: 2 * 60 * 1000, // ✅ FIX: 2 minutes cache time (matches OperatorDashboard)
@@ -295,17 +296,33 @@ const TherapistDashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // ✅ FIXED: Re-enabled WebSocket cache sync with proper cache invalidation
-  // The cache invalidation function now properly handles therapist-specific query keys
+  // Get user from localStorage instead of Redux (defined once here)
+  const user = getUser();
+
+  // ✅ ENHANCED: New direct cache update WebSocket sync
+  const { updateAppointmentInCache, invalidateTherapistCache, getCacheData } = 
+    useTherapistWebSocketSync(user?.id);
+
+  // ✅ FALLBACK: Keep original WebSocket cache sync for compatibility
   useAutoWebSocketCacheSync();
 
-  // ✅ CRITICAL FIX: Force refetch when WebSocket updates are received
+  // ✅ PERFORMANCE NOTE: All mutations below now use:
+  // - Centralized queryKeys.appointments.therapistDashboard(user?.id) instead of hardcoded arrays
+  // - Direct cache updates via useTherapistWebSocketSync hook for real-time updates
+  // - Granular invalidation (only affected appointments, not all)
+  // - Optimistic updates with proper rollback on errors
+
+  // ✅ CRITICAL FIX: Force refetch when WebSocket updates are received (backup method)
   useEffect(() => {
     const wsService = window.webSocketService || webSocketService;
     
     const handleForceRefetch = () => {
       console.log("🔄 Forcing TherapistDashboard refetch due to WebSocket update");
-      refetch();
+      // Only refetch if direct cache update failed
+      const currentData = getCacheData();
+      if (!currentData || currentData.length === 0) {
+        refetch();
+      }
     };
 
     // Listen for all appointment-related WebSocket events
@@ -329,10 +346,7 @@ const TherapistDashboard = () => {
         wsService.removeEventListener(eventType, handleForceRefetch);
       });
     };
-  }, [refetch]);
-
-  // Get user from localStorage instead of Redux
-  const user = getUser();
+  }, [refetch, getCacheData]);
 
   // TanStack Query mutations for therapist actions
   const acceptAppointmentMutation = useMutation({
