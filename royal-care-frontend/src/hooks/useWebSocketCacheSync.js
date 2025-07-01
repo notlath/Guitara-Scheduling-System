@@ -132,47 +132,24 @@ export const useAutoWebSocketCacheSync = () => {
 
 // Helper function to set up WebSocket sync
 const setupWebSocketSync = (webSocketService, queryClient) => {
+  // ✅ CRITICAL FIX: Prevent duplicate setup
+  if (setupWebSocketSync._isSetup) {
+    console.log(
+      "� WebSocket cache sync already set up, skipping duplicate setup"
+    );
+    return;
+  }
+
   console.log(
     "🔌 Setting up enhanced WebSocket cache sync for TherapistDashboard"
   );
+  setupWebSocketSync._isSetup = true;
 
   const handleAppointmentUpdate = (data) => {
     console.log("📨 WebSocket cache sync received event:", data);
 
-    // ✅ ENHANCED: Force immediate cache invalidation for therapist queries
-    const { appointment } = data;
-
-    if (appointment) {
-      // Get current user to invalidate their specific cache
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-
-      // Check if this appointment affects the current therapist
-      const affectsCurrentUser =
-        appointment.therapist_id === user.id ||
-        appointment.therapist === user.id ||
-        (Array.isArray(appointment.therapists) &&
-          appointment.therapists.includes(user.id));
-
-      if (affectsCurrentUser) {
-        console.log(
-          "🩺 Appointment affects current therapist, forcing cache refresh..."
-        );
-
-        // Force immediate invalidation and refetch
-        queryClient.invalidateQueries({
-          queryKey: ["appointments", "therapist", user.id],
-          refetchType: "all",
-        });
-
-        // Also force refetch immediately
-        queryClient.refetchQueries({
-          queryKey: ["appointments", "therapist", user.id],
-          type: "all",
-        });
-      }
-    }
-
-    // Use the enhanced handleWebSocketUpdate function
+    // ✅ SIMPLIFIED: Use the optimized handleWebSocketUpdate function
+    // This prevents the multiple invalidation calls we were seeing
     handleWebSocketUpdate(queryClient, data);
   };
 
@@ -191,13 +168,16 @@ const setupWebSocketSync = (webSocketService, queryClient) => {
 
   eventTypes.forEach((eventType) => {
     webSocketService.addEventListener(eventType, handleAppointmentUpdate);
+    console.log("📡 Event listener added for:", eventType);
   });
 
   // Return cleanup function
   return () => {
+    console.log("🧹 Cleaning up WebSocket cache sync event listeners");
     eventTypes.forEach((eventType) => {
       webSocketService.removeEventListener(eventType, handleAppointmentUpdate);
     });
+    setupWebSocketSync._isSetup = false;
   };
 };
 

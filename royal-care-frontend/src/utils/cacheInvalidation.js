@@ -417,6 +417,16 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
 
   const { type, appointment } = wsData;
 
+  // ✅ CRITICAL FIX: Prevent invalidation loops by debouncing rapid calls
+  if (
+    handleWebSocketUpdate._lastCall &&
+    Date.now() - handleWebSocketUpdate._lastCall < 200
+  ) {
+    console.log("⚡ Debouncing rapid WebSocket update calls");
+    return Promise.resolve();
+  }
+  handleWebSocketUpdate._lastCall = Date.now();
+
   // Extract user information from appointment data
   let therapistId = null;
   let driverId = null;
@@ -427,66 +437,84 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
 
     // Also check therapists array for multi-therapist appointments
     if (appointment.therapists && Array.isArray(appointment.therapists)) {
-      appointment.therapists.forEach((id) => {
-        if (id && id !== therapistId) {
-          // For multi-therapist appointments, invalidate all affected therapists
-          invalidateAppointmentCaches(queryClient, {
-            userId: id,
-            userRole: "therapist",
-            appointmentId: appointment.id,
-          });
-        }
-      });
+      therapistId = appointment.therapists[0]; // Use first therapist for primary invalidation
     }
   }
 
-  // Invalidate caches for affected users
+  // ✅ CRITICAL FIX: Simplified, targeted cache invalidation to prevent loops
   const promises = [];
 
   switch (type) {
     case "appointment_created":
     case "appointment_updated":
     case "appointment_deleted":
-      // Invalidate for therapist
+      console.log(`🔄 Processing ${type} for appointment:`, appointment?.id);
+
+      // Only invalidate specific therapist cache if we have the ID
       if (therapistId) {
+        console.log(
+          "🩺 Targeted therapist cache invalidation for:",
+          therapistId
+        );
         promises.push(
-          invalidateAppointmentCaches(queryClient, {
-            userId: therapistId,
-            userRole: "therapist",
-            appointmentId: appointment?.id,
+          queryClient.invalidateQueries({
+            queryKey: ["appointments", "therapist", therapistId],
+            refetchType: "active",
           })
         );
       }
 
-      // Invalidate for driver
+      // Only invalidate specific driver cache if we have the ID
       if (driverId) {
+        console.log("🚗 Targeted driver cache invalidation for:", driverId);
         promises.push(
-          invalidateAppointmentCaches(queryClient, {
-            userId: driverId,
-            userRole: "driver",
-            appointmentId: appointment?.id,
+          queryClient.invalidateQueries({
+            queryKey: ["appointments", "driver", driverId],
+            refetchType: "active",
           })
         );
       }
 
-      // Always invalidate general caches
+      // Minimal general cache invalidation
       promises.push(
-        invalidateAppointmentCaches(queryClient, {
-          appointmentId: appointment?.id,
+        queryClient.invalidateQueries({
+          queryKey: ["appointments"],
+          refetchType: "active",
         })
       );
       break;
 
     case "therapist_response":
     case "driver_response":
-      return invalidateByStatus(queryClient, appointment?.status, {
-        userId: therapistId || driverId,
-        userRole: type.includes("therapist") ? "therapist" : "driver",
-      });
+      console.log(`🔄 Processing ${type} response`);
+
+      // Targeted invalidation based on response type
+      if (type === "therapist_response" && therapistId) {
+        promises.push(
+          queryClient.invalidateQueries({
+            queryKey: ["appointments", "therapist", therapistId],
+            refetchType: "active",
+          })
+        );
+      } else if (type === "driver_response" && driverId) {
+        promises.push(
+          queryClient.invalidateQueries({
+            queryKey: ["appointments", "driver", driverId],
+            refetchType: "active",
+          })
+        );
+      }
+      break;
 
     default:
-      // Fallback: invalidate core appointment data
-      promises.push(invalidateAppointmentCaches(queryClient));
+      // Minimal fallback invalidation
+      console.log("🔄 Default minimal cache invalidation");
+      promises.push(
+        queryClient.invalidateQueries({
+          queryKey: ["appointments"],
+          refetchType: "active",
+        })
+      );
   }
 
   return Promise.all(promises);

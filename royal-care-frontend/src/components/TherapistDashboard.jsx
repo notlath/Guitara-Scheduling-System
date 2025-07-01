@@ -45,15 +45,25 @@ const invalidateAppointmentQueries = async (queryClient, delay = 0) => {
   }
 
   // Get current data before invalidation for debugging
-  const beforeInvalidation = queryClient.getQueryData(["appointments"]);
+  const user = getUser(); // Get user first for proper query key
+  if (!user?.id) {
+    console.error("❌ No user ID available for cache invalidation");
+    return;
+  }
+
+  const beforeInvalidation = queryClient.getQueryData([
+    "appointments",
+    "therapist",
+    user.id,
+  ]);
   console.log(
     "📊 Data before invalidation:",
-    beforeInvalidation?.length,
-    "appointments"
+    beforeInvalidation?.length || 0,
+    "appointments for therapist:",
+    user.id
   );
 
   // ✅ AGGRESSIVE INVALIDATION: Include therapist-specific queries
-  const user = getUser(); // Use the same helper function consistently
 
   try {
     // Invalidate all appointment-related queries
@@ -117,11 +127,16 @@ const invalidateAppointmentQueries = async (queryClient, delay = 0) => {
 
     // Wait a bit and check the data after invalidation
     setTimeout(() => {
-      const afterInvalidation = queryClient.getQueryData(["appointments"]);
+      const afterInvalidation = queryClient.getQueryData([
+        "appointments",
+        "therapist",
+        user.id,
+      ]);
       console.log(
         "📊 Data after invalidation:",
-        afterInvalidation?.length,
-        "appointments"
+        afterInvalidation?.length || 0,
+        "appointments for therapist:",
+        user.id
       );
     }, 100);
   } catch (error) {
@@ -149,20 +164,32 @@ const getUser = () => {
 };
 
 // TanStack Query functions for fetching appointments data
-const fetchAppointments = async () => {
+// ✅ CRITICAL FIX: Use main appointments endpoint with authentication
+// Backend will automatically filter for therapist based on user auth
+const fetchTherapistAppointments = async (therapistId) => {
   const token = getToken();
   if (!token) throw new Error("Authentication required");
+  if (!therapistId) throw new Error("Therapist ID required");
 
+  console.log("🩺 Fetching therapist appointments via authenticated endpoint");
+
+  // Use main appointments endpoint - backend filters automatically
   const response = await axios.get(`${API_URL}appointments/`, {
     headers: { Authorization: `Token ${token}` },
   });
-  return response.data.results || response.data;
+
+  const appointments = response.data.results || response.data;
+  console.log(
+    `✅ Backend-filtered appointments for therapist:`,
+    appointments.length
+  );
+  return appointments;
 };
 
 // TanStack Query hook for therapist dashboard data
 const useTherapistDashboardData = (userId) => {
   const {
-    data: allAppointments = [],
+    data: myAppointments = [],
     isLoading,
     error,
     refetch,
@@ -170,16 +197,16 @@ const useTherapistDashboardData = (userId) => {
     isFetching,
   } = useQuery({
     queryKey: ["appointments", "therapist", userId],
-    queryFn: fetchAppointments,
-    enabled: !!userId, // ✅ FIX: Only fetch when userId is available
-    staleTime: 0, // ✅ KEEP: Always consider data stale for immediate updates
-    gcTime: 2 * 60 * 1000, // ✅ FIX: Use gcTime instead of deprecated cacheTime
-    refetchInterval: 30 * 1000, // ✅ FIX: Reduce to 30 seconds for more frequent updates
-    refetchOnWindowFocus: true, // ✅ Keep: Refetch when window gains focus
-    refetchOnReconnect: true, // ✅ Keep: Refetch when connection is restored
-    refetchOnMount: true, // ✅ FIX: Always refetch on component mount
+    queryFn: () => fetchTherapistAppointments(userId), // ✅ Use therapist-specific fetch
+    enabled: !!userId, // ✅ Only fetch when userId is available
+    staleTime: 0, // ✅ Always consider data stale for immediate updates
+    gcTime: 2 * 60 * 1000, // ✅ Use gcTime instead of deprecated cacheTime
+    refetchInterval: 30 * 1000, // ✅ Reduce to 30 seconds for more frequent updates
+    refetchOnWindowFocus: true, // ✅ Refetch when window gains focus
+    refetchOnReconnect: true, // ✅ Refetch when connection is restored
+    refetchOnMount: true, // ✅ Always refetch on component mount
     retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // ✅ Keep: Exponential backoff
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // ✅ Exponential backoff
     onSuccess: (data) => {
       console.log(
         `🩺 TherapistDashboard data updated at ${new Date().toLocaleTimeString()}:`,
@@ -192,39 +219,7 @@ const useTherapistDashboardData = (userId) => {
     },
   });
 
-  // Filter appointments for this therapist
-  const myAppointments = useMemo(() => {
-    if (!Array.isArray(allAppointments) || !userId) return [];
-
-    console.log("🔍 Filtering appointments for therapist:", userId);
-    console.log("📊 Total appointments to filter:", allAppointments.length);
-
-    const filtered = allAppointments.filter((apt) => {
-      // Check multiple possible therapist field names for compatibility
-      const isTherapist =
-        apt.therapist_id === userId || // Primary field
-        apt.therapist === userId || // Legacy field
-        (apt.therapists &&
-          Array.isArray(apt.therapists) &&
-          apt.therapists.includes(userId)); // Multi-therapist
-
-      if (isTherapist) {
-        console.log("✅ Found appointment for therapist:", {
-          id: apt.id,
-          therapist_id: apt.therapist_id,
-          therapist: apt.therapist,
-          therapists: apt.therapists,
-          status: apt.status,
-        });
-      }
-
-      return isTherapist;
-    });
-
-    console.log("📊 Filtered appointments for therapist:", filtered.length);
-    return filtered;
-  }, [allAppointments, userId]);
-
+  // ✅ SIMPLIFIED: Data is already filtered by the fetch function
   // Filter today's appointments
   const todayAppointments = useMemo(() => {
     const today = new Date();
@@ -246,7 +241,7 @@ const useTherapistDashboardData = (userId) => {
     isLoading,
     error,
     refetch,
-    hasData: allAppointments.length > 0,
+    hasData: myAppointments.length > 0,
     dataUpdatedAt,
     isFetching,
   };
