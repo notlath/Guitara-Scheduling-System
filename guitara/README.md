@@ -1,6 +1,6 @@
 # Royal Care Backend System
 
-This directory contains the Django-based backend service for the Royal Care home-service massage therapy management system.
+This directory contains the Django 5.1.4 backend service for the Royal Care home-service massage therapy management system, built with Python 3.12.8.
 
 ## Project Structure
 
@@ -8,7 +8,7 @@ This directory contains the Django-based backend service for the Royal Care home
 guitara/
 ├── manage.py                # Django command-line utility for administrative tasks
 ├── requirements.txt         # Python dependencies for the backend
-├── db.sqlite3              # SQLite database (only used for development)
+├── db.sqlite3              # SQLite 3.45.3 database (only used for development)
 ├── settings.py             # Project settings file
 │
 ├── authentication/         # User authentication and authorization
@@ -45,8 +45,8 @@ guitara/
 
 ### Prerequisites
 
-- Python 3.10+
-- PostgreSQL (with Supabase for production)
+- Python 3.12.8
+- PostgreSQL 15.8+ (with Supabase for production)
 - Redis (for WebSocket and async tasks)
 
 ### Environment Configuration
