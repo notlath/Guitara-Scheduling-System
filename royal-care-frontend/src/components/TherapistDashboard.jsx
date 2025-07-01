@@ -10,6 +10,7 @@ import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
 import { queryKeys } from "../lib/queryClient";
+import { syncMutationSuccess } from "../services/realTimeSyncService";
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -468,36 +469,19 @@ const TherapistDashboard = () => {
 
       return { previousData };
     },
-    onSuccess: async () => {
+    onSuccess: async (backendData, appointmentId) => {
       console.log(
-        "✅ Accept appointment mutation successful - triggering cache refresh"
+        "✅ Accept appointment mutation successful - backend data:",
+        backendData
       );
 
-      // ✅ CRITICAL FIX: Comprehensive cache invalidation and forced refetch
-      try {
-        // 1. Invalidate all appointment queries aggressively
-        await invalidateAppointmentQueries(queryClient, 500); // 500ms delay for backend propagation
-
-        // 2. Force immediate refetch of therapist-specific data
-        await queryClient.refetchQueries({
-          queryKey: ["appointments", "therapist", user?.id],
-          type: "all",
-        });
-
-        // 3. Invalidate broader appointment cache patterns
-        await queryClient.invalidateQueries({
-          predicate: (query) => {
-            const queryKey = query.queryKey;
-            return Array.isArray(queryKey) && queryKey.includes("appointments");
-          },
-        });
-
-        console.log(
-          "✅ Comprehensive cache refresh completed for accept appointment"
-        );
-      } catch (error) {
-        console.error("❌ Cache refresh failed after accept:", error);
-      }
+      // ✅ REAL-TIME SYNC: Use the new real-time sync service
+      syncMutationSuccess(
+        "accept_appointment",
+        appointmentId,
+        backendData,
+        "therapist"
+      );
     },
     onError: (error, variables, context) => {
       if (context?.previousData) {
@@ -761,90 +745,20 @@ const TherapistDashboard = () => {
         backendData
       );
 
-      // First, check what the backend actually returned
-      if (backendData?.appointment) {
-        console.log("� Backend appointment data:", {
-          id: backendData.appointment.id,
-          status: backendData.appointment.status,
-          session_started_at: backendData.appointment.session_started_at,
-        });
-
-        // If backend returned the appointment data, use it directly
-        const optimisticUpdate = (oldData) => {
-          if (!oldData) return oldData;
-          return oldData.map((apt) =>
-            apt.id === appointmentId
-              ? { ...apt, ...backendData.appointment }
-              : apt
-          );
-        };
-
-        queryClient.setQueryData(["appointments"], optimisticUpdate);
-        queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          optimisticUpdate
-        );
-        queryClient.setQueryData(
-          ["appointments", "therapist", user?.id],
-          optimisticUpdate
-        );
-
-        console.log("✅ Applied backend data directly to cache");
-      } else {
-        console.log(
-          "⚠️ Backend didn't return appointment data, maintaining optimistic update"
-        );
-
-        // Ensure the optimistic update persists by re-applying it
-        const maintainOptimisticUpdate = (oldData) => {
-          if (!oldData) return oldData;
-          return oldData.map((apt) =>
-            apt.id === appointmentId && apt.status !== "session_in_progress"
-              ? {
-                  ...apt,
-                  status: "session_in_progress",
-                  session_started_at: new Date().toISOString(),
-                  started_by: user?.id,
-                }
-              : apt
-          );
-        };
-
-        queryClient.setQueryData(["appointments"], maintainOptimisticUpdate);
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          maintainOptimisticUpdate
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          maintainOptimisticUpdate
-        );
-        queryClient.setQueryData(
-          ["appointments", "therapist", user?.id],
-          maintainOptimisticUpdate
-        );
-
-        console.log("✅ Maintained optimistic update in cache");
-      }
-
-      // ✅ CRITICAL FIX: Ensure cache is properly synchronized
-      await ensureTherapistCacheSync(appointmentId, {
+      // ✅ REAL-TIME SYNC: Use the new real-time sync service
+      const updateData = {
         status: "session_in_progress",
         session_started_at: new Date().toISOString(),
         started_by: user?.id,
-      });
+        ...(backendData?.appointment || {}),
+      };
 
-      // Only invalidate other related queries, not the main appointments
-      setTimeout(async () => {
-        // Invalidate related queries but preserve our updated appointment data
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["notifications"] }),
-          queryClient.invalidateQueries({ queryKey: ["attendance"] }),
-          queryClient.invalidateQueries({ queryKey: ["availability"] }),
-        ]);
-        console.log("✅ Related queries invalidated");
-      }, 100);
+      syncMutationSuccess(
+        "start_session",
+        appointmentId,
+        updateData,
+        "therapist"
+      );
     },
     onError: (error, variables, context) => {
       console.error("❌ startSessionMutation.onError:", error);

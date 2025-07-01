@@ -434,7 +434,9 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
   // ✅ CRITICAL: Immediate cache invalidation for ALL dashboards
   const performCacheUpdate = async () => {
     try {
-      console.log(`🚀 INSTANT CACHE INVALIDATION - Starting comprehensive update for ${type}`);
+      console.log(
+        `🚀 INSTANT CACHE INVALIDATION - Starting comprehensive update for ${type}`
+      );
 
       // 1. ✅ THERAPIST DASHBOARD: Force immediate update
       console.log("🩺 Invalidating Therapist Dashboard caches...");
@@ -443,42 +445,50 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
         queryClient.invalidateQueries({
           predicate: (query) => {
             const key = query.queryKey;
-            return Array.isArray(key) && 
-                   key.includes("appointments") && 
-                   key.includes("therapist");
+            return (
+              Array.isArray(key) &&
+              key.includes("appointments") &&
+              key.includes("therapist")
+            );
           },
         }),
         // Force refetch active therapist queries
         queryClient.refetchQueries({
           predicate: (query) => {
             const key = query.queryKey;
-            return Array.isArray(key) && 
-                   key.includes("appointments") && 
-                   key.includes("therapist");
+            return (
+              Array.isArray(key) &&
+              key.includes("appointments") &&
+              key.includes("therapist")
+            );
           },
           type: "active",
         }),
       ]);
 
-      // 2. ✅ DRIVER DASHBOARD: Force immediate update  
+      // 2. ✅ DRIVER DASHBOARD: Force immediate update
       console.log("� Invalidating Driver Dashboard caches...");
       await Promise.all([
         // Invalidate ALL driver query patterns
         queryClient.invalidateQueries({
           predicate: (query) => {
             const key = query.queryKey;
-            return Array.isArray(key) && 
-                   key.includes("appointments") && 
-                   key.includes("driver");
+            return (
+              Array.isArray(key) &&
+              key.includes("appointments") &&
+              key.includes("driver")
+            );
           },
         }),
         // Force refetch active driver queries
         queryClient.refetchQueries({
           predicate: (query) => {
             const key = query.queryKey;
-            return Array.isArray(key) && 
-                   key.includes("appointments") && 
-                   key.includes("driver");
+            return (
+              Array.isArray(key) &&
+              key.includes("appointments") &&
+              key.includes("driver")
+            );
           },
           type: "active",
         }),
@@ -491,21 +501,24 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
         queryClient.invalidateQueries({
           predicate: (query) => {
             const key = query.queryKey;
-            return Array.isArray(key) && 
-                   key.includes("operator");
+            return Array.isArray(key) && key.includes("operator");
           },
         }),
         // Invalidate general appointment queries
         queryClient.invalidateQueries({ queryKey: ["appointments"] }),
         queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
         queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
-        queryClient.invalidateQueries({ queryKey: ["appointments", "upcoming"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["appointments", "upcoming"],
+        }),
         // Force refetch active operator queries
         queryClient.refetchQueries({
           predicate: (query) => {
             const key = query.queryKey;
-            return Array.isArray(key) && 
-                   (key.includes("operator") || key.includes("appointments"));
+            return (
+              Array.isArray(key) &&
+              (key.includes("operator") || key.includes("appointments"))
+            );
           },
           type: "active",
         }),
@@ -514,23 +527,29 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
       // 4. ✅ SPECIFIC USER CACHE INVALIDATION: Target affected users
       if (appointment) {
         const affectedUsers = new Set();
-        
+
         // Add therapist IDs
-        if (appointment.therapist_id) affectedUsers.add(`therapist_${appointment.therapist_id}`);
-        if (appointment.therapist) affectedUsers.add(`therapist_${appointment.therapist}`);
+        if (appointment.therapist_id)
+          affectedUsers.add(`therapist_${appointment.therapist_id}`);
+        if (appointment.therapist)
+          affectedUsers.add(`therapist_${appointment.therapist}`);
         if (appointment.therapists && Array.isArray(appointment.therapists)) {
-          appointment.therapists.forEach(tId => affectedUsers.add(`therapist_${tId}`));
+          appointment.therapists.forEach((tId) =>
+            affectedUsers.add(`therapist_${tId}`)
+          );
         }
-        
+
         // Add driver IDs
-        if (appointment.driver_id) affectedUsers.add(`driver_${appointment.driver_id}`);
-        if (appointment.driver) affectedUsers.add(`driver_${appointment.driver}`);
+        if (appointment.driver_id)
+          affectedUsers.add(`driver_${appointment.driver_id}`);
+        if (appointment.driver)
+          affectedUsers.add(`driver_${appointment.driver}`);
 
         // Force refetch for each affected user
         for (const userKey of affectedUsers) {
-          const [role, userId] = userKey.split('_');
+          const [role, userId] = userKey.split("_");
           console.log(`🔄 Force refreshing ${role} ${userId} cache`);
-          
+
           await queryClient.refetchQueries({
             queryKey: ["appointments", role, userId],
             type: "all",
@@ -538,8 +557,9 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
         }
       }
 
-      console.log("✅ ROBUST WebSocket cache invalidation completed successfully");
-
+      console.log(
+        "✅ ROBUST WebSocket cache invalidation completed successfully"
+      );
     } catch (error) {
       console.error("❌ WebSocket cache invalidation failed:", error);
       // Don't throw, just log and continue
