@@ -203,10 +203,10 @@ const useTherapistDashboardData = (userId) => {
     queryKey, // ✅ Use consistent queryKeys structure
     queryFn: () => fetchTherapistAppointments(userId), // ✅ Use therapist-specific fetch
     enabled: !!userId, // ✅ Only fetch when userId is available
-    staleTime: 30 * 1000, // ✅ IMPROVED: 30 seconds stale time to reduce unnecessary refetches
+    staleTime: 0, // ✅ IMPROVED: 0 seconds stale time to reduce unnecessary refetches
     gcTime: 5 * 60 * 1000, // ✅ 5 minutes cache time
-    refetchInterval: false, // ✅ IMPROVED: Disable auto-refetch, rely on WebSocket updates instead
-    refetchOnWindowFocus: false, // ✅ IMPROVED: Disable focus refetch to prevent disruption
+    refetchInterval: 30 * 1000, // ✅ IMPROVED: Disable auto-refetch, rely on WebSocket updates instead
+    refetchOnWindowFocus: true, // ✅ IMPROVED: Disable focus refetch to prevent disruption
     refetchOnReconnect: true, // ✅ Keep connection refetch for reliability
     refetchOnMount: "always", // ✅ Always refetch on mount for fresh data
     retry: 3,
