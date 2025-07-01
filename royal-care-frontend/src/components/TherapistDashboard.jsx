@@ -5,6 +5,7 @@ import { MdClose } from "react-icons/md";
 import { useNavigate, useSearchParams } from "react-router-dom";
 // TanStack Query hooks for data management (removing Redux dependencies)
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
+import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
@@ -404,131 +405,21 @@ const TherapistDashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // ✅ CRITICAL FIX: Add standardized WebSocket cache sync like DriverDashboard
+  useAutoWebSocketCacheSync();
+
   // ✅ CRITICAL FIX: Memoize user to prevent infinite re-renders
   const user = useMemo(() => getUser(), []);
 
   // ✅ DEBUG: Log user information ONCE during component mount
   useEffect(() => {
-    console.log("🔍 DEBUG: TherapistDashboard user state:", {
+    console.log("� DEBUG: TherapistDashboard user state:", {
       user,
       userId: user?.id,
       userName: user?.first_name || user?.username,
       userType: user?.user_type || user?.role,
     });
   }, [user]);
-
-  // ✅ CRITICAL FIX: Enhanced WebSocket cache sync with immediate UI updates
-  // ✅ ENHANCED: WebSocket integration with immediate cache invalidation
-  useEffect(() => {
-    // Only set up WebSocket once, not dependent on user changes
-    let webSocketService = null;
-
-    const setupWebSocketWithTherapistFix = async () => {
-      try {
-        const module = await import("../services/webSocketTanStackService");
-        webSocketService = module.default;
-
-        console.log(
-          "🔌 Setting up enhanced WebSocket cache sync for TherapistDashboard"
-        );
-
-        // ✅ IMPROVED: Smarter cache invalidation that preserves data during refetch
-        const handleTherapistCacheUpdate = (data) => {
-          console.log(
-            "📡 TherapistDashboard: WebSocket event received:",
-            data.type
-          );
-
-          // Get current user from localStorage to avoid dependency issues
-          const currentUser = getUser();
-
-          // 1. Smart invalidation: Don't remove data, just mark as stale and refetch
-          if (currentUser?.id) {
-            console.log("🔄 Smart invalidating TherapistDashboard query...");
-
-            // ✅ CRITICAL FIX: Target the EXACT query key used by useTherapistDashboardData
-            const therapistQueryKey = queryKeys.appointments.byTherapist(
-              currentUser.id,
-              "all"
-            );
-
-            console.log("🎯 Targeting exact query key:", therapistQueryKey);
-
-            // ✅ IMPROVED: Only invalidate and refetch - don't remove existing data
-            // This way the UI keeps showing existing data while new data loads
-            queryClient.invalidateQueries({
-              queryKey: therapistQueryKey,
-              refetchType: "active", // Only refetch if component is mounted
-              exact: true,
-            });
-            console.log(
-              "🔄 Invalidated and refetching query (keeping existing data)"
-            );
-
-            // 2. Also invalidate global appointment queries to keep everything in sync
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.appointments.all,
-            });
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.appointments.list(),
-            });
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.appointments.today(),
-            });
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.appointments.upcoming(),
-            });
-
-            console.log("✅ TherapistDashboard cache invalidation completed");
-          }
-        };
-
-        // Subscribe to all relevant WebSocket events
-        const events = [
-          "appointment_created",
-          "appointment_updated",
-          "appointment_deleted",
-          "appointment_status_changed",
-          "therapist_response",
-          "driver_response",
-          "session_started",
-          "awaiting_payment",
-          "appointment_started",
-        ];
-
-        events.forEach((eventType) => {
-          webSocketService.addEventListener(
-            eventType,
-            handleTherapistCacheUpdate
-          );
-          console.log("📡 Event listener added for:", eventType);
-        });
-
-        console.log(
-          "✅ Enhanced WebSocket cache sync configured for TherapistDashboard"
-        );
-
-        return () => {
-          // Cleanup
-          events.forEach((eventType) => {
-            webSocketService?.removeEventListener(
-              eventType,
-              handleTherapistCacheUpdate
-            );
-          });
-        };
-      } catch (error) {
-        console.error("❌ Failed to setup WebSocket cache sync:", error);
-      }
-    };
-
-    setupWebSocketWithTherapistFix();
-
-    return () => {
-      // Cleanup handled by the setup function
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ✅ CRITICAL FIX: Empty dependency array to prevent infinite renders
 
   // TanStack Query data fetching with optimized configuration
   const {
@@ -628,6 +519,18 @@ const TherapistDashboard = () => {
         backendData,
         "therapist"
       );
+
+      // ✅ CRITICAL FIX: Add comprehensive cache invalidation like DriverDashboard
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+
+      // ✅ Also invalidate therapist-specific queries
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
+        refetchType: "active",
+      });
     },
     onError: (error, variables, context) => {
       if (context?.previousData) {
@@ -702,9 +605,27 @@ const TherapistDashboard = () => {
 
       return { previousData };
     },
-    onSuccess: async () => {
-      await invalidateAppointmentQueries(queryClient);
-      // ✅ CRITICAL FIX: Also invalidate the therapist-specific query
+    onSuccess: async (backendData, { appointmentId }) => {
+      console.log(
+        "✅ Reject appointment mutation successful - backend data:",
+        backendData
+      );
+
+      // ✅ REAL-TIME SYNC: Use the new real-time sync service
+      syncMutationSuccess(
+        "reject_appointment",
+        appointmentId,
+        backendData,
+        "therapist"
+      );
+
+      // ✅ CRITICAL FIX: Add comprehensive cache invalidation like DriverDashboard
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+
+      // ✅ Also invalidate therapist-specific queries
       await queryClient.invalidateQueries({
         queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
         refetchType: "active",
@@ -782,9 +703,27 @@ const TherapistDashboard = () => {
 
       return { previousData };
     },
-    onSuccess: async () => {
-      await invalidateAppointmentQueries(queryClient);
-      // ✅ CRITICAL FIX: Also invalidate the therapist-specific query
+    onSuccess: async (backendData, appointmentId) => {
+      console.log(
+        "✅ Confirm readiness mutation successful - backend data:",
+        backendData
+      );
+
+      // ✅ REAL-TIME SYNC: Use the new real-time sync service
+      syncMutationSuccess(
+        "confirm_readiness",
+        appointmentId,
+        backendData,
+        "therapist"
+      );
+
+      // ✅ CRITICAL FIX: Add comprehensive cache invalidation like DriverDashboard
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+
+      // ✅ Also invalidate therapist-specific queries
       await queryClient.invalidateQueries({
         queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
         refetchType: "active",
@@ -911,7 +850,18 @@ const TherapistDashboard = () => {
         updateData,
         "therapist"
       );
-      await invalidateAppointmentQueries(queryClient);
+
+      // ✅ CRITICAL FIX: Add comprehensive cache invalidation like DriverDashboard
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+
+      // ✅ Also invalidate therapist-specific queries
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
+        refetchType: "active",
+      });
     },
     onError: (error, variables, context) => {
       console.error("❌ startSessionMutation.onError:", error);
@@ -1098,7 +1048,18 @@ const TherapistDashboard = () => {
         ]);
         console.log("✅ Payment-related queries invalidated");
       }, 100);
-      await invalidateAppointmentQueries(queryClient);
+
+      // ✅ CRITICAL FIX: Add comprehensive cache invalidation like DriverDashboard
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+
+      // ✅ Also invalidate therapist-specific queries
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
+        refetchType: "active",
+      });
     },
     onError: (error, variables, context) => {
       console.error("❌ requestPaymentMutation.onError:", error);
@@ -1271,7 +1232,18 @@ const TherapistDashboard = () => {
         ]);
         console.log("✅ Completion-related queries invalidated");
       }, 100);
-      await invalidateAppointmentQueries(queryClient);
+
+      // ✅ CRITICAL FIX: Add comprehensive cache invalidation like DriverDashboard
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+
+      // ✅ Also invalidate therapist-specific queries
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
+        refetchType: "active",
+      });
     },
     onError: (error, variables, context) => {
       console.error("❌ completeSessionMutation.onError:", error);
@@ -1345,9 +1317,27 @@ const TherapistDashboard = () => {
 
       return { previousData };
     },
-    onSuccess: async () => {
-      await invalidateAppointmentQueries(queryClient);
-      // ✅ CRITICAL FIX: Also invalidate the therapist-specific query
+    onSuccess: async (backendData, { appointmentId }) => {
+      console.log(
+        "✅ Request pickup mutation successful - backend data:",
+        backendData
+      );
+
+      // ✅ REAL-TIME SYNC: Use the new real-time sync service
+      syncMutationSuccess(
+        "request_pickup",
+        appointmentId,
+        backendData,
+        "therapist"
+      );
+
+      // ✅ CRITICAL FIX: Add comprehensive cache invalidation like DriverDashboard
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+
+      // ✅ Also invalidate therapist-specific queries
       await queryClient.invalidateQueries({
         queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
         refetchType: "active",
