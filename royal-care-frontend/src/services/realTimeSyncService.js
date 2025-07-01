@@ -11,7 +11,7 @@
  * - Cross-dashboard synchronization
  */
 
-import { queryClient } from "../lib/queryClient";
+import { queryClient, queryKeys } from "../lib/queryClient";
 import webSocketService from "./webSocketTanStackService";
 
 class RealTimeSyncService {
@@ -146,9 +146,9 @@ class RealTimeSyncService {
       appointmentData.therapists.forEach((id) => therapistIds.add(id));
     }
 
-    // Generate cache keys for each therapist
+    // Generate cache keys for each therapist using proper queryKeys structure
     therapistIds.forEach((therapistId) => {
-      keys.push(["appointments", "therapist", therapistId]);
+      keys.push(queryKeys.appointments.byTherapist(therapistId, "all"));
       keys.push(["dashboard", "therapist", therapistId]);
     });
 
@@ -188,8 +188,9 @@ class RealTimeSyncService {
           const key = query.queryKey;
           return (
             Array.isArray(key) &&
-            key.includes("appointments") &&
-            key.includes("therapist")
+            key.length >= 3 &&
+            key[0] === "appointments" &&
+            key[1] === "byTherapist"
           );
         },
       }),
@@ -296,7 +297,7 @@ class RealTimeSyncService {
     // Check if any queued syncs are older than 30 seconds
     const now = Date.now();
     const staleUpdates = Array.from(this.syncQueue.entries()).filter(
-      ([appointmentId, sync]) => now - sync.timestamp > 30000
+      ([, sync]) => now - sync.timestamp > 30000
     );
 
     if (staleUpdates.length > 0) {

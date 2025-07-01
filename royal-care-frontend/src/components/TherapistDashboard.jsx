@@ -595,20 +595,18 @@ const TherapistDashboard = () => {
   const confirmReadinessMutation = useMutation({
     mutationFn: therapistAPI.confirmReadiness,
     onMutate: async (appointmentId) => {
-      await queryClient.cancelQueries({ queryKey: ["appointments"] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
       await queryClient.cancelQueries({
-        queryKey: ["appointments", "therapist", user?.id],
+        queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
       });
 
       const previousData = {
-        appointments: queryClient.getQueryData(["appointments"]),
-        today: queryClient.getQueryData(["appointments", "today"]),
-        upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-        therapistData: queryClient.getQueryData([
-          "appointments",
-          "therapist",
-          user?.id,
-        ]),
+        appointments: queryClient.getQueryData(queryKeys.appointments.all),
+        today: queryClient.getQueryData(queryKeys.appointments.today()),
+        upcoming: queryClient.getQueryData(queryKeys.appointments.upcoming()),
+        therapistData: queryClient.getQueryData(
+          queryKeys.appointments.byTherapist(user?.id, "all")
+        ),
       };
 
       // Optimistic update to show "therapist_confirmed" status immediately
@@ -626,12 +624,18 @@ const TherapistDashboard = () => {
         );
       };
 
-      queryClient.setQueryData(["appointments"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
+      queryClient.setQueryData(queryKeys.appointments.all, optimisticUpdate);
+      queryClient.setQueryData(
+        queryKeys.appointments.today(),
+        optimisticUpdate
+      );
+      queryClient.setQueryData(
+        queryKeys.appointments.upcoming(),
+        optimisticUpdate
+      );
       // ✅ CRITICAL FIX: Update therapist-specific cache
       queryClient.setQueryData(
-        ["appointments", "therapist", user?.id],
+        queryKeys.appointments.byTherapist(user?.id, "all"),
         optimisticUpdate
       );
 
@@ -641,7 +645,7 @@ const TherapistDashboard = () => {
       await invalidateAppointmentQueries(queryClient);
       // ✅ CRITICAL FIX: Also invalidate the therapist-specific query
       await queryClient.invalidateQueries({
-        queryKey: ["appointments", "therapist", user?.id],
+        queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
         refetchType: "active",
       });
     },
@@ -661,7 +665,7 @@ const TherapistDashboard = () => {
         );
         // ✅ CRITICAL FIX: Rollback therapist-specific query too
         queryClient.setQueryData(
-          ["appointments", "therapist", user?.id],
+          queryKeys.appointments.byTherapist(user?.id, "all"),
           context.previousData.therapistData
         );
       }
@@ -676,20 +680,18 @@ const TherapistDashboard = () => {
         appointmentId
       );
 
-      await queryClient.cancelQueries({ queryKey: ["appointments"] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
       await queryClient.cancelQueries({
-        queryKey: ["appointments", "therapist", user?.id],
+        queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
       });
 
       const previousData = {
-        appointments: queryClient.getQueryData(["appointments"]),
-        today: queryClient.getQueryData(["appointments", "today"]),
-        upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-        therapist: queryClient.getQueryData([
-          "appointments",
-          "therapist",
-          user?.id,
-        ]),
+        appointments: queryClient.getQueryData(queryKeys.appointments.all),
+        today: queryClient.getQueryData(queryKeys.appointments.today()),
+        upcoming: queryClient.getQueryData(queryKeys.appointments.upcoming()),
+        therapist: queryClient.getQueryData(
+          queryKeys.appointments.byTherapist(user?.id, "all")
+        ),
       };
 
       // Debug: Log current appointment before optimistic update
@@ -729,7 +731,7 @@ const TherapistDashboard = () => {
       queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
       queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
       queryClient.setQueryData(
-        ["appointments", "therapist", user?.id],
+        queryKeys.appointments.byTherapist(user?.id, "all"),
         optimisticUpdate
       );
       */
@@ -773,19 +775,19 @@ const TherapistDashboard = () => {
       console.error("❌ startSessionMutation.onError:", error);
       if (context?.previousData) {
         queryClient.setQueryData(
-          ["appointments"],
+          queryKeys.appointments.all,
           context.previousData.appointments
         );
         queryClient.setQueryData(
-          ["appointments", "today"],
+          queryKeys.appointments.today(),
           context.previousData.today
         );
         queryClient.setQueryData(
-          ["appointments", "upcoming"],
+          queryKeys.appointments.upcoming(),
           context.previousData.upcoming
         );
         queryClient.setQueryData(
-          ["appointments", "therapist", user?.id],
+          queryKeys.appointments.byTherapist(user?.id, "all"),
           context.previousData.therapist
         );
       }
@@ -801,20 +803,18 @@ const TherapistDashboard = () => {
       );
 
       // Cancel ongoing queries to prevent race conditions
-      await queryClient.cancelQueries({ queryKey: ["appointments"] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.appointments.all });
       await queryClient.cancelQueries({
-        queryKey: ["appointments", "therapist", user?.id],
+        queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
       });
 
       const previousData = {
         appointments: queryClient.getQueryData(["appointments"]),
         today: queryClient.getQueryData(["appointments", "today"]),
         upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-        therapistData: queryClient.getQueryData([
-          "appointments",
-          "therapist",
-          user?.id,
-        ]),
+        therapistData: queryClient.getQueryData(
+          queryKeys.appointments.byTherapist(user?.id, "all")
+        ),
       };
 
       // Debug: Log current appointment before optimistic update
@@ -851,7 +851,7 @@ const TherapistDashboard = () => {
       queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
       // ✅ CRITICAL FIX: Update therapist-specific cache
       queryClient.setQueryData(
-        ["appointments", "therapist", user?.id],
+        queryKeys.appointments.byTherapist(user?.id, "all"),
         optimisticUpdate
       );
 
@@ -902,7 +902,7 @@ const TherapistDashboard = () => {
         );
         // ✅ CRITICAL FIX: Update therapist-specific cache with backend data
         queryClient.setQueryData(
-          ["appointments", "therapist", user?.id],
+          queryKeys.appointments.byTherapist(user?.id, "all"),
           updateWithBackendData
         );
 
@@ -938,7 +938,7 @@ const TherapistDashboard = () => {
         );
         // ✅ CRITICAL FIX: Update therapist-specific cache with optimistic data
         queryClient.setQueryData(
-          ["appointments", "therapist", user?.id],
+          queryKeys.appointments.byTherapist(user?.id, "all"),
           maintainOptimisticUpdate
         );
 
@@ -976,7 +976,7 @@ const TherapistDashboard = () => {
         );
         // ✅ CRITICAL FIX: Rollback therapist-specific query too
         queryClient.setQueryData(
-          ["appointments", "therapist", user?.id],
+          queryKeys.appointments.byTherapist(user?.id, "all"),
           context.previousData.therapistData
         );
         console.log("🔄 Rolled back payment optimistic updates due to error");
@@ -994,18 +994,16 @@ const TherapistDashboard = () => {
 
       await queryClient.cancelQueries({ queryKey: ["appointments"] });
       await queryClient.cancelQueries({
-        queryKey: ["appointments", "therapist", user?.id],
+        queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
       });
 
       const previousData = {
         appointments: queryClient.getQueryData(["appointments"]),
         today: queryClient.getQueryData(["appointments", "today"]),
         upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-        therapist: queryClient.getQueryData([
-          "appointments",
-          "therapist",
-          user?.id,
-        ]),
+        therapist: queryClient.getQueryData(
+          queryKeys.appointments.byTherapist(user?.id, "all")
+        ),
       };
 
       // Optimistic update to show "completed" status immediately
@@ -1033,7 +1031,7 @@ const TherapistDashboard = () => {
       queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
       queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
       queryClient.setQueryData(
-        ["appointments", "therapist", user?.id],
+        queryKeys.appointments.byTherapist(user?.id, "all"),
         optimisticUpdate
       );
 
@@ -1075,7 +1073,7 @@ const TherapistDashboard = () => {
         );
         // ✅ CRITICAL FIX: Update therapist-specific cache with backend data
         queryClient.setQueryData(
-          ["appointments", "therapist", user?.id],
+          queryKeys.appointments.byTherapist(user?.id, "all"),
           updateWithBackendData
         );
 
@@ -1111,7 +1109,7 @@ const TherapistDashboard = () => {
         );
         // ✅ CRITICAL FIX: Update therapist-specific cache with optimistic data
         queryClient.setQueryData(
-          ["appointments", "therapist", user?.id],
+          queryKeys.appointments.byTherapist(user?.id, "all"),
           maintainOptimisticUpdate
         );
 
@@ -1149,7 +1147,7 @@ const TherapistDashboard = () => {
         );
         // ✅ CRITICAL FIX: Rollback therapist-specific query too
         queryClient.setQueryData(
-          ["appointments", "therapist", user?.id],
+          queryKeys.appointments.byTherapist(user?.id, "all"),
           context.previousData.therapist
         );
         console.log(
@@ -1164,18 +1162,16 @@ const TherapistDashboard = () => {
     onMutate: async ({ appointmentId, urgency = "normal" }) => {
       await queryClient.cancelQueries({ queryKey: ["appointments"] });
       await queryClient.cancelQueries({
-        queryKey: ["appointments", "therapist", user?.id],
+        queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
       });
 
       const previousData = {
         appointments: queryClient.getQueryData(["appointments"]),
         today: queryClient.getQueryData(["appointments", "today"]),
         upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-        therapistData: queryClient.getQueryData([
-          "appointments",
-          "therapist",
-          user?.id,
-        ]),
+        therapistData: queryClient.getQueryData(
+          queryKeys.appointments.byTherapist(user?.id, "all")
+        ),
       };
 
       // Optimistic update to show "pickup_requested" status immediately
@@ -1199,7 +1195,7 @@ const TherapistDashboard = () => {
       queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
       // ✅ CRITICAL FIX: Update therapist-specific cache
       queryClient.setQueryData(
-        ["appointments", "therapist", user?.id],
+        queryKeys.appointments.byTherapist(user?.id, "all"),
         optimisticUpdate
       );
 
@@ -1209,7 +1205,7 @@ const TherapistDashboard = () => {
       await invalidateAppointmentQueries(queryClient);
       // ✅ CRITICAL FIX: Also invalidate the therapist-specific query
       await queryClient.invalidateQueries({
-        queryKey: ["appointments", "therapist", user?.id],
+        queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
         refetchType: "active",
       });
     },
@@ -1229,7 +1225,7 @@ const TherapistDashboard = () => {
         );
         // ✅ CRITICAL FIX: Rollback therapist-specific query too
         queryClient.setQueryData(
-          ["appointments", "therapist", user?.id],
+          queryKeys.appointments.byTherapist(user?.id, "all"),
           context.previousData.therapistData
         );
       }

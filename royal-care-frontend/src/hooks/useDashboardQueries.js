@@ -517,16 +517,26 @@ export const useOperatorDashboardData = () => {
 
         // Invalidate all related queries in parallel for better performance
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.appointments.all,
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.notifications.all,
+          }),
           queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
         ]);
 
         // Force immediate refetch of critical data
         await Promise.all([
-          queryClient.refetchQueries({ queryKey: queryKeys.appointments.list() }),
-          queryClient.refetchQueries({ queryKey: queryKeys.appointments.today() }),
-          queryClient.refetchQueries({ queryKey: queryKeys.notifications.list() }),
+          queryClient.refetchQueries({
+            queryKey: queryKeys.appointments.list(),
+          }),
+          queryClient.refetchQueries({
+            queryKey: queryKeys.appointments.today(),
+          }),
+          queryClient.refetchQueries({
+            queryKey: queryKeys.notifications.list(),
+          }),
         ]);
 
         console.log("✅ Force refresh completed");
@@ -553,8 +563,12 @@ export const useOperatorDashboardData = () => {
       refreshTodayData: async () => {
         console.log("🔄 Refreshing today's critical data...");
         await Promise.all([
-          queryClient.refetchQueries({ queryKey: queryKeys.appointments.today() }),
-          queryClient.refetchQueries({ queryKey: queryKeys.notifications.list() }),
+          queryClient.refetchQueries({
+            queryKey: queryKeys.appointments.today(),
+          }),
+          queryClient.refetchQueries({
+            queryKey: queryKeys.notifications.list(),
+          }),
         ]);
         console.log("✅ Today's data refresh completed");
       },
