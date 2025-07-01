@@ -418,11 +418,11 @@ export const useOperatorDashboardData = () => {
   const appointmentsQuery = useQuery({
     queryKey: queryKeys.appointments.list(),
     queryFn: fetchAppointmentsAPI,
-    staleTime: 0, // Force fresh data for debugging
+    staleTime: 2 * 60 * 1000, // ✅ FIXED: 2 minutes instead of 0 to prevent constant refetch
     cacheTime: 5 * 60 * 1000, // 5 minutes cache
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // ✅ FIXED: Disable to prevent render loops
     refetchOnMount: true,
-    enabled: true, // Force enable
+    enabled: true,
     retry: 2,
     initialData: [], // Provide initial data as empty array
     onSuccess: (data) => {
@@ -433,7 +433,8 @@ export const useOperatorDashboardData = () => {
     },
   });
 
-  // Force trigger the query if it's not running
+  // ✅ FIXED: Remove infinite render loop trigger
+  // Force trigger removed - was causing infinite renders
   console.log("🔍 appointmentsQuery state:", {
     data: appointmentsQuery.data,
     dataLength: appointmentsQuery.data?.length,
@@ -447,24 +448,14 @@ export const useOperatorDashboardData = () => {
     isSuccess: appointmentsQuery.isSuccess,
   });
 
-  // If query is not running, force it
-  if (
-    !appointmentsQuery.isFetching &&
-    !appointmentsQuery.isLoading &&
-    appointmentsQuery.data?.length === 0
-  ) {
-    console.log("🚨 Query not running, manually triggering...");
-    appointmentsQuery.refetch();
-  }
-
   // Today's appointments with direct API calls
   const todayAppointmentsQuery = useQuery({
     queryKey: queryKeys.appointments.today(),
     queryFn: fetchTodayAppointmentsAPI,
-    staleTime: 0, // Force fresh data for debugging
+    staleTime: 2 * 60 * 1000, // ✅ FIXED: 2 minutes instead of 0
     cacheTime: 2 * 60 * 1000, // 2 minutes cache
     refetchInterval: 5 * 60 * 1000, // Background refresh every 5 minutes
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // ✅ FIXED: Disable to prevent render loops
     refetchOnMount: true,
     retry: 2,
     initialData: [], // Provide initial data as empty array
@@ -474,9 +465,9 @@ export const useOperatorDashboardData = () => {
   const upcomingAppointmentsQuery = useQuery({
     queryKey: queryKeys.appointments.upcoming(),
     queryFn: fetchUpcomingAppointmentsAPI,
-    staleTime: 0, // Force fresh data for debugging
+    staleTime: 2 * 60 * 1000, // ✅ FIXED: 2 minutes instead of 0
     cacheTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // ✅ FIXED: Disable to prevent render loops
     refetchOnMount: true,
     retry: 2,
     initialData: [], // Provide initial data as empty array
@@ -486,10 +477,10 @@ export const useOperatorDashboardData = () => {
   const notificationsQuery = useQuery({
     queryKey: queryKeys.notifications.list(),
     queryFn: fetchNotificationsAPI,
-    staleTime: 0, // Force fresh data for debugging
+    staleTime: 2 * 60 * 1000, // ✅ FIXED: 2 minutes instead of 0
     cacheTime: 3 * 60 * 1000,
     refetchInterval: 2 * 60 * 1000, // Background refresh every 2 minutes
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // ✅ FIXED: Disable to prevent render loops
     refetchOnMount: true,
     retry: 2,
     initialData: [], // Provide initial data as empty array
@@ -517,62 +508,59 @@ export const useOperatorDashboardData = () => {
     initialData: [], // Provide initial data as empty array
   });
 
-  // Force refresh function with enhanced invalidation (replaces optimizedDataManager.forceRefresh)
-  const forceRefresh = useCallback(async () => {
-    console.log("🔄 Force refreshing all dashboard data...");
+  // ✅ FIX: Stable callback functions to prevent infinite renders
+  const callbacks = useMemo(
+    () => ({
+      // Force refresh function with enhanced invalidation (replaces optimizedDataManager.forceRefresh)
+      forceRefresh: async () => {
+        console.log("🔄 Force refreshing all dashboard data...");
 
-    // Test manual API call first
-    try {
-      console.log("🧪 Testing direct API call...");
-      const testData = await fetchAppointmentsAPI();
-      console.log("🧪 Direct API call result:", testData?.length, testData);
-    } catch (error) {
-      console.error("🧪 Direct API call failed:", error);
-    }
+        // Invalidate all related queries in parallel for better performance
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
+        ]);
 
-    // Invalidate all related queries in parallel for better performance
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
-    ]);
+        // Force immediate refetch of critical data
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: queryKeys.appointments.list() }),
+          queryClient.refetchQueries({ queryKey: queryKeys.appointments.today() }),
+          queryClient.refetchQueries({ queryKey: queryKeys.notifications.list() }),
+        ]);
 
-    // Force immediate refetch of critical data
-    await Promise.all([
-      queryClient.refetchQueries({ queryKey: queryKeys.appointments.list() }),
-      queryClient.refetchQueries({ queryKey: queryKeys.appointments.today() }),
-      queryClient.refetchQueries({ queryKey: queryKeys.notifications.list() }),
-    ]);
+        console.log("✅ Force refresh completed");
+      },
 
-    console.log("✅ Force refresh completed");
-  }, [queryClient]);
+      // Individual refresh functions with smart invalidation
+      refreshAppointments: async () => {
+        console.log("🔄 Refreshing appointments data...");
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.appointments.all,
+        });
+        console.log("✅ Appointments refresh completed");
+      },
 
-  // Individual refresh functions with smart invalidation
-  const refreshAppointments = useCallback(async () => {
-    console.log("🔄 Refreshing appointments data...");
-    await queryClient.invalidateQueries({
-      queryKey: queryKeys.appointments.all,
-    });
-    console.log("✅ Appointments refresh completed");
-  }, [queryClient]);
+      refreshNotifications: async () => {
+        console.log("🔄 Refreshing notifications data...");
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.notifications.all,
+        });
+        console.log("✅ Notifications refresh completed");
+      },
 
-  const refreshNotifications = useCallback(async () => {
-    console.log("🔄 Refreshing notifications data...");
-    await queryClient.invalidateQueries({
-      queryKey: queryKeys.notifications.all,
-    });
-    console.log("✅ Notifications refresh completed");
-  }, [queryClient]);
-
-  // Enhanced refresh function for real-time updates
-  const refreshTodayData = useCallback(async () => {
-    console.log("🔄 Refreshing today's critical data...");
-    await Promise.all([
-      queryClient.refetchQueries({ queryKey: queryKeys.appointments.today() }),
-      queryClient.refetchQueries({ queryKey: queryKeys.notifications.list() }),
-    ]);
-    console.log("✅ Today's data refresh completed");
-  }, [queryClient]);
+      // Enhanced refresh function for real-time updates
+      refreshTodayData: async () => {
+        console.log("🔄 Refreshing today's critical data...");
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: queryKeys.appointments.today() }),
+          queryClient.refetchQueries({ queryKey: queryKeys.notifications.list() }),
+        ]);
+        console.log("✅ Today's data refresh completed");
+      },
+    }),
+    [queryClient]
+  );
 
   // Memoize the complete data object to prevent new references on every render
   const returnData = useMemo(
@@ -619,10 +607,10 @@ export const useOperatorDashboardData = () => {
         attendanceQuery.data?.length > 0,
 
       // ✅ REFRESH FUNCTIONS - Complete compatibility with legacy
-      forceRefresh,
-      refreshAppointments,
-      refreshNotifications,
-      refreshTodayData, // Enhanced real-time refresh for critical data
+      forceRefresh: callbacks.forceRefresh,
+      refreshAppointments: callbacks.refreshAppointments,
+      refreshNotifications: callbacks.refreshNotifications,
+      refreshTodayData: callbacks.refreshTodayData, // Enhanced real-time refresh for critical data
 
       // ✅ TANSTACK QUERY ENHANCED FEATURES
       isRefetching:
@@ -662,7 +650,8 @@ export const useOperatorDashboardData = () => {
 
       // Data source identifier
       dataSource: "tanstack-query",
-      lastUpdated: new Date().toISOString(),
+      // ✅ FIXED: Remove dynamic lastUpdated to prevent infinite renders
+      // lastUpdated field removed - was causing new object references every render
     }),
     [
       // Essential data
@@ -698,11 +687,8 @@ export const useOperatorDashboardData = () => {
       notificationsQuery.dataUpdatedAt,
       upcomingAppointmentsQuery.isRefetching,
       attendanceQuery.isRefetching,
-      // Functions
-      forceRefresh,
-      refreshAppointments,
-      refreshNotifications,
-      refreshTodayData,
+      // Stable callbacks object
+      callbacks,
     ]
   );
 
