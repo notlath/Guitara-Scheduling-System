@@ -6,7 +6,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 // TanStack Query hooks for data management (removing Redux dependencies)
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
 import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
-import useTherapistWebSocketSync from "../hooks/useTherapistWebSocketSync"; // ✅ ENHANCED: New hook for direct cache updates
 import webSocketService from "../services/webSocketTanStackService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
@@ -57,17 +56,17 @@ const invalidateAppointmentQueries = async (queryClient, delay = 0) => {
   // ✅ AGGRESSIVE INVALIDATION: Include therapist-specific queries
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // Invalidate all appointment-related queries using centralized queryKeys
+  // Invalidate all appointment-related queries
   await Promise.all(
     [
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.list() }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.today() }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.upcoming() }),
-      // ✅ CRITICAL FIX: Invalidate therapist-specific queries using centralized keys
+      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+      queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
+      queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
+      queryClient.invalidateQueries({ queryKey: ["appointments", "upcoming"] }),
+      // ✅ CRITICAL FIX: Invalidate therapist-specific queries
       user?.id &&
         queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.therapistDashboard(user.id),
+          queryKey: ["appointments", "therapist", user.id],
           refetchType: "active",
         }),
       // Invalidate specific query keys if they exist
@@ -142,7 +141,7 @@ const useTherapistDashboardData = (userId) => {
     dataUpdatedAt,
     isFetching,
   } = useQuery({
-    queryKey: queryKeys.appointments.therapistDashboard(userId), // ✅ ENHANCED: Use centralized query keys
+    queryKey: ["appointments", "therapist", userId],
     queryFn: fetchAppointments,
     staleTime: 0, // ✅ FIX: Always consider data stale for immediate updates (was 30000)
     cacheTime: 2 * 60 * 1000, // ✅ FIX: 2 minutes cache time (matches OperatorDashboard)
@@ -162,11 +161,34 @@ const useTherapistDashboardData = (userId) => {
   // Filter appointments for this therapist
   const myAppointments = useMemo(() => {
     if (!Array.isArray(allAppointments) || !userId) return [];
-    return allAppointments.filter(
-      (apt) =>
-        apt.therapist === userId ||
-        (apt.therapists && apt.therapists.includes(userId))
+    
+    console.log("🔍 Filtering appointments for therapist:", userId);
+    console.log("📊 Total appointments to filter:", allAppointments.length);
+    
+    const filtered = allAppointments.filter(
+      (apt) => {
+        // Check multiple possible therapist field names for compatibility
+        const isTherapist = 
+          apt.therapist_id === userId ||      // Primary field
+          apt.therapist === userId ||         // Legacy field
+          (apt.therapists && Array.isArray(apt.therapists) && apt.therapists.includes(userId)); // Multi-therapist
+        
+        if (isTherapist) {
+          console.log("✅ Found appointment for therapist:", {
+            id: apt.id,
+            therapist_id: apt.therapist_id,
+            therapist: apt.therapist,
+            therapists: apt.therapists,
+            status: apt.status
+          });
+        }
+        
+        return isTherapist;
+      }
     );
+    
+    console.log("📊 Filtered appointments for therapist:", filtered.length);
+    return filtered;
   }, [allAppointments, userId]);
 
   // Filter today's appointments
@@ -296,33 +318,32 @@ const TherapistDashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Get user from localStorage instead of Redux (defined once here)
-  const user = getUser();
-
-  // ✅ ENHANCED: New direct cache update WebSocket sync
-  const { updateAppointmentInCache, invalidateTherapistCache, getCacheData } = 
-    useTherapistWebSocketSync(user?.id);
-
-  // ✅ FALLBACK: Keep original WebSocket cache sync for compatibility
+  // ✅ FIXED: Re-enabled WebSocket cache sync with proper cache invalidation
+  // The cache invalidation function now properly handles therapist-specific query keys
   useAutoWebSocketCacheSync();
 
-  // ✅ PERFORMANCE NOTE: All mutations below now use:
-  // - Centralized queryKeys.appointments.therapistDashboard(user?.id) instead of hardcoded arrays
-  // - Direct cache updates via useTherapistWebSocketSync hook for real-time updates
-  // - Granular invalidation (only affected appointments, not all)
-  // - Optimistic updates with proper rollback on errors
+  // Get user from localStorage instead of Redux
+  const user = getUser();
 
-  // ✅ CRITICAL FIX: Force refetch when WebSocket updates are received (backup method)
+  // TanStack Query data fetching with optimized configuration
+  const {
+    appointments: myAppointments,
+    todayAppointments: myTodayAppointments,
+    upcomingAppointments: myUpcomingAppointments,
+    isLoading: loading,
+    error,
+    refetch,
+    hasData,
+  } = useTherapistDashboardData(user?.id);
+
+  // ✅ CRITICAL FIX: Force refetch when WebSocket updates are received
+  // This useEffect must come AFTER the useTherapistDashboardData hook
   useEffect(() => {
     const wsService = window.webSocketService || webSocketService;
     
     const handleForceRefetch = () => {
       console.log("🔄 Forcing TherapistDashboard refetch due to WebSocket update");
-      // Only refetch if direct cache update failed
-      const currentData = getCacheData();
-      if (!currentData || currentData.length === 0) {
-        refetch();
-      }
+      refetch();
     };
 
     // Listen for all appointment-related WebSocket events
@@ -346,7 +367,7 @@ const TherapistDashboard = () => {
         wsService.removeEventListener(eventType, handleForceRefetch);
       });
     };
-  }, [refetch, getCacheData]);
+  }, [refetch]);
 
   // TanStack Query mutations for therapist actions
   const acceptAppointmentMutation = useMutation({
@@ -1237,17 +1258,7 @@ const TherapistDashboard = () => {
       ...prev,
       [actionKey]: isLoading,
     }));
-  };
-  // TANSTACK QUERY: Replace optimized data manager with TanStack Query
-  const {
-    appointments: myAppointments,
-    todayAppointments: myTodayAppointments,
-    upcomingAppointments: myUpcomingAppointments,
-    isLoading: loading,
-    error,
-    refetch,
-    hasData,
-  } = useTherapistDashboardData(user?.id);
+  }
 
   // Debug logging for troubleshooting the "No appointments found" issue
   const DEBUG_LOGS = false; // Set to true to enable debug logs

@@ -217,11 +217,11 @@ class WebSocketTanStackService {
 
       this.ws = new WebSocket(wsUrlWithAuth);
 
-      // Set up event listeners
-      this.ws.onopen = this.handleOpen;
-      this.ws.onmessage = this.handleMessage;
-      this.ws.onclose = this.handleClose;
-      this.ws.onerror = this.handleError;
+      // Set up event listeners - FIXED: Properly bind methods to 'this'
+      this.ws.onopen = this.handleOpen.bind(this);
+      this.ws.onmessage = this.handleMessage.bind(this);
+      this.ws.onclose = this.handleClose.bind(this);
+      this.ws.onerror = this.handleError.bind(this);
     } catch (error) {
       console.error("WebSocket connection failed:", error);
       this.isConnecting = false;
@@ -254,18 +254,28 @@ class WebSocketTanStackService {
       const data = JSON.parse(event.data);
       console.log("📨 WebSocket message received:", data);
 
+      // Add detailed debugging for appointment_updated messages
+      if (data.type === "appointment_updated") {
+        console.log("🔍 Processing appointment_updated message:", {
+          type: data.type,
+          hasMessage: !!data.message,
+          messageContent: data.message
+        });
+      }
+
       // Handle different message types
       switch (data.type) {
         case "appointment_create":
         case "appointment_created":
+          console.log("📝 Handling appointment creation");
           this.handleAppointmentCreate(data.message);
           break;
         case "appointment_update":
         case "appointment_updated":
-          console.log("🔄 Processing appointment_updated message:", data.message);
+          console.log("🔄 Handling appointment update");
           this.handleAppointmentUpdate(data.message);
           // Also dispatch status change event if status was updated
-          if (data.message?.status) {
+          if (data.message && data.message.status) {
             this.dispatchEvent("appointment_status_changed", {
               appointment: data.message,
               type: "appointment_status_changed",
@@ -281,8 +291,6 @@ class WebSocketTanStackService {
           break;
         case "heartbeat":
         case "heartbeat_response":
-          // ✅ FIX: Handle heartbeat responses properly (don't log as unknown)
-          console.log("💓 Heartbeat response received");
           this.handleHeartbeat(data.message);
           break;
         case "driver_assigned":
@@ -344,24 +352,14 @@ class WebSocketTanStackService {
           }
           break;
         default:
-          // ✅ ENHANCED: Better logging for unknown message types
-          if (data.type === "heartbeat_response") {
-            // Don't spam console with heartbeat responses
-            return;
-          }
-          console.log("⚠️ Unknown WebSocket message type:", data.type, "Message:", data);
+          console.log("Unknown WebSocket message type:", data.type);
+          console.log("📋 Full message data:", data);
           
-          // ✅ FALLBACK: Try to handle as appointment update if it has appointment data
-          if (data.message?.id || data.appointment_id) {
-            console.log("🔄 Attempting to handle unknown message as appointment update");
-            try {
-              const appointmentData = data.message || { id: data.appointment_id, ...data };
-              this.handleAppointmentUpdate(appointmentData);
-            } catch (fallbackError) {
-              console.error("❌ Fallback handling failed:", fallbackError);
-            }
+          // Try to handle appointment_updated messages that might not be matching
+          if (data.type && data.type.includes("appointment") && data.type.includes("update")) {
+            console.log("🔧 Attempting to handle as appointment update");
+            this.handleAppointmentUpdate(data.message);
           }
-          break;
       }
     } catch (error) {
       console.error("Error parsing WebSocket message:", error);
