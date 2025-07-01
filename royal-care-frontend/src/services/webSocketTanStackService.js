@@ -110,8 +110,11 @@ class WebSocketTanStackService {
       );
 
       // ✅ CRITICAL FIX: Use consistent queryKeys structure that matches TherapistDashboard
-      const therapistQueryKey = queryKeys.appointments.byTherapist(therapistId, "all");
-      
+      const therapistQueryKey = queryKeys.appointments.byTherapist(
+        therapistId,
+        "all"
+      );
+
       // Apply the update function to the therapist's specific cache first
       queryClient.setQueryData(therapistQueryKey, updateFunction);
 
@@ -134,6 +137,84 @@ class WebSocketTanStackService {
     });
 
     return affectedTherapistIds.size;
+  }
+
+  /**
+   * Helper method to update driver dashboard caches
+   * This ensures DriverDashboard gets updates regardless of appointment data structure
+   */
+  updateDriverDashboardCaches(
+    appointmentData,
+    updateFunction,
+    actionDescription = "update"
+  ) {
+    console.log(
+      `🚗 ${actionDescription} - Updating DriverDashboard caches for appointment:`,
+      appointmentData.id
+    );
+
+    // Find all possible driver IDs from the appointment
+    const affectedDriverIds = new Set();
+
+    // Add primary driver ID
+    if (appointmentData.driver_id) {
+      affectedDriverIds.add(appointmentData.driver_id);
+    }
+
+    // Add legacy driver field
+    if (appointmentData.driver) {
+      affectedDriverIds.add(appointmentData.driver);
+    }
+
+    // If no driver IDs found, try to get appointment from cache to find drivers
+    if (affectedDriverIds.size === 0) {
+      const appointments = queryClient.getQueryData(["appointments"]) || [];
+      const existingAppointment = appointments.find(
+        (apt) => apt.id === appointmentData.id
+      );
+
+      if (existingAppointment) {
+        if (existingAppointment.driver_id)
+          affectedDriverIds.add(existingAppointment.driver_id);
+        if (existingAppointment.driver)
+          affectedDriverIds.add(existingAppointment.driver);
+      }
+    }
+
+    console.log(
+      `🚗 Found ${affectedDriverIds.size} affected drivers:`,
+      Array.from(affectedDriverIds)
+    );
+
+    // Update each affected driver's cache
+    affectedDriverIds.forEach((driverId) => {
+      console.log(`🚗 Updating DriverDashboard cache for driver ${driverId}`);
+
+      // ✅ CRITICAL FIX: Use consistent queryKeys structure that matches DriverDashboard
+      const driverQueryKey = queryKeys.appointments.byDriver(driverId, "all");
+
+      // Apply the update function to the driver's specific cache first
+      queryClient.setQueryData(driverQueryKey, updateFunction);
+
+      // CRITICAL: Force immediate refetch with aggressive invalidation using consistent query key
+      queryClient.invalidateQueries({
+        queryKey: driverQueryKey,
+        refetchType: "all", // Force refetch even for inactive queries
+        exact: true, // Only invalidate this exact query key
+      });
+
+      // Also invalidate related driver queries
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byDriver(driverId, "today"),
+        refetchType: "active",
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byDriver(driverId, "upcoming"),
+        refetchType: "active",
+      });
+    });
+
+    return affectedDriverIds.size;
   }
 
   /**
@@ -436,24 +517,11 @@ class WebSocketTanStackService {
       "Appointment Creation"
     );
 
-    // Update driver dashboard queries
-    if (appointment.driver_id) {
-      queryClient.setQueryData(
-        ["appointments", "driver", appointment.driver_id],
-        addFunction
-      );
-    }
-
-    // Use comprehensive cache invalidation that includes operator-specific queries
-    invalidateAppointmentCaches(queryClient, {
-      userRole: "operator", // Invalidate operator-specific caches
-      invalidateAll: true, // Comprehensive invalidation for WebSocket updates
-    }).catch((error) => {
-      console.error("❌ WebSocket cache invalidation failed:", error);
-    });
-
-    console.log(
-      `✅ WebSocket appointment creation applied to all affected caches (${affectedTherapistCount} therapists affected)`
+    // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+    const affectedDriverCount = this.updateDriverDashboardCaches(
+      appointment,
+      addFunction,
+      "Appointment Creation"
     );
 
     // Use comprehensive cache invalidation that includes operator-specific queries
@@ -465,7 +533,7 @@ class WebSocketTanStackService {
     });
 
     console.log(
-      `✅ WebSocket appointment creation applied to all affected caches (${affectedTherapistCount} therapists affected)`
+      `✅ WebSocket appointment creation applied to all affected caches (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
     );
 
     // Dispatch event for listeners
@@ -541,19 +609,12 @@ class WebSocketTanStackService {
       "Appointment Update"
     );
 
-    // Update driver dashboard queries
-    if (updatedAppointment.driver_id) {
-      queryClient.setQueryData(
-        ["appointments", "driver", updatedAppointment.driver_id],
-        updateFunction
-      );
-
-      // Also invalidate driver cache
-      queryClient.invalidateQueries({
-        queryKey: ["appointments", "driver", updatedAppointment.driver_id],
-        refetchType: "active",
-      });
-    }
+    // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+    const affectedDriverCount = this.updateDriverDashboardCaches(
+      updatedAppointment,
+      updateFunction,
+      "Appointment Update"
+    );
 
     // CRITICAL: Force invalidation to ensure TherapistDashboard refetches
     // Use the comprehensive cache invalidation helper
@@ -571,7 +632,7 @@ class WebSocketTanStackService {
     });
 
     console.log(
-      `✅ WebSocket appointment update applied to all affected caches (${affectedTherapistCount} therapists affected)`
+      `✅ WebSocket appointment update applied to all affected caches (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
     );
 
     // Dispatch event for listeners
@@ -618,13 +679,12 @@ class WebSocketTanStackService {
       "Appointment Deletion"
     );
 
-    // Remove from driver dashboard queries
-    if (deletedAppointment.driver_id) {
-      queryClient.setQueryData(
-        ["appointments", "driver", deletedAppointment.driver_id],
-        removeFunction
-      );
-    }
+    // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+    const affectedDriverCount = this.updateDriverDashboardCaches(
+      deletedAppointment,
+      removeFunction,
+      "Appointment Deletion"
+    );
 
     // Use comprehensive cache invalidation that includes operator-specific queries
     invalidateAppointmentCaches(queryClient, {
@@ -635,7 +695,7 @@ class WebSocketTanStackService {
     });
 
     console.log(
-      `✅ WebSocket appointment deletion applied to all affected caches (${affectedTherapistCount} therapists affected)`
+      `✅ WebSocket appointment deletion applied to all affected caches (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
     );
 
     // Dispatch event for listeners
@@ -787,8 +847,16 @@ class WebSocketTanStackService {
         updateWithAcceptance,
         "Therapist Acceptance"
       );
+
+      // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+      const affectedDriverCount = this.updateDriverDashboardCaches(
+        targetAppointment,
+        updateWithAcceptance,
+        "Therapist Acceptance"
+      );
+
       console.log(
-        `✅ Therapist acceptance updated - cache updated (${affectedTherapistCount} therapists affected)`
+        `✅ Therapist acceptance updated - cache updated (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
       );
     } else {
       console.log("✅ Therapist acceptance updated - cache updated");
@@ -847,8 +915,16 @@ class WebSocketTanStackService {
         updateWithSessionStart,
         "Session Started"
       );
+
+      // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+      const affectedDriverCount = this.updateDriverDashboardCaches(
+        targetAppointment,
+        updateWithSessionStart,
+        "Session Started"
+      );
+
       console.log(
-        `✅ Session started updated - cache updated (${affectedTherapistCount} therapists affected)`
+        `✅ Session started updated - cache updated (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
       );
     } else {
       console.log("✅ Session started updated - cache updated");
@@ -953,49 +1029,31 @@ class WebSocketTanStackService {
       updateWithStartStatus
     );
 
-    // CRITICAL FIX: Update therapist dashboard cache
-    // Get the appointment to find affected therapists
+    // CRITICAL FIX: Update all therapist and driver dashboard queries using helper methods
     const appointments = queryClient.getQueryData(["appointments"]) || [];
     const affectedAppointment = appointments.find(
       (apt) => apt.id === data.appointment_id
     );
 
     if (affectedAppointment) {
-      const affectedTherapistIds = new Set();
+      const affectedTherapistCount = this.updateTherapistDashboardCaches(
+        affectedAppointment,
+        updateWithStartStatus,
+        "Appointment Started"
+      );
 
-      // Add all possible therapist IDs
-      if (affectedAppointment.therapist_id) {
-        affectedTherapistIds.add(affectedAppointment.therapist_id);
-      }
-      if (affectedAppointment.therapist) {
-        affectedTherapistIds.add(affectedAppointment.therapist);
-      }
-      if (
-        affectedAppointment.therapists &&
-        Array.isArray(affectedAppointment.therapists)
-      ) {
-        affectedAppointment.therapists.forEach((therapistId) => {
-          if (therapistId) affectedTherapistIds.add(therapistId);
-        });
-      }
+      // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+      const affectedDriverCount = this.updateDriverDashboardCaches(
+        affectedAppointment,
+        updateWithStartStatus,
+        "Appointment Started"
+      );
 
-      // Update each therapist's cache
-      affectedTherapistIds.forEach((therapistId) => {
-        console.log(
-          `🩺 Updating TherapistDashboard cache for appointment start - therapist ${therapistId}`
-        );
-
-        queryClient.setQueryData(
-          ["appointments", "therapist", therapistId],
-          updateWithStartStatus
-        );
-
-        // Force invalidation to ensure fresh data
-        queryClient.invalidateQueries({
-          queryKey: ["appointments", "therapist", therapistId],
-          refetchType: "active",
-        });
-      });
+      console.log(
+        `✅ Appointment started - cache updated (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
+      );
+    } else {
+      console.log("✅ Appointment started - cache updated");
     }
 
     // Use comprehensive cache invalidation for real-time dashboard sync
@@ -1008,8 +1066,6 @@ class WebSocketTanStackService {
         error
       );
     });
-
-    console.log("✅ Appointment started - cache updated");
 
     // Dispatch event for listeners
     this.dispatchEvent("appointment_started", {
