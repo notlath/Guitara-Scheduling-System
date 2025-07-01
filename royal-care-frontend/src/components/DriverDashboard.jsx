@@ -1272,10 +1272,6 @@ const DriverDashboard = () => {
 
               {/* Session Completion Information */}
               <div className="session-completion-info">
-                <h4 className="section-title">
-                  <i className="fas fa-check-circle"></i>
-                  Session Completed
-                </h4>
                 <div className="completion-details">
                   <div className="detail-item">
                     <span className="detail-label">Completed:</span>
