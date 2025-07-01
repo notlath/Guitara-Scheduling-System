@@ -708,7 +708,10 @@ const TherapistDashboard = () => {
         currentAppointment?.status
       );
 
-      // Optimistic update to show "session_in_progress" status immediately
+      // ✅ RACE CONDITION FIX: Remove optimistic updates to prevent UI reverting
+      // Optimistic updates cause "Start Session" -> "Request Payment" -> "Start Session" bug
+      // The UI will update immediately when backend responds in onSuccess
+      /*
       const optimisticUpdate = (oldData) => {
         if (!oldData) return oldData;
         return oldData.map((apt) =>
@@ -736,8 +739,10 @@ const TherapistDashboard = () => {
         ["appointments", "therapist", user?.id],
         optimisticUpdate
       );
+      */
 
-      // Debug: Verify optimistic update
+      // Debug verification disabled (no optimistic update to verify)
+      /*
       const updatedData = queryClient.getQueryData(["appointments"]);
       const updatedAppointment = updatedData?.find(
         (apt) => apt.id === appointmentId
@@ -746,6 +751,7 @@ const TherapistDashboard = () => {
         "✅ Optimistic update applied - New status:",
         updatedAppointment?.status
       );
+      */
 
       return { previousData };
     },
