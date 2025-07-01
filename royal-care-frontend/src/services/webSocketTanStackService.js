@@ -259,77 +259,84 @@ class WebSocketTanStackService {
         console.log("🔍 Processing appointment_updated message:", {
           type: data.type,
           hasMessage: !!data.message,
-          messageContent: data.message
+          hasAppointment: !!data.appointment,
+          messageContent: data.message,
+          appointmentContent: data.appointment
         });
       }
 
       // Handle different message types
+      // CRITICAL FIX: Handle both old (data.message) and new (data.appointment) WebSocket formats
+      // Some messages use data.appointment (appointment_updated), others use data.message (driver_assigned)
+      let appointmentData = data.appointment || data.message;
+      
       switch (data.type) {
         case "appointment_create":
         case "appointment_created":
           console.log("📝 Handling appointment creation");
-          this.handleAppointmentCreate(data.message);
+          this.handleAppointmentCreate(appointmentData);
           break;
         case "appointment_update":
         case "appointment_updated":
           console.log("🔄 Handling appointment update");
-          this.handleAppointmentUpdate(data.message);
+          this.handleAppointmentUpdate(appointmentData);
           // Also dispatch status change event if status was updated
-          if (data.message && data.message.status) {
+          if (appointmentData && appointmentData.status) {
             this.dispatchEvent("appointment_status_changed", {
-              appointment: data.message,
+              appointment: appointmentData,
               type: "appointment_status_changed",
             });
           }
           break;
         case "appointment_delete":
         case "appointment_deleted":
-          this.handleAppointmentDelete(data.message);
+          this.handleAppointmentDelete(appointmentData);
           break;
         case "availability_update":
-          this.handleAvailabilityUpdate(data.message);
+          this.handleAvailabilityUpdate(appointmentData);
           break;
         case "heartbeat":
         case "heartbeat_response":
           this.handleHeartbeat(data.message);
           break;
         case "driver_assigned":
-          this.handleDriverAssigned(data.message);
+          // Driver assignment uses different data structure (data.message with appointment_id)
+          this.handleDriverAssigned(data.message || data);
           // Dispatch status change event since driver assignment changes status
           this.dispatchEvent("appointment_status_changed", {
-            appointment: data.message,
+            appointment: data.message || data,
             type: "appointment_status_changed",
           });
           break;
         case "therapist_acceptance":
-          this.handleTherapistAcceptance(data.message);
+          this.handleTherapistAcceptance(data.message || data);
           // Dispatch status change event since acceptance changes status
           this.dispatchEvent("appointment_status_changed", {
-            appointment: data.message,
+            appointment: data.message || data,
             type: "appointment_status_changed",
           });
           break;
         case "session_started":
-          this.handleSessionStarted(data.message);
+          this.handleSessionStarted(data.message || data);
           // Dispatch status change event since session start changes status
           this.dispatchEvent("appointment_status_changed", {
-            appointment: data.message,
+            appointment: data.message || data,
             type: "appointment_status_changed",
           });
           break;
         case "awaiting_payment":
-          this.handleAwaitingPayment(data.message);
+          this.handleAwaitingPayment(data.message || data);
           // Dispatch status change event since payment waiting changes status
           this.dispatchEvent("appointment_status_changed", {
-            appointment: data.message,
+            appointment: data.message || data,
             type: "appointment_status_changed",
           });
           break;
         case "appointment_started":
-          this.handleAppointmentStarted(data.message);
+          this.handleAppointmentStarted(data.message || data);
           // Dispatch status change event since appointment start changes status
           this.dispatchEvent("appointment_status_changed", {
-            appointment: data.message,
+            appointment: data.message || data,
             type: "appointment_status_changed",
           });
           break;
@@ -363,6 +370,8 @@ class WebSocketTanStackService {
       }
     } catch (error) {
       console.error("Error parsing WebSocket message:", error);
+      console.error("Original WebSocket event data:", event.data);
+      console.error("Error stack trace:", error.stack);
     }
   }
 
@@ -449,12 +458,24 @@ class WebSocketTanStackService {
    * Handle appointment update - update TanStack Query cache
    */
   handleAppointmentUpdate(updatedAppointment) {
+    // CRITICAL FIX: Add null/undefined checks and detailed logging
+    if (!updatedAppointment) {
+      console.error("❌ handleAppointmentUpdate: updatedAppointment is null/undefined");
+      return;
+    }
+
+    if (!updatedAppointment.id) {
+      console.error("❌ handleAppointmentUpdate: updatedAppointment.id is missing", updatedAppointment);
+      return;
+    }
+
     console.log("🔄 WebSocket appointment update received:", {
       id: updatedAppointment.id,
       status: updatedAppointment.status,
       therapist_id: updatedAppointment.therapist_id,
       driver_id: updatedAppointment.driver_id,
       therapists: updatedAppointment.therapists,
+      fullAppointmentData: updatedAppointment
     });
 
     // Create update function for cache updates
