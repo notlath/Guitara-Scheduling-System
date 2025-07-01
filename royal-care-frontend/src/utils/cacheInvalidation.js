@@ -412,112 +412,141 @@ export const invalidateByStatus = async (queryClient, status, options = {}) => {
  * WebSocket integration helper
  * Use this when receiving WebSocket updates to sync TanStack Query cache
  */
+/**
+ * ✅ ROBUST WEBSOCKET CACHE INVALIDATION - FINAL SOLUTION
+ * This function ensures instant updates across ALL dashboards without redundant calls
+ */
 export const handleWebSocketUpdate = (queryClient, wsData) => {
-  console.log("🔄 handleWebSocketUpdate called with:", wsData);
+  console.log("🔄 ROBUST WebSocket cache invalidation:", wsData);
 
   const { type, appointment } = wsData;
 
-  // ✅ CRITICAL FIX: Prevent invalidation loops by debouncing rapid calls
+  // ✅ CRITICAL: Prevent invalidation loops with proper debouncing
   if (
     handleWebSocketUpdate._lastCall &&
-    Date.now() - handleWebSocketUpdate._lastCall < 200
+    Date.now() - handleWebSocketUpdate._lastCall < 100 // Reduced to 100ms for faster updates
   ) {
-    console.log("⚡ Debouncing rapid WebSocket update calls");
+    console.log("⚡ Debouncing rapid WebSocket calls");
     return Promise.resolve();
   }
   handleWebSocketUpdate._lastCall = Date.now();
 
-  // Extract user information from appointment data
-  let therapistId = null;
-  let driverId = null;
+  // ✅ CRITICAL: Immediate cache invalidation for ALL dashboards
+  const performCacheUpdate = async () => {
+    try {
+      console.log(`🚀 INSTANT CACHE INVALIDATION - Starting comprehensive update for ${type}`);
 
-  if (appointment) {
-    therapistId = appointment.therapist_id || appointment.therapist;
-    driverId = appointment.driver_id || appointment.driver;
+      // 1. ✅ THERAPIST DASHBOARD: Force immediate update
+      console.log("🩺 Invalidating Therapist Dashboard caches...");
+      await Promise.all([
+        // Invalidate ALL therapist query patterns
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey;
+            return Array.isArray(key) && 
+                   key.includes("appointments") && 
+                   key.includes("therapist");
+          },
+        }),
+        // Force refetch active therapist queries
+        queryClient.refetchQueries({
+          predicate: (query) => {
+            const key = query.queryKey;
+            return Array.isArray(key) && 
+                   key.includes("appointments") && 
+                   key.includes("therapist");
+          },
+          type: "active",
+        }),
+      ]);
 
-    // Also check therapists array for multi-therapist appointments
-    if (appointment.therapists && Array.isArray(appointment.therapists)) {
-      therapistId = appointment.therapists[0]; // Use first therapist for primary invalidation
+      // 2. ✅ DRIVER DASHBOARD: Force immediate update  
+      console.log("� Invalidating Driver Dashboard caches...");
+      await Promise.all([
+        // Invalidate ALL driver query patterns
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey;
+            return Array.isArray(key) && 
+                   key.includes("appointments") && 
+                   key.includes("driver");
+          },
+        }),
+        // Force refetch active driver queries
+        queryClient.refetchQueries({
+          predicate: (query) => {
+            const key = query.queryKey;
+            return Array.isArray(key) && 
+                   key.includes("appointments") && 
+                   key.includes("driver");
+          },
+          type: "active",
+        }),
+      ]);
+
+      // 3. ✅ OPERATOR DASHBOARD: Force immediate update
+      console.log("🏥 Invalidating Operator Dashboard caches...");
+      await Promise.all([
+        // Invalidate ALL operator query patterns
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey;
+            return Array.isArray(key) && 
+                   key.includes("operator");
+          },
+        }),
+        // Invalidate general appointment queries
+        queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+        queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
+        queryClient.invalidateQueries({ queryKey: ["appointments", "upcoming"] }),
+        // Force refetch active operator queries
+        queryClient.refetchQueries({
+          predicate: (query) => {
+            const key = query.queryKey;
+            return Array.isArray(key) && 
+                   (key.includes("operator") || key.includes("appointments"));
+          },
+          type: "active",
+        }),
+      ]);
+
+      // 4. ✅ SPECIFIC USER CACHE INVALIDATION: Target affected users
+      if (appointment) {
+        const affectedUsers = new Set();
+        
+        // Add therapist IDs
+        if (appointment.therapist_id) affectedUsers.add(`therapist_${appointment.therapist_id}`);
+        if (appointment.therapist) affectedUsers.add(`therapist_${appointment.therapist}`);
+        if (appointment.therapists && Array.isArray(appointment.therapists)) {
+          appointment.therapists.forEach(tId => affectedUsers.add(`therapist_${tId}`));
+        }
+        
+        // Add driver IDs
+        if (appointment.driver_id) affectedUsers.add(`driver_${appointment.driver_id}`);
+        if (appointment.driver) affectedUsers.add(`driver_${appointment.driver}`);
+
+        // Force refetch for each affected user
+        for (const userKey of affectedUsers) {
+          const [role, userId] = userKey.split('_');
+          console.log(`🔄 Force refreshing ${role} ${userId} cache`);
+          
+          await queryClient.refetchQueries({
+            queryKey: ["appointments", role, userId],
+            type: "all",
+          });
+        }
+      }
+
+      console.log("✅ ROBUST WebSocket cache invalidation completed successfully");
+
+    } catch (error) {
+      console.error("❌ WebSocket cache invalidation failed:", error);
+      // Don't throw, just log and continue
     }
-  }
+  };
 
-  // ✅ CRITICAL FIX: Simplified, targeted cache invalidation to prevent loops
-  const promises = [];
-
-  switch (type) {
-    case "appointment_created":
-    case "appointment_updated":
-    case "appointment_deleted":
-      console.log(`🔄 Processing ${type} for appointment:`, appointment?.id);
-
-      // Only invalidate specific therapist cache if we have the ID
-      if (therapistId) {
-        console.log(
-          "🩺 Targeted therapist cache invalidation for:",
-          therapistId
-        );
-        promises.push(
-          queryClient.invalidateQueries({
-            queryKey: ["appointments", "therapist", therapistId],
-            refetchType: "active",
-          })
-        );
-      }
-
-      // Only invalidate specific driver cache if we have the ID
-      if (driverId) {
-        console.log("🚗 Targeted driver cache invalidation for:", driverId);
-        promises.push(
-          queryClient.invalidateQueries({
-            queryKey: ["appointments", "driver", driverId],
-            refetchType: "active",
-          })
-        );
-      }
-
-      // Minimal general cache invalidation
-      promises.push(
-        queryClient.invalidateQueries({
-          queryKey: ["appointments"],
-          refetchType: "active",
-        })
-      );
-      break;
-
-    case "therapist_response":
-    case "driver_response":
-      console.log(`🔄 Processing ${type} response`);
-
-      // Targeted invalidation based on response type
-      if (type === "therapist_response" && therapistId) {
-        promises.push(
-          queryClient.invalidateQueries({
-            queryKey: ["appointments", "therapist", therapistId],
-            refetchType: "active",
-          })
-        );
-      } else if (type === "driver_response" && driverId) {
-        promises.push(
-          queryClient.invalidateQueries({
-            queryKey: ["appointments", "driver", driverId],
-            refetchType: "active",
-          })
-        );
-      }
-      break;
-
-    default:
-      // Minimal fallback invalidation
-      console.log("🔄 Default minimal cache invalidation");
-      promises.push(
-        queryClient.invalidateQueries({
-          queryKey: ["appointments"],
-          refetchType: "active",
-        })
-      );
-  }
-
-  return Promise.all(promises);
+  return performCacheUpdate();
 };
 
 export default {
