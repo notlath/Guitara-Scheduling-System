@@ -749,7 +749,6 @@
   color: #2c3e50;
   display: flex;
   align-items: center;
-  gap: 10px;
   font-weight: bold;
 }
 
@@ -798,9 +797,8 @@
 }
 
 .contact-item {
-  display: flex;
+  display: block;
   align-items: center;
-  gap: 10px;
   font-size: 1.1rem;
 }
 
