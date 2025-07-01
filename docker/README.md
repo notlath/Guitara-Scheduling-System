@@ -2,6 +2,16 @@
 
 This folder contains advanced Docker configurations and helper scripts for the Guitara Scheduling System.
 
+## System Requirements
+
+- **Docker**: Latest version
+- **Python**: 3.12.8
+- **Django**: 5.1.4
+- **React**: 19.1.0
+- **PostgreSQL**: 15.8 (Alpine)
+- **Redis**: 7 (Alpine)
+- **Node.js**: 18+ for frontend builds
+
 ## File Structure
 
 ```
@@ -18,7 +28,7 @@ docker/
 ## Main Files (in project root)
 
 - `Dockerfile` - Main application container definition
-- `docker-compose.yml` - Base Docker Compose configuration
+- `docker-compose.yml` - Base Docker Compose configuration with PostgreSQL 15.8
 - `.dockerignore` - Docker build context exclusions
 
 ## Usage

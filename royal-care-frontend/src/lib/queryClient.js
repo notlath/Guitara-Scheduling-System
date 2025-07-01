@@ -102,6 +102,13 @@ export const queryKeys = {
     unread: () => ["notifications", "unread"],
   },
 
+  // Inventory Items
+  inventoryItems: {
+    all: ["inventory-items"],
+    list: () => ["inventory-items", "list"],
+    byId: (id) => ["inventory-items", id],
+  },
+
   // Attendance
   attendance: {
     all: ["attendance"],
@@ -202,6 +209,8 @@ export const queryClientUtils = {
     queryClient.invalidateQueries({
       queryKey: queryKeys.appointments.upcoming(),
     });
+    // Also invalidate inventory when appointments change (material deduction/return)
+    queryClient.invalidateQueries({ queryKey: queryKeys.inventoryItems.all });
   },
 
   // Update appointment optimistically

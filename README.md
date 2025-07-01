@@ -9,13 +9,15 @@
 _Streamlining operations with automated appointment management, staff coordination, and material tracking_
 
 [![Django](https://img.shields.io/badge/Django-5.1.4-092E20?style=flat&logo=django&logoColor=white)](https://www.djangoproject.com/)
-[![React](https://img.shields.io/badge/React-19.0.0-61DAFB?style=flat&logo=react&logoColor=black)](https://reactjs.org/)
-[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
-[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![Vite](https://img.shields.io/badge/Vite-6.2.0-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![React](https://img.shields.io/badge/React-19.1.0-61DAFB?style=flat&logo=react&logoColor=black)](https://reactjs.org/)
+[![Python](https://img.shields.io/badge/Python-3.12.8-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15.8-336791?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![SQLite](https://img.shields.io/badge/SQLite-3.45.3-003B57?style=flat&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.2.2-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
 
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen?style=flat)
+![Updated](https://img.shields.io/badge/Updated-July%202%2C%202025-blue?style=flat)
 
 </div>
 
@@ -129,7 +131,7 @@ _Streamlining operations with automated appointment management, staff coordinati
 
 - **Framework**: Django 5.1.4 with Django REST Framework 3.14.0
 - **Language**: Python 3.12.8
-- **Database**: SQLite 3.41.2 (development) / PostgreSQL 17.2 (production)
+- **Database**: SQLite 3.45.3 (development) / PostgreSQL 15.8 (production)
 - **Authentication**: Django REST Knox with JWT tokens
 - **Real-Time**: Django Channels with WebSocket support
 - **Security**: bcrypt password hashing, CORS headers
@@ -184,7 +186,7 @@ react==19.0.0
 @reduxjs/toolkit==2.6.1
 react-router-dom==6.22
 axios==1.6.2
-vite==6.2.0
+vite==6.2.2
 react-icons==5.5.0
 @mui/icons-material==7.1.1
 file-saver==2.0.5
@@ -287,7 +289,7 @@ python start_development.py
 
 **What this does:**
 
-- ✅ Checks prerequisites (Python 3.12+, Node.js 18+, npm)
+- ✅ Checks prerequisites (Python 3.12.8+, Node.js 18+, npm)
 - ✅ Creates Python virtual environment automatically
 - ✅ Installs all backend dependencies
 - ✅ Installs all frontend dependencies with TanStack Query
@@ -380,7 +382,7 @@ Enjoy real-time updates with <50ms latency
 
 Make sure you have installed:
 
-- **Python 3.12+** - [Download here](https://www.python.org/downloads/)
+- **Python 3.12.8+** - [Download here](https://www.python.org/downloads/)
 - **Node.js 18+** - [Download here](https://nodejs.org/) (includes npm)
 - **Git** - [Download here](https://git-scm.com/downloads)
 - **Redis** (optional) - For optimal performance and WebSocket features

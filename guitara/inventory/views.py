@@ -5,14 +5,18 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import InventoryItem, UsageLog
 from .serializers import InventoryItemSerializer, UsageLogSerializer
 from .filters import InventoryItemFilter
+from .permissions import IsAdminOrReadOnly
+from django.shortcuts import get_object_or_404
 
 class InventoryItemViewSet(viewsets.ModelViewSet):
     queryset = InventoryItem.objects.all()
     serializer_class = InventoryItemSerializer
+    permission_classes = [IsAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
     filterset_class = InventoryItemFilter
     search_fields = ['name', 'category', 'supplier']
     ordering_fields = ['name', 'category', 'current_stock', 'min_stock', 'supplier']
+    ordering = ['name']
 
     def get_permissions(self):
         print("InventoryItemViewSet: get_permissions called for method", self.request.method)
@@ -47,6 +51,106 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
             return Response({'status': 'deducted', 'current_stock': item.current_stock})
         return Response({'error': 'Invalid or insufficient stock'}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['post'])
+    def update_material_status(self, request, pk=None):
+        """Update material status after service completion"""
+        item = self.get_object()
+        is_empty = request.data.get('is_empty', False)
+        quantity = int(request.data.get('quantity', 1))
+        notes = request.data.get('notes', '')
+        
+        try:
+            if is_empty:
+                # Move from in_use to empty
+                if item.move_to_empty(quantity):
+                    # Log the status change
+                    UsageLog.objects.create(
+                        item=item,
+                        quantity_used=quantity,
+                        operator=request.user if request.user.is_authenticated else None,
+                        action_type='empty',
+                        notes=f"Material marked as empty after service. {notes}".strip()
+                    )
+                    return Response({
+                        'status': 'moved_to_empty',
+                        'current_stock': item.current_stock,
+                        'in_use': item.in_use,
+                        'empty': item.empty
+                    })
+                else:
+                    return Response({
+                        'error': 'Insufficient in_use quantity'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                # Return from in_use back to current_stock (material still usable)
+                if quantity <= item.in_use:
+                    item.in_use -= quantity
+                    item.current_stock += quantity
+                    item.save()
+                    
+                    # Log the status change
+                    UsageLog.objects.create(
+                        item=item,
+                        quantity_used=quantity,
+                        operator=request.user if request.user.is_authenticated else None,
+                        action_type='returned',
+                        notes=f"Material returned to stock after service. {notes}".strip()
+                    )
+                    return Response({
+                        'status': 'returned_to_stock',
+                        'current_stock': item.current_stock,
+                        'in_use': item.in_use,
+                        'empty': item.empty
+                    })
+                else:
+                    return Response({
+                        'error': 'Insufficient in_use quantity'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                    
+        except Exception as e:
+            return Response({
+                'error': f'Failed to update material status: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'])
+    def appointment_usage(self, request, pk=None):
+        """Get appointment usage history for this inventory item"""
+        try:
+            item = self.get_object()
+            # Import here to avoid circular imports
+            from scheduling.models import AppointmentMaterial
+            
+            # Get recent appointment material usage for this item
+            usage_records = AppointmentMaterial.objects.filter(
+                inventory_item=item
+            ).select_related(
+                'appointment', 
+                'appointment__client'
+            ).order_by('-appointment__date', '-appointment__start_time')[:20]
+            
+            usage_data = []
+            for usage in usage_records:
+                usage_data.append({
+                    'appointment_id': usage.appointment.id,
+                    'client_name': f"{usage.appointment.client.first_name} {usage.appointment.client.last_name}" if usage.appointment.client else "Unknown",
+                    'date': usage.appointment.date,
+                    'service': usage.appointment.services,
+                    'quantity_used': float(usage.quantity_used),
+                    'usage_type': usage.usage_type,
+                    'returned': usage.returned,
+                    'returned_at': usage.returned_at,
+                })
+                
+            return Response(usage_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            print(f"Error fetching appointment usage: {e}")
+            return Response(
+                {"error": "Failed to fetch usage data"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+# Force reload of views
 class UsageLogViewSet(viewsets.ModelViewSet):
     queryset = UsageLog.objects.all()
     serializer_class = UsageLogSerializer

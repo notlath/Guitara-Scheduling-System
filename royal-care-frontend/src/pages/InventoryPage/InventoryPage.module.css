@@ -193,67 +193,123 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .modal-content {
-  background: white;
-  border-radius: 8px;
-  padding: 30px;
-  max-width: 500px;
-  width: 90%;
+  background: var(--background);
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  min-width: 340px;
+  max-width: 95vw;
   max-height: 80vh;
   overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  position: relative;
+  animation: fadeIn 0.2s;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 1.2rem;
 }
 
 .modal-header h2 {
   margin: 0;
-  color: #2c3e50;
+  color: var(--text);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
 }
 
 .close-button {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 2rem;
   cursor: pointer;
-  color: #7f8c8d;
+  color: #888;
+  margin-left: 1rem;
 }
 
 .close-button:hover {
-  color: #2c3e50;
+  color: var(--text);
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: var(--spacing-xm);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .form-group label {
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+  font-weight: 400;
+  margin-bottom: 2px;
   display: block;
-  margin-bottom: 5px;
-  color: #2c3e50;
-  font-weight: 500;
 }
 
 .form-group input,
 .form-group textarea,
 .form-group select {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--font-size-base);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--input-bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+  padding: var(--spacing-xs) var(--spacing-xm);
   box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: var(--focus-color);
+}
+
+.action-btn {
+  background: var(--primary);
+  color: var(--background);
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  transition: background-color 0.2s;
+  margin-top: var(--spacing-sm);
+}
+
+.action-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.action-btn:disabled {
+  background: var(--background-300);
+  color: var(--text-400);
+  cursor: not-allowed;
 }
 
 .form-group textarea {
@@ -270,30 +326,48 @@
 
 .save-button,
 .cancel-button {
-  padding: 10px 20px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--border-radius);
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  transition: background-color 0.2s;
 }
 
 .save-button {
-  background-color: #27ae60;
-  color: white;
+  background: var(--primary);
+  color: var(--background);
 }
 
-.save-button:hover {
-  background-color: #219a52;
+.save-button:hover:not(:disabled) {
+  background: var(--primary-hover);
 }
 
 .cancel-button {
-  background-color: #95a5a6;
-  color: white;
+  background: var(--background-300);
+  color: var(--text-600);
 }
 
-.cancel-button:hover {
+.cancel-button:hover:not(:disabled) {
+  background: var(--background-400);
   background-color: #7f8c8d;
+}
+
+.restock-button {
+  background-color: #f1c40f;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.restock-button:hover:not(:disabled) {
+  background-color: #d4ac0d;
 }
 
 .inventory-stats {
@@ -425,6 +499,10 @@
 }
 
 @keyframes highlightFade {
-  0% { background-color: #ffe066; }
-  100% { background-color: transparent; }
+  0% {
+    background-color: #ffe066;
+  }
+  100% {
+    background-color: transparent;
+  }
 }

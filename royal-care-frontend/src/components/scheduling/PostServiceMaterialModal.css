@@ -1,0 +1,241 @@
+/* Post Service Material Modal Styles */
+
+.post-service-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.post-service-modal {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.post-service-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
+  border-radius: 12px 12px 0 0;
+}
+
+.post-service-modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover:not(:disabled) {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.close-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.post-service-modal-content {
+  padding: 24px;
+}
+
+.modal-description {
+  color: #555;
+  font-size: 1rem;
+  margin-bottom: 24px;
+  line-height: 1.5;
+  text-align: center;
+  background: #e8f4fd;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+}
+
+.materials-check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.material-check-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.material-check-item:hover {
+  border-color: #3498db;
+  background: #f0f8ff;
+}
+
+.material-info {
+  margin-bottom: 12px;
+}
+
+.material-name {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.material-details {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.material-status-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.status-label {
+  font-weight: 500;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.radio-group {
+  display: flex;
+  gap: 16px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #555;
+  transition: color 0.2s ease;
+}
+
+.radio-option:hover {
+  color: #333;
+}
+
+.radio-option input[type="radio"] {
+  margin: 0;
+  transform: scale(1.1);
+  accent-color: #3498db;
+}
+
+.radio-option input[type="radio"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.radio-option span {
+  user-select: none;
+}
+
+.post-service-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e0e0e0;
+  background: #f8f9fa;
+  border-radius: 0 0 12px 12px;
+}
+
+.cancel-button,
+.submit-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.cancel-button {
+  background: #6c757d;
+  color: white;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.submit-button {
+  background: #28a745;
+  color: white;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: #218838;
+}
+
+.cancel-button:disabled,
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .post-service-modal-overlay {
+    padding: 10px;
+  }
+  
+  .post-service-modal {
+    max-height: 90vh;
+  }
+  
+  .material-status-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .radio-group {
+    justify-content: center;
+    width: 100%;
+  }
+}

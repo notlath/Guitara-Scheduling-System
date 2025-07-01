@@ -201,6 +201,13 @@ export const useCreateAppointment = () => {
         refetchType: "active",
       });
 
+      // 🔥 IMPORTANT: Invalidate inventory cache when appointment is created
+      // This ensures inventory UI shows updated stock levels after material deduction
+      queryClient.invalidateQueries({
+        queryKey: ["inventory-items"],
+        refetchType: "active",
+      });
+
       // Notify other clients via WebSocket
       if (isConnected && result?.id) {
         send({
@@ -255,6 +262,12 @@ export const useUpdateAppointment = () => {
       await invalidateAppointmentCaches(queryClient, {
         userRole: "operator", // Invalidate operator-specific caches
         invalidateAll: true, // Comprehensive invalidation for updated appointments
+      });
+      
+      // Also invalidate inventory cache in case materials were updated
+      queryClient.invalidateQueries({
+        queryKey: ["inventory-items"],
+        refetchType: "active",
       });
     },
   });
