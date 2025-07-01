@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { queryClient } from "../lib/queryClient";
+import { queryClient, queryKeys } from "../lib/queryClient";
 import {
   handleWebSocketUpdate,
   invalidateAppointmentCaches,
@@ -109,15 +109,15 @@ class WebSocketTanStackService {
         `🩺 Updating TherapistDashboard cache for therapist ${therapistId}`
       );
 
-      // Apply the update function to the therapist's specific cache first
+      // Apply the update function to the therapist's specific cache first - USING PROPER QUERY KEYS
       queryClient.setQueryData(
-        ["appointments", "therapist", therapistId],
+        queryKeys.appointments.byTherapist(therapistId, "all"),
         updateFunction
       );
 
-      // CRITICAL: Force immediate refetch with aggressive invalidation
+      // CRITICAL: Force immediate refetch with aggressive invalidation - USING PROPER QUERY KEYS
       queryClient.invalidateQueries({
-        queryKey: ["appointments", "therapist", therapistId],
+        queryKey: queryKeys.appointments.byTherapist(therapistId, "all"),
         refetchType: "all", // Force refetch even for inactive queries
         exact: true, // Only invalidate this exact query key
       });
@@ -716,13 +716,13 @@ class WebSocketTanStackService {
         );
 
         queryClient.setQueryData(
-          ["appointments", "therapist", therapistId],
+          queryKeys.appointments.byTherapist(therapistId, "all"),
           updateWithDriver
         );
 
-        // Also invalidate to trigger fresh fetch
+        // Also invalidate to trigger fresh fetch - USING PROPER QUERY KEYS
         queryClient.invalidateQueries({
-          queryKey: ["appointments", "therapist", therapistId],
+          queryKey: queryKeys.appointments.byTherapist(therapistId, "all"),
           refetchType: "active",
         });
       });
@@ -982,13 +982,13 @@ class WebSocketTanStackService {
         );
 
         queryClient.setQueryData(
-          ["appointments", "therapist", therapistId],
+          queryKeys.appointments.byTherapist(therapistId, "all"),
           updateWithStartStatus
         );
 
-        // Force invalidation to ensure fresh data
+        // Force invalidation to ensure fresh data - USING PROPER QUERY KEYS
         queryClient.invalidateQueries({
-          queryKey: ["appointments", "therapist", therapistId],
+          queryKey: queryKeys.appointments.byTherapist(therapistId, "all"),
           refetchType: "active",
         });
       });
