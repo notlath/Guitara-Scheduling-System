@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { MdClose } from "react-icons/md";
 import { useNavigate, useSearchParams } from "react-router-dom";
 // TanStack Query hooks for data management (removing Redux dependencies)
@@ -317,6 +317,36 @@ const therapistAPI = {
 const TherapistDashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // ✅ CRITICAL FIX: Enhanced cache invalidation hook
+  // This ensures that any mutation immediately updates ALL relevant caches
+  const ensureTherapistCacheSync = useCallback(async (appointmentId, updateData) => {
+    console.log("🔄 ensureTherapistCacheSync called for appointment:", appointmentId);
+    
+    // 1. Update all cache variations immediately
+    const updateFunction = (oldData) => {
+      if (!oldData) return oldData;
+      return oldData.map((apt) =>
+        apt.id === appointmentId ? { ...apt, ...updateData } : apt
+      );
+    };
+
+    // Update all possible cache keys
+    queryClient.setQueryData(["appointments"], updateFunction);
+    queryClient.setQueryData(["appointments", "today"], updateFunction);
+    queryClient.setQueryData(["appointments", "upcoming"], updateFunction);
+    queryClient.setQueryData(["appointments", "therapist", user?.id], updateFunction);
+
+    // 2. Force immediate invalidation and refetch
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+      queryClient.invalidateQueries({ queryKey: ["appointments", "therapist", user?.id] }),
+      queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
+      queryClient.invalidateQueries({ queryKey: ["appointments", "upcoming"] })
+    ]);
+
+    console.log("✅ TherapistDashboard cache synchronization complete");
+  }, [queryClient, user?.id]);
 
   // ✅ FIXED: Re-enabled WebSocket cache sync with proper cache invalidation
   // The cache invalidation function now properly handles therapist-specific query keys
@@ -745,6 +775,13 @@ const TherapistDashboard = () => {
 
         console.log("✅ Maintained optimistic update in cache");
       }
+
+      // ✅ CRITICAL FIX: Ensure cache is properly synchronized
+      await ensureTherapistCacheSync(appointmentId, {
+        status: "session_in_progress",
+        session_started_at: new Date().toISOString(),
+        started_by: user?.id,
+      });
 
       // Only invalidate other related queries, not the main appointments
       setTimeout(async () => {

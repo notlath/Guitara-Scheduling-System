@@ -279,6 +279,15 @@ class WebSocketTanStackService {
         case "appointment_update":
         case "appointment_updated":
           console.log("🔄 Handling appointment update");
+          // CRITICAL FIX: Make sure we have valid appointment data
+          if (!appointmentData) {
+            console.error("❌ appointment_updated: No appointment data found", {
+              hasMessage: !!data.message,
+              hasAppointment: !!data.appointment,
+              fullData: data
+            });
+            return;
+          }
           this.handleAppointmentUpdate(appointmentData);
           // Also dispatch status change event if status was updated
           if (appointmentData && appointmentData.status) {
@@ -297,6 +306,7 @@ class WebSocketTanStackService {
           break;
         case "heartbeat":
         case "heartbeat_response":
+          console.log("💓 Heartbeat response received from server");
           this.handleHeartbeat(data.message);
           break;
         case "driver_assigned":
@@ -458,14 +468,25 @@ class WebSocketTanStackService {
    * Handle appointment update - update TanStack Query cache
    */
   handleAppointmentUpdate(updatedAppointment) {
-    // CRITICAL FIX: Add null/undefined checks and detailed logging
+    // CRITICAL FIX: Add comprehensive null/undefined checks and detailed logging
+    console.log("🔧 handleAppointmentUpdate called with:", {
+      isNull: updatedAppointment === null,
+      isUndefined: updatedAppointment === undefined,
+      type: typeof updatedAppointment,
+      hasId: updatedAppointment?.id,
+      data: updatedAppointment
+    });
+
     if (!updatedAppointment) {
       console.error("❌ handleAppointmentUpdate: updatedAppointment is null/undefined");
       return;
     }
 
     if (!updatedAppointment.id) {
-      console.error("❌ handleAppointmentUpdate: updatedAppointment.id is missing", updatedAppointment);
+      console.error("❌ handleAppointmentUpdate: updatedAppointment.id is missing", {
+        keys: Object.keys(updatedAppointment || {}),
+        fullData: updatedAppointment
+      });
       return;
     }
 
