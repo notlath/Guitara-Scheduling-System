@@ -690,16 +690,19 @@
 
 .pickup-assignment-urgent.normal {
   border-color: #28a745;
+  padding: var(--spacing-sm);
 }
 
 .pickup-assignment-urgent.urgent {
   border-color: #ffc107;
   animation: urgentPulse 2s infinite;
+  padding: var(--spacing-sm);
 }
 
 .pickup-assignment-urgent.critical {
   border-color: #dc3545;
   animation: criticalPulse 1s infinite;
+  padding: var(--spacing-sm);
 }
 
 @keyframes urgentPulse {
