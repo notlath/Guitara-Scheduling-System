@@ -11,6 +11,7 @@ import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
 import { queryKeys } from "../lib/queryClient";
 import { syncMutationSuccess } from "../services/realTimeSyncService";
+// ✅ CRITICAL FIX: Import handleWebSocketUpdate for comprehensive cache management
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -175,11 +176,35 @@ const fetchTherapistAppointments = async (therapistId) => {
   });
 
   const appointments = response.data.results || response.data;
+
+  // ✅ CRITICAL FIX: Also filter on the frontend to ensure we only get relevant appointments
+  const filteredAppointments = appointments.filter((appointment) => {
+    // Check if current therapist is assigned to this appointment
+    const isAssigned =
+      appointment.therapist_id === therapistId ||
+      appointment.therapist === therapistId ||
+      (Array.isArray(appointment.therapists) &&
+        appointment.therapists.includes(therapistId)) ||
+      (Array.isArray(appointment.therapists_details) &&
+        appointment.therapists_details.some((t) => t.id === therapistId));
+
+    console.log(`🔍 Appointment ${appointment.id} assignment check:`, {
+      appointmentId: appointment.id,
+      therapistId,
+      appointment_therapist_id: appointment.therapist_id,
+      appointment_therapist: appointment.therapist,
+      appointment_therapists: appointment.therapists,
+      isAssigned,
+    });
+
+    return isAssigned;
+  });
+
   console.log(
     `✅ Backend-filtered appointments for therapist:`,
-    appointments.length
+    filteredAppointments.length
   );
-  return appointments;
+  return filteredAppointments;
 };
 
 // TanStack Query hook for therapist dashboard data
@@ -204,13 +229,13 @@ const useTherapistDashboardData = (userId) => {
     queryFn: () => fetchTherapistAppointments(userId), // ✅ Use therapist-specific fetch
     enabled: !!userId, // ✅ Only fetch when userId is available
 
-    // ✅ INSTANT UPDATE CONFIGURATION: Optimized for immediate UI responsiveness
-    staleTime: 0, // ✅ Always consider data fresh - instant updates
+    // ✅ CRITICAL FIX: Optimized for instant updates and real-time sync
+    staleTime: 30 * 1000, // ✅ 30 seconds - allow WebSocket updates to work without constant refetching
     gcTime: 5 * 60 * 1000, // ✅ 5 minutes cache time
-    refetchInterval: false, // ✅ DISABLED: Rely on optimistic updates and WebSocket
-    refetchOnWindowFocus: false, // ✅ DISABLED: Prevent disrupting instant updates
+    refetchInterval: false, // ✅ DISABLED: Rely on WebSocket updates and cache invalidation
+    refetchOnWindowFocus: true, // ✅ ENABLED: Refresh when user returns to tab
     refetchOnReconnect: true, // ✅ Keep connection refetch for reliability
-    refetchOnMount: true, // ✅ Always get fresh data on component mount
+    refetchOnMount: "always", // ✅ Always get fresh data on component mount
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // ✅ Exponential backoff
 
@@ -289,14 +314,14 @@ const useTherapistDashboardData = (userId) => {
     });
 
     return filtered;
-  }, [myAppointments]);
+  }, [myAppointments]); // ✅ Depend on myAppointments
 
   // Filter upcoming appointments (future dates)
   const upcomingAppointments = useMemo(() => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
     return myAppointments.filter((apt) => apt.date > todayStr);
-  }, [myAppointments]);
+  }, [myAppointments]); // ✅ Depend on myAppointments
 
   return {
     appointments: myAppointments,
@@ -406,7 +431,6 @@ const therapistAPI = {
     return response.data;
   },
 };
-
 const TherapistDashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -437,6 +461,185 @@ const TherapistDashboard = () => {
     refetch,
     hasData,
   } = useTherapistDashboardData(user?.id);
+
+  // ✅ REAL-TIME UPDATE FIX: Enhanced WebSocket listener for instant cache updates
+  useEffect(() => {
+    if (!user?.id) return;
+
+    console.log(
+      "🩺 Setting up TherapistDashboard WebSocket listeners for user:",
+      user.id
+    );
+
+    const handleWebSocketUpdate = (event) => {
+      const { appointment, type } = event.detail || {};
+
+      console.log("🩺 TherapistDashboard received WebSocket update:", {
+        appointment,
+        type,
+      });
+
+      if (!appointment) return;
+
+      // Check if this appointment affects the current therapist
+      const affectsCurrentTherapist =
+        appointment.therapist_id === user.id ||
+        appointment.therapist === user.id ||
+        (Array.isArray(appointment.therapists) &&
+          appointment.therapists.includes(user.id)) ||
+        (Array.isArray(appointment.therapists_details) &&
+          appointment.therapists_details.some((t) => t && t.id === user.id));
+
+      if (affectsCurrentTherapist) {
+        console.log(
+          "🩺 INSTANT UPDATE: Appointment affects current therapist, updating cache"
+        );
+
+        const therapistQueryKey = queryKeys.appointments.byTherapist(
+          user.id,
+          "all"
+        );
+
+        // Apply instant cache update based on the event type
+        if (type === "appointment_created" || type === "appointment_updated") {
+          queryClient.setQueryData(therapistQueryKey, (oldData) => {
+            if (!oldData) return [appointment];
+
+            const existingIndex = oldData.findIndex(
+              (apt) => apt.id === appointment.id
+            );
+
+            if (existingIndex >= 0) {
+              // Update existing appointment
+              const updated = [...oldData];
+              updated[existingIndex] = {
+                ...updated[existingIndex],
+                ...appointment,
+              };
+              console.log(
+                "✅ INSTANT: Updated existing appointment in TherapistDashboard cache"
+              );
+              return updated;
+            } else {
+              // Add new appointment
+              const newData = [appointment, ...oldData];
+              console.log(
+                "✅ INSTANT: Added new appointment to TherapistDashboard cache"
+              );
+              return newData;
+            }
+          });
+        } else if (type === "appointment_deleted") {
+          queryClient.setQueryData(therapistQueryKey, (oldData) => {
+            if (!oldData) return oldData;
+            const filtered = oldData.filter((apt) => apt.id !== appointment.id);
+            console.log(
+              "✅ INSTANT: Removed appointment from TherapistDashboard cache"
+            );
+            return filtered;
+          });
+        }
+
+        // Force a refresh to ensure UI updates
+        queryClient.invalidateQueries({
+          queryKey: therapistQueryKey,
+          refetchType: "active",
+        });
+      }
+    };
+
+    // Listen for real-time sync events (this matches the realTimeSyncService events)
+    const unsubscribeWebSocketUpdate = window.addEventListener(
+      "websocket-appointment-update",
+      handleWebSocketUpdate
+    );
+    const unsubscribeWebSocketCreated = window.addEventListener(
+      "websocket-appointment-created",
+      handleWebSocketUpdate
+    );
+    const unsubscribeWebSocketDeleted = window.addEventListener(
+      "websocket-appointment-deleted",
+      handleWebSocketUpdate
+    );
+    const unsubscribeWebSocketStatusChanged = window.addEventListener(
+      "websocket-appointment-status-changed",
+      handleWebSocketUpdate
+    );
+
+    // Also listen for the specific realTimeSyncService events
+    import("../services/realTimeSyncService")
+      .then(({ default: syncService }) => {
+        if (syncService) {
+          console.log(
+            "🩺 Setting up realTimeSyncService listeners for TherapistDashboard"
+          );
+
+          const handleSyncEvent = (eventData) => {
+            console.log(
+              "🩺 TherapistDashboard received sync event:",
+              eventData
+            );
+            handleWebSocketUpdate({ detail: eventData });
+          };
+
+          // Subscribe to sync service events
+          const unsubscribeCreated = syncService.subscribe(
+            "appointment_created",
+            handleSyncEvent
+          );
+          const unsubscribeUpdated = syncService.subscribe(
+            "appointment_updated",
+            handleSyncEvent
+          );
+          const unsubscribeDeleted = syncService.subscribe(
+            "appointment_deleted",
+            handleSyncEvent
+          );
+          const unsubscribeStatusChanged = syncService.subscribe(
+            "appointment_status_changed",
+            handleSyncEvent
+          );
+
+          // Return cleanup function
+          return () => {
+            if (unsubscribeCreated) unsubscribeCreated();
+            if (unsubscribeUpdated) unsubscribeUpdated();
+            if (unsubscribeDeleted) unsubscribeDeleted();
+            if (unsubscribeStatusChanged) unsubscribeStatusChanged();
+          };
+        }
+      })
+      .catch((error) => {
+        console.error(
+          "❌ Failed to set up realTimeSyncService listeners:",
+          error
+        );
+      });
+
+    return () => {
+      // Clean up window event listeners
+      if (unsubscribeWebSocketUpdate)
+        window.removeEventListener(
+          "websocket-appointment-update",
+          handleWebSocketUpdate
+        );
+      if (unsubscribeWebSocketCreated)
+        window.removeEventListener(
+          "websocket-appointment-created",
+          handleWebSocketUpdate
+        );
+      if (unsubscribeWebSocketDeleted)
+        window.removeEventListener(
+          "websocket-appointment-deleted",
+          handleWebSocketUpdate
+        );
+      if (unsubscribeWebSocketStatusChanged)
+        window.removeEventListener(
+          "websocket-appointment-status-changed",
+          handleWebSocketUpdate
+        );
+    };
+  }, [user?.id, queryClient]);
 
   // ✅ DEBUG: Log the data received ONLY when data changes
   useEffect(() => {
