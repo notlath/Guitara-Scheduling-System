@@ -202,12 +202,12 @@ const useTherapistDashboardData = (userId) => {
     queryKey, // ✅ Use consistent queryKeys structure
     queryFn: () => fetchTherapistAppointments(userId), // ✅ Use therapist-specific fetch
     enabled: !!userId, // ✅ Only fetch when userId is available
-    staleTime: 0, // ✅ Always consider data stale for immediate updates
-    gcTime: 2 * 60 * 1000, // ✅ Use gcTime instead of deprecated cacheTime
-    refetchInterval: 30 * 1000, // ✅ Reduce to 30 seconds for more frequent updates
-    refetchOnWindowFocus: true, // ✅ Refetch when window gains focus
-    refetchOnReconnect: true, // ✅ Refetch when connection is restored
-    refetchOnMount: true, // ✅ Always refetch on component mount
+    staleTime: 30 * 1000, // ✅ IMPROVED: 30 seconds stale time to reduce unnecessary refetches
+    gcTime: 5 * 60 * 1000, // ✅ 5 minutes cache time
+    refetchInterval: false, // ✅ IMPROVED: Disable auto-refetch, rely on WebSocket updates instead
+    refetchOnWindowFocus: false, // ✅ IMPROVED: Disable focus refetch to prevent disruption
+    refetchOnReconnect: true, // ✅ Keep connection refetch for reliability
+    refetchOnMount: "always", // ✅ Always refetch on mount for fresh data
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // ✅ Exponential backoff
     onSuccess: (data) => {
@@ -222,14 +222,22 @@ const useTherapistDashboardData = (userId) => {
         dataLength: data?.length,
         timestamp: new Date().toLocaleTimeString(),
         firstAppointment: data?.[0],
+        // ✅ ENHANCED DEBUG: Log ALL appointment details for debugging
+        allAppointments: data?.map((apt) => ({
+          id: apt.id,
+          date: apt.date,
+          status: apt.status,
+          client_name: apt.client_name,
+          time: apt.time,
+        })),
       });
     },
     onError: (error) => {
       console.error("❌ TherapistDashboard data fetch error:", error);
     },
-    // ✅ CRITICAL FIX: Force data updates on cache changes
-    notifyOnChangeProps: "all", // Notify on all changes, not just data
-    structuralSharing: false, // Disable structural sharing to ensure fresh data
+    // ✅ IMPROVED: More conservative cache update settings
+    notifyOnChangeProps: ["data", "error", "isLoading"], // Only notify on essential changes
+    structuralSharing: true, // ✅ IMPROVED: Enable structural sharing for better performance
     // ✅ ENHANCED: Additional debugging
     onSettled: (data, error) => {
       console.log("🔍 TherapistDashboard query settled:", {
@@ -246,7 +254,34 @@ const useTherapistDashboardData = (userId) => {
   const todayAppointments = useMemo(() => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
-    return myAppointments.filter((apt) => apt.date === todayStr);
+
+    // ✅ ENHANCED DEBUG: Log date filtering details
+    console.log("🔍 DATE FILTERING DEBUG:", {
+      todayStr,
+      today: today.toISOString(),
+      appointmentsCount: myAppointments.length,
+      appointments: myAppointments.map((apt) => ({
+        id: apt.id,
+        date: apt.date,
+        matchesToday: apt.date === todayStr,
+      })),
+    });
+
+    const filtered = myAppointments.filter((apt) => {
+      const matches = apt.date === todayStr;
+      console.log(
+        `🔍 Date filter for appointment ${apt.id}: ${apt.date} === ${todayStr} = ${matches}`
+      );
+      return matches;
+    });
+
+    console.log("🔍 Today appointments after date filtering:", {
+      todayStr,
+      filteredCount: filtered.length,
+      filtered: filtered,
+    });
+
+    return filtered;
   }, [myAppointments]);
 
   // Filter upcoming appointments (future dates)
@@ -397,7 +432,7 @@ const TherapistDashboard = () => {
           "🔌 Setting up enhanced WebSocket cache sync for TherapistDashboard"
         );
 
-        // ✅ CRITICAL FIX: Enhanced handler that immediately updates TherapistDashboard
+        // ✅ IMPROVED: Smarter cache invalidation that preserves data during refetch
         const handleTherapistCacheUpdate = (data) => {
           console.log(
             "📡 TherapistDashboard: WebSocket event received:",
@@ -407,9 +442,9 @@ const TherapistDashboard = () => {
           // Get current user from localStorage to avoid dependency issues
           const currentUser = getUser();
 
-          // 1. Immediately invalidate the exact query being used by TherapistDashboard
+          // 1. Smart invalidation: Don't remove data, just mark as stale and refetch
           if (currentUser?.id) {
-            console.log("🔄 Force invalidating TherapistDashboard query...");
+            console.log("🔄 Smart invalidating TherapistDashboard query...");
 
             // ✅ CRITICAL FIX: Target the EXACT query key used by useTherapistDashboardData
             const therapistQueryKey = queryKeys.appointments.byTherapist(
@@ -419,24 +454,16 @@ const TherapistDashboard = () => {
 
             console.log("🎯 Targeting exact query key:", therapistQueryKey);
 
-            // Step 1: Remove the query from cache completely
-            queryClient.removeQueries({ queryKey: therapistQueryKey });
-            console.log("🗑️ Removed query from cache");
-
-            // Step 2: Force invalidate and refetch
+            // ✅ IMPROVED: Only invalidate and refetch - don't remove existing data
+            // This way the UI keeps showing existing data while new data loads
             queryClient.invalidateQueries({
               queryKey: therapistQueryKey,
-              refetchType: "all",
+              refetchType: "active", // Only refetch if component is mounted
               exact: true,
             });
-            console.log("🔄 Invalidated query");
-
-            // Step 3: Force an immediate refetch
-            queryClient.refetchQueries({
-              queryKey: therapistQueryKey,
-              type: "all",
-            });
-            console.log("⚡ Forced refetch");
+            console.log(
+              "🔄 Invalidated and refetching query (keeping existing data)"
+            );
 
             // 2. Also invalidate global appointment queries to keep everything in sync
             queryClient.invalidateQueries({
@@ -2262,10 +2289,24 @@ const TherapistDashboard = () => {
     );
   };
   // Helper to check if appointment is transport completed or completed
-  const isTransportCompleted = (appointment) =>
-    ["transport_completed", "completed", "driver_transport_completed"].includes(
-      appointment.status
-    );
+  const isTransportCompleted = (appointment) => {
+    const completedStatuses = [
+      "transport_completed",
+      "completed",
+      "driver_transport_completed",
+    ];
+    const isCompleted = completedStatuses.includes(appointment.status);
+
+    // ✅ DEBUG: Log the status check result
+    console.log("🔍 isTransportCompleted DEBUG:", {
+      appointmentId: appointment.id,
+      status: appointment.status,
+      completedStatuses,
+      isCompleted,
+    });
+
+    return isCompleted;
+  };
 
   // State for completed appointments modal
   const [showCompletedModal, setShowCompletedModal] = useState(false);
@@ -2274,7 +2315,21 @@ const TherapistDashboard = () => {
   const todayPendingAppointments = useMemo(() => {
     const filtered = (
       Array.isArray(myTodayAppointments) ? myTodayAppointments : []
-    ).filter((apt) => apt && !isTransportCompleted(apt));
+    ).filter((apt) => {
+      if (!apt) return false;
+      const isCompleted = isTransportCompleted(apt);
+
+      // ✅ ENHANCED DEBUG: Log each appointment's filtering decision
+      console.log("🔍 FILTERING DEBUG - Appointment:", {
+        id: apt.id,
+        status: apt.status,
+        date: apt.date,
+        isTransportCompleted: isCompleted,
+        willBeInPending: !isCompleted,
+      });
+
+      return !isCompleted;
+    });
 
     console.log("🔍 DEBUG: todayPendingAppointments calculated:", {
       myTodayAppointmentsLength: myTodayAppointments?.length,
@@ -2289,7 +2344,21 @@ const TherapistDashboard = () => {
   const todayCompletedAppointments = useMemo(() => {
     const filtered = (
       Array.isArray(myTodayAppointments) ? myTodayAppointments : []
-    ).filter((apt) => apt && isTransportCompleted(apt));
+    ).filter((apt) => {
+      if (!apt) return false;
+      const isCompleted = isTransportCompleted(apt);
+
+      // ✅ ENHANCED DEBUG: Log each appointment's filtering decision
+      console.log("🔍 COMPLETED FILTERING DEBUG - Appointment:", {
+        id: apt.id,
+        status: apt.status,
+        date: apt.date,
+        isTransportCompleted: isCompleted,
+        willBeInCompleted: isCompleted,
+      });
+
+      return isCompleted;
+    });
 
     console.log("🔍 DEBUG: todayCompletedAppointments calculated:", {
       myTodayAppointmentsLength: myTodayAppointments?.length,
