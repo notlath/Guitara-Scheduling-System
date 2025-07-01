@@ -1,12 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { MdClose } from "react-icons/md";
 import { useNavigate, useSearchParams } from "react-router-dom";
 // TanStack Query hooks for data management (removing Redux dependencies)
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
 import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
-import webSocketService from "../services/webSocketTanStackService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
@@ -54,7 +53,7 @@ const invalidateAppointmentQueries = async (queryClient, delay = 0) => {
   );
 
   // ✅ AGGRESSIVE INVALIDATION: Include therapist-specific queries
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = getUser(); // Use the same helper function consistently
 
   // Invalidate all appointment-related queries
   await Promise.all(
@@ -323,7 +322,7 @@ const TherapistDashboard = () => {
 
   // ✅ CRITICAL FIX: Enhanced cache invalidation hook
   // This ensures that any mutation immediately updates ALL relevant caches
-  const ensureTherapistCacheSync = useCallback(async (appointmentId, updateData) => {
+  const ensureTherapistCacheSync = useCallback(async (appointmentId, updateData, forceRefetch = true) => {
     console.log("🔄 ensureTherapistCacheSync called for appointment:", appointmentId);
     
     // 1. Update all cache variations immediately
@@ -341,14 +340,23 @@ const TherapistDashboard = () => {
     queryClient.setQueryData(["appointments", "therapist", user?.id], updateFunction);
 
     // 2. Force immediate invalidation and refetch
-    await Promise.all([
+    const invalidationPromises = [
       queryClient.invalidateQueries({ queryKey: ["appointments"] }),
       queryClient.invalidateQueries({ queryKey: ["appointments", "therapist", user?.id] }),
       queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
       queryClient.invalidateQueries({ queryKey: ["appointments", "upcoming"] })
-    ]);
+    ];
 
-    console.log("✅ TherapistDashboard cache synchronization complete");
+    // 3. If forceRefetch is true, also trigger a fresh data fetch
+    if (forceRefetch) {
+      invalidationPromises.push(
+        queryClient.refetchQueries({ queryKey: ["appointments", "therapist", user?.id] })
+      );
+    }
+
+    await Promise.all(invalidationPromises);
+
+    console.log("✅ TherapistDashboard cache synchronization complete" + (forceRefetch ? " with forced refetch" : ""));
   }, [queryClient, user?.id]);
 
   // ✅ FIXED: Re-enabled WebSocket cache sync with proper cache invalidation
@@ -365,39 +373,6 @@ const TherapistDashboard = () => {
     refetch,
     hasData,
   } = useTherapistDashboardData(user?.id);
-
-  // ✅ CRITICAL FIX: Force refetch when WebSocket updates are received
-  // This useEffect must come AFTER the useTherapistDashboardData hook
-  useEffect(() => {
-    const wsService = window.webSocketService || webSocketService;
-    
-    const handleForceRefetch = () => {
-      console.log("🔄 Forcing TherapistDashboard refetch due to WebSocket update");
-      refetch();
-    };
-
-    // Listen for all appointment-related WebSocket events
-    const events = [
-      "appointment_created",
-      "appointment_updated", 
-      "appointment_deleted",
-      "appointment_status_changed",
-      "therapist_response",
-      "driver_response",
-      "session_started",
-      "awaiting_payment"
-    ];
-
-    events.forEach(eventType => {
-      wsService.addEventListener(eventType, handleForceRefetch);
-    });
-
-    return () => {
-      events.forEach(eventType => {
-        wsService.removeEventListener(eventType, handleForceRefetch);
-      });
-    };
-  }, [refetch]);
 
   // TanStack Query mutations for therapist actions
   const acceptAppointmentMutation = useMutation({
