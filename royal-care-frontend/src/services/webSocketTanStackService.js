@@ -109,22 +109,26 @@ class WebSocketTanStackService {
         `🩺 Updating TherapistDashboard cache for therapist ${therapistId}`
       );
 
-      // Apply the update function to the therapist's specific cache first - USING PROPER QUERY KEYS
-      queryClient.setQueryData(
-        queryKeys.appointments.byTherapist(therapistId, "all"),
-        updateFunction
-      );
+      // ✅ CRITICAL FIX: Use consistent queryKeys structure that matches TherapistDashboard
+      const therapistQueryKey = queryKeys.appointments.byTherapist(therapistId, "all");
+      
+      // Apply the update function to the therapist's specific cache first
+      queryClient.setQueryData(therapistQueryKey, updateFunction);
 
-      // CRITICAL: Force immediate refetch with aggressive invalidation - USING PROPER QUERY KEYS
+      // CRITICAL: Force immediate refetch with aggressive invalidation using consistent query key
       queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.byTherapist(therapistId, "all"),
+        queryKey: therapistQueryKey,
         refetchType: "all", // Force refetch even for inactive queries
         exact: true, // Only invalidate this exact query key
       });
 
-      // Also invalidate without exact match to catch any related queries
+      // Also invalidate related therapist queries
       queryClient.invalidateQueries({
-        queryKey: ["appointments", "therapist"],
+        queryKey: queryKeys.appointments.byTherapist(therapistId, "today"),
+        refetchType: "active",
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byTherapist(therapistId, "upcoming"),
         refetchType: "active",
       });
     });
@@ -716,13 +720,13 @@ class WebSocketTanStackService {
         );
 
         queryClient.setQueryData(
-          queryKeys.appointments.byTherapist(therapistId, "all"),
+          ["appointments", "therapist", therapistId],
           updateWithDriver
         );
 
-        // Also invalidate to trigger fresh fetch - USING PROPER QUERY KEYS
+        // Also invalidate to trigger fresh fetch
         queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.byTherapist(therapistId, "all"),
+          queryKey: ["appointments", "therapist", therapistId],
           refetchType: "active",
         });
       });
@@ -982,13 +986,13 @@ class WebSocketTanStackService {
         );
 
         queryClient.setQueryData(
-          queryKeys.appointments.byTherapist(therapistId, "all"),
+          ["appointments", "therapist", therapistId],
           updateWithStartStatus
         );
 
-        // Force invalidation to ensure fresh data - USING PROPER QUERY KEYS
+        // Force invalidation to ensure fresh data
         queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.byTherapist(therapistId, "all"),
+          queryKey: ["appointments", "therapist", therapistId],
           refetchType: "active",
         });
       });
