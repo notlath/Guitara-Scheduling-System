@@ -12,7 +12,6 @@ import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
 import { queryKeys } from "../lib/queryClient";
 import { syncMutationSuccess } from "../services/realTimeSyncService";
-import { useAutoWebSocketCacheSync } from "../services/realTimeSyncService";
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -398,9 +397,6 @@ const therapistAPI = {
 
 const TherapistDashboard = () => {
   const queryClient = useQueryClient();
-
-  // ✅ CRITICAL FIX: Add standardized WebSocket cache sync like DriverDashboard
-  useAutoWebSocketCacheSync();
 
   // ✅ CRITICAL FIX: Memoize user to prevent infinite re-renders
   const user = useMemo(() => getUser(), []);
