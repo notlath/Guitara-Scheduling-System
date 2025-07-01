@@ -185,7 +185,11 @@ const fetchTherapistAppointments = async (therapistId) => {
 const useTherapistDashboardData = (userId) => {
   // ✅ CRITICAL DEBUG: Log the exact query key being used
   const queryKey = queryKeys.appointments.byTherapist(userId, "all");
-  console.log("🔍 TherapistDashboard using query key:", queryKey);
+
+  // ✅ FIX: Only log query key when it changes, not on every render
+  useEffect(() => {
+    console.log("🔍 TherapistDashboard using query key:", queryKey);
+  }, [queryKey]);
 
   const {
     data: myAppointments = [],
@@ -365,16 +369,18 @@ const TherapistDashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Get user from localStorage instead of Redux - MOVED UP TO FIX INITIALIZATION ERROR
-  const user = getUser();
+  // ✅ CRITICAL FIX: Memoize user to prevent infinite re-renders
+  const user = useMemo(() => getUser(), []);
 
-  // ✅ DEBUG: Log user information for debugging
-  console.log("🔍 DEBUG: TherapistDashboard user state:", {
-    user,
-    userId: user?.id,
-    userName: user?.first_name || user?.username,
-    userType: user?.user_type || user?.role,
-  });
+  // ✅ DEBUG: Log user information ONCE during component mount
+  useEffect(() => {
+    console.log("🔍 DEBUG: TherapistDashboard user state:", {
+      user,
+      userId: user?.id,
+      userName: user?.first_name || user?.username,
+      userType: user?.user_type || user?.role,
+    });
+  }, [user]);
 
   // ✅ CRITICAL FIX: Enhanced WebSocket cache sync with immediate UI updates
   // ✅ ENHANCED: WebSocket integration with immediate cache invalidation
@@ -508,19 +514,29 @@ const TherapistDashboard = () => {
     hasData,
   } = useTherapistDashboardData(user?.id);
 
-  // ✅ DEBUG: Log the data received from useTherapistDashboardData
-  console.log("🔍 DEBUG: TherapistDashboard data state:", {
-    myAppointmentsLength: myAppointments?.length || 0,
-    myAppointmentsIsArray: Array.isArray(myAppointments),
-    myTodayAppointments: myTodayAppointments,
-    myTodayAppointmentsLength: myTodayAppointments?.length || 0,
-    myUpcomingAppointments: myUpcomingAppointments,
-    myUpcomingAppointmentsLength: myUpcomingAppointments?.length || 0,
+  // ✅ DEBUG: Log the data received ONLY when data changes
+  useEffect(() => {
+    console.log("🔍 DEBUG: TherapistDashboard data state:", {
+      myAppointmentsLength: myAppointments?.length || 0,
+      myAppointmentsIsArray: Array.isArray(myAppointments),
+      myTodayAppointments: myTodayAppointments,
+      myTodayAppointmentsLength: myTodayAppointments?.length || 0,
+      myUpcomingAppointments: myUpcomingAppointments,
+      myUpcomingAppointmentsLength: myUpcomingAppointments?.length || 0,
+      loading,
+      error,
+      hasData,
+      userId: user?.id,
+    });
+  }, [
+    myAppointments,
+    myTodayAppointments,
+    myUpcomingAppointments,
     loading,
     error,
     hasData,
-    userId: user?.id,
-  });
+    user?.id,
+  ]);
 
   // TanStack Query mutations for therapist actions
   const acceptAppointmentMutation = useMutation({
