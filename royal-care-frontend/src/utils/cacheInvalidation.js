@@ -434,15 +434,50 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
 
       // 1. ✅ THERAPIST DASHBOARD: Force immediate update using consistent queryKeys
       console.log("🩺 Invalidating Therapist Dashboard caches...");
+
+      // ✅ CRITICAL FIX: Force immediate cache invalidation with setQueryData
+      // This ensures immediate UI updates by clearing and refetching data
+      if (appointment?.therapist || appointment?.therapists) {
+        const therapistIds = [];
+        if (appointment.therapist) therapistIds.push(appointment.therapist);
+        if (appointment.therapists)
+          therapistIds.push(...appointment.therapists);
+
+        // Force immediate cache invalidation for affected therapists
+        for (const therapistId of therapistIds) {
+          const therapistQueryKey = queryKeys.appointments.byTherapist(
+            therapistId,
+            "all"
+          );
+
+          // 1. Immediately clear the cache
+          queryClient.removeQueries({ queryKey: therapistQueryKey });
+
+          // 2. Force refetch
+          queryClient.refetchQueries({
+            queryKey: therapistQueryKey,
+            type: "all",
+          });
+
+          console.log(
+            `✅ Force invalidated and refetched therapist ${therapistId} cache`
+          );
+        }
+      }
+
       await Promise.all([
-        // Use consistent queryKeys structure for therapist invalidation
+        // ✅ CRITICAL FIX: Use specific query key invalidation instead of predicate
+        // This ensures we hit the EXACT query keys being used by components
         queryClient.invalidateQueries({
           predicate: (query) => {
             const key = query.queryKey;
             return (
               Array.isArray(key) &&
               key.includes("appointments") &&
-              key.includes("therapist")
+              key.includes("therapist") &&
+              (key.includes("all") ||
+                key.includes("today") ||
+                key.includes("upcoming"))
             );
           },
         }),
@@ -457,14 +492,17 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
         queryClient.invalidateQueries({
           queryKey: queryKeys.appointments.upcoming(),
         }),
-        // Force refetch active therapist queries
+        // Force refetch active therapist queries with specific pattern matching
         queryClient.refetchQueries({
           predicate: (query) => {
             const key = query.queryKey;
             return (
               Array.isArray(key) &&
               key.includes("appointments") &&
-              key.includes("therapist")
+              key.includes("therapist") &&
+              (key.includes("all") ||
+                key.includes("today") ||
+                key.includes("upcoming"))
             );
           },
           type: "active",
