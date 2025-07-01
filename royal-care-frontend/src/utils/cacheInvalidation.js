@@ -128,31 +128,56 @@ export const invalidateAppointmentCaches = async (
     );
 
     // User-specific invalidations
-    if (userId && queryKeys?.appointments) {
+    if (userId) {
       if (userRole === "therapist") {
+        // ✅ CRITICAL FIX: TherapistDashboard uses ["appointments", "therapist", userId] pattern
+        // Also invalidate the typed versions for compatibility
         invalidationPromises.push(
+          // Main TherapistDashboard query key
           queryClient.invalidateQueries({
-            queryKey: queryKeys.appointments.byTherapist(userId),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.appointments.byTherapist(userId, "today"),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.appointments.byTherapist(userId, "upcoming"),
+            queryKey: ["appointments", "therapist", userId],
+            refetchType: "active"
           })
         );
+
+        // Also invalidate queryKeys versions if available
+        if (queryKeys?.appointments) {
+          invalidationPromises.push(
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.appointments.byTherapist(userId),
+            }),
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.appointments.byTherapist(userId, "today"),
+            }),
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.appointments.byTherapist(userId, "upcoming"),
+            })
+          );
+        }
       } else if (userRole === "driver") {
+        // ✅ DRIVER CACHE FIX: Include direct driver cache patterns
         invalidationPromises.push(
+          // Main DriverDashboard query key
           queryClient.invalidateQueries({
-            queryKey: queryKeys.appointments.byDriver(userId),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.appointments.byDriver(userId, "today"),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.appointments.byDriver(userId, "upcoming"),
+            queryKey: ["appointments", "driver", userId],
+            refetchType: "active"
           })
         );
+
+        // Also invalidate queryKeys versions if available
+        if (queryKeys?.appointments) {
+          invalidationPromises.push(
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.appointments.byDriver(userId),
+            }),
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.appointments.byDriver(userId, "today"),
+            }),
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.appointments.byDriver(userId, "upcoming"),
+            })
+          );
+        }
       }
     }
 
@@ -375,29 +400,83 @@ export const invalidateByStatus = async (queryClient, status, options = {}) => {
  * Use this when receiving WebSocket updates to sync TanStack Query cache
  */
 export const handleWebSocketUpdate = (queryClient, wsData) => {
-  const { type, appointment, user_id, role } = wsData;
+  console.log("🔄 handleWebSocketUpdate called with:", wsData);
+  
+  const { type, appointment } = wsData;
+
+  // Extract user information from appointment data
+  let therapistId = null;
+  let driverId = null;
+
+  if (appointment) {
+    therapistId = appointment.therapist_id || appointment.therapist;
+    driverId = appointment.driver_id || appointment.driver;
+    
+    // Also check therapists array for multi-therapist appointments
+    if (appointment.therapists && Array.isArray(appointment.therapists)) {
+      appointment.therapists.forEach(id => {
+        if (id && id !== therapistId) {
+          // For multi-therapist appointments, invalidate all affected therapists
+          invalidateAppointmentCaches(queryClient, {
+            userId: id,
+            userRole: "therapist",
+            appointmentId: appointment.id,
+          });
+        }
+      });
+    }
+  }
+
+  // Invalidate caches for affected users
+  const promises = [];
 
   switch (type) {
     case "appointment_created":
     case "appointment_updated":
     case "appointment_deleted":
-      return invalidateAppointmentCaches(queryClient, {
-        userId: user_id,
-        userRole: role,
-        appointmentId: appointment?.id,
-      });
+      // Invalidate for therapist
+      if (therapistId) {
+        promises.push(
+          invalidateAppointmentCaches(queryClient, {
+            userId: therapistId,
+            userRole: "therapist",
+            appointmentId: appointment?.id,
+          })
+        );
+      }
+      
+      // Invalidate for driver
+      if (driverId) {
+        promises.push(
+          invalidateAppointmentCaches(queryClient, {
+            userId: driverId,
+            userRole: "driver",
+            appointmentId: appointment?.id,
+          })
+        );
+      }
+      
+      // Always invalidate general caches
+      promises.push(
+        invalidateAppointmentCaches(queryClient, {
+          appointmentId: appointment?.id,
+        })
+      );
+      break;
 
     case "therapist_response":
     case "driver_response":
       return invalidateByStatus(queryClient, appointment?.status, {
-        userId: user_id,
-        userRole: role,
+        userId: therapistId || driverId,
+        userRole: type.includes("therapist") ? "therapist" : "driver",
       });
 
     default:
       // Fallback: invalidate core appointment data
-      return invalidateAppointmentCaches(queryClient);
+      promises.push(invalidateAppointmentCaches(queryClient));
   }
+
+  return Promise.all(promises);
 };
 
 export default {

@@ -137,6 +137,8 @@ const useTherapistDashboardData = (userId) => {
     isLoading,
     error,
     refetch,
+    dataUpdatedAt,
+    isFetching,
   } = useQuery({
     queryKey: ["appointments", "therapist", userId],
     queryFn: fetchAppointments,
@@ -147,6 +149,12 @@ const useTherapistDashboardData = (userId) => {
     refetchOnReconnect: true, // ✅ FIX: Refetch when connection is restored
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // ✅ FIX: Exponential backoff
+    onSuccess: (data) => {
+      console.log(`🩺 TherapistDashboard data updated at ${new Date().toLocaleTimeString()}:`, data?.length, "appointments");
+    },
+    onError: (error) => {
+      console.error("❌ TherapistDashboard data fetch error:", error);
+    }
   });
 
   // Filter appointments for this therapist
@@ -181,6 +189,8 @@ const useTherapistDashboardData = (userId) => {
     error,
     refetch,
     hasData: allAppointments.length > 0,
+    dataUpdatedAt,
+    isFetching,
   };
 };
 
@@ -284,7 +294,8 @@ const TherapistDashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Initialize real-time cache sync via WebSocket
+  // ✅ FIXED: Re-enabled WebSocket cache sync with proper cache invalidation
+  // The cache invalidation function now properly handles therapist-specific query keys
   useAutoWebSocketCacheSync();
 
   // Get user from localStorage instead of Redux

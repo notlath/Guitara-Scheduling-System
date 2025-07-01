@@ -15,8 +15,12 @@ export const useWebSocketCacheSync = (webSocketService) => {
       return;
     }
 
-    // Use provided webSocketService (must support addEventListener)
+    // ✅ ENHANCED: Use proper cache invalidation with therapist-specific query keys
+    console.log("🔌 Setting up WebSocket cache sync with enhanced invalidation");
+
     const handleAppointmentUpdate = (data) => {
+      console.log("📨 WebSocket cache sync received event:", data);
+      // Use the enhanced handleWebSocketUpdate function that properly handles therapist caches
       handleWebSocketUpdate(queryClient, data);
     };
 
@@ -25,7 +29,7 @@ export const useWebSocketCacheSync = (webSocketService) => {
       handleAppointmentUpdate
     );
     webSocketService.addEventListener(
-      "appointment_updated",
+      "appointment_updated", 
       handleAppointmentUpdate
     );
     webSocketService.addEventListener(
@@ -117,7 +121,10 @@ export const useDirectWebSocketSync = () => {
   const handleWebSocketMessage = (message) => {
     try {
       const data = typeof message === "string" ? JSON.parse(message) : message;
-      handleWebSocketUpdate(queryClient, data);
+      // Import here to avoid dependency issues
+      import("../utils/cacheInvalidation").then(({ handleWebSocketUpdate }) => {
+        handleWebSocketUpdate(queryClient, data);
+      });
     } catch (error) {
       console.error("Failed to handle WebSocket message:", error);
     }
