@@ -466,21 +466,30 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
       }
 
       await Promise.all([
-        // ✅ CRITICAL FIX: Use specific query key invalidation instead of predicate
-        // This ensures we hit the EXACT query keys being used by components
+        // ✅ CRITICAL FIX: Fixed predicate to match ACTUAL TherapistDashboard query keys
+        // TherapistDashboard uses: queryKeys.appointments.byTherapist(userId, "all")
+        // Which generates: ["appointments", "therapist", userId, "all"]
         queryClient.invalidateQueries({
           predicate: (query) => {
             const key = query.queryKey;
+            if (!Array.isArray(key) || key.length < 4) return false;
+
+            // ✅ EXACT MATCH: Check for the specific pattern TherapistDashboard uses
             return (
-              Array.isArray(key) &&
-              key.includes("appointments") &&
-              key.includes("therapist") &&
-              (key.includes("all") ||
-                key.includes("today") ||
-                key.includes("upcoming"))
+              key[0] === "appointments" &&
+              key[1] === "therapist" &&
+              (key[3] === "all" || key[3] === "today" || key[3] === "upcoming")
             );
           },
+          refetchType: "all", // Force immediate refetch
         }),
+
+        // ✅ DIRECT PATTERN INVALIDATION: Also use broader patterns for safety
+        queryClient.invalidateQueries({
+          queryKey: ["appointments", "therapist"],
+          exact: false, // Match partial patterns
+        }),
+
         // Also invalidate using the specific queryKeys patterns
         queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
         queryClient.invalidateQueries({
@@ -492,22 +501,23 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
         queryClient.invalidateQueries({
           queryKey: queryKeys.appointments.upcoming(),
         }),
-        // Force refetch active therapist queries with specific pattern matching
+
+        // ✅ FORCE REFETCH: Ensure active therapist queries are immediately refetched
         queryClient.refetchQueries({
           predicate: (query) => {
             const key = query.queryKey;
-            return (
-              Array.isArray(key) &&
-              key.includes("appointments") &&
-              key.includes("therapist") &&
-              (key.includes("all") ||
-                key.includes("today") ||
-                key.includes("upcoming"))
-            );
+            if (!Array.isArray(key) || key.length < 4) return false;
+
+            // Match the EXACT pattern that TherapistDashboard uses
+            return key[0] === "appointments" && key[1] === "therapist";
           },
           type: "active",
         }),
       ]);
+
+      console.log(
+        "✅ TherapistDashboard cache invalidation completed with FIXED query key matching"
+      );
 
       // 2. ✅ DRIVER DASHBOARD: Force immediate update
       console.log("� Invalidating Driver Dashboard caches...");
