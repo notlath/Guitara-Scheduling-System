@@ -1,6 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { useWebSocket } from "../contexts/WebSocketContext";
+import { useEffect, useState } from "react";
 import { handleWebSocketUpdate } from "../utils/cacheInvalidation";
 
 export const useWebSocketCacheSync = (webSocketService) => {
@@ -16,7 +15,9 @@ export const useWebSocketCacheSync = (webSocketService) => {
     }
 
     // ✅ ENHANCED: Use proper cache invalidation with therapist-specific query keys
-    console.log("🔌 Setting up WebSocket cache sync with enhanced invalidation");
+    console.log(
+      "🔌 Setting up WebSocket cache sync with enhanced invalidation"
+    );
 
     const handleAppointmentUpdate = (data) => {
       console.log("📨 WebSocket cache sync received event:", data);
@@ -29,7 +30,7 @@ export const useWebSocketCacheSync = (webSocketService) => {
       handleAppointmentUpdate
     );
     webSocketService.addEventListener(
-      "appointment_updated", 
+      "appointment_updated",
       handleAppointmentUpdate
     );
     webSocketService.addEventListener(
@@ -107,8 +108,97 @@ export const useWebSocketCacheSync = (webSocketService) => {
  * Use this in components instead of calling useWebSocketCacheSync() without parameters
  */
 export const useAutoWebSocketCacheSync = () => {
-  const { webSocketService } = useWebSocket();
-  return useWebSocketCacheSync(webSocketService);
+  const queryClient = useQueryClient();
+  const [webSocketService, setWebSocketService] = useState(null);
+
+  useEffect(() => {
+    // Try to import WebSocket service directly for better reliability
+    import("../services/webSocketTanStackService")
+      .then((module) => {
+        const directWebSocketService = module.default;
+        setWebSocketService(directWebSocketService);
+      })
+      .catch((err) => {
+        console.error("❌ Failed to import WebSocket service:", err);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (webSocketService) {
+      return setupWebSocketSync(webSocketService, queryClient);
+    }
+  }, [webSocketService, queryClient]);
+};
+
+// Helper function to set up WebSocket sync
+const setupWebSocketSync = (webSocketService, queryClient) => {
+  console.log(
+    "🔌 Setting up enhanced WebSocket cache sync for TherapistDashboard"
+  );
+
+  const handleAppointmentUpdate = (data) => {
+    console.log("📨 WebSocket cache sync received event:", data);
+
+    // ✅ ENHANCED: Force immediate cache invalidation for therapist queries
+    const { appointment } = data;
+
+    if (appointment) {
+      // Get current user to invalidate their specific cache
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+      // Check if this appointment affects the current therapist
+      const affectsCurrentUser =
+        appointment.therapist_id === user.id ||
+        appointment.therapist === user.id ||
+        (Array.isArray(appointment.therapists) &&
+          appointment.therapists.includes(user.id));
+
+      if (affectsCurrentUser) {
+        console.log(
+          "🩺 Appointment affects current therapist, forcing cache refresh..."
+        );
+
+        // Force immediate invalidation and refetch
+        queryClient.invalidateQueries({
+          queryKey: ["appointments", "therapist", user.id],
+          refetchType: "all",
+        });
+
+        // Also force refetch immediately
+        queryClient.refetchQueries({
+          queryKey: ["appointments", "therapist", user.id],
+          type: "all",
+        });
+      }
+    }
+
+    // Use the enhanced handleWebSocketUpdate function
+    handleWebSocketUpdate(queryClient, data);
+  };
+
+  // Set up all event listeners
+  const eventTypes = [
+    "appointment_created",
+    "appointment_updated",
+    "appointment_deleted",
+    "appointment_status_changed",
+    "therapist_response",
+    "driver_response",
+    "session_started",
+    "awaiting_payment",
+    "appointment_started",
+  ];
+
+  eventTypes.forEach((eventType) => {
+    webSocketService.addEventListener(eventType, handleAppointmentUpdate);
+  });
+
+  // Return cleanup function
+  return () => {
+    eventTypes.forEach((eventType) => {
+      webSocketService.removeEventListener(eventType, handleAppointmentUpdate);
+    });
+  };
 };
 
 /**

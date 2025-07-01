@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useMemo, useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { useNavigate, useSearchParams } from "react-router-dom";
 // TanStack Query hooks for data management (removing Redux dependencies)
@@ -55,50 +55,79 @@ const invalidateAppointmentQueries = async (queryClient, delay = 0) => {
   // ✅ AGGRESSIVE INVALIDATION: Include therapist-specific queries
   const user = getUser(); // Use the same helper function consistently
 
-  // Invalidate all appointment-related queries
-  await Promise.all(
-    [
-      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "upcoming"] }),
-      // ✅ CRITICAL FIX: Invalidate therapist-specific queries
-      user?.id &&
+  try {
+    // Invalidate all appointment-related queries
+    await Promise.all(
+      [
+        queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+        queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
         queryClient.invalidateQueries({
-          queryKey: ["appointments", "therapist", user.id],
-          refetchType: "active",
+          queryKey: ["appointments", "upcoming"],
         }),
-      // Invalidate specific query keys if they exist
-      queryKeys?.appointments?.all &&
-        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-      queryKeys?.appointments?.list &&
+        // ✅ CRITICAL FIX: Force invalidate therapist-specific queries with aggressive refetch
+        user?.id &&
+          queryClient.invalidateQueries({
+            queryKey: ["appointments", "therapist", user.id],
+            refetchType: "all", // Force refetch even for inactive queries
+          }),
+        // ✅ CRITICAL FIX: Also invalidate any partial matches for therapist queries
         queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.list(),
+          predicate: (query) => {
+            const queryKey = query.queryKey;
+            return (
+              Array.isArray(queryKey) &&
+              queryKey.includes("appointments") &&
+              queryKey.includes("therapist")
+            );
+          },
         }),
-      queryKeys?.appointments?.today &&
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.today(),
-        }),
-      queryKeys?.appointments?.upcoming &&
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.upcoming(),
-        }),
-    ].filter(Boolean)
-  );
-
-  console.log(
-    "✅ Appointment queries invalidated successfully (including therapist-specific)"
-  );
-
-  // Wait a bit and check the data after invalidation
-  setTimeout(() => {
-    const afterInvalidation = queryClient.getQueryData(["appointments"]);
-    console.log(
-      "📊 Data after invalidation:",
-      afterInvalidation?.length,
-      "appointments"
+        // Invalidate specific query keys if they exist
+        queryKeys?.appointments?.all &&
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.appointments.all,
+          }),
+        queryKeys?.appointments?.list &&
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.appointments.list(),
+          }),
+        queryKeys?.appointments?.today &&
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.appointments.today(),
+          }),
+        queryKeys?.appointments?.upcoming &&
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.appointments.upcoming(),
+          }),
+      ].filter(Boolean)
     );
-  }, 100);
+
+    console.log(
+      "✅ Appointment queries invalidated successfully (including therapist-specific)"
+    );
+
+    // ✅ CRITICAL FIX: Force immediate refetch of therapist data
+    if (user?.id) {
+      console.log("🔄 Force refetching therapist data immediately...");
+      await queryClient.refetchQueries({
+        queryKey: ["appointments", "therapist", user.id],
+        type: "all",
+      });
+    }
+
+    // Wait a bit and check the data after invalidation
+    setTimeout(() => {
+      const afterInvalidation = queryClient.getQueryData(["appointments"]);
+      console.log(
+        "📊 Data after invalidation:",
+        afterInvalidation?.length,
+        "appointments"
+      );
+    }, 100);
+  } catch (error) {
+    console.error("❌ Failed to invalidate appointment queries:", error);
+    throw error;
+  }
 };
 
 // Helper to get auth token
@@ -142,50 +171,56 @@ const useTherapistDashboardData = (userId) => {
   } = useQuery({
     queryKey: ["appointments", "therapist", userId],
     queryFn: fetchAppointments,
-    staleTime: 0, // ✅ FIX: Always consider data stale for immediate updates (was 30000)
-    cacheTime: 2 * 60 * 1000, // ✅ FIX: 2 minutes cache time (matches OperatorDashboard)
-    refetchInterval: 3 * 60 * 1000, // ✅ FIX: 3 minutes background refresh (was missing)
+    enabled: !!userId, // ✅ FIX: Only fetch when userId is available
+    staleTime: 0, // ✅ KEEP: Always consider data stale for immediate updates
+    gcTime: 2 * 60 * 1000, // ✅ FIX: Use gcTime instead of deprecated cacheTime
+    refetchInterval: 30 * 1000, // ✅ FIX: Reduce to 30 seconds for more frequent updates
     refetchOnWindowFocus: true, // ✅ Keep: Refetch when window gains focus
-    refetchOnReconnect: true, // ✅ FIX: Refetch when connection is restored
+    refetchOnReconnect: true, // ✅ Keep: Refetch when connection is restored
+    refetchOnMount: true, // ✅ FIX: Always refetch on component mount
     retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // ✅ FIX: Exponential backoff
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // ✅ Keep: Exponential backoff
     onSuccess: (data) => {
-      console.log(`🩺 TherapistDashboard data updated at ${new Date().toLocaleTimeString()}:`, data?.length, "appointments");
+      console.log(
+        `🩺 TherapistDashboard data updated at ${new Date().toLocaleTimeString()}:`,
+        data?.length,
+        "appointments"
+      );
     },
     onError: (error) => {
       console.error("❌ TherapistDashboard data fetch error:", error);
-    }
+    },
   });
 
   // Filter appointments for this therapist
   const myAppointments = useMemo(() => {
     if (!Array.isArray(allAppointments) || !userId) return [];
-    
+
     console.log("🔍 Filtering appointments for therapist:", userId);
     console.log("📊 Total appointments to filter:", allAppointments.length);
-    
-    const filtered = allAppointments.filter(
-      (apt) => {
-        // Check multiple possible therapist field names for compatibility
-        const isTherapist = 
-          apt.therapist_id === userId ||      // Primary field
-          apt.therapist === userId ||         // Legacy field
-          (apt.therapists && Array.isArray(apt.therapists) && apt.therapists.includes(userId)); // Multi-therapist
-        
-        if (isTherapist) {
-          console.log("✅ Found appointment for therapist:", {
-            id: apt.id,
-            therapist_id: apt.therapist_id,
-            therapist: apt.therapist,
-            therapists: apt.therapists,
-            status: apt.status
-          });
-        }
-        
-        return isTherapist;
+
+    const filtered = allAppointments.filter((apt) => {
+      // Check multiple possible therapist field names for compatibility
+      const isTherapist =
+        apt.therapist_id === userId || // Primary field
+        apt.therapist === userId || // Legacy field
+        (apt.therapists &&
+          Array.isArray(apt.therapists) &&
+          apt.therapists.includes(userId)); // Multi-therapist
+
+      if (isTherapist) {
+        console.log("✅ Found appointment for therapist:", {
+          id: apt.id,
+          therapist_id: apt.therapist_id,
+          therapist: apt.therapist,
+          therapists: apt.therapists,
+          status: apt.status,
+        });
       }
-    );
-    
+
+      return isTherapist;
+    });
+
     console.log("📊 Filtered appointments for therapist:", filtered.length);
     return filtered;
   }, [allAppointments, userId]);
@@ -322,42 +357,60 @@ const TherapistDashboard = () => {
 
   // ✅ CRITICAL FIX: Enhanced cache invalidation hook
   // This ensures that any mutation immediately updates ALL relevant caches
-  const ensureTherapistCacheSync = useCallback(async (appointmentId, updateData, forceRefetch = true) => {
-    console.log("🔄 ensureTherapistCacheSync called for appointment:", appointmentId);
-    
-    // 1. Update all cache variations immediately
-    const updateFunction = (oldData) => {
-      if (!oldData) return oldData;
-      return oldData.map((apt) =>
-        apt.id === appointmentId ? { ...apt, ...updateData } : apt
+  const ensureTherapistCacheSync = useCallback(
+    async (appointmentId, updateData, forceRefetch = true) => {
+      console.log(
+        "🔄 ensureTherapistCacheSync called for appointment:",
+        appointmentId
       );
-    };
 
-    // Update all possible cache keys
-    queryClient.setQueryData(["appointments"], updateFunction);
-    queryClient.setQueryData(["appointments", "today"], updateFunction);
-    queryClient.setQueryData(["appointments", "upcoming"], updateFunction);
-    queryClient.setQueryData(["appointments", "therapist", user?.id], updateFunction);
+      // 1. Update all cache variations immediately
+      const updateFunction = (oldData) => {
+        if (!oldData) return oldData;
+        return oldData.map((apt) =>
+          apt.id === appointmentId ? { ...apt, ...updateData } : apt
+        );
+      };
 
-    // 2. Force immediate invalidation and refetch
-    const invalidationPromises = [
-      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "therapist", user?.id] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "upcoming"] })
-    ];
-
-    // 3. If forceRefetch is true, also trigger a fresh data fetch
-    if (forceRefetch) {
-      invalidationPromises.push(
-        queryClient.refetchQueries({ queryKey: ["appointments", "therapist", user?.id] })
+      // Update all possible cache keys
+      queryClient.setQueryData(["appointments"], updateFunction);
+      queryClient.setQueryData(["appointments", "today"], updateFunction);
+      queryClient.setQueryData(["appointments", "upcoming"], updateFunction);
+      queryClient.setQueryData(
+        ["appointments", "therapist", user?.id],
+        updateFunction
       );
-    }
 
-    await Promise.all(invalidationPromises);
+      // 2. Force immediate invalidation and refetch
+      const invalidationPromises = [
+        queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["appointments", "therapist", user?.id],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["appointments", "upcoming"],
+        }),
+      ];
 
-    console.log("✅ TherapistDashboard cache synchronization complete" + (forceRefetch ? " with forced refetch" : ""));
-  }, [queryClient, user?.id]);
+      // 3. If forceRefetch is true, also trigger a fresh data fetch
+      if (forceRefetch) {
+        invalidationPromises.push(
+          queryClient.refetchQueries({
+            queryKey: ["appointments", "therapist", user?.id],
+          })
+        );
+      }
+
+      await Promise.all(invalidationPromises);
+
+      console.log(
+        "✅ TherapistDashboard cache synchronization complete" +
+          (forceRefetch ? " with forced refetch" : "")
+      );
+    },
+    [queryClient, user?.id]
+  );
 
   // ✅ FIXED: Re-enabled WebSocket cache sync with proper cache invalidation
   // The cache invalidation function now properly handles therapist-specific query keys
@@ -421,12 +474,35 @@ const TherapistDashboard = () => {
       return { previousData };
     },
     onSuccess: async () => {
-      await invalidateAppointmentQueries(queryClient);
-      // CRITICAL FIX: Also invalidate the therapist-specific query
-      await queryClient.invalidateQueries({
-        queryKey: ["appointments", "therapist", user?.id],
-        refetchType: "active",
-      });
+      console.log(
+        "✅ Accept appointment mutation successful - triggering cache refresh"
+      );
+
+      // ✅ CRITICAL FIX: Comprehensive cache invalidation and forced refetch
+      try {
+        // 1. Invalidate all appointment queries aggressively
+        await invalidateAppointmentQueries(queryClient, 500); // 500ms delay for backend propagation
+
+        // 2. Force immediate refetch of therapist-specific data
+        await queryClient.refetchQueries({
+          queryKey: ["appointments", "therapist", user?.id],
+          type: "all",
+        });
+
+        // 3. Invalidate broader appointment cache patterns
+        await queryClient.invalidateQueries({
+          predicate: (query) => {
+            const queryKey = query.queryKey;
+            return Array.isArray(queryKey) && queryKey.includes("appointments");
+          },
+        });
+
+        console.log(
+          "✅ Comprehensive cache refresh completed for accept appointment"
+        );
+      } catch (error) {
+        console.error("❌ Cache refresh failed after accept:", error);
+      }
     },
     onError: (error, variables, context) => {
       if (context?.previousData) {
@@ -1270,7 +1346,7 @@ const TherapistDashboard = () => {
       ...prev,
       [actionKey]: isLoading,
     }));
-  }
+  };
 
   // Debug logging for troubleshooting the "No appointments found" issue
   const DEBUG_LOGS = false; // Set to true to enable debug logs
@@ -2195,6 +2271,27 @@ const TherapistDashboard = () => {
           subtitle={<>Today is {systemTime}</>}
         >
           <div className="action-buttons">
+            {/* ✅ CRITICAL FIX: Add manual refresh button for cache issues */}
+            <button
+              onClick={async () => {
+                console.log("🔄 Manual refresh triggered by user");
+                await invalidateAppointmentQueries(queryClient);
+                await refetch();
+              }}
+              className="refresh-button"
+              style={{
+                marginRight: "10px",
+                padding: "8px 16px",
+                backgroundColor: "#4CAF50",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+              title="Refresh appointments if data seems outdated"
+            >
+              🔄 Refresh
+            </button>
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>

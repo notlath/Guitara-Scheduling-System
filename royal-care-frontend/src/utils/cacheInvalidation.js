@@ -130,13 +130,26 @@ export const invalidateAppointmentCaches = async (
     // User-specific invalidations
     if (userId) {
       if (userRole === "therapist") {
-        // ✅ CRITICAL FIX: TherapistDashboard uses ["appointments", "therapist", userId] pattern
-        // Also invalidate the typed versions for compatibility
+        console.log("🩺 Invalidating therapist-specific caches for:", userId);
+
+        // ✅ CRITICAL FIX: More aggressive therapist cache invalidation
         invalidationPromises.push(
-          // Main TherapistDashboard query key
+          // Main TherapistDashboard query key with aggressive refetch
           queryClient.invalidateQueries({
             queryKey: ["appointments", "therapist", userId],
-            refetchType: "active"
+            refetchType: "all", // Force refetch even for inactive queries
+          }),
+          // Also invalidate any partial matches
+          queryClient.invalidateQueries({
+            predicate: (query) => {
+              const queryKey = query.queryKey;
+              return (
+                Array.isArray(queryKey) &&
+                queryKey.includes("appointments") &&
+                queryKey.includes("therapist") &&
+                queryKey.includes(userId)
+              );
+            },
           })
         );
 
@@ -160,7 +173,7 @@ export const invalidateAppointmentCaches = async (
           // Main DriverDashboard query key
           queryClient.invalidateQueries({
             queryKey: ["appointments", "driver", userId],
-            refetchType: "active"
+            refetchType: "active",
           })
         );
 
@@ -401,7 +414,7 @@ export const invalidateByStatus = async (queryClient, status, options = {}) => {
  */
 export const handleWebSocketUpdate = (queryClient, wsData) => {
   console.log("🔄 handleWebSocketUpdate called with:", wsData);
-  
+
   const { type, appointment } = wsData;
 
   // Extract user information from appointment data
@@ -411,10 +424,10 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
   if (appointment) {
     therapistId = appointment.therapist_id || appointment.therapist;
     driverId = appointment.driver_id || appointment.driver;
-    
+
     // Also check therapists array for multi-therapist appointments
     if (appointment.therapists && Array.isArray(appointment.therapists)) {
-      appointment.therapists.forEach(id => {
+      appointment.therapists.forEach((id) => {
         if (id && id !== therapistId) {
           // For multi-therapist appointments, invalidate all affected therapists
           invalidateAppointmentCaches(queryClient, {
@@ -444,7 +457,7 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
           })
         );
       }
-      
+
       // Invalidate for driver
       if (driverId) {
         promises.push(
@@ -455,7 +468,7 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
           })
         );
       }
-      
+
       // Always invalidate general caches
       promises.push(
         invalidateAppointmentCaches(queryClient, {

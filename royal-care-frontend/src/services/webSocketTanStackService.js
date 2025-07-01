@@ -5,7 +5,10 @@
 
 import { useEffect, useState } from "react";
 import { queryClient } from "../lib/queryClient";
-import { invalidateAppointmentCaches, handleWebSocketUpdate } from "../utils/cacheInvalidation";
+import {
+  handleWebSocketUpdate,
+  invalidateAppointmentCaches,
+} from "../utils/cacheInvalidation";
 import { getToken } from "../utils/tokenManager";
 
 class WebSocketTanStackService {
@@ -116,13 +119,13 @@ class WebSocketTanStackService {
       queryClient.invalidateQueries({
         queryKey: ["appointments", "therapist", therapistId],
         refetchType: "all", // Force refetch even for inactive queries
-        exact: true // Only invalidate this exact query key
+        exact: true, // Only invalidate this exact query key
       });
 
       // Also invalidate without exact match to catch any related queries
       queryClient.invalidateQueries({
         queryKey: ["appointments", "therapist"],
-        refetchType: "active"
+        refetchType: "active",
       });
     });
 
@@ -261,7 +264,7 @@ class WebSocketTanStackService {
           hasMessage: !!data.message,
           hasAppointment: !!data.appointment,
           messageContent: data.message,
-          appointmentContent: data.appointment
+          appointmentContent: data.appointment,
         });
       }
 
@@ -269,7 +272,7 @@ class WebSocketTanStackService {
       // CRITICAL FIX: Handle both old (data.message) and new (data.appointment) WebSocket formats
       // Some messages use data.appointment (appointment_updated), others use data.message (driver_assigned)
       let appointmentData = data.appointment || data.message;
-      
+
       switch (data.type) {
         case "appointment_create":
         case "appointment_created":
@@ -284,7 +287,7 @@ class WebSocketTanStackService {
             console.error("❌ appointment_updated: No appointment data found", {
               hasMessage: !!data.message,
               hasAppointment: !!data.appointment,
-              fullData: data
+              fullData: data,
             });
             return;
           }
@@ -371,9 +374,13 @@ class WebSocketTanStackService {
         default:
           console.log("Unknown WebSocket message type:", data.type);
           console.log("📋 Full message data:", data);
-          
+
           // Try to handle appointment_updated messages that might not be matching
-          if (data.type && data.type.includes("appointment") && data.type.includes("update")) {
+          if (
+            data.type &&
+            data.type.includes("appointment") &&
+            data.type.includes("update")
+          ) {
             console.log("🔧 Attempting to handle as appointment update");
             this.handleAppointmentUpdate(data.message);
           }
@@ -474,19 +481,24 @@ class WebSocketTanStackService {
       isUndefined: updatedAppointment === undefined,
       type: typeof updatedAppointment,
       hasId: updatedAppointment?.id,
-      data: updatedAppointment
+      data: updatedAppointment,
     });
 
     if (!updatedAppointment) {
-      console.error("❌ handleAppointmentUpdate: updatedAppointment is null/undefined");
+      console.error(
+        "❌ handleAppointmentUpdate: updatedAppointment is null/undefined"
+      );
       return;
     }
 
     if (!updatedAppointment.id) {
-      console.error("❌ handleAppointmentUpdate: updatedAppointment.id is missing", {
-        keys: Object.keys(updatedAppointment || {}),
-        fullData: updatedAppointment
-      });
+      console.error(
+        "❌ handleAppointmentUpdate: updatedAppointment.id is missing",
+        {
+          keys: Object.keys(updatedAppointment || {}),
+          fullData: updatedAppointment,
+        }
+      );
       return;
     }
 
@@ -496,7 +508,7 @@ class WebSocketTanStackService {
       therapist_id: updatedAppointment.therapist_id,
       driver_id: updatedAppointment.driver_id,
       therapists: updatedAppointment.therapists,
-      fullAppointmentData: updatedAppointment
+      fullAppointmentData: updatedAppointment,
     });
 
     // Create update function for cache updates
@@ -543,7 +555,7 @@ class WebSocketTanStackService {
     // Use the comprehensive cache invalidation helper
     handleWebSocketUpdate(queryClient, {
       type: "appointment_updated",
-      appointment: updatedAppointment
+      appointment: updatedAppointment,
     });
 
     // Use comprehensive cache invalidation that includes operator-specific queries
