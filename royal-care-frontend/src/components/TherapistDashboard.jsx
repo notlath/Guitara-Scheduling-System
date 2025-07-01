@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { MdClose } from "react-icons/md";
 import { useNavigate, useSearchParams } from "react-router-dom";
 // TanStack Query hooks for data management (removing Redux dependencies)
@@ -208,7 +208,7 @@ const useTherapistDashboardData = (userId) => {
     staleTime: 0, // ✅ Always consider data fresh - prevent stale data issues
     gcTime: 5 * 60 * 1000, // ✅ 5 minutes cache time
     refetchInterval: false, // ✅ DISABLED: Rely purely on WebSocket updates and manual invalidation
-    refetchOnWindowFocus: false, // ✅ DISABLED: Prevent disruption, rely on WebSocket
+    refetchOnWindowFocus: true, // ✅ ENABLED: Refetch when window gains focus for updated data
     refetchOnReconnect: true, // ✅ Keep connection refetch for reliability
     refetchOnMount: true, // ✅ Always get fresh data on component mount
     retry: 3,
@@ -227,20 +227,13 @@ const useTherapistDashboardData = (userId) => {
         data?.length,
         "appointments"
       );
-      console.log("🔍 DEBUG: TherapistDashboard data received:", {
+      console.log("✅ CRITICAL DEBUG: TherapistDashboard query refetched successfully:", {
         userId,
         queryKey,
         dataLength: data?.length,
         timestamp: new Date().toLocaleTimeString(),
-        firstAppointment: data?.[0],
-        // ✅ ENHANCED DEBUG: Log ALL appointment details for debugging
-        allAppointments: data?.map((apt) => ({
-          id: apt.id,
-          date: apt.date,
-          status: apt.status,
-          client_name: apt.client_name,
-          time: apt.time,
-        })),
+        appointmentIds: data?.map(apt => apt.id),
+        appointmentStatuses: data?.map(apt => ({ id: apt.id, status: apt.status })),
       });
     },
     onError: (error) => {
@@ -440,6 +433,34 @@ const TherapistDashboard = () => {
   } = useTherapistDashboardData(user?.id);
 
   // ✅ DEBUG: Log the data received ONLY when data changes
+  useEffect(() => {
+    console.log("🔍 TherapistDashboard data changed:", {
+      dataLength: myAppointments?.length,
+      timestamp: new Date().toLocaleTimeString(),
+      isLoading: loading,
+      appointmentIds: myAppointments?.map(apt => apt.id),
+      appointmentStatuses: myAppointments?.map(apt => ({ id: apt.id, status: apt.status })),
+    });
+  }, [myAppointments, loading]);
+
+  // Add manual refresh function for debugging
+  const manualRefresh = useCallback(async () => {
+    console.log("🔄 Manual refresh triggered by user");
+    try {
+      await refetch();
+      console.log("✅ Manual refresh completed");
+    } catch (error) {
+      console.error("❌ Manual refresh failed:", error);
+    }
+  }, [refetch]);
+
+  // ✅ DEBUGGING: Add window function for manual testing
+  useEffect(() => {
+    window.refreshTherapistDashboard = manualRefresh;
+    return () => {
+      delete window.refreshTherapistDashboard;
+    };
+  }, [manualRefresh]);
   useEffect(() => {
     console.log("🔍 DEBUG: TherapistDashboard data state:", {
       myAppointmentsLength: myAppointments?.length || 0,

@@ -425,44 +425,72 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
   }
   handleWebSocketUpdate._lastCall = Date.now();
 
-  // ✅ CRITICAL: Immediate cache invalidation for ALL dashboards using consistent queryKeys
+  // ✅ CRITICAL: Use the same instant cache update pattern as DriverDashboard
   const performCacheUpdate = async () => {
     try {
       console.log(
         `🚀 INSTANT CACHE INVALIDATION - Starting comprehensive update for ${type}`
       );
 
-      // 1. ✅ THERAPIST DASHBOARD: Force immediate update using consistent queryKeys
-      console.log("🩺 Invalidating Therapist Dashboard caches...");
+      // ✅ CRITICAL FIX: Use setQueryData + invalidateQueries pattern like DriverDashboard
+      // This ensures immediate UI updates by updating cache data FIRST, then invalidating
 
-      // ✅ CRITICAL FIX: Force immediate cache invalidation with setQueryData
-      // This ensures immediate UI updates by clearing and refetching data
+      // 1. ✅ THERAPIST DASHBOARD: Instant cache update using setQueryData pattern
+      console.log("🩺 Updating Therapist Dashboard caches with instant pattern...");
+
       if (appointment?.therapist || appointment?.therapists) {
         const therapistIds = [];
         if (appointment.therapist) therapistIds.push(appointment.therapist);
         if (appointment.therapists)
           therapistIds.push(...appointment.therapists);
 
-        // Force immediate cache invalidation for affected therapists
+        // Apply the SAME pattern as DriverDashboard for instant updates
+        const updateFunction = (oldData) => {
+          if (!Array.isArray(oldData)) return oldData;
+          
+          // Handle delete operations
+          if (type === "appointment_deleted") {
+            return oldData.filter(apt => apt.id !== appointment.id);
+          }
+          
+          // Handle updates - replace or add appointment
+          const existingIndex = oldData.findIndex(apt => apt.id === appointment.id);
+          if (existingIndex >= 0) {
+            // Update existing appointment
+            const updatedData = [...oldData];
+            updatedData[existingIndex] = { ...updatedData[existingIndex], ...appointment };
+            return updatedData;
+          } else {
+            // Add new appointment if not found
+            return [...oldData, appointment];
+          }
+        };
+
+        // Update cache for affected therapists using the SAME pattern as DriverDashboard
         for (const therapistId of therapistIds) {
           const therapistQueryKey = queryKeys.appointments.byTherapist(
             therapistId,
             "all"
           );
 
-          // 1. Immediately clear the cache
-          queryClient.removeQueries({ queryKey: therapistQueryKey });
-
-          // 2. Force refetch
-          queryClient.refetchQueries({
+          // 1. ✅ INSTANT UPDATE: Apply data change immediately (like DriverDashboard)
+          queryClient.setQueryData(therapistQueryKey, updateFunction);
+          
+          // 2. ✅ BACKGROUND INVALIDATION: Force refetch for consistency
+          queryClient.invalidateQueries({
             queryKey: therapistQueryKey,
-            type: "all",
+            refetchType: "all", // Force refetch even for inactive queries
+            exact: true, // Only invalidate this exact query key
           });
 
           console.log(
-            `✅ Force invalidated and refetched therapist ${therapistId} cache`
+            `✅ INSTANT TherapistDashboard cache update applied for therapist ${therapistId}`
           );
         }
+        
+        console.log(
+          `✅ Applied instant cache updates to ${therapistIds.length} therapist dashboards`
+        );
       }
 
       await Promise.all([
