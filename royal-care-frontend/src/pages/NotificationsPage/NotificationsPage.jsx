@@ -38,6 +38,22 @@ const NotificationsPage = () => {
         ? "https://charismatic-appreciation-production.up.railway.app/api"
         : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
+      // DEBUG: Log request details
+      console.log("🔍 DEBUG: Fetching notifications for therapist", {
+        url: `${baseURL}/scheduling/notifications/`,
+        tokenExists: !!token,
+        tokenLength: token?.length || 0,
+        userRole: localStorage.getItem("user")
+          ? JSON.parse(localStorage.getItem("user"))?.role
+          : "unknown",
+        userId: localStorage.getItem("user")
+          ? JSON.parse(localStorage.getItem("user"))?.id
+          : "unknown",
+        username: localStorage.getItem("user")
+          ? JSON.parse(localStorage.getItem("user"))?.username
+          : "unknown",
+      });
+
       const response = await fetch(`${baseURL}/scheduling/notifications/`, {
         headers: {
           Authorization: `Token ${token}`,
@@ -45,10 +61,26 @@ const NotificationsPage = () => {
         },
       });
 
+      // DEBUG: Log response details
+      console.log("🔍 DEBUG: Notifications response", {
+        status: response.status,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+
       if (!response.ok)
         throw new Error(`Failed to fetch notifications: ${response.status}`);
 
       const data = await response.json();
+
+      // DEBUG: Log received data
+      console.log("🔍 DEBUG: Notifications data received", {
+        dataType: typeof data,
+        isArray: Array.isArray(data),
+        dataKeys: data ? Object.keys(data) : [],
+        dataLength: Array.isArray(data) ? data.length : "not array",
+        data: data,
+      });
 
       const notificationsList = Array.isArray(data)
         ? data
@@ -59,6 +91,11 @@ const NotificationsPage = () => {
         : Array.isArray(data.results?.notifications)
         ? data.results.notifications
         : [];
+
+      console.log("🔍 DEBUG: Final notifications list", {
+        length: notificationsList.length,
+        notifications: notificationsList,
+      });
 
       setNotifications(notificationsList);
       setTotalCount(data.total_count || data.count || notificationsList.length);

@@ -2,15 +2,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
-import { useNavigate, useSearchParams } from "react-router-dom";
 // TanStack Query hooks for data management (removing Redux dependencies)
+import useDashboardCommon from "../hooks/useDashboardCommon";
 import { useTherapistDashboardData } from "../hooks/useDashboardQueries";
-import { usePhilippineTime } from "../hooks/usePhilippineTime";
-import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
 import { syncMutationSuccess } from "../services/realTimeSyncService";
+import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
 // ✅ CRITICAL FIX: Import handleWebSocketUpdate for comprehensive cache management
 
 import LayoutRow from "../globals/LayoutRow";
@@ -19,6 +18,7 @@ import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css";
+import { getUser, getUserDisplayName } from "../utils/userUtils";
 import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
 import Calendar from "./scheduling/Calendar";
@@ -143,6 +143,9 @@ const TherapistDashboard = () => {
 
   // ✅ CRITICAL FIX: Memoize user to prevent infinite re-renders
   const user = useMemo(() => getUser(), []);
+
+  // Extract user name for display
+  const userName = getUserDisplayName(user, "Therapist");
 
   // ✅ DEBUG: Log user information ONCE during component mount
   useEffect(() => {
