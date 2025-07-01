@@ -1,15 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { useNavigate, useSearchParams } from "react-router-dom";
 // TanStack Query hooks for data management (removing Redux dependencies)
+import { useTherapistDashboardData } from "../hooks/useDashboardQueries";
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
 import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
-import { queryKeys } from "../lib/queryClient";
 import { syncMutationSuccess } from "../services/realTimeSyncService";
 // ✅ CRITICAL FIX: Import handleWebSocketUpdate for comprehensive cache management
 
@@ -34,113 +34,9 @@ const getBaseURL = () => {
 
 const API_URL = `${getBaseURL()}/scheduling/`;
 
-// Helper function for TanStack Query-only cache invalidation (OPTIMIZED FOR REAL-TIME)
-const invalidateAppointmentQueries = async (queryClient, delay = 0) => {
-  console.log(
-    "🔄 Invalidating appointment queries (TanStack Query only) - AGGRESSIVE MODE"
-  );
-
-  // Add optional delay for backend propagation
-  if (delay > 0) {
-    console.log(`⏳ Waiting ${delay}ms for backend propagation...`);
-    await new Promise((resolve) => setTimeout(resolve, delay));
-  }
-
-  // Get current data before invalidation for debugging
-  const user = getUser(); // Get user first for proper query key
-  if (!user?.id) {
-    console.error("❌ No user ID available for cache invalidation");
-    return;
-  }
-
-  const beforeInvalidation = queryClient.getQueryData(
-    queryKeys.appointments.byTherapist(user.id, "all")
-  );
-  console.log(
-    "📊 Data before invalidation:",
-    beforeInvalidation?.length || 0,
-    "appointments for therapist:",
-    user.id
-  );
-
-  // ✅ CONSISTENT QUERY KEY INVALIDATION: Use queryKeys structure
-
-  try {
-    // Invalidate all appointment-related queries using consistent queryKeys
-    await Promise.all([
-      // Core appointment queries
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.list(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.today(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.upcoming(),
-      }),
-
-      // ✅ CRITICAL FIX: Therapist-specific queries with consistent key structure
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.byTherapist(user.id, "all"),
-        refetchType: "all",
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.byTherapist(user.id, "today"),
-        refetchType: "all",
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appointments.byTherapist(user.id, "upcoming"),
-        refetchType: "all",
-      }),
-
-      // ✅ ENHANCED: Invalidate any partial matches for therapist queries
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const queryKey = query.queryKey;
-          return (
-            Array.isArray(queryKey) &&
-            queryKey.includes("appointments") &&
-            queryKey.includes("therapist") &&
-            queryKey.includes(user.id)
-          );
-        },
-      }),
-
-      // Dashboard-specific queries
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.therapist(user.id),
-      }),
-    ]);
-
-    console.log(
-      "✅ Appointment queries invalidated successfully (using consistent queryKeys)"
-    );
-
-    // ✅ CRITICAL FIX: Force immediate refetch of therapist data
-    console.log("🔄 Force refetching therapist data immediately...");
-    await queryClient.refetchQueries({
-      queryKey: queryKeys.appointments.byTherapist(user.id, "all"),
-      type: "all",
-    });
-
-    // Wait a bit and check the data after invalidation
-    setTimeout(() => {
-      const afterInvalidation = queryClient.getQueryData(
-        queryKeys.appointments.byTherapist(user.id, "all")
-      );
-      console.log(
-        "📊 Data after invalidation:",
-        afterInvalidation?.length || 0,
-        "appointments for therapist:",
-        user.id
-      );
-    }, 100);
-  } catch (error) {
-    console.error("❌ Failed to invalidate appointment queries:", error);
-    throw error;
-  }
-};
+// ✅ SIMPLIFIED: Remove complex invalidation - use DriverDashboard pattern
+// The complex invalidation function caused race conditions and over-invalidation
+// DriverDashboard uses simple cache invalidation that works reliably
 
 // Helper to get auth token
 const getToken = () => localStorage.getItem("knoxToken");
@@ -161,181 +57,6 @@ const getUser = () => {
 };
 
 // TanStack Query functions for fetching appointments data
-// ✅ CRITICAL FIX: Use main appointments endpoint with authentication
-// Backend will automatically filter for therapist based on user auth
-const fetchTherapistAppointments = async (therapistId) => {
-  const token = getToken();
-  if (!token) throw new Error("Authentication required");
-  if (!therapistId) throw new Error("Therapist ID required");
-
-  console.log("🩺 Fetching therapist appointments via authenticated endpoint");
-
-  // Use main appointments endpoint - backend filters automatically
-  const response = await axios.get(`${API_URL}appointments/`, {
-    headers: { Authorization: `Token ${token}` },
-  });
-
-  const appointments = response.data.results || response.data;
-
-  // ✅ CRITICAL FIX: Also filter on the frontend to ensure we only get relevant appointments
-  const filteredAppointments = appointments.filter((appointment) => {
-    // Check if current therapist is assigned to this appointment
-    const isAssigned =
-      appointment.therapist_id === therapistId ||
-      appointment.therapist === therapistId ||
-      (Array.isArray(appointment.therapists) &&
-        appointment.therapists.includes(therapistId)) ||
-      (Array.isArray(appointment.therapists_details) &&
-        appointment.therapists_details.some((t) => t.id === therapistId));
-
-    console.log(`🔍 Appointment ${appointment.id} assignment check:`, {
-      appointmentId: appointment.id,
-      therapistId,
-      appointment_therapist_id: appointment.therapist_id,
-      appointment_therapist: appointment.therapist,
-      appointment_therapists: appointment.therapists,
-      isAssigned,
-    });
-
-    return isAssigned;
-  });
-
-  console.log(
-    `✅ Backend-filtered appointments for therapist:`,
-    filteredAppointments.length
-  );
-  return filteredAppointments;
-};
-
-// TanStack Query hook for therapist dashboard data
-const useTherapistDashboardData = (userId) => {
-  // ✅ CRITICAL DEBUG: Log the exact query key being used
-  const queryKey = queryKeys.appointments.byTherapist(userId, "all");
-
-  // ✅ FIX: Only log query key when it changes, not on every render
-  useEffect(() => {
-    console.log("🔍 TherapistDashboard using query key:", queryKey);
-  }, [queryKey]);
-
-  const {
-    data: myAppointments = [],
-    isLoading,
-    error,
-    refetch,
-    dataUpdatedAt,
-    isFetching,
-  } = useQuery({
-    queryKey, // ✅ Use consistent queryKeys structure
-    queryFn: () => fetchTherapistAppointments(userId), // ✅ Use therapist-specific fetch
-    enabled: !!userId, // ✅ Only fetch when userId is available
-
-    // ✅ CRITICAL FIX: Optimized for instant updates and real-time sync
-    staleTime: 30 * 1000, // ✅ 30 seconds - allow WebSocket updates to work without constant refetching
-    gcTime: 5 * 60 * 1000, // ✅ 5 minutes cache time
-    refetchInterval: false, // ✅ DISABLED: Rely on WebSocket updates and cache invalidation
-    refetchOnWindowFocus: true, // ✅ ENABLED: Refresh when user returns to tab
-    refetchOnReconnect: true, // ✅ Keep connection refetch for reliability
-    refetchOnMount: "always", // ✅ Always get fresh data on component mount
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // ✅ Exponential backoff
-
-    // ✅ PERFORMANCE: Optimized update notifications for instant UI feedback
-    notifyOnChangeProps: ["data", "error", "isLoading"], // Only notify on essential changes
-    structuralSharing: true, // ✅ Enable structural sharing for better performance
-
-    // ✅ INSTANT UPDATES: Ensure immediate UI reflection
-    placeholderData: undefined, // Don't use placeholder data that might cause stale UI
-
-    onSuccess: (data) => {
-      console.log(
-        `🩺 TherapistDashboard data updated at ${new Date().toLocaleTimeString()}:`,
-        data?.length,
-        "appointments"
-      );
-      console.log(
-        "✅ CRITICAL DEBUG: TherapistDashboard query refetched successfully:",
-        {
-          userId,
-          queryKey,
-          dataLength: data?.length,
-          timestamp: new Date().toLocaleTimeString(),
-          appointmentIds: data?.map((apt) => apt.id),
-          appointmentStatuses: data?.map((apt) => ({
-            id: apt.id,
-            status: apt.status,
-          })),
-        }
-      );
-    },
-    onError: (error) => {
-      console.error("❌ TherapistDashboard data fetch error:", error);
-    },
-    // ✅ ENHANCED: Additional debugging
-    onSettled: (data, error) => {
-      console.log("🔍 TherapistDashboard query settled:", {
-        queryKey,
-        dataLength: data?.length,
-        error: error?.message,
-        timestamp: new Date().toLocaleTimeString(),
-      });
-    },
-  });
-
-  // ✅ SIMPLIFIED: Data is already filtered by the fetch function
-  // Filter today's appointments
-  const todayAppointments = useMemo(() => {
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
-
-    // ✅ ENHANCED DEBUG: Log date filtering details
-    console.log("🔍 DATE FILTERING DEBUG:", {
-      todayStr,
-      today: today.toISOString(),
-      appointmentsCount: myAppointments.length,
-      appointments: myAppointments.map((apt) => ({
-        id: apt.id,
-        date: apt.date,
-        matchesToday: apt.date === todayStr,
-      })),
-    });
-
-    const filtered = myAppointments.filter((apt) => {
-      const matches = apt.date === todayStr;
-      console.log(
-        `🔍 Date filter for appointment ${apt.id}: ${apt.date} === ${todayStr} = ${matches}`
-      );
-      return matches;
-    });
-
-    console.log("🔍 Today appointments after date filtering:", {
-      todayStr,
-      filteredCount: filtered.length,
-      filtered: filtered,
-    });
-
-    return filtered;
-  }, [myAppointments]); // ✅ Depend on myAppointments
-
-  // Filter upcoming appointments (future dates)
-  const upcomingAppointments = useMemo(() => {
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
-    return myAppointments.filter((apt) => apt.date > todayStr);
-  }, [myAppointments]); // ✅ Depend on myAppointments
-
-  return {
-    appointments: myAppointments,
-    todayAppointments,
-    upcomingAppointments,
-    isLoading,
-    error,
-    refetch,
-    hasData: myAppointments.length > 0,
-    dataUpdatedAt,
-    isFetching,
-  };
-};
-
 // API calls for therapist actions
 const therapistAPI = {
   acceptAppointment: async (appointmentId) => {
@@ -1722,26 +1443,12 @@ const TherapistDashboard = () => {
           subtitle={<>Today is {systemTime}</>}
         >
           <div className="action-buttons">
-            {/* ✅ CRITICAL FIX: Enhanced manual refresh button for cache issues */}
+            {/* ✅ SIMPLIFIED: Use standard refresh button like DriverDashboard */}
             <button
               onClick={async () => {
                 console.log("🔄 Manual refresh triggered by user");
-
-                // 1. Clear the specific cache that TherapistDashboard uses
-                console.log("🗑️ Clearing TherapistDashboard cache...");
-                queryClient.removeQueries({
-                  queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
-                });
-
-                // 2. Force immediate refetch
-                console.log("🔄 Force refetching fresh data...");
                 await refetch();
-
-                // 3. Also clear and refetch related caches
-                setTimeout(async () => {
-                  await invalidateAppointmentQueries(queryClient);
-                  console.log("✅ Complete cache refresh finished");
-                }, 500);
+                console.log("✅ Manual refresh completed");
               }}
               className="refresh-button"
               style={{
@@ -1755,9 +1462,9 @@ const TherapistDashboard = () => {
                 fontSize: "14px",
                 fontWeight: "500",
               }}
-              title="Force refresh if appointments are not updating properly"
+              title="Refresh appointments data"
             >
-              🔄 Force Refresh
+              🔄 Refresh
             </button>
             <button onClick={handleLogout} className="logout-button">
               Logout
