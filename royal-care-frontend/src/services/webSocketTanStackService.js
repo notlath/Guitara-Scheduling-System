@@ -97,11 +97,22 @@ class WebSocketTanStackService {
         }
       }
     }
-
+    
+    // ✅ ENHANCED DEBUG: Log exactly what therapist IDs we found
     console.log(
       `🩺 Found ${affectedTherapistIds.size} affected therapists:`,
       Array.from(affectedTherapistIds)
     );
+    
+    if (affectedTherapistIds.size === 0) {
+      console.warn("⚠️ No therapist IDs found for appointment update - this might cause UI sync issues");
+      console.log("🔍 DEBUG: Appointment data structure:", {
+        appointmentData,
+        therapist_id: appointmentData.therapist_id,
+        therapist: appointmentData.therapist,
+        therapists: appointmentData.therapists
+      });
+    }
 
     // Update each affected therapist's cache
     affectedTherapistIds.forEach((therapistId) => {
