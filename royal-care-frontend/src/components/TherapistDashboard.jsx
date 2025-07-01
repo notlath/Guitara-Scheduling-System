@@ -318,6 +318,9 @@ const TherapistDashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Get user from localStorage instead of Redux - MOVED UP TO FIX INITIALIZATION ERROR
+  const user = getUser();
+
   // ✅ CRITICAL FIX: Enhanced cache invalidation hook
   // This ensures that any mutation immediately updates ALL relevant caches
   const ensureTherapistCacheSync = useCallback(async (appointmentId, updateData) => {
@@ -351,9 +354,6 @@ const TherapistDashboard = () => {
   // ✅ FIXED: Re-enabled WebSocket cache sync with proper cache invalidation
   // The cache invalidation function now properly handles therapist-specific query keys
   useAutoWebSocketCacheSync();
-
-  // Get user from localStorage instead of Redux
-  const user = getUser();
 
   // TanStack Query data fetching with optimized configuration
   const {
