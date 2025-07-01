@@ -70,8 +70,21 @@ class WebSocketTanStackService {
       appointmentData.therapists &&
       Array.isArray(appointmentData.therapists)
     ) {
-      appointmentData.therapists.forEach((therapistId) => {
+      appointmentData.therapists.forEach((therapist) => {
+        // Handle both ID numbers and therapist objects
+        const therapistId =
+          typeof therapist === "object" ? therapist.id : therapist;
         if (therapistId) affectedTherapistIds.add(therapistId);
+      });
+    }
+
+    // Add all therapists from therapists_details array (detailed therapist objects)
+    if (
+      appointmentData.therapists_details &&
+      Array.isArray(appointmentData.therapists_details)
+    ) {
+      appointmentData.therapists_details.forEach((therapist) => {
+        if (therapist && therapist.id) affectedTherapistIds.add(therapist.id);
       });
     }
 

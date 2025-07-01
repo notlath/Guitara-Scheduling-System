@@ -748,52 +748,353 @@ export const useOperatorDashboardData = () => {
 export const useTherapistDashboardData = (therapistId) => {
   const queryClient = useQueryClient();
 
-  // Today's appointments for therapist
-  const todayAppointmentsQuery = useQuery({
-    queryKey: queryKeys.appointments.byTherapist(therapistId, "today"),
+  console.log(
+    "🏥 useTherapistDashboardData hook called with therapistId:",
+    therapistId
+  );
+
+  // All appointments for therapist
+  const appointmentsQuery = useQuery({
+    queryKey: queryKeys.appointments.byTherapist(therapistId, "all"),
     queryFn: async () => {
       try {
-        const data = await fetchTodayAppointmentsAPI();
+        const data = await fetchAppointmentsAPI();
+        console.log("📋 Therapist appointments API response:", data);
         // Enhanced data validation to prevent filter errors
         const appointments = Array.isArray(data) ? data : [];
         // Double-check that appointments is still an array before filtering
         if (!Array.isArray(appointments)) {
           console.error(
-            "⚠️ Appointments data is not an array after validation:",
+            "⚠️ Therapist appointments data is not an array after validation:",
             appointments
           );
           return [];
         }
-        return appointments.filter(
-          (apt) => apt && apt.therapist === therapistId
+
+        // Filter appointments for this therapist
+        const filteredAppointments = appointments.filter((apt) => {
+          if (!apt) return false;
+
+          // ✅ CRITICAL DEBUG: Log each appointment's therapist data to identify the issue
+          if (appointments.indexOf(apt) < 3) {
+            // Only log first 3 appointments to avoid spam
+            console.log(
+              `🔍 APPOINTMENT FILTER DEBUG - Appointment ${apt.id}:`,
+              {
+                therapistId: therapistId,
+                therapistIdType: typeof therapistId,
+                apt_therapist: apt.therapist,
+                apt_therapist_type: typeof apt.therapist,
+                apt_therapist_id: apt.therapist_id,
+                apt_therapist_id_type: typeof apt.therapist_id,
+                apt_therapists: apt.therapists,
+                apt_therapists_details: apt.therapists_details,
+                date: apt.date,
+                status: apt.status,
+              }
+            );
+          }
+
+          // Check multiple possible therapist ID fields
+          const isTherapistMatch =
+            apt.therapist === therapistId ||
+            apt.therapist_id === therapistId ||
+            // Try both string and number comparisons
+            String(apt.therapist) === String(therapistId) ||
+            String(apt.therapist_id) === String(therapistId) ||
+            parseInt(apt.therapist) === parseInt(therapistId) ||
+            parseInt(apt.therapist_id) === parseInt(therapistId) ||
+            (Array.isArray(apt.therapists) &&
+              apt.therapists.includes(therapistId)) ||
+            (Array.isArray(apt.therapists) &&
+              apt.therapists.includes(String(therapistId))) ||
+            (Array.isArray(apt.therapists) &&
+              apt.therapists.includes(parseInt(therapistId))) ||
+            (Array.isArray(apt.therapists_details) &&
+              apt.therapists_details.some(
+                (t) =>
+                  t &&
+                  (t.id === therapistId ||
+                    String(t.id) === String(therapistId) ||
+                    parseInt(t.id) === parseInt(therapistId))
+              ));
+
+          if (isTherapistMatch && appointments.indexOf(apt) < 3) {
+            console.log(`✅ MATCH FOUND for appointment ${apt.id}`);
+          }
+
+          return isTherapistMatch;
+        });
+
+        console.log(
+          `🔍 Filtered ${filteredAppointments.length} appointments for therapist ${therapistId}`
         );
+        return filteredAppointments;
+      } catch (error) {
+        console.error("❌ Error in therapist appointments query:", error);
+        return []; // Return empty array on error to prevent filter issues
+      }
+    },
+    staleTime: staleTime.MEDIUM,
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    retry: 2,
+    enabled: !!therapistId, // Only run if therapistId is provided
+  });
+
+  // Today's appointments for therapist (more frequent updates)
+  const todayAppointmentsQuery = useQuery({
+    queryKey: queryKeys.appointments.byTherapist(therapistId, "today"),
+    queryFn: async () => {
+      try {
+        const data = await fetchTodayAppointmentsAPI();
+        console.log("📅 Today appointments API response:", data);
+        // Enhanced data validation to prevent filter errors
+        const appointments = Array.isArray(data) ? data : [];
+        // Double-check that appointments is still an array before filtering
+        if (!Array.isArray(appointments)) {
+          console.error(
+            "⚠️ Today appointments data is not an array after validation:",
+            appointments
+          );
+          return [];
+        }
+
+        // Filter appointments for this therapist
+        const filteredAppointments = appointments.filter((apt) => {
+          if (!apt) return false;
+
+          // ✅ CRITICAL DEBUG: Log each appointment's therapist data to identify the issue
+          if (appointments.indexOf(apt) < 2) {
+            // Only log first 2 appointments to avoid spam
+            console.log(
+              `🔍 TODAY APPOINTMENT FILTER DEBUG - Appointment ${apt.id}:`,
+              {
+                therapistId: therapistId,
+                therapistIdType: typeof therapistId,
+                apt_therapist: apt.therapist,
+                apt_therapist_type: typeof apt.therapist,
+                apt_therapist_id: apt.therapist_id,
+                apt_therapist_id_type: typeof apt.therapist_id,
+                apt_therapists: apt.therapists,
+                apt_therapists_details: apt.therapists_details,
+                date: apt.date,
+                status: apt.status,
+              }
+            );
+          }
+
+          // Check multiple possible therapist ID fields
+          const isTherapistMatch =
+            apt.therapist === therapistId ||
+            apt.therapist_id === therapistId ||
+            // Try both string and number comparisons
+            String(apt.therapist) === String(therapistId) ||
+            String(apt.therapist_id) === String(therapistId) ||
+            parseInt(apt.therapist) === parseInt(therapistId) ||
+            parseInt(apt.therapist_id) === parseInt(therapistId) ||
+            (Array.isArray(apt.therapists) &&
+              apt.therapists.includes(therapistId)) ||
+            (Array.isArray(apt.therapists) &&
+              apt.therapists.includes(String(therapistId))) ||
+            (Array.isArray(apt.therapists) &&
+              apt.therapists.includes(parseInt(therapistId))) ||
+            (Array.isArray(apt.therapists_details) &&
+              apt.therapists_details.some(
+                (t) =>
+                  t &&
+                  (t.id === therapistId ||
+                    String(t.id) === String(therapistId) ||
+                    parseInt(t.id) === parseInt(therapistId))
+              ));
+
+          if (isTherapistMatch && appointments.indexOf(apt) < 2) {
+            console.log(`✅ TODAY MATCH FOUND for appointment ${apt.id}`);
+          }
+
+          return isTherapistMatch;
+        });
+
+        console.log(
+          `📅 Filtered ${filteredAppointments.length} today appointments for therapist ${therapistId}`
+        );
+        return filteredAppointments;
       } catch (error) {
         console.error("❌ Error in therapist today appointments query:", error);
         return []; // Return empty array on error to prevent filter issues
       }
     },
     staleTime: staleTime.SHORT,
-    refetchInterval: 3 * 60 * 1000, // 3 minutes
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: true,
     retry: 2,
+    enabled: !!therapistId, // Only run if therapistId is provided
+  });
+
+  // Upcoming appointments for therapist
+  const upcomingAppointmentsQuery = useQuery({
+    queryKey: queryKeys.appointments.byTherapist(therapistId, "upcoming"),
+    queryFn: async () => {
+      try {
+        const data = await fetchUpcomingAppointmentsAPI();
+        console.log("🔮 Upcoming appointments API response:", data);
+        // Enhanced data validation to prevent filter errors
+        const appointments = Array.isArray(data) ? data : [];
+        // Double-check that appointments is still an array before filtering
+        if (!Array.isArray(appointments)) {
+          console.error(
+            "⚠️ Upcoming appointments data is not an array after validation:",
+            appointments
+          );
+          return [];
+        }
+
+        // Filter appointments for this therapist
+        const filteredAppointments = appointments.filter((apt) => {
+          if (!apt) return false;
+
+          // ✅ CRITICAL DEBUG: Log each appointment's therapist data to identify the issue
+          if (appointments.indexOf(apt) < 2) {
+            // Only log first 2 appointments to avoid spam
+            console.log(
+              `🔍 UPCOMING APPOINTMENT FILTER DEBUG - Appointment ${apt.id}:`,
+              {
+                therapistId: therapistId,
+                therapistIdType: typeof therapistId,
+                apt_therapist: apt.therapist,
+                apt_therapist_type: typeof apt.therapist,
+                apt_therapist_id: apt.therapist_id,
+                apt_therapist_id_type: typeof apt.therapist_id,
+                apt_therapists: apt.therapists,
+                apt_therapists_details: apt.therapists_details,
+                date: apt.date,
+                status: apt.status,
+              }
+            );
+          }
+
+          // Check multiple possible therapist ID fields
+          const isTherapistMatch =
+            apt.therapist === therapistId ||
+            apt.therapist_id === therapistId ||
+            // Try both string and number comparisons
+            String(apt.therapist) === String(therapistId) ||
+            String(apt.therapist_id) === String(therapistId) ||
+            parseInt(apt.therapist) === parseInt(therapistId) ||
+            parseInt(apt.therapist_id) === parseInt(therapistId) ||
+            (Array.isArray(apt.therapists) &&
+              apt.therapists.includes(therapistId)) ||
+            (Array.isArray(apt.therapists) &&
+              apt.therapists.includes(String(therapistId))) ||
+            (Array.isArray(apt.therapists) &&
+              apt.therapists.includes(parseInt(therapistId))) ||
+            (Array.isArray(apt.therapists_details) &&
+              apt.therapists_details.some(
+                (t) =>
+                  t &&
+                  (t.id === therapistId ||
+                    String(t.id) === String(therapistId) ||
+                    parseInt(t.id) === parseInt(therapistId))
+              ));
+
+          if (isTherapistMatch && appointments.indexOf(apt) < 2) {
+            console.log(`✅ UPCOMING MATCH FOUND for appointment ${apt.id}`);
+          }
+
+          return isTherapistMatch;
+        });
+
+        console.log(
+          `🔮 Filtered ${filteredAppointments.length} upcoming appointments for therapist ${therapistId}`
+        );
+        return filteredAppointments;
+      } catch (error) {
+        console.error(
+          "❌ Error in therapist upcoming appointments query:",
+          error
+        );
+        return []; // Return empty array on error to prevent filter issues
+      }
+    },
+    staleTime: staleTime.LONG,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
+    enabled: !!therapistId, // Only run if therapistId is provided
   });
 
   const forceRefresh = useCallback(async () => {
-    await queryClient.invalidateQueries({
-      queryKey: queryKeys.appointments.byTherapist(therapistId),
-    });
+    console.log("🔄 Force refreshing therapist data...");
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byTherapist(therapistId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.all,
+      }),
+    ]);
   }, [queryClient, therapistId]);
 
+  // Computed states
+  const isLoading =
+    appointmentsQuery.isLoading ||
+    todayAppointmentsQuery.isLoading ||
+    upcomingAppointmentsQuery.isLoading;
+  const isRefetching =
+    appointmentsQuery.isRefetching ||
+    todayAppointmentsQuery.isRefetching ||
+    upcomingAppointmentsQuery.isRefetching;
+  const error =
+    appointmentsQuery.error ||
+    todayAppointmentsQuery.error ||
+    upcomingAppointmentsQuery.error;
+  const hasData =
+    (Array.isArray(appointmentsQuery.data) &&
+      appointmentsQuery.data.length > 0) ||
+    (Array.isArray(todayAppointmentsQuery.data) &&
+      todayAppointmentsQuery.data.length > 0) ||
+    (Array.isArray(upcomingAppointmentsQuery.data) &&
+      upcomingAppointmentsQuery.data.length > 0);
+
+  console.log("🏥 useTherapistDashboardData return:", {
+    therapistId,
+    appointments: Array.isArray(appointmentsQuery.data)
+      ? appointmentsQuery.data.length
+      : 0,
+    todayAppointments: Array.isArray(todayAppointmentsQuery.data)
+      ? todayAppointmentsQuery.data.length
+      : 0,
+    upcomingAppointments: Array.isArray(upcomingAppointmentsQuery.data)
+      ? upcomingAppointmentsQuery.data.length
+      : 0,
+    isLoading,
+    hasData,
+    dataSource: "tanstack-query",
+  });
+
   return {
+    appointments: Array.isArray(appointmentsQuery.data)
+      ? appointmentsQuery.data
+      : [],
     todayAppointments: Array.isArray(todayAppointmentsQuery.data)
       ? todayAppointmentsQuery.data
       : [],
-    loading: todayAppointmentsQuery.isLoading,
-    error: todayAppointmentsQuery.error,
+    upcomingAppointments: Array.isArray(upcomingAppointmentsQuery.data)
+      ? upcomingAppointmentsQuery.data
+      : [],
+    isLoading,
+    loading: isLoading, // Alias for compatibility
+    isRefetching,
+    error,
+    hasData,
+    refetch: useCallback(async () => {
+      await Promise.all([
+        appointmentsQuery.refetch(),
+        todayAppointmentsQuery.refetch(),
+        upcomingAppointmentsQuery.refetch(),
+      ]);
+    }, [appointmentsQuery, todayAppointmentsQuery, upcomingAppointmentsQuery]),
     forceRefresh,
-    hasData:
-      Array.isArray(todayAppointmentsQuery.data) &&
-      todayAppointmentsQuery.data.length > 0,
+    dataSource: "tanstack-query",
   };
 };
 
