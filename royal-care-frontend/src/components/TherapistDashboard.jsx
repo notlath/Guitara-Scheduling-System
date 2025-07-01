@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { MdClose } from "react-icons/md";
 import { useNavigate, useSearchParams } from "react-router-dom";
 // TanStack Query hooks for data management (removing Redux dependencies)
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
 import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
+import webSocketService from "../services/webSocketTanStackService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
@@ -297,6 +298,38 @@ const TherapistDashboard = () => {
   // ✅ FIXED: Re-enabled WebSocket cache sync with proper cache invalidation
   // The cache invalidation function now properly handles therapist-specific query keys
   useAutoWebSocketCacheSync();
+
+  // ✅ CRITICAL FIX: Force refetch when WebSocket updates are received
+  useEffect(() => {
+    const wsService = window.webSocketService || webSocketService;
+    
+    const handleForceRefetch = () => {
+      console.log("🔄 Forcing TherapistDashboard refetch due to WebSocket update");
+      refetch();
+    };
+
+    // Listen for all appointment-related WebSocket events
+    const events = [
+      "appointment_created",
+      "appointment_updated", 
+      "appointment_deleted",
+      "appointment_status_changed",
+      "therapist_response",
+      "driver_response",
+      "session_started",
+      "awaiting_payment"
+    ];
+
+    events.forEach(eventType => {
+      wsService.addEventListener(eventType, handleForceRefetch);
+    });
+
+    return () => {
+      events.forEach(eventType => {
+        wsService.removeEventListener(eventType, handleForceRefetch);
+      });
+    };
+  }, [refetch]);
 
   // Get user from localStorage instead of Redux
   const user = getUser();

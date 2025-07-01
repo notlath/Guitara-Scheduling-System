@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { queryClient } from "../lib/queryClient";
-import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
+import { invalidateAppointmentCaches, handleWebSocketUpdate } from "../utils/cacheInvalidation";
 import { getToken } from "../utils/tokenManager";
 
 class WebSocketTanStackService {
@@ -106,16 +106,23 @@ class WebSocketTanStackService {
         `🩺 Updating TherapistDashboard cache for therapist ${therapistId}`
       );
 
-      // Apply the update function to the therapist's specific cache
+      // Apply the update function to the therapist's specific cache first
       queryClient.setQueryData(
         ["appointments", "therapist", therapistId],
         updateFunction
       );
 
-      // Also invalidate to trigger a fresh fetch (ensures data consistency)
+      // CRITICAL: Force immediate refetch with aggressive invalidation
       queryClient.invalidateQueries({
         queryKey: ["appointments", "therapist", therapistId],
-        refetchType: "active",
+        refetchType: "all", // Force refetch even for inactive queries
+        exact: true // Only invalidate this exact query key
+      });
+
+      // Also invalidate without exact match to catch any related queries
+      queryClient.invalidateQueries({
+        queryKey: ["appointments", "therapist"],
+        refetchType: "active"
       });
     });
 
@@ -250,9 +257,11 @@ class WebSocketTanStackService {
       // Handle different message types
       switch (data.type) {
         case "appointment_create":
+        case "appointment_created":
           this.handleAppointmentCreate(data.message);
           break;
         case "appointment_update":
+        case "appointment_updated":
           this.handleAppointmentUpdate(data.message);
           // Also dispatch status change event if status was updated
           if (data.message.status) {
@@ -263,12 +272,14 @@ class WebSocketTanStackService {
           }
           break;
         case "appointment_delete":
+        case "appointment_deleted":
           this.handleAppointmentDelete(data.message);
           break;
         case "availability_update":
           this.handleAvailabilityUpdate(data.message);
           break;
         case "heartbeat":
+        case "heartbeat_response":
           this.handleHeartbeat(data.message);
           break;
         case "driver_assigned":
@@ -467,6 +478,13 @@ class WebSocketTanStackService {
         refetchType: "active",
       });
     }
+
+    // CRITICAL: Force invalidation to ensure TherapistDashboard refetches
+    // Use the comprehensive cache invalidation helper
+    handleWebSocketUpdate(queryClient, {
+      type: "appointment_updated",
+      appointment: updatedAppointment
+    });
 
     // Use comprehensive cache invalidation that includes operator-specific queries
     invalidateAppointmentCaches(queryClient, {
@@ -976,9 +994,15 @@ class WebSocketTanStackService {
   /**
    * Handle heartbeat messages
    */
-  handleHeartbeat() {
-    // Respond to heartbeat to keep connection alive
-    this.send({ type: "heartbeat_response", timestamp: Date.now() });
+  handleHeartbeat(message) {
+    // Handle heartbeat from server - respond to keep connection alive
+    if (message && message.type === "heartbeat") {
+      this.send({ type: "heartbeat_response", timestamp: Date.now() });
+      console.log("💓 Heartbeat received - sent response");
+    } else {
+      // Handle heartbeat_response from server
+      console.log("💓 Heartbeat response received from server");
+    }
   }
 
   /**
