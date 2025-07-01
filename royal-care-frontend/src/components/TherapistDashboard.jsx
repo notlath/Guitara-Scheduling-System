@@ -770,6 +770,7 @@ const TherapistDashboard = () => {
         updateData,
         "therapist"
       );
+      await invalidateAppointmentQueries(queryClient);
     },
     onError: (error, variables, context) => {
       console.error("❌ startSessionMutation.onError:", error);
@@ -956,6 +957,7 @@ const TherapistDashboard = () => {
         ]);
         console.log("✅ Payment-related queries invalidated");
       }, 100);
+      await invalidateAppointmentQueries(queryClient);
     },
     onError: (error, variables, context) => {
       console.error("❌ requestPaymentMutation.onError:", error);
@@ -1128,6 +1130,7 @@ const TherapistDashboard = () => {
         ]);
         console.log("✅ Completion-related queries invalidated");
       }, 100);
+      await invalidateAppointmentQueries(queryClient);
     },
     onError: (error, variables, context) => {
       console.error("❌ completeSessionMutation.onError:", error);
@@ -1812,7 +1815,7 @@ const TherapistDashboard = () => {
               className="payment-button"
               onClick={() => handleRequestPayment(id)}
               loading={buttonLoading[`request_payment_${id}`]}
-              loadingText="Requesting..."
+              loadingText="Request Payment"
             >
               Request Payment
             </LoadingButton>
