@@ -777,14 +777,15 @@ const TherapistDashboard = () => {
         "therapist"
       );
 
-      // ✅ DELAYED INVALIDATION: Invalidate other caches without affecting instant UI updates
-      setTimeout(async () => {
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
-          refetchType: "active",
-        });
-        console.log("✅ Background refresh completed");
-      }, 500);
+      // ✅ FORCE IMMEDIATE CACHE REFRESH: Use DriverDashboard pattern for instant updates
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active", // Only refetch currently active queries
+      });
+
+      console.log(
+        "✅ Accept appointment - cache invalidated like DriverDashboard"
+      );
     },
     onError: (error, variables, context) => {
       console.error("❌ Accept appointment mutation failed:", error);
@@ -880,14 +881,15 @@ const TherapistDashboard = () => {
         "therapist"
       );
 
-      // ✅ DELAYED INVALIDATION: Invalidate for background refresh without affecting instant UI
-      setTimeout(async () => {
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
-          refetchType: "active",
-        });
-        console.log("✅ Background refresh completed");
-      }, 500);
+      // ✅ FORCE IMMEDIATE CACHE REFRESH: Use DriverDashboard pattern for instant updates
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active", // Only refetch currently active queries
+      });
+
+      console.log(
+        "✅ Reject appointment - cache invalidated like DriverDashboard"
+      );
     },
     onError: (error, variables, context) => {
       console.error("❌ Reject appointment mutation failed:", error);
@@ -982,14 +984,15 @@ const TherapistDashboard = () => {
         "therapist"
       );
 
-      // ✅ DELAYED INVALIDATION: Invalidate for background refresh without affecting instant UI
-      setTimeout(async () => {
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
-          refetchType: "active",
-        });
-        console.log("✅ Background refresh completed");
-      }, 500);
+      // ✅ FORCE IMMEDIATE CACHE REFRESH: Use DriverDashboard pattern for instant updates
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active", // Only refetch currently active queries
+      });
+
+      console.log(
+        "✅ Confirm readiness - cache invalidated like DriverDashboard"
+      );
     },
     onError: (error, variables, context) => {
       console.error("❌ Confirm readiness mutation failed:", error);
@@ -1090,14 +1093,13 @@ const TherapistDashboard = () => {
         "therapist"
       );
 
-      // ✅ DELAYED INVALIDATION: Invalidate for background refresh without affecting instant UI
-      setTimeout(async () => {
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
-          refetchType: "active",
-        });
-        console.log("✅ Background refresh completed");
-      }, 500);
+      // ✅ FORCE IMMEDIATE CACHE REFRESH: Use DriverDashboard pattern for instant updates
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active", // Only refetch currently active queries
+      });
+
+      console.log("✅ Start session - cache invalidated like DriverDashboard");
     },
     onError: (error, variables, context) => {
       console.error("❌ startSessionMutation.onError:", error);
@@ -1194,14 +1196,15 @@ const TherapistDashboard = () => {
         );
       }
 
-      // ✅ DELAYED INVALIDATION: Invalidate for background refresh without affecting instant UI
-      setTimeout(async () => {
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
-          refetchType: "active",
-        });
-        console.log("✅ Background refresh completed");
-      }, 500);
+      // ✅ FORCE IMMEDIATE CACHE REFRESH: Use DriverDashboard pattern for instant updates
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active", // Only refetch currently active queries
+      });
+
+      console.log(
+        "✅ Request payment - cache invalidated like DriverDashboard"
+      );
     },
     onError: (error, variables, context) => {
       console.error("❌ requestPaymentMutation.onError:", error);
@@ -1296,14 +1299,15 @@ const TherapistDashboard = () => {
         );
       }
 
-      // ✅ DELAYED INVALIDATION: Invalidate for background refresh without affecting instant UI
-      setTimeout(async () => {
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
-          refetchType: "active",
-        });
-        console.log("✅ Background refresh completed");
-      }, 500);
+      // ✅ FORCE IMMEDIATE CACHE REFRESH: Use DriverDashboard pattern for instant updates
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active", // Only refetch currently active queries
+      });
+
+      console.log(
+        "✅ Complete session - cache invalidated like DriverDashboard"
+      );
     },
     onError: (error, variables, context) => {
       console.error("❌ completeSessionMutation.onError:", error);
@@ -1403,14 +1407,13 @@ const TherapistDashboard = () => {
         "therapist"
       );
 
-      // ✅ DELAYED INVALIDATION: Invalidate for background refresh without affecting instant UI
-      setTimeout(async () => {
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.byTherapist(user?.id, "all"),
-          refetchType: "active",
-        });
-        console.log("✅ Background refresh completed");
-      }, 500);
+      // ✅ FORCE IMMEDIATE CACHE REFRESH: Use DriverDashboard pattern for instant updates
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active", // Only refetch currently active queries
+      });
+
+      console.log("✅ Request pickup - cache invalidated like DriverDashboard");
     },
     onError: (error, variables, context) => {
       console.error("❌ Request pickup mutation failed:", error);

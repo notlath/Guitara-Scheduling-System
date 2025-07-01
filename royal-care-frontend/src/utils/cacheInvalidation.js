@@ -436,7 +436,9 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
       // This ensures immediate UI updates by updating cache data FIRST, then invalidating
 
       // 1. ✅ THERAPIST DASHBOARD: Instant cache update using setQueryData pattern
-      console.log("🩺 Updating Therapist Dashboard caches with instant pattern...");
+      console.log(
+        "🩺 Updating Therapist Dashboard caches with instant pattern..."
+      );
 
       if (appointment?.therapist || appointment?.therapists) {
         const therapistIds = [];
@@ -447,18 +449,23 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
         // Apply the SAME pattern as DriverDashboard for instant updates
         const updateFunction = (oldData) => {
           if (!Array.isArray(oldData)) return oldData;
-          
+
           // Handle delete operations
           if (type === "appointment_deleted") {
-            return oldData.filter(apt => apt.id !== appointment.id);
+            return oldData.filter((apt) => apt.id !== appointment.id);
           }
-          
+
           // Handle updates - replace or add appointment
-          const existingIndex = oldData.findIndex(apt => apt.id === appointment.id);
+          const existingIndex = oldData.findIndex(
+            (apt) => apt.id === appointment.id
+          );
           if (existingIndex >= 0) {
             // Update existing appointment
             const updatedData = [...oldData];
-            updatedData[existingIndex] = { ...updatedData[existingIndex], ...appointment };
+            updatedData[existingIndex] = {
+              ...updatedData[existingIndex],
+              ...appointment,
+            };
             return updatedData;
           } else {
             // Add new appointment if not found
@@ -475,179 +482,37 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
 
           // 1. ✅ INSTANT UPDATE: Apply data change immediately (like DriverDashboard)
           queryClient.setQueryData(therapistQueryKey, updateFunction);
-          
-          // 2. ✅ BACKGROUND INVALIDATION: Force refetch for consistency, with a delay
-          // This helps prevent race conditions where the invalidation refetches data
-          // before the backend has fully committed the change.
-          setTimeout(() => {
-            queryClient.invalidateQueries({
-              queryKey: therapistQueryKey,
-              refetchType: "all",
-              exact: true,
-            });
-          }, 500); // 500ms delay
+
+          // 2. ✅ IMMEDIATE INVALIDATION: Use the same pattern as DriverDashboard for instant updates
+          queryClient.invalidateQueries({
+            queryKey: ["appointments"],
+            refetchType: "active", // Only refetch currently active queries
+          });
 
           console.log(
             `✅ INSTANT TherapistDashboard cache update applied for therapist ${therapistId}`
           );
         }
-        
+
         console.log(
           `✅ Applied instant cache updates to ${therapistIds.length} therapist dashboards`
         );
       }
 
-      await Promise.all([
-        // ✅ CRITICAL FIX: Fixed predicate to match ACTUAL TherapistDashboard query keys
-        // TherapistDashboard uses: queryKeys.appointments.byTherapist(userId, "all")
-        // Which generates: ["appointments", "therapist", userId, "all"]
-        queryClient.invalidateQueries({
-          predicate: (query) => {
-            const key = query.queryKey;
-            if (!Array.isArray(key) || key.length < 3) return false;
-
-            // ✅ MORE RELIABLE MATCH: Check for the therapist-specific pattern
-            return key[0] === "appointments" && key[1] === "therapist";
-          },
-          refetchType: "all", // Force immediate refetch
-        }),
-
-        // ✅ DIRECT PATTERN INVALIDATION: Also use broader patterns for safety
-        queryClient.invalidateQueries({
-          queryKey: ["appointments", "therapist"],
-          exact: false, // Match partial patterns
-        }),
-
-        // Also invalidate using the specific queryKeys patterns
-        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.list(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.today(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.upcoming(),
-        }),
-
-        // ✅ FORCE REFETCH: Ensure active therapist queries are immediately refetched
-        queryClient.refetchQueries({
-          predicate: (query) => {
-            const key = query.queryKey;
-            if (!Array.isArray(key) || key.length < 4) return false;
-
-            // Match the EXACT pattern that TherapistDashboard uses
-            return key[0] === "appointments" && key[1] === "therapist";
-          },
-          type: "active",
-        }),
-      ]);
+      // ✅ SIMPLIFIED INVALIDATION: Use the same pattern as DriverDashboard
+      // Just invalidate the main appointments cache and let components handle their specific caches
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active", // Only refetch currently active queries
+      });
 
       console.log(
-        "✅ TherapistDashboard cache invalidation completed with FIXED query key matching"
-      );
-
-      // 2. ✅ DRIVER DASHBOARD: Force immediate update
-      console.log("� Invalidating Driver Dashboard caches...");
-      await Promise.all([
-        // Invalidate ALL driver query patterns
-        queryClient.invalidateQueries({
-          predicate: (query) => {
-            const key = query.queryKey;
-            return (
-              Array.isArray(key) &&
-              key.includes("appointments") &&
-              key.includes("driver")
-            );
-          },
-        }),
-        // Force refetch active driver queries
-        queryClient.refetchQueries({
-          predicate: (query) => {
-            const key = query.queryKey;
-            return (
-              Array.isArray(key) &&
-              key.includes("appointments") &&
-              key.includes("driver")
-            );
-          },
-          type: "active",
-        }),
-      ]);
-
-      // 3. ✅ OPERATOR DASHBOARD: Force immediate update
-      console.log("🏥 Invalidating Operator Dashboard caches...");
-      await Promise.all([
-        // Invalidate ALL operator query patterns
-        queryClient.invalidateQueries({
-          predicate: (query) => {
-            const key = query.queryKey;
-            return Array.isArray(key) && key.includes("operator");
-          },
-        }),
-        // Invalidate general appointment queries
-        queryClient.invalidateQueries({ queryKey: ["appointments"] }),
-        queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
-        queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
-        queryClient.invalidateQueries({
-          queryKey: ["appointments", "upcoming"],
-        }),
-        // Force refetch active operator queries
-        queryClient.refetchQueries({
-          predicate: (query) => {
-            const key = query.queryKey;
-            return (
-              Array.isArray(key) &&
-              (key.includes("operator") || key.includes("appointments"))
-            );
-          },
-          type: "active",
-        }),
-      ]);
-
-      // 4. ✅ SPECIFIC USER CACHE INVALIDATION: Target affected users
-      if (appointment) {
-        const affectedUsers = new Set();
-
-        // Add therapist IDs
-        if (appointment.therapist_id)
-          affectedUsers.add(`therapist_${appointment.therapist_id}`);
-        if (appointment.therapist)
-          affectedUsers.add(`therapist_${appointment.therapist}`);
-        if (appointment.therapists && Array.isArray(appointment.therapists)) {
-          appointment.therapists.forEach((tId) =>
-            affectedUsers.add(`therapist_${tId}`)
-          );
-        }
-
-        // Add driver IDs
-        if (appointment.driver_id)
-          affectedUsers.add(`driver_${appointment.driver_id}`);
-        if (appointment.driver)
-          affectedUsers.add(`driver_${appointment.driver}`);
-
-        // Force refetch for each affected user
-        for (const userKey of affectedUsers) {
-          const [role, userId] = userKey.split("_");
-          console.log(`🔄 Force refreshing ${role} ${userId} cache`);
-
-          await queryClient.refetchQueries({
-            queryKey: ["appointments", role, userId],
-            type: "all",
-          });
-        }
-      }
-
-      console.log(
-        "✅ ROBUST WebSocket cache invalidation completed successfully"
+        "✅ WebSocket cache invalidation completed with DriverDashboard pattern"
       );
     } catch (error) {
       console.error("❌ WebSocket cache invalidation failed:", error);
-      // Don't throw, just log and continue
     }
   };
-
-  return performCacheUpdate();
 };
 
 export default {
