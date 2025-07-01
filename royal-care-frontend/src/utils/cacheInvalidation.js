@@ -105,7 +105,7 @@ export const invalidateAppointmentCaches = async (
       );
     } else {
       // Fallback: use literal query keys
-      console.warn("⚠️ Using fallback literal query keys");
+      console.warn("⚠️ Using fallback literal query keys for appointments");
       invalidationPromises.push(
         queryClient.invalidateQueries({ queryKey: ["appointments"] }),
         queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
@@ -476,12 +476,16 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
           // 1. ✅ INSTANT UPDATE: Apply data change immediately (like DriverDashboard)
           queryClient.setQueryData(therapistQueryKey, updateFunction);
           
-          // 2. ✅ BACKGROUND INVALIDATION: Force refetch for consistency
-          queryClient.invalidateQueries({
-            queryKey: therapistQueryKey,
-            refetchType: "all", // Force refetch even for inactive queries
-            exact: true, // Only invalidate this exact query key
-          });
+          // 2. ✅ BACKGROUND INVALIDATION: Force refetch for consistency, with a delay
+          // This helps prevent race conditions where the invalidation refetches data
+          // before the backend has fully committed the change.
+          setTimeout(() => {
+            queryClient.invalidateQueries({
+              queryKey: therapistQueryKey,
+              refetchType: "all",
+              exact: true,
+            });
+          }, 500); // 500ms delay
 
           console.log(
             `✅ INSTANT TherapistDashboard cache update applied for therapist ${therapistId}`
@@ -500,14 +504,10 @@ export const handleWebSocketUpdate = (queryClient, wsData) => {
         queryClient.invalidateQueries({
           predicate: (query) => {
             const key = query.queryKey;
-            if (!Array.isArray(key) || key.length < 4) return false;
+            if (!Array.isArray(key) || key.length < 3) return false;
 
-            // ✅ EXACT MATCH: Check for the specific pattern TherapistDashboard uses
-            return (
-              key[0] === "appointments" &&
-              key[1] === "therapist" &&
-              (key[3] === "all" || key[3] === "today" || key[3] === "upcoming")
-            );
+            // ✅ MORE RELIABLE MATCH: Check for the therapist-specific pattern
+            return key[0] === "appointments" && key[1] === "therapist";
           },
           refetchType: "all", // Force immediate refetch
         }),
