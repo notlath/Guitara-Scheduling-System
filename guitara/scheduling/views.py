@@ -1812,8 +1812,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 }
             )
         else:
-            # If operator denies the rejection, push the appointment through
-            appointment.status = "confirmed"
+            # If operator denies the rejection, set appointment back to pending
+            appointment.status = "pending"
             appointment.save()
 
             # Create notification for therapist
@@ -1823,7 +1823,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     appointment=appointment,
                     rejection=rejection,
                     notification_type="rejection_reviewed",
-                    message=f"Operator has denied your rejection reason. The appointment for {appointment.client} on {appointment.date} is confirmed and must proceed.",
+                    message=f"Operator has denied your rejection reason. The appointment for {appointment.client} on {appointment.date} is now pending and must be addressed.",
                 )
 
             # Send WebSocket notification
@@ -1838,7 +1838,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         "therapist_id": (
                             appointment.therapist.id if appointment.therapist else None
                         ),
-                        "message": f"Appointment rejection denied - appointment confirmed",
+                        "message": f"Appointment rejection denied - appointment set to pending",
                     },
                 },
             )
@@ -1846,8 +1846,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(appointment)
             return Response(
                 {
-                    "message": "Rejection denied. Appointment has been confirmed.",
-                    "action": "confirmed",
+                    "message": "Rejection denied. Appointment has been set to pending.",
+                    "action": "pending",
                     "appointment": serializer.data,
                 }
             )

@@ -106,6 +106,11 @@ const PostServiceMaterialModal = ({
             onClick={handleSubmit}
             disabled={isSubmitting}
           >
+            {isSubmitting && (
+              <div className="loading-spinner" style={{ marginRight: "8px" }}>
+                <div className="spinner-inner"></div>
+              </div>
+            )}
             {isSubmitting ? "Processing..." : "Complete Service"}
           </button>
         </div>

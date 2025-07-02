@@ -222,7 +222,7 @@ export const useInstantUpdates = () => {
           reviewNotes,
         }),
         optimisticUpdate: {
-          status: reviewDecision === "accept" ? "cancelled" : "confirmed",
+          status: reviewDecision === "accept" ? "cancelled" : "pending",
           rejection_reviewed: true,
           rejection_review_decision: reviewDecision,
           rejection_review_notes: reviewNotes,

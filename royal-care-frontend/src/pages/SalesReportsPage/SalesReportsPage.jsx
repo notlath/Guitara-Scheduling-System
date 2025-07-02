@@ -15,6 +15,7 @@ import * as XLSX from "xlsx";
 // Chart components
 import SalesChart from "../../components/charts/SalesChart";
 import { prepareChartData } from "../../utils/chartDataHelpers";
+import rcLogo from '../../assets/images/rc_logo.jpg';
 
 const SalesReportsPage = () => {
   const dispatch = useDispatch();
@@ -22,10 +23,10 @@ const SalesReportsPage = () => {
     (state) => state.scheduling.appointments,
     shallowEqual
   );
-
   const [currentView, setCurrentView] = useState("Total Revenue");
   const [currentPeriod, setCurrentPeriod] = useState("Daily");
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [selectedRevenueItem, setSelectedRevenueItem] = useState(null);
 
   const views = ["Total Revenue", "Commission", "Customer List", "Services"];
   const periods = ["Daily", "Weekly", "Monthly"];
@@ -104,6 +105,11 @@ const SalesReportsPage = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showExportDropdown]);
+
+  // Clear selected revenue item when view or period changes
+  useEffect(() => {
+    setSelectedRevenueItem(null);
+  }, [currentView, currentPeriod]);
 
   // Debug effect to log appointments data when it changes
   useEffect(() => {
@@ -449,9 +455,7 @@ const SalesReportsPage = () => {
     );
 
     // Format items for display - group by client for weekly and monthly
-    let formattedItems = [];
-
-    if (currentPeriod === "Daily") {
+    let formattedItems = [];    if (currentPeriod === "Daily") {
       formattedItems = currentItems.map((apt) => ({
         clientName:
           `${apt.client_details?.first_name || ""} ${
@@ -460,6 +464,7 @@ const SalesReportsPage = () => {
         revenue: parseFloat(apt.payment_amount || 0).toFixed(2),
         time: `${apt.start_time || ""} - ${apt.end_time || ""}`,
         date: new Date(apt.date).toLocaleDateString(),
+        appointments: [apt], // Include the appointment data for detailed printing
       }));
     } else if (currentPeriod === "Weekly") {
       const dateRange = getDateRange(currentPeriod);
@@ -994,14 +999,47 @@ const SalesReportsPage = () => {
       `${currentView} - ${currentPeriod}`
     );
     XLSX.writeFile(workbook, filename);
-  };
-
-  const exportToPDF = () => {
+  };  const exportToPDF = () => {
     let data = [];
-    let filename = "";
     let headers = [];
+    let reportTitle = "";
+    let isSelectedRevenueReport = false;
 
-    if (currentView === "Total Revenue") {
+    // Check if we're in Total Revenue view and have a selected item
+    if (currentView === "Total Revenue" && selectedRevenueItem) {
+      isSelectedRevenueReport = true;
+      reportTitle = "Revenue Receipt Details";
+
+      // Create detailed view of the selected revenue item
+      headers = ["Property", "Value"];
+      data = [
+        ["Date", selectedRevenueItem.date || "N/A"],
+        ["Client Name", selectedRevenueItem.clientName || "Unknown Client"],
+        ["Revenue Amount", `₱${selectedRevenueItem.revenue}`],
+        [
+          currentPeriod === "Daily" ? "Time" : currentPeriod === "Weekly" ? "Day" : "Week Range",
+          currentPeriod === "Daily"
+            ? selectedRevenueItem.time || "N/A"
+            : currentPeriod === "Weekly"
+            ? selectedRevenueItem.day || "N/A"
+            : selectedRevenueItem.weekRange || "N/A"
+        ]
+      ];
+
+      // Add additional details if available from appointments
+      if (selectedRevenueItem.appointments && selectedRevenueItem.appointments.length > 0) {
+        const appointment = selectedRevenueItem.appointments[0]; // Take the first appointment for details
+        data.push(
+          ["Service Details", appointment.services_details?.map(s => s.name).join(", ") || "N/A"],
+          ["Therapist", appointment.therapist_details ?
+            `${appointment.therapist_details.first_name || ""} ${appointment.therapist_details.last_name || ""}`.trim() :
+            "N/A"],
+          ["Payment Status", appointment.payment_status || "N/A"],
+          ["Appointment Status", appointment.status || "N/A"]
+        );
+      }
+    } else if (currentView === "Total Revenue") {
+      reportTitle = "Total Revenue Report";
       const { items } = revenueData;
       headers = [
         "Date",
@@ -1023,10 +1061,8 @@ const SalesReportsPage = () => {
           ? item.day || "N/A"
           : item.weekRange || "N/A",
       ]);
-      filename = `total_revenue_${currentPeriod.toLowerCase()}_${
-        new Date().toISOString().split("T")[0]
-      }.pdf`;
     } else if (currentView === "Commission") {
+      reportTitle = "Commission Report";
       const { items } = commissionData;
       headers = [
         "Date",
@@ -1048,10 +1084,8 @@ const SalesReportsPage = () => {
           ? item.day || "N/A"
           : item.weekRange || "N/A",
       ]);
-      filename = `commission_${currentPeriod.toLowerCase()}_${
-        new Date().toISOString().split("T")[0]
-      }.pdf`;
     } else if (currentView === "Customer List") {
+      reportTitle = "Customer List Report";
       const { items } = customerListData;
       headers = ["Name", "Address", "Contact Number", "Number of Appointments"];
       data = items.map((item) => [
@@ -1060,52 +1094,279 @@ const SalesReportsPage = () => {
         item.contactNumber,
         item.appointmentCount,
       ]);
-      filename = `customer_list_${currentPeriod.toLowerCase()}_${
-        new Date().toISOString().split("T")[0]
-      }.pdf`;
     } else if (currentView === "Services") {
+      reportTitle = "Services Report";
       const { items } = servicesData;
       headers = ["Services", "Number of Appointments"];
       data = items.map((item) => [item.serviceName, item.appointmentCount]);
-      filename = `services_${currentPeriod.toLowerCase()}_${
-        new Date().toISOString().split("T")[0]
-      }.pdf`;
     }
 
     if (data.length === 0) {
-      alert("No data available to export");
+      alert(isSelectedRevenueReport ? "Please select a revenue item to print details" : "No data available to export");
       return;
     }
 
-    const doc = new jsPDF();
+    // Generate print-friendly HTML content with improved styling
+    const printContent = `
+      <div class="print-content">
+        <header>
+          <div class="header-img-container">
+            <img src="${rcLogo}" alt="Royal Care" />
+          </div>
+          <div class="header-details">
+            <h3>Royal Care Home Service Message</h3>
+            <div>
+              <p>38 Kalinangan St., Caniogan, Pasig</p>
+              <p><a href='mailto:royalcareinpasig@gmail.com'>royalcareinpasig@gmail.com</a></p>
+              <p>0917 345 6294</p>
+            </div>
+          </div>
+        </header>
 
-    // Add title
-    doc.setFontSize(16);
-    doc.text(`${currentView} - ${currentPeriod}`, 20, 20);
+        <div class="header">
+          <h1>${reportTitle}</h1>
+          ${!isSelectedRevenueReport ? `<p>Period: ${currentPeriod}</p>` : ''}
+          <p>Generated on: ${new Date().toLocaleDateString()}</p>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                ${headers.map(header => `<th>${header}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map(row => `
+                <tr>
+                  ${row.map(cell => `<td>${cell}</td>`).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="footer">
+          <p>${isSelectedRevenueReport ? '' : `Total Records: ${data.length}`}</p>
+        </div>
+      </div>
+      <style>
+        @media screen {
+          .print-content {
+            display: none;
+          }
+        }
 
-    // Add generation date
-    doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+        @media print {
+          @page {
+            size: Letter;
+            margin: 0.5in;
+          }
 
-    // Add table using autoTable
-    autoTable(doc, {
-      head: [headers],
-      body: data,
-      startY: 40,
-      styles: {
-        fontSize: 8,
-        cellPadding: 3,
-      },
-      headStyles: {
-        fillColor: [74, 105, 189], // Primary color
-        textColor: 255,
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245],
-      },
-    });
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
 
-    doc.save(filename);
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            -webkit-print-color-adjust: exact !important;
+          }
+
+          body * {
+            visibility: hidden;
+            display: none;
+          }
+
+          .print-content {
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            display: block;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+          }
+
+          .print-content, .print-content * {
+            visibility: visible;
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            display: block;
+          }
+
+          .print-content header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f6f2f1 !important;
+            background-color: #f6f2f1 !important;
+            color: #ffffff !important;
+            padding: 2rem;
+            margin-bottom: 20px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          .print-content header .header-img-container img {
+            border-radius: 0.5rem;
+            display: block;
+            aspect-ratio: 1 / 1;
+            height: 80px;
+            width: 80px;
+          }
+
+          .print-content header .header-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            text-align: right;
+          }
+
+          .print-content header .header-details div {
+            display: flex;
+            flex-direction: column;
+            text-align: right;
+          }
+
+          .print-content header h3 {
+            color: #000000 !important;
+            margin: 0;
+            -webkit-print-color-adjust: exact !important;
+          }
+
+          .print-content header p {
+            color: #00000070 !important;
+            margin: 0;
+            font-size: 12px;
+            -webkit-print-color-adjust: exact !important;
+          }
+
+          .print-content header p a {
+            color: #00000070 !important;
+            margin: 0;
+            -webkit-print-color-adjust: exact !important;
+            text-decoration: none;
+          }
+
+          .print-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: auto;
+            transform: none;
+            box-sizing: border-box;
+            page-break-inside: avoid;
+            display: block;
+          }
+
+          .print-content .header {
+            margin-bottom: 20px;
+            text-align: center;
+            display: block;
+          }
+
+          .print-content .header h1 {
+            font-size: 18px;
+            color: #000 !important;
+            font-weight: bold;
+            display: block;
+          }
+
+          .print-content .header p {
+            font-size: 12px;
+            color: #666 !important;
+            display: block;
+          }
+
+          .print-content .table-container {
+            width: 100%;
+            padding: 0 1rem;
+            display: block;
+          }
+
+          .print-content table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin: 0;
+            table-layout: fixed;
+            display: table;
+          }
+
+          .print-content thead {
+            display: table-header-group;
+          }
+
+          .print-content tbody {
+            display: table-row-group;
+          }
+
+          .print-content tr {
+            display: table-row;
+            page-break-inside: avoid;
+          }
+
+          .print-content th, .print-content td {
+            display: table-cell;
+            border: 1px solid var(--border-color) !important;
+            padding: 8px 6px;
+            text-align: left;
+            vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+          }
+
+          .print-content th {
+            background-color: #f5f5f5 !important;
+            font-weight: bold;
+            font-size: 11px;
+            text-align: center;
+          }
+
+          .print-content td {
+            font-size: 10px;
+          }
+
+          .print-content .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 10px;
+            color: #666 !important;
+            page-break-inside: avoid;
+            display: block;
+          }
+
+          .print-content .footer p {
+            margin: 0;
+            display: block;
+          }
+        }
+      </style>
+    `;
+
+    // Add print content to the page
+    document.body.insertAdjacentHTML('beforeend', printContent);
+
+    // Trigger print dialog
+    window.print();
+
+    // Clean up after printing
+    const cleanup = () => {
+      const printElement = document.querySelector('.print-content');
+      if (printElement) {
+        printElement.remove();
+      }
+    };
+
+    // Clean up after print dialog is closed
+    setTimeout(cleanup, 100);
   };
 
   // Prepare chart data
@@ -1228,8 +1489,7 @@ const SalesReportsPage = () => {
         )}
 
         {currentView === "Total Revenue" && (
-          <div className={styles.dataTableWrapper}>
-            <div
+          <div className={styles.dataTableWrapper}>            <div
               style={{
                 padding: "var(--spacing-md)",
                 borderBottom: "1px solid var(--background-100)",
@@ -1247,7 +1507,31 @@ const SalesReportsPage = () => {
                 }}
               >
                 Total Revenue Report - {currentPeriod}
-              </p>
+              </p>              {selectedRevenueItem && (
+                <p
+                  style={{
+                    margin: "var(--spacing-xs) 0 0 0",
+                    color: "var(--primary-600)",
+                    fontSize: "var(--font-size-sm)",
+                    fontWeight: "500",
+                  }}
+                >
+                  📋 Selected: {selectedRevenueItem.clientName} - ₱{selectedRevenueItem.revenue}
+                  ({selectedRevenueItem.date}) - Click "Print Report" for details
+                </p>
+              )}
+              {!selectedRevenueItem && revenueData.items.length > 0 && (
+                <p
+                  style={{
+                    margin: "var(--spacing-xs) 0 0 0",
+                    color: "var(--text-400)",
+                    fontSize: "var(--font-size-sm)",
+                    fontStyle: "italic",
+                  }}
+                >
+                  💡 Tip: Click on any revenue row to select it for detailed printing
+                </p>
+              )}
             </div>
 
             {revenueData.items.length > 0 ? (
@@ -1265,10 +1549,13 @@ const SalesReportsPage = () => {
                         : "Week Range"}
                     </th>
                   </tr>
-                </thead>
-                <tbody>
+                </thead>                <tbody>
                   {revenueData.items.map((item, index) => (
-                    <tr key={index}>
+                    <tr
+                      key={index}
+                      className={`${styles.clickableRow} ${selectedRevenueItem === item ? styles.selected : ''}`}
+                      onClick={() => setSelectedRevenueItem(item)}
+                    >
                       <td>{item.date || "N/A"}</td>
                       <td>{item.clientName}</td>
                       <td>₱{item.revenue}</td>
@@ -1391,15 +1678,33 @@ const SalesReportsPage = () => {
           </div>
         )}
       </div>
-
       <div className={styles.exportContainer}>
         <div className={styles.exportDropdown}>
-          <button
-            className={styles.exportButton}
-            onClick={() => setShowExportDropdown(!showExportDropdown)}
-          >
-            Export ▼
-          </button>
+          <div>
+            {currentView === "Total Revenue" && selectedRevenueItem && (
+              <button
+                className={styles.clearButton}
+                onClick={() => setSelectedRevenueItem(null)}
+                style={{
+                  padding: "var(--spacing-xs) var(--spacing-sm)",
+                  background: "var(--background-100)",
+                  border: "1px solid var(--background-200)",
+                  borderRadius: "var(--border-radius)",
+                  cursor: "pointer",
+                  fontSize: "var(--font-size-sm)",
+                  color: "var(--text-600)"
+                }}
+              >
+                ✕ Clear Selection
+              </button>
+            )}
+            <button
+              className={styles.exportButton}
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+            >
+              Export ▼
+            </button>
+          </div>
           {showExportDropdown && (
             <div className={styles.dropdownMenu}>
               <button
@@ -1427,7 +1732,7 @@ const SalesReportsPage = () => {
                   setShowExportDropdown(false);
                 }}
               >
-                📋 Export to PDF
+                🖨️ Print Report
               </button>
             </div>
           )}

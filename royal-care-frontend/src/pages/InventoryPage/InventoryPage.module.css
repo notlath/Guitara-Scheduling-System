@@ -147,8 +147,7 @@
 
 .edit-button,
 .delete-button,
-.restock-button,
-.empty-refill-button {
+.restock-button {
   padding: 6px 12px;
   border: none;
   border-radius: 4px;
@@ -182,17 +181,6 @@
 
 .restock-button:hover {
   background-color: #229954;
-}
-
-.empty-refill-button {
-  background-color: #f39c12;
-  color: white;
-  font-size: 11px;
-  padding: 5px 8px;
-}
-
-.empty-refill-button:hover {
-  background-color: #e67e22;
 }
 
 .loading-spinner {
@@ -377,22 +365,6 @@
   background-color: #7f8c8d;
 }
 
-.restock-button {
-  background-color: #f1c40f;
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.3s;
-}
-
-.restock-button:hover:not(:disabled) {
-  background-color: #d4ac0d;
-}
-
 .inventory-stats {
   display: flex;
   gap: 20px;
@@ -527,5 +499,14 @@
   }
   100% {
     background-color: transparent;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }

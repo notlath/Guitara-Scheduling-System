@@ -70,11 +70,8 @@ const InventoryPage = () => {
   const [restockItem, setRestockItem] = useState(null);
   const [restockAmount, setRestockAmount] = useState(0);
   const [restockNotes, setRestockNotes] = useState("");
-  // Empty refill modal state
-  const [showEmptyRefillModal, setShowEmptyRefillModal] = useState(false);
-  const [emptyRefillItem, setEmptyRefillItem] = useState(null);
-  const [emptyRefillAmount, setEmptyRefillAmount] = useState(0);
-  const [emptyRefillNotes, setEmptyRefillNotes] = useState("");
+  const [restockType, setRestockType] = useState("regular"); // "regular" or "empty"
+  const [isRestockLoading, setIsRestockLoading] = useState(false);
   // Removed activeTab constant; use showUsageLog directly in conditionals
 
   // Get inventory items from TanStack Query data
@@ -168,64 +165,65 @@ const InventoryPage = () => {
   const handleRestockClick = (item) => {
     setRestockItem(item);
     setRestockAmount(0);
+    setRestockNotes("");
+    // Check if item has empty containers and set the default type
+    if (item.empty > 0) {
+      setRestockType("empty");
+    } else {
+      setRestockType("regular");
+    }
     setShowRestockModal(true);
   };
 
   const handleRestockSave = async () => {
     if (!restockItem) return;
+    setIsRestockLoading(true);
     try {
-      await restockInventoryMutation.mutateAsync({
-        itemId: restockItem.id,
-        amount: restockAmount,
-        notes: restockNotes || undefined,
-      });
-      if (showUsageLog) fetchUsageLogs(); // Refresh usage log if visible
-      setShowRestockModal(false);
-      setRestockItem(null);
-      setRestockAmount(0);
-      setRestockNotes("");
-    } catch {
-      showError("Failed to restock item.");
-    }
-  };
-
-  const handleEmptyRefillClick = (item) => {
-    setEmptyRefillItem(item);
-    setEmptyRefillAmount(0);
-    setShowEmptyRefillModal(true);
-  };
-
-  const handleEmptyRefillSave = async () => {
-    if (!emptyRefillItem) return;
-    try {
-      const response = await axiosAuth.post(
-        `${INVENTORY_API_URL}${emptyRefillItem.id}/refill_from_empty/`,
-        {
-          amount: emptyRefillAmount,
-          notes: emptyRefillNotes || undefined,
-        }
-      );
-
-      if (response.data.status === "refilled_from_empty") {
-        // Invalidate cache to refresh data
-        queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
-
-        if (showUsageLog) fetchUsageLogs(); // Refresh usage log if visible
-        setShowEmptyRefillModal(false);
-        setEmptyRefillItem(null);
-        setEmptyRefillAmount(0);
-        setEmptyRefillNotes("");
-
-        // Show success message
-        alert(
-          response.data.message || "Empty containers refilled successfully!"
+      if (restockType === "empty") {
+        // Use the empty refill API endpoint
+        const response = await axiosAuth.post(
+          `${INVENTORY_API_URL}${restockItem.id}/refill_from_empty/`,
+          {
+            amount: restockAmount,
+            notes: restockNotes || undefined,
+          }
         );
+
+        if (response.data.status === "refilled_from_empty") {
+          // Invalidate cache to refresh data
+          queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
+
+          if (showUsageLog) fetchUsageLogs(); // Refresh usage log if visible
+          setShowRestockModal(false);
+          setRestockItem(null);
+          setRestockAmount(0);
+          setRestockNotes("");
+          setRestockType("regular");
+
+          // Show success message
+          alert(
+            response.data.message || "Empty containers refilled successfully!"
+          );
+        }
+      } else {
+        // Use regular restock mutation
+        await restockInventoryMutation.mutateAsync({
+          itemId: restockItem.id,
+          amount: restockAmount,
+          notes: restockNotes || undefined,
+        });
+        if (showUsageLog) fetchUsageLogs(); // Refresh usage log if visible
+        setShowRestockModal(false);
+        setRestockItem(null);
+        setRestockAmount(0);
+        setRestockNotes("");
+        setRestockType("regular");
       }
     } catch (error) {
-      console.error("Empty refill failed:", error);
-      showError(
-        error.response?.data?.error || "Failed to refill from empty containers."
-      );
+      console.error("Restock failed:", error);
+      showError(error.response?.data?.error || "Failed to refill item.");
+    } finally {
+      setIsRestockLoading(false);
     }
   };
 
@@ -364,16 +362,6 @@ const InventoryPage = () => {
           >
             Refill
           </button>
-          {/* Show "Refill from Empty" button only when there are empty containers */}
-          {item.empty > 0 && (
-            <button
-              className={styles["empty-refill-button"]}
-              onClick={() => handleEmptyRefillClick(item)}
-              title={`Refill ${item.empty} empty ${item.unit}`}
-            >
-              Refill Empty ({item.empty})
-            </button>
-          )}
         </div>
       ),
     };
@@ -869,10 +857,15 @@ const InventoryPage = () => {
           <div className={styles["modal-overlay"]}>
             <div className={styles["modal-content"]}>
               <div className={styles["modal-header"]}>
-                <h3>Refill Item</h3>
+                <h3>
+                  {restockType === "empty"
+                    ? "Refill from Empty Containers"
+                    : "Refill Item"}
+                </h3>
                 <button
                   className={styles["close-button"]}
                   onClick={() => setShowRestockModal(false)}
+                  disabled={isRestockLoading}
                 >
                   ×
                 </button>
@@ -895,6 +888,44 @@ const InventoryPage = () => {
                   style={{ background: "#f5f5f5", color: "#666" }}
                 />
               </div>
+              {/* Show empty containers info if available */}
+              {restockItem.empty > 0 && (
+                <div className={styles["form-group"]}>
+                  <label>Empty Containers Available</label>
+                  <input
+                    type="text"
+                    value={`${restockItem.empty} ${restockItem.unit}`}
+                    disabled
+                    style={{ background: "#f5f5f5", color: "#666" }}
+                  />
+                </div>
+              )}
+              {/* Show refill type selector if item has empty containers */}
+              {restockItem.empty > 0 && (
+                <div className={styles["form-group"]}>
+                  <label>Refill Type</label>
+                  <select
+                    value={restockType}
+                    onChange={(e) => {
+                      setRestockType(e.target.value);
+                      setRestockAmount(0); // Reset amount when switching type
+                    }}
+                    disabled={isRestockLoading}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      background: "#fff",
+                    }}
+                  >
+                    <option value="regular">
+                      Regular Refill (Add new stock)
+                    </option>
+                    <option value="empty">Refill from Empty Containers</option>
+                  </select>
+                </div>
+              )}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -902,7 +933,11 @@ const InventoryPage = () => {
                 }}
               >
                 <div className={styles["form-group"]}>
-                  <label>Amount to Add</label>
+                  <label>
+                    {restockType === "empty"
+                      ? "Amount to Refill from Empty"
+                      : "Amount to Add"}
+                  </label>
                   <input
                     type="number"
                     value={restockAmount === 0 ? "" : restockAmount}
@@ -912,9 +947,22 @@ const InventoryPage = () => {
                       )
                     }
                     min={1}
-                    placeholder="Enter amount to add"
+                    max={
+                      restockType === "empty" ? restockItem.empty : undefined
+                    }
+                    placeholder={
+                      restockType === "empty"
+                        ? "Enter amount to refill from empty"
+                        : "Enter amount to add"
+                    }
+                    disabled={isRestockLoading}
                     required
                   />
+                  {restockType === "empty" && (
+                    <small style={{ color: "#666", fontSize: "12px" }}>
+                      Maximum: {restockItem.empty} empty containers available
+                    </small>
+                  )}
                 </div>
                 <div className={styles["form-group"]}>
                   <label>Notes (optional)</label>
@@ -923,6 +971,7 @@ const InventoryPage = () => {
                     value={restockNotes}
                     onChange={(e) => setRestockNotes(e.target.value)}
                     placeholder="Enter refill notes (optional)"
+                    disabled={isRestockLoading}
                   />
                 </div>
                 <div
@@ -932,95 +981,33 @@ const InventoryPage = () => {
                     marginTop: 20,
                   }}
                 >
-                  <button type="submit" className={styles["action-btn"]}>
-                    Refill Item
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Empty Refill Modal */}
-        {showEmptyRefillModal && emptyRefillItem && (
-          <div className={styles["modal-overlay"]}>
-            <div className={styles["modal-content"]}>
-              <div className={styles["modal-header"]}>
-                <h3>Refill from Empty Containers</h3>
-                <button
-                  className={styles["close-button"]}
-                  onClick={() => setShowEmptyRefillModal(false)}
-                >
-                  ×
-                </button>
-              </div>
-              <div className={styles["form-group"]}>
-                <label>Item</label>
-                <input
-                  type="text"
-                  value={emptyRefillItem.name}
-                  disabled
-                  style={{ background: "#f5f5f5", color: "#666" }}
-                />
-              </div>
-              <div className={styles["form-group"]}>
-                <label>Empty Containers Available</label>
-                <input
-                  type="text"
-                  value={`${emptyRefillItem.empty} ${emptyRefillItem.unit}`}
-                  disabled
-                  style={{ background: "#f5f5f5", color: "#666" }}
-                />
-              </div>
-              <div className={styles["form-group"]}>
-                <label>Current Stock</label>
-                <input
-                  type="text"
-                  value={`${emptyRefillItem.current_stock} ${emptyRefillItem.unit}`}
-                  disabled
-                  style={{ background: "#f5f5f5", color: "#666" }}
-                />
-              </div>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleEmptyRefillSave();
-                }}
-              >
-                <div className={styles["form-group"]}>
-                  <label>Amount to Refill from Empty</label>
-                  <input
-                    type="number"
-                    value={emptyRefillAmount === 0 ? "" : emptyRefillAmount}
-                    onChange={(e) =>
-                      setEmptyRefillAmount(
-                        e.target.value === "" ? 0 : Number(e.target.value)
-                      )
-                    }
-                    min={1}
-                    max={emptyRefillItem.empty}
-                    placeholder="Enter amount to refill from empty"
-                    required
-                  />
-                </div>
-                <div className={styles["form-group"]}>
-                  <label>Notes (optional)</label>
-                  <input
-                    type="text"
-                    value={emptyRefillNotes}
-                    onChange={(e) => setEmptyRefillNotes(e.target.value)}
-                    placeholder="Enter refill notes (optional)"
-                  />
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    marginTop: 20,
-                  }}
-                >
-                  <button type="submit" className={styles["action-btn"]}>
-                    Refill from Empty
+                  <button
+                    type="submit"
+                    className={styles["action-btn"]}
+                    disabled={isRestockLoading}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    {isRestockLoading && (
+                      <div
+                        style={{
+                          width: "16px",
+                          height: "16px",
+                          border: "2px solid rgba(255, 255, 255, 0.3)",
+                          borderRadius: "50%",
+                          borderTopColor: "white",
+                          animation: "spin 1s linear infinite",
+                        }}
+                      ></div>
+                    )}
+                    {isRestockLoading
+                      ? "Processing..."
+                      : restockType === "empty"
+                      ? "Refill from Empty"
+                      : "Refill Item"}
                   </button>
                 </div>
               </form>
