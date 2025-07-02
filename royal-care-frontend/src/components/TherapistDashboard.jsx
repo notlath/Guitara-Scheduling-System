@@ -1895,45 +1895,41 @@ const TherapistDashboard = () => {
           </div>
         )}
 
-        {/* Tab Navigation - Always show when not loading */}
-        {!loading && (
-          <TabSwitcher
-            tabs={[
-              {
-                id: "today",
-                label: "Today's Appointments",
-                count: Array.isArray(myTodayAppointments)
-                  ? myTodayAppointments.filter(
-                      (apt) => apt && !isTransportCompleted(apt)
-                    ).length
-                  : 0,
-              },
-              {
-                id: "upcoming",
-                label: "Upcoming Appointments",
-                count: Array.isArray(myUpcomingAppointments)
-                  ? myUpcomingAppointments.filter(
-                      (apt) => apt && !isTransportCompleted(apt)
-                    ).length
-                  : 0,
-              },
-              {
-                id: "all",
-                label: "All My Appointments",
-                count: Array.isArray(myAppointments)
-                  ? myAppointments.length
-                  : 0,
-              },
-              {
-                id: "attendance",
-                label: "My Attendance",
-                count: undefined,
-              },
-            ]}
-            activeTab={currentView}
-            onTabChange={setView}
-          />
-        )}
+        <TabSwitcher
+          tabs={[
+            {
+              id: "today",
+              label: "Today's Appointments",
+              count: Array.isArray(myTodayAppointments)
+                ? myTodayAppointments.filter(
+                    (apt) => apt && !isTransportCompleted(apt)
+                  ).length
+                : 0,
+            },
+            {
+              id: "upcoming",
+              label: "Upcoming Appointments",
+              count: Array.isArray(myUpcomingAppointments)
+                ? myUpcomingAppointments.filter(
+                    (apt) => apt && !isTransportCompleted(apt)
+                  ).length
+                : 0,
+            },
+            {
+              id: "all",
+              label: "All My Appointments",
+              count: Array.isArray(myAppointments) ? myAppointments.length : 0,
+            },
+            {
+              id: "attendance",
+              label: "My Attendance",
+              count: undefined,
+            },
+          ]}
+          activeTab={currentView}
+          onTabChange={setView}
+        />
+
         <div className="dashboard-content">
           {currentView === "today" && (
             <div className="todays-appointments">
