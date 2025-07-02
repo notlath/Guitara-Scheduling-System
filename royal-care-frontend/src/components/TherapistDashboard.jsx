@@ -646,6 +646,43 @@ const TherapistDashboard = () => {
     }
   };
 
+  // 🆕 NEW: Handle materials check for payment_verified appointments
+  const handleMaterialsCheck = async (appointmentId) => {
+    const actionKey = `materials_check_${appointmentId}`;
+    try {
+      setActionLoading(actionKey, true);
+
+      // Get the appointment details to check for materials
+      const appointment =
+        myAppointments?.find((apt) => apt.id === appointmentId) ||
+        myTodayAppointments?.find((apt) => apt.id === appointmentId) ||
+        myUpcomingAppointments?.find((apt) => apt.id === appointmentId);
+
+      const appointmentMaterials = appointment?.appointment_materials || [];
+
+      if (appointmentMaterials.length > 0) {
+        // Show material modal for post-service material checking
+        openMaterialModal({
+          appointmentId: appointmentId,
+          materials: appointmentMaterials.map((mat) => ({
+            id: mat.inventory_item?.id || mat.material_id,
+            name: mat.inventory_item?.name || mat.material_name || "Material",
+            quantity_used: mat.quantity_used,
+            unit: mat.inventory_item?.unit_of_measure || "units",
+          })),
+        });
+      } else {
+        // No materials to check, directly complete the session
+        await handleCompleteSession(appointmentId);
+      }
+    } catch (error) {
+      console.error("Failed to check materials:", error);
+      alert("Failed to check materials. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
+    }
+  };
+
   const handleRequestPickupNew = async (appointmentId, urgency = "normal") => {
     const actionKey = `request_pickup_${appointmentId}_${urgency}`;
     try {
@@ -702,12 +739,12 @@ const TherapistDashboard = () => {
         }
       }
 
-      // Success - close modal and continue with payment request
+      // Success - close modal and complete the session
       closeMaterialModal();
 
-      // Now proceed with the payment request
+      // Complete the session after materials are checked
       const appointmentId = materialModal.appointmentId;
-      await requestPaymentMutation.mutateAsync(appointmentId);
+      await completeSessionMutation.mutateAsync(appointmentId);
 
       // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
       await Promise.all([
@@ -719,7 +756,7 @@ const TherapistDashboard = () => {
         }),
       ]);
 
-      alert("Material status updated and payment requested successfully!");
+      alert("Material status updated and session completed successfully!");
     } catch (error) {
       console.error("Error updating material status:", error);
       alert(`Error updating material status: ${error.message}`);
@@ -786,6 +823,8 @@ const TherapistDashboard = () => {
         return "Session in Progress";
       case "awaiting_payment":
         return "Awaiting Payment";
+      case "payment_verified":
+        return "Payment Verified";
       case "payment_completed":
         return "Payment Completed";
       case "pickup_requested":
@@ -1116,6 +1155,25 @@ const TherapistDashboard = () => {
             </div>
           </div>
         );
+
+      case "payment_verified":
+        return (
+          <div className="appointment-actions">
+            <LoadingButton
+              className="materials-check-button"
+              onClick={() => handleMaterialsCheck(id)}
+              loading={buttonLoading[`materials_check_${id}`]}
+              loadingText="Checking Materials..."
+              style={{ backgroundColor: '#4CAF50', marginRight: '10px' }}
+            >
+              Check Materials
+            </LoadingButton>
+            <div className="payment-info">
+              <p>✅ Payment verified! Please check materials status.</p>
+            </div>
+          </div>
+        );
+
       case "payment_completed":
         return (
           <div className="appointment-actions">
