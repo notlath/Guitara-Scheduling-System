@@ -370,6 +370,7 @@
   display: inline-grid;
   gap: 30px;
   flex: 1;
+  margin-bottom: 30px;
 }
 
 .staff-details h4 {

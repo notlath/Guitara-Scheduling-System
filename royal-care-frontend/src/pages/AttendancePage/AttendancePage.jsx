@@ -1,12 +1,19 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { shallowEqual, useDispatch } from "react-redux";
+import { MdCheckCircle, MdLogout } from "react-icons/md";
+import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import "../../../src/styles/Placeholders.css";
+// Import the shared attendance CSS for the unified dashboard components
+import "../../components/AttendanceComponent.css";
+import { LoadingButton } from "../../components/common/LoadingComponents";
 import pageTitles from "../../constants/pageTitles";
 import {
   approveAttendance,
+  checkIn,
+  checkOut,
   fetchAttendanceRecords,
   generateAttendanceSummary,
+  getTodayAttendanceStatus,
 } from "../../features/attendance/attendanceSlice";
 import DataTable from "../../globals/DataTable";
 import LayoutRow from "../../globals/LayoutRow";
@@ -34,14 +41,6 @@ const AttendancePage = () => {
 
   const [selectedDate, setSelectedDate] = useState(getCurrentDate());
   const [attendanceFilter, setAttendanceFilter] = useState("all");
-  const [editingRecord, setEditingRecord] = useState(null);
-  const [editForm, setEditForm] = useState({});
-  const [noteModal, setNoteModal] = useState({
-    isOpen: false,
-    recordId: null,
-    currentNote: "",
-  });
-  const [noteText, setNoteText] = useState("");
 
   const attendanceState = useOptimizedSelector(
     (state) => state.attendance,
@@ -54,6 +53,16 @@ const AttendancePage = () => {
     approvalLoading,
     error: attendanceError,
   } = attendanceState;
+
+  // Operator's personal attendance state for check-in/check-out
+  const {
+    todayStatus,
+    isCheckedIn,
+    checkInTime,
+    checkOutTime,
+    checkInLoading,
+    checkOutLoading,
+  } = useSelector((state) => state.attendance);
 
   // Combined loading state
   const loading = attendanceLoading;
@@ -269,6 +278,160 @@ const AttendancePage = () => {
 
   const stats = getAttendanceStats();
 
+  // Helper functions for operator's personal attendance
+  const formatTime = (timeString) => {
+    if (!timeString) return "--:--";
+
+    // If it's already a full datetime string, parse it directly
+    if (timeString.includes("T") || timeString.includes(" ")) {
+      const dateTime = new Date(timeString);
+      return dateTime.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    }
+
+    // If it's just a time string (HH:MM:SS), create a proper date with today's date
+    try {
+      const [hours, minutes, seconds] = timeString.split(":").map(Number);
+
+      // Validate the time components
+      if (
+        isNaN(hours) ||
+        isNaN(minutes) ||
+        hours < 0 ||
+        hours > 23 ||
+        minutes < 0 ||
+        minutes > 59
+      ) {
+        return timeString; // Return original string if invalid
+      }
+
+      // Create a date object with today's date and the specified time
+      const today = new Date();
+      const dateTime = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+        hours,
+        minutes,
+        seconds || 0
+      );
+
+      return dateTime.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch {
+      return timeString; // Return original string on error
+    }
+  };
+
+  const getAttendanceStatus = () => {
+    if (!todayStatus) return "Not Checked In";
+
+    const cutoffTime = new Date();
+    cutoffTime.setHours(13, 15, 0, 0); // 1:15 PM
+
+    if (todayStatus.status === "present") {
+      return "Present";
+    } else if (todayStatus.status === "late") {
+      return "Late";
+    } else if (todayStatus.status === "absent") {
+      return "Absent";
+    } else if (todayStatus.status === "pending_approval") {
+      return "Pending Approval";
+    }
+
+    // If checked in but not yet approved
+    if (isCheckedIn && !todayStatus.approved_at) {
+      const checkInDateTime = new Date(
+        `${new Date().toDateString()} ${checkInTime}`
+      );
+      return checkInDateTime > cutoffTime
+        ? "Late (Pending Approval)"
+        : "Present (Pending Approval)";
+    }
+
+    return "Not Checked In";
+  };
+
+  const getStatusColor = () => {
+    const status = getAttendanceStatus();
+    if (status.includes("Present")) return "#28a745";
+    if (status.includes("Late")) return "#ffc107";
+    if (status.includes("Absent")) return "#dc3545";
+    if (status.includes("Pending")) return "#007bff";
+    return "#6c757d";
+  };
+
+  const hasCheckedInToday = () => {
+    return !!(checkInTime || todayStatus?.check_in_time);
+  };
+
+  const canCheckOutToday = () => {
+    // Can't check out if not checked in
+    if (!hasCheckedInToday()) return false;
+
+    // Check if already checked out
+    if (checkOutTime || todayStatus?.check_out_time) {
+      return false; // Already checked out today
+    }
+
+    // Check if it's still the same day as check-in
+    if ((checkInTime || todayStatus?.check_in_time) && todayStatus?.date) {
+      const now = new Date();
+      const today = now.toDateString();
+      const checkInDate = new Date(todayStatus.date).toDateString();
+
+      // Can only check out on the same day as check-in
+      return today === checkInDate;
+    }
+
+    return true;
+  };
+
+  const isWithinCheckInWindow = () => {
+    const now = new Date();
+    const absenceDeadline = new Date();
+    absenceDeadline.setHours(1, 30, 0, 0); // 1:30 AM next day
+    absenceDeadline.setDate(absenceDeadline.getDate() + 1);
+
+    return now < absenceDeadline;
+  };
+
+  const isLateCheckIn = () => {
+    const now = new Date();
+    const lateDeadline = new Date();
+    lateDeadline.setHours(13, 15, 0, 0); // 1:15 PM
+
+    return now > lateDeadline;
+  };
+
+  // Operator's check-in/check-out handlers
+  const handleCheckIn = () => {
+    dispatch(checkIn()).then(() => {
+      // Refresh attendance data
+      dispatch(getTodayAttendanceStatus());
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+    });
+  };
+
+  const handleCheckOut = () => {
+    dispatch(checkOut()).then(() => {
+      // Refresh attendance data
+      dispatch(getTodayAttendanceStatus());
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+    });
+  };
+
+  // Fetch operator's attendance status on component mount
+  useEffect(() => {
+    dispatch(getTodayAttendanceStatus());
+  }, [dispatch]);
+
   // Prepare columns for DataTable
   const columns = [
     { key: "staff", label: "Staff Member" },
@@ -347,6 +510,7 @@ const AttendancePage = () => {
   return (
     <PageLayout>
       <div className={styles["attendance-page"]}>
+        {/* Staff Management Section */}
         <LayoutRow title="Staff Attendance Tracking">
           <div className={styles["date-selector"]}>
             <label htmlFor="attendance-date">Select Date: </label>
@@ -407,6 +571,124 @@ const AttendancePage = () => {
           <div className={styles["stat-card"] + " " + styles["leave"]}>
             <div className={styles["stat-number"]}>{stats.onLeave}</div>
             <div className={styles["stat-label"]}>On Leave</div>
+          </div>
+        </div>
+
+        {/* Shared Attendance Dashboard Components - Same structure as Therapist and Driver views */}
+        <div className="attendance-dashboard">
+          <div className="attendance-status-card">
+            <div className="status-header">
+              <h3>Your Attendance Status</h3>
+              <div
+                className="status-indicator"
+                style={{ backgroundColor: getStatusColor() }}
+              >
+                {getAttendanceStatus()}
+              </div>
+            </div>
+
+            <div className="attendance-details">
+              <div className="detail-row">
+                <span className="label">Check-in Time:</span>
+                <span className="value">
+                  {checkInTime ? formatTime(checkInTime) : "Not checked in"}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Check-out Time:</span>
+                <span className="value">
+                  {checkOutTime ? formatTime(checkOutTime) : "Not checked out"}
+                </span>
+              </div>
+              {todayStatus?.approved_at && (
+                <div className="detail-row">
+                  <span className="label">Approved at:</span>
+                  <span className="value">
+                    {new Date(todayStatus.approved_at).toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="attendance-actions-panel">
+            {!hasCheckedInToday() && isWithinCheckInWindow() ? (
+              <div className="check-in-section">
+                {isLateCheckIn() && (
+                  <div className="late-warning">
+                    ⚠️ <strong>Late Check-In Warning:</strong>
+                    You are checking in after 1:15 PM. This will be marked as
+                    LATE attendance.
+                  </div>
+                )}
+                <LoadingButton
+                  onClick={handleCheckIn}
+                  loading={checkInLoading}
+                  className={`check-in-btn ${
+                    isLateCheckIn() ? "late-checkin" : ""
+                  }`}
+                  disabled={!isWithinCheckInWindow() || hasCheckedInToday()}
+                >
+                  <MdCheckCircle />
+                  {isLateCheckIn() ? "Check In (Late)" : "Check In"}
+                </LoadingButton>
+              </div>
+            ) : hasCheckedInToday() && canCheckOutToday() ? (
+              <LoadingButton
+                onClick={handleCheckOut}
+                loading={checkOutLoading}
+                className="check-out-btn"
+              >
+                <MdLogout />
+                Check Out
+              </LoadingButton>
+            ) : hasCheckedInToday() && !canCheckOutToday() ? (
+              <div className="attendance-completed">
+                <MdCheckCircle />
+                <span>You have already checked in for today</span>
+              </div>
+            ) : checkOutTime || todayStatus?.check_out_time ? (
+              <div className="attendance-completed">
+                <MdCheckCircle />
+                <span>You have already checked out for today</span>
+              </div>
+            ) : (
+              <div className="attendance-completed">
+                <MdCheckCircle />
+                <span>Attendance recorded for today</span>
+              </div>
+            )}
+          </div>
+
+          <div className="attendance-info">
+            <div className="info-card">
+              <h4>Attendance Guidelines</h4>
+              <ul>
+                <li>
+                  <strong>Present:</strong> Check in before 1:15 PM
+                </li>
+                <li>
+                  <strong>Late:</strong> Check in after 1:15 PM but before 1:30
+                  AM (next day)
+                </li>
+                <li>
+                  <strong>Absent:</strong> No check-in recorded by 1:30 AM (next
+                  day)
+                </li>
+                <li>Your attendance requires approval from another operator</li>
+              </ul>
+            </div>
+
+            <div className="info-card">
+              <h4>Important Notes</h4>
+              <ul>
+                <li>You can only check in once per day</li>
+                <li>You can only check out once per day</li>
+                <li>Make sure to check out when leaving</li>
+                <li>Contact your supervisor if you have attendance issues</li>
+                <li>Attendance affects your schedule assignments</li>
+              </ul>
+            </div>
           </div>
         </div>
 
