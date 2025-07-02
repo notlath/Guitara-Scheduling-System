@@ -24,6 +24,7 @@ import RejectionModal from "./RejectionModal";
 import Calendar from "./scheduling/Calendar";
 import PostServiceMaterialModal from "./scheduling/PostServiceMaterialModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
+import StatusDropdown from "./StatusDropdown";
 
 // API base URL configuration
 const getBaseURL = () => {
@@ -1365,13 +1366,12 @@ const TherapistDashboard = () => {
                   {appointment.client_details?.first_name}{" "}
                   {appointment.client_details?.last_name}
                 </h3>{" "}
-                <span
-                  className={`status-badge ${getStatusBadgeClass(
-                    appointment.status
-                  )}`}
-                >
-                  {getStatusDisplayText(appointment.status)}
-                </span>
+                <StatusDropdown
+                  appointment={appointment}
+                  currentStatus={appointment.status}
+                  isOperator={false}
+                  disabled={true}
+                />
               </div>
 
               <div className="appointment-details">

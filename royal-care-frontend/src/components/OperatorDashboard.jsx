@@ -33,6 +33,7 @@ import {
   useAttendanceActions,
   useAttendanceRecords,
 } from "./contexts/AttendanceContext";
+import StatusDropdown from "./StatusDropdown";
 // API error handling utilities
 import {
   createAdBlockerFriendlyConfig,
@@ -2201,11 +2202,16 @@ const OperatorDashboard = () => {
                   {appointment.client_details?.last_name || ""}
                 </h3>
                 <div className="status-badges">
-                  <span
-                    className={`status-badge ${getStatusBadgeClass(status)}`}
-                  >
-                    {getStatusDisplayText(status)}
-                  </span>
+                  <StatusDropdown
+                    appointment={appointment}
+                    currentStatus={status}
+                    isOperator={true}
+                    onStatusChange={(newStatus, updatedAppointment) => {
+                      console.log(
+                        `Status changed to ${newStatus} for appointment ${updatedAppointment?.id}`
+                      );
+                    }}
+                  />
                   {urgencyLevel && urgencyLevel !== "normal" && (
                     <span className={`urgency-badge urgency-${urgencyLevel}`}>
                       {urgencyLevel.toUpperCase()}
@@ -2294,11 +2300,16 @@ const OperatorDashboard = () => {
                     {appointment.client_details?.last_name || ""}
                   </h3>
                   <div className="status-badges">
-                    <span
-                      className={`status-badge ${getStatusBadgeClass(status)}`}
-                    >
-                      {getStatusDisplayText(status)}
-                    </span>
+                    <StatusDropdown
+                      appointment={appointment}
+                      currentStatus={status}
+                      isOperator={true}
+                      onStatusChange={(newStatus, updatedAppointment) => {
+                        console.log(
+                          `Status changed to ${newStatus} for appointment ${updatedAppointment?.id}`
+                        );
+                      }}
+                    />
                     {urgencyLevel && urgencyLevel !== "normal" && (
                       <span className={`urgency-badge urgency-${urgencyLevel}`}>
                         {urgencyLevel.toUpperCase()}
@@ -2540,11 +2551,16 @@ const OperatorDashboard = () => {
                   {appointment.client_details?.last_name || ""}
                 </h3>
                 <div className="status-badges">
-                  <span
-                    className={`status-badge ${getStatusBadgeClass(status)}`}
-                  >
-                    {getStatusDisplayText(status)}
-                  </span>
+                  <StatusDropdown
+                    appointment={appointment}
+                    currentStatus={status}
+                    isOperator={true}
+                    onStatusChange={(newStatus, updatedAppointment) => {
+                      console.log(
+                        `Status changed to ${newStatus} for appointment ${updatedAppointment?.id}`
+                      );
+                    }}
+                  />
                   {urgencyLevel && urgencyLevel !== "normal" && (
                     <span className={`urgency-badge urgency-${urgencyLevel}`}>
                       {urgencyLevel.toUpperCase()}
@@ -2759,13 +2775,16 @@ const OperatorDashboard = () => {
                         {appointment.client_details?.last_name}
                       </h3>
                       <div className="status-badges">
-                        <span
-                          className={`status-badge ${getStatusBadgeClass(
-                            appointment.status
-                          )}`}
-                        >
-                          {appointment.status?.replace("_", " ").toUpperCase()}
-                        </span>
+                        <StatusDropdown
+                          appointment={appointment}
+                          currentStatus={appointment.status}
+                          isOperator={true}
+                          onStatusChange={(newStatus, updatedAppointment) => {
+                            console.log(
+                              `Status changed to ${newStatus} for appointment ${updatedAppointment?.id}`
+                            );
+                          }}
+                        />
                         {/* Only show urgency badge for pending appointments */}
                         {appointment.status === "pending" &&
                           urgencyLevel &&
