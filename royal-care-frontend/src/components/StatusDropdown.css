@@ -3,6 +3,7 @@
 .status-dropdown-container {
   position: relative;
   display: inline-block;
+  z-index: 100;
 }
 
 .status-badge.clickable {
@@ -60,7 +61,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 1000;
+  z-index: 1200;
   min-width: 200px;
   max-width: 280px;
   background: #ffffff;
@@ -124,13 +125,13 @@
   font-weight: 600;
 }
 
-.status-indicator {
+/* .status-indicator {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   margin-right: 12px;
   flex-shrink: 0;
-}
+} */
 
 .current-indicator {
   margin-left: auto;
@@ -200,11 +201,11 @@
 
 /* Ensure dropdown appears above other elements */
 .status-dropdown-container {
-  z-index: 10;
+  z-index: 1200;
 }
 
 .status-dropdown-menu {
-  z-index: 1001;
+  z-index: 1200;
 }
 
 /* Dark mode support */

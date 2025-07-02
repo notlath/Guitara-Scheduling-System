@@ -55,7 +55,7 @@
   background-color: var(--background);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
-  overflow: hidden;
+  overflow: visible;
   transition: transform 0.2s, box-shadow 0.2s;
   border-left: 4px solid var(--primary);
 }
