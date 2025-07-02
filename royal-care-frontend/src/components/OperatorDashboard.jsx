@@ -59,7 +59,6 @@ const VALID_VIEW_VALUES = Object.freeze([
   "timeout",
   "payment",
   "all",
-  "attendance",
   "notifications",
   "driver",
   "workflow",
@@ -690,12 +689,6 @@ const OperatorDashboard = () => {
         return driverCoordinationQuery;
       case "workflow":
         return workflowDataQuery;
-      case "attendance":
-        return {
-          data: dashboardAttendanceRecords,
-          isLoading: dashboardLoading,
-          error: dashboardError,
-        };
       default:
         return { data: null, isLoading: false, error: null };
     }
@@ -830,7 +823,6 @@ const OperatorDashboard = () => {
       { id: "timeout", label: "Timeout Monitoring" },
       { id: "payment", label: "Payment Verification" },
       { id: "all", label: "All Appointments" },
-      { id: "attendance", label: "Attendance" },
       // { id: "notifications", label: "Notifications" }, // Removed as requested
       { id: "driver", label: "Driver Coordination" },
       { id: "workflow", label: "Service Workflow" },
@@ -3533,12 +3525,6 @@ const OperatorDashboard = () => {
               <div className="all-appointments">
                 <h2>All Appointments</h2>
                 {renderAllAppointments()}
-              </div>
-            )}{" "}
-            {currentView === "attendance" && (
-              <div className="attendance-management">
-                <h2>Attendance Management</h2>
-                {renderAttendanceView()}
               </div>
             )}{" "}
             {currentView === "notifications" && (
