@@ -4,8 +4,11 @@
  */
 
 import { useEffect, useState } from "react";
-import { queryClient } from "../lib/queryClient";
-import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
+import { queryClient, queryKeys } from "../lib/queryClient";
+import {
+  handleWebSocketUpdate,
+  invalidateAppointmentCaches,
+} from "../utils/cacheInvalidation";
 import { getToken } from "../utils/tokenManager";
 
 class WebSocketTanStackService {
@@ -33,6 +36,211 @@ class WebSocketTanStackService {
     this.addEventListener = this.addEventListener.bind(this);
     this.removeEventListener = this.removeEventListener.bind(this);
     this.dispatchEvent = this.dispatchEvent.bind(this);
+  }
+
+  /**
+   * Helper method to update therapist dashboard caches
+   * This ensures TherapistDashboard gets updates regardless of appointment data structure
+   */
+  updateTherapistDashboardCaches(
+    appointmentData,
+    updateFunction,
+    actionDescription = "update"
+  ) {
+    console.log(
+      `🩺 ${actionDescription} - Updating TherapistDashboard caches for appointment:`,
+      appointmentData.id
+    );
+
+    // Find all possible therapist IDs from the appointment
+    const affectedTherapistIds = new Set();
+
+    // Add primary therapist ID
+    if (appointmentData.therapist_id) {
+      affectedTherapistIds.add(appointmentData.therapist_id);
+    }
+
+    // Add legacy therapist field
+    if (appointmentData.therapist) {
+      affectedTherapistIds.add(appointmentData.therapist);
+    }
+
+    // Add all therapists from therapists array (multi-therapist appointments)
+    if (
+      appointmentData.therapists &&
+      Array.isArray(appointmentData.therapists)
+    ) {
+      appointmentData.therapists.forEach((therapist) => {
+        // Handle both ID numbers and therapist objects
+        const therapistId =
+          typeof therapist === "object" ? therapist.id : therapist;
+        if (therapistId) affectedTherapistIds.add(therapistId);
+      });
+    }
+
+    // Add all therapists from therapists_details array (detailed therapist objects)
+    if (
+      appointmentData.therapists_details &&
+      Array.isArray(appointmentData.therapists_details)
+    ) {
+      appointmentData.therapists_details.forEach((therapist) => {
+        if (therapist && therapist.id) affectedTherapistIds.add(therapist.id);
+      });
+    }
+
+    // If no therapist IDs found, try to get appointment from cache to find therapists
+    if (affectedTherapistIds.size === 0) {
+      const appointments = queryClient.getQueryData(["appointments"]) || [];
+      const existingAppointment = appointments.find(
+        (apt) => apt.id === appointmentData.id
+      );
+
+      if (existingAppointment) {
+        if (existingAppointment.therapist_id)
+          affectedTherapistIds.add(existingAppointment.therapist_id);
+        if (existingAppointment.therapist)
+          affectedTherapistIds.add(existingAppointment.therapist);
+        if (
+          existingAppointment.therapists &&
+          Array.isArray(existingAppointment.therapists)
+        ) {
+          existingAppointment.therapists.forEach((therapistId) => {
+            if (therapistId) affectedTherapistIds.add(therapistId);
+          });
+        }
+      }
+    }
+
+    // ✅ ENHANCED DEBUG: Log exactly what therapist IDs we found
+    console.log(
+      `🩺 Found ${affectedTherapistIds.size} affected therapists:`,
+      Array.from(affectedTherapistIds)
+    );
+
+    if (affectedTherapistIds.size === 0) {
+      console.warn(
+        "⚠️ No therapist IDs found for appointment update - this might cause UI sync issues"
+      );
+      console.log("🔍 DEBUG: Appointment data structure:", {
+        appointmentData,
+        therapist_id: appointmentData.therapist_id,
+        therapist: appointmentData.therapist,
+        therapists: appointmentData.therapists,
+      });
+    }
+
+    // Update each affected therapist's cache
+    affectedTherapistIds.forEach((therapistId) => {
+      console.log(
+        `🩺 Updating TherapistDashboard cache for therapist ${therapistId}`
+      );
+
+      // ✅ CRITICAL FIX: Use consistent queryKeys structure that matches TherapistDashboard
+      const therapistQueryKey = queryKeys.appointments.byTherapist(
+        therapistId,
+        "all"
+      );
+
+      // Apply the update function to the therapist's specific cache first
+      queryClient.setQueryData(therapistQueryKey, updateFunction);
+
+      // CRITICAL: Force immediate refetch with aggressive invalidation using consistent query key
+      queryClient.invalidateQueries({
+        queryKey: therapistQueryKey,
+        refetchType: "all", // Force refetch even for inactive queries
+        exact: true, // Only invalidate this exact query key
+      });
+
+      // Also invalidate related therapist queries
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byTherapist(therapistId, "today"),
+        refetchType: "active",
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byTherapist(therapistId, "upcoming"),
+        refetchType: "active",
+      });
+    });
+
+    return affectedTherapistIds.size;
+  }
+
+  /**
+   * Helper method to update driver dashboard caches
+   * This ensures DriverDashboard gets updates regardless of appointment data structure
+   */
+  updateDriverDashboardCaches(
+    appointmentData,
+    updateFunction,
+    actionDescription = "update"
+  ) {
+    console.log(
+      `🚗 ${actionDescription} - Updating DriverDashboard caches for appointment:`,
+      appointmentData.id
+    );
+
+    // Find all possible driver IDs from the appointment
+    const affectedDriverIds = new Set();
+
+    // Add primary driver ID
+    if (appointmentData.driver_id) {
+      affectedDriverIds.add(appointmentData.driver_id);
+    }
+
+    // Add legacy driver field
+    if (appointmentData.driver) {
+      affectedDriverIds.add(appointmentData.driver);
+    }
+
+    // If no driver IDs found, try to get appointment from cache to find drivers
+    if (affectedDriverIds.size === 0) {
+      const appointments = queryClient.getQueryData(["appointments"]) || [];
+      const existingAppointment = appointments.find(
+        (apt) => apt.id === appointmentData.id
+      );
+
+      if (existingAppointment) {
+        if (existingAppointment.driver_id)
+          affectedDriverIds.add(existingAppointment.driver_id);
+        if (existingAppointment.driver)
+          affectedDriverIds.add(existingAppointment.driver);
+      }
+    }
+
+    console.log(
+      `🚗 Found ${affectedDriverIds.size} affected drivers:`,
+      Array.from(affectedDriverIds)
+    );
+
+    // Update each affected driver's cache
+    affectedDriverIds.forEach((driverId) => {
+      console.log(`🚗 Updating DriverDashboard cache for driver ${driverId}`);
+
+      // ✅ CRITICAL FIX: Use consistent queryKeys structure that matches DriverDashboard
+      const driverQueryKey = queryKeys.appointments.byDriver(driverId, "all");
+
+      // Apply the update function to the driver's specific cache first
+      queryClient.setQueryData(driverQueryKey, updateFunction);
+
+      // CRITICAL: Force immediate refetch with aggressive invalidation using consistent query key
+      queryClient.invalidateQueries({
+        queryKey: driverQueryKey,
+        refetchType: "all", // Force refetch even for inactive queries
+        exact: true, // Only invalidate this exact query key
+      });
+
+      // Also invalidate related driver queries
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byDriver(driverId, "today"),
+        refetchType: "active",
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.appointments.byDriver(driverId, "upcoming"),
+        refetchType: "active",
+      });
+    });
+
+    return affectedDriverIds.size;
   }
 
   /**
@@ -123,11 +331,11 @@ class WebSocketTanStackService {
 
       this.ws = new WebSocket(wsUrlWithAuth);
 
-      // Set up event listeners
-      this.ws.onopen = this.handleOpen;
-      this.ws.onmessage = this.handleMessage;
-      this.ws.onclose = this.handleClose;
-      this.ws.onerror = this.handleError;
+      // Set up event listeners - FIXED: Properly bind methods to 'this'
+      this.ws.onopen = this.handleOpen.bind(this);
+      this.ws.onmessage = this.handleMessage.bind(this);
+      this.ws.onclose = this.handleClose.bind(this);
+      this.ws.onerror = this.handleError.bind(this);
     } catch (error) {
       console.error("WebSocket connection failed:", error);
       this.isConnecting = false;
@@ -160,67 +368,99 @@ class WebSocketTanStackService {
       const data = JSON.parse(event.data);
       console.log("📨 WebSocket message received:", data);
 
+      // Add detailed debugging for appointment_updated messages
+      if (data.type === "appointment_updated") {
+        console.log("🔍 Processing appointment_updated message:", {
+          type: data.type,
+          hasMessage: !!data.message,
+          hasAppointment: !!data.appointment,
+          messageContent: data.message,
+          appointmentContent: data.appointment,
+        });
+      }
+
       // Handle different message types
+      // CRITICAL FIX: Handle both old (data.message) and new (data.appointment) WebSocket formats
+      // Some messages use data.appointment (appointment_updated), others use data.message (driver_assigned)
+      let appointmentData = data.appointment || data.message;
+
       switch (data.type) {
         case "appointment_create":
-          this.handleAppointmentCreate(data.message);
+        case "appointment_created":
+          console.log("📝 Handling appointment creation");
+          this.handleAppointmentCreate(appointmentData);
           break;
         case "appointment_update":
-          this.handleAppointmentUpdate(data.message);
+        case "appointment_updated":
+          console.log("🔄 Handling appointment update");
+          // CRITICAL FIX: Make sure we have valid appointment data
+          if (!appointmentData) {
+            console.error("❌ appointment_updated: No appointment data found", {
+              hasMessage: !!data.message,
+              hasAppointment: !!data.appointment,
+              fullData: data,
+            });
+            return;
+          }
+          this.handleAppointmentUpdate(appointmentData);
           // Also dispatch status change event if status was updated
-          if (data.message.status) {
+          if (appointmentData && appointmentData.status) {
             this.dispatchEvent("appointment_status_changed", {
-              appointment: data.message,
+              appointment: appointmentData,
               type: "appointment_status_changed",
             });
           }
           break;
         case "appointment_delete":
-          this.handleAppointmentDelete(data.message);
+        case "appointment_deleted":
+          this.handleAppointmentDelete(appointmentData);
           break;
         case "availability_update":
-          this.handleAvailabilityUpdate(data.message);
+          this.handleAvailabilityUpdate(appointmentData);
           break;
         case "heartbeat":
+        case "heartbeat_response":
+          console.log("💓 Heartbeat response received from server");
           this.handleHeartbeat(data.message);
           break;
         case "driver_assigned":
-          this.handleDriverAssigned(data.message);
+          // Driver assignment uses different data structure (data.message with appointment_id)
+          this.handleDriverAssigned(data.message || data);
           // Dispatch status change event since driver assignment changes status
           this.dispatchEvent("appointment_status_changed", {
-            appointment: data.message,
+            appointment: data.message || data,
             type: "appointment_status_changed",
           });
           break;
         case "therapist_acceptance":
-          this.handleTherapistAcceptance(data.message);
+          this.handleTherapistAcceptance(data.message || data);
           // Dispatch status change event since acceptance changes status
           this.dispatchEvent("appointment_status_changed", {
-            appointment: data.message,
+            appointment: data.message || data,
             type: "appointment_status_changed",
           });
           break;
         case "session_started":
-          this.handleSessionStarted(data.message);
+          this.handleSessionStarted(data.message || data);
           // Dispatch status change event since session start changes status
           this.dispatchEvent("appointment_status_changed", {
-            appointment: data.message,
+            appointment: data.message || data,
             type: "appointment_status_changed",
           });
           break;
         case "awaiting_payment":
-          this.handleAwaitingPayment(data.message);
+          this.handleAwaitingPayment(data.message || data);
           // Dispatch status change event since payment waiting changes status
           this.dispatchEvent("appointment_status_changed", {
-            appointment: data.message,
+            appointment: data.message || data,
             type: "appointment_status_changed",
           });
           break;
         case "appointment_started":
-          this.handleAppointmentStarted(data.message);
+          this.handleAppointmentStarted(data.message || data);
           // Dispatch status change event since appointment start changes status
           this.dispatchEvent("appointment_status_changed", {
-            appointment: data.message,
+            appointment: data.message || data,
             type: "appointment_status_changed",
           });
           break;
@@ -236,7 +476,7 @@ class WebSocketTanStackService {
               message: {
                 appointment_id: data.message.appointment_id,
                 ...data.message,
-              }
+              },
             };
             // Recursively handle the nested message
             this.handleMessage({ data: JSON.stringify(nestedMessage) });
@@ -244,9 +484,22 @@ class WebSocketTanStackService {
           break;
         default:
           console.log("Unknown WebSocket message type:", data.type);
+          console.log("📋 Full message data:", data);
+
+          // Try to handle appointment_updated messages that might not be matching
+          if (
+            data.type &&
+            data.type.includes("appointment") &&
+            data.type.includes("update")
+          ) {
+            console.log("🔧 Attempting to handle as appointment update");
+            this.handleAppointmentUpdate(data.message);
+          }
       }
     } catch (error) {
       console.error("Error parsing WebSocket message:", error);
+      console.error("Original WebSocket event data:", event.data);
+      console.error("Error stack trace:", error.stack);
     }
   }
 
@@ -254,52 +507,48 @@ class WebSocketTanStackService {
    * Handle appointment creation - update TanStack Query cache
    */
   handleAppointmentCreate(appointment) {
-    // Update global appointments list
-    queryClient.setQueryData(["appointments"], (old = []) => {
+    console.log("🆕 WebSocket appointment creation received:", {
+      id: appointment.id,
+      therapist_id: appointment.therapist_id,
+      driver_id: appointment.driver_id,
+      therapists: appointment.therapists,
+    });
+
+    // Create add function for cache updates
+    const addFunction = (old = []) => {
       // Prevent duplicates
       if (old.find((a) => a.id === appointment.id)) return old;
       return [appointment, ...old];
-    });
+    };
+
+    // Update global appointments list
+    queryClient.setQueryData(["appointments"], addFunction);
 
     // Update today's appointments if applicable
     const today = new Date().toISOString().split("T")[0];
     if (appointment.date === today) {
-      queryClient.setQueryData(["appointments", "today"], (old = []) => {
-        if (old.find((a) => a.id === appointment.id)) return old;
-        return [appointment, ...old];
-      });
+      queryClient.setQueryData(["appointments", "today"], addFunction);
     }
 
     // Update per-date queries
     queryClient.setQueryData(
       ["appointments", "date", appointment.date],
-      (old = []) => {
-        if (old.find((a) => a.id === appointment.id)) return old;
-        return [appointment, ...old];
-      }
+      addFunction
     );
 
-    // Update therapist dashboard queries
-    if (appointment.therapist_id) {
-      queryClient.setQueryData(
-        ["appointments", "therapist", appointment.therapist_id],
-        (old = []) => {
-          if (old.find((a) => a.id === appointment.id)) return old;
-          return [appointment, ...old];
-        }
-      );
-    }
+    // CRITICAL FIX: Update all therapist dashboard queries using the helper method
+    const affectedTherapistCount = this.updateTherapistDashboardCaches(
+      appointment,
+      addFunction,
+      "Appointment Creation"
+    );
 
-    // Update driver dashboard queries
-    if (appointment.driver_id) {
-      queryClient.setQueryData(
-        ["appointments", "driver", appointment.driver_id],
-        (old = []) => {
-          if (old.find((a) => a.id === appointment.id)) return old;
-          return [appointment, ...old];
-        }
-      );
-    }
+    // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+    const affectedDriverCount = this.updateDriverDashboardCaches(
+      appointment,
+      addFunction,
+      "Appointment Creation"
+    );
 
     // Use comprehensive cache invalidation that includes operator-specific queries
     invalidateAppointmentCaches(queryClient, {
@@ -309,9 +558,13 @@ class WebSocketTanStackService {
       console.error("❌ WebSocket cache invalidation failed:", error);
     });
 
+    console.log(
+      `✅ WebSocket appointment creation applied to all affected caches (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
+    );
+
     // Dispatch event for listeners
     this.dispatchEvent("appointment_created", {
-      appointment,
+      appointment: appointment,
       type: "appointment_created",
     });
   }
@@ -320,51 +573,81 @@ class WebSocketTanStackService {
    * Handle appointment update - update TanStack Query cache
    */
   handleAppointmentUpdate(updatedAppointment) {
+    // CRITICAL FIX: Add comprehensive null/undefined checks and detailed logging
+    console.log("🔧 handleAppointmentUpdate called with:", {
+      isNull: updatedAppointment === null,
+      isUndefined: updatedAppointment === undefined,
+      type: typeof updatedAppointment,
+      hasId: updatedAppointment?.id,
+      data: updatedAppointment,
+    });
+
+    if (!updatedAppointment) {
+      console.error(
+        "❌ handleAppointmentUpdate: updatedAppointment is null/undefined"
+      );
+      return;
+    }
+
+    if (!updatedAppointment.id) {
+      console.error(
+        "❌ handleAppointmentUpdate: updatedAppointment.id is missing",
+        {
+          keys: Object.keys(updatedAppointment || {}),
+          fullData: updatedAppointment,
+        }
+      );
+      return;
+    }
+
+    console.log("🔄 WebSocket appointment update received:", {
+      id: updatedAppointment.id,
+      status: updatedAppointment.status,
+      therapist_id: updatedAppointment.therapist_id,
+      driver_id: updatedAppointment.driver_id,
+      therapists: updatedAppointment.therapists,
+      fullAppointmentData: updatedAppointment,
+    });
+
+    // Create update function for cache updates
+    const updateFunction = (old = []) =>
+      old.map((a) => (a.id === updatedAppointment.id ? updatedAppointment : a));
+
     // Update global appointments list
-    queryClient.setQueryData(["appointments"], (old = []) =>
-      old.map((a) => (a.id === updatedAppointment.id ? updatedAppointment : a))
-    );
+    queryClient.setQueryData(["appointments"], updateFunction);
 
     // Update today's appointments if applicable
     const today = new Date().toISOString().split("T")[0];
     if (updatedAppointment.date === today) {
-      queryClient.setQueryData(["appointments", "today"], (old = []) =>
-        old.map((a) =>
-          a.id === updatedAppointment.id ? updatedAppointment : a
-        )
-      );
+      queryClient.setQueryData(["appointments", "today"], updateFunction);
     }
 
     // Update per-date queries
     queryClient.setQueryData(
       ["appointments", "date", updatedAppointment.date],
-      (old = []) =>
-        old.map((a) =>
-          a.id === updatedAppointment.id ? updatedAppointment : a
-        )
+      updateFunction
     );
 
-    // Update therapist dashboard queries
-    if (updatedAppointment.therapist_id) {
-      queryClient.setQueryData(
-        ["appointments", "therapist", updatedAppointment.therapist_id],
-        (old = []) =>
-          old.map((a) =>
-            a.id === updatedAppointment.id ? updatedAppointment : a
-          )
-      );
-    }
+    // CRITICAL FIX: Update all therapist dashboard queries using the helper method
+    const affectedTherapistCount = this.updateTherapistDashboardCaches(
+      updatedAppointment,
+      updateFunction,
+      "Appointment Update"
+    );
 
-    // Update driver dashboard queries
-    if (updatedAppointment.driver_id) {
-      queryClient.setQueryData(
-        ["appointments", "driver", updatedAppointment.driver_id],
-        (old = []) =>
-          old.map((a) =>
-            a.id === updatedAppointment.id ? updatedAppointment : a
-          )
-      );
-    }
+    // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+    const affectedDriverCount = this.updateDriverDashboardCaches(
+      updatedAppointment,
+      updateFunction,
+      "Appointment Update"
+    );
+
+    // CRITICAL: Force invalidation to ensure TherapistDashboard refetches
+    // Use the comprehensive cache invalidation helper
+    handleWebSocketUpdate(queryClient, {
+      type: "appointment_updated",
+      appointment: updatedAppointment,
+    });
 
     // Use comprehensive cache invalidation that includes operator-specific queries
     invalidateAppointmentCaches(queryClient, {
@@ -373,6 +656,10 @@ class WebSocketTanStackService {
     }).catch((error) => {
       console.error("❌ WebSocket cache invalidation failed:", error);
     });
+
+    console.log(
+      `✅ WebSocket appointment update applied to all affected caches (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
+    );
 
     // Dispatch event for listeners
     this.dispatchEvent("appointment_updated", {
@@ -385,40 +672,45 @@ class WebSocketTanStackService {
    * Handle appointment deletion - update TanStack Query cache
    */
   handleAppointmentDelete(deletedAppointment) {
+    console.log("🗑️ WebSocket appointment deletion received:", {
+      id: deletedAppointment.id,
+      therapist_id: deletedAppointment.therapist_id,
+      driver_id: deletedAppointment.driver_id,
+      therapists: deletedAppointment.therapists,
+    });
+
+    // Create remove function for cache updates
+    const removeFunction = (old = []) =>
+      old.filter((a) => a.id !== deletedAppointment.id);
+
     // Remove from global appointments list
-    queryClient.setQueryData(["appointments"], (old = []) =>
-      old.filter((a) => a.id !== deletedAppointment.id)
-    );
+    queryClient.setQueryData(["appointments"], removeFunction);
 
     // Remove from today's appointments if applicable
     const today = new Date().toISOString().split("T")[0];
     if (deletedAppointment.date === today) {
-      queryClient.setQueryData(["appointments", "today"], (old = []) =>
-        old.filter((a) => a.id !== deletedAppointment.id)
-      );
+      queryClient.setQueryData(["appointments", "today"], removeFunction);
     }
 
     // Remove from per-date queries
     queryClient.setQueryData(
       ["appointments", "date", deletedAppointment.date],
-      (old = []) => old.filter((a) => a.id !== deletedAppointment.id)
+      removeFunction
     );
 
-    // Remove from therapist dashboard queries
-    if (deletedAppointment.therapist_id) {
-      queryClient.setQueryData(
-        ["appointments", "therapist", deletedAppointment.therapist_id],
-        (old = []) => old.filter((a) => a.id !== deletedAppointment.id)
-      );
-    }
+    // CRITICAL FIX: Update all therapist dashboard queries using the helper method
+    const affectedTherapistCount = this.updateTherapistDashboardCaches(
+      deletedAppointment,
+      removeFunction,
+      "Appointment Deletion"
+    );
 
-    // Remove from driver dashboard queries
-    if (deletedAppointment.driver_id) {
-      queryClient.setQueryData(
-        ["appointments", "driver", deletedAppointment.driver_id],
-        (old = []) => old.filter((a) => a.id !== deletedAppointment.id)
-      );
-    }
+    // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+    const affectedDriverCount = this.updateDriverDashboardCaches(
+      deletedAppointment,
+      removeFunction,
+      "Appointment Deletion"
+    );
 
     // Use comprehensive cache invalidation that includes operator-specific queries
     invalidateAppointmentCaches(queryClient, {
@@ -427,6 +719,10 @@ class WebSocketTanStackService {
     }).catch((error) => {
       console.error("❌ WebSocket cache invalidation failed:", error);
     });
+
+    console.log(
+      `✅ WebSocket appointment deletion applied to all affected caches (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
+    );
 
     // Dispatch event for listeners
     this.dispatchEvent("appointment_deleted", {
@@ -451,6 +747,12 @@ class WebSocketTanStackService {
    * Handle driver assignment
    */
   handleDriverAssigned(data) {
+    console.log("🚗 WebSocket driver assignment received:", {
+      appointment_id: data.appointment_id,
+      driver_id: data.driver_id,
+      status: data.status,
+    });
+
     // Update the specific appointment with driver assignment
     const updateWithDriver = (oldData) => {
       if (!oldData) return oldData;
@@ -471,6 +773,51 @@ class WebSocketTanStackService {
     queryClient.setQueryData(["appointments", "today"], updateWithDriver);
     queryClient.setQueryData(["appointments", "upcoming"], updateWithDriver);
 
+    // CRITICAL FIX: Update therapist dashboard cache if we have appointment data
+    // Get the appointment to find affected therapists
+    const appointments = queryClient.getQueryData(["appointments"]) || [];
+    const affectedAppointment = appointments.find(
+      (apt) => apt.id === data.appointment_id
+    );
+
+    if (affectedAppointment) {
+      const affectedTherapistIds = new Set();
+
+      // Add all possible therapist IDs
+      if (affectedAppointment.therapist_id) {
+        affectedTherapistIds.add(affectedAppointment.therapist_id);
+      }
+      if (affectedAppointment.therapist) {
+        affectedTherapistIds.add(affectedAppointment.therapist);
+      }
+      if (
+        affectedAppointment.therapists &&
+        Array.isArray(affectedAppointment.therapists)
+      ) {
+        affectedAppointment.therapists.forEach((therapistId) => {
+          if (therapistId) affectedTherapistIds.add(therapistId);
+        });
+      }
+
+      // Update each therapist's cache
+      affectedTherapistIds.forEach((therapistId) => {
+        console.log(
+          `🩺 Updating TherapistDashboard cache for driver assignment - therapist ${therapistId}`
+        );
+
+        queryClient.setQueryData(
+          ["appointments", "therapist", therapistId],
+          updateWithDriver
+        );
+
+        // Also invalidate to trigger fresh fetch
+        queryClient.invalidateQueries({
+          queryKey: ["appointments", "therapist", therapistId],
+          refetchType: "active",
+        });
+      });
+    }
+
     console.log("✅ Driver assigned - cache updated");
 
     // Dispatch event for listeners
@@ -481,6 +828,14 @@ class WebSocketTanStackService {
    * Handle therapist acceptance
    */
   handleTherapistAcceptance(data) {
+    console.log("👩‍⚕️ WebSocket therapist acceptance received:", {
+      appointment_id: data.appointment_id,
+      therapist_accepted: data.therapist_accepted,
+      driver_accepted: data.driver_accepted,
+      both_accepted: data.both_accepted,
+      status: data.status,
+    });
+
     // Update appointment with acceptance status
     const updateWithAcceptance = (oldData) => {
       if (!oldData) return oldData;
@@ -505,7 +860,33 @@ class WebSocketTanStackService {
       updateWithAcceptance
     );
 
-    console.log("✅ Therapist acceptance updated - cache updated");
+    // CRITICAL FIX: Update therapist dashboard queries for affected appointment
+    // Get appointment to find therapist IDs
+    const appointments = queryClient.getQueryData(["appointments"]) || [];
+    const targetAppointment = appointments.find(
+      (apt) => apt.id === data.appointment_id
+    );
+
+    if (targetAppointment) {
+      const affectedTherapistCount = this.updateTherapistDashboardCaches(
+        targetAppointment,
+        updateWithAcceptance,
+        "Therapist Acceptance"
+      );
+
+      // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+      const affectedDriverCount = this.updateDriverDashboardCaches(
+        targetAppointment,
+        updateWithAcceptance,
+        "Therapist Acceptance"
+      );
+
+      console.log(
+        `✅ Therapist acceptance updated - cache updated (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
+      );
+    } else {
+      console.log("✅ Therapist acceptance updated - cache updated");
+    }
 
     // Dispatch event for listeners
     this.dispatchEvent("therapist_response", {
@@ -518,6 +899,12 @@ class WebSocketTanStackService {
    * Handle session started
    */
   handleSessionStarted(data) {
+    console.log("🎬 WebSocket session started received:", {
+      appointment_id: data.appointment_id,
+      session_started_at: data.session_started_at,
+      status: "session_in_progress",
+    });
+
     // Update appointment with session started status
     const updateWithSessionStart = (oldData) => {
       if (!oldData) return oldData;
@@ -526,7 +913,8 @@ class WebSocketTanStackService {
           ? {
               ...appointment,
               status: "session_in_progress",
-              session_started_at: data.session_started_at || new Date().toISOString(),
+              session_started_at:
+                data.session_started_at || new Date().toISOString(),
             }
           : appointment
       );
@@ -540,15 +928,44 @@ class WebSocketTanStackService {
       updateWithSessionStart
     );
 
+    // CRITICAL FIX: Update therapist dashboard queries for affected appointment
+    // Get appointment to find therapist IDs
+    const appointments = queryClient.getQueryData(["appointments"]) || [];
+    const targetAppointment = appointments.find(
+      (apt) => apt.id === data.appointment_id
+    );
+
+    if (targetAppointment) {
+      const affectedTherapistCount = this.updateTherapistDashboardCaches(
+        targetAppointment,
+        updateWithSessionStart,
+        "Session Started"
+      );
+
+      // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+      const affectedDriverCount = this.updateDriverDashboardCaches(
+        targetAppointment,
+        updateWithSessionStart,
+        "Session Started"
+      );
+
+      console.log(
+        `✅ Session started updated - cache updated (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
+      );
+    } else {
+      console.log("✅ Session started updated - cache updated");
+    }
+
     // Use comprehensive cache invalidation for real-time dashboard sync
     invalidateAppointmentCaches(queryClient, {
       userRole: "operator",
       invalidateAll: true,
     }).catch((error) => {
-      console.error("❌ WebSocket session start cache invalidation failed:", error);
+      console.error(
+        "❌ WebSocket session start cache invalidation failed:",
+        error
+      );
     });
-
-    console.log("✅ Session started - cache updated");
 
     // Dispatch event for listeners
     this.dispatchEvent("session_started", {
@@ -569,7 +986,8 @@ class WebSocketTanStackService {
           ? {
               ...appointment,
               status: "awaiting_payment",
-              session_completed_at: data.session_completed_at || new Date().toISOString(),
+              session_completed_at:
+                data.session_completed_at || new Date().toISOString(),
             }
           : appointment
       );
@@ -577,7 +995,10 @@ class WebSocketTanStackService {
 
     // Update all relevant queries
     queryClient.setQueryData(["appointments"], updateWithPaymentStatus);
-    queryClient.setQueryData(["appointments", "today"], updateWithPaymentStatus);
+    queryClient.setQueryData(
+      ["appointments", "today"],
+      updateWithPaymentStatus
+    );
     queryClient.setQueryData(
       ["appointments", "upcoming"],
       updateWithPaymentStatus
@@ -588,7 +1009,10 @@ class WebSocketTanStackService {
       userRole: "operator",
       invalidateAll: true,
     }).catch((error) => {
-      console.error("❌ WebSocket awaiting payment cache invalidation failed:", error);
+      console.error(
+        "❌ WebSocket awaiting payment cache invalidation failed:",
+        error
+      );
     });
 
     console.log("✅ Awaiting payment status - cache updated");
@@ -604,6 +1028,11 @@ class WebSocketTanStackService {
    * Handle appointment started by operator
    */
   handleAppointmentStarted(data) {
+    console.log("🎬 WebSocket appointment started received:", {
+      appointment_id: data.appointment_id,
+      started_at: data.started_at,
+    });
+
     // Update appointment with started status
     const updateWithStartStatus = (oldData) => {
       if (!oldData) return oldData;
@@ -626,15 +1055,43 @@ class WebSocketTanStackService {
       updateWithStartStatus
     );
 
+    // CRITICAL FIX: Update all therapist and driver dashboard queries using helper methods
+    const appointments = queryClient.getQueryData(["appointments"]) || [];
+    const affectedAppointment = appointments.find(
+      (apt) => apt.id === data.appointment_id
+    );
+
+    if (affectedAppointment) {
+      const affectedTherapistCount = this.updateTherapistDashboardCaches(
+        affectedAppointment,
+        updateWithStartStatus,
+        "Appointment Started"
+      );
+
+      // ✅ CRITICAL FIX: Update all driver dashboard queries using the helper method
+      const affectedDriverCount = this.updateDriverDashboardCaches(
+        affectedAppointment,
+        updateWithStartStatus,
+        "Appointment Started"
+      );
+
+      console.log(
+        `✅ Appointment started - cache updated (${affectedTherapistCount} therapists, ${affectedDriverCount} drivers affected)`
+      );
+    } else {
+      console.log("✅ Appointment started - cache updated");
+    }
+
     // Use comprehensive cache invalidation for real-time dashboard sync
     invalidateAppointmentCaches(queryClient, {
       userRole: "operator",
       invalidateAll: true,
     }).catch((error) => {
-      console.error("❌ WebSocket appointment start cache invalidation failed:", error);
+      console.error(
+        "❌ WebSocket appointment start cache invalidation failed:",
+        error
+      );
     });
-
-    console.log("✅ Appointment started - cache updated");
 
     // Dispatch event for listeners
     this.dispatchEvent("appointment_started", {
@@ -650,7 +1107,7 @@ class WebSocketTanStackService {
     console.log("📋 WebSocket initial data received:", {
       appointmentCount: data.appointments?.length || 0,
       connectionId: data.connection_id,
-      timestamp: data.timestamp
+      timestamp: data.timestamp,
     });
 
     // If appointments are provided in initial data, update the cache
@@ -658,19 +1115,25 @@ class WebSocketTanStackService {
       // Update global appointments list with initial data
       queryClient.setQueryData(["appointments"], (old = []) => {
         // Merge with existing data, preventing duplicates
-        const existingIds = new Set(old.map(a => a.id));
-        const newAppointments = data.appointments.filter(a => !existingIds.has(a.id));
+        const existingIds = new Set(old.map((a) => a.id));
+        const newAppointments = data.appointments.filter(
+          (a) => !existingIds.has(a.id)
+        );
         return [...old, ...newAppointments];
       });
 
       // Update today's appointments if applicable
       const today = new Date().toISOString().split("T")[0];
-      const todaysAppointments = data.appointments.filter(apt => apt.date === today);
-      
+      const todaysAppointments = data.appointments.filter(
+        (apt) => apt.date === today
+      );
+
       if (todaysAppointments.length > 0) {
         queryClient.setQueryData(["appointments", "today"], (old = []) => {
-          const existingIds = new Set(old.map(a => a.id));
-          const newTodayAppointments = todaysAppointments.filter(a => !existingIds.has(a.id));
+          const existingIds = new Set(old.map((a) => a.id));
+          const newTodayAppointments = todaysAppointments.filter(
+            (a) => !existingIds.has(a.id)
+          );
           return [...old, ...newTodayAppointments];
         });
       }
@@ -689,9 +1152,15 @@ class WebSocketTanStackService {
   /**
    * Handle heartbeat messages
    */
-  handleHeartbeat() {
-    // Respond to heartbeat to keep connection alive
-    this.send({ type: "heartbeat_response", timestamp: Date.now() });
+  handleHeartbeat(message) {
+    // Handle heartbeat from server - respond to keep connection alive
+    if (message && message.type === "heartbeat") {
+      this.send({ type: "heartbeat_response", timestamp: Date.now() });
+      console.log("💓 Heartbeat received - sent response");
+    } else {
+      // Handle heartbeat_response from server
+      console.log("💓 Heartbeat response received from server");
+    }
   }
 
   /**

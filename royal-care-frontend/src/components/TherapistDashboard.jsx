@@ -1,17 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
-import { useNavigate, useSearchParams } from "react-router-dom";
-// Cache invalidation utility
-import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
-// Import shared Philippine time and greeting hook
-import { usePhilippineTime } from "../hooks/usePhilippineTime";
-import { useAutoWebSocketCacheSync } from "../hooks/useWebSocketCacheSync";
+// TanStack Query hooks for data management (removing Redux dependencies)
+import useDashboardCommon from "../hooks/useDashboardCommon";
+import { useTherapistDashboardData } from "../hooks/useDashboardQueries";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
-import { queryKeys } from "../lib/queryClient";
+import { syncMutationSuccess } from "../services/realTimeSyncService";
+import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
+// ✅ CRITICAL FIX: Import handleWebSocketUpdate for comprehensive cache management
 
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -19,6 +18,7 @@ import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css";
+import { getUser, getUserDisplayName } from "../utils/userUtils";
 import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
 import Calendar from "./scheduling/Calendar";
@@ -35,141 +35,14 @@ const getBaseURL = () => {
 
 const API_URL = `${getBaseURL()}/scheduling/`;
 
-// Helper function for TanStack Query-only cache invalidation
-const invalidateAppointmentQueries = async (queryClient, delay = 0) => {
-  console.log("🔄 Invalidating appointment queries (TanStack Query only)");
-
-  // Add optional delay for backend propagation
-  if (delay > 0) {
-    console.log(`⏳ Waiting ${delay}ms for backend propagation...`);
-    await new Promise((resolve) => setTimeout(resolve, delay));
-  }
-
-  // Get current data before invalidation for debugging
-  const beforeInvalidation = queryClient.getQueryData(["appointments"]);
-  console.log(
-    "📊 Data before invalidation:",
-    beforeInvalidation?.length,
-    "appointments"
-  );
-
-  // Invalidate all appointment-related queries
-  await Promise.all(
-    [
-      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "today"] }),
-      queryClient.invalidateQueries({ queryKey: ["appointments", "upcoming"] }),
-      // Invalidate specific query keys if they exist
-      queryKeys?.appointments?.all &&
-        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-      queryKeys?.appointments?.list &&
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.list(),
-        }),
-      queryKeys?.appointments?.today &&
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.today(),
-        }),
-      queryKeys?.appointments?.upcoming &&
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.appointments.upcoming(),
-        }),
-    ].filter(Boolean)
-  );
-
-  console.log("✅ Appointment queries invalidated successfully");
-
-  // Wait a bit and check the data after invalidation
-  setTimeout(() => {
-    const afterInvalidation = queryClient.getQueryData(["appointments"]);
-    console.log(
-      "📊 Data after invalidation:",
-      afterInvalidation?.length,
-      "appointments"
-    );
-  }, 100);
-};
+// ✅ SIMPLIFIED: Remove complex invalidation - use DriverDashboard pattern
+// The complex invalidation function caused race conditions and over-invalidation
+// DriverDashboard uses simple cache invalidation that works reliably
 
 // Helper to get auth token
 const getToken = () => localStorage.getItem("knoxToken");
 
-// Helper to get user from localStorage
-const getUser = () => {
-  const storedUser = localStorage.getItem("user");
-  if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
-    try {
-      return JSON.parse(storedUser);
-    } catch (error) {
-      console.error("Failed to parse user data:", error);
-      localStorage.removeItem("user");
-      return null;
-    }
-  }
-  return null;
-};
-
 // TanStack Query functions for fetching appointments data
-const fetchAppointments = async () => {
-  const token = getToken();
-  if (!token) throw new Error("Authentication required");
-
-  const response = await axios.get(`${API_URL}appointments/`, {
-    headers: { Authorization: `Token ${token}` },
-  });
-  return response.data.results || response.data;
-};
-
-// TanStack Query hook for therapist dashboard data
-const useTherapistDashboardData = (userId) => {
-  const {
-    data: allAppointments = [],
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ["appointments"],
-    queryFn: fetchAppointments,
-    staleTime: 30000, // 30 seconds
-    refetchOnWindowFocus: true,
-    retry: 3,
-  });
-
-  // Filter appointments for this therapist
-  const myAppointments = useMemo(() => {
-    if (!Array.isArray(allAppointments) || !userId) return [];
-    return allAppointments.filter(
-      (apt) =>
-        apt.therapist === userId ||
-        (apt.therapists && apt.therapists.includes(userId))
-    );
-  }, [allAppointments, userId]);
-
-  // Filter today's appointments
-  const todayAppointments = useMemo(() => {
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
-    return myAppointments.filter((apt) => apt.date === todayStr);
-  }, [myAppointments]);
-
-  // Filter upcoming appointments (future dates)
-  const upcomingAppointments = useMemo(() => {
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
-    return myAppointments.filter((apt) => apt.date > todayStr);
-  }, [myAppointments]);
-
-  return {
-    appointments: myAppointments,
-    todayAppointments,
-    upcomingAppointments,
-    isLoading,
-    error,
-    refetch,
-    hasData: allAppointments.length > 0,
-  };
-};
-
 // API calls for therapist actions
 const therapistAPI = {
   acceptAppointment: async (appointmentId) => {
@@ -265,721 +138,290 @@ const therapistAPI = {
     return response.data;
   },
 };
-
 const TherapistDashboard = () => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Initialize real-time cache sync via WebSocket
-  useAutoWebSocketCacheSync();
+  // ✅ CRITICAL FIX: Memoize user to prevent infinite re-renders
+  const user = useMemo(() => getUser(), []);
 
-  // Get user from localStorage instead of Redux
-  const user = getUser();
+  // Extract user name for display
+  const userName = getUserDisplayName(user, "Therapist");
 
-  // TanStack Query mutations for therapist actions
+  // ✅ DEBUG: Log user information ONCE during component mount
+  useEffect(() => {
+    console.log("� DEBUG: TherapistDashboard user state:", {
+      user,
+      userId: user?.id,
+      userName: user?.first_name || user?.username,
+      userType: user?.user_type || user?.role,
+    });
+  }, [user]);
+
+  // TanStack Query data fetching with optimized configuration
+  const {
+    appointments: myAppointments,
+    todayAppointments: myTodayAppointments,
+    upcomingAppointments: myUpcomingAppointments,
+    isLoading: loading,
+    error,
+    refetch,
+    hasData,
+  } = useTherapistDashboardData(user?.id);
+
+  // ✅ SIMPLIFIED: Use standardized WebSocket cache sync like DriverDashboard
+  // This replaces the complex manual WebSocket listener setup with the standardized approach
+  // that automatically handles cache invalidation across all dashboards
+
+  // ✅ DEBUG: Log the data received ONLY when data changes
+  useEffect(() => {
+    console.log("🔍 TherapistDashboard data changed:", {
+      dataLength: myAppointments?.length,
+      timestamp: new Date().toLocaleTimeString(),
+      isLoading: loading,
+      appointmentIds: myAppointments?.map((apt) => apt.id),
+      appointmentStatuses: myAppointments?.map((apt) => ({
+        id: apt.id,
+        status: apt.status,
+      })),
+    });
+  }, [myAppointments, loading]);
+
+  // Add manual refresh function for debugging
+  const manualRefresh = useCallback(async () => {
+    console.log("🔄 Manual refresh triggered by user");
+    try {
+      await refetch();
+      console.log("✅ Manual refresh completed");
+    } catch (error) {
+      console.error("❌ Manual refresh failed:", error);
+    }
+  }, [refetch]);
+
+  // ✅ DEBUGGING: Add window function for manual testing
+  useEffect(() => {
+    window.refreshTherapistDashboard = manualRefresh;
+    return () => {
+      delete window.refreshTherapistDashboard;
+    };
+  }, [manualRefresh]);
+  useEffect(() => {
+    console.log("🔍 DEBUG: TherapistDashboard data state:", {
+      myAppointmentsLength: myAppointments?.length || 0,
+      myAppointmentsIsArray: Array.isArray(myAppointments),
+      myTodayAppointments: myTodayAppointments,
+      myTodayAppointmentsLength: myTodayAppointments?.length || 0,
+      myUpcomingAppointments: myUpcomingAppointments,
+      myUpcomingAppointmentsLength: myUpcomingAppointments?.length || 0,
+      loading,
+      error,
+      hasData,
+      userId: user?.id,
+    });
+  }, [
+    myAppointments,
+    myTodayAppointments,
+    myUpcomingAppointments,
+    loading,
+    error,
+    hasData,
+    user?.id,
+  ]);
+
+  // ✅ SIMPLIFIED MUTATIONS: Use DriverDashboard pattern for simpler, more reliable updates
   const acceptAppointmentMutation = useMutation({
     mutationFn: therapistAPI.acceptAppointment,
-    onMutate: async (appointmentId) => {
-      await queryClient.cancelQueries({ queryKey: ["appointments"] });
+    onSuccess: async (backendData, appointmentId) => {
+      console.log("✅ Accept appointment mutation successful");
 
-      const previousData = {
-        appointments: queryClient.getQueryData(["appointments"]),
-        today: queryClient.getQueryData(["appointments", "today"]),
-        upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-      };
+      // ✅ SIMPLIFIED: Use DriverDashboard pattern - just invalidate cache and let TanStack Query handle the rest
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
 
-      // Optimistic update
-      const optimisticUpdate = (oldData) => {
-        if (!oldData) return oldData;
-        return oldData.map((apt) =>
-          apt.id === appointmentId
-            ? {
-                ...apt,
-                status: "therapist_confirmed",
-                therapist_accepted: true,
-                therapist_accepted_at: new Date().toISOString(),
-              }
-            : apt
-        );
-      };
+      // ✅ REAL-TIME SYNC: Broadcast the change for other dashboards
+      syncMutationSuccess(
+        "accept_appointment",
+        appointmentId,
+        backendData,
+        "therapist"
+      );
 
-      queryClient.setQueryData(["appointments"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
-
-      return { previousData };
+      console.log(
+        "✅ Accept appointment - cache invalidated like DriverDashboard"
+      );
     },
-    onSuccess: async () => {
-      await invalidateAppointmentQueries(queryClient);
-    },
-    onError: (error, variables, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          ["appointments"],
-          context.previousData.appointments
-        );
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          context.previousData.today
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          context.previousData.upcoming
-        );
-      }
+    onError: (error) => {
+      console.error("❌ Accept appointment mutation failed:", error);
     },
   });
 
   const rejectAppointmentMutation = useMutation({
     mutationFn: therapistAPI.rejectAppointment,
-    onMutate: async ({ appointmentId, rejectionReason }) => {
-      await queryClient.cancelQueries({ queryKey: ["appointments"] });
+    onSuccess: async (backendData, { appointmentId }) => {
+      console.log("✅ Reject appointment mutation successful");
 
-      const previousData = {
-        appointments: queryClient.getQueryData(["appointments"]),
-        today: queryClient.getQueryData(["appointments", "today"]),
-        upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-      };
+      // ✅ SIMPLIFIED: Use DriverDashboard pattern - just invalidate cache
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
 
-      // Optimistic update
-      const optimisticUpdate = (oldData) => {
-        if (!oldData) return oldData;
-        return oldData.map((apt) =>
-          apt.id === appointmentId
-            ? {
-                ...apt,
-                status: "rejected",
-                rejection_reason: rejectionReason,
-                rejected_at: new Date().toISOString(),
-                rejected_by: user?.id,
-              }
-            : apt
-        );
-      };
+      // ✅ REAL-TIME SYNC: Broadcast the change for other dashboards
+      syncMutationSuccess(
+        "reject_appointment",
+        appointmentId,
+        backendData,
+        "therapist"
+      );
 
-      queryClient.setQueryData(["appointments"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
-
-      return { previousData };
+      console.log(
+        "✅ Reject appointment - cache invalidated like DriverDashboard"
+      );
     },
-    onSuccess: async () => {
-      await invalidateAppointmentQueries(queryClient);
-    },
-    onError: (error, variables, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          ["appointments"],
-          context.previousData.appointments
-        );
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          context.previousData.today
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          context.previousData.upcoming
-        );
-      }
+    onError: (error) => {
+      console.error("❌ Reject appointment mutation failed:", error);
     },
   });
 
   const confirmReadinessMutation = useMutation({
     mutationFn: therapistAPI.confirmReadiness,
-    onMutate: async (appointmentId) => {
-      await queryClient.cancelQueries({ queryKey: ["appointments"] });
+    onSuccess: async (backendData, appointmentId) => {
+      console.log("✅ Confirm readiness mutation successful");
 
-      const previousData = {
-        appointments: queryClient.getQueryData(["appointments"]),
-        today: queryClient.getQueryData(["appointments", "today"]),
-        upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-      };
+      // ✅ SIMPLIFIED: Use DriverDashboard pattern - just invalidate cache
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
 
-      // Optimistic update to show "therapist_confirmed" status immediately
-      const optimisticUpdate = (oldData) => {
-        if (!oldData) return oldData;
-        return oldData.map((apt) =>
-          apt.id === appointmentId
-            ? {
-                ...apt,
-                status: "therapist_confirmed",
-                therapist_accepted: true,
-                therapist_accepted_at: new Date().toISOString(),
-              }
-            : apt
-        );
-      };
+      // ✅ REAL-TIME SYNC: Broadcast the change for other dashboards
+      syncMutationSuccess(
+        "confirm_readiness",
+        appointmentId,
+        backendData,
+        "therapist"
+      );
 
-      queryClient.setQueryData(["appointments"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
-
-      return { previousData };
+      console.log(
+        "✅ Confirm readiness - cache invalidated like DriverDashboard"
+      );
     },
-    onSuccess: async () => {
-      await invalidateAppointmentQueries(queryClient);
-    },
-    onError: (error, variables, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          ["appointments"],
-          context.previousData.appointments
-        );
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          context.previousData.today
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          context.previousData.upcoming
-        );
-      }
+    onError: (error) => {
+      console.error("❌ Confirm readiness mutation failed:", error);
     },
   });
 
   const startSessionMutation = useMutation({
     mutationFn: therapistAPI.startSession,
-    onMutate: async (appointmentId) => {
-      console.log(
-        "🚀 startSessionMutation.onMutate - Starting optimistic update for ID:",
-        appointmentId
-      );
-
-      await queryClient.cancelQueries({ queryKey: ["appointments"] });
-
-      const previousData = {
-        appointments: queryClient.getQueryData(["appointments"]),
-        today: queryClient.getQueryData(["appointments", "today"]),
-        upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-      };
-
-      // Debug: Log current appointment before optimistic update
-      const currentAppointment = previousData.appointments?.find(
-        (apt) => apt.id === appointmentId
-      );
-      console.log(
-        "🔍 Current appointment status before optimistic update:",
-        currentAppointment?.status
-      );
-
-      // Optimistic update to show "session_in_progress" status immediately
-      const optimisticUpdate = (oldData) => {
-        if (!oldData) return oldData;
-        return oldData.map((apt) =>
-          apt.id === appointmentId
-            ? {
-                ...apt,
-                status: "session_in_progress",
-                session_started_at: new Date().toISOString(),
-                started_by: user?.id,
-                // Preserve other important appointment data
-                payment_status: apt.payment_status,
-                therapist_id: apt.therapist_id,
-                client_id: apt.client_id,
-                driver_id: apt.driver_id,
-                payment_initiated_at: apt.payment_initiated_at,
-              }
-            : apt
-        );
-      };
-
-      queryClient.setQueryData(["appointments"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
-
-      // Debug: Verify optimistic update
-      const updatedData = queryClient.getQueryData(["appointments"]);
-      const updatedAppointment = updatedData?.find(
-        (apt) => apt.id === appointmentId
-      );
-      console.log(
-        "✅ Optimistic update applied - New status:",
-        updatedAppointment?.status
-      );
-
-      return { previousData };
-    },
     onSuccess: async (backendData, appointmentId) => {
-      console.log(
-        "🎉 startSessionMutation.onSuccess - Backend response:",
-        backendData
+      console.log("✅ Start session mutation successful");
+
+      // ✅ SIMPLIFIED: Use DriverDashboard pattern - just invalidate cache
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+
+      // ✅ REAL-TIME SYNC: Broadcast the change for other dashboards
+      const updateData = {
+        status: "session_in_progress",
+        session_started_at: new Date().toISOString(),
+        started_by: user?.id,
+        ...(backendData?.appointment || {}),
+      };
+
+      syncMutationSuccess(
+        "start_session",
+        appointmentId,
+        updateData,
+        "therapist"
       );
 
-      // First, check what the backend actually returned
-      if (backendData?.appointment) {
-        console.log("� Backend appointment data:", {
-          id: backendData.appointment.id,
-          status: backendData.appointment.status,
-          session_started_at: backendData.appointment.session_started_at,
-        });
-
-        // If backend returned the appointment data, use it directly
-        const optimisticUpdate = (oldData) => {
-          if (!oldData) return oldData;
-          return oldData.map((apt) =>
-            apt.id === appointmentId
-              ? { ...apt, ...backendData.appointment }
-              : apt
-          );
-        };
-
-        queryClient.setQueryData(["appointments"], optimisticUpdate);
-        queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          optimisticUpdate
-        );
-
-        console.log("✅ Applied backend data directly to cache");
-      } else {
-        console.log(
-          "⚠️ Backend didn't return appointment data, maintaining optimistic update"
-        );
-
-        // Ensure the optimistic update persists by re-applying it
-        const maintainOptimisticUpdate = (oldData) => {
-          if (!oldData) return oldData;
-          return oldData.map((apt) =>
-            apt.id === appointmentId && apt.status !== "session_in_progress"
-              ? {
-                  ...apt,
-                  status: "session_in_progress",
-                  session_started_at: new Date().toISOString(),
-                  started_by: user?.id,
-                }
-              : apt
-          );
-        };
-
-        queryClient.setQueryData(["appointments"], maintainOptimisticUpdate);
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          maintainOptimisticUpdate
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          maintainOptimisticUpdate
-        );
-
-        console.log("✅ Maintained optimistic update in cache");
-      }
-
-      // Only invalidate other related queries, not the main appointments
-      setTimeout(async () => {
-        // Invalidate related queries but preserve our updated appointment data
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["notifications"] }),
-          queryClient.invalidateQueries({ queryKey: ["attendance"] }),
-          queryClient.invalidateQueries({ queryKey: ["availability"] }),
-        ]);
-        console.log("✅ Related queries invalidated");
-      }, 100);
+      console.log("✅ Start session - cache invalidated like DriverDashboard");
     },
-    onError: (error, variables, context) => {
-      console.error("❌ startSessionMutation.onError:", error);
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          ["appointments"],
-          context.previousData.appointments
-        );
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          context.previousData.today
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          context.previousData.upcoming
-        );
-      }
+    onError: (error) => {
+      console.error("❌ Start session mutation failed:", error);
     },
   });
 
   const requestPaymentMutation = useMutation({
     mutationFn: therapistAPI.requestPayment,
-    onMutate: async (appointmentId) => {
+    onSuccess: async () => {
+      console.log("✅ Request payment mutation successful");
+
+      // ✅ SIMPLIFIED: Use DriverDashboard pattern - just invalidate cache
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+
       console.log(
-        "🚀 requestPaymentMutation.onMutate - Starting optimistic update for ID:",
-        appointmentId
+        "✅ Request payment - cache invalidated like DriverDashboard"
       );
-
-      // Cancel ongoing queries to prevent race conditions
-      await queryClient.cancelQueries({ queryKey: ["appointments"] });
-
-      const previousData = {
-        appointments: queryClient.getQueryData(["appointments"]),
-        today: queryClient.getQueryData(["appointments", "today"]),
-        upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-      };
-
-      // Debug: Log current appointment before optimistic update
-      const currentAppointment = previousData.appointments?.find(
-        (apt) => apt.id === appointmentId
-      );
-      console.log(
-        "🔍 Current appointment status before payment request:",
-        currentAppointment?.status
-      );
-
-      // Optimistic update to show "awaiting_payment" status immediately
-      const optimisticUpdate = (oldData) => {
-        if (!oldData) return oldData;
-        return oldData.map((apt) =>
-          apt.id === appointmentId
-            ? {
-                ...apt,
-                status: "awaiting_payment",
-                payment_initiated_at: new Date().toISOString(),
-                payment_requested_by: user?.id,
-                // Preserve other appointment data
-                session_started_at: apt.session_started_at,
-                therapist_id: apt.therapist_id,
-                client_id: apt.client_id,
-                driver_id: apt.driver_id,
-              }
-            : apt
-        );
-      };
-
-      queryClient.setQueryData(["appointments"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
-
-      // Debug: Verify optimistic update
-      const updatedData = queryClient.getQueryData(["appointments"]);
-      const updatedAppointment = updatedData?.find(
-        (apt) => apt.id === appointmentId
-      );
-      console.log(
-        "✅ Payment request optimistic update applied - New status:",
-        updatedAppointment?.status
-      );
-
-      return { previousData };
     },
-    onSuccess: async (backendData, appointmentId) => {
-      console.log(
-        "🎉 requestPaymentMutation.onSuccess - Backend response:",
-        backendData
-      );
-
-      // Always apply the backend data if available, otherwise maintain optimistic update
-      if (backendData?.appointment) {
-        console.log("📦 Backend payment appointment data:", {
-          id: backendData.appointment.id,
-          status: backendData.appointment.status,
-          payment_initiated_at: backendData.appointment.payment_initiated_at,
-        });
-
-        // Apply backend data while preserving cache structure
-        const updateWithBackendData = (oldData) => {
-          if (!oldData) return oldData;
-          return oldData.map((apt) =>
-            apt.id === appointmentId
-              ? { ...apt, ...backendData.appointment }
-              : apt
-          );
-        };
-
-        queryClient.setQueryData(["appointments"], updateWithBackendData);
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          updateWithBackendData
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          updateWithBackendData
-        );
-
-        console.log("✅ Applied backend payment data directly to cache");
-      } else {
-        console.log(
-          "⚠️ Backend didn't return appointment data, maintaining optimistic payment update"
-        );
-
-        // Ensure the optimistic update persists by re-applying it
-        const maintainOptimisticUpdate = (oldData) => {
-          if (!oldData) return oldData;
-          return oldData.map((apt) =>
-            apt.id === appointmentId && apt.status !== "awaiting_payment"
-              ? {
-                  ...apt,
-                  status: "awaiting_payment",
-                  payment_initiated_at: new Date().toISOString(),
-                  payment_requested_by: user?.id,
-                }
-              : apt
-          );
-        };
-
-        queryClient.setQueryData(["appointments"], maintainOptimisticUpdate);
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          maintainOptimisticUpdate
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          maintainOptimisticUpdate
-        );
-
-        console.log("✅ Maintained optimistic payment update in cache");
-      }
-
-      // Only invalidate other related queries, not the main appointments
-      setTimeout(async () => {
-        // Invalidate related queries but preserve our updated appointment data
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["notifications"] }),
-          queryClient.invalidateQueries({ queryKey: ["payments"] }),
-          queryClient.invalidateQueries({ queryKey: ["sales"] }),
-          queryClient.invalidateQueries({ queryKey: ["reports"] }),
-        ]);
-        console.log("✅ Payment-related queries invalidated");
-      }, 100);
-    },
-    onError: (error, variables, context) => {
-      console.error("❌ requestPaymentMutation.onError:", error);
-
-      // Rollback optimistic updates on error
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          ["appointments"],
-          context.previousData.appointments
-        );
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          context.previousData.today
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          context.previousData.upcoming
-        );
-        console.log("🔄 Rolled back payment optimistic updates due to error");
-      }
+    onError: (error) => {
+      console.error("❌ Request payment mutation failed:", error);
     },
   });
 
   const completeSessionMutation = useMutation({
     mutationFn: therapistAPI.completeSession,
-    onMutate: async (appointmentId) => {
+    onSuccess: async () => {
+      console.log("✅ Complete session mutation successful");
+
+      // ✅ SIMPLIFIED: Use DriverDashboard pattern - just invalidate cache
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
+
       console.log(
-        "🚀 completeSessionMutation.onMutate - Starting optimistic update for ID:",
-        appointmentId
+        "✅ Complete session - cache invalidated like DriverDashboard"
       );
-
-      await queryClient.cancelQueries({ queryKey: ["appointments"] });
-
-      const previousData = {
-        appointments: queryClient.getQueryData(["appointments"]),
-        today: queryClient.getQueryData(["appointments", "today"]),
-        upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-      };
-
-      // Optimistic update to show "completed" status immediately
-      const optimisticUpdate = (oldData) => {
-        if (!oldData) return oldData;
-        return oldData.map((apt) =>
-          apt.id === appointmentId
-            ? {
-                ...apt,
-                status: "completed",
-                session_end_time: new Date().toISOString(),
-                completed_by: user?.id,
-                // Preserve other appointment data
-                session_started_at: apt.session_started_at,
-                payment_initiated_at: apt.payment_initiated_at,
-                therapist_id: apt.therapist_id,
-                client_id: apt.client_id,
-                driver_id: apt.driver_id,
-              }
-            : apt
-        );
-      };
-
-      queryClient.setQueryData(["appointments"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
-
-      console.log("✅ Complete session optimistic update applied");
-      return { previousData };
     },
-    onSuccess: async (backendData, appointmentId) => {
-      console.log(
-        "🎉 completeSessionMutation.onSuccess - Backend response:",
-        backendData
-      );
-
-      // Always apply the backend data if available, otherwise maintain optimistic update
-      if (backendData?.appointment) {
-        console.log("📦 Backend completion appointment data:", {
-          id: backendData.appointment.id,
-          status: backendData.appointment.status,
-          session_end_time: backendData.appointment.session_end_time,
-        });
-
-        // Apply backend data while preserving cache structure
-        const updateWithBackendData = (oldData) => {
-          if (!oldData) return oldData;
-          return oldData.map((apt) =>
-            apt.id === appointmentId
-              ? { ...apt, ...backendData.appointment }
-              : apt
-          );
-        };
-
-        queryClient.setQueryData(["appointments"], updateWithBackendData);
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          updateWithBackendData
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          updateWithBackendData
-        );
-
-        console.log("✅ Applied backend completion data directly to cache");
-      } else {
-        console.log(
-          "⚠️ Backend didn't return appointment data, maintaining optimistic completion update"
-        );
-
-        // Ensure the optimistic update persists by re-applying it
-        const maintainOptimisticUpdate = (oldData) => {
-          if (!oldData) return oldData;
-          return oldData.map((apt) =>
-            apt.id === appointmentId && apt.status !== "completed"
-              ? {
-                  ...apt,
-                  status: "completed",
-                  session_end_time: new Date().toISOString(),
-                  completed_by: user?.id,
-                }
-              : apt
-          );
-        };
-
-        queryClient.setQueryData(["appointments"], maintainOptimisticUpdate);
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          maintainOptimisticUpdate
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          maintainOptimisticUpdate
-        );
-
-        console.log("✅ Maintained optimistic completion update in cache");
-      }
-
-      // Only invalidate other related queries, not the main appointments
-      setTimeout(async () => {
-        // Invalidate related queries but preserve our updated appointment data
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["notifications"] }),
-          queryClient.invalidateQueries({ queryKey: ["payments"] }),
-          queryClient.invalidateQueries({ queryKey: ["sales"] }),
-          queryClient.invalidateQueries({ queryKey: ["reports"] }),
-          queryClient.invalidateQueries({ queryKey: ["availability"] }),
-        ]);
-        console.log("✅ Completion-related queries invalidated");
-      }, 100);
-    },
-    onError: (error, variables, context) => {
-      console.error("❌ completeSessionMutation.onError:", error);
-
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          ["appointments"],
-          context.previousData.appointments
-        );
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          context.previousData.today
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          context.previousData.upcoming
-        );
-        console.log(
-          "🔄 Rolled back completion optimistic updates due to error"
-        );
-      }
+    onError: (error) => {
+      console.error("❌ Complete session mutation failed:", error);
     },
   });
 
   const requestPickupMutation = useMutation({
     mutationFn: therapistAPI.requestPickup,
-    onMutate: async ({ appointmentId, urgency = "normal" }) => {
-      await queryClient.cancelQueries({ queryKey: ["appointments"] });
+    onSuccess: async (backendData, { appointmentId }) => {
+      console.log("✅ Request pickup mutation successful");
 
-      const previousData = {
-        appointments: queryClient.getQueryData(["appointments"]),
-        today: queryClient.getQueryData(["appointments", "today"]),
-        upcoming: queryClient.getQueryData(["appointments", "upcoming"]),
-      };
+      // ✅ SIMPLIFIED: Use DriverDashboard pattern - just invalidate cache
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active",
+      });
 
-      // Optimistic update to show "pickup_requested" status immediately
-      const optimisticUpdate = (oldData) => {
-        if (!oldData) return oldData;
-        return oldData.map((apt) =>
-          apt.id === appointmentId
-            ? {
-                ...apt,
-                status: "pickup_requested",
-                pickup_urgency: urgency,
-                pickup_request_time: new Date().toISOString(),
-                pickup_requested_by: user?.id,
-              }
-            : apt
-        );
-      };
+      // ✅ REAL-TIME SYNC: Broadcast the change for other dashboards
+      syncMutationSuccess(
+        "request_pickup",
+        appointmentId,
+        backendData,
+        "therapist"
+      );
 
-      queryClient.setQueryData(["appointments"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "today"], optimisticUpdate);
-      queryClient.setQueryData(["appointments", "upcoming"], optimisticUpdate);
-
-      return { previousData };
+      console.log("✅ Request pickup - cache invalidated like DriverDashboard");
     },
-    onSuccess: async () => {
-      await invalidateAppointmentQueries(queryClient);
-    },
-    onError: (error, variables, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          ["appointments"],
-          context.previousData.appointments
-        );
-        queryClient.setQueryData(
-          ["appointments", "today"],
-          context.previousData.today
-        );
-        queryClient.setQueryData(
-          ["appointments", "upcoming"],
-          context.previousData.upcoming
-        );
-      }
+    onError: (error) => {
+      console.error("❌ Request pickup mutation failed:", error);
     },
   });
 
-  // Get user name from user object or fallback
-  const userName =
-    user?.first_name && user?.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user?.username || "Therapist";
+  // ✅ REFACTORED: Use common dashboard hook for shared functionality
+  const {
+    systemTime,
+    greeting,
+    currentView,
+    setView,
+    handleLogout,
+    buttonLoading,
+    setActionLoading,
+  } = useDashboardCommon("today");
 
-  // Use shared Philippine time and greeting hook
-  const { systemTime, greeting } = usePhilippineTime();
-
-  // URL search params for view persistence
-  const [searchParams, setSearchParams] = useSearchParams();
-  // Get view from URL params, default to 'today'
-  const currentView = searchParams.get("view") || "today";
-
-  // Helper function to update view in URL
-  const setView = (newView) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set("view", newView);
-    setSearchParams(newSearchParams);
-  };
   const [rejectionModal, setRejectionModal] = useState({
     isOpen: false,
     appointmentId: null,
@@ -993,26 +435,42 @@ const TherapistDashboard = () => {
     isSubmitting: false,
   });
 
-  // Loading states for individual button actions
-  const [buttonLoading, setButtonLoading] = useState({});
-
-  // Helper function to set loading state for specific action
-  const setActionLoading = (actionKey, isLoading) => {
-    setButtonLoading((prev) => ({
-      ...prev,
-      [actionKey]: isLoading,
-    }));
+  // Modal helper functions
+  const openRejectionModal = ({ appointmentId }) => {
+    setRejectionModal({
+      isOpen: true,
+      appointmentId,
+    });
   };
-  // TANSTACK QUERY: Replace optimized data manager with TanStack Query
-  const {
-    appointments: myAppointments,
-    todayAppointments: myTodayAppointments,
-    upcomingAppointments: myUpcomingAppointments,
-    isLoading: loading,
-    error,
-    refetch,
-    hasData,
-  } = useTherapistDashboardData(user?.id);
+
+  const closeRejectionModal = () => {
+    setRejectionModal({
+      isOpen: false,
+      appointmentId: null,
+    });
+  };
+
+  const openMaterialModal = ({ appointmentId, materials = [] }) => {
+    setMaterialModal({
+      isOpen: true,
+      appointmentId,
+      materials,
+      isSubmitting: false,
+    });
+  };
+
+  const closeMaterialModal = () => {
+    setMaterialModal({
+      isOpen: false,
+      appointmentId: null,
+      materials: [],
+      isSubmitting: false,
+    });
+  };
+
+  const updateMaterialModal = (updates) => {
+    setMaterialModal((prev) => ({ ...prev, ...updates }));
+  };
 
   // Debug logging for troubleshooting the "No appointments found" issue
   const DEBUG_LOGS = false; // Set to true to enable debug logs
@@ -1035,14 +493,7 @@ const TherapistDashboard = () => {
     });
   }
 
-  // TANSTACK QUERY: Automatic background refreshes handled by TanStack Query
-  // No manual refresh logic needed - TanStack Query handles it automatically
-
-  const handleLogout = () => {
-    localStorage.removeItem("knoxToken");
-    localStorage.removeItem("user");
-    navigate("/");
-  };
+  // ✅ REMOVED: Duplicate handleLogout - now using common dashboard hook
 
   // Handle appointment status changes with TanStack Query mutations
   const handleAcceptAppointment = async (appointmentId) => {
@@ -1059,8 +510,7 @@ const TherapistDashboard = () => {
   };
 
   const handleRejectAppointment = (appointmentId) => {
-    setRejectionModal({
-      isOpen: true,
+    openRejectionModal({
       appointmentId: appointmentId,
     });
   };
@@ -1078,11 +528,11 @@ const TherapistDashboard = () => {
         appointmentId,
         rejectionReason: cleanReason,
       });
-      setRejectionModal({ isOpen: false, appointmentId: null });
+      closeRejectionModal();
     } catch (error) {
       console.error("Reject appointment failed:", error);
       alert("Failed to reject appointment. Please try again.");
-      setRejectionModal({ isOpen: false, appointmentId: null });
+      closeRejectionModal();
     }
   };
 
@@ -1142,26 +592,26 @@ const TherapistDashboard = () => {
       setActionLoading(actionKey, true);
 
       // Get the appointment details to check for materials
-      const appointment = myAppointments?.find(apt => apt.id === appointmentId) ||
-                         myTodayAppointments?.find(apt => apt.id === appointmentId) ||
-                         myUpcomingAppointments?.find(apt => apt.id === appointmentId);
+      const appointment =
+        myAppointments?.find((apt) => apt.id === appointmentId) ||
+        myTodayAppointments?.find((apt) => apt.id === appointmentId) ||
+        myUpcomingAppointments?.find((apt) => apt.id === appointmentId);
 
       const appointmentMaterials = appointment?.appointment_materials || [];
-      
+
       if (appointmentMaterials.length > 0) {
         // Show material modal for post-service material checking
-        setMaterialModal({
-          isOpen: true,
+        openMaterialModal({
           appointmentId: appointmentId,
-          materials: appointmentMaterials.map(mat => ({
+          materials: appointmentMaterials.map((mat) => ({
             id: mat.inventory_item?.id || mat.material_id,
-            name: mat.inventory_item?.name || mat.material_name || 'Material',
+            name: mat.inventory_item?.name || mat.material_name || "Material",
             quantity_used: mat.quantity_used,
-            unit: mat.inventory_item?.unit_of_measure || 'units'
+            unit: mat.inventory_item?.unit_of_measure || "units",
           })),
           isSubmitting: false,
         });
-        
+
         // Don't proceed with payment request yet - wait for material modal completion
         return;
       } else {
@@ -1216,46 +666,44 @@ const TherapistDashboard = () => {
 
   // Legacy handlers (keeping for backward compatibility)
   const handleRejectionCancel = () => {
-    setRejectionModal({ isOpen: false, appointmentId: null });
+    closeRejectionModal();
   };
 
   // Post-service material modal handlers
   const handleMaterialModalSubmit = async (materialStatus) => {
-    setMaterialModal(prev => ({ ...prev, isSubmitting: true }));
-    
+    updateMaterialModal({ isSubmitting: true });
+
     try {
       // Process each material's status
       for (const material of materialModal.materials) {
         const isEmpty = materialStatus[material.id];
-        
+
         if (isEmpty !== undefined) {
-          const response = await fetch(`/api/inventory/items/${material.id}/update_material_status/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-            },
-            body: JSON.stringify({
-              is_empty: isEmpty,
-              quantity: material.quantity_used,
-              notes: `Post-service update for appointment #${materialModal.appointmentId}`
-            }),
-          });
-          
+          const response = await fetch(
+            `/api/inventory/items/${material.id}/update_material_status/`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+              },
+              body: JSON.stringify({
+                is_empty: isEmpty,
+                quantity: material.quantity_used,
+                notes: `Post-service update for appointment #${materialModal.appointmentId}`,
+              }),
+            }
+          );
+
           if (!response.ok) {
             throw new Error(`Failed to update material ${material.name}`);
           }
         }
       }
-      
+
       // Success - close modal and continue with payment request
-      setMaterialModal({
-        isOpen: false,
-        appointmentId: null,
-        materials: [],
-        isSubmitting: false,
-      });
-      
+      closeMaterialModal();
+
       // Now proceed with the payment request
       const appointmentId = materialModal.appointmentId;
       await requestPaymentMutation.mutateAsync(appointmentId);
@@ -1270,22 +718,16 @@ const TherapistDashboard = () => {
         }),
       ]);
 
-      alert('Material status updated and payment requested successfully!');
-      
+      alert("Material status updated and payment requested successfully!");
     } catch (error) {
-      console.error('Error updating material status:', error);
+      console.error("Error updating material status:", error);
       alert(`Error updating material status: ${error.message}`);
-      setMaterialModal(prev => ({ ...prev, isSubmitting: false }));
+      updateMaterialModal({ isSubmitting: false });
     }
   };
 
   const handleMaterialModalClose = () => {
-    setMaterialModal({
-      isOpen: false,
-      appointmentId: null,
-      materials: [],
-      isSubmitting: false,
-    });
+    closeMaterialModal();
   };
   const getStatusBadgeClass = (status) => {
     switch (status) {
@@ -1469,7 +911,8 @@ const TherapistDashboard = () => {
           {/* Driver Information */}
           {appointment.driver_details && (
             <p>
-              <strong>Driver:</strong> {appointment.driver_details?.first_name || "Unknown"}{" "}
+              <strong>Driver:</strong>{" "}
+              {appointment.driver_details?.first_name || "Unknown"}{" "}
               {appointment.driver_details?.last_name || "Driver"}
             </p>
           )}
@@ -1653,7 +1096,7 @@ const TherapistDashboard = () => {
               className="payment-button"
               onClick={() => handleRequestPayment(id)}
               loading={buttonLoading[`request_payment_${id}`]}
-              loadingText="Requesting..."
+              loadingText="Request Payment"
             >
               Request Payment
             </LoadingButton>
@@ -1986,25 +1429,83 @@ const TherapistDashboard = () => {
     );
   };
   // Helper to check if appointment is transport completed or completed
-  const isTransportCompleted = (appointment) =>
-    ["transport_completed", "completed", "driver_transport_completed"].includes(
-      appointment.status
-    );
+  const isTransportCompleted = (appointment) => {
+    const completedStatuses = [
+      "transport_completed",
+      "completed",
+      "driver_transport_completed",
+    ];
+    const isCompleted = completedStatuses.includes(appointment.status);
+
+    // ✅ DEBUG: Log the status check result
+    console.log("🔍 isTransportCompleted DEBUG:", {
+      appointmentId: appointment.id,
+      status: appointment.status,
+      completedStatuses,
+      isCompleted,
+    });
+
+    return isCompleted;
+  };
 
   // State for completed appointments modal
   const [showCompletedModal, setShowCompletedModal] = useState(false);
 
   // Filter today's appointments into pending and completed
   const todayPendingAppointments = useMemo(() => {
-    return (
+    const filtered = (
       Array.isArray(myTodayAppointments) ? myTodayAppointments : []
-    ).filter((apt) => apt && !isTransportCompleted(apt));
+    ).filter((apt) => {
+      if (!apt) return false;
+      const isCompleted = isTransportCompleted(apt);
+
+      // ✅ ENHANCED DEBUG: Log each appointment's filtering decision
+      console.log("🔍 FILTERING DEBUG - Appointment:", {
+        id: apt.id,
+        status: apt.status,
+        date: apt.date,
+        isTransportCompleted: isCompleted,
+        willBeInPending: !isCompleted,
+      });
+
+      return !isCompleted;
+    });
+
+    console.log("🔍 DEBUG: todayPendingAppointments calculated:", {
+      myTodayAppointmentsLength: myTodayAppointments?.length,
+      filteredLength: filtered.length,
+      myTodayAppointments: myTodayAppointments,
+      filtered: filtered,
+    });
+
+    return filtered;
   }, [myTodayAppointments]);
 
   const todayCompletedAppointments = useMemo(() => {
-    return (
+    const filtered = (
       Array.isArray(myTodayAppointments) ? myTodayAppointments : []
-    ).filter((apt) => apt && isTransportCompleted(apt));
+    ).filter((apt) => {
+      if (!apt) return false;
+      const isCompleted = isTransportCompleted(apt);
+
+      // ✅ ENHANCED DEBUG: Log each appointment's filtering decision
+      console.log("🔍 COMPLETED FILTERING DEBUG - Appointment:", {
+        id: apt.id,
+        status: apt.status,
+        date: apt.date,
+        isTransportCompleted: isCompleted,
+        willBeInCompleted: isCompleted,
+      });
+
+      return isCompleted;
+    });
+
+    console.log("🔍 DEBUG: todayCompletedAppointments calculated:", {
+      myTodayAppointmentsLength: myTodayAppointments?.length,
+      filteredLength: filtered.length,
+    });
+
+    return filtered;
   }, [myTodayAppointments]);
 
   const handleCloseCompletedModal = () => {
@@ -2032,6 +1533,29 @@ const TherapistDashboard = () => {
           subtitle={<>Today is {systemTime}</>}
         >
           <div className="action-buttons">
+            {/* ✅ SIMPLIFIED: Use standard refresh button like DriverDashboard */}
+            <button
+              onClick={async () => {
+                console.log("🔄 Manual refresh triggered by user");
+                await refetch();
+                console.log("✅ Manual refresh completed");
+              }}
+              className="refresh-button"
+              style={{
+                marginRight: "10px",
+                padding: "8px 16px",
+                backgroundColor: "#4CAF50",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+              title="Refresh appointments data"
+            >
+              🔄 Refresh
+            </button>
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>

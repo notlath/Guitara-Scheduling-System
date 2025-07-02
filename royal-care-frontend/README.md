@@ -1,35 +1,11 @@
 # Royal Care Frontend
 
-This is the frontend for the Royal Care Scheduling System, built with **React** and **Vite**. It connects to a Django backend and provides a modern, responsi6. **CSS Location &7. **CSS Location & Inline Styles:**
-
-   - Place all new CSS in the appropriate file in `src/styles/` or the relevant `.module.css` file for the component or page.
-   - **Avoid doing inline styles as much as possible! Use the corresponding CSS files instead.**
-   - Only use inline styles if absolutely necessary and there is no better alternative.
-
-8. **Component Placement:**
-
-   - Add new components in the correct directory based on their function.
-   - Avoid creating duplicate or redundant components.
-
-9. **Testing:**
-   - Test all features across different user roles and screen sizes before submitting changes.s:**
-
-- Place all new CSS in the appropriate file in `src/styles/` or the relevant `.module.css` file for the component or page.
-- **Avoid doing inline styles as much as possible! Use the corresponding CSS files instead.**
-- Only use inline styles if absolutely necessary and there is no better alternative.
-
-7. **Component Placement:**
-
-   - Add new components in the correct directory based on their function.
-   - Avoid creating duplicate or redundant components.
-
-8. **Testing:**
-   - Test all features across different user roles and screen sizes before submitting changes.for operators, therapists, and drivers to manage home-service massage bookings.
+This is the frontend for the Royal Care Scheduling System, built with **React 19.1.0** and **Vite 6.2.2**. It connects to a Django backend and provides a modern, responsive interface for operators, therapists, and drivers to manage home-service massage bookings.
 
 ## Features
 
-- **Modern Tech Stack**: React v19 with Vite for fast development and optimized builds
-- **State Management**: Redux Toolkit for predictable state management
+- **Modern Tech Stack**: React v19.1.0 with Vite 6.2.2 for fast development and optimized builds
+- **State Management**: Redux Toolkit 2.8.2 for predictable state management
 - **Authentication**: Complete authentication flow with JWT tokens and two-factor authentication
 - **Role-based Access**: Custom dashboards for operators, therapists, and drivers
 - **Real-time Updates**: WebSocket integration for live booking notifications
@@ -175,18 +151,18 @@ This frontend connects to the Django backend located in the `/guitara` directory
    - All color, spacing, and font variables are defined in `theme.css` and `app.css`. **Always use these variables!**
    - Do not hardcode colors, spacing, or font sizes unless absolutely necessary.
 
-2. **Use Global Components:**
+1. **Use Global Components:**
 
    - For tabs, use `TabSwitcher` and its styles in `tabswitcher.css`.
    - For layout rows, use `LayoutRow` (`layoutrow.jsx`) and its styles in `layoutrow.css`.
    - **Do not create redundant tab or row components.**
 
-3. **Consistency:**
+1. **Consistency:**
 
    - Reuse global styles and components for a consistent look and feel.
    - Avoid duplicating logic or UI patterns that already exist in the codebase.
 
-4. **Box Shadows & Borders:**
+1. **Box Shadows & Borders:**
 
    - **Do NOT use `box-shadow`.**
    - If you need separation or emphasis, use a border instead (with global variables from `theme.css` or `app.css`).
@@ -198,31 +174,31 @@ This frontend connects to the Django backend located in the `/guitara` directory
      ```
    - This applies to overlays, modals, and any feature requiring background dimming or blur.
 
-5. **Text Transformation:**
+1. **Text Transformation:**
 
    - **Do NOT use `text-transform: uppercase`.**
    - Let text display in its natural case for better readability and user experience.
    - If uppercase styling is absolutely necessary for design purposes, handle it in the content itself rather than CSS transformation.
 
-6. **Icons:**
+1. **Icons:**
 
    - **ONLY use Material Design icons from `react-icons/md`.**
    - Import Material Design icons like: `import { MdIconName } from "react-icons/md";`
    - Do not use icons from other libraries (FontAwesome, Heroicons, etc.) to maintain design consistency.
    - Material Design icons ensure consistent visual language throughout the application.
 
-7. **CSS Location & Inline Styles:**
+1. **CSS Location & Inline Styles:**
 
    - Place all new CSS in the appropriate file in `src/styles/` or the relevant `.module.css` file for the component or page.
    - **Avoid doing inline styles as much as possible! Use the corresponding CSS files instead.**
    - Only use inline styles if absolutely necessary and there is no better alternative.
 
-7. **Component Placement:**
+1. **Component Placement:**
 
    - Add new components in the correct directory based on their function.
    - Avoid creating duplicate or redundant components.
 
-8. **Testing:**
+1. **Testing:**
    - Test all features across different user roles and screen sizes before submitting changes.
 
 ## Pages Folder Structure

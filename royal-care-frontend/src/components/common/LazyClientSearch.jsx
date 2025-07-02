@@ -400,7 +400,11 @@ const LazyClientSearch = ({
   // Handle client selection
   const handleClientSelect = useCallback(
     (client) => {
-      console.log("✅ Client selected:", client?.first_name || "Unknown", client?.last_name || "Client");
+      console.log(
+        "✅ Client selected:",
+        client?.first_name || "Unknown",
+        client?.last_name || "Client"
+      );
       onClientSelect(client);
       setSearchTerm("");
       setIsOpen(false);

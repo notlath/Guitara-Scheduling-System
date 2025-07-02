@@ -45,7 +45,7 @@ export const usePhilippineTime = () => {
     const interval = setInterval(() => {
       setSystemTime(getPhilippineTime());
     }, 1000);
-    
+
     return () => clearInterval(interval);
   }, []);
 

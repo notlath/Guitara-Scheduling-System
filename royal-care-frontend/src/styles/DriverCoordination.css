@@ -690,16 +690,19 @@
 
 .pickup-assignment-urgent.normal {
   border-color: #28a745;
+  padding: var(--spacing-sm);
 }
 
 .pickup-assignment-urgent.urgent {
   border-color: #ffc107;
   animation: urgentPulse 2s infinite;
+  padding: var(--spacing-sm);
 }
 
 .pickup-assignment-urgent.critical {
   border-color: #dc3545;
   animation: criticalPulse 1s infinite;
+  padding: var(--spacing-sm);
 }
 
 @keyframes urgentPulse {
@@ -730,7 +733,6 @@
 .therapist-priority-info {
   background: #f8f9fa;
   padding: 20px;
-  border-bottom: 1px solid #e9ecef;
 }
 
 .pickup-assignment-header {
@@ -746,7 +748,6 @@
   color: #2c3e50;
   display: flex;
   align-items: center;
-  gap: 10px;
   font-weight: bold;
 }
 
@@ -795,9 +796,8 @@
 }
 
 .contact-item {
-  display: flex;
+  display: block;
   align-items: center;
-  gap: 10px;
   font-size: 1.1rem;
 }
 
@@ -835,7 +835,6 @@
   color: #2c3e50;
   display: flex;
   align-items: center;
-  gap: 8px;
   font-weight: 600;
   border-bottom: 2px solid #e9ecef;
   padding-bottom: 8px;

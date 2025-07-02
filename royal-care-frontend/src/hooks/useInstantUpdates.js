@@ -179,18 +179,18 @@ export const useInstantUpdates = () => {
       console.log("🔍 markPaymentPaidInstantly: Received payment data:", {
         appointmentId,
         paymentData,
-        processedAmount: parseInt(paymentData.amount) || 0,
+        processedAmount: parseFloat(paymentData.amount) || 0,
       });
 
       return performInstantUpdate({
         appointmentId,
-        reduxAction: markAppointmentPaid({ appointmentId, ...paymentData }),
+        reduxAction: markAppointmentPaid({ appointmentId, paymentData }),
         optimisticUpdate: {
           status: "completed",
           payment_status: "paid",
           payment_verified_at: new Date().toISOString(),
           payment_method: paymentData.method,
-          payment_amount: parseInt(paymentData.amount) || 0, // ✅ Include payment amount for sales/reports dashboards
+          payment_amount: parseFloat(paymentData.amount) || 0, // ✅ Include payment amount for sales/reports dashboards
           payment_notes: paymentData.notes || "",
         },
         errorMessage: "Failed to mark payment as paid. Please try again.",

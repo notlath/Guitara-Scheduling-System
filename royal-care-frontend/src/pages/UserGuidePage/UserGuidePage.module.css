@@ -89,3 +89,178 @@
 .userGuideBlock:last-child {
   margin-bottom: 0;
 }
+
+/* New styles for enhanced User Guide */
+.subSection {
+  margin-bottom: var(--spacing-sm, 20px);
+}
+
+.subSection:last-child {
+  margin-bottom: 0;
+}
+
+.subSection h4 {
+  color: var(--primary-600, #3366cc);
+  font-size: var(--font-size-base, 1rem);
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs, 12px);
+  margin-top: var(--spacing-xs, 12px);
+}
+
+.subSection:first-child h4 {
+  margin-top: 0;
+}
+
+.userGuideList li {
+  margin-bottom: var(--spacing-xxs, 8px);
+}
+
+.userGuideList li:last-child {
+  margin-bottom: 0;
+}
+
+.userGuideList code {
+  background: var(--background-35, #f5f5f5);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "Courier New", monospace;
+  font-size: 0.9em;
+  color: var(--text-800, #333);
+  border: 1px solid var(--border-color, #ddd);
+}
+
+.userGuideList ul {
+  margin-top: var(--spacing-xxs, 8px);
+  margin-bottom: var(--spacing-xs, 12px);
+}
+
+.userGuideList ul li {
+  margin-bottom: var(--spacing-xxxs, 4px);
+}
+
+.userGuideSection a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.userGuideSection a:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+.userGuideIntro {
+  background: var(--background-35, #f8f9fa);
+  border-left: 4px solid var(--primary);
+  padding: var(--spacing-sm, 20px);
+  margin-bottom: var(--spacing-mmd, 28px);
+  border-radius: 0 var(--border-radius, 8px) var(--border-radius, 8px) 0;
+}
+
+/* Table of Contents Styles - Left Sidebar */
+.userGuideContainer {
+  display: flex;
+  gap: var(--spacing-mmd, 28px);
+  align-items: flex-start;
+}
+
+.tableOfContents {
+  position: sticky;
+  top: var(--spacing-sm, 20px);
+  width: 280px;
+  min-width: 280px;
+  background: var(--background);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: var(--border-radius, 8px);
+  padding: var(--spacing-sm, 20px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+}
+
+.userGuideMainContent {
+  flex: 1;
+  min-width: 0; /* Allows flex item to shrink below its content size */
+}
+
+.tableOfContents h3 {
+  margin: 0 0 var(--spacing-xs, 12px) 0;
+  color: var(--primary-700, #2a4d8f);
+  font-size: var(--font-size-base, 1rem);
+  font-weight: 600;
+}
+
+.tocList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tocList li {
+  margin-bottom: var(--spacing-xxs, 6px);
+}
+
+.tocList li:last-child {
+  margin-bottom: 0;
+}
+
+.tocList a {
+  display: block;
+  color: var(--text-600, #666);
+  text-decoration: none;
+  padding: var(--spacing-xxs, 6px) var(--spacing-xs, 8px);
+  border-radius: 4px;
+  font-size: var(--font-size-sm, 0.9rem);
+  line-height: 1.4;
+  transition: all 0.2s ease;
+}
+
+.tocList a:hover {
+  background: var(--primary-50, #f0f4ff);
+  color: var(--primary-700, #2a4d8f);
+  transform: translateX(4px);
+}
+
+.tocList a:active {
+  background: var(--primary-100, #e1eaff);
+  color: var(--primary-800, #1e3a73);
+}
+
+/* Responsive behavior for table of contents */
+@media (max-width: 768px) {
+  .userGuideContainer {
+    flex-direction: column;
+    gap: var(--spacing-sm, 20px);
+  }
+
+  .tableOfContents {
+    position: relative;
+    top: auto;
+    width: 100%;
+    min-width: auto;
+    max-height: none;
+    order: -1; /* Show TOC first on mobile */
+  }
+
+  .userGuideMainContent {
+    width: 100%;
+  }
+}
+
+@media (max-width: 1024px) {
+  .tableOfContents {
+    width: 240px;
+    min-width: 240px;
+  }
+}
+
+/* Smooth scrolling for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Add scroll offset for anchored sections */
+.userGuideBlock[id] {
+  scroll-margin-top: 80px;
+}

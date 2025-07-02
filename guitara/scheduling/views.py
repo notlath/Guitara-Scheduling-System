@@ -881,36 +881,39 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         """
         try:
             instance = self.get_object()
-            
+
             # Only operators can delete appointments
             if request.user.role != "operator":
                 return Response(
                     {"error": "Only operators can delete appointments"},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            
+
             # Check if appointment can be deleted (optional business logic)
             if instance.status in ["in_progress", "completed"]:
                 return Response(
-                    {"error": "Cannot delete appointments that are in progress or completed"},
+                    {
+                        "error": "Cannot delete appointments that are in progress or completed"
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            
+
             # Perform the deletion
             appointment_id = instance.id
             instance.delete()
-            
+
             return Response(
                 {"message": f"Appointment {appointment_id} deleted successfully"},
-                status=status.HTTP_204_NO_CONTENT
+                status=status.HTTP_204_NO_CONTENT,
             )
-            
+
         except Exception as e:
             # Log the error for debugging
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"Error deleting appointment: {str(e)}", exc_info=True)
-            
+
             return Response(
                 {"error": "An error occurred while deleting the appointment"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -2170,7 +2173,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         try:
             payment_amount = float(payment_amount) if payment_amount else 0
             print(
-                f"🔍 mark_payment_received: Converted payment_amount to float: {payment_amount}"
+                f"✅ mark_payment_received: Converted payment_amount to float: {payment_amount}"
             )
         except (ValueError, TypeError) as e:
             print(f"❌ mark_payment_received: Error converting payment_amount: {e}")
@@ -2181,13 +2184,17 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.payment_method = payment_method
         appointment.payment_amount = payment_amount
         appointment.payment_verified_at = timezone.now()
+        appointment.payment_verified_by = request.user  # Save the operator who verified
+        appointment.payment_notes = payment_notes  # Use dedicated payment_notes field
         appointment.session_end_time = timezone.now()  # Set when session actually ends
-        if payment_notes:
-            appointment.notes = (
-                appointment.notes + f"\nPayment Notes: {payment_notes}"
-                if appointment.notes
-                else f"Payment Notes: {payment_notes}"
-            )
+
+        # Also save receipt information if provided
+        receipt_hash = request.data.get("receipt_hash")
+        receipt_url = request.data.get("receipt_url")
+        if receipt_hash:
+            appointment.receipt_hash = receipt_hash
+        if receipt_url:
+            appointment.receipt_url = receipt_url
 
         print(
             f"🔍 mark_payment_received: Before save - appointment.payment_amount: {appointment.payment_amount}"

@@ -91,49 +91,50 @@ const ProgressiveAppointmentList = ({
 
       {/* Appointment list */}
       <div className="appointment-items">
-        {Array.isArray(partialData) && partialData.map((appointment) => (
-          <div
-            key={appointment.id}
-            className={`appointment-item ${
-              isPartialData ? "partial-data" : "complete-data"
-            }`}
-          >
-            <div className="appointment-basic-info">
-              <h4>{appointment.client_name || "Loading..."}</h4>
-              <p>
-                {appointment.date} at {appointment.time}
-              </p>
-              <span className={`status ${appointment.status}`}>
-                {appointment.status}
-              </span>
-            </div>
-
-            {/* Show additional details if available */}
-            {!isPartialData && (
-              <div className="appointment-details">
-                {appointment.therapist_name && (
-                  <p>Therapist: {appointment.therapist_name}</p>
-                )}
-                {appointment.driver_name && (
-                  <p>Driver: {appointment.driver_name}</p>
-                )}
-                {appointment.services && (
-                  <p>Services: {appointment.services.join(", ")}</p>
-                )}
+        {Array.isArray(partialData) &&
+          partialData.map((appointment) => (
+            <div
+              key={appointment.id}
+              className={`appointment-item ${
+                isPartialData ? "partial-data" : "complete-data"
+              }`}
+            >
+              <div className="appointment-basic-info">
+                <h4>{appointment.client_name || "Loading..."}</h4>
+                <p>
+                  {appointment.date} at {appointment.time}
+                </p>
+                <span className={`status ${appointment.status}`}>
+                  {appointment.status}
+                </span>
               </div>
-            )}
 
-            {/* Loading placeholder for missing data */}
-            {isPartialData &&
-              missingFields.some((field) =>
-                ["therapist_name", "driver_name", "services"].includes(field)
-              ) && (
-                <div className="loading-details">
-                  <SkeletonLoader lines={2} height="12px" />
+              {/* Show additional details if available */}
+              {!isPartialData && (
+                <div className="appointment-details">
+                  {appointment.therapist_name && (
+                    <p>Therapist: {appointment.therapist_name}</p>
+                  )}
+                  {appointment.driver_name && (
+                    <p>Driver: {appointment.driver_name}</p>
+                  )}
+                  {appointment.services && (
+                    <p>Services: {appointment.services.join(", ")}</p>
+                  )}
                 </div>
               )}
-          </div>
-        ))}
+
+              {/* Loading placeholder for missing data */}
+              {isPartialData &&
+                missingFields.some((field) =>
+                  ["therapist_name", "driver_name", "services"].includes(field)
+                ) && (
+                  <div className="loading-details">
+                    <SkeletonLoader lines={2} height="12px" />
+                  </div>
+                )}
+            </div>
+          ))}
       </div>
 
       {/* Empty state */}

@@ -1,18 +1,3 @@
-// Generate time options from 13:00 to 01:00 (cross-day window)
-const generateTimeOptions = () => {
-  const options = [];
-  // 13:00 to 23:30 (every 30 min)
-  for (let h = 13; h <= 23; h++) {
-    options.push(`${h.toString().padStart(2, "0")}:00`);
-    options.push(`${h.toString().padStart(2, "0")}:30`);
-  }
-  // 00:00, 00:30, 01:00
-  options.push("00:00");
-  options.push("00:30");
-  options.push("01:00");
-  return options;
-};
-
 // Helper: Check if a time string is within allowed window (13:00-23:59 or 00:00-01:00)
 const isTimeInAllowedWindow = (time) => {
   if (!time) return false;
@@ -21,6 +6,37 @@ const isTimeInAllowedWindow = (time) => {
   if (h === 0) return true;
   if (h === 1 && m === 0) return true;
   return false;
+};
+
+// Helper: Check if end time is after start time, accounting for cross-day scheduling
+const isValidEndTime = (startTime, endTime) => {
+  if (!startTime || !endTime) return false;
+
+  const [startH, startM] = startTime.split(":").map(Number);
+  const [endH, endM] = endTime.split(":").map(Number);
+
+  // Convert to minutes for easier comparison
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  // If end time is in early morning (00:00-01:00) and start time is afternoon/evening (13:00-23:59)
+  // this is a valid cross-day appointment
+  if (endH >= 0 && endH <= 1 && startH >= 13 && startH <= 23) {
+    return true; // Cross-day is valid
+  }
+
+  // If both times are on the same day, end must be after start
+  if (startH >= 13 && endH >= 13) {
+    return endMinutes > startMinutes;
+  }
+
+  // If start is afternoon/evening and end is not early morning, it's invalid
+  if (startH >= 13 && endH < 13 && endH > 1) {
+    return false;
+  }
+
+  // For same-day appointments, end must be after start
+  return endMinutes > startMinutes;
 };
 /**
  * COMPLETE TanStack Query Migration Example
@@ -363,7 +379,11 @@ const AppointmentFormTanStackComplete = ({
 
       // Validate end time - ensure it's after start time and restrict to allowed window
       if (name === "end_time") {
-        if (formData.start_time && value && value <= formData.start_time) {
+        if (
+          formData.start_time &&
+          value &&
+          !isValidEndTime(formData.start_time, value)
+        ) {
           setErrors((prev) => ({
             ...prev,
             end_time: "End time must be after start time",
@@ -645,7 +665,7 @@ const AppointmentFormTanStackComplete = ({
     if (
       formData.start_time &&
       formData.end_time &&
-      formData.end_time <= formData.start_time
+      !isValidEndTime(formData.start_time, formData.end_time)
     ) {
       newErrors.end_time = "End time must be after start time";
     }
@@ -777,6 +797,13 @@ const AppointmentFormTanStackComplete = ({
 
       console.log("📋 Final client ID for submission:", numericClientId);
 
+      console.log("🧑‍⚕️ Therapist data debug:", {
+        formDataTherapists: formData.therapists,
+        isArray: Array.isArray(formData.therapists),
+        length: formData.therapists?.length,
+        therapistIds: formData.therapists,
+      });
+
       // Debug: Log materials state before preparing appointment data
       console.log("🔍 DEBUG - Materials state before submission:");
       console.log("  materialQuantities:", materialQuantities);
@@ -797,12 +824,11 @@ const AppointmentFormTanStackComplete = ({
         ...formData,
         client: numericClientId,
         services: [parseInt(formData.services, 10)],
-        therapist: formData.multipleTherapists
-          ? null
-          : parseInt(formData.therapist, 10) || null,
-        therapists: formData.multipleTherapists
+        // Always use the therapists array since the form only has multi-select
+        therapist: null, // Always null for new multi-therapist structure
+        therapists: Array.isArray(formData.therapists)
           ? formData.therapists.map((id) => parseInt(id, 10))
-          : [],
+          : [], // Convert therapist IDs to integers
         driver: formData.driver ? parseInt(formData.driver, 10) : null,
         materials: Object.entries(materialQuantities)
           .filter((entry) => entry[1] && !isNaN(Number(entry[1])))
@@ -821,6 +847,15 @@ const AppointmentFormTanStackComplete = ({
           .filter(Boolean), // Remove null values
         date: formatDateForInput(formData.date),
       };
+
+      console.log("📋 Final appointment data being submitted:", {
+        ...appointmentData,
+        therapistData: {
+          therapist: appointmentData.therapist,
+          therapists: appointmentData.therapists,
+          therapistsCount: appointmentData.therapists?.length,
+        },
+      });
 
       // Debug: Log the materials preparation process
       console.log("🔍 DEBUG - Materials preparation process:");
@@ -929,12 +964,14 @@ const AppointmentFormTanStackComplete = ({
         end_time: appointment.end_time || "",
         location: appointment.location || "",
         notes: appointment.notes || "",
-        therapist: appointment.therapist || "",
+        therapist: "", // No longer used since we only use multi-select
         therapists: Array.isArray(appointment.therapists)
           ? appointment.therapists
+          : appointment.therapist
+          ? [appointment.therapist] // Convert single therapist to array
           : [],
         driver: appointment.driver || "",
-        multipleTherapists: !!(appointment.therapists?.length > 0),
+        multipleTherapists: false, // Always false since we use multi-select for both single and multiple
       });
     }
   }, [appointment, clients]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1268,52 +1305,38 @@ const AppointmentFormTanStackComplete = ({
 
             <div className="form-group">
               <label>Start Time *</label>
-              <select
+              <input
+                type="time"
                 name="start_time"
                 value={formData.start_time}
                 onChange={handleChange}
                 disabled={isSubmitting}
                 className={errors.start_time ? "error" : ""}
+                min="13:00"
+                max="01:00"
                 required
-              >
-                <option value="">Select start time</option>
-                {generateTimeOptions().map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+              />
               {errors.start_time && (
                 <div className="error-message">{errors.start_time}</div>
               )}
-              {/* <div className="helper-text">
-                Allowed: 13:00 (1 PM) to 01:00 (next day)
-              </div> */}
             </div>
 
             <div className="form-group">
               <label>End Time *</label>
-              <select
+              <input
+                type="time"
                 name="end_time"
                 value={formData.end_time}
                 onChange={handleChange}
                 disabled={isSubmitting}
                 className={errors.end_time ? "error" : ""}
+                min="13:00"
+                max="01:00"
                 required
-              >
-                <option value="">Select end time</option>
-                {generateTimeOptions().map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+              />
               {errors.end_time && (
                 <div className="error-message">{errors.end_time}</div>
               )}
-              {/* <div className="helper-text">
-                Allowed: 13:00 (1 PM) to 01:00 (next day)
-              </div> */}
             </div>
           </div>
           {/* 🔥 BEFORE: 200+ lines of complex availability checking */}
@@ -1335,7 +1358,8 @@ const AppointmentFormTanStackComplete = ({
               )}
               {hasAvailabilityError && (
                 <div className="availability-error">
-                  ⚠️ Error checking availability - Please check your login status or refresh the page
+                  ⚠️ Error checking availability - Please check your login
+                  status or refresh the page
                 </div>
               )}
               {!isLoadingAvailability && !hasAvailabilityError && (

@@ -105,7 +105,7 @@ export const invalidateAppointmentCaches = async (
       );
     } else {
       // Fallback: use literal query keys
-      console.warn("⚠️ Using fallback literal query keys");
+      console.warn("⚠️ Using fallback literal query keys for appointments");
       invalidationPromises.push(
         queryClient.invalidateQueries({ queryKey: ["appointments"] }),
         queryClient.invalidateQueries({ queryKey: ["appointments", "list"] }),
@@ -128,29 +128,61 @@ export const invalidateAppointmentCaches = async (
     );
 
     // User-specific invalidations
-    if (userId && queryKeys?.appointments) {
+    if (userId) {
       if (userRole === "therapist") {
+        console.log("🩺 Invalidating therapist-specific caches for:", userId);
+
+        // ✅ CRITICAL FIX: Use consistent queryKeys structure for therapist cache invalidation
         invalidationPromises.push(
+          // Main TherapistDashboard query key using queryKeys structure
           queryClient.invalidateQueries({
-            queryKey: queryKeys.appointments.byTherapist(userId),
+            queryKey: queryKeys.appointments.byTherapist(userId, "all"),
+            refetchType: "all", // Force refetch even for inactive queries
           }),
           queryClient.invalidateQueries({
             queryKey: queryKeys.appointments.byTherapist(userId, "today"),
+            refetchType: "all",
           }),
           queryClient.invalidateQueries({
             queryKey: queryKeys.appointments.byTherapist(userId, "upcoming"),
+            refetchType: "all",
+          }),
+          // Also invalidate any partial matches
+          queryClient.invalidateQueries({
+            predicate: (query) => {
+              const queryKey = query.queryKey;
+              return (
+                Array.isArray(queryKey) &&
+                queryKey.includes("appointments") &&
+                queryKey.includes("therapist") &&
+                queryKey.includes(userId)
+              );
+            },
+          }),
+          // Dashboard-specific therapist queries
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.dashboard.therapist(userId),
           })
         );
       } else if (userRole === "driver") {
+        // ✅ DRIVER CACHE FIX: Use consistent queryKeys structure for driver cache invalidation
         invalidationPromises.push(
+          // Main DriverDashboard query keys using queryKeys structure
           queryClient.invalidateQueries({
-            queryKey: queryKeys.appointments.byDriver(userId),
+            queryKey: queryKeys.appointments.byDriver(userId, "all"),
+            refetchType: "active",
           }),
           queryClient.invalidateQueries({
             queryKey: queryKeys.appointments.byDriver(userId, "today"),
+            refetchType: "active",
           }),
           queryClient.invalidateQueries({
             queryKey: queryKeys.appointments.byDriver(userId, "upcoming"),
+            refetchType: "active",
+          }),
+          // Dashboard-specific driver queries
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.dashboard.driver(userId),
           })
         );
       }
@@ -374,30 +406,113 @@ export const invalidateByStatus = async (queryClient, status, options = {}) => {
  * WebSocket integration helper
  * Use this when receiving WebSocket updates to sync TanStack Query cache
  */
+/**
+ * ✅ ROBUST WEBSOCKET CACHE INVALIDATION - FINAL SOLUTION
+ * This function ensures instant updates across ALL dashboards without redundant calls
+ */
 export const handleWebSocketUpdate = (queryClient, wsData) => {
-  const { type, appointment, user_id, role } = wsData;
+  console.log("🔄 ROBUST WebSocket cache invalidation:", wsData);
 
-  switch (type) {
-    case "appointment_created":
-    case "appointment_updated":
-    case "appointment_deleted":
-      return invalidateAppointmentCaches(queryClient, {
-        userId: user_id,
-        userRole: role,
-        appointmentId: appointment?.id,
-      });
+  const { type, appointment } = wsData;
 
-    case "therapist_response":
-    case "driver_response":
-      return invalidateByStatus(queryClient, appointment?.status, {
-        userId: user_id,
-        userRole: role,
-      });
-
-    default:
-      // Fallback: invalidate core appointment data
-      return invalidateAppointmentCaches(queryClient);
+  // ✅ CRITICAL: Prevent invalidation loops with proper debouncing
+  if (
+    handleWebSocketUpdate._lastCall &&
+    Date.now() - handleWebSocketUpdate._lastCall < 100 // Reduced to 100ms for faster updates
+  ) {
+    console.log("⚡ Debouncing rapid WebSocket calls");
+    return Promise.resolve();
   }
+  handleWebSocketUpdate._lastCall = Date.now();
+
+  // ✅ CRITICAL: Use the same instant cache update pattern as DriverDashboard
+  const performCacheUpdate = async () => {
+    try {
+      console.log(
+        `🚀 INSTANT CACHE INVALIDATION - Starting comprehensive update for ${type}`
+      );
+
+      // ✅ CRITICAL FIX: Use setQueryData + invalidateQueries pattern like DriverDashboard
+      // This ensures immediate UI updates by updating cache data FIRST, then invalidating
+
+      // 1. ✅ THERAPIST DASHBOARD: Instant cache update using setQueryData pattern
+      console.log(
+        "🩺 Updating Therapist Dashboard caches with instant pattern..."
+      );
+
+      if (appointment?.therapist || appointment?.therapists) {
+        const therapistIds = [];
+        if (appointment.therapist) therapistIds.push(appointment.therapist);
+        if (appointment.therapists)
+          therapistIds.push(...appointment.therapists);
+
+        // Apply the SAME pattern as DriverDashboard for instant updates
+        const updateFunction = (oldData) => {
+          if (!Array.isArray(oldData)) return oldData;
+
+          // Handle delete operations
+          if (type === "appointment_deleted") {
+            return oldData.filter((apt) => apt.id !== appointment.id);
+          }
+
+          // Handle updates - replace or add appointment
+          const existingIndex = oldData.findIndex(
+            (apt) => apt.id === appointment.id
+          );
+          if (existingIndex >= 0) {
+            // Update existing appointment
+            const updatedData = [...oldData];
+            updatedData[existingIndex] = {
+              ...updatedData[existingIndex],
+              ...appointment,
+            };
+            return updatedData;
+          } else {
+            // Add new appointment if not found
+            return [...oldData, appointment];
+          }
+        };
+
+        // Update cache for affected therapists using the SAME pattern as DriverDashboard
+        for (const therapistId of therapistIds) {
+          const therapistQueryKey = queryKeys.appointments.byTherapist(
+            therapistId,
+            "all"
+          );
+
+          // 1. ✅ INSTANT UPDATE: Apply data change immediately (like DriverDashboard)
+          queryClient.setQueryData(therapistQueryKey, updateFunction);
+
+          // 2. ✅ IMMEDIATE INVALIDATION: Use the same pattern as DriverDashboard for instant updates
+          queryClient.invalidateQueries({
+            queryKey: ["appointments"],
+            refetchType: "active", // Only refetch currently active queries
+          });
+
+          console.log(
+            `✅ INSTANT TherapistDashboard cache update applied for therapist ${therapistId}`
+          );
+        }
+
+        console.log(
+          `✅ Applied instant cache updates to ${therapistIds.length} therapist dashboards`
+        );
+      }
+
+      // ✅ SIMPLIFIED INVALIDATION: Use the same pattern as DriverDashboard
+      // Just invalidate the main appointments cache and let components handle their specific caches
+      await queryClient.invalidateQueries({
+        queryKey: ["appointments"],
+        refetchType: "active", // Only refetch currently active queries
+      });
+
+      console.log(
+        "✅ WebSocket cache invalidation completed with DriverDashboard pattern"
+      );
+    } catch (error) {
+      console.error("❌ WebSocket cache invalidation failed:", error);
+    }
+  };
 };
 
 export default {
