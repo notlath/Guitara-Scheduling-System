@@ -71,6 +71,7 @@ class Appointment(models.Model):
         ),  # Driver's job done after drop-off
         ("session_in_progress", "Session In Progress"),
         ("awaiting_payment", "Awaiting Payment"),
+        ("payment_verified", "Payment Verified"),  # NEW: Added for payment verification workflow
         ("completed", "Completed"),
         ("pickup_requested", "Pickup Requested"),
         ("driver_assigned_pickup", "Driver Assigned for Pickup"),

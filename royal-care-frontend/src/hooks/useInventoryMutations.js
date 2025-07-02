@@ -43,6 +43,15 @@ const restockInventoryItem = async ({ itemId, amount, notes }) => {
   return response.data;
 };
 
+// Refill inventory item from empty
+const refillFromEmpty = async ({ itemId, amount, notes }) => {
+  const response = await axiosAuth.post(
+    `${INVENTORY_API_URL}${itemId}/refill_from_empty/`,
+    { amount, notes }
+  );
+  return response.data;
+};
+
 // Add new inventory item
 const addInventoryItem = async (newItem) => {
   const response = await axiosAuth.post(INVENTORY_API_URL, newItem);
@@ -82,6 +91,25 @@ export const useRestockInventoryItem = () => {
     },
     onError: (error) => {
       console.error("Failed to restock inventory item:", error);
+    },
+  });
+};
+
+// Hook for refilling from empty inventory items
+export const useRefillFromEmpty = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: refillFromEmpty,
+    onSuccess: () => {
+      // Invalidate queries to mark them as stale and trigger refetch
+      // This keeps existing data visible during refetch
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_ITEMS] });
+      queryClient.invalidateQueries({ queryKey: [MATERIALS_WITH_STOCK] });
+      queryClient.invalidateQueries({ queryKey: [USAGE_LOGS] });
+    },
+    onError: (error) => {
+      console.error("Failed to refill from empty:", error);
     },
   });
 };
