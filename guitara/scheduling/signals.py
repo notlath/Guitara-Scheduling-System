@@ -20,33 +20,34 @@ def appointment_saved(sender, instance, created, **kwargs):
     """Handle appointment creation and updates"""
     try:
         # Handle material returns for completed appointments
-        if not created and instance.status == "completed":
-            # For appointments that just changed to completed, return reusable materials
-            # We'll check if there are any unreturned reusable materials
-            try:
-                from .material_usage_service import MaterialUsageService
-                from .models import AppointmentMaterial
-                
-                # Check if there are unreturned reusable materials
-                unreturned_materials = AppointmentMaterial.objects.filter(
-                    appointment=instance,
-                    is_reusable=True,
-                    returned_at__isnull=True
-                )
-                
-                if unreturned_materials.exists():
-                    # Return reusable materials
-                    returned_materials = MaterialUsageService.return_reusable_materials(instance)
-                    if returned_materials:
-                        logger.info(
-                            f"Returned {len(returned_materials)} reusable materials for "
-                            f"completed appointment #{instance.id}"
-                        )
-                
-            except Exception as e:
-                logger.error(
-                    f"Error returning materials for appointment {instance.id}: {str(e)}"
-                )
+        # DISABLED: Material returns should happen through manual material check process
+        # if not created and instance.status == "completed":
+        #     # For appointments that just changed to completed, return reusable materials
+        #     # We'll check if there are any unreturned reusable materials
+        #     try:
+        #         from .material_usage_service import MaterialUsageService
+        #         from .models import AppointmentMaterial
+        #
+        #         # Check if there are unreturned reusable materials
+        #         unreturned_materials = AppointmentMaterial.objects.filter(
+        #             appointment=instance,
+        #             is_reusable=True,
+        #             returned_at__isnull=True
+        #         )
+        #
+        #         if unreturned_materials.exists():
+        #             # Return reusable materials
+        #             returned_materials = MaterialUsageService.return_reusable_materials(instance)
+        #             if returned_materials:
+        #                 logger.info(
+        #                     f"Returned {len(returned_materials)} reusable materials for "
+        #                     f"completed appointment #{instance.id}"
+        #                 )
+        #
+        #     except Exception as e:
+        #         logger.error(
+        #             f"Error returning materials for appointment {instance.id}: {str(e)}"
+        #         )
 
         if created:
             # New appointment created

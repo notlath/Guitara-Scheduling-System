@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
-import './PostServiceMaterialModal.css';
+import { useState } from "react";
+import "./PostServiceMaterialModal.css";
 
-const PostServiceMaterialModal = ({ 
-  isOpen, 
-  onClose, 
-  materials, 
+const PostServiceMaterialModal = ({
+  isOpen,
+  onClose,
+  materials,
   onSubmit,
-  isSubmitting = false 
+  isSubmitting = false,
 }) => {
   const [materialStatus, setMaterialStatus] = useState({});
 
   const handleMaterialStatusChange = (materialId, isEmpty) => {
-    setMaterialStatus(prev => ({
+    setMaterialStatus((prev) => ({
       ...prev,
-      [materialId]: isEmpty
+      [materialId]: isEmpty,
     }));
   };
 
@@ -33,19 +33,19 @@ const PostServiceMaterialModal = ({
       <div className="post-service-modal">
         <div className="post-service-modal-header">
           <h3>Service Completed - Material Check</h3>
-          <button 
-            className="close-button" 
+          <button
+            className="close-button"
             onClick={handleClose}
             disabled={isSubmitting}
           >
             ×
           </button>
         </div>
-        
+
         <div className="post-service-modal-content">
           <p className="modal-description">
-            Please check the materials used during this service. 
-            Are any of these materials now empty?
+            Please check the materials used during this service. Are any of
+            these materials now empty?
           </p>
 
           <div className="materials-check-list">
@@ -66,7 +66,9 @@ const PostServiceMaterialModal = ({
                         name={`material-${material.id}`}
                         value="yes"
                         checked={materialStatus[material.id] === true}
-                        onChange={() => handleMaterialStatusChange(material.id, true)}
+                        onChange={() =>
+                          handleMaterialStatusChange(material.id, true)
+                        }
                         disabled={isSubmitting}
                       />
                       <span>Yes</span>
@@ -77,7 +79,9 @@ const PostServiceMaterialModal = ({
                         name={`material-${material.id}`}
                         value="no"
                         checked={materialStatus[material.id] === false}
-                        onChange={() => handleMaterialStatusChange(material.id, false)}
+                        onChange={() =>
+                          handleMaterialStatusChange(material.id, false)
+                        }
                         disabled={isSubmitting}
                       />
                       <span>No</span>
@@ -90,19 +94,19 @@ const PostServiceMaterialModal = ({
         </div>
 
         <div className="post-service-modal-footer">
-          <button 
+          <button
             className="cancel-button"
             onClick={handleClose}
             disabled={isSubmitting}
           >
             Cancel
           </button>
-          <button 
+          <button
             className="submit-button"
             onClick={handleSubmit}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Processing...' : 'Complete Service'}
+            {isSubmitting ? "Processing..." : "Complete Service"}
           </button>
         </div>
       </div>

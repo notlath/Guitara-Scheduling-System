@@ -194,9 +194,86 @@ class AppointmentSerializer(serializers.ModelSerializer):
     # Add material usage summary for reading
     material_usage_summary = serializers.SerializerMethodField()
 
+    # Add appointment materials for direct access
+    appointment_materials = serializers.SerializerMethodField()
+
     class Meta:
         model = Appointment
-        fields = "__all__"
+        fields = [
+            "id",
+            "client",
+            "therapist",
+            "driver",
+            "operator",
+            "payment_verified_by",
+            "rejected_by",
+            "therapists",
+            "date",
+            "start_time",
+            "end_time",
+            "status",
+            "payment_status",
+            "payment_amount",
+            "payment_method",
+            "payment_verified_at",
+            "payment_notes",
+            "receipt_hash",
+            "receipt_url",
+            "location",
+            "notes",
+            "required_materials",
+            "pickup_requested",
+            "pickup_request_time",
+            "pickup_confirmed_at",
+            "pickup_urgency",
+            "pickup_notes",
+            "estimated_pickup_time",
+            "session_end_time",
+            "return_journey_completed_at",
+            "rejection_reason",
+            "rejected_at",
+            "response_deadline",
+            "auto_cancelled_at",
+            "therapist_accepted",
+            "therapist_accepted_at",
+            "driver_accepted",
+            "driver_accepted_at",
+            "therapist_confirmed_at",
+            "driver_confirmed_at",
+            "started_at",
+            "journey_started_at",
+            "arrived_at",
+            "session_started_at",
+            "payment_initiated_at",
+            "requires_car",
+            "group_confirmation_complete",
+            "group_size",
+            "driver_available_since",
+            "auto_assignment_eligible",
+            "created_at",
+            "updated_at",
+            "services",
+            "materials",
+            # Read-only fields
+            "client_details",
+            "therapist_details",
+            "therapists_details",
+            "driver_details",
+            "operator_details",
+            "rejected_by_details",
+            "services_details",
+            "rejection_details",
+            "total_duration",
+            "total_price",
+            "both_parties_accepted",
+            "pending_acceptances",
+            "formatted_date",
+            "formatted_start_time",
+            "formatted_end_time",
+            "urgency_level",
+            "material_usage_summary",
+            "appointment_materials",
+        ]
 
     def get_formatted_date(self, obj):
         """Return formatted date for frontend display"""
@@ -288,39 +365,44 @@ class AppointmentSerializer(serializers.ModelSerializer):
         """Get a summary of material usage for the appointment"""
         try:
             from .material_usage_service import MaterialUsageService
+
             return MaterialUsageService.get_appointment_material_summary(obj)
         except Exception:
             # Fallback to empty summary if service fails
             return {
-                'total_materials': 0,
-                'consumable_materials': [],
-                'reusable_materials': [],
-                'reusable_returned': 0,
-                'reusable_pending': 0
+                "total_materials": 0,
+                "consumable_materials": [],
+                "reusable_materials": [],
+                "reusable_returned": 0,
+                "reusable_pending": 0,
             }
-    
+
     def create(self, validated_data):
         """Create appointment and handle material deduction"""
         # Extract materials data before creating appointment
-        materials_data = validated_data.pop('materials', [])
-        
+        materials_data = validated_data.pop("materials", [])
+
         # Debug logging
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(f"=== APPOINTMENT CREATION DEBUG ===")
         logger.info(f"Materials data received: {materials_data}")
         logger.info(f"Materials data type: {type(materials_data)}")
-        logger.info(f"Materials data length: {len(materials_data) if materials_data else 0}")
-        
+        logger.info(
+            f"Materials data length: {len(materials_data) if materials_data else 0}"
+        )
+
         # Create the appointment
         appointment = super().create(validated_data)
         logger.info(f"Appointment created: #{appointment.id}")
-        
+
         # Handle material deduction if materials were provided
         if materials_data:
             logger.info(f"Processing {len(materials_data)} materials...")
             try:
                 from .material_usage_service import MaterialUsageService
+
                 result = MaterialUsageService.deduct_materials_for_appointment(
                     appointment, materials_data
                 )
@@ -328,11 +410,35 @@ class AppointmentSerializer(serializers.ModelSerializer):
             except Exception as e:
                 # If material deduction fails, we should probably rollback the appointment
                 # For now, log the error and continue
-                logger.error(f"Failed to deduct materials for appointment {appointment.id}: {str(e)}")
+                logger.error(
+                    f"Failed to deduct materials for appointment {appointment.id}: {str(e)}"
+                )
         else:
             logger.info("No materials data provided - skipping material deduction")
-        
+
         return appointment
+
+    def get_appointment_materials(self, obj):
+        """Get appointment materials as a list for frontend"""
+        try:
+            materials = obj.appointment_materials.all().select_related("inventory_item")
+            return [
+                {
+                    "id": material.id,
+                    "name": material.inventory_item.name,
+                    "category": material.inventory_item.category,
+                    "quantity_used": material.quantity_used,
+                    "unit": material.inventory_item.unit,
+                    "usage_type": material.usage_type,
+                    "is_reusable": material.is_reusable,
+                    "deducted_at": material.deducted_at,
+                    "returned_at": material.returned_at,
+                    "notes": material.notes,
+                }
+                for material in materials
+            ]
+        except Exception:
+            return []
 
     def validate_services(self, value):
         """Validate that services exist and are active"""
@@ -589,33 +695,41 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class AppointmentMaterialSerializer(serializers.ModelSerializer):
     """Serializer for AppointmentMaterial usage tracking"""
-    
+
     inventory_item_details = serializers.SerializerMethodField()
     appointment_details = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = AppointmentMaterial
         fields = [
-            'id', 'appointment', 'inventory_item', 'quantity_used',
-            'usage_type', 'is_reusable', 'deducted_at', 'returned_at',
-            'notes', 'inventory_item_details', 'appointment_details'
+            "id",
+            "appointment",
+            "inventory_item",
+            "quantity_used",
+            "usage_type",
+            "is_reusable",
+            "deducted_at",
+            "returned_at",
+            "notes",
+            "inventory_item_details",
+            "appointment_details",
         ]
-    
+
     def get_inventory_item_details(self, obj):
         """Get inventory item details"""
         return {
-            'id': obj.inventory_item.id,
-            'name': obj.inventory_item.name,
-            'category': obj.inventory_item.category,
-            'unit': obj.inventory_item.unit,
-            'current_stock': obj.inventory_item.current_stock
+            "id": obj.inventory_item.id,
+            "name": obj.inventory_item.name,
+            "category": obj.inventory_item.category,
+            "unit": obj.inventory_item.unit,
+            "current_stock": obj.inventory_item.current_stock,
         }
-    
+
     def get_appointment_details(self, obj):
         """Get basic appointment details"""
         return {
-            'id': obj.appointment.id,
-            'date': obj.appointment.date,
-            'status': obj.appointment.status,
-            'client_name': f"{obj.appointment.client.first_name} {obj.appointment.client.last_name}"
+            "id": obj.appointment.id,
+            "date": obj.appointment.date,
+            "status": obj.appointment.status,
+            "client_name": f"{obj.appointment.client.first_name} {obj.appointment.client.last_name}",
         }

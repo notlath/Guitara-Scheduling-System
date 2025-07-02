@@ -1,28 +1,40 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { MdClose } from "react-icons/md";
-// TanStack Query hooks for data management (removing Redux dependencies)
-import useDashboardCommon from "../hooks/useDashboardCommon";
+import { useCallback, useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { logout } from "../features/auth/authSlice";
+// Enhanced Redux hooks for automatic TanStack Query cache invalidation
+import { useEnhancedTherapistActions } from "../hooks/useEnhancedRedux";
+// TANSTACK QUERY: Replace optimized hooks with TanStack Query
+// Cache invalidation utility
+import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
+// Import the new instant updates hook
+import { useTherapistInstantActions } from "../hooks/useInstantUpdates";
+// Import shared Philippine time and greeting hook
+import { usePhilippineTime } from "../hooks/usePhilippineTime";
+// TanStack Query hooks for data management (for upstream features)
 import { useTherapistDashboardData } from "../hooks/useDashboardQueries";
-import { LoadingButton } from "./common/LoadingComponents";
-import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
 import { syncMutationSuccess } from "../services/realTimeSyncService";
-import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
-// ✅ CRITICAL FIX: Import handleWebSocketUpdate for comprehensive cache management
+// User utilities
+import { getUserDisplayName } from "../utils/userUtils";
+import { LoadingButton } from "./common/LoadingComponents";
+import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
+// Import PostServiceMaterialModal for material status checking
+import PostServiceMaterialModal from "./scheduling/PostServiceMaterialModal";
 
+import { shallowEqual } from "react-redux";
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
 import TabSwitcher from "../globals/TabSwitcher";
 import "../globals/TabSwitcher.css";
+import { useOptimizedSelector } from "../hooks/usePerformanceOptimization";
 import "../styles/DriverCoordination.css";
 import "../styles/TherapistDashboard.css";
-import { getUser, getUserDisplayName } from "../utils/userUtils";
 import AttendanceComponent from "./AttendanceComponent";
 import RejectionModal from "./RejectionModal";
 import Calendar from "./scheduling/Calendar";
-import PostServiceMaterialModal from "./scheduling/PostServiceMaterialModal";
 import WebSocketStatus from "./scheduling/WebSocketStatus";
 import StatusDropdown from "./StatusDropdown";
 
@@ -36,15 +48,10 @@ const getBaseURL = () => {
 
 const API_URL = `${getBaseURL()}/scheduling/`;
 
-// ✅ SIMPLIFIED: Remove complex invalidation - use DriverDashboard pattern
-// The complex invalidation function caused race conditions and over-invalidation
-// DriverDashboard uses simple cache invalidation that works reliably
-
 // Helper to get auth token
 const getToken = () => localStorage.getItem("knoxToken");
 
-// TanStack Query functions for fetching appointments data
-// API calls for therapist actions
+// TanStack Query functions for therapist actions (combining both approaches)
 const therapistAPI = {
   acceptAppointment: async (appointmentId) => {
     const token = getToken();
@@ -139,26 +146,78 @@ const therapistAPI = {
     return response.data;
   },
 };
+
 const TherapistDashboard = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // ✅ CRITICAL FIX: Memoize user to prevent infinite re-renders
-  const user = useMemo(() => getUser(), []);
+  // Enhanced Redux actions with automatic TanStack Query cache invalidation
+  const {
+    acceptAppointment: enhancedAcceptAppointment,
+    rejectAppointment: enhancedRejectAppointment,
+    confirmReadiness: enhancedConfirmReadiness,
+    startSession: enhancedStartSession,
+    completeSession: enhancedCompleteSession,
+    requestPickup: enhancedRequestPickup,
+    markPaymentRequest: enhancedMarkPaymentRequest,
+  } = useEnhancedTherapistActions();
 
-  // Extract user name for display
+  // ✅ NEW: Instant updates for immediate UI feedback
+  const {
+    acceptAppointment: instantAcceptAppointment,
+    rejectAppointment: instantRejectAppointment,
+    requestPickup: instantRequestPickup,
+  } = useTherapistInstantActions();
+  // Remove the sync event handlers - TanStack Query handles real-time updates automatically
+
+  // Get user from Redux state
+  const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
+
+  // Get user display name consistently (using the same pattern as other dashboards)
   const userName = getUserDisplayName(user, "Therapist");
 
-  // ✅ DEBUG: Log user information ONCE during component mount
-  useEffect(() => {
-    console.log("� DEBUG: TherapistDashboard user state:", {
-      user,
-      userId: user?.id,
-      userName: user?.first_name || user?.username,
-      userType: user?.user_type || user?.role,
-    });
-  }, [user]);
+  // Use shared Philippine time and greeting hook
+  const { systemTime, greeting } = usePhilippineTime();
 
-  // TanStack Query data fetching with optimized configuration
+  // URL search params for view persistence
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Get view from URL params, default to 'today'
+  const currentView = searchParams.get("view") || "today";
+
+  // Helper function to update view in URL
+  const setView = (newView) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set("view", newView);
+    setSearchParams(newSearchParams);
+  };
+  const [rejectionModal, setRejectionModal] = useState({
+    isOpen: false,
+    appointmentId: null,
+  });
+
+  // Material status modal state for post-service material checking
+  const [materialModal, setMaterialModal] = useState({
+    isOpen: false,
+    appointmentId: null,
+    materials: [],
+    isSubmitting: false,
+  });
+
+  // 🔍 DEBUG: Log material modal state changes
+  console.log("🔍 MODAL STATE:", materialModal);
+
+  // Loading states for individual button actions
+  const [buttonLoading, setButtonLoading] = useState({});
+
+  // Helper function to set loading state for specific action
+  const setActionLoading = (actionKey, isLoading) => {
+    setButtonLoading((prev) => ({
+      ...prev,
+      [actionKey]: isLoading,
+    }));
+  };
+  // TANSTACK QUERY: Replace optimized data manager with TanStack Query
   const {
     appointments: myAppointments,
     todayAppointments: myTodayAppointments,
@@ -229,7 +288,7 @@ const TherapistDashboard = () => {
   ]);
 
   // ✅ SIMPLIFIED MUTATIONS: Use DriverDashboard pattern for simpler, more reliable updates
-  const acceptAppointmentMutation = useMutation({
+  const _acceptAppointmentMutation = useMutation({
     mutationFn: therapistAPI.acceptAppointment,
     onSuccess: async (backendData, appointmentId) => {
       console.log("✅ Accept appointment mutation successful");
@@ -412,30 +471,6 @@ const TherapistDashboard = () => {
     },
   });
 
-  // ✅ REFACTORED: Use common dashboard hook for shared functionality
-  const {
-    systemTime,
-    greeting,
-    currentView,
-    setView,
-    handleLogout,
-    buttonLoading,
-    setActionLoading,
-  } = useDashboardCommon("today");
-
-  const [rejectionModal, setRejectionModal] = useState({
-    isOpen: false,
-    appointmentId: null,
-  });
-
-  // Post-service material modal state
-  const [materialModal, setMaterialModal] = useState({
-    isOpen: false,
-    appointmentId: null,
-    materials: [],
-    isSubmitting: false,
-  });
-
   // Modal helper functions
   const openRejectionModal = ({ appointmentId }) => {
     setRejectionModal({
@@ -451,12 +486,12 @@ const TherapistDashboard = () => {
     });
   };
 
-  const openMaterialModal = ({ appointmentId, materials = [] }) => {
+  const openMaterialModal = ({ appointmentId, materials, isSubmitting }) => {
     setMaterialModal({
       isOpen: true,
       appointmentId,
       materials,
-      isSubmitting: false,
+      isSubmitting,
     });
   };
 
@@ -467,10 +502,6 @@ const TherapistDashboard = () => {
       materials: [],
       isSubmitting: false,
     });
-  };
-
-  const updateMaterialModal = (updates) => {
-    setMaterialModal((prev) => ({ ...prev, ...updates }));
   };
 
   // Debug logging for troubleshooting the "No appointments found" issue
@@ -494,24 +525,36 @@ const TherapistDashboard = () => {
     });
   }
 
-  // ✅ REMOVED: Duplicate handleLogout - now using common dashboard hook
+  // TANSTACK QUERY: Automatic background refreshes handled by TanStack Query
+  // No manual refresh logic needed - TanStack Query handles it automatically
 
-  // Handle appointment status changes with TanStack Query mutations
+  const handleLogout = () => {
+    localStorage.removeItem("knoxToken");
+    localStorage.removeItem("user");
+    dispatch(logout());
+    navigate("/");
+  };
+
+  // Handle appointment status changes with INSTANT UPDATES (immediate UI feedback)
   const handleAcceptAppointment = async (appointmentId) => {
     const actionKey = `accept_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await acceptAppointmentMutation.mutateAsync(appointmentId);
+
+      // ✅ INSTANT UPDATE: Uses optimistic updates for immediate UI feedback
+      // This replaces the old approach and provides instant updates across all dashboards
+      await instantAcceptAppointment(appointmentId, (loading) =>
+        setActionLoading(actionKey, loading)
+      );
     } catch (error) {
+      // Error handling is managed by the instant updates hook
       console.error("Accept appointment failed:", error);
-      alert("Failed to accept appointment. Please try again.");
-    } finally {
-      setActionLoading(actionKey, false);
     }
   };
 
   const handleRejectAppointment = (appointmentId) => {
-    openRejectionModal({
+    setRejectionModal({
+      isOpen: true,
       appointmentId: appointmentId,
     });
   };
@@ -525,15 +568,13 @@ const TherapistDashboard = () => {
     }
 
     try {
-      await rejectAppointmentMutation.mutateAsync({
-        appointmentId,
-        rejectionReason: cleanReason,
-      });
-      closeRejectionModal();
+      // ✅ INSTANT UPDATE: Uses optimistic updates for immediate UI feedback
+      await instantRejectAppointment(appointmentId, cleanReason);
+      setRejectionModal({ isOpen: false, appointmentId: null });
     } catch (error) {
+      // Error handling is managed by the instant updates hook
       console.error("Reject appointment failed:", error);
-      alert("Failed to reject appointment. Please try again.");
-      closeRejectionModal();
+      setRejectionModal({ isOpen: false, appointmentId: null });
     }
   };
 
@@ -542,8 +583,17 @@ const TherapistDashboard = () => {
     const actionKey = `confirm_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
-      await confirmReadinessMutation.mutateAsync(appointmentId);
-      console.log("✅ Therapist confirmation successful");
+      await enhancedConfirmReadiness(appointmentId);
+
+      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+      await Promise.all([
+        refetch(),
+        invalidateAppointmentCaches(queryClient, {
+          userId: user?.id,
+          userRole: "therapist",
+          appointmentId,
+        }),
+      ]);
     } catch (error) {
       console.error("Failed to confirm appointment:", error);
       alert("Failed to confirm appointment. Please try again.");
@@ -551,34 +601,21 @@ const TherapistDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-
   const handleStartSession = async (appointmentId) => {
     const actionKey = `start_session_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
+      await enhancedStartSession(appointmentId);
 
-      // Debug: Log appointment state before starting session
-      const currentData = queryClient.getQueryData(["appointments"]);
-      const appointment = currentData?.find((apt) => apt.id === appointmentId);
-      console.log(
-        "🔍 Before startSession - Appointment status:",
-        appointment?.status
-      );
-
-      const result = await startSessionMutation.mutateAsync(appointmentId);
-      console.log("✅ Session start successful, backend response:", result);
-
-      // Debug: Log appointment state after mutation
-      setTimeout(() => {
-        const updatedData = queryClient.getQueryData(["appointments"]);
-        const updatedAppointment = updatedData?.find(
-          (apt) => apt.id === appointmentId
-        );
-        console.log(
-          "🔍 After startSession - Appointment status:",
-          updatedAppointment?.status
-        );
-      }, 100);
+      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+      await Promise.all([
+        refetch(),
+        invalidateAppointmentCaches(queryClient, {
+          userId: user?.id,
+          userRole: "therapist",
+          appointmentId,
+        }),
+      ]);
     } catch (error) {
       console.error("Failed to start session:", error);
       alert("Failed to start session. Please try again.");
@@ -586,45 +623,26 @@ const TherapistDashboard = () => {
       setActionLoading(actionKey, false);
     }
   };
-
   const handleRequestPayment = async (appointmentId) => {
     const actionKey = `request_payment_${appointmentId}`;
     try {
       setActionLoading(actionKey, true);
 
-      // Get the appointment details to check for materials
-      const appointment =
-        myAppointments?.find((apt) => apt.id === appointmentId) ||
-        myTodayAppointments?.find((apt) => apt.id === appointmentId) ||
-        myUpcomingAppointments?.find((apt) => apt.id === appointmentId);
+      console.log("🔍 PAYMENT REQUEST STARTED for appointment:", appointmentId);
 
-      const appointmentMaterials = appointment?.appointment_materials || [];
+      // 🚨 FIXED: Remove material modal logic from payment request
+      // Material modal should only appear after payment is verified by operator
+      // Simply proceed with payment request without checking materials
+      await requestPaymentMutation.mutateAsync(appointmentId);
+      console.log("✅ Payment request successful");
 
-      if (appointmentMaterials.length > 0) {
-        // Show material modal for post-service material checking
-        openMaterialModal({
-          appointmentId: appointmentId,
-          materials: appointmentMaterials.map((mat) => ({
-            id: mat.inventory_item?.id || mat.material_id,
-            name: mat.inventory_item?.name || mat.material_name || "Material",
-            quantity_used: mat.quantity_used,
-            unit: mat.inventory_item?.unit_of_measure || "units",
-          })),
-          isSubmitting: false,
-        });
-
-        // Don't proceed with payment request yet - wait for material modal completion
-        return;
-      } else {
-        // No materials to check, proceed with payment request directly
-        await requestPaymentMutation.mutateAsync(appointmentId);
-        console.log("✅ Payment request successful");
-      }
+      console.log("🔍 PAYMENT REQUEST COMPLETED - Payment request successful");
     } catch (error) {
       console.error("Failed to request payment:", error);
       alert("Failed to request payment. Please try again.");
     } finally {
       setActionLoading(actionKey, false);
+      console.log("🔍 PAYMENT REQUEST COMPLETED");
     }
   };
 
@@ -635,8 +653,27 @@ const TherapistDashboard = () => {
       const actionKey = `complete_session_${appointmentId}`;
       try {
         setActionLoading(actionKey, true);
-        await completeSessionMutation.mutateAsync(appointmentId);
-        console.log("✅ Session completion successful");
+
+        // 🚨 FIXED: Materials should have been checked during payment_verified status
+        // At this point (payment_completed), we can proceed directly to complete the session
+        console.log(
+          "🔍 SESSION COMPLETION - Proceeding to complete session (materials already checked during payment verification)"
+        );
+
+        // Complete the session directly
+        await enhancedCompleteSession(appointmentId);
+
+        // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+        await Promise.all([
+          refetch(),
+          invalidateAppointmentCaches(queryClient, {
+            userId: user?.id,
+            userRole: "therapist",
+            appointmentId,
+          }),
+        ]);
+
+        console.log("✅ Session completed successfully");
       } catch (error) {
         console.error("Failed to complete session:", error);
         alert("Failed to complete session. Please try again.");
@@ -646,68 +683,244 @@ const TherapistDashboard = () => {
     }
   };
 
-  const handleRequestPickupNew = async (appointmentId, urgency = "normal") => {
-    const actionKey = `request_pickup_${appointmentId}_${urgency}`;
+  // ✅ NEW: Handle materials check for payment_verified appointments
+  const handleMaterialsCheck = async (appointmentId) => {
+    const actionKey = `materials_check_${appointmentId}`;
+    setActionLoading(actionKey, true);
+
     try {
-      setActionLoading(actionKey, true);
-      await requestPickupMutation.mutateAsync({ appointmentId, urgency });
-      alert(
-        urgency === "urgent"
-          ? "Urgent pickup request sent!"
-          : "Pickup request sent!"
+      // Find the appointment to get its materials
+      const appointment = myAppointments.find(
+        (apt) => apt.id === appointmentId
       );
-      console.log("✅ Pickup request successful");
+
+      if (!appointment) {
+        throw new Error("Appointment not found");
+      }
+
+      console.log("🔍 MATERIALS CHECK - Found appointment:", appointment);
+      console.log(
+        "🔍 MATERIALS CHECK - Material usage summary:",
+        appointment.material_usage_summary
+      );
+
+      // Use material_usage_summary as the primary source since appointment_materials may be missing
+      const materialSummary = appointment?.material_usage_summary;
+      const hasMaterials =
+        materialSummary &&
+        (materialSummary.consumable_materials?.length > 0 ||
+          materialSummary.reusable_materials?.length > 0);
+
+      if (!hasMaterials) {
+        // No materials to check, proceed directly to completion
+        console.log("🔍 No materials found, proceeding to complete session");
+        alert("No materials to check. Session will be marked as completed.");
+
+        // ✅ FIXED: Use the existing /complete/ endpoint instead of non-existent check_materials_status
+        const API_BASE_URL = import.meta.env.PROD
+          ? "https://charismatic-appreciation-production.up.railway.app/api"
+          : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
+        const token =
+          localStorage.getItem("knoxToken") ||
+          localStorage.getItem("authToken") ||
+          localStorage.getItem("token");
+
+        const response = await fetch(
+          `${API_BASE_URL}/scheduling/appointments/${appointmentId}/complete/`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${token}`,
+            },
+            body: JSON.stringify({
+              materials_checked: true,
+              materials_are_empty: false, // No materials to check
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || "Failed to complete materials check"
+          );
+        }
+
+        // 🆕 IMPORTANT: Mark materials as checked in localStorage for appointments with no materials too
+        const storageKey = `materials_checked_${appointmentId}`;
+        localStorage.setItem(storageKey, "true");
+        console.log(
+          `✅ Marked materials as checked for appointment ${appointmentId} in localStorage (no materials case)`
+        );
+
+        // Refresh appointment data
+        await refetch();
+        return;
+      }
+
+      // Convert material_usage_summary format to the format expected by PostServiceMaterialModal
+      const allMaterials = [
+        ...(materialSummary.consumable_materials || []).map((material) => ({
+          id: material.id || `consumable_${material.name}`,
+          name: material.name,
+          category: material.category,
+          quantity_used: material.quantity_used,
+          unit: material.unit,
+          usage_type: "consumable",
+          is_reusable: false,
+          deducted_at: material.deducted_at,
+          returned_at: material.returned_at,
+        })),
+        ...(materialSummary.reusable_materials || []).map((material) => ({
+          id: material.id || `reusable_${material.name}`,
+          name: material.name,
+          category: material.category,
+          quantity_used: material.quantity_used,
+          unit: material.unit,
+          usage_type: "reusable",
+          is_reusable: true,
+          deducted_at: material.deducted_at,
+          returned_at: material.returned_at,
+        })),
+      ];
+
+      console.log("🔍 MATERIALS CHECK - All materials to show:", allMaterials);
+
+      // Open the materials modal
+      setMaterialModal({
+        isOpen: true,
+        appointmentId: appointmentId,
+        materials: allMaterials,
+        isSubmitting: false,
+      });
+
+      console.log("🔍 MATERIALS CHECK - Modal opened successfully");
     } catch (error) {
-      console.error("Failed to request pickup:", error);
-      alert("Failed to request pickup. Please try again.");
+      console.error("Failed to prepare materials check:", error);
+      alert(`Failed to prepare materials check: ${error.message}`);
     } finally {
       setActionLoading(actionKey, false);
     }
   };
 
-  // Legacy handlers (keeping for backward compatibility)
-  const handleRejectionCancel = () => {
-    closeRejectionModal();
-  };
-
-  // Post-service material modal handlers
+  // Material modal handlers for post-service material status checking
   const handleMaterialModalSubmit = async (materialStatus) => {
-    updateMaterialModal({ isSubmitting: true });
+    setMaterialModal((prev) => ({ ...prev, isSubmitting: true }));
 
     try {
-      // Process each material's status
-      for (const material of materialModal.materials) {
-        const isEmpty = materialStatus[material.id];
+      console.log("🔍 MATERIAL SUBMIT DEBUG:");
+      console.log("🔍 materialStatus:", materialStatus);
+      console.log("🔍 materialModal.materials:", materialModal.materials);
 
-        if (isEmpty !== undefined) {
-          const response = await fetch(
-            `/api/inventory/items/${material.id}/update_material_status/`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-              },
-              body: JSON.stringify({
-                is_empty: isEmpty,
-                quantity: material.quantity_used,
-                notes: `Post-service update for appointment #${materialModal.appointmentId}`,
-              }),
-            }
-          );
+      // Get auth token properly - try multiple token keys
+      const token =
+        localStorage.getItem("knoxToken") ||
+        localStorage.getItem("authToken") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("accessToken");
 
-          if (!response.ok) {
-            throw new Error(`Failed to update material ${material.name}`);
-          }
-        }
+      console.log("🔍 Auth token found:", token ? "YES" : "NO");
+      console.log(
+        "🔍 Token preview:",
+        token ? token.substring(0, 10) + "..." : "NONE"
+      );
+
+      const API_BASE_URL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
+      console.log("🔍 API_BASE_URL:", API_BASE_URL);
+
+      // ✅ FIXED: Use the existing /complete/ endpoint instead of non-existent check_materials_status
+      // Determine if any materials are marked as empty
+      const anyMaterialsEmpty = Object.values(materialStatus).some(
+        (isEmpty) => isEmpty === true
+      );
+
+      console.log("🔍 Any materials empty:", anyMaterialsEmpty);
+      console.log("🔍 Appointment ID:", materialModal.appointmentId);
+
+      const url = `${API_BASE_URL}/scheduling/appointments/${materialModal.appointmentId}/complete/`;
+      console.log("🔍 Request URL:", url);
+
+      const requestBody = {
+        materials_are_empty: anyMaterialsEmpty,
+        materials_checked: true,
+        material_status: materialStatus,
+      };
+      console.log("🔍 Request body:", requestBody);
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log("🔍 Response status:", response.status);
+      console.log("🔍 Response ok:", response.ok);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("🔍 Error response:", errorData);
+        throw new Error(
+          errorData.error || `Failed to complete materials check`
+        );
       }
 
-      // Success - close modal and continue with payment request
-      closeMaterialModal();
+      const responseData = await response.json();
+      console.log("✅ Materials check completed:", responseData);
 
-      // Now proceed with the payment request
-      const appointmentId = materialModal.appointmentId;
-      await requestPaymentMutation.mutateAsync(appointmentId);
+      // 🆕 IMPORTANT: Mark materials as checked in localStorage for this appointment
+      const storageKey = `materials_checked_${materialModal.appointmentId}`;
+      localStorage.setItem(storageKey, "true");
+      console.log(
+        `✅ Marked materials as checked for appointment ${materialModal.appointmentId} in localStorage`
+      );
+
+      // Close modal and refresh data
+      setMaterialModal({
+        isOpen: false,
+        appointmentId: null,
+        materials: [],
+        isSubmitting: false,
+      });
+
+      const statusMessage = anyMaterialsEmpty
+        ? "Materials marked as empty and moved to Empty column. Session completed!"
+        : "Materials returned to stock. Session completed!";
+
+      alert(statusMessage);
+
+      // Refresh appointment data to show updated status
+      await refetch();
+    } catch (error) {
+      console.error("Failed to complete materials check:", error);
+      alert(`Failed to complete materials check: ${error.message}`);
+    } finally {
+      setMaterialModal((prev) => ({ ...prev, isSubmitting: false }));
+    }
+  };
+
+  const handleMaterialModalClose = () => {
+    setMaterialModal({
+      isOpen: false,
+      appointmentId: null,
+      materials: [],
+      isSubmitting: false,
+    });
+  };
+
+  const handleRequestPickupNew = async (appointmentId, urgency = "normal") => {
+    const actionKey = `request_pickup_${appointmentId}_${urgency}`;
+    try {
+      setActionLoading(actionKey, true);
+      await enhancedRequestPickup(appointmentId, urgency);
 
       // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
       await Promise.all([
@@ -719,17 +932,24 @@ const TherapistDashboard = () => {
         }),
       ]);
 
-      alert("Material status updated and payment requested successfully!");
+      alert(
+        urgency === "urgent"
+          ? "Urgent pickup request sent!"
+          : "Pickup request sent!"
+      );
     } catch (error) {
-      console.error("Error updating material status:", error);
-      alert(`Error updating material status: ${error.message}`);
-      updateMaterialModal({ isSubmitting: false });
+      console.error("Failed to request pickup:", error);
+      alert("Failed to request pickup. Please try again.");
+    } finally {
+      setActionLoading(actionKey, false);
     }
   };
 
-  const handleMaterialModalClose = () => {
-    closeMaterialModal();
+  // Legacy handlers (keeping for backward compatibility)
+  const handleRejectionCancel = () => {
+    setRejectionModal({ isOpen: false, appointmentId: null });
   };
+
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case "pending":
@@ -786,6 +1006,8 @@ const TherapistDashboard = () => {
         return "Session in Progress";
       case "awaiting_payment":
         return "Awaiting Payment";
+      case "payment_verified":
+        return "Payment Verified";
       case "payment_completed":
         return "Payment Completed";
       case "pickup_requested":
@@ -912,9 +1134,8 @@ const TherapistDashboard = () => {
           {/* Driver Information */}
           {appointment.driver_details && (
             <p>
-              <strong>Driver:</strong>{" "}
-              {appointment.driver_details?.first_name || "Unknown"}{" "}
-              {appointment.driver_details?.last_name || "Driver"}
+              <strong>Driver:</strong> {appointment.driver_details.first_name}{" "}
+              {appointment.driver_details.last_name}
             </p>
           )}
         </div>
@@ -947,6 +1168,13 @@ const TherapistDashboard = () => {
       // For single therapist appointments (legacy)
       return therapist_accepted;
     };
+
+    // 🚨 CRITICAL DEBUG: Log every appointment status being rendered
+    console.log(
+      `🚨 THERAPIST DASHBOARD - Rendering appointment ${id} with status: "${status}"`
+    );
+    console.log(`🚨 Full appointment object:`, appointment);
+
     switch (status) {
       case "pending":
         // Show accept/reject only if current therapist hasn't accepted yet
@@ -1027,18 +1255,14 @@ const TherapistDashboard = () => {
           </div>
         );
       case "driver_confirmed":
-        // Both confirmed, but operator must start appointment before journey can begin
+        // Both confirmed, status will change to in_progress when operator starts
         return (
           <div className="appointment-actions">
             <div className="ready-status">
-              <span className="ready-badge">⏳ Waiting for Operator</span>
+              <span className="ready-badge">🚀 Ready to start</span>
               <p>
-                Both you and driver confirmed. Waiting for operator to start
-                appointment.
+                Driver confirmed. Waiting for operator to start appointment.
               </p>
-              <div className="workflow-reminder">
-                <small>🔐 Operator must approve before transport begins</small>
-              </div>
             </div>
           </div>
         );
@@ -1097,7 +1321,7 @@ const TherapistDashboard = () => {
               className="payment-button"
               onClick={() => handleRequestPayment(id)}
               loading={buttonLoading[`request_payment_${id}`]}
-              loadingText="Request Payment"
+              loadingText="Requesting..."
             >
               Request Payment
             </LoadingButton>
@@ -1116,6 +1340,28 @@ const TherapistDashboard = () => {
             </div>
           </div>
         );
+
+      case "payment_verified":
+        console.log(
+          `🚨 PAYMENT_VERIFIED CASE TRIGGERED for appointment ${id}!`
+        );
+        return (
+          <div className="appointment-actions">
+            <LoadingButton
+              className="materials-check-button"
+              onClick={() => handleMaterialsCheck(id)}
+              loading={buttonLoading[`materials_check_${id}`]}
+              loadingText="Checking Materials..."
+              style={{ backgroundColor: "#4CAF50", marginRight: "10px" }}
+            >
+              Check Materials
+            </LoadingButton>
+            <div className="payment-info">
+              <p>✅ Payment verified! Please check materials status.</p>
+            </div>
+          </div>
+        );
+
       case "payment_completed":
         return (
           <div className="appointment-actions">
@@ -1133,7 +1379,75 @@ const TherapistDashboard = () => {
           </div>
         );
 
-      case "completed":
+      case "completed": {
+        // 🎯 NEW LOGIC: Check if materials have been verified first
+        // Use material_usage_summary as the primary source since appointment_materials may be missing
+        const materialSummary = appointment?.material_usage_summary;
+        const hasMaterials =
+          materialSummary &&
+          (materialSummary.consumable_materials?.length > 0 ||
+            materialSummary.reusable_materials?.length > 0);
+
+        // 🚀 IMPROVED: Check multiple ways to determine if materials were already checked
+        // 1. Check if there's a materials_checked timestamp/field
+        // 2. Check if status was recently changed from payment_verified to completed (indicating materials were checked)
+        // 3. For now, use localStorage to track if we've checked materials for this appointment (temporary solution)
+        const storageKey = `materials_checked_${appointment.id}`;
+        const materialsAlreadyChecked =
+          localStorage.getItem(storageKey) === "true" ||
+          appointment?.materials_checked === true ||
+          appointment?.materials_verified === true ||
+          appointment?.materials_status === "checked";
+
+        console.log(`🔍 COMPLETED CASE - Appointment ${appointment.id}:`, {
+          hasMaterials,
+          materialsAlreadyChecked,
+          storageKey,
+          storageValue: localStorage.getItem(storageKey),
+          appointmentMaterials: materialSummary,
+          materialUsageSummary: appointment?.material_usage_summary,
+          appointmentFields: {
+            materials_checked: appointment?.materials_checked,
+            materials_verified: appointment?.materials_verified,
+            materials_status: appointment?.materials_status,
+          },
+        });
+
+        // 🆕 STEP 1: If has materials and not checked yet, show material check button
+        if (hasMaterials && !materialsAlreadyChecked) {
+          return (
+            <div className="appointment-actions">
+              <div
+                className="material-check-required"
+                style={{
+                  backgroundColor: "#fff3cd",
+                  padding: "15px",
+                  borderRadius: "8px",
+                  marginBottom: "15px",
+                }}
+              >
+                <h4 style={{ margin: "0 0 10px 0", color: "#856404" }}>
+                  📋 Material Check Required
+                </h4>
+                <p style={{ margin: "0 0 15px 0", color: "#856404" }}>
+                  Payment verified! Please check the status of materials used in
+                  this session before requesting pickup.
+                </p>
+                <LoadingButton
+                  className="materials-check-button"
+                  onClick={() => handleMaterialsCheck(appointment.id)}
+                  loading={buttonLoading[`materials_check_${appointment.id}`]}
+                  loadingText="Checking Materials..."
+                  style={{ backgroundColor: "#4CAF50", color: "white" }}
+                >
+                  ✅ Check Materials Status
+                </LoadingButton>
+              </div>
+            </div>
+          );
+        }
+
+        // 🆕 STEP 2: If no materials OR materials already checked, show pickup options
         // Show pickup options for appointments with drivers
         if (appointment.driver_details) {
           return (
@@ -1243,6 +1557,7 @@ const TherapistDashboard = () => {
             </div>
           );
         }
+      }
       case "pickup_requested":
         return (
           <div className="appointment-actions">
@@ -1394,8 +1709,8 @@ const TherapistDashboard = () => {
                 {appointment.driver_details && (
                   <p>
                     <strong>Driver:</strong>{" "}
-                    {appointment.driver_details?.first_name || "Unknown"}{" "}
-                    {appointment.driver_details?.last_name || "Driver"}
+                    {appointment.driver_details.first_name}{" "}
+                    {appointment.driver_details.last_name}
                   </p>
                 )}
                 {appointment.notes && (
@@ -1429,88 +1744,10 @@ const TherapistDashboard = () => {
     );
   };
   // Helper to check if appointment is transport completed or completed
-  const isTransportCompleted = (appointment) => {
-    const completedStatuses = [
-      "transport_completed",
-      "completed",
-      "driver_transport_completed",
-    ];
-    const isCompleted = completedStatuses.includes(appointment.status);
-
-    // ✅ DEBUG: Log the status check result
-    console.log("🔍 isTransportCompleted DEBUG:", {
-      appointmentId: appointment.id,
-      status: appointment.status,
-      completedStatuses,
-      isCompleted,
-    });
-
-    return isCompleted;
-  };
-
-  // State for completed appointments modal
-  const [showCompletedModal, setShowCompletedModal] = useState(false);
-
-  // Filter today's appointments into pending and completed
-  const todayPendingAppointments = useMemo(() => {
-    const filtered = (
-      Array.isArray(myTodayAppointments) ? myTodayAppointments : []
-    ).filter((apt) => {
-      if (!apt) return false;
-      const isCompleted = isTransportCompleted(apt);
-
-      // ✅ ENHANCED DEBUG: Log each appointment's filtering decision
-      console.log("🔍 FILTERING DEBUG - Appointment:", {
-        id: apt.id,
-        status: apt.status,
-        date: apt.date,
-        isTransportCompleted: isCompleted,
-        willBeInPending: !isCompleted,
-      });
-
-      return !isCompleted;
-    });
-
-    console.log("🔍 DEBUG: todayPendingAppointments calculated:", {
-      myTodayAppointmentsLength: myTodayAppointments?.length,
-      filteredLength: filtered.length,
-      myTodayAppointments: myTodayAppointments,
-      filtered: filtered,
-    });
-
-    return filtered;
-  }, [myTodayAppointments]);
-
-  const todayCompletedAppointments = useMemo(() => {
-    const filtered = (
-      Array.isArray(myTodayAppointments) ? myTodayAppointments : []
-    ).filter((apt) => {
-      if (!apt) return false;
-      const isCompleted = isTransportCompleted(apt);
-
-      // ✅ ENHANCED DEBUG: Log each appointment's filtering decision
-      console.log("🔍 COMPLETED FILTERING DEBUG - Appointment:", {
-        id: apt.id,
-        status: apt.status,
-        date: apt.date,
-        isTransportCompleted: isCompleted,
-        willBeInCompleted: isCompleted,
-      });
-
-      return isCompleted;
-    });
-
-    console.log("🔍 DEBUG: todayCompletedAppointments calculated:", {
-      myTodayAppointmentsLength: myTodayAppointments?.length,
-      filteredLength: filtered.length,
-    });
-
-    return filtered;
-  }, [myTodayAppointments]);
-
-  const handleCloseCompletedModal = () => {
-    setShowCompletedModal(false);
-  };
+  const isTransportCompleted = (appointment) =>
+    ["transport_completed", "completed", "driver_transport_completed"].includes(
+      appointment.status
+    );
 
   return (
     <PageLayout>
@@ -1533,29 +1770,6 @@ const TherapistDashboard = () => {
           subtitle={<>Today is {systemTime}</>}
         >
           <div className="action-buttons">
-            {/* ✅ SIMPLIFIED: Use standard refresh button like DriverDashboard */}
-            <button
-              onClick={async () => {
-                console.log("🔄 Manual refresh triggered by user");
-                await refetch();
-                console.log("✅ Manual refresh completed");
-              }}
-              className="refresh-button"
-              style={{
-                marginRight: "10px",
-                padding: "8px 16px",
-                backgroundColor: "#4CAF50",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: "500",
-              }}
-              title="Refresh appointments data"
-            >
-              🔄 Refresh
-            </button>
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>
@@ -1592,7 +1806,11 @@ const TherapistDashboard = () => {
             {
               id: "today",
               label: "Today's Appointments",
-              count: todayPendingAppointments.length,
+              count: Array.isArray(myTodayAppointments)
+                ? myTodayAppointments.filter(
+                    (apt) => apt && !isTransportCompleted(apt)
+                  ).length
+                : 0,
             },
             {
               id: "upcoming",
@@ -1617,21 +1835,17 @@ const TherapistDashboard = () => {
           activeTab={currentView}
           onTabChange={setView}
         />
+
         <div className="dashboard-content">
           {currentView === "today" && (
             <div className="todays-appointments">
-              <div className="section-header">
-                <h2>Today's Appointments (Pending)</h2>
-                {todayCompletedAppointments.length > 0 && (
-                  <button
-                    className="view-completed-btn"
-                    onClick={() => setShowCompletedModal(true)}
-                  >
-                    View Completed ({todayCompletedAppointments.length})
-                  </button>
-                )}
-              </div>
-              {renderAppointmentsList(todayPendingAppointments)}
+              <h2>Today's Appointments</h2>
+              {renderAppointmentsList(
+                (Array.isArray(myTodayAppointments)
+                  ? myTodayAppointments
+                  : []
+                ).filter((apt) => apt && !isTransportCompleted(apt))
+              )}
             </div>
           )}
           {currentView === "upcoming" && (
@@ -1671,85 +1885,6 @@ const TherapistDashboard = () => {
           )}
         </div>
         <WebSocketStatus />
-
-        {/* Completed Appointments Modal */}
-        {/* Completed Appointments Modal */}
-        {showCompletedModal && (
-          <div
-            className="modal-overlay"
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-            }}
-          >
-            <div
-              className="modal"
-              style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                padding: "0",
-                maxWidth: "90vw",
-                maxHeight: "80vh",
-                overflow: "hidden",
-                boxShadow:
-                  "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-              }}
-            >
-              <div
-                className="modal-header"
-                style={{
-                  padding: "1.5rem",
-                  borderBottom: "1px solid #e5e7eb",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <h2
-                  style={{ margin: 0, fontSize: "1.25rem", fontWeight: "600" }}
-                >
-                  Today's Completed Appointments
-                </h2>
-                <button
-                  className="close-btn"
-                  onClick={handleCloseCompletedModal}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "0.5rem",
-                    borderRadius: "6px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <MdClose size={20} />
-                </button>
-              </div>
-              <div
-                className="modal-content"
-                style={{
-                  padding: "1.5rem",
-                  maxHeight: "60vh",
-                  overflowY: "auto",
-                }}
-              >
-                {renderAppointmentsList(todayCompletedAppointments)}
-              </div>
-            </div>
-          </div>
-        )}
-
         <RejectionModal
           isOpen={rejectionModal.isOpen}
           onClose={handleRejectionCancel}
@@ -1761,9 +1896,10 @@ const TherapistDashboard = () => {
         <PostServiceMaterialModal
           isOpen={materialModal.isOpen}
           onClose={handleMaterialModalClose}
-          materials={materialModal.materials}
           onSubmit={handleMaterialModalSubmit}
-          isSubmitting={materialModal.isSubmitting}
+          materials={materialModal.materials}
+          appointmentId={materialModal.appointmentId}
+          loading={materialModal.isSubmitting}
         />
       </div>
     </PageLayout>
