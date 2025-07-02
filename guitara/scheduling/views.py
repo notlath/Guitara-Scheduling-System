@@ -15,6 +15,7 @@ from .models import (
     Client,
     Availability,
     Appointment,
+    AppointmentMaterial,
     Notification,
     AppointmentRejection,
 )
@@ -813,6 +814,100 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if therapists_data:
             appointment.therapists.set(therapists_data)
 
+        # 🔧 FIX: CREATE APPOINTMENTMATERIAL RECORDS from materials data
+        materials_raw = self.request.data.get('materials')
+        if materials_raw:
+            logger.info(f"🔧 CREATING AppointmentMaterial records for {len(materials_raw)} materials")
+            
+            from inventory.models import InventoryItem
+            
+            for i, material_data in enumerate(materials_raw):
+                try:
+                    logger.info(f"🔧 Processing material {i+1}: {material_data}")
+                    
+                    # Validate material_data is a dict
+                    if not isinstance(material_data, dict):
+                        logger.error(f"Material {i+1} is not a dict: {type(material_data)} - {material_data}")
+                        continue
+                    
+                    # Get inventory item
+                    inventory_item = None
+                    item_id = material_data.get('id') or material_data.get('item_id')
+                    item_name = material_data.get('name')
+                    
+                    if item_id:
+                        try:
+                            inventory_item = InventoryItem.objects.get(id=item_id)
+                            logger.info(f"✅ Found inventory item by ID {item_id}: {inventory_item.name}")
+                        except InventoryItem.DoesNotExist:
+                            logger.error(f"❌ Inventory item with ID {item_id} not found")
+                    elif item_name:
+                        try:
+                            inventory_item = InventoryItem.objects.get(name=item_name)
+                            logger.info(f"✅ Found inventory item by name '{item_name}': {inventory_item.name}")
+                        except InventoryItem.DoesNotExist:
+                            logger.error(f"❌ Inventory item with name '{item_name}' not found")
+                    
+                    if not inventory_item:
+                        logger.error(f"❌ Could not find inventory item for material: {material_data}")
+                        continue
+                    
+                    quantity_used = int(material_data.get('quantity_used', 1))
+                    usage_type = material_data.get('usage_type', 'consumable')
+                    is_reusable = bool(material_data.get('is_reusable', False))
+                    
+                    logger.info(f"🔧 Creating AppointmentMaterial: {inventory_item.name} x{quantity_used}")
+                    
+                    # Create AppointmentMaterial record
+                    appointment_material = AppointmentMaterial.objects.create(
+                        appointment=appointment,
+                        inventory_item=inventory_item,
+                        quantity_used=quantity_used,
+                        usage_type=usage_type,
+                        is_reusable=is_reusable
+                    )
+                    
+                    logger.info(f"✅ Created AppointmentMaterial: {inventory_item.name} x{quantity_used}")
+                    
+                    # Check current inventory before moving
+                    logger.info(f"🔍 Before moving: {inventory_item.name} - stock: {inventory_item.current_stock}, in_use: {inventory_item.in_use}")
+                    
+                    # Move materials from current_stock to in_use immediately
+                    if inventory_item.move_to_in_use(quantity_used):
+                        inventory_item.refresh_from_db()  # Get updated values
+                        logger.info(f"✅ Moved {quantity_used} {inventory_item.name} from stock to in_use")
+                        logger.info(f"🔍 After moving: {inventory_item.name} - stock: {inventory_item.current_stock}, in_use: {inventory_item.in_use}")
+                        
+                        # Log the material usage
+                        try:
+                            from inventory.models import UsageLog
+                            UsageLog.objects.create(
+                                item=inventory_item,
+                                quantity_used=quantity_used,
+                                operator=self.request.user,
+                                action_type='usage',
+                                notes=f'Material reserved for appointment #{appointment.id}'
+                            )
+                            logger.info(f"✅ Created usage log for {inventory_item.name}")
+                        except ImportError:
+                            logger.warning("UsageLog model not available")
+                        except Exception as log_error:
+                            logger.error(f"Failed to create usage log: {log_error}")
+                    else:
+                        logger.error(f"❌ Failed to move {inventory_item.name} to in_use - insufficient stock (available: {inventory_item.current_stock}, needed: {quantity_used})")
+                        # Should we rollback the AppointmentMaterial creation?
+                        appointment_material.delete()
+                        logger.warning(f"⚠️ Deleted AppointmentMaterial due to insufficient stock")
+                        
+                except (ValueError, TypeError) as data_error:
+                    logger.error(f"❌ Data validation error for material {i+1}: {data_error}")
+                except Exception as e:
+                    logger.error(f"❌ Unexpected error creating AppointmentMaterial for material {i+1}: {e}")
+                    import traceback
+                    logger.error(f"Full traceback: {traceback.format_exc()}")
+                    
+            logger.info(f"🔧 Finished processing materials for appointment {appointment.id}")
+
         appointment.save()
 
     def perform_update(self, serializer):
@@ -1029,7 +1124,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
         """Mark an appointment as completed"""
+        print(f"🚨🚨🚨 COMPLETE ENDPOINT CALLED! 🚨🚨🚨")
+        print(f"🔍 complete: Appointment ID: {pk}")
+        print(f"🔍 complete: Request user: {request.user} (role: {getattr(request.user, 'role', 'unknown')})")
+        print(f"🔍 complete: Request data: {request.data}")
+        print(f"🔍 complete: Request data type: {type(request.data)}")
+        
         appointment = self._get_optimized_appointment(pk)
+        print(f"🔍 complete: Current appointment status: {appointment.status}")
 
         # Only the assigned therapist(s), driver or operators can complete appointments
         user = request.user
@@ -1050,7 +1152,209 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Update appointment status
         appointment.status = "completed"
-        appointment.save()  # Create notifications for all involved parties
+        
+        # 🚨 NEW MATERIALS PROCESSING LOGIC 🚨
+        # Handle the NEW materials array format: [{'material_id': X, 'quantity_used': Y, 'status': Z}]
+        materials_array = request.data.get('materials', [])
+        print(f"🔍 NEW Materials array received: {materials_array}")
+        print(f"🔍 Materials array type: {type(materials_array)}")
+        print(f"🔍 Materials array length: {len(materials_array) if materials_array else 0}")
+        
+        # Process the new materials format
+        if materials_array and len(materials_array) > 0:
+            print(f"🚨 PROCESSING MATERIALS ARRAY! Found {len(materials_array)} materials")
+            
+            # Import here to avoid circular imports
+            from inventory.models import InventoryItem
+            from .models import AppointmentMaterial
+            
+            try:
+                for i, material_data in enumerate(materials_array):
+                    print(f"🔍 Processing material {i+1}: {material_data}")
+                    
+                    # Extract data from material
+                    material_id = material_data.get('material_id')
+                    quantity_used = material_data.get('quantity_used', 1)
+                    status = material_data.get('status', 'used')  # 'used' or 'empty'
+                    
+                    if not material_id:
+                        print(f"❌ Material {i+1} missing material_id, skipping")
+                        continue
+                    
+                    try:
+                        # Get the inventory item
+                        inventory_item = InventoryItem.objects.get(id=material_id)
+                        print(f"✅ Found inventory item: {inventory_item.name}")
+                        
+                        # Create or get AppointmentMaterial record
+                        appointment_material, created = AppointmentMaterial.objects.get_or_create(
+                            appointment=appointment,
+                            inventory_item=inventory_item,
+                            defaults={
+                                'quantity_used': quantity_used,
+                                'usage_type': 'consumable',
+                                'is_reusable': False
+                            }
+                        )
+                        
+                        if created:
+                            print(f"✅ Created AppointmentMaterial: {appointment_material}")
+                        else:
+                            print(f"✅ Found existing AppointmentMaterial: {appointment_material}")
+                        
+                        # Now update inventory based on status
+                        print(f"🔍 Current inventory state: stock={inventory_item.current_stock}, in_use={inventory_item.in_use}, empty={inventory_item.empty}")
+                        
+                        if status == 'empty':
+                            print(f"🔥 MOVING {quantity_used} units of {inventory_item.name} TO EMPTY!")
+                            
+                            # Move from stock to empty (if not already moved to in_use)
+                            if inventory_item.current_stock >= quantity_used:
+                                inventory_item.current_stock -= quantity_used
+                                inventory_item.empty += quantity_used
+                                inventory_item.save()
+                                print(f"✅ MOVED TO EMPTY! New values: stock={inventory_item.current_stock}, empty={inventory_item.empty}")
+                            else:
+                                print(f"❌ Not enough stock to move to empty!")
+                                
+                        elif status == 'used':
+                            print(f"🔥 MOVING {quantity_used} units of {inventory_item.name} TO IN_USE!")
+                            
+                            # Move from stock to in_use
+                            if inventory_item.current_stock >= quantity_used:
+                                inventory_item.current_stock -= quantity_used
+                                inventory_item.in_use += quantity_used
+                                inventory_item.save()
+                                print(f"✅ MOVED TO IN_USE! New values: stock={inventory_item.current_stock}, in_use={inventory_item.in_use}")
+                            else:
+                                print(f"❌ Not enough stock to move to in_use!")
+                        
+                        print(f"🔍 Final inventory state: stock={inventory_item.current_stock}, in_use={inventory_item.in_use}, empty={inventory_item.empty}")
+                        
+                    except InventoryItem.DoesNotExist:
+                        print(f"❌ Inventory item with ID {material_id} not found!")
+                        continue
+                    except Exception as e:
+                        print(f"❌ Error processing material {material_id}: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        continue
+                
+                print(f"✅ MATERIALS PROCESSING COMPLETED!")
+                
+            except Exception as e:
+                print(f"❌ Error in materials processing: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"⚠️ No materials array provided or empty array")
+        
+        # OLD LOGIC (keeping for backwards compatibility)
+        materials_checked = request.data.get('materials_checked', False)
+        materials_are_empty = request.data.get('materials_are_empty', False)
+        material_status = request.data.get('material_status', {})
+        
+        # Convert string "true"/"false" to boolean if needed
+        if isinstance(materials_checked, str):
+            materials_checked = materials_checked.lower() == 'true'
+        if isinstance(materials_are_empty, str):
+            materials_are_empty = materials_are_empty.lower() == 'true'
+        
+        print(f"🔍 OLD Materials data received:")
+        print(f"  - materials_checked: {materials_checked} (type: {type(materials_checked)})")
+        print(f"  - materials_are_empty: {materials_are_empty} (type: {type(materials_are_empty)})")  
+        print(f"  - material_status: {material_status} (type: {type(material_status)})")
+        
+        # If materials data is provided, this is a material check completion
+        if materials_checked:
+            print(f"✅ MATERIALS CHECK CONDITION MET! Processing materials for appointment {appointment.id}")
+            
+            # 🆕 PROCESS INVENTORY UPDATES based on materials status
+            try:
+                print(f"🔍 Processing materials for appointment {appointment.id}")
+                print(f"🔍 materials_are_empty: {materials_are_empty}")
+                print(f"🔍 material_status: {material_status}")
+                
+                appointment_materials = appointment.appointment_materials.all()
+                print(f"🔍 Found {len(appointment_materials)} appointment materials")
+                
+                if len(appointment_materials) == 0:
+                    print(f"❌ NO APPOINTMENT MATERIALS FOUND!")
+                    print(f"   This appointment was created before the fix was applied.")
+                    print(f"   Skipping inventory updates - please recreate the appointment to get proper material tracking.")
+                    return Response(
+                        {"error": "No materials found for this appointment. This appointment may have been created before material tracking was properly implemented."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                
+                # Process AppointmentMaterial records (the proper way)
+                for appointment_material in appointment_materials:
+                    inventory_item = appointment_material.inventory_item
+                    quantity_used = appointment_material.quantity_used
+                    
+                    print(f"🔍 Processing material: {inventory_item.name}")
+                    print(f"   - Quantity used: {quantity_used}")
+                    print(f"   - Current stock: {inventory_item.current_stock}")
+                    print(f"   - In use: {inventory_item.in_use}")
+                    print(f"   - Empty: {inventory_item.empty}")
+                    
+                    if materials_are_empty:
+                        # Move materials from "in_use" to "empty"
+                        print(f"   - Moving {quantity_used} units from in_use to empty...")
+                        success = inventory_item.move_to_empty(quantity_used)
+                        if not success:
+                            print(f"   - ❌ FAILED to move to empty!")
+                            return Response(
+                                {"error": f"Failed to mark {inventory_item.name} as empty"},
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+                        print(f"   - ✅ Successfully moved to empty")
+                        print(f"   - New values: in_use={inventory_item.in_use}, empty={inventory_item.empty}")
+                    else:
+                        # Move materials from "in_use" back to "in_stock"
+                        print(f"   - Returning {quantity_used} units from in_use to stock...")
+                        success = inventory_item.return_to_stock(quantity_used)
+                        if not success:
+                            print(f"   - ❌ FAILED to return to stock!")
+                            return Response(
+                                {"error": f"Failed to return {inventory_item.name} to stock"},
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+                        print(f"   - ✅ Successfully returned to stock")
+                        print(f"   - New values: in_use={inventory_item.in_use}, current_stock={inventory_item.current_stock}")
+                        
+                print(f"✅ All materials processed successfully for appointment {appointment.id}")
+                
+                # Set session end time when materials are checked
+                if not appointment.session_end_time:
+                    from django.utils import timezone
+                    appointment.session_end_time = timezone.now()
+                    print(f"✅ Set session end time for appointment {appointment.id}")
+                
+            except Exception as e:
+                print(f"❌ Error processing materials: {e}")
+                import traceback
+                traceback.print_exc()
+                return Response(
+                    {"error": f"Failed to process materials: {str(e)}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+        else:
+            print(f"⚠️ No materials check requested - this is a regular completion")
+        
+        
+        appointment.save()  
+        
+        # 🔍 DEBUG: Track if /complete/ endpoint is being called
+        print(f"❌ WARNING: /complete/ endpoint called for appointment {appointment.id}")
+        print(f"  - Called by user: {request.user} (role: {request.user.role})")
+        print(f"  - Status set to: completed")
+        if materials_checked:
+            print(f"  - This is a materials check completion!")
+        else:
+            print(f"  - This might be bypassing the material check!")
+        
+        # Create notifications for all involved parties
         self._create_notifications(
             appointment,
             "appointment_updated",
@@ -1075,8 +1379,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         except (ImportError, AttributeError) as e:
             print(f"⚠️ Warning: Could not import optimized_data_manager: {e}")
             # Continue without cache invalidation - the operation will still succeed
-        serializer = self.get_serializer(appointment)
-        return Response(serializer.data)
+        
+        # Return a simple success response to avoid serializer issues for now
+        return Response({
+            "success": True,
+            "message": "Appointment completed successfully",
+            "id": appointment.id,
+            "status": appointment.status,
+            "session_end_time": appointment.session_end_time
+        })
 
     @action(detail=True, methods=["post"])
     def accept(self, request, pk=None):
@@ -2054,7 +2365,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def mark_completed(self, request, pk=None):
         """Operator verifies payment received and marks appointment complete"""
+        print(f"🚨 MARK_COMPLETED ENDPOINT CALLED!")
+        print(f"🔍 mark_completed: Appointment ID: {pk}")
+        print(f"🔍 mark_completed: Request data: {request.data}")
+        print(f"🔍 mark_completed: Request user: {request.user}")
+        
         appointment = self.get_object()
+        print(f"🔍 mark_completed: Current appointment status: {appointment.status}")
 
         # Debug logging to track payment amount issue
         print(f"🔍 mark_completed: Request data received: {request.data}")
@@ -2100,6 +2417,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             payment_amount = 0
 
         appointment.status = "payment_verified"  # Mark as payment verified, not completed
+        print(f"🚨 MARK_COMPLETED: Status set to payment_verified")
         appointment.payment_status = "paid"
         appointment.payment_method = payment_method
         appointment.payment_amount = payment_amount
@@ -2110,9 +2428,22 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             f"🔍 mark_completed: Before save - appointment.payment_amount: {appointment.payment_amount}"
         )
         appointment.save()
+        print(f"🚨 MARK_COMPLETED: Appointment saved! New status: {appointment.status}")
         print(
             f"✅ mark_completed: After save - appointment.payment_amount: {appointment.payment_amount}"
         )
+        
+        # 🔍 DEBUG: Check if status changed unexpectedly
+        appointment.refresh_from_db()
+        print(f"🔍 PAYMENT VERIFICATION DEBUG - Appointment {appointment.id}:")
+        print(f"  - Status after save: {appointment.status}")
+        print(f"  - Payment status: {appointment.payment_status}")
+        print(f"  - Has materials: {appointment.appointment_materials.exists()}")
+        print(f"  - Material count: {appointment.appointment_materials.count()}")
+        if appointment.status != "payment_verified":
+            print(f"❌ ERROR: Status changed from payment_verified to {appointment.status}!")
+        else:
+            print(f"✅ Status correctly set to payment_verified")
 
         # Create notifications
         self._create_notifications(
