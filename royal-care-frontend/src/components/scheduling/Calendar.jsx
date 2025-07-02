@@ -48,11 +48,21 @@ const Calendar = ({
     }
   };
 
-  // Check if a time slot is in the past
+  // Check if a time slot is in the past, accounting for cross-day scheduling (13:00-01:00)
   const isPastTimeSlot = (timeSlot, date) => {
     const now = new Date();
     const [hours, minutes] = timeSlot.split(":").map(Number);
-    const slotDateTime = new Date(date);
+
+    // For the cross-day business hours (13:00-01:00), early morning times (00:00-01:00)
+    // belong to the NEXT day's availability window, not the current day
+    let slotDateTime = new Date(date);
+
+    // If this is an early morning time slot (00:00-01:00), it represents next day availability
+    if (hours >= 0 && hours <= 1) {
+      // Add one day to the date for early morning slots as they're part of next day's cycle
+      slotDateTime.setDate(slotDateTime.getDate() + 1);
+    }
+
     slotDateTime.setHours(hours, minutes, 0, 0);
     return slotDateTime < now;
   };
@@ -1289,8 +1299,6 @@ const Calendar = ({
                             </div>
                           )}
                         </div>
-
-                        
                       </div>
                     ))}
                   </div>
