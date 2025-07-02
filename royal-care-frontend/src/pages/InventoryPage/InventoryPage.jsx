@@ -9,11 +9,7 @@ import { getToken } from "../../utils/tokenManager";
 import styles from "./InventoryPage.module.css";
 import { MenuItem, Select } from "./MUISelect";
 import { useInventoryItems } from "../../hooks/useInventoryItems";
-import {
-  useUpdateInventoryItem,
-  useRestockInventoryItem,
-  useAddInventoryItem,
-} from "../../hooks/useInventoryMutations";
+import { useUpdateInventoryItem, useRestockInventoryItem, useRefillFromEmpty, useAddInventoryItem } from "../../hooks/useInventoryMutations";
 import { useQueryClient } from "@tanstack/react-query";
 
 const API_BASE_URL = import.meta.env.PROD
@@ -40,14 +36,15 @@ axiosAuth.interceptors.request.use((config) => {
 
 const InventoryPage = () => {
   // TanStack Query hooks for data fetching and mutations
-  const {
-    data: inventoryData,
-    isLoading: inventoryLoading,
+  const { 
+    data: inventoryData, 
+    isLoading: inventoryLoading, 
     isRefetching: inventoryRefetching,
-    error: inventoryError,
+    error: inventoryError
   } = useInventoryItems();
   const updateInventoryMutation = useUpdateInventoryItem();
   const restockInventoryMutation = useRestockInventoryItem();
+  const refillFromEmptyMutation = useRefillFromEmpty();
   const addInventoryMutation = useAddInventoryItem();
   const queryClient = useQueryClient();
 
@@ -70,7 +67,8 @@ const InventoryPage = () => {
   const [restockItem, setRestockItem] = useState(null);
   const [restockAmount, setRestockAmount] = useState(0);
   const [restockNotes, setRestockNotes] = useState("");
-  // Removed activeTab constant; use showUsageLog directly in conditionals
+  const [refillFromEmpty, setRefillFromEmpty] = useState(false);
+  const activeTab = "inventory"; // Use a constant since activeTab never changes
 
   // Get inventory items from TanStack Query data
   const inventoryItems = Array.isArray(inventoryData) ? inventoryData : [];
@@ -155,7 +153,7 @@ const InventoryPage = () => {
       setShowEditModal(false);
       setEditItem(null);
     } catch (error) {
-      console.error("Inventory update failed:", error);
+      console.error('Inventory update failed:', error);
       showError("Failed to update item.");
     }
   };
@@ -163,31 +161,48 @@ const InventoryPage = () => {
   const handleRestockClick = (item) => {
     setRestockItem(item);
     setRestockAmount(0);
+    setRefillFromEmpty(false);
     setShowRestockModal(true);
   };
 
   const handleRestockSave = async () => {
     if (!restockItem) return;
     try {
-      await restockInventoryMutation.mutateAsync({
-        itemId: restockItem.id,
-        amount: restockAmount,
-        notes: restockNotes || undefined,
-      });
+      if (refillFromEmpty && restockItem.empty > 0) {
+        // Validate that we don't exceed empty items available
+        if (restockAmount > restockItem.empty) {
+          showError(`Cannot refill ${restockAmount} items. Only ${restockItem.empty} empty items available.`);
+          return;
+        }
+        // Use refill_from_empty endpoint
+        await refillFromEmptyMutation.mutateAsync({
+          itemId: restockItem.id,
+          amount: restockAmount,
+          notes: restockNotes || undefined,
+        });
+      } else {
+        // Use regular restock endpoint (adds new stock)
+        await restockInventoryMutation.mutateAsync({
+          itemId: restockItem.id,
+          amount: restockAmount,
+          notes: restockNotes || undefined,
+        });
+      }
       if (showUsageLog) fetchUsageLogs(); // Refresh usage log if visible
       setShowRestockModal(false);
       setRestockItem(null);
       setRestockAmount(0);
       setRestockNotes("");
-    } catch {
-      showError("Failed to restock item.");
+      setRefillFromEmpty(false);
+    } catch (error) {
+      showError(`Failed to restock item: ${error.message || error}`);
     }
   };
 
   const categories = [
     "all",
     "Oils & Lotions",
-    "Linens",
+    "Linens", 
     "Hygiene",
     "Equipment",
     ...Array.from(new Set(inventoryItems.map((item) => item.category))).filter(
@@ -420,9 +435,7 @@ const InventoryPage = () => {
                   onClick={() => {
                     // console.log('Manual refresh clicked - invalidating cache and refetching...');
                     // Invalidate cache to trigger refetch while keeping data visible
-                    queryClient.invalidateQueries({
-                      queryKey: ["inventory-items"],
-                    });
+                    queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
                   }}
                   style={{ marginRight: 8 }}
                 >
@@ -446,7 +459,7 @@ const InventoryPage = () => {
         </LayoutRow>
 
         {/* Inventory Statistics */}
-        {!showUsageLog && (
+        {!showUsageLog && activeTab === "inventory" && (
           <div className={styles["inventory-stats"]}>
             <div className={styles["stat-card"]}>
               <div className={styles["stat-number"]}>{stats.totalItems}</div>
@@ -473,7 +486,7 @@ const InventoryPage = () => {
         )}
 
         {/* Controls */}
-        {!showUsageLog && (
+        {!showUsageLog && activeTab === "inventory" && (
           <div className={styles["inventory-controls"]}>
             <input
               type="text"
@@ -520,35 +533,31 @@ const InventoryPage = () => {
         )}
 
         {/* Inventory Table */}
-        {!showUsageLog && (
+        {!showUsageLog && activeTab === "inventory" && (
           <div className={styles["inventory-table-container"]}>
             {/* Show loading state only when there's no data yet (initial load) */}
             {inventoryLoading && !inventoryData ? (
-              <div style={{ textAlign: "center", padding: "20px" }}>
+              <div style={{ textAlign: 'center', padding: '20px' }}>
                 Loading inventory items...
               </div>
             ) : inventoryError ? (
-              <div
-                style={{ textAlign: "center", padding: "20px", color: "red" }}
-              >
+              <div style={{ textAlign: 'center', padding: '20px', color: 'red' }}>
                 Error loading inventory: {inventoryError.message}
               </div>
             ) : (
               <div>
                 {/* Show subtle refetching indicator when updating in background */}
                 {inventoryRefetching && inventoryData && (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "5px",
-                      backgroundColor: "#f0f8ff",
-                      border: "1px solid #e0e0e0",
-                      borderRadius: "4px",
-                      marginBottom: "10px",
-                      fontSize: "14px",
-                      color: "#666",
-                    }}
-                  >
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '5px', 
+                    backgroundColor: '#f0f8ff', 
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '4px',
+                    marginBottom: '10px',
+                    fontSize: '14px',
+                    color: '#666'
+                  }}>
                     🔄 Updating inventory data...
                   </div>
                 )}
@@ -828,7 +837,7 @@ const InventoryPage = () => {
                   type="text"
                   value={restockItem.name}
                   disabled
-                  style={{ background: "#f5f5f5", color: "#666" }}
+                  style={{ background: '#f5f5f5', color: '#666' }}
                 />
               </div>
               <div className={styles["form-group"]}>
@@ -837,17 +846,49 @@ const InventoryPage = () => {
                   type="text"
                   value={`${restockItem.current_stock} ${restockItem.unit}`}
                   disabled
-                  style={{ background: "#f5f5f5", color: "#666" }}
+                  style={{ background: '#f5f5f5', color: '#666' }}
                 />
               </div>
+              {restockItem.empty > 0 && (
+                <div className={styles["form-group"]}>
+                  <label>Empty Items Available for Refill</label>
+                  <input
+                    type="text"
+                    value={`${restockItem.empty} ${restockItem.unit}`}
+                    disabled
+                    style={{ background: '#fff3e0', color: '#f57c00', fontWeight: 'bold' }}
+                  />
+                  <small style={{ color: '#f57c00' }}>
+                    These items can be refilled and moved back to stock
+                  </small>
+                </div>
+              )}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleRestockSave();
                 }}
               >
+                {restockItem.empty > 0 && (
+                  <div className={styles["form-group"]}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={refillFromEmpty}
+                        onChange={(e) => setRefillFromEmpty(e.target.checked)}
+                        style={{ marginRight: '8px' }}
+                      />
+                      Refill from Empty Items
+                    </label>
+                    <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+                      Check this to refill empty containers back to stock instead of adding new stock
+                    </small>
+                  </div>
+                )}
                 <div className={styles["form-group"]}>
-                  <label>Amount to Add</label>
+                  <label>
+                    {refillFromEmpty ? `Amount to Refill (Max: ${restockItem.empty})` : "Amount to Add"}
+                  </label>
                   <input
                     type="number"
                     value={restockAmount === 0 ? "" : restockAmount}
@@ -857,9 +898,15 @@ const InventoryPage = () => {
                       )
                     }
                     min={1}
-                    placeholder="Enter amount to add"
+                    max={refillFromEmpty ? restockItem.empty : undefined}
+                    placeholder={refillFromEmpty ? `Enter amount to refill (max ${restockItem.empty})` : "Enter amount to add"}
                     required
                   />
+                  {refillFromEmpty && restockAmount > restockItem.empty && (
+                    <small style={{ color: 'red' }}>
+                      Cannot exceed {restockItem.empty} empty items available
+                    </small>
+                  )}
                 </div>
                 <div className={styles["form-group"]}>
                   <label>Notes (optional)</label>
