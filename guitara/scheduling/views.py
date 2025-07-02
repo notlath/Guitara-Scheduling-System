@@ -1050,7 +1050,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Update appointment status
         appointment.status = "completed"
-        appointment.save()  # Create notifications for all involved parties
+        appointment.save()  
+        
+        # 🔍 DEBUG: Track if /complete/ endpoint is being called
+        print(f"❌ WARNING: /complete/ endpoint called for appointment {appointment.id}")
+        print(f"  - Called by user: {request.user} (role: {request.user.role})")
+        print(f"  - Status set to: completed")
+        print(f"  - This might be bypassing the material check!")
+        
+        # Create notifications for all involved parties
         self._create_notifications(
             appointment,
             "appointment_updated",
@@ -2113,6 +2121,18 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         print(
             f"✅ mark_completed: After save - appointment.payment_amount: {appointment.payment_amount}"
         )
+        
+        # 🔍 DEBUG: Check if status changed unexpectedly
+        appointment.refresh_from_db()
+        print(f"🔍 PAYMENT VERIFICATION DEBUG - Appointment {appointment.id}:")
+        print(f"  - Status after save: {appointment.status}")
+        print(f"  - Payment status: {appointment.payment_status}")
+        print(f"  - Has materials: {appointment.appointment_materials.exists()}")
+        print(f"  - Material count: {appointment.appointment_materials.count()}")
+        if appointment.status != "payment_verified":
+            print(f"❌ ERROR: Status changed from payment_verified to {appointment.status}!")
+        else:
+            print(f"✅ Status correctly set to payment_verified")
 
         # Create notifications
         self._create_notifications(

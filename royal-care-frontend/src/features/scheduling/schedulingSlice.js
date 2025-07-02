@@ -1806,7 +1806,7 @@ export const markAppointmentPaid = createAsyncThunk(
       appointmentId,
       paymentData,
       processedAmount: parseFloat(paymentData?.amount) || 0,
-      endpoint: `${API_URL}appointments/${appointmentId}/mark_payment_received/`,
+      endpoint: `${API_URL}appointments/${appointmentId}/mark_completed/`,
     });
 
     // Prepare the request payload with explicit data conversion
@@ -1825,7 +1825,7 @@ export const markAppointmentPaid = createAsyncThunk(
 
     try {
       const response = await axios.post(
-        `${API_URL}appointments/${appointmentId}/mark_payment_received/`,
+        `${API_URL}appointments/${appointmentId}/mark_completed/`,
         requestPayload,
         { headers: { Authorization: `Token ${token}` } }
       );
