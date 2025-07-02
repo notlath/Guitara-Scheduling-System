@@ -1,18 +1,3 @@
-// Generate time options from 13:00 to 01:00 (cross-day window)
-const generateTimeOptions = () => {
-  const options = [];
-  // 13:00 to 23:30 (every 30 min)
-  for (let h = 13; h <= 23; h++) {
-    options.push(`${h.toString().padStart(2, "0")}:00`);
-    options.push(`${h.toString().padStart(2, "0")}:30`);
-  }
-  // 00:00, 00:30, 01:00
-  options.push("00:00");
-  options.push("00:30");
-  options.push("01:00");
-  return options;
-};
-
 // Helper: Check if a time string is within allowed window (13:00-23:59 or 00:00-01:00)
 const isTimeInAllowedWindow = (time) => {
   if (!time) return false;
@@ -21,6 +6,37 @@ const isTimeInAllowedWindow = (time) => {
   if (h === 0) return true;
   if (h === 1 && m === 0) return true;
   return false;
+};
+
+// Helper: Check if end time is after start time, accounting for cross-day scheduling
+const isValidEndTime = (startTime, endTime) => {
+  if (!startTime || !endTime) return false;
+
+  const [startH, startM] = startTime.split(":").map(Number);
+  const [endH, endM] = endTime.split(":").map(Number);
+
+  // Convert to minutes for easier comparison
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  // If end time is in early morning (00:00-01:00) and start time is afternoon/evening (13:00-23:59)
+  // this is a valid cross-day appointment
+  if (endH >= 0 && endH <= 1 && startH >= 13 && startH <= 23) {
+    return true; // Cross-day is valid
+  }
+
+  // If both times are on the same day, end must be after start
+  if (startH >= 13 && endH >= 13) {
+    return endMinutes > startMinutes;
+  }
+
+  // If start is afternoon/evening and end is not early morning, it's invalid
+  if (startH >= 13 && endH < 13 && endH > 1) {
+    return false;
+  }
+
+  // For same-day appointments, end must be after start
+  return endMinutes > startMinutes;
 };
 /**
  * COMPLETE TanStack Query Migration Example
@@ -375,7 +391,11 @@ const AppointmentFormTanStackComplete = ({
 
       // Validate end time - ensure it's after start time and restrict to allowed window
       if (name === "end_time") {
-        if (formData.start_time && value && value <= formData.start_time) {
+        if (
+          formData.start_time &&
+          value &&
+          !isValidEndTime(formData.start_time, value)
+        ) {
           setErrors((prev) => ({
             ...prev,
             end_time: "End time must be after start time",
@@ -410,57 +430,6 @@ const AppointmentFormTanStackComplete = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.services]);
-
-  // Register new client helper
-  const registerNewClient = async () => {
-    try {
-      const clientData = {
-        first_name: formData.clientFirstName,
-        last_name: formData.clientLastName,
-        phone_number: formData.clientPhone,
-        email: formData.clientEmail,
-        address: formData.address,
-      };
-
-      console.log("📋 Registering client with inline data:", clientData);
-
-      const response = await registerClient(clientData);
-      console.log("📋 Registration response:", response.data);
-
-      // Try to get client ID from response
-      let clientId = response.data?.id || response.data?.client?.id;
-
-      if (clientId) {
-        console.log("✅ Client registered successfully with ID:", clientId);
-        return clientId;
-      }
-
-      // If no ID returned, try to fetch the client by details
-      console.log("⚠️ No client ID in response, fetching from clients list...");
-
-      // Refetch clients to get the newly created client
-      await dispatch(fetchClients()).unwrap();
-
-      // Invalidate TanStack Query cache for clients
-      await queryClient.invalidateQueries({ queryKey: queryKeys.clients.all });
-
-      // Try to find the client by phone number (most reliable)
-      const updatedClients = clients || [];
-      const foundClient = updatedClients.find(
-        (c) => c.phone_number && c.phone_number === formData.clientPhone
-      );
-
-      if (foundClient && foundClient.id) {
-        console.log("✅ Found newly registered client:", foundClient.id);
-        return foundClient.id;
-      }
-
-      throw new Error("Client registered but ID not found");
-    } catch (error) {
-      console.error("❌ Failed to register client:", error);
-      throw new Error("Failed to register new client");
-    }
-  };
 
   // Update materials when service or materialsWithStock changes (prevent infinite loop)
   useEffect(() => {
@@ -538,6 +507,22 @@ const AppointmentFormTanStackComplete = ({
       return updated;
     });
   };
+
+  // Handle client selection from LazyClientSearch
+  const handleClientSelect = useCallback((client) => {
+    console.log("🔍 Client selected:", client);
+    setFormData((prev) => ({ ...prev, client }));
+    // Clear client error if it exists
+    if (errors.client) {
+      setErrors((prev) => ({ ...prev, client: "" }));
+    }
+  }, [errors.client]);
+
+  // Handle client clear from LazyClientSearch
+  const handleClearClient = useCallback(() => {
+    console.log("🔍 Clearing selected client");
+    setFormData((prev) => ({ ...prev, client: "" }));
+  }, []);
 
   // Client registration modal handlers
   const handleRegisterClientClick = () => {
@@ -617,46 +602,6 @@ const AppointmentFormTanStackComplete = ({
     }
   };
 
-  // Handle client selection - auto-fill inline fields when existing client is selected
-  const handleClientSelect = (client) => {
-    console.log("✅ Client selected:", client.first_name, client.last_name);
-
-    setFormData((prev) => ({
-      ...prev,
-      client: client,
-      // Auto-fill inline client fields when existing client is selected
-      clientFirstName: client.first_name || "",
-      clientLastName: client.last_name || "",
-      clientPhone: client.phone_number || "",
-      clientEmail: client.email || "",
-      address: client.address || "", // Use client's address
-    }));
-
-    // Clear client error when a client is selected
-    if (errors.client) {
-      setErrors((prev) => ({ ...prev, client: "" }));
-    }
-  };
-
-  // Handle clearing client selection
-  const handleClearClient = () => {
-    setFormData((prev) => ({
-      ...prev,
-      client: "",
-      // Clear inline client fields
-      clientFirstName: "",
-      clientLastName: "",
-      clientPhone: "",
-      clientEmail: "",
-      address: "",
-    }));
-
-    // Clear client error when cleared
-    if (errors.client) {
-      setErrors((prev) => ({ ...prev, client: "" }));
-    }
-  };
-
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -664,41 +609,20 @@ const AppointmentFormTanStackComplete = ({
     // Validation
     const newErrors = {};
 
-    // Check if we have either an existing client OR new client data
-    const hasExistingClient = formData.client && 
-      ((typeof formData.client === "object" && (formData.client.id || formData.client.ID)) ||
-       (typeof formData.client === "string" && formData.client.trim()) ||
-       (typeof formData.client === "number" && formData.client));
+    // Check if client is selected (either as object or ID)
+    const hasClient =
+      formData.client &&
+      ((typeof formData.client === "object" &&
+        (formData.client.id || formData.client.ID)) ||
+        (typeof formData.client === "string" && formData.client.trim()) ||
+        (typeof formData.client === "number" && formData.client));
 
-    const hasNewClientData = formData.clientFirstName && formData.clientLastName && formData.clientPhone;
-
-    if (!hasExistingClient && !hasNewClientData) {
-      newErrors.client = "Please select an existing client or fill in new client details";
-    }
-
-    // If providing new client data, validate required fields
-    if (!hasExistingClient) {
-      if (!formData.clientFirstName) newErrors.clientFirstName = "First name is required";
-      if (!formData.clientLastName) newErrors.clientLastName = "Last name is required";
-      if (!formData.clientPhone) newErrors.clientPhone = "Phone number is required";
-    }
-
+    if (!hasClient) newErrors.client = "Client is required";
     if (!formData.services) newErrors.services = "Service is required";
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.start_time) newErrors.start_time = "Start time is required";
     if (!formData.end_time) newErrors.end_time = "End time is required";
     if (!formData.address) newErrors.address = "Address is required";
-
-    // Validate therapist selection based on mode
-    if (formData.multipleTherapists) {
-      if (!formData.therapists || formData.therapists.length === 0) {
-        newErrors.therapists = "At least one therapist is required";
-      }
-    } else {
-      if (!formData.therapist) {
-        newErrors.therapist = "Therapist is required";
-      }
-    }
 
     // Validate date and time are not in the past
     if (formData.date && formData.start_time) {
@@ -716,7 +640,7 @@ const AppointmentFormTanStackComplete = ({
     if (
       formData.start_time &&
       formData.end_time &&
-      formData.end_time <= formData.start_time
+      !isValidEndTime(formData.start_time, formData.end_time)
     ) {
       newErrors.end_time = "End time must be after start time";
     }
@@ -730,22 +654,126 @@ const AppointmentFormTanStackComplete = ({
       let clientId;
       
       // Determine if we need to register a new client
-      if (hasExistingClient) {
-        // Use existing client
-        if (typeof formData.client === "object" && formData.client) {
-          if (formData.client.is_existing_client && formData.client.database_id) {
-            clientId = formData.client.database_id;
-          } else if (formData.client.id) {
-            clientId = parseInt(formData.client.id, 10);
-          }
+      if (typeof formData.client === "object" && formData.client) {
+        // Use existing client object
+        if (formData.client.is_existing_client && formData.client.database_id) {
+          clientId = formData.client.database_id;
+        } else if (formData.client.id) {
+          clientId = parseInt(formData.client.id, 10);
         } else {
-          clientId = parseInt(formData.client, 10);
+          console.log(
+            "⚠️  Client object detected but no ID field, will register as new client"
+          );
+          console.log("📋 Client object:", formData.client);
+          clientId = null; // Force registration of new client
         }
-        console.log("✅ Using existing client ID:", clientId);
+      } else if (formData.client) {
+        const id = formData.client;
+        // Check if ID is numeric or can be converted to a valid numeric ID
+        const numericId = parseInt(id, 10);
+        if (
+          !isNaN(numericId) &&
+          numericId > 0 &&
+          !id.toString().includes("-")
+        ) {
+          clientId = numericId;
+          console.log("📋 Using valid numeric client ID directly:", clientId);
+        } else {
+          console.log(
+            "⚠️ Invalid client ID format:",
+            id,
+            "- will register as new client"
+          );
+          clientId = null;
+        }
       } else {
-        // Register new client using inline fields
-        console.log("📋 Registering new client using inline fields...");
-        clientId = await registerNewClient();
+        console.log("📋 No valid client ID found");
+        clientId = null;
+      }
+
+      // Register new client if needed
+      if (!clientId) {
+        console.log("📋 Registering new client...");
+
+        // Use client details from form for registration
+        const clientDetailsForRegistration = {
+          first_name: formData.clientFirstName || "",
+          last_name: formData.clientLastName || "",
+          phone_number: formData.clientPhone || "",
+          email: formData.clientEmail || "",
+        };
+
+        // If we have a selected client object but no database ID, use its details for registration
+        if (typeof formData.client === "object" && formData.client) {
+          const clientObject = formData.client;
+          clientDetailsForRegistration.first_name = 
+            clientObject.first_name || clientDetailsForRegistration.first_name;
+          clientDetailsForRegistration.last_name = 
+            clientObject.last_name || clientDetailsForRegistration.last_name;
+          clientDetailsForRegistration.phone_number = 
+            clientObject.phone_number || clientDetailsForRegistration.phone_number;
+          clientDetailsForRegistration.email = 
+            clientObject.email || clientDetailsForRegistration.email;
+
+          console.log(
+            "📋 Using client object details for registration:",
+            clientDetailsForRegistration
+          );
+        }
+
+        console.log(
+          "📋 Client details being used for registration:",
+          clientDetailsForRegistration
+        );
+
+        try {
+          const response = await registerClient({
+            first_name: clientDetailsForRegistration.first_name,
+            last_name: clientDetailsForRegistration.last_name,
+            phone_number: clientDetailsForRegistration.phone_number,
+            email: clientDetailsForRegistration.email,
+            address: formData.address,
+          });
+
+          console.log("📋 Registration response:", response.data);
+
+          // Try to get client ID from response
+          clientId = response.data?.id || response.data?.client?.id;
+
+          if (clientId) {
+            console.log("✅ Client registered successfully with ID:", clientId);
+          } else {
+            // If no ID returned, try to fetch the client by details
+            console.log("⚠️ No client ID in response, fetching from clients list...");
+
+            // Refetch clients to get the newly created client
+            await dispatch(fetchClients()).unwrap();
+
+            // Invalidate TanStack Query cache for clients
+            await queryClient.invalidateQueries({ queryKey: queryKeys.clients.all });
+
+            // Try to find the client by phone number (most reliable)
+            const updatedClients = clients || [];
+            const foundClient = updatedClients.find(
+              (c) => c.phone_number && c.phone_number === clientDetailsForRegistration.phone_number
+            );
+
+            if (foundClient && foundClient.id) {
+              console.log("✅ Found newly registered client:", foundClient.id);
+              clientId = foundClient.id;
+            } else {
+              throw new Error("Client registered but ID not found");
+            }
+          }
+        } catch (error) {
+          console.error("❌ Failed to register client:", error);
+          setErrors((prev) => ({
+            ...prev,
+            client: "Failed to register client. Please check the client details.",
+          }));
+          return;
+        }
+
         if (!clientId) {
           setErrors((prev) => ({
             ...prev,
@@ -789,14 +817,13 @@ const AppointmentFormTanStackComplete = ({
         ...formData,
         client: numericClientId,
         services: [parseInt(formData.services, 10)],
-        therapist: formData.multipleTherapists
-          ? null
-          : parseInt(formData.therapist, 10) || null,
-        therapists: formData.multipleTherapists
+        // Always use the therapists array since the form only has multi-select
+        therapist: null, // Always null for new multi-therapist structure
+        therapists: Array.isArray(formData.therapists)
           ? formData.therapists.map((id) => parseInt(id, 10))
-          : [],
+          : [], // Convert therapist IDs to integers
         driver: formData.driver ? parseInt(formData.driver, 10) : null,
-        location: formData.address, // Use address as appointment location
+        location: formData.address, // Map address to location for backend compatibility
         materials: Object.entries(materialQuantities)
           .filter((entry) => entry[1] && !isNaN(Number(entry[1])))
           .map(([materialId, qty]) => {
@@ -820,6 +847,8 @@ const AppointmentFormTanStackComplete = ({
       console.log("  materialQuantities entries:", Object.entries(materialQuantities));
       console.log("  filtered entries:", Object.entries(materialQuantities).filter((entry) => entry[1] && !isNaN(Number(entry[1]))));
       console.log("  final materials array:", appointmentData.materials);
+
+      console.log("📋 Appointment data being submitted:", appointmentData);
 
       console.log("📋 Appointment data being submitted:", appointmentData);
       console.log("🔍 DEBUG - Final materials check:");
@@ -916,17 +945,14 @@ const AppointmentFormTanStackComplete = ({
         end_time: appointment.end_time || "",
         address: appointment.location || "", // Use appointment location as address
         notes: appointment.notes || "",
-        therapist: appointment.therapist || "",
+        therapist: "", // No longer used since we only use multi-select
         therapists: Array.isArray(appointment.therapists)
           ? appointment.therapists
+          : appointment.therapist
+          ? [appointment.therapist] // Convert single therapist to array
           : [],
         driver: appointment.driver || "",
         multipleTherapists: !!(appointment.therapists?.length > 0),
-        // Auto-fill inline client fields if client data is available
-        clientFirstName: clientData?.first_name || "",
-        clientLastName: clientData?.last_name || "",
-        clientPhone: clientData?.phone_number || "",
-        clientEmail: clientData?.email || "",
       });
     }
   }, [appointment, clients]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -975,6 +1001,40 @@ const AppointmentFormTanStackComplete = ({
       >
         <div>
           <h2>{appointment ? "Edit Appointment" : "Create New Appointment"}</h2>
+          {/* {!appointment && hasSavedFormData() && (
+            <div
+              style={{
+                fontSize: "0.85em",
+                color: "#666",
+                marginTop: "4px",
+                fontStyle: "italic",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              💾 Previous form data restored for your convenience
+              <button
+                type="button"
+                onClick={() => {
+                  clearFormData();
+                  setFormData(initialFormState);
+                  setMaterialQuantities({});
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#666",
+                  fontSize: "0.8em",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                Clear
+              </button>
+            </div>
+          )} */}
         </div>
         <button
           type="button"
@@ -1064,104 +1124,7 @@ const AppointmentFormTanStackComplete = ({
               showClearButton={true}
               onClear={handleClearClient}
             />
-          </div>
-
-          {/* Inline Client Registration Fields */}
-          <div className="form-group">
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="clientFirstName">First Name *</label>
-                <input
-                  type="text"
-                  id="clientFirstName"
-                  name="clientFirstName"
-                  value={formData.clientFirstName}
-                  onChange={handleChange}
-                  placeholder="Enter first name"
-                  disabled={isSubmitting || (formData.client && typeof formData.client === "object" && formData.client.id)}
-                  readOnly={formData.client && typeof formData.client === "object" && formData.client.id}
-                  className={errors.clientFirstName ? "error" : ""}
-                  style={{ width: "100%" }}
-                />
-                {errors.clientFirstName && (
-                  <div className="error-message">{errors.clientFirstName}</div>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="clientLastName">Last Name *</label>
-                <input
-                  type="text"
-                  id="clientLastName"
-                  name="clientLastName"
-                  value={formData.clientLastName}
-                  onChange={handleChange}
-                  placeholder="Enter last name"
-                  disabled={isSubmitting || (formData.client && typeof formData.client === "object" && formData.client.id)}
-                  readOnly={formData.client && typeof formData.client === "object" && formData.client.id}
-                  className={errors.clientLastName ? "error" : ""}
-                  style={{ width: "100%" }}
-                />
-                {errors.clientLastName && (
-                  <div className="error-message">{errors.clientLastName}</div>
-                )}
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="clientPhone">Phone Number *</label>
-                <input
-                  type="tel"
-                  id="clientPhone"
-                  name="clientPhone"
-                  value={formData.clientPhone}
-                  onChange={handleChange}
-                  placeholder="Enter phone number"
-                  disabled={isSubmitting || (formData.client && typeof formData.client === "object" && formData.client.id)}
-                  readOnly={formData.client && typeof formData.client === "object" && formData.client.id}
-                  className={errors.clientPhone ? "error" : ""}
-                  style={{ width: "100%" }}
-                />
-                {errors.clientPhone && (
-                  <div className="error-message">{errors.clientPhone}</div>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="clientEmail">Email (Optional)</label>
-                <input
-                  type="email"
-                  id="clientEmail"
-                  name="clientEmail"
-                  value={formData.clientEmail}
-                  onChange={handleChange}
-                  placeholder="Enter email address"
-                  disabled={isSubmitting || (formData.client && typeof formData.client === "object" && formData.client.id)}
-                  readOnly={formData.client && typeof formData.client === "object" && formData.client.id}
-                  style={{ width: "100%" }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Address (replaces Location) */}
-          <div className="form-group">
-            <label>Address *</label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              placeholder="Enter client's address (becomes appointment location)"
-              disabled={isSubmitting}
-              className={errors.address ? "error" : ""}
-              style={{ width: "100%" }}
-            />
-            {errors.address && (
-              <div className="error-message">{errors.address}</div>
-            )}
-          </div>
+          </div>{" "}
           {/* Service Selection */}
           <div className="form-group">
             <label htmlFor="services">Service *</label>
@@ -1304,52 +1267,38 @@ const AppointmentFormTanStackComplete = ({
 
             <div className="form-group">
               <label>Start Time *</label>
-              <select
+              <input
+                type="time"
                 name="start_time"
                 value={formData.start_time}
                 onChange={handleChange}
                 disabled={isSubmitting}
                 className={errors.start_time ? "error" : ""}
+                min="13:00"
+                max="01:00"
                 required
-              >
-                <option value="">Select start time</option>
-                {generateTimeOptions().map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+              />
               {errors.start_time && (
                 <div className="error-message">{errors.start_time}</div>
               )}
-              {/* <div className="helper-text">
-                Allowed: 13:00 (1 PM) to 01:00 (next day)
-              </div> */}
             </div>
 
             <div className="form-group">
               <label>End Time *</label>
-              <select
+              <input
+                type="time"
                 name="end_time"
                 value={formData.end_time}
                 onChange={handleChange}
                 disabled={isSubmitting}
                 className={errors.end_time ? "error" : ""}
+                min="13:00"
+                max="01:00"
                 required
-              >
-                <option value="">Select end time</option>
-                {generateTimeOptions().map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+              />
               {errors.end_time && (
                 <div className="error-message">{errors.end_time}</div>
               )}
-              {/* <div className="helper-text">
-                Allowed: 13:00 (1 PM) to 01:00 (next day)
-              </div> */}
             </div>
           </div>
           {/* 🔥 BEFORE: 200+ lines of complex availability checking */}
@@ -1371,7 +1320,8 @@ const AppointmentFormTanStackComplete = ({
               )}
               {hasAvailabilityError && (
                 <div className="availability-error">
-                  ⚠️ Error checking availability - Please check your login status or refresh the page
+                  ⚠️ Error checking availability - Please check your login
+                  status or refresh the page
                 </div>
               )}
               {!isLoadingAvailability && !hasAvailabilityError && (
