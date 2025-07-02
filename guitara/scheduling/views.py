@@ -2099,12 +2099,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             print(f"❌ mark_completed: Error converting payment_amount: {e}")
             payment_amount = 0
 
-        appointment.status = "completed"  # Mark as completed after payment
+        appointment.status = "payment_verified"  # Mark as payment verified, not completed
         appointment.payment_status = "paid"
         appointment.payment_method = payment_method
         appointment.payment_amount = payment_amount
         appointment.payment_verified_at = timezone.now()
-        appointment.session_end_time = timezone.now()  # Set when session actually ends
+        # Note: session_end_time will be set when therapist actually completes the session
 
         print(
             f"🔍 mark_completed: Before save - appointment.payment_amount: {appointment.payment_amount}"
@@ -3121,5 +3121,88 @@ class NotificationViewSet(viewsets.ModelViewSet):
             logger.error(f"Error marking notifications as read: {e}")
             return Response(
                 {"error": "Failed to mark notifications as read"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=True, methods=["post"])
+    def check_materials_status(self, request, pk=None):
+        """Therapist checks material status after payment verification - materials check modal logic"""
+        appointment = self.get_object()
+
+        # Only the assigned therapist(s) can check materials status
+        user = request.user
+        is_assigned_therapist = (
+            user == appointment.therapist
+            or appointment.therapists.filter(id=user.id).exists()
+        )
+
+        if not is_assigned_therapist:
+            return Response(
+                {
+                    "error": "You don't have permission to check materials for this appointment"
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Appointment must be payment_verified to check materials
+        if appointment.status != "payment_verified":
+            return Response(
+                {"error": "Materials can only be checked after payment verification"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get materials check result from request
+        materials_are_empty = request.data.get("materials_are_empty", False)
+        
+        try:
+            # Update material statuses based on therapist's assessment
+            for appointment_material in appointment.appointment_materials.all():
+                inventory_item = appointment_material.inventory_item
+                quantity_used = appointment_material.quantity_used
+                
+                if materials_are_empty:
+                    # Move materials from "in_use" to "empty"
+                    success = inventory_item.move_to_empty(quantity_used)
+                    if not success:
+                        return Response(
+                            {"error": f"Failed to mark {inventory_item.name} as empty"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    print(f"✅ Moved {quantity_used} {inventory_item.name} from in_use to empty")
+                else:
+                    # Move materials from "in_use" back to "in_stock"
+                    success = inventory_item.return_to_stock(quantity_used)
+                    if not success:
+                        return Response(
+                            {"error": f"Failed to return {inventory_item.name} to stock"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    print(f"✅ Returned {quantity_used} {inventory_item.name} from in_use to stock")
+
+            # After materials check, move to pickup request phase
+            appointment.status = "completed"  # Now ready for pickup request
+            appointment.session_end_time = timezone.now()  # Set actual session end time
+            appointment.save()
+
+            # Create notifications
+            material_status_message = "marked as empty" if materials_are_empty else "returned to stock"
+            self._create_notifications(
+                appointment,
+                "materials_checked",
+                f"Materials checked by therapist. Materials {material_status_message}.",
+            )
+
+            serializer = self.get_serializer(appointment)
+            return Response(
+                {
+                    "message": f"Materials successfully {material_status_message}. Session completed.",
+                    "appointment": serializer.data,
+                }
+            )
+
+        except Exception as e:
+            print(f"❌ Error updating material status: {e}")
+            return Response(
+                {"error": "Failed to update material status"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

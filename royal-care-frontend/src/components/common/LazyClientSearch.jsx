@@ -13,6 +13,9 @@ import "./LazyClientSearch.css";
  * @param {boolean} props.disabled - Whether the component is disabled
  * @param {string} props.placeholder - Placeholder text for search input
  * @param {Function} props.onRegisterClientClick - Callback when "Register Client" is clicked
+ * @param {boolean} props.hideRegisterText - Whether to hide the register client text in no results
+ * @param {boolean} props.showClearButton - Whether to show a clear button inside the input
+ * @param {Function} props.onClear - Callback when clear button is clicked
  */
 const LazyClientSearch = ({
   selectedClient,
@@ -21,6 +24,9 @@ const LazyClientSearch = ({
   disabled = false,
   placeholder = "Search client by name or phone...",
   onRegisterClientClick,
+  hideRegisterText = false,
+  showClearButton = false,
+  onClear,
 }) => {
   const { clientCache } = useAppointmentFormCache();
 
@@ -480,39 +486,37 @@ const LazyClientSearch = ({
 
   return (
     <div className="lazy-client-search" ref={dropdownRef}>
-      {/* Debug info - temporary */}
-      {import.meta.env.DEV && (
-        <div style={{ fontSize: "12px", color: "#666", marginBottom: "4px" }}>
-          Debug: {allClients.length} clients loaded | Search: "
-          {debouncedSearchTerm}" | Filtered: {filteredClients.length}
-          {allClients.length > 0 && (
-            <span>
-              {" "}
-              | Sample: {allClients[0]?.first_name} {allClients[0]?.last_name}
-            </span>
-          )}
-        </div>
-      )}
-
-      <input
-        ref={searchInputRef}
-        type="text"
-        value={
-          searchTerm ||
-          (selectedClient && !isOpen ? getSelectedClientText() : "")
-        }
-        onChange={handleInputChange}
-        onFocus={() => {
-          if (!isOpen) {
-            setIsOpen(true);
+      <div className="client-search-input-wrapper">
+        <input
+          ref={searchInputRef}
+          type="text"
+          value={
+            searchTerm ||
+            (selectedClient && !isOpen ? getSelectedClientText() : "")
           }
-        }}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        className={`client-search-input ${error ? "error" : ""}`}
-        disabled={disabled}
-        autoComplete="off"
-      />
+          onChange={handleInputChange}
+          onFocus={() => {
+            if (!isOpen) {
+              setIsOpen(true);
+            }
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          className={`client-search-input ${error ? "error" : ""}`}
+          disabled={disabled}
+          autoComplete="off"
+        />
+        {showClearButton && selectedClient && (
+          <button
+            type="button"
+            className="client-search-clear-button"
+            onClick={onClear}
+            aria-label="Clear client selection"
+          >
+            ✕
+          </button>
+        )}
+      </div>
 
       {isOpen && (
         <div className="client-search-results">
@@ -570,38 +574,40 @@ const LazyClientSearch = ({
                   {debouncedSearchTerm
                     ? `No clients found matching "${debouncedSearchTerm}"`
                     : "No clients available"}
-                  <div
-                    style={{
-                      marginTop: "8px",
-                      fontSize: "0.9em",
-                      color: "#666",
-                    }}
-                  >
-                    Client details can be added when creating the appointment.
-                    {onRegisterClientClick && (
-                      <>
-                        {" "}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsOpen(false);
-                            onRegisterClientClick();
-                          }}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            color: "#1976d2",
-                            textDecoration: "underline",
-                            cursor: "pointer",
-                            fontSize: "inherit",
-                            padding: 0,
-                          }}
-                        >
-                          Click here to register a new client.
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  {!hideRegisterText && (
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        fontSize: "0.9em",
+                        color: "#666",
+                      }}
+                    >
+                      Client details can be added when creating the appointment.
+                      {onRegisterClientClick && (
+                        <>
+                          {" "}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsOpen(false);
+                              onRegisterClientClick();
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#1976d2",
+                              textDecoration: "underline",
+                              cursor: "pointer",
+                              fontSize: "inherit",
+                              padding: 0,
+                            }}
+                          >
+                            Click here to register a new client.
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

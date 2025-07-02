@@ -186,7 +186,7 @@ export const useInstantUpdates = () => {
         appointmentId,
         reduxAction: markAppointmentPaid({ appointmentId, paymentData }),
         optimisticUpdate: {
-          status: "completed",
+          status: "payment_verified", // Changed from "completed" to "payment_verified"
           payment_status: "paid",
           payment_verified_at: new Date().toISOString(),
           payment_method: paymentData.method,

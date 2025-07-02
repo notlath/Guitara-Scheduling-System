@@ -150,6 +150,35 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=True, methods=['post'])
+    def refill_from_empty(self, request, pk=None):
+        """Refill items from empty back to current_stock"""
+        item = self.get_object()
+        amount = int(request.data.get('amount', 0))
+        notes = request.data.get('notes', '')
+        
+        if amount > 0:
+            if item.refill_from_empty(amount):
+                # Create a usage log for refilling from empty
+                UsageLog.objects.create(
+                    item=item,
+                    quantity_used=amount,  # Always positive
+                    operator=request.user if request.user.is_authenticated else None,
+                    action_type='refill',
+                    notes=f"Refilled from empty. {notes}".strip()
+                )
+                return Response({
+                    'status': 'refilled_from_empty',
+                    'current_stock': item.current_stock,
+                    'empty': item.empty,
+                    'amount_refilled': amount
+                })
+            else:
+                return Response({
+                    'error': f'Insufficient empty quantity. Available: {item.empty}, Requested: {amount}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Invalid amount'}, status=status.HTTP_400_BAD_REQUEST)
+
 # Force reload of views
 class UsageLogViewSet(viewsets.ModelViewSet):
     queryset = UsageLog.objects.all()

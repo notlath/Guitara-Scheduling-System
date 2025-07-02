@@ -34,6 +34,15 @@ class InventoryItem(models.Model):
             return True
         return False
     
+    def return_to_stock(self, quantity):
+        """Move items from in_use back to current_stock (when materials still have stock)"""
+        if quantity <= self.in_use:
+            self.in_use -= quantity
+            self.current_stock += quantity
+            self.save()
+            return True
+        return False
+    
     def refill_from_empty(self, quantity):
         """Refill items from empty back to current_stock"""
         if quantity <= self.empty:
