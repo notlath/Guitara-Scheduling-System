@@ -39,6 +39,7 @@ const SchedulingDashboard = () => {
   const [selectedTime, setSelectedTime] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [showCompletedToday, setShowCompletedToday] = useState(false);
 
   // Get view from URL params, default to 'calendar'
   const currentView = searchParams.get("view") || "calendar";
@@ -93,6 +94,38 @@ const SchedulingDashboard = () => {
     shallowEqual
   );
   const defaultDate = useMemo(() => new Date(), []);
+
+  // Filter today's appointments based on completed status visibility
+  const filteredTodayAppointments = useMemo(() => {
+    const safeAppointments = Array.isArray(todayAppointments)
+      ? todayAppointments
+      : [];
+
+    if (showCompletedToday) {
+      // Show all appointments when toggle is enabled
+      return safeAppointments;
+    } else {
+      // Filter out completed appointments for default view
+      return safeAppointments.filter(
+        (appointment) =>
+          appointment.status !== "completed" &&
+          appointment.status !== "transport_completed"
+      );
+    }
+  }, [todayAppointments, showCompletedToday]);
+
+  // Get completed appointments count for today
+  const completedTodayCount = useMemo(() => {
+    const safeAppointments = Array.isArray(todayAppointments)
+      ? todayAppointments
+      : [];
+    return safeAppointments.filter(
+      (appointment) =>
+        appointment.status === "completed" ||
+        appointment.status === "transport_completed"
+    ).length;
+  }, [todayAppointments]);
+
   // OPTIMIZED: Remove auto-refresh logic (handled by optimized data manager)
   // The optimized data manager handles background refreshes automatically
 
@@ -414,8 +447,20 @@ const SchedulingDashboard = () => {
 
           {currentView === "today" && !isFormVisible && (
             <div className="todays-appointments">
-              <h2>Today's Bookings</h2>
-              {renderAppointmentsList(todayAppointments || [])}
+              <div className="section-header">
+                <h2>Today's Bookings</h2>
+                {completedTodayCount > 0 && (
+                  <button
+                    className="view-completed-btn"
+                    onClick={() => setShowCompletedToday(!showCompletedToday)}
+                  >
+                    {showCompletedToday
+                      ? `Hide Completed (${completedTodayCount})`
+                      : `View Completed (${completedTodayCount})`}
+                  </button>
+                )}
+              </div>
+              {renderAppointmentsList(filteredTodayAppointments)}
             </div>
           )}
 

@@ -244,3 +244,34 @@ todays-appointments h2,
     width: calc(100% - 20px);
   }
 }
+
+/* Section header for today's bookings with completed toggle */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.section-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+
+.view-completed-btn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.view-completed-btn:hover {
+  background-color: var(--primary-hover);
+}
