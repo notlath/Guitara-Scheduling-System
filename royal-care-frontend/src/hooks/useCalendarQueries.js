@@ -144,32 +144,50 @@ export const useAppointmentsByDate = (date) => {
 export const useAppointmentsByMonth = (year, month) => {
   const dispatch = useDispatch();
 
+  console.log("🗓️ useAppointmentsByMonth called with:", { year, month });
+
   return useQuery({
     queryKey: queryKeys.appointments.byMonth(year, month),
     queryFn: async () => {
-      console.log(`useAppointmentsByMonth: Fetching for ${year}-${month}`);
-      const result = await dispatch(fetchAppointmentsByMonth({ year, month }));
-      console.log("useAppointmentsByMonth: Result:", result);
-
-      // Extract appointments from the Redux action result
-      let appointments = [];
-      if (result.payload && Array.isArray(result.payload)) {
-        appointments = result.payload;
-      } else if (result.payload && Array.isArray(result.payload.results)) {
-        appointments = result.payload.results;
-      } else {
-        console.warn(
-          "useAppointmentsByMonth: Unexpected payload structure:",
-          result.payload
+      console.log(`🗓️ useAppointmentsByMonth: Fetching for ${year}-${month}`);
+      try {
+        const result = await dispatch(
+          fetchAppointmentsByMonth({ year, month })
         );
-        appointments = [];
+        console.log("🗓️ useAppointmentsByMonth: Result:", result);
+
+        // Check if the action was rejected
+        if (result.type && result.type.endsWith("/rejected")) {
+          console.error(
+            "🗓️ useAppointmentsByMonth: Action was rejected:",
+            result.payload
+          );
+          return [];
+        }
+
+        // Extract appointments from the Redux action result
+        let appointments = [];
+        if (result.payload && Array.isArray(result.payload)) {
+          appointments = result.payload;
+        } else if (result.payload && Array.isArray(result.payload.results)) {
+          appointments = result.payload.results;
+        } else {
+          console.warn(
+            "🗓️ useAppointmentsByMonth: Unexpected payload structure:",
+            result.payload
+          );
+          appointments = [];
+        }
+
+        console.log(
+          `🗓️ useAppointmentsByMonth: Extracted ${appointments.length} appointments for ${year}-${month}`
+        );
+
+        return appointments;
+      } catch (error) {
+        console.error("🗓️ useAppointmentsByMonth: Error in queryFn:", error);
+        return [];
       }
-
-      console.log(
-        `useAppointmentsByMonth: Extracted ${appointments.length} appointments for ${year}-${month}`
-      );
-
-      return appointments;
     },
     enabled: !!(year && month), // Only run when year and month are provided
     staleTime: 5 * 60 * 1000, // 5 minutes - month data is relatively stable

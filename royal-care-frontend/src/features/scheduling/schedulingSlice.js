@@ -1315,24 +1315,36 @@ export const fetchAppointmentsByMonth = createAsyncThunk(
     if (!token) return rejectWithValue("Authentication required");
     try {
       // Calculate month start and end dates
-      const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+      const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
       const nextMonth = month === 12 ? 1 : month + 1;
       const nextYear = month === 12 ? year + 1 : year;
-      const monthEnd = new Date(nextYear, nextMonth - 1, 0).toISOString().split('T')[0];
-      
-      console.log(`📅 Fetching appointments for ${year}-${month}: ${monthStart} to ${monthEnd}`);
-      
+      const monthEnd = new Date(nextYear, nextMonth - 1, 0)
+        .toISOString()
+        .split("T")[0];
+
+      console.log(
+        `📅 Fetching appointments for ${year}-${month}: ${monthStart} to ${monthEnd}`
+      );
+
       const response = await axios.get(`${API_URL}appointments/`, {
         headers: { Authorization: `Token ${token}` },
-        params: { 
+        params: {
           date_after: monthStart,
           date_before: monthEnd,
-          page_size: 1000 // Fetch all appointments for the month
+          page_size: 1000, // Fetch all appointments for the month
         },
       });
-      
-      console.log(`✅ fetchAppointmentsByMonth: Success, received ${response.data?.results?.length || response.data?.length || 0} appointments`);
-      
+
+      console.log(
+        `✅ fetchAppointmentsByMonth: Success, response:`,
+        response.data
+      );
+      console.log(
+        `✅ fetchAppointmentsByMonth: Success, received ${
+          response.data?.results?.length || response.data?.length || 0
+        } appointments`
+      );
+
       // Handle both array and paginated responses
       let appointments = [];
       if (Array.isArray(response.data)) {
@@ -1340,10 +1352,13 @@ export const fetchAppointmentsByMonth = createAsyncThunk(
       } else if (response.data && Array.isArray(response.data.results)) {
         appointments = response.data.results;
       } else {
-        console.warn("⚠️ fetchAppointmentsByMonth: Unexpected response structure:", response.data);
+        console.warn(
+          "⚠️ fetchAppointmentsByMonth: Unexpected response structure:",
+          response.data
+        );
         appointments = [];
       }
-      
+
       return appointments;
     } catch (error) {
       console.error("❌ fetchAppointmentsByMonth: API Error", error);

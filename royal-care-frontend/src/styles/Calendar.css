@@ -164,7 +164,7 @@
 }
 
 .client-label {
-  font-size: 11px; /* Increased from 9px for better visibility */
+  font-size: 8.5px;
   line-height: 1.3;
   padding: 2px 4px; /* Increased padding */
   background-color: var(--accent-400);

@@ -1,9 +1,9 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 import {
+  useAppointmentsByMonth,
   useCalendarData,
   useCalendarRefetch,
-  useAppointmentsByMonth,
 } from "../../hooks/useCalendarQueries";
 import { useSchedulingDashboardData } from "../../hooks/useDashboardQueries";
 import "../../styles/Calendar.css";
@@ -30,50 +30,121 @@ const Calendar = ({
   } = useCalendarData(selectedDate);
 
   // Get month appointments for month view (shows client labels on all days with appointments)
-  const {
-    data: monthAppointments,
+  const { data: monthAppointments, isLoading: monthLoading } =
+    useAppointmentsByMonth(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() + 1
+    );
+
+  console.log("🗓️ Calendar month appointments:", {
+    monthAppointments,
     isLoading: monthLoading,
-  } = useAppointmentsByMonth(currentMonth.getFullYear(), currentMonth.getMonth() + 1);
+    year: currentMonth.getFullYear(),
+    month: currentMonth.getMonth() + 1,
+  });
 
   // Get all appointments data for fallback (keeping existing dashboard data as backup)
-  const {
-    appointments: allAppointments,
-    loading: dashboardLoading,
-  } = useSchedulingDashboardData();
+  const { appointments: allAppointments, loading: dashboardLoading } =
+    useSchedulingDashboardData();
 
   // ENHANCED: Use month-specific appointments for month view, with fallback to dashboard data
   // Combine month appointments (preferred) with dashboard appointments (fallback)
   const combinedAppointments = useMemo(() => {
-    const monthAppts = Array.isArray(monthAppointments) ? monthAppointments : [];
-    const dashboardAppts = Array.isArray(allAppointments) ? allAppointments : [];
-    const dateAppts = Array.isArray(appointmentsByDate) ? appointmentsByDate : [];
-    
+    const monthAppts = Array.isArray(monthAppointments)
+      ? monthAppointments
+      : [];
+    const dashboardAppts = Array.isArray(allAppointments)
+      ? allAppointments
+      : [];
+    const dateAppts = Array.isArray(appointmentsByDate)
+      ? appointmentsByDate
+      : [];
+
     console.log("📊 Calendar appointments debug:", {
       view,
-      currentMonth: `${currentMonth.getFullYear()}-${currentMonth.getMonth() + 1}`,
+      currentMonth: `${currentMonth.getFullYear()}-${
+        currentMonth.getMonth() + 1
+      }`,
       monthAppointments: monthAppts.length,
       dashboardAppointments: dashboardAppts.length,
       dateAppointments: dateAppts.length,
     });
-    
-    // For month view: prefer month-specific data, fallback to dashboard
+
+    // For month view: use the best available data source
     if (view === "month") {
       if (monthAppts.length > 0) {
         console.log("✅ Using month-specific appointments:", monthAppts.length);
         return monthAppts;
       } else if (dashboardAppts.length > 0) {
-        console.log("⚠️ Falling back to dashboard appointments:", dashboardAppts.length);
+        console.log(
+          "⚠️ Falling back to dashboard appointments for month view:",
+          dashboardAppts.length
+        );
         return dashboardAppts;
+      } else {
+        console.log(
+          "⚠️ No month or dashboard data, using all available appointments for month view"
+        );
+        // CRITICAL FIX: For month view, if we don't have month-specific data,
+        // we should still return the best available data rather than empty array
+        // This ensures client labels show even if month query fails
+        return dateAppts.length > 0 ? dateAppts : [];
       }
     }
-    
-    // For day view or as final fallback: use date-specific appointments
+
+    // For day view: use date-specific appointments
     return dateAppts;
-  }, [monthAppointments, allAppointments, appointmentsByDate, view, currentMonth]);
+  }, [
+    monthAppointments,
+    allAppointments,
+    appointmentsByDate,
+    view,
+    currentMonth,
+  ]);
 
   // Use combined appointments for month view, selected date appointments for day view
-  const appointments = view === "month" ? combinedAppointments : calendarAppointments;
-  const loading = view === "month" ? (monthLoading || dashboardLoading) : calendarLoading;
+  // CRITICAL FIX: Ensure we always have appointment data for client labels
+  const appointments = useMemo(() => {
+    if (view === "month") {
+      // For month view, combine all available data sources to ensure client labels show
+      const combined = combinedAppointments;
+
+      // If combined appointments is still empty, try to use any available data
+      if (combined.length === 0) {
+        const allAvailableData = [
+          ...(Array.isArray(appointmentsByDate) ? appointmentsByDate : []),
+          ...(Array.isArray(allAppointments) ? allAppointments : []),
+        ];
+
+        // Remove duplicates by ID
+        const uniqueAppointments = allAvailableData.filter(
+          (apt, index, self) =>
+            apt &&
+            apt.id &&
+            self.findIndex((a) => a && a.id === apt.id) === index
+        );
+
+        console.log(
+          "🔧 Emergency fallback: Using combined data sources:",
+          uniqueAppointments.length
+        );
+        return uniqueAppointments;
+      }
+
+      return combined;
+    } else {
+      // For day view, use calendar appointments
+      return calendarAppointments;
+    }
+  }, [
+    view,
+    combinedAppointments,
+    appointmentsByDate,
+    allAppointments,
+    calendarAppointments,
+  ]);
+  const loading =
+    view === "month" ? monthLoading || dashboardLoading : calendarLoading;
 
   // Manual refetch functions for date/time changes
   const { refetchForDate, refetchAvailabilityForTimeSlot } =
@@ -306,7 +377,7 @@ const Calendar = ({
       1
     );
     setCurrentMonth(newMonth);
-    
+
     // NOTE: Month appointments will automatically refetch due to TanStack Query
     // dependency on currentMonth in useAppointmentsByMonth hook
 
@@ -327,7 +398,7 @@ const Calendar = ({
       1
     );
     setCurrentMonth(newMonth);
-    
+
     // NOTE: Month appointments will automatically refetch due to TanStack Query
     // dependency on currentMonth in useAppointmentsByMonth hook
 
@@ -389,7 +460,12 @@ const Calendar = ({
     console.log("appointments (final):", appointments);
     console.log("appointments type:", typeof appointments);
     console.log("appointments isArray:", Array.isArray(appointments));
-    console.log("appointments source:", view === "month" ? "combined (dashboard + fallback)" : "calendar (selected date)");
+    console.log(
+      "appointments source:",
+      view === "month"
+        ? "combined (dashboard + fallback)"
+        : "calendar (selected date)"
+    );
     console.log("selectedDate:", selectedDate);
     console.log("currentView:", view);
     console.log("loading:", loading);
@@ -618,9 +694,10 @@ const Calendar = ({
                   showClientLabels
                 );
                 console.log(`DEBUG Calendar: context:`, context);
-                const willShowClientLabels = (showClientLabels || context === "operator") &&
-                    clientInfo.length > 0 &&
-                    !isPastDay;
+                const willShowClientLabels =
+                  (showClientLabels || context === "operator") &&
+                  clientInfo.length > 0 &&
+                  !isPastDay;
                 console.log(
                   `DEBUG Calendar: Final display condition for ${formattedDate}:`,
                   willShowClientLabels
@@ -861,19 +938,6 @@ const Calendar = ({
                   <span>Session/Treatment</span>
                 </div>
               )}
-              <div className="status-legend-item">
-                <div
-                  className="status-legend-color"
-                  style={{ backgroundColor: "#22c55e" }}
-                ></div>
-                <span>
-                  {context === "driver"
-                    ? "Transport Completed"
-                    : context === "operator"
-                    ? "Session/Assignment Completed"
-                    : "Session Completed"}
-                </span>
-              </div>
               <div className="status-legend-item">
                 <div
                   className="status-legend-color"
