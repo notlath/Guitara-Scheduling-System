@@ -176,11 +176,8 @@ const TherapistDashboard = () => {
   // Get user from Redux state
   const user = useOptimizedSelector((state) => state.auth.user, shallowEqual);
 
-  // Get user name from Redux state or fallback
-  const userName =
-    user?.first_name && user?.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user?.username || "Therapist";
+  // Get user display name consistently (using the same pattern as other dashboards)
+  const userName = getUserDisplayName(user, "Therapist");
 
   // Use shared Philippine time and greeting hook
   const { systemTime, greeting } = usePhilippineTime();
@@ -1861,7 +1858,7 @@ const TherapistDashboard = () => {
       <div className="therapist-dashboard">
         <LayoutRow
           title={`${greeting}, ${userName}!`}
-          subtitle={<>{systemTime}</>}
+          subtitle={<>Today is {systemTime}</>}
         >
           <div className="action-buttons">
             <button onClick={handleLogout} className="logout-button">
