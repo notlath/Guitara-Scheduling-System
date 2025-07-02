@@ -164,19 +164,19 @@
 }
 
 .client-label {
-  font-size: 9px;
-  line-height: 1.2;
-  padding: 1px 2px;
+  font-size: 11px; /* Increased from 9px for better visibility */
+  line-height: 1.3;
+  padding: 2px 4px; /* Increased padding */
   background-color: var(--accent-400);
   color: white;
-  border-radius: 2px;
-  font-weight: 500;
+  border-radius: 3px;
+  font-weight: 600; /* Increased weight */
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
   max-width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.5); /* More visible border */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* More prominent shadow */
 }
 
 .client-label.more-clients {
@@ -186,7 +186,9 @@
 
 /* Status-based client label colors */
 .client-label.status-pending {
-  background-color: #f59e0b; /* Orange for pending */
+  background-color: #f59e0b !important; /* Orange for pending - force override */
+  color: white !important;
+  border-color: #d97706 !important;
 }
 
 .client-label.status-confirmed {

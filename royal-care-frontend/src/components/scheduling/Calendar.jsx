@@ -463,27 +463,97 @@ const Calendar = ({
 
               const hasAppointments = dayAppointments.length > 0;
 
+              // DEBUG: Log appointment data for the current day being rendered
+              if (dayAppointments.length > 0) {
+                console.log(
+                  `DEBUG Calendar: Found ${dayAppointments.length} appointments for ${formattedDate}:`,
+                  dayAppointments.map((apt) => ({
+                    id: apt.id,
+                    status: apt.status,
+                    client:
+                      apt.client_details?.first_name +
+                      " " +
+                      apt.client_details?.last_name,
+                    hasClientDetails: !!apt.client_details,
+                  }))
+                );
+              }
+
               // Extract client names and status info for the day
               const clientInfo = dayAppointments
-                .filter(
-                  (appointment) =>
+                .filter((appointment) => {
+                  // More defensive filtering - ensure appointment has required fields
+                  if (!appointment || !appointment.status) return false;
+
+                  // Include all active/visible appointment statuses
+                  return (
                     appointment.status === "pending" ||
                     appointment.status === "confirmed" ||
+                    appointment.status === "therapist_confirmed" ||
+                    appointment.status === "driver_confirmed" ||
+                    appointment.status === "therapist_confirm" ||
+                    appointment.status === "driver_confirm" ||
                     appointment.status === "in_progress" ||
                     appointment.status === "journey" ||
                     appointment.status === "journey_started" ||
                     appointment.status === "arrived" ||
                     appointment.status === "dropped_off" ||
-                    appointment.status === "session_in_progress"
-                ) // Add any other "active" statuses you want to show
-                .map((appointment) => ({
-                  name: `${appointment.client_details?.first_name || ""} ${
-                    appointment.client_details?.last_name || ""
-                  }`.trim(),
-                  status: appointment.status,
-                  id: appointment.id,
-                }))
-                .filter((info) => info.name);
+                    appointment.status === "session_in_progress" ||
+                    appointment.status === "driving_to_location" ||
+                    appointment.status === "at_location" ||
+                    appointment.status === "driver_assigned" ||
+                    appointment.status === "pickup_requested" ||
+                    appointment.status === "driver_assigned_pickup" ||
+                    appointment.status === "return_journey" ||
+                    appointment.status === "awaiting_payment"
+                  );
+                }) // Include all statuses that should show client labels
+                .map((appointment) => {
+                  // More robust name extraction with fallbacks
+                  let clientName = "";
+
+                  if (appointment.client_details) {
+                    const firstName =
+                      appointment.client_details.first_name || "";
+                    const lastName = appointment.client_details.last_name || "";
+                    clientName = `${firstName} ${lastName}`.trim();
+                  }
+
+                  // If no client details or name is empty, use appointment ID as fallback
+                  if (!clientName) {
+                    clientName = `Client ${appointment.id || "Unknown"}`;
+                  }
+
+                  return {
+                    name: clientName,
+                    status: appointment.status,
+                    id: appointment.id,
+                  };
+                })
+                .filter((info) => info.name && info.name !== ""); // Ensure we have a valid name
+
+              // DEBUG: Log clientInfo generation for days with appointments
+              if (dayAppointments.length > 0) {
+                console.log(
+                  `DEBUG Calendar: Generated clientInfo for ${formattedDate}:`,
+                  clientInfo
+                );
+                console.log(
+                  `DEBUG Calendar: isPastDay for ${formattedDate}:`,
+                  isPastDay
+                );
+                console.log(
+                  `DEBUG Calendar: showClientLabels:`,
+                  showClientLabels
+                );
+                console.log(`DEBUG Calendar: context:`, context);
+                console.log(
+                  `DEBUG Calendar: Final display condition:`,
+                  (showClientLabels || context === "operator") &&
+                    clientInfo.length > 0 &&
+                    !isPastDay
+                );
+              }
 
               // Helper function to get context-aware status color class
               const getStatusColorClass = (status) => {
@@ -493,12 +563,17 @@ const Calendar = ({
                   pending: "status-pending",
                   confirmed: "status-confirmed",
                   therapist_confirmed: "status-confirmed",
+                  therapist_confirm: "status-confirmed", // Legacy support
                   driver_confirmed: "status-confirmed",
+                  driver_confirm: "status-confirmed", // Legacy support
 
                   // Active appointment workflow
                   in_progress: "status-active",
                   journey: "status-active",
                   journey_started: "status-active",
+                  driving_to_location: "status-active",
+                  at_location: "status-active",
+                  driver_assigned: "status-active",
                   arrived: "status-active",
                   dropped_off: "status-session",
                   session_in_progress: "status-session",
@@ -527,15 +602,18 @@ const Calendar = ({
                   pending: "status-pending",
                   confirmed: "status-confirmed",
                   therapist_confirmed: "status-pending", // Waiting for driver confirmation
+                  therapist_confirm: "status-pending", // Legacy support
                   driver_confirmed: "status-confirmed",
+                  driver_confirm: "status-confirmed", // Legacy support
 
                   // Transport workflow states
                   in_progress: "status-active",
                   journey: "status-active",
                   journey_started: "status-active",
                   driving_to_location: "status-active",
-                  arrived: "status-active",
                   at_location: "status-active",
+                  driver_assigned: "status-active",
+                  arrived: "status-active",
                   dropped_off: "status-active",
                   driver_transport_completed: "status-completed",
 
@@ -559,9 +637,16 @@ const Calendar = ({
                 const operatorStatuses = {
                   pending: "status-pending",
                   confirmed: "status-confirmed",
+                  therapist_confirmed: "status-confirmed",
+                  therapist_confirm: "status-confirmed", // Legacy support
+                  driver_confirmed: "status-confirmed",
+                  driver_confirm: "status-confirmed", // Legacy support
                   in_progress: "status-active",
                   journey: "status-active",
                   journey_started: "status-active",
+                  driving_to_location: "status-active",
+                  at_location: "status-active",
+                  driver_assigned: "status-active",
                   arrived: "status-active",
                   dropped_off: "status-session",
                   session_in_progress: "status-session",
@@ -574,8 +659,6 @@ const Calendar = ({
                   driver_assigned_pickup: "status-active",
                   return_journey: "status-active",
                   transport_completed: "status-completed",
-                  therapist_confirmed: "status-confirmed",
-                  driver_confirmed: "status-confirmed",
                   picking_up_therapists: "status-active",
                   transporting_group: "status-active",
                   therapist_dropped_off: "status-active",
@@ -605,9 +688,8 @@ const Calendar = ({
                 >
                   {/* Client labels - show only for therapist/driver dashboards */}
                   {(showClientLabels || context === "operator") &&
-                    clientInfo.length > 0 &&
-                    !isPastDay && (
-                      <div className="client-labels">
+                    clientInfo.length > 0 && (
+                      /* TEMPORARILY REMOVE !isPastDay CONDITION FOR DEBUGGING */ <div className="client-labels">
                         {clientInfo.slice(0, 2).map((info, index) => (
                           <span
                             key={index}

@@ -26,7 +26,26 @@ export const useAppointmentsByDate = (date) => {
       const result = await dispatch(fetchAppointmentsByDate(date));
       console.log("useAppointmentsByDate: Result:", result);
       console.log("useAppointmentsByDate: Payload:", result.payload);
-      return result.payload || [];
+
+      // Handle both array and paginated responses
+      let appointments = [];
+      if (Array.isArray(result.payload)) {
+        appointments = result.payload;
+      } else if (result.payload && Array.isArray(result.payload.results)) {
+        appointments = result.payload.results;
+        console.log(
+          "useAppointmentsByDate: Extracted appointments from paginated response:",
+          appointments.length
+        );
+      } else {
+        console.warn(
+          "useAppointmentsByDate: Unexpected payload structure:",
+          result.payload
+        );
+        appointments = [];
+      }
+
+      return appointments;
     },
     enabled: !!date, // Only run when date is provided
     staleTime: 30 * 1000, // 30 seconds - appointments change frequently
