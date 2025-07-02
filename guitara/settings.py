@@ -31,6 +31,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://guitara-scheduling-system.vercel.app",  # Your Vercel frontend
     "http://localhost:5173",  # Local development
     "http://localhost:3000",  # Alternative local dev
+    "https://royalcareinpasig.services/" 
 ]
 
 CORS_ALLOW_CREDENTIALS = True

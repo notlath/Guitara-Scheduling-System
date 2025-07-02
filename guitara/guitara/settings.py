@@ -49,6 +49,7 @@ else:
         "127.0.0.1",
         "testserver",
         "https://guitara-scheduling-system.vercel.app",
+        "https://royalcareinpasig.services/",
     ]
     print(f"[SETTINGS] Using default ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 

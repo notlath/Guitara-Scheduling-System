@@ -279,6 +279,7 @@ default_origins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:3001",
+    "https://royalcareinpasig.services/"
 ]
 
 for origin in default_origins:
