@@ -687,68 +687,75 @@ const TherapistDashboard = () => {
         // 🎯 NEW: Get appointment details BEFORE completing session to check for materials
         const appointment = myAppointments?.find(apt => apt.id === appointmentId);
         console.log("🔍 SESSION COMPLETION - Found appointment:", appointment);
+        console.log("🔍 SESSION COMPLETION - Appointment materials:", appointment?.appointment_materials);
         console.log("🔍 SESSION COMPLETION - Material usage summary:", appointment?.material_usage_summary);
         
-        // Complete the session first
-        await enhancedCompleteSession(appointmentId);
-
-        // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
-        await Promise.all([
-          refetch(),
-          invalidateAppointmentCaches(queryClient, {
-            userId: user?.id,
-            userRole: "therapist",
-            appointmentId,
-          }),
-        ]);
-        
-        // 🎯 NEW: After session completion, check for materials and show modal
-        const hasMaterials = appointment?.material_usage_summary?.consumable_materials?.length > 0 ||
-                            appointment?.material_usage_summary?.reusable_materials?.length > 0;
+        // 🚨 FIXED: Check for materials FIRST, before calling complete
+        const materialSummary = appointment?.material_usage_summary;
+        const hasMaterials = materialSummary && (
+          (materialSummary.consumable_materials?.length > 0) ||
+          (materialSummary.reusable_materials?.length > 0)
+        );
         
         console.log("🔍 SESSION COMPLETION - hasMaterials:", hasMaterials);
+        console.log("🔍 SESSION COMPLETION - material_usage_summary:", materialSummary);
         
         if (hasMaterials) {
-          console.log("🔍 Found materials for completed session:", appointment.material_usage_summary);
-          console.log("🎯 SHOWING POST-SESSION MATERIAL MODAL!");
+          console.log("🔍 Found materials for session - showing modal FIRST");
           
-          // Combine consumable and reusable materials
+          // Convert material_usage_summary format to the format expected by PostServiceMaterialModal
           const allMaterials = [
-            ...(appointment.material_usage_summary.consumable_materials || []),
-            ...(appointment.material_usage_summary.reusable_materials || [])
+            ...(materialSummary.consumable_materials || []).map(material => ({
+              id: material.id || `consumable_${material.name}`,
+              name: material.name,
+              category: material.category,
+              quantity_used: material.quantity_used,
+              unit: material.unit,
+              usage_type: 'consumable',
+              is_reusable: false,
+              deducted_at: material.deducted_at,
+              returned_at: material.returned_at
+            })),
+            ...(materialSummary.reusable_materials || []).map(material => ({
+              id: material.id || `reusable_${material.name}`,
+              name: material.name,
+              category: material.category,
+              quantity_used: material.quantity_used,
+              unit: material.unit,
+              usage_type: 'reusable',
+              is_reusable: true,
+              deducted_at: material.deducted_at,
+              returned_at: material.returned_at
+            }))
           ];
           
-          console.log("🔍 All materials to show:", allMaterials);
+          console.log("🔍 All materials to show in modal:", allMaterials);
           
-          // Debug each material structure
-          allMaterials.forEach((material, index) => {
-            console.log(`🔍 Material ${index}:`, material);
-            console.log(`🔍 Material ${index} keys:`, Object.keys(material));
-            console.log(`🔍 Material ${index} id field:`, material.id);
-            console.log(`🔍 Material ${index} material_id field:`, material.material_id);
-          });
-          
-          // Show material status modal
+          // Show material status modal - the modal will call complete when submitted
           setMaterialModal({
             isOpen: true,
             appointmentId: appointmentId,
-            materials: allMaterials.map((material, index) => {
-              console.log(`🔍 Mapping material ${index}:`, material);
-              const mappedMaterial = {
-                id: material.material_id || material.id || material.inventory_item_id,
-                name: material.material_name || material.name || material.inventory_item_name,
-                quantity_used: material.quantity_used,
-                unit: material.unit,
-              };
-              console.log(`🔍 Mapped material ${index}:`, mappedMaterial);
-              return mappedMaterial;
-            }),
+            materials: allMaterials,
             isSubmitting: false,
           });
           
-          console.log("🔍 POST-SESSION MODAL STATE SET!");
+          console.log("🔍 MATERIALS MODAL OPENED - waiting for user input");
         } else {
-          console.log("❌ No materials found for completed session");
+          console.log("🔍 No materials found, proceeding to complete session");
+          alert("No materials to check. Session will be marked as completed.");
+          
+          // Complete the session directly if no materials
+          await enhancedCompleteSession(appointmentId);
+
+          // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
+          await Promise.all([
+            refetch(),
+            invalidateAppointmentCaches(queryClient, {
+              userId: user?.id,
+              userRole: "therapist",
+              appointmentId,
+            }),
+          ]);
         }
         
       } catch (error) {
@@ -776,16 +783,19 @@ const TherapistDashboard = () => {
       console.log("🔍 MATERIALS CHECK - Found appointment:", appointment);
       console.log("🔍 MATERIALS CHECK - Material usage summary:", appointment.material_usage_summary);
 
-      // Check if appointment has materials
-      const hasMaterials = appointment?.material_usage_summary?.consumable_materials?.length > 0 ||
-                          appointment?.material_usage_summary?.reusable_materials?.length > 0;
+      // Use material_usage_summary as the primary source since appointment_materials may be missing
+      const materialSummary = appointment?.material_usage_summary;
+      const hasMaterials = materialSummary && (
+        (materialSummary.consumable_materials?.length > 0) ||
+        (materialSummary.reusable_materials?.length > 0)
+      );
 
       if (!hasMaterials) {
         // No materials to check, proceed directly to completion
         console.log("🔍 No materials found, proceeding to complete session");
         alert("No materials to check. Session will be marked as completed.");
         
-        // Call the check_materials_status endpoint with no materials
+        // ✅ FIXED: Use the existing /complete/ endpoint instead of non-existent check_materials_status
         const API_BASE_URL = import.meta.env.PROD
           ? "https://charismatic-appreciation-production.up.railway.app/api"
           : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
@@ -794,14 +804,15 @@ const TherapistDashboard = () => {
                      localStorage.getItem('authToken') || 
                      localStorage.getItem('token');
         
-        const response = await fetch(`${API_BASE_URL}/scheduling/appointments/${appointmentId}/check_materials_status/`, {
+        const response = await fetch(`${API_BASE_URL}/scheduling/appointments/${appointmentId}/complete/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Token ${token}`,
           },
           body: JSON.stringify({
-            materials_are_empty: false // Default to not empty since no materials
+            materials_checked: true,
+            materials_are_empty: false // No materials to check
           }),
         });
 
@@ -810,15 +821,40 @@ const TherapistDashboard = () => {
           throw new Error(errorData.error || 'Failed to complete materials check');
         }
 
+        // 🆕 IMPORTANT: Mark materials as checked in localStorage for appointments with no materials too
+        const storageKey = `materials_checked_${appointmentId}`;
+        localStorage.setItem(storageKey, 'true');
+        console.log(`✅ Marked materials as checked for appointment ${appointmentId} in localStorage (no materials case)`);
+
         // Refresh appointment data
         await refetch();
         return;
       }
 
-      // Combine consumable and reusable materials for modal
+      // Convert material_usage_summary format to the format expected by PostServiceMaterialModal
       const allMaterials = [
-        ...(appointment.material_usage_summary.consumable_materials || []),
-        ...(appointment.material_usage_summary.reusable_materials || [])
+        ...(materialSummary.consumable_materials || []).map(material => ({
+          id: material.id || `consumable_${material.name}`,
+          name: material.name,
+          category: material.category,
+          quantity_used: material.quantity_used,
+          unit: material.unit,
+          usage_type: 'consumable',
+          is_reusable: false,
+          deducted_at: material.deducted_at,
+          returned_at: material.returned_at
+        })),
+        ...(materialSummary.reusable_materials || []).map(material => ({
+          id: material.id || `reusable_${material.name}`,
+          name: material.name,
+          category: material.category,
+          quantity_used: material.quantity_used,
+          unit: material.unit,
+          usage_type: 'reusable',
+          is_reusable: true,
+          deducted_at: material.deducted_at,
+          returned_at: material.returned_at
+        }))
       ];
 
       console.log("🔍 MATERIALS CHECK - All materials to show:", allMaterials);
@@ -827,12 +863,7 @@ const TherapistDashboard = () => {
       setMaterialModal({
         isOpen: true,
         appointmentId: appointmentId,
-        materials: allMaterials.map((material, index) => ({
-          id: material.id || index,
-          name: material.name,
-          quantity_used: material.quantity_used,
-          unit: material.unit
-        })),
+        materials: allMaterials,
         isSubmitting: false,
       });
 
@@ -871,18 +902,20 @@ const TherapistDashboard = () => {
       
       console.log("🔍 API_BASE_URL:", API_BASE_URL);
       
-      // ✅ NEW: Use the new check_materials_status endpoint
+      // ✅ FIXED: Use the existing /complete/ endpoint instead of non-existent check_materials_status
       // Determine if any materials are marked as empty
       const anyMaterialsEmpty = Object.values(materialStatus).some(isEmpty => isEmpty === true);
       
       console.log("🔍 Any materials empty:", anyMaterialsEmpty);
       console.log("🔍 Appointment ID:", materialModal.appointmentId);
       
-      const url = `${API_BASE_URL}/scheduling/appointments/${materialModal.appointmentId}/check_materials_status/`;
+      const url = `${API_BASE_URL}/scheduling/appointments/${materialModal.appointmentId}/complete/`;
       console.log("🔍 Request URL:", url);
       
       const requestBody = {
-        materials_are_empty: anyMaterialsEmpty
+        materials_are_empty: anyMaterialsEmpty,
+        materials_checked: true,
+        material_status: materialStatus
       };
       console.log("🔍 Request body:", requestBody);
       
@@ -906,6 +939,11 @@ const TherapistDashboard = () => {
       
       const responseData = await response.json();
       console.log("✅ Materials check completed:", responseData);
+      
+      // 🆕 IMPORTANT: Mark materials as checked in localStorage for this appointment
+      const storageKey = `materials_checked_${materialModal.appointmentId}`;
+      localStorage.setItem(storageKey, 'true');
+      console.log(`✅ Marked materials as checked for appointment ${materialModal.appointmentId} in localStorage`);
       
       // Close modal and refresh data
       setMaterialModal({
@@ -1193,6 +1231,11 @@ const TherapistDashboard = () => {
       // For single therapist appointments (legacy)
       return therapist_accepted;
     };
+    
+    // 🚨 CRITICAL DEBUG: Log every appointment status being rendered
+    console.log(`🚨 THERAPIST DASHBOARD - Rendering appointment ${id} with status: "${status}"`);
+    console.log(`🚨 Full appointment object:`, appointment);
+    
     switch (status) {
       case "pending":
         // Show accept/reject only if current therapist hasn't accepted yet
@@ -1360,6 +1403,7 @@ const TherapistDashboard = () => {
         );
       
       case "payment_verified":
+        console.log(`🚨 PAYMENT_VERIFIED CASE TRIGGERED for appointment ${id}!`);
         return (
           <div className="appointment-actions">
             <LoadingButton
@@ -1394,7 +1438,61 @@ const TherapistDashboard = () => {
           </div>
         );
 
-      case "completed":
+      case "completed": {
+        // 🎯 NEW LOGIC: Check if materials have been verified first
+        // Use material_usage_summary as the primary source since appointment_materials may be missing
+        const materialSummary = appointment?.material_usage_summary;
+        const hasMaterials = materialSummary && (
+          (materialSummary.consumable_materials?.length > 0) ||
+          (materialSummary.reusable_materials?.length > 0)
+        );
+        
+        // 🚀 IMPROVED: Check multiple ways to determine if materials were already checked
+        // 1. Check if there's a materials_checked timestamp/field
+        // 2. Check if status was recently changed from payment_verified to completed (indicating materials were checked)
+        // 3. For now, use localStorage to track if we've checked materials for this appointment (temporary solution)
+        const storageKey = `materials_checked_${appointment.id}`;
+        const materialsAlreadyChecked = localStorage.getItem(storageKey) === 'true' || 
+                                       appointment?.materials_checked === true ||
+                                       appointment?.materials_verified === true ||
+                                       appointment?.materials_status === 'checked';
+        
+        console.log(`🔍 COMPLETED CASE - Appointment ${appointment.id}:`, {
+          hasMaterials,
+          materialsAlreadyChecked,
+          storageKey,
+          storageValue: localStorage.getItem(storageKey),
+          appointmentMaterials: materialSummary,
+          materialUsageSummary: appointment?.material_usage_summary,
+          appointmentFields: {
+            materials_checked: appointment?.materials_checked,
+            materials_verified: appointment?.materials_verified, 
+            materials_status: appointment?.materials_status
+          }
+        });
+        
+        // 🆕 STEP 1: If has materials and not checked yet, show material check button
+        if (hasMaterials && !materialsAlreadyChecked) {
+          return (
+            <div className="appointment-actions">
+              <div className="material-check-required" style={{ backgroundColor: '#fff3cd', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#856404' }}>📋 Material Check Required</h4>
+                <p style={{ margin: '0 0 15px 0', color: '#856404' }}>Payment verified! Please check the status of materials used in this session before requesting pickup.</p>
+                <LoadingButton
+                  className="materials-check-button"
+                  onClick={() => handleMaterialsCheck(appointment.id)}
+                  loading={buttonLoading[`materials_check_${appointment.id}`]}
+                  loadingText="Checking Materials..."
+                  style={{ backgroundColor: '#4CAF50', color: 'white' }}
+                >
+                  ✅ Check Materials Status
+                </LoadingButton>
+              </div>
+            </div>
+          );
+        }
+        
+        // 🆕 STEP 2: If no materials OR materials already checked, show pickup options
         // Show pickup options for appointments with drivers
         if (appointment.driver_details) {
           return (
@@ -1504,6 +1602,7 @@ const TherapistDashboard = () => {
             </div>
           );
         }
+      }
       case "pickup_requested":
         return (
           <div className="appointment-actions">
