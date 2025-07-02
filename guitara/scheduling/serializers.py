@@ -193,10 +193,31 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     # Add material usage summary for reading
     material_usage_summary = serializers.SerializerMethodField()
+    
+    # Add appointment materials for direct access
+    appointment_materials = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointment
-        fields = "__all__"
+        fields = [
+            'id', 'client', 'therapist', 'driver', 'operator', 'payment_verified_by', 'rejected_by',
+            'therapists', 'date', 'start_time', 'end_time', 'status', 'payment_status', 'payment_amount',
+            'payment_method', 'payment_verified_at', 'payment_notes', 'receipt_hash', 'receipt_url',
+            'location', 'notes', 'required_materials', 'pickup_requested', 'pickup_request_time',
+            'pickup_confirmed_at', 'pickup_urgency', 'pickup_notes', 'estimated_pickup_time',
+            'session_end_time', 'return_journey_completed_at', 'rejection_reason', 'rejected_at',
+            'response_deadline', 'auto_cancelled_at', 'therapist_accepted', 'therapist_accepted_at',
+            'driver_accepted', 'driver_accepted_at', 'therapist_confirmed_at', 'driver_confirmed_at',
+            'started_at', 'journey_started_at', 'arrived_at', 'session_started_at', 'payment_initiated_at',
+            'requires_car', 'group_confirmation_complete', 'group_size', 'driver_available_since',
+            'auto_assignment_eligible', 'created_at', 'updated_at', 'services', 'materials',
+            # Read-only fields
+            'client_details', 'therapist_details', 'therapists_details', 'driver_details',
+            'operator_details', 'rejected_by_details', 'services_details', 'rejection_details',
+            'total_duration', 'total_price', 'both_parties_accepted', 'pending_acceptances',
+            'formatted_date', 'formatted_start_time', 'formatted_end_time', 'urgency_level',
+            'material_usage_summary', 'appointment_materials'
+        ]
 
     def get_formatted_date(self, obj):
         """Return formatted date for frontend display"""
@@ -333,6 +354,25 @@ class AppointmentSerializer(serializers.ModelSerializer):
             logger.info("No materials data provided - skipping material deduction")
         
         return appointment
+
+    def get_appointment_materials(self, obj):
+        """Get appointment materials as a list for frontend"""
+        try:
+            materials = obj.appointment_materials.all().select_related('inventory_item')
+            return [{
+                'id': material.id,
+                'name': material.inventory_item.name,
+                'category': material.inventory_item.category,
+                'quantity_used': material.quantity_used,
+                'unit': material.inventory_item.unit,
+                'usage_type': material.usage_type,
+                'is_reusable': material.is_reusable,
+                'deducted_at': material.deducted_at,
+                'returned_at': material.returned_at,
+                'notes': material.notes
+            } for material in materials]
+        except Exception:
+            return []
 
     def validate_services(self, value):
         """Validate that services exist and are active"""
