@@ -1307,6 +1307,53 @@ export const fetchAppointmentsByWeek = createAsyncThunk(
   }
 );
 
+// Fetch appointments by month
+export const fetchAppointmentsByMonth = createAsyncThunk(
+  "scheduling/fetchAppointmentsByMonth",
+  async ({ year, month }, { rejectWithValue }) => {
+    const token = getToken();
+    if (!token) return rejectWithValue("Authentication required");
+    try {
+      // Calculate month start and end dates
+      const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+      const nextMonth = month === 12 ? 1 : month + 1;
+      const nextYear = month === 12 ? year + 1 : year;
+      const monthEnd = new Date(nextYear, nextMonth - 1, 0).toISOString().split('T')[0];
+      
+      console.log(`📅 Fetching appointments for ${year}-${month}: ${monthStart} to ${monthEnd}`);
+      
+      const response = await axios.get(`${API_URL}appointments/`, {
+        headers: { Authorization: `Token ${token}` },
+        params: { 
+          date_after: monthStart,
+          date_before: monthEnd,
+          page_size: 1000 // Fetch all appointments for the month
+        },
+      });
+      
+      console.log(`✅ fetchAppointmentsByMonth: Success, received ${response.data?.results?.length || response.data?.length || 0} appointments`);
+      
+      // Handle both array and paginated responses
+      let appointments = [];
+      if (Array.isArray(response.data)) {
+        appointments = response.data;
+      } else if (response.data && Array.isArray(response.data.results)) {
+        appointments = response.data.results;
+      } else {
+        console.warn("⚠️ fetchAppointmentsByMonth: Unexpected response structure:", response.data);
+        appointments = [];
+      }
+      
+      return appointments;
+    } catch (error) {
+      console.error("❌ fetchAppointmentsByMonth: API Error", error);
+      return rejectWithValue(
+        handleApiError(error, "Could not fetch appointments for this month")
+      );
+    }
+  }
+);
+
 // Fetch notifications
 export const fetchNotifications = createAsyncThunk(
   "scheduling/fetchNotifications",
@@ -1843,6 +1890,7 @@ const initialState = {
   upcomingAppointments: [],
   appointmentsByDate: {},
   weekAppointments: [],
+  monthAppointments: [],
   availableTherapists: [],
   availableDrivers: [],
   staffMembers: [],
@@ -2356,6 +2404,19 @@ const schedulingSlice = createSlice({
         state.weekAppointments = action.payload;
       })
       .addCase(fetchAppointmentsByWeek.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // fetchAppointmentsByMonth
+      .addCase(fetchAppointmentsByMonth.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAppointmentsByMonth.fulfilled, (state, action) => {
+        state.loading = false;
+        state.monthAppointments = action.payload;
+      })
+      .addCase(fetchAppointmentsByMonth.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

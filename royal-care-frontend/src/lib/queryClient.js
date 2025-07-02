@@ -50,6 +50,7 @@ export const queryKeys = {
     today: () => ["appointments", "today"],
     upcoming: () => ["appointments", "upcoming"],
     byWeek: (date) => ["appointments", "week", date],
+    byMonth: (year, month) => ["appointments", "month", year, month],
     byId: (id) => ["appointments", id],
     byTherapist: (therapistId, type) => [
       "appointments",

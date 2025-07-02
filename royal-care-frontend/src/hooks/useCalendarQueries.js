@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useDispatch } from "react-redux";
 import {
   fetchAppointmentsByDate,
+  fetchAppointmentsByMonth,
   fetchAvailableDrivers,
   fetchAvailableTherapists,
 } from "../features/scheduling/schedulingSlice";
@@ -133,6 +134,48 @@ export const useAppointmentsByDate = (date) => {
     gcTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: true,
     refetchInterval: 60 * 1000, // Refetch every minute for real-time updates
+  });
+};
+
+/**
+ * Hook for fetching appointments by month (for calendar month view)
+ * Replaces: Needing to fetch appointments day by day
+ */
+export const useAppointmentsByMonth = (year, month) => {
+  const dispatch = useDispatch();
+
+  return useQuery({
+    queryKey: queryKeys.appointments.byMonth(year, month),
+    queryFn: async () => {
+      console.log(`useAppointmentsByMonth: Fetching for ${year}-${month}`);
+      const result = await dispatch(fetchAppointmentsByMonth({ year, month }));
+      console.log("useAppointmentsByMonth: Result:", result);
+
+      // Extract appointments from the Redux action result
+      let appointments = [];
+      if (result.payload && Array.isArray(result.payload)) {
+        appointments = result.payload;
+      } else if (result.payload && Array.isArray(result.payload.results)) {
+        appointments = result.payload.results;
+      } else {
+        console.warn(
+          "useAppointmentsByMonth: Unexpected payload structure:",
+          result.payload
+        );
+        appointments = [];
+      }
+
+      console.log(
+        `useAppointmentsByMonth: Extracted ${appointments.length} appointments for ${year}-${month}`
+      );
+
+      return appointments;
+    },
+    enabled: !!(year && month), // Only run when year and month are provided
+    staleTime: 5 * 60 * 1000, // 5 minutes - month data is relatively stable
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   });
 };
 

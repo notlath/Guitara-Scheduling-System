@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 import {
   useCalendarData,
   useCalendarRefetch,
+  useAppointmentsByMonth,
 } from "../../hooks/useCalendarQueries";
+import { useSchedulingDashboardData } from "../../hooks/useDashboardQueries";
 import "../../styles/Calendar.css";
 import MinimalLoadingIndicator from "../common/MinimalLoadingIndicator";
 
@@ -21,11 +23,57 @@ const Calendar = ({
   // TanStack Query for calendar data - replaces Redux
   const {
     appointmentsByDate,
-    appointments,
+    appointments: calendarAppointments,
     availableTherapists,
     availableDrivers,
-    loading,
+    loading: calendarLoading,
   } = useCalendarData(selectedDate);
+
+  // Get month appointments for month view (shows client labels on all days with appointments)
+  const {
+    data: monthAppointments,
+    isLoading: monthLoading,
+  } = useAppointmentsByMonth(currentMonth.getFullYear(), currentMonth.getMonth() + 1);
+
+  // Get all appointments data for fallback (keeping existing dashboard data as backup)
+  const {
+    appointments: allAppointments,
+    loading: dashboardLoading,
+  } = useSchedulingDashboardData();
+
+  // ENHANCED: Use month-specific appointments for month view, with fallback to dashboard data
+  // Combine month appointments (preferred) with dashboard appointments (fallback)
+  const combinedAppointments = useMemo(() => {
+    const monthAppts = Array.isArray(monthAppointments) ? monthAppointments : [];
+    const dashboardAppts = Array.isArray(allAppointments) ? allAppointments : [];
+    const dateAppts = Array.isArray(appointmentsByDate) ? appointmentsByDate : [];
+    
+    console.log("📊 Calendar appointments debug:", {
+      view,
+      currentMonth: `${currentMonth.getFullYear()}-${currentMonth.getMonth() + 1}`,
+      monthAppointments: monthAppts.length,
+      dashboardAppointments: dashboardAppts.length,
+      dateAppointments: dateAppts.length,
+    });
+    
+    // For month view: prefer month-specific data, fallback to dashboard
+    if (view === "month") {
+      if (monthAppts.length > 0) {
+        console.log("✅ Using month-specific appointments:", monthAppts.length);
+        return monthAppts;
+      } else if (dashboardAppts.length > 0) {
+        console.log("⚠️ Falling back to dashboard appointments:", dashboardAppts.length);
+        return dashboardAppts;
+      }
+    }
+    
+    // For day view or as final fallback: use date-specific appointments
+    return dateAppts;
+  }, [monthAppointments, allAppointments, appointmentsByDate, view, currentMonth]);
+
+  // Use combined appointments for month view, selected date appointments for day view
+  const appointments = view === "month" ? combinedAppointments : calendarAppointments;
+  const loading = view === "month" ? (monthLoading || dashboardLoading) : calendarLoading;
 
   // Manual refetch functions for date/time changes
   const { refetchForDate, refetchAvailabilityForTimeSlot } =
@@ -258,6 +306,9 @@ const Calendar = ({
       1
     );
     setCurrentMonth(newMonth);
+    
+    // NOTE: Month appointments will automatically refetch due to TanStack Query
+    // dependency on currentMonth in useAppointmentsByMonth hook
 
     // Fetch availability for the first day of the new month
     const firstDay = new Date(newMonth.getFullYear(), newMonth.getMonth(), 1);
@@ -276,6 +327,9 @@ const Calendar = ({
       1
     );
     setCurrentMonth(newMonth);
+    
+    // NOTE: Month appointments will automatically refetch due to TanStack Query
+    // dependency on currentMonth in useAppointmentsByMonth hook
 
     // Fetch availability for the first day of the new month
     const firstDay = new Date(newMonth.getFullYear(), newMonth.getMonth(), 1);
@@ -330,17 +384,24 @@ const Calendar = ({
     console.log("=== CALENDAR DEBUG ===");
     console.log("availableTherapists:", availableTherapists);
     console.log("appointmentsByDate:", appointmentsByDate);
-    console.log("appointments:", appointments);
+    console.log("allAppointments (dashboard):", allAppointments);
+    console.log("combinedAppointments:", combinedAppointments);
+    console.log("appointments (final):", appointments);
     console.log("appointments type:", typeof appointments);
     console.log("appointments isArray:", Array.isArray(appointments));
+    console.log("appointments source:", view === "month" ? "combined (dashboard + fallback)" : "calendar (selected date)");
     console.log("selectedDate:", selectedDate);
+    console.log("currentView:", view);
     console.log("loading:", loading);
   }, [
     availableTherapists,
     appointmentsByDate,
+    allAppointments,
+    combinedAppointments,
     selectedDate,
     loading,
     appointments,
+    view,
   ]);
 
   // Handle time selection
@@ -557,11 +618,16 @@ const Calendar = ({
                   showClientLabels
                 );
                 console.log(`DEBUG Calendar: context:`, context);
-                console.log(
-                  `DEBUG Calendar: Final display condition:`,
-                  (showClientLabels || context === "operator") &&
+                const willShowClientLabels = (showClientLabels || context === "operator") &&
                     clientInfo.length > 0 &&
-                    !isPastDay
+                    !isPastDay;
+                console.log(
+                  `DEBUG Calendar: Final display condition for ${formattedDate}:`,
+                  willShowClientLabels
+                );
+                console.log(
+                  `DEBUG Calendar: Will display ${clientInfo.length} client labels for ${formattedDate}:`,
+                  willShowClientLabels ? "YES" : "NO"
                 );
               }
 
@@ -696,7 +762,7 @@ const Calendar = ({
                   } ${isPastDay ? "past-day" : ""}`}
                   onClick={() => handleDateClick(day)}
                 >
-                  {/* Client labels - show only for therapist/driver dashboards */}
+                  {/* Client labels - show for any day with appointments (excluding past days) */}
                   {(showClientLabels || context === "operator") &&
                     clientInfo.length > 0 &&
                     !isPastDay && (
