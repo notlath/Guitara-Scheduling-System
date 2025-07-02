@@ -9,7 +9,6 @@ import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // TanStack Query cache utilities for direct cache management
 import { syncMutationSuccess } from "../services/realTimeSyncService";
-import { invalidateAppointmentCaches } from "../utils/cacheInvalidation";
 // ✅ CRITICAL FIX: Import handleWebSocketUpdate for comprehensive cache management
 
 import LayoutRow from "../globals/LayoutRow";
@@ -468,10 +467,6 @@ const TherapistDashboard = () => {
     });
   };
 
-  const updateMaterialModal = (updates) => {
-    setMaterialModal((prev) => ({ ...prev, ...updates }));
-  };
-
   // Debug logging for troubleshooting the "No appointments found" issue
   const DEBUG_LOGS = false; // Set to true to enable debug logs
   if (DEBUG_LOGS) {
@@ -648,35 +643,86 @@ const TherapistDashboard = () => {
   // 🆕 NEW: Handle materials check for payment_verified appointments
   const handleMaterialsCheck = async (appointmentId) => {
     const actionKey = `materials_check_${appointmentId}`;
+    setActionLoading(actionKey, true);
+    
     try {
-      setActionLoading(actionKey, true);
-
-      // Get the appointment details to check for materials
-      const appointment =
-        myAppointments?.find((apt) => apt.id === appointmentId) ||
-        myTodayAppointments?.find((apt) => apt.id === appointmentId) ||
-        myUpcomingAppointments?.find((apt) => apt.id === appointmentId);
-
-      const appointmentMaterials = appointment?.appointment_materials || [];
-
-      if (appointmentMaterials.length > 0) {
-        // Show material modal for post-service material checking
-        openMaterialModal({
-          appointmentId: appointmentId,
-          materials: appointmentMaterials.map((mat) => ({
-            id: mat.inventory_item?.id || mat.material_id,
-            name: mat.inventory_item?.name || mat.material_name || "Material",
-            quantity_used: mat.quantity_used,
-            unit: mat.inventory_item?.unit_of_measure || "units",
-          })),
-        });
-      } else {
-        // No materials to check, directly complete the session
-        await handleCompleteSession(appointmentId);
+      // Find the appointment to get its materials
+      const appointment = myAppointments?.find(apt => apt.id === appointmentId) ||
+                         myTodayAppointments?.find(apt => apt.id === appointmentId) ||
+                         myUpcomingAppointments?.find(apt => apt.id === appointmentId);
+      
+      if (!appointment) {
+        throw new Error("Appointment not found");
       }
+
+      console.log("🔍 MATERIALS CHECK - Found appointment:", appointment);
+      console.log("🔍 MATERIALS CHECK - Material usage summary:", appointment.material_usage_summary);
+
+      // Check if appointment has materials
+      const hasMaterials = appointment?.material_usage_summary?.consumable_materials?.length > 0 ||
+                          appointment?.material_usage_summary?.reusable_materials?.length > 0;
+
+      if (!hasMaterials) {
+        // No materials to check, proceed directly to completion
+        console.log("🔍 No materials found, proceeding to complete session");
+        alert("No materials to check. Session will be marked as completed.");
+        
+        // Call the check_materials_status endpoint with no materials
+        const API_BASE_URL = import.meta.env.PROD
+          ? "https://charismatic-appreciation-production.up.railway.app/api"
+          : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+        
+        const token = localStorage.getItem('knoxToken') ||
+                     localStorage.getItem('authToken') || 
+                     localStorage.getItem('token');
+        
+        const response = await fetch(`${API_BASE_URL}/scheduling/appointments/${appointmentId}/check_materials_status/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Token ${token}`,
+          },
+          body: JSON.stringify({
+            materials_are_empty: false // Default to not empty since no materials
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to complete materials check');
+        }
+
+        // Refresh appointment data
+        await refetch();
+        return;
+      }
+
+      // Combine consumable and reusable materials for modal
+      const allMaterials = [
+        ...(appointment.material_usage_summary?.consumable_materials || []),
+        ...(appointment.material_usage_summary?.reusable_materials || [])
+      ];
+
+      console.log("🔍 MATERIALS CHECK - All materials to show:", allMaterials);
+
+      // Open the materials modal
+      setMaterialModal({
+        isOpen: true,
+        appointmentId: appointmentId,
+        materials: allMaterials.map((material, index) => ({
+          id: material.id || index,
+          name: material.name,
+          quantity_used: material.quantity_used,
+          unit: material.unit
+        })),
+        isSubmitting: false,
+      });
+
+      console.log("🔍 MATERIALS CHECK - Modal opened successfully");
+      
     } catch (error) {
-      console.error("Failed to check materials:", error);
-      alert("Failed to check materials. Please try again.");
+      console.error('Failed to prepare materials check:', error);
+      alert(`Failed to prepare materials check: ${error.message}`);
     } finally {
       setActionLoading(actionKey, false);
     }
@@ -706,60 +752,89 @@ const TherapistDashboard = () => {
     closeRejectionModal();
   };
 
-  // Post-service material modal handlers
+  // Material modal handlers for post-service material status checking
   const handleMaterialModalSubmit = async (materialStatus) => {
-    updateMaterialModal({ isSubmitting: true });
-
+    setMaterialModal(prev => ({ ...prev, isSubmitting: true }));
+    
     try {
-      // Process each material's status
-      for (const material of materialModal.materials) {
-        const isEmpty = materialStatus[material.id];
-
-        if (isEmpty !== undefined) {
-          const response = await fetch(
-            `/api/inventory/items/${material.id}/update_material_status/`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-              },
-              body: JSON.stringify({
-                is_empty: isEmpty,
-                quantity: material.quantity_used,
-                notes: `Post-service update for appointment #${materialModal.appointmentId}`,
-              }),
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error(`Failed to update material ${material.name}`);
-          }
-        }
+      console.log("🔍 MATERIAL SUBMIT DEBUG:");
+      console.log("🔍 materialStatus:", materialStatus);
+      console.log("🔍 materialModal.materials:", materialModal.materials);
+      
+      // Get auth token properly - try multiple token keys
+      const token = localStorage.getItem('knoxToken') ||
+                   localStorage.getItem('authToken') || 
+                   localStorage.getItem('token') || 
+                   localStorage.getItem('access_token') ||
+                   localStorage.getItem('accessToken');
+      
+      console.log("🔍 Auth token found:", token ? "YES" : "NO");
+      console.log("🔍 Token preview:", token ? token.substring(0, 10) + "..." : "NONE");
+      
+      const API_BASE_URL = import.meta.env.PROD
+        ? "https://charismatic-appreciation-production.up.railway.app/api"
+        : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+      
+      console.log("🔍 API_BASE_URL:", API_BASE_URL);
+      
+      // ✅ NEW: Use the new check_materials_status endpoint
+      // Determine if any materials are marked as empty
+      const anyMaterialsEmpty = Object.values(materialStatus).some(isEmpty => isEmpty === true);
+      
+      console.log("🔍 Any materials empty:", anyMaterialsEmpty);
+      console.log("🔍 Appointment ID:", materialModal.appointmentId);
+      
+      const url = `${API_BASE_URL}/scheduling/appointments/${materialModal.appointmentId}/check_materials_status/`;
+      console.log("🔍 Request URL:", url);
+      
+      const requestBody = {
+        materials_are_empty: anyMaterialsEmpty
+      };
+      console.log("🔍 Request body:", requestBody);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+      
+      console.log("🔍 Response status:", response.status);
+      console.log("🔍 Response ok:", response.ok);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("🔍 Error response:", errorData);
+        throw new Error(errorData.error || `Failed to complete materials check`);
       }
-
-      // Success - close modal and complete the session
-      closeMaterialModal();
-
-      // Complete the session after materials are checked
-      const appointmentId = materialModal.appointmentId;
-      await completeSessionMutation.mutateAsync(appointmentId);
-
-      // ✅ FIXED: Ensure TanStack Query cache is invalidated after Redux mutation
-      await Promise.all([
-        refetch(),
-        invalidateAppointmentCaches(queryClient, {
-          userId: user?.id,
-          userRole: "therapist",
-          appointmentId,
-        }),
-      ]);
-
-      alert("Material status updated and session completed successfully!");
+      
+      const responseData = await response.json();
+      console.log("✅ Materials check completed:", responseData);
+      
+      // Close modal and refresh data
+      setMaterialModal({
+        isOpen: false,
+        appointmentId: null,
+        materials: [],
+        isSubmitting: false,
+      });
+      
+      const statusMessage = anyMaterialsEmpty 
+        ? 'Materials marked as empty and moved to Empty column. Session completed!'
+        : 'Materials returned to stock. Session completed!';
+      
+      alert(statusMessage);
+      
+      // Refresh appointment data to show updated status
+      await refetch();
+      
     } catch (error) {
-      console.error("Error updating material status:", error);
-      alert(`Error updating material status: ${error.message}`);
-      updateMaterialModal({ isSubmitting: false });
+      console.error('Failed to complete materials check:', error);
+      alert(`Failed to complete materials check: ${error.message}`);
+    } finally {
+      setMaterialModal(prev => ({ ...prev, isSubmitting: false }));
     }
   };
 
