@@ -440,8 +440,6 @@ const AttendancePage = () => {
     { key: "checkIn", label: "Check In" },
     { key: "checkOut", label: "Check Out" },
     { key: "hours", label: "Hours Worked" },
-    { key: "notes", label: "Notes" },
-    { key: "actions", label: "Actions" },
   ];
 
   const tableData = filteredAttendance.map((record) => ({
@@ -468,7 +466,6 @@ const AttendancePage = () => {
     checkIn: record.checkInTime || "-",
     checkOut: record.checkOutTime || "-",
     hours: record.hoursWorked > 0 ? `${record.hoursWorked}h` : "-",
-    notes: record.notes || "-",
     actions: (
       <div className={styles["actions"]}>
         {record.needsApproval && (
