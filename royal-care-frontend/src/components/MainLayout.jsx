@@ -9,7 +9,6 @@ import {
   MdEmail,
   MdEventAvailable,
   MdHelpOutline,
-  MdHistory,
   MdInfoOutline,
   MdInventory,
   MdKeyboardArrowDown,
@@ -232,15 +231,7 @@ const MainLayout = () => {
                         <MdTableChart className="main-layout__sidebar-icon" />
                         Data
                       </NavLink>
-                      <NavLink
-                        to="/dashboard/logs"
-                        className={({ isActive }) =>
-                          isActive ? "active-link" : ""
-                        }
-                      >
-                        <MdHistory className="main-layout__sidebar-icon" />
-                        Logs
-                      </NavLink>
+                      {/* Logs link removed as requested */}
                     </>
                   )}
                 </nav>
