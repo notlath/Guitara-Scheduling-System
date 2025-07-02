@@ -1177,13 +1177,13 @@ const Calendar = ({
                     {bookings.map((appointment, index) => (
                       <div
                         key={appointment.id || index}
-                        className="booking-card"
+                        className="appointment-card"
                       >
-                        <div className="booking-header">
-                          <h4>
+                        <div className="appointment-header">
+                          <h3>
                             {appointment.client_details?.first_name || "N/A"}{" "}
                             {appointment.client_details?.last_name || ""}
-                          </h4>
+                          </h3>
                           <span
                             className={`status-badge status-${
                               appointment.status || "pending"
@@ -1191,11 +1191,11 @@ const Calendar = ({
                           >
                             {appointment.status
                               ? appointment.status.charAt(0).toUpperCase() +
-                                appointment.status.slice(1)
+                                appointment.status.slice(1).replace(/_/g, " ")
                               : "Pending"}
                           </span>
                         </div>
-                        <div className="booking-details">
+                        <div className="appointment-details">
                           <p>
                             <strong>Time:</strong>{" "}
                             {appointment.start_time || "N/A"} -{" "}
