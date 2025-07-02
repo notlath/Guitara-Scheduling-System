@@ -10,6 +10,12 @@ const PostServiceMaterialModal = ({
 }) => {
   const [materialStatus, setMaterialStatus] = useState({});
 
+  console.log("🔍 POST SERVICE MODAL - Component rendered with props:", {
+    isOpen,
+    materials: materials?.length || 0,
+    isSubmitting
+  });
+
   const handleMaterialStatusChange = (materialId, isEmpty) => {
     setMaterialStatus(prev => ({
       ...prev,
@@ -18,21 +24,30 @@ const PostServiceMaterialModal = ({
   };
 
   const handleSubmit = () => {
+    console.log("🔍 POST SERVICE MODAL - Submitting with status:", materialStatus);
     onSubmit(materialStatus);
   };
 
   const handleClose = () => {
+    console.log("🔍 POST SERVICE MODAL - Closing modal");
     setMaterialStatus({});
     onClose();
   };
 
-  if (!isOpen) return null;
+  console.log("🔍 POST SERVICE MODAL - Current state:", { isOpen, materialStatus });
+
+  if (!isOpen) {
+    console.log("🔍 POST SERVICE MODAL - Not open, returning null");
+    return null;
+  }
+
+  console.log("🔍 POST SERVICE MODAL - Rendering modal with materials:", materials);
 
   return (
     <div className="post-service-modal-overlay">
       <div className="post-service-modal">
         <div className="post-service-modal-header">
-          <h3>Service Completed - Material Check</h3>
+          <h3>Materials Check Required</h3>
           <button 
             className="close-button" 
             onClick={handleClose}
@@ -44,13 +59,18 @@ const PostServiceMaterialModal = ({
         
         <div className="post-service-modal-content">
           <p className="modal-description">
-            Please check the materials used during this service. 
-            Are any of these materials now empty?
+            Payment has been verified. Please check the current status of materials used during this service. 
+            Are any of these materials now empty and need to be restocked?
           </p>
 
           <div className="materials-check-list">
-            {materials.map((material) => (
-              <div key={material.id} className="material-check-item">
+            {materials.map((material) => {
+              console.log("🔍 MODAL - Rendering material:", material);
+              console.log("🔍 MODAL - Material ID:", material.id);
+              console.log("🔍 MODAL - Radio name will be:", `material-${material.id}`);
+              
+              return (
+              <div key={material.id || `material-${Math.random()}`} className="material-check-item">
                 <div className="material-info">
                   <div className="material-name">{material.name}</div>
                   <div className="material-details">
@@ -58,7 +78,7 @@ const PostServiceMaterialModal = ({
                   </div>
                 </div>
                 <div className="material-status-controls">
-                  <label className="status-label">Is this empty?</label>
+                  <label className="status-label">Is this material empty now?</label>
                   <div className="radio-group">
                     <label className="radio-option">
                       <input
@@ -69,7 +89,7 @@ const PostServiceMaterialModal = ({
                         onChange={() => handleMaterialStatusChange(material.id, true)}
                         disabled={isSubmitting}
                       />
-                      <span>Yes</span>
+                      <span>Yes, it's empty</span>
                     </label>
                     <label className="radio-option">
                       <input
@@ -80,12 +100,13 @@ const PostServiceMaterialModal = ({
                         onChange={() => handleMaterialStatusChange(material.id, false)}
                         disabled={isSubmitting}
                       />
-                      <span>No</span>
+                      <span>No, still has stock</span>
                     </label>
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -102,7 +123,7 @@ const PostServiceMaterialModal = ({
             onClick={handleSubmit}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Processing...' : 'Complete Service'}
+            {isSubmitting ? 'Processing...' : 'Complete Materials Check'}
           </button>
         </div>
       </div>
