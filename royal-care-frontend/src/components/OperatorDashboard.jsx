@@ -281,7 +281,7 @@ const OperatorDashboard = () => {
 
         if (isEmpty !== undefined) {
           const response = await fetch(
-            `/api/inventory/items/${material.id}/update_material_status/`,
+            `/api/inventory/${material.id}/update_material_status/`,
             {
               method: "POST",
               headers: {

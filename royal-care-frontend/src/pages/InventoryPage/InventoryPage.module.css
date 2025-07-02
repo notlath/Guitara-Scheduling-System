@@ -140,12 +140,15 @@
 
 .item-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-top: 15px;
+  flex-wrap: wrap;
 }
 
 .edit-button,
-.delete-button {
+.delete-button,
+.restock-button,
+.empty-refill-button {
   padding: 6px 12px;
   border: none;
   border-radius: 4px;
@@ -170,6 +173,26 @@
 
 .delete-button:hover {
   background-color: #c0392b;
+}
+
+.restock-button {
+  background-color: #27ae60;
+  color: white;
+}
+
+.restock-button:hover {
+  background-color: #229954;
+}
+
+.empty-refill-button {
+  background-color: #f39c12;
+  color: white;
+  font-size: 11px;
+  padding: 5px 8px;
+}
+
+.empty-refill-button:hover {
+  background-color: #e67e22;
 }
 
 .loading-spinner {

@@ -487,6 +487,33 @@ const TherapistDashboard = () => {
   };
 
   const openMaterialModal = ({ appointmentId, materials, isSubmitting }) => {
+    // 🚨 GUARD: Prevent material modal from opening during session_in_progress
+    const appointment = myAppointments?.find((apt) => apt.id === appointmentId);
+    if (appointment && appointment.status === "session_in_progress") {
+      console.warn(
+        "🚨 BLOCKED: Material modal opening attempted during session_in_progress status"
+      );
+      alert(
+        "Material check is not available during session. Please request payment first."
+      );
+      return;
+    }
+
+    // Additional safeguard: Only allow for payment_verified or completed status
+    if (
+      appointment &&
+      appointment.status !== "payment_verified" &&
+      appointment.status !== "completed"
+    ) {
+      console.warn(
+        `🚨 BLOCKED: Material modal opening attempted for status: ${appointment.status}`
+      );
+      alert(
+        `Material check is only available after payment verification. Current status: ${appointment.status}`
+      );
+      return;
+    }
+
     setMaterialModal({
       isOpen: true,
       appointmentId,
@@ -698,6 +725,32 @@ const TherapistDashboard = () => {
         throw new Error("Appointment not found");
       }
 
+      // 🚨 GUARD: Prevent material modal from opening during session_in_progress
+      // Material check should only happen after payment is verified by operator
+      if (appointment.status === "session_in_progress") {
+        console.warn(
+          "🚨 BLOCKED: Material check attempted during session_in_progress status"
+        );
+        alert(
+          "Material check is not available during session. Please request payment first."
+        );
+        return;
+      }
+
+      // Additional check: Only allow material check for payment_verified or completed status
+      if (
+        appointment.status !== "payment_verified" &&
+        appointment.status !== "completed"
+      ) {
+        console.warn(
+          `🚨 BLOCKED: Material check attempted for status: ${appointment.status}`
+        );
+        alert(
+          `Material check is only available after payment verification. Current status: ${appointment.status}`
+        );
+        return;
+      }
+
       console.log("🔍 MATERIALS CHECK - Found appointment:", appointment);
       console.log(
         "🔍 MATERIALS CHECK - Material usage summary:",
@@ -810,6 +863,33 @@ const TherapistDashboard = () => {
     setMaterialModal((prev) => ({ ...prev, isSubmitting: true }));
 
     try {
+      // 🚨 FINAL SAFEGUARD: Check appointment status before processing
+      const appointment = myAppointments?.find(
+        (apt) => apt.id === materialModal.appointmentId
+      );
+      if (appointment && appointment.status === "session_in_progress") {
+        console.error(
+          "🚨 CRITICAL ERROR: Material submit attempted during session_in_progress status"
+        );
+        alert(
+          "Error: Material check should not be available during session. Please refresh the page."
+        );
+        return;
+      }
+
+      if (
+        appointment &&
+        appointment.status !== "payment_verified" &&
+        appointment.status !== "completed"
+      ) {
+        console.error(
+          `🚨 CRITICAL ERROR: Material submit attempted for invalid status: ${appointment.status}`
+        );
+        alert(
+          `Error: Material check is only available after payment verification. Current status: ${appointment.status}`
+        );
+        return;
+      }
       console.log("🔍 MATERIAL SUBMIT DEBUG:");
       console.log("🔍 materialStatus:", materialStatus);
       console.log("🔍 materialModal.materials:", materialModal.materials);
