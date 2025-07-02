@@ -27,22 +27,103 @@ export const useAppointmentsByDate = (date) => {
       console.log("useAppointmentsByDate: Result:", result);
       console.log("useAppointmentsByDate: Payload:", result.payload);
 
-      // Handle both array and paginated responses
+      // Handle both array and paginated responses with extensive debugging
       let appointments = [];
+
+      console.log("useAppointmentsByDate: Raw payload structure:", {
+        isArray: Array.isArray(result.payload),
+        hasResults: !!(result.payload && result.payload.results),
+        hasCount: !!(result.payload && result.payload.count !== undefined),
+        keys: result.payload ? Object.keys(result.payload) : null,
+        payload: result.payload,
+      });
+
       if (Array.isArray(result.payload)) {
+        // Direct array response
         appointments = result.payload;
-      } else if (result.payload && Array.isArray(result.payload.results)) {
-        appointments = result.payload.results;
         console.log(
-          "useAppointmentsByDate: Extracted appointments from paginated response:",
+          "useAppointmentsByDate: Using direct array response:",
           appointments.length
         );
+      } else if (result.payload && Array.isArray(result.payload.results)) {
+        // Standard paginated response
+        appointments = result.payload.results;
+        console.log(
+          "useAppointmentsByDate: Extracted from paginated response:",
+          appointments.length,
+          "Total count from API:",
+          result.payload.count
+        );
+      } else if (result.payload && result.payload.count !== undefined) {
+        // Paginated response but check all possible array properties
+        const possibleArrayKeys = ["results", "appointments", "data", "items"];
+        for (const key of possibleArrayKeys) {
+          if (Array.isArray(result.payload[key])) {
+            appointments = result.payload[key];
+            console.log(
+              `useAppointmentsByDate: Found appointments in '${key}' property:`,
+              appointments.length
+            );
+            break;
+          }
+        }
+
+        if (appointments.length === 0) {
+          console.warn(
+            "useAppointmentsByDate: Paginated response with count but no recognizable array:",
+            result.payload
+          );
+        }
+      } else if (result.payload) {
+        // Unknown structure - try to find any array property
+        console.log(
+          "useAppointmentsByDate: Unknown structure, searching for arrays..."
+        );
+        const payloadKeys = Object.keys(result.payload);
+        for (const key of payloadKeys) {
+          if (Array.isArray(result.payload[key])) {
+            console.log(
+              `useAppointmentsByDate: Found array at '${key}':`,
+              result.payload[key].length
+            );
+            appointments = result.payload[key];
+            break;
+          }
+        }
+
+        if (appointments.length === 0) {
+          console.warn(
+            "useAppointmentsByDate: No array found in payload:",
+            result.payload
+          );
+        }
       } else {
         console.warn(
-          "useAppointmentsByDate: Unexpected payload structure:",
+          "useAppointmentsByDate: No payload or unexpected structure:",
           result.payload
         );
         appointments = [];
+      }
+
+      // Final validation and debugging
+      console.log("useAppointmentsByDate: Final extracted appointments:", {
+        count: appointments.length,
+        isArray: Array.isArray(appointments),
+        firstAppointment: appointments.length > 0 ? appointments[0] : null,
+      });
+
+      if (appointments.length > 0) {
+        console.log("useAppointmentsByDate: Sample appointment structure:", {
+          id: appointments[0].id,
+          date: appointments[0].date,
+          status: appointments[0].status,
+          hasClientDetails: !!appointments[0].client_details,
+          clientName: appointments[0].client_details
+            ? `${appointments[0].client_details.first_name || ""} ${
+                appointments[0].client_details.last_name || ""
+              }`.trim()
+            : "No client details",
+        });
       }
 
       return appointments;

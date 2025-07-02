@@ -688,8 +688,9 @@ const Calendar = ({
                 >
                   {/* Client labels - show only for therapist/driver dashboards */}
                   {(showClientLabels || context === "operator") &&
-                    clientInfo.length > 0 && (
-                      /* TEMPORARILY REMOVE !isPastDay CONDITION FOR DEBUGGING */ <div className="client-labels">
+                    clientInfo.length > 0 &&
+                    !isPastDay && (
+                      <div className="client-labels">
                         {clientInfo.slice(0, 2).map((info, index) => (
                           <span
                             key={index}
@@ -1022,6 +1023,17 @@ const Calendar = ({
               // Start with all available therapists
               let filteredTherapists = availableTherapists || [];
 
+              // Filter out therapists who don't have any availability on the selected day
+              filteredTherapists = filteredTherapists.filter((therapist) => {
+                // Check if therapist has valid availability times
+                if (!therapist.start_time || !therapist.end_time) {
+                  return false; // No availability data
+                }
+
+                // Therapist must have some availability window on this day
+                return true; // They already passed the initial API filter for the date
+              });
+
               // If a specific time is selected, filter by actual availability for that time
               if (selectedTime) {
                 filteredTherapists = filteredTherapists.filter((therapist) =>
@@ -1079,7 +1091,7 @@ const Calendar = ({
                 <p>
                   {selectedTime
                     ? `No therapists available for ${selectedTime}. Try selecting a different time slot.`
-                    : "No therapists have set availability for the current view. Try selecting a specific time slot or check the Availability Manager."}
+                    : "No therapists have set availability for this day. Check the Availability Manager to set availability."}
                 </p>
               );
             })()}
@@ -1091,23 +1103,21 @@ const Calendar = ({
               // Start with all available drivers
               let filteredDrivers = availableDrivers || [];
 
+              // Filter out drivers who don't have any availability on the selected day
+              filteredDrivers = filteredDrivers.filter((driver) => {
+                // Check if driver has valid availability times
+                if (!driver.start_time || !driver.end_time) {
+                  return false; // No availability data
+                }
+
+                // Driver must have some availability window on this day
+                return true; // They already passed the initial API filter for the date
+              });
+
               // If a specific time is selected, filter by actual availability for that time
               if (selectedTime) {
                 filteredDrivers = filteredDrivers.filter((driver) =>
                   isDriverAvailableForTimeSlot(driver, selectedTime)
-                );
-              }
-
-              // Check if we have valid availability data for drivers
-              const hasFreshDriverData =
-                availableDrivers && availableDrivers.length > 0 && selectedTime; // Only show driver info if a specific time is selected
-
-              if (!hasFreshDriverData) {
-                return (
-                  <p>
-                    Please select a specific time slot to see driver
-                    availability.
-                  </p>
                 );
               }
 
@@ -1131,7 +1141,7 @@ const Calendar = ({
                 <p>
                   {selectedTime
                     ? `No drivers available for ${selectedTime}. Try selecting a different time slot or proceed without a driver.`
-                    : "No drivers have set availability for the current view. Try selecting a specific time slot or check the Availability Manager."}
+                    : "No drivers have set availability for this day. Check the Availability Manager to set availability."}
                 </p>
               );
             })()}
@@ -1195,46 +1205,92 @@ const Calendar = ({
                               : "Pending"}
                           </span>
                         </div>
+
                         <div className="appointment-details">
-                          <p>
-                            <strong>Time:</strong>{" "}
-                            {appointment.start_time || "N/A"} -{" "}
-                            {appointment.end_time || "N/A"}
-                          </p>
-                          <p>
-                            <strong>Services:</strong>{" "}
-                            {appointment.services_details
-                              ?.map((s) => s.name)
-                              .join(", ") || "N/A"}
-                          </p>
+                          <div className="detail-row">
+                            <span className="label">Time:</span>
+                            <span className="value">
+                              {appointment.start_time || "N/A"} -{" "}
+                              {appointment.end_time || "N/A"}
+                            </span>
+                          </div>
+                          <div className="detail-row">
+                            <span className="label">Services:</span>
+                            <span className="value">
+                              {appointment.services_details
+                                ?.map((s) => s.name)
+                                .join(", ") || "N/A"}
+                            </span>
+                          </div>
                           {appointment.therapist_details && (
-                            <p>
-                              <strong>Therapist:</strong>{" "}
-                              {appointment.therapist_details?.first_name ||
-                                "Unknown"}{" "}
-                              {appointment.therapist_details?.last_name ||
-                                "Therapist"}
-                            </p>
+                            <div className="detail-row">
+                              <span className="label">Therapist:</span>
+                              <span className="value">
+                                {appointment.therapist_details?.first_name ||
+                                  "Unknown"}{" "}
+                                {appointment.therapist_details?.last_name ||
+                                  "Therapist"}
+                                {appointment.therapist_details
+                                  ?.specialization && (
+                                  <span className="therapist-specialization">
+                                    {" "}
+                                    (
+                                    {
+                                      appointment.therapist_details
+                                        .specialization
+                                    }
+                                    )
+                                  </span>
+                                )}
+                              </span>
+                            </div>
                           )}
                           {appointment.driver_details && (
-                            <p>
-                              <strong>Driver:</strong>{" "}
-                              {appointment.driver_details?.first_name ||
-                                "Unknown"}{" "}
-                              {appointment.driver_details?.last_name ||
-                                "Driver"}
-                            </p>
+                            <div className="detail-row">
+                              <span className="label">Driver:</span>
+                              <span className="value">
+                                {appointment.driver_details?.first_name ||
+                                  "Unknown"}{" "}
+                                {appointment.driver_details?.last_name ||
+                                  "Driver"}
+                                {appointment.driver_details
+                                  ?.motorcycle_plate && (
+                                  <span className="driver-plate">
+                                    {" "}
+                                    (Plate:{" "}
+                                    {
+                                      appointment.driver_details
+                                        .motorcycle_plate
+                                    }
+                                    )
+                                  </span>
+                                )}
+                              </span>
+                            </div>
                           )}
-                          <p>
-                            <strong>Location:</strong>{" "}
-                            {appointment.location || "N/A"}
-                          </p>
+                          <div className="detail-row">
+                            <span className="label">Location:</span>
+                            <span className="value">
+                              {appointment.location || "N/A"}
+                            </span>
+                          </div>
+                          {appointment.duration && (
+                            <div className="detail-row">
+                              <span className="label">Duration:</span>
+                              <span className="value">
+                                {appointment.duration} minutes
+                              </span>
+                            </div>
+                          )}
                           {appointment.notes && (
-                            <p>
-                              <strong>Notes:</strong> {appointment.notes}
-                            </p>
+                            <div className="detail-row">
+                              <span className="label">Notes:</span>
+                              <span className="value">{appointment.notes}</span>
+                            </div>
                           )}
                         </div>
+
+                        
                       </div>
                     ))}
                   </div>
