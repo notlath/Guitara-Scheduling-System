@@ -10,7 +10,6 @@ import {
   getTodayAttendanceStatus,
 } from "../features/attendance/attendanceSlice";
 import { logout } from "../features/auth/authSlice";
-import { updateAppointmentStatus } from "../features/scheduling/schedulingSlice";
 // TANSTACK QUERY: Import TanStack Query optimized hooks
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -26,7 +25,6 @@ import ServerPagination from "./ServerPagination";
 import { useOptimizedButtonLoading } from "../hooks/useOperatorPerformance";
 import useSyncEventHandlers from "../hooks/useSyncEventHandlers";
 import styles from "../pages/SettingsDataPage/SettingsDataPage.module.css";
-import syncService from "../services/syncService";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 import {
@@ -61,10 +59,11 @@ const VALID_VIEW_VALUES = Object.freeze([
   "payment",
   "all",
   "notifications",
-  "driver",
-  "workflow",
-  "sessions",
-  "pickup",
+  // Removed as requested:
+  // "driver",
+  // "workflow",
+  // "sessions",
+  // "pickup",
 ]);
 
 const VALID_FILTER_VALUES = Object.freeze([
@@ -331,12 +330,8 @@ const OperatorDashboard = () => {
     selectedDate,
   } = useAttendanceRecords();
 
-  const { setSelectedDate, forceRefreshAttendance } = useAttendanceActions(); // Driver coordination state
-  const [driverAssignment, setDriverAssignment] = useState({
-    availableDrivers: [],
-    busyDrivers: [],
-    pendingPickups: [],
-  });
+  const { setSelectedDate, forceRefreshAttendance } = useAttendanceActions();
+  // Driver coordination state removed as requested
 
   // ✅ TANSTACK QUERY: Replace per-tab data fetching with unified TanStack Query approach
   const [paginationInfo, setPaginationInfo] = useState({
@@ -567,41 +562,7 @@ const OperatorDashboard = () => {
     keepPreviousData: true,
   });
 
-  const activeSessionsQuery = useQuery({
-    queryKey: ["operator", "sessions", currentPage],
-    queryFn: async () => {
-      const token = getToken();
-      if (!token) throw new Error("Authentication required");
-      return await enhancedFetch(
-        `${getBaseURL()}/scheduling/appointments/active_sessions/?page=${currentPage}&page_size=${
-          paginationInfo.pageSize
-        }`
-      );
-    },
-    enabled: currentView === "sessions",
-    staleTime: 0,
-    cacheTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: true,
-    keepPreviousData: true,
-  });
-
-  const pickupRequestsQuery = useQuery({
-    queryKey: ["operator", "pickup", currentPage],
-    queryFn: async () => {
-      const token = getToken();
-      if (!token) throw new Error("Authentication required");
-      return await enhancedFetch(
-        `${getBaseURL()}/scheduling/appointments/pickup_requests/?page=${currentPage}&page_size=${
-          paginationInfo.pageSize
-        }`
-      );
-    },
-    enabled: currentView === "pickup",
-    staleTime: 0,
-    cacheTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: true,
-    keepPreviousData: true,
-  });
+  // Active Sessions and Pickup Requests queries removed as requested
 
   const notificationsQuery = useQuery({
     queryKey: ["operator", "notifications", currentPage],
@@ -628,44 +589,7 @@ const OperatorDashboard = () => {
     keepPreviousData: true,
   });
 
-  const driverCoordinationQuery = useQuery({
-    queryKey: ["operator", "driver"],
-    queryFn: async () => {
-      const token = getToken();
-      if (!token) throw new Error("Authentication required");
-      return await enhancedFetch(
-        `${getBaseURL()}/scheduling/staff/?role=driver`
-      );
-    },
-    enabled: currentView === "driver",
-    staleTime: 2 * 60 * 1000,
-    cacheTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
-  });
-
-  const workflowDataQuery = useQuery({
-    queryKey: ["operator", "workflow"],
-    queryFn: async () => {
-      // Return mock workflow data with expected structure
-      return {
-        totalAppointments: appointments?.length || 0,
-        inProgress:
-          appointments?.filter((apt) => apt.status === "in_progress")?.length ||
-          0,
-        completed:
-          appointments?.filter((apt) => apt.status === "completed")?.length ||
-          0,
-        workflows: [],
-        todayAppointments: todayAppointments || [],
-        activeSessions:
-          appointments?.filter((apt) => apt.status === "session_started") || [],
-        upcomingAppointments: upcomingAppointments || [],
-      };
-    },
-    enabled: currentView === "workflow",
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
-  });
+  // Driver Coordination and Service Workflow queries removed as requested
 
   // ✅ TANSTACK QUERY: Get current tab data and loading states
   const getCurrentTabQuery = () => {
@@ -680,16 +604,9 @@ const OperatorDashboard = () => {
         return paymentAppointmentsQuery;
       case "all":
         return allAppointmentsQuery;
-      case "sessions":
-        return activeSessionsQuery;
-      case "pickup":
-        return pickupRequestsQuery;
       case "notifications":
         return notificationsQuery;
-      case "driver":
-        return driverCoordinationQuery;
-      case "workflow":
-        return workflowDataQuery;
+      // Driver Coordination, Service Workflow, Active Sessions, and Pickup Requests tabs removed as requested
       default:
         return { data: null, isLoading: false, error: null };
     }
@@ -825,48 +742,15 @@ const OperatorDashboard = () => {
       { id: "payment", label: "Payment Verification" },
       { id: "all", label: "All Appointments" },
       // { id: "notifications", label: "Notifications" }, // Removed as requested
-      { id: "driver", label: "Driver Coordination" },
-      { id: "workflow", label: "Service Workflow" },
-      { id: "sessions", label: "Active Sessions" },
-      { id: "pickup", label: "Pickup Requests" },
+      // Removed as requested:
+      // { id: "driver", label: "Driver Coordination" },
+      // { id: "workflow", label: "Service Workflow" },
+      // { id: "sessions", label: "Active Sessions" },
+      // { id: "pickup", label: "Pickup Requests" },
     ];
   }, []); // The optimized data manager handles background refreshes automatically
   // ✅ SIMPLIFIED: Remove unused timeout and driver variables since we're using per-tab data fetching
-  // ✅ SIMPLIFIED: Basic driver data loading (if needed for driver tab)
-  const loadDriverData = useCallback(async () => {
-    if (currentView === "driver" && tabData) {
-      // Process driver data from tabData if needed
-      setDriverAssignment({
-        availableDrivers: Array.isArray(tabData)
-          ? tabData.filter((d) => d.status === "available")
-          : [],
-        busyDrivers: Array.isArray(tabData)
-          ? tabData.filter((d) => d.status === "busy")
-          : [],
-        pendingPickups: [],
-      });
-    }
-  }, [currentView, tabData]);
-  // ✅ SIMPLIFIED: Load driver data when on driver tab
-  useEffect(() => {
-    loadDriverData();
-  }, [loadDriverData]);
-
-  // Listen for real-time driver updates via sync service
-  useEffect(() => {
-    const handleDriverUpdate = (data) => {
-      if (currentView === "driver") {
-        // Simple driver update handling
-        console.log("Driver update received:", data);
-        // Could refresh driver data here if needed
-      }
-    }; // Subscribe to driver-related events
-    const unsubscribe = syncService.subscribe(
-      "driver_update",
-      handleDriverUpdate
-    );
-    return () => unsubscribe();
-  }, [currentView]);
+  // Driver coordination methods removed as requested
 
   // ✅ FIXED: Calculate rejection stats from rejection statistics query
   const tabStats = useMemo(() => {
@@ -1417,287 +1301,7 @@ const OperatorDashboard = () => {
         uploadError: error.message || "Failed to upload receipt",
       }));
     }
-  }; // Driver coordination functions - Pure FIFO system (no proximity filtering)
-  const handleAssignDriverPickup = useCallback(
-    async (therapistId, driverId = null) => {
-      // Helper function to get urgency level based on request time
-      const getUrgencyLevel = (requestTime) => {
-        if (!requestTime) return "normal";
-        const waitTime = (new Date() - new Date(requestTime)) / (1000 * 60); // minutes
-        return waitTime > 20 ? "urgent" : "normal"; // Reduced to 20 minutes for Pasig City
-      };
-      try {
-        // Get current pending pickup requests from appointments
-        const currentPendingPickups = (tabData || [])
-          .filter((apt) => apt.status === "pickup_requested")
-          .map((apt) => ({
-            id: apt.therapist,
-            name: apt.therapist_details
-              ? `${apt.therapist_details?.first_name || "Unknown"} ${
-                  apt.therapist_details?.last_name || "Therapist"
-                }`
-              : "Unknown Therapist",
-            location: apt.location,
-            appointment_id: apt.id,
-            urgency: getUrgencyLevel(apt.pickup_request_time),
-            session_end_time: apt.session_end_time,
-            requested_at: apt.pickup_request_time,
-          }));
-
-        const therapist = currentPendingPickups.find(
-          (t) => t.id === therapistId
-        );
-
-        if (!therapist) {
-          alert("Invalid therapist selection");
-          return;
-        }
-
-        // Pure FIFO driver selection - get the driver who became available first
-        let driver;
-        if (driverId) {
-          // Manual assignment: use specific driver
-          driver = driverAssignment.availableDrivers.find(
-            (d) => d.id === driverId
-          );
-        } else {
-          // Auto-assignment: Pure FIFO - first available driver based on last drop-off or availability time
-          const availableDriversSorted = driverAssignment.availableDrivers.sort(
-            (a, b) => {
-              // Use last_drop_off_time if available, otherwise use available_since
-              const timeA = new Date(
-                a.last_drop_off_time || a.last_available_at || a.available_since
-              );
-              const timeB = new Date(
-                b.last_drop_off_time || b.last_available_at || b.available_since
-              );
-              return timeA - timeB;
-            }
-          );
-          driver = availableDriversSorted[0];
-
-          // Show FIFO selection details
-          const queuePosition =
-            availableDriversSorted.findIndex((d) => d.id === driver.id) + 1;
-          console.log(
-            `🎯 FIFO Assignment: Selected driver ${driver.first_name} ${driver.last_name} (Position #${queuePosition} in queue)`
-          );
-        }
-        if (!driver) {
-          alert("No drivers available for assignment");
-          return;
-        }
-
-        // Fixed estimated arrival time - no proximity calculations
-        const estimatedTime = 20; // Standard 20 minutes for all assignments
-        const estimatedArrival = new Date();
-        estimatedArrival.setMinutes(
-          estimatedArrival.getMinutes() + estimatedTime
-        );
-
-        // Calculate queue position for detailed FIFO information
-        const sortedDrivers = driverAssignment.availableDrivers.sort((a, b) => {
-          const timeA = new Date(
-            a.last_drop_off_time || a.last_available_at || a.available_since
-          );
-          const timeB = new Date(
-            b.last_drop_off_time || b.last_available_at || b.available_since
-          );
-          return timeA - timeB;
-        });
-        const queuePosition =
-          sortedDrivers.findIndex((d) => d.id === driver.id) + 1;
-
-        // Update appointment status with detailed FIFO information
-        await dispatch(
-          updateAppointmentStatus({
-            id: therapist.appointment_id,
-            status: "driver_assigned_pickup",
-            driver: driver.id,
-            notes: `Driver assigned for pickup via FIFO Algorithm (Queue Position: #${queuePosition}) - ETA: ${estimatedTime} minutes`,
-          })
-        ).unwrap();
-
-        // Move driver from available to busy
-        setDriverAssignment((prev) => ({
-          ...prev,
-          availableDrivers: prev.availableDrivers.filter(
-            (d) => d.id !== driver.id
-          ),
-          busyDrivers: [
-            ...prev.busyDrivers.filter((d) => d.id !== driver.id),
-            {
-              ...driver,
-              current_task: `Picking up ${therapist.name}`,
-              current_location: `En route to ${therapist.location}`,
-            },
-          ],
-          pendingPickups: prev.pendingPickups.filter(
-            (t) => t.id !== therapistId
-          ),
-        }));
-
-        // Broadcast assignment with FIFO indicator
-        syncService.broadcast("driver_assigned_pickup", {
-          driver_id: driver.id,
-          therapist_id: therapistId,
-          appointment_id: therapist.appointment_id,
-          estimated_arrival: estimatedArrival.toISOString(),
-          driver_name: `${driver.first_name} ${driver.last_name}`,
-          therapist_name: therapist.name,
-          pickup_location: therapist.location,
-          estimated_time: estimatedTime,
-          assignment_method: "FIFO",
-        }); // ✅ PERFORMANCE FIX: Use targeted refresh instead of global forceRefresh
-        refreshCurrentTab();
-
-        // Show success notification with FIFO details
-        alert(
-          `✅ FIFO Assignment Successful!\n\nDriver: ${driver.first_name} ${driver.last_name}\nQueue Position: #${queuePosition}\nTherapist: ${therapist.name}\nLocation: ${therapist.location}\nETA: ${estimatedTime} minutes`
-        );
-      } catch (error) {
-        console.error("Failed to assign driver:", error);
-        alert("Failed to assign driver. Please try again.");
-      }
-    },
-    [
-      dispatch,
-      setDriverAssignment,
-      refreshCurrentTab,
-      driverAssignment.availableDrivers,
-      tabData,
-    ]
-  );
-  const _handleUrgentPickupRequest = async (therapistId) => {
-    try {
-      // For urgent requests, still use FIFO but assign immediately
-      const availableDrivers = driverAssignment.availableDrivers;
-
-      if (availableDrivers.length === 0) {
-        alert("No drivers currently available for urgent pickup");
-        return;
-      }
-
-      // Pure FIFO - use first available driver regardless of location
-      const firstAvailableDriver = availableDrivers.sort(
-        (a, b) => new Date(a.available_since) - new Date(b.available_since)
-      )[0];
-
-      await handleAssignDriverPickup(therapistId, firstAvailableDriver.id);
-    } catch (error) {
-      console.error("Failed to process urgent pickup request:", error);
-      alert("Failed to process urgent pickup request");
-    }
-  };
-
-  const _getTimeElapsed = (timestamp) => {
-    const now = new Date();
-    const past = new Date(timestamp);
-    const diffMs = now - past;
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins} min ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    return `${diffHours}h ${diffMins % 60}m ago`;
-  };
-  // Helper functions for FIFO coordination
-  const _getDriverFIFOPosition = (driver) => {
-    const sorted = driverAssignment.availableDrivers.sort(
-      (a, b) => new Date(a.available_since) - new Date(b.available_since)
-    );
-    return sorted.findIndex((d) => d.id === driver.id) + 1;
-  };
-  // Smart FIFO auto-assignment function
-  const handleAutoAssignPickupRequest = useCallback(
-    async (pickupRequest) => {
-      try {
-        console.log(
-          "🤖 Auto-assigning pickup request using FIFO:",
-          pickupRequest
-        );
-
-        // Get available drivers sorted by FIFO (earliest available first)
-        const availableDrivers = driverAssignment.availableDrivers
-          .filter((driver) => driver.status === "available")
-          .sort((a, b) => {
-            const timeA = new Date(a.last_available_at || a.available_since);
-            const timeB = new Date(b.last_available_at || b.available_since);
-            return timeA - timeB; // Earliest first (FIFO)
-          });
-
-        if (availableDrivers.length === 0) {
-          console.log("❌ No drivers available for auto-assignment");
-          return false;
-        }
-
-        // Get the first available driver (FIFO)
-        const nextDriver = availableDrivers[0];
-
-        console.log(
-          `✅ Auto-assigning driver ${nextDriver.first_name} ${nextDriver.last_name} (FIFO position: 1)`
-        );
-
-        // Auto-assign the driver
-        await handleAssignDriverPickup(
-          pickupRequest.therapist_id,
-          nextDriver.id
-        );
-
-        // Broadcast auto-assignment notification
-        syncService.broadcast("auto_assignment_completed", {
-          pickup_request: pickupRequest,
-          assigned_driver: nextDriver,
-          assignment_method: "FIFO",
-          assignment_time: new Date().toISOString(),
-          message: `Driver ${nextDriver.first_name} ${nextDriver.last_name} auto-assigned via FIFO`,
-        });
-
-        return true;
-      } catch (error) {
-        console.error("Failed to auto-assign pickup request:", error);
-        return false;
-      }
-    },
-    [driverAssignment.availableDrivers, handleAssignDriverPickup]
-  );
-  // Listen for pickup requests and auto-assign drivers
-  useEffect(() => {
-    const handlePickupRequest = async (data) => {
-      console.log("🚖 Pickup request received:", data);
-
-      // Auto-assign driver if available
-      if (data.therapist_id) {
-        const assigned = await handleAutoAssignPickupRequest({
-          therapist_id: data.therapist_id,
-          appointment_id: data.appointment_id,
-          location: data.location,
-          urgency: data.pickup_urgency || "normal",
-          timestamp: data.timestamp,
-        });
-
-        if (assigned) {
-          // Notify therapist that driver has been assigned
-          syncService.broadcast("pickup_auto_assigned", {
-            therapist_id: data.therapist_id,
-            appointment_id: data.appointment_id,
-            assignment_method: "auto_fifo",
-            message: "Driver automatically assigned for pickup",
-          });
-        }
-      }
-    };
-
-    // Subscribe to pickup request events
-    const unsubscribePickup = syncService.subscribe(
-      "pickup_requested",
-      handlePickupRequest
-    );
-
-    return () => {
-      unsubscribePickup();
-    };
-  }, [handleAutoAssignPickupRequest]); // Re-subscribe when auto-assignment function changes
+  }; // Driver coordination methods and handlers removed as requested// Re-subscribe when auto-assignment function changes
   // ✅ PERFORMANCE FIX: Use optimized attendance refresh instead of manual fetch
   const handleFetchAttendanceRecords = useCallback(async () => {
     try {
@@ -3075,267 +2679,10 @@ const OperatorDashboard = () => {
       </div>
     );
   };
-  const renderDriverCoordinationPanel = () => {
-    const drivers = Array.isArray(tabData) ? tabData : [];
-    const availableDrivers = drivers.filter((d) => d.status !== "busy") || [];
-    const busyDrivers = drivers.filter((d) => d.status === "busy") || [];
-    const pickupRequests = tabData?.pickupRequests || [];
-
-    return (
-      <div className="driver-coordination-panel">
-        <div className="driver-stats">
-          <div className="stat-card available">
-            <span className="stat-number">{availableDrivers.length}</span>
-            <span className="stat-label">Available Drivers</span>
-          </div>
-          <div className="stat-card busy">
-            <span className="stat-number">{busyDrivers.length}</span>
-            <span className="stat-label">Busy Drivers</span>
-          </div>
-          <div className="stat-card pending">
-            <span className="stat-number">{pickupRequests.length}</span>
-            <span className="stat-label">Pending Pickups</span>
-          </div>
-        </div>{" "}
-        <div className="driver-sections">
-          <div className="available-drivers-section">
-            <h3>Available Drivers</h3>
-            {availableDrivers.length === 0 ? (
-              <p>No drivers currently available</p>
-            ) : (
-              <div className="drivers-list">
-                {availableDrivers.map((driver) => (
-                  <div key={driver.id} className="driver-card available">
-                    <div className="driver-info">
-                      <h4>
-                        {driver.first_name} {driver.last_name}
-                      </h4>
-                      <p>
-                        <strong>Vehicle:</strong> {driver.vehicle_type}
-                      </p>
-                      <p>
-                        <strong>Last Location:</strong> {driver.last_location}
-                      </p>
-                      <p>
-                        <strong>Available Since:</strong>{" "}
-                        {new Date(driver.available_since).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="busy-drivers-section">
-            <h3>Busy Drivers</h3>
-            {busyDrivers.length === 0 ? (
-              <p>No drivers currently busy</p>
-            ) : (
-              <div className="drivers-list">
-                {busyDrivers.map((driver) => (
-                  <div key={driver.id} className="driver-card busy">
-                    <div className="driver-info">
-                      <h4>
-                        {driver.first_name} {driver.last_name}
-                      </h4>
-                      <p>
-                        <strong>Current Task:</strong> {driver.current_task}
-                      </p>
-                      <p>
-                        <strong>Vehicle:</strong> {driver.vehicle_type}
-                      </p>
-                      <p>
-                        <strong>Location:</strong> {driver.current_location}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-  const renderServiceWorkflowView = () => {
-    const workflowData = tabData || {};
-    const todayAppointments = workflowData.todayAppointments || [];
-    const activeSessions = workflowData.activeSessions || [];
-    const upcomingAppointments = workflowData.upcomingAppointments || [];
-
-    return (
-      <div className="service-workflow-panel">
-        <div className="workflow-stats">
-          <div className="stat-card">
-            <span className="stat-number">{todayAppointments.length}</span>
-            <span className="stat-label">Today's Appointments</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-number">{activeSessions.length}</span>
-            <span className="stat-label">Active Sessions</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-number">{upcomingAppointments.length}</span>
-            <span className="stat-label">Upcoming</span>
-          </div>
-        </div>
-        <div className="workflow-content">
-          <p>
-            Service workflow overview and management tools will be displayed
-            here.
-          </p>
-        </div>
-      </div>
-    );
-  };
-  const renderActiveSessionsView = () => {
-    // Handle both paginated (with results field) and direct array responses
-    const activeSessions = Array.isArray(tabData)
-      ? tabData
-      : tabData?.results || [];
-
-    if (activeSessions.length === 0) {
-      return (
-        <div className="empty-state">
-          <i className="fas fa-user-md"></i>
-          <p>No active therapy sessions</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="appointments-list">
-        {activeSessions.map((session) => (
-          <div key={session.id} className="appointment-card active-session">
-            <div className="appointment-header">
-              <h3>
-                Session #{session.id} - {session.client_details?.first_name}{" "}
-                {session.client_details?.last_name}
-              </h3>
-              <span className="status-badge active">Active Session</span>
-            </div>
-            <div className="appointment-details">
-              <p>
-                <strong>Started:</strong>{" "}
-                {new Date(session.session_started_at).toLocaleString()}
-              </p>
-              <p>
-                <strong>Location:</strong> {session.location}
-              </p>
-              {renderTherapistInfo(session)}
-              <p>
-                <strong>Services:</strong>{" "}
-                {session.services_details?.map((s) => s.name).join(", ")}
-              </p>
-            </div>
-          </div>
-        ))}
-
-        {/* Server-side Pagination */}
-        <ServerPagination
-          currentPage={paginationInfo.currentPage}
-          totalPages={paginationInfo.totalPages}
-          hasNext={paginationInfo.hasNext}
-          hasPrevious={paginationInfo.hasPrevious}
-          onPageChange={setPage}
-          className="appointments-pagination"
-        />
-      </div>
-    );
-  };
-  const renderPickupRequestsView = () => {
-    // Handle both paginated (with results field) and direct array responses
-    const pickupRequests = Array.isArray(tabData)
-      ? tabData
-      : tabData?.results || [];
-
-    if (pickupRequests.length === 0) {
-      return (
-        <div className="empty-state">
-          <i className="fas fa-car"></i>
-          <p>No pickup requests pending</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="appointments-list">
-        {pickupRequests.map((request) => (
-          <div key={request.id} className="appointment-card pickup-request">
-            <div className="appointment-header">
-              <h3>Pickup Request - {request.therapist_name}</h3>
-              <div className="status-badges">
-                <span
-                  className={`urgency-badge urgency-${
-                    request.urgency || "normal"
-                  }`}
-                >
-                  {request.urgency === "urgent" ? "🚨 URGENT" : "⏰ Normal"}
-                </span>
-              </div>
-            </div>
-            <div className="appointment-details">
-              <p>
-                <strong>Location:</strong> {request.location}
-              </p>
-              <p>
-                <strong>Requested:</strong>{" "}
-                {new Date(request.requested_at).toLocaleString()}
-              </p>
-              <p>
-                <strong>Session Ended:</strong>{" "}
-                {new Date(request.session_end_time).toLocaleString()}
-              </p>
-            </div>
-            <div className="appointment-actions">
-              {driverAssignment.availableDrivers.length > 0 ? (
-                <div className="driver-assignment">
-                  <select
-                    onChange={(e) =>
-                      e.target.value &&
-                      handleAssignDriverPickup(
-                        request.therapist_id,
-                        parseInt(e.target.value)
-                      )
-                    }
-                  >
-                    <option value="">Select Driver</option>
-                    {driverAssignment.availableDrivers.map((driver) => (
-                      <option key={driver.id} value={driver.id}>
-                        {driver.first_name} {driver.last_name} -{" "}
-                        {driver.vehicle_type}
-                      </option>
-                    ))}
-                  </select>
-                  <LoadingButton
-                    onClick={() =>
-                      handleAssignDriverPickup(request.therapist_id)
-                    }
-                    className="auto-assign-button"
-                  >
-                    Auto-Assign (FIFO)
-                  </LoadingButton>
-                </div>
-              ) : (
-                <p className="no-drivers">No drivers available</p>
-              )}
-            </div>
-          </div>
-        ))}
-
-        {/* Server-side Pagination */}
-        <ServerPagination
-          currentPage={paginationInfo.currentPage}
-          totalPages={paginationInfo.totalPages}
-          hasNext={paginationInfo.hasNext}
-          hasPrevious={paginationInfo.hasPrevious}
-          onPageChange={setPage}
-          className="appointments-pagination"
-        />
-      </div>
-    );
-  };
+  // Driver Coordination Panel removed as requested
+  // Service Workflow View removed as requested
+  // Active Sessions View removed as requested
+  // Pickup Requests View removed as requested
   // Render the tab switcher at the top of the dashboard
 
   return (
@@ -3552,30 +2899,7 @@ const OperatorDashboard = () => {
                 {renderNotifications()}
               </div>
             )}{" "}
-            {currentView === "driver" && (
-              <div className="driver-coordination">
-                <h2>Driver Coordination Center</h2>
-                {renderDriverCoordinationPanel()}
-              </div>
-            )}
-            {currentView === "workflow" && (
-              <div className="service-workflow">
-                <h2>Service Workflow Overview</h2>
-                {renderServiceWorkflowView()}
-              </div>
-            )}
-            {currentView === "sessions" && (
-              <div className="active-sessions">
-                <h2>Active Therapy Sessions</h2>
-                {renderActiveSessionsView()}
-              </div>
-            )}{" "}
-            {currentView === "pickup" && (
-              <div className="pickup-requests">
-                <h2>Therapist Pickup Requests</h2>
-                {renderPickupRequestsView()}
-              </div>
-            )}
+            {/* Driver Coordination, Service Workflow, Active Sessions, and Pickup Requests sections removed as requested */}
           </div>
         </div>
       </div>
