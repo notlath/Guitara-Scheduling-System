@@ -119,11 +119,11 @@ const Login = () => {
           localStorage.setItem("knoxToken", response.data.token);
           localStorage.setItem("user", JSON.stringify(response.data.user));
           dispatch(login(response.data.user));
-          
+
           // ✅ CRITICAL FIX: Invalidate all queries after successful login
           // This ensures fresh data is fetched for the new user
           await invalidateCacheAfterLogin(response.data.user.role);
-          
+
           navigate(getRedirectPath(response.data.user.role));
         }
       } else {
@@ -135,11 +135,11 @@ const Login = () => {
         localStorage.setItem("knoxToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         dispatch(login(response.data.user));
-        
+
         // ✅ CRITICAL FIX: Invalidate all queries after successful 2FA login
         // This ensures fresh data is fetched for the new user
         await invalidateCacheAfterLogin(response.data.user.role);
-        
+
         navigate(getRedirectPath(response.data.user.role));
       }
     } catch (err) {

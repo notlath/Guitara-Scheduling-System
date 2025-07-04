@@ -20,7 +20,7 @@ const authSlice = createSlice({
       // Clear localStorage when logging out
       localStorage.removeItem("user");
       localStorage.removeItem("knoxToken");
-      
+
       // Clear sessionStorage to remove any temporary data
       try {
         sessionStorage.clear();

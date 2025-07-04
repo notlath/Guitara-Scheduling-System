@@ -1,7 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import ProfilePhotoUpload from "../../components/ProfilePhotoUpload/ProfilePhotoUploadPure";
 import pageTitles from "../../constants/pageTitles";
 import { logout, updateUserProfile } from "../../features/auth/authSlice";
@@ -253,26 +253,26 @@ const ProfilePage = () => {
     // Clear localStorage
     localStorage.removeItem("knoxToken");
     localStorage.removeItem("user");
-    
+
     // Clear TanStack Query cache to prevent residual data between users
     queryClient.clear();
-    
+
     // Clear all additional caches to prevent cross-user data leakage
     try {
       // Clear profile cache
       profileCache.clear();
-      
+
       // Clear any other browser storage
       sessionStorage.clear();
-      
+
       console.log("🧹 All caches cleared successfully on logout");
     } catch (error) {
       console.warn("⚠️ Some caches could not be cleared:", error);
     }
-    
+
     // Clear Redux state
     dispatch(logout());
-    
+
     // Navigate to login
     navigate("/");
   };

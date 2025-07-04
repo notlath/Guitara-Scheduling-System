@@ -1,11 +1,11 @@
 // Utility functions for better authentication and error handling
+import { profileCache } from "./profileCache";
 import {
   getToken,
   getAuthHeaders as getTokenHeaders,
   hasValidToken,
   removeToken,
 } from "./tokenManager";
-import { profileCache } from "./profileCache";
 
 // API URL based on environment - ensure consistent URL handling
 export const getBaseURL = () => {
@@ -112,7 +112,7 @@ export const forceLogout = (reason = "Session expired") => {
   removeToken();
   localStorage.removeItem("user");
   sessionStorage.clear(); // Clear all session data
-  
+
   // Clear profile cache to prevent cross-user data leakage
   try {
     profileCache.clear();
@@ -120,7 +120,7 @@ export const forceLogout = (reason = "Session expired") => {
   } catch (error) {
     console.warn("⚠️ Could not clear profile cache:", error);
   }
-  
+
   window.location.href = "/";
 };
 
@@ -148,14 +148,18 @@ export const invalidateCacheAfterLogin = async (userRole = "unknown") => {
     // Try to get global queryClient first (available after login page loads)
     if (window.queryClient) {
       await window.queryClient.invalidateQueries();
-      console.log(`🔄 Cache invalidated after login for ${userRole} - fetching fresh data`);
+      console.log(
+        `🔄 Cache invalidated after login for ${userRole} - fetching fresh data`
+      );
       return;
     }
 
     // Fallback: dynamically import queryClient
     const { queryClient } = await import("../lib/queryClient");
     await queryClient.invalidateQueries();
-    console.log(`🔄 Cache invalidated after login for ${userRole} - fetching fresh data (fallback)`);
+    console.log(
+      `🔄 Cache invalidated after login for ${userRole} - fetching fresh data (fallback)`
+    );
   } catch (error) {
     console.warn("⚠️ Could not invalidate cache after login:", error);
   }

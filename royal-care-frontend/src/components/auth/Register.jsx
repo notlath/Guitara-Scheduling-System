@@ -276,7 +276,7 @@ const Register = () => {
         localStorage.setItem("knoxToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         dispatch(login(response.data.user)); // Ensure Redux state is updated
-        
+
         if (response.data.user && response.data.user.role) {
           navigate(getRedirectPath(response.data.user.role), { replace: true });
         } else {
@@ -300,11 +300,11 @@ const Register = () => {
           localStorage.setItem("knoxToken", loginResponse.data.token);
           localStorage.setItem("user", JSON.stringify(loginResponse.data.user));
           dispatch(login(loginResponse.data.user));
-          
+
           // ✅ CRITICAL FIX: Invalidate all queries after successful automatic login from registration
           // This ensures fresh data is fetched for the new user
           await invalidateCacheAfterLogin(loginResponse.data.user.role);
-          
+
           navigate(getRedirectPath(loginResponse.data.user.role), {
             replace: true,
           });

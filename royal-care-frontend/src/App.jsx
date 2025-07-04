@@ -247,11 +247,11 @@ const App = () => {
               if (validation.valid) {
                 // Token and account are valid, restore session
                 dispatch(login(parsedUser));
-                
+
                 // ✅ CRITICAL FIX: Invalidate all queries after session restoration
                 // This ensures fresh data is fetched for the restored user session
                 await invalidateCacheAfterLogin(parsedUser.role);
-                
+
                 dispatch(authInitialized()); // Mark auth as initialized
               } else if (validation.reason === "ACCOUNT_DISABLED") {
                 // Account is disabled, clear stored data
@@ -268,11 +268,11 @@ const App = () => {
                   "- restoring session anyway"
                 );
                 dispatch(login(parsedUser));
-                
+
                 // ✅ CRITICAL FIX: Invalidate all queries after session restoration
                 // This ensures fresh data is fetched even when token validation fails
                 await invalidateCacheAfterLogin(parsedUser.role);
-                
+
                 dispatch(authInitialized()); // Mark auth as initialized
               }
             } catch (validationError) {
@@ -283,11 +283,11 @@ const App = () => {
                 "- restoring session anyway"
               );
               dispatch(login(parsedUser));
-              
+
               // ✅ CRITICAL FIX: Invalidate all queries after session restoration
               // This ensures fresh data is fetched even when token validation throws error
               await invalidateCacheAfterLogin(parsedUser.role);
-              
+
               dispatch(authInitialized()); // Mark auth as initialized
             }
           } else {

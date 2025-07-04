@@ -17,8 +17,8 @@ import { useOperatorDashboardData } from "../hooks/useDashboardQueries";
 import { useInstantUpdates } from "../hooks/useInstantUpdates";
 // ✅ REFACTORED: Use common dashboard utilities for shared logic
 import { usePhilippineTime } from "../hooks/usePhilippineTime";
-import { getUserDisplayName } from "../utils/userUtils";
 import { profileCache } from "../utils/profileCache";
+import { getUserDisplayName } from "../utils/userUtils";
 // PERFORMANCE: Stable filtering imports to prevent render loops
 import ServerPagination from "./ServerPagination";
 // OPTIMIZED: Replace old data hooks with optimized versions
@@ -994,26 +994,26 @@ const OperatorDashboard = () => {
     // Clear localStorage
     localStorage.removeItem("knoxToken");
     localStorage.removeItem("user");
-    
+
     // Clear TanStack Query cache to prevent residual data between users
     queryClient.clear();
-    
+
     // Clear all additional caches to prevent cross-user data leakage
     try {
       // Clear profile cache
       profileCache.clear();
-      
+
       // Clear any other browser storage
       sessionStorage.clear();
-      
+
       console.log("🧹 All caches cleared successfully on logout");
     } catch (error) {
       console.warn("⚠️ Some caches could not be cleared:", error);
     }
-    
+
     // Clear Redux state
     dispatch(logout());
-    
+
     // Navigate to login
     navigate("/");
   };
