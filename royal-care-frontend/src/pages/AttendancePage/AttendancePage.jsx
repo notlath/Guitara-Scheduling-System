@@ -1,31 +1,26 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { MdCheckCircle, MdLogout } from "react-icons/md";
-import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import "../../../src/styles/Placeholders.css";
 // Import the shared attendance CSS for the unified dashboard components
 import "../../components/AttendanceComponent.css";
 import { LoadingButton } from "../../components/common/LoadingComponents";
 import pageTitles from "../../constants/pageTitles";
-import {
-  approveAttendance,
-  checkIn,
-  checkOut,
-  fetchAttendanceRecords,
-  generateAttendanceSummary,
-  getTodayAttendanceStatus,
-} from "../../features/attendance/attendanceSlice";
+// Import TanStack Query hooks for attendance
 import DataTable from "../../globals/DataTable";
 import LayoutRow from "../../globals/LayoutRow";
 import PageLayout from "../../globals/PageLayout";
 import TabSwitcher from "../../globals/TabSwitcher";
-import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
+import {
+  useApproveAttendance,
+  useAttendanceRecords,
+  useAttendanceSummary,
+  useCheckIn,
+  useCheckOut,
+  useTodayAttendanceStatus,
+} from "../../hooks/useAttendanceQueries";
 import styles from "./AttendancePage.module.css";
 
 const AttendancePage = () => {
-  const dispatch = useDispatch();
-  const queryClient = useQueryClient();
-
   // Initialize with current date in Asia/Manila Time (UTC+08:00)
   const getCurrentDate = () => {
     const now = new Date();
@@ -42,43 +37,39 @@ const AttendancePage = () => {
   const [selectedDate, setSelectedDate] = useState(getCurrentDate());
   const [attendanceFilter, setAttendanceFilter] = useState("all");
 
-  const attendanceState = useOptimizedSelector(
-    (state) => state.attendance,
-    shallowEqual
-  );
+  // ✅ TANSTACK QUERY: Replace Redux state with TanStack Query hooks
   const {
-    attendanceRecords,
-    attendanceSummary,
-    loading: attendanceLoading,
-    approvalLoading,
+    data: attendanceRecords = [],
+    isLoading: attendanceLoading,
     error: attendanceError,
-  } = attendanceState;
+  } = useAttendanceRecords(selectedDate);
 
-  // Operator's personal attendance state for check-in/check-out
-  const {
-    todayStatus,
-    isCheckedIn,
-    checkInTime,
-    checkOutTime,
-    checkInLoading,
-    checkOutLoading,
-  } = useSelector((state) => state.attendance);
+  const { data: attendanceSummary, isLoading: summaryLoading } =
+    useAttendanceSummary(selectedDate);
+
+  // ✅ TANSTACK QUERY: Use the TanStack Query hook for today's status
+  const { data: todayStatus, isLoading: todayStatusLoading } =
+    useTodayAttendanceStatus();
+
+  // Extract attendance data from TanStack Query response
+  const isCheckedIn = todayStatus?.is_checked_in || false;
+  const checkInTime = todayStatus?.check_in_time || null;
+  const checkOutTime = todayStatus?.check_out_time || null;
+
+  // ✅ TANSTACK QUERY: Use mutations for check-in/check-out
+  const checkInMutation = useCheckIn();
+  const checkOutMutation = useCheckOut();
+  const approveAttendanceMutation = useApproveAttendance();
 
   // Combined loading state
-  const loading = attendanceLoading;
+  const loading = attendanceLoading || summaryLoading || todayStatusLoading;
 
   useEffect(() => {
     document.title = pageTitles.attendance;
-    // Fetch attendance records (which includes staff member information)
-    dispatch(fetchAttendanceRecords({ date: selectedDate }));
-    dispatch(generateAttendanceSummary(selectedDate));
-  }, [dispatch, selectedDate]);
+    // ✅ REMOVED: No longer need to manually fetch data - TanStack Query handles this
+  }, []);
 
-  // Refetch attendance data when date changes
-  useEffect(() => {
-    dispatch(fetchAttendanceRecords({ date: selectedDate }));
-    dispatch(generateAttendanceSummary(selectedDate));
-  }, [dispatch, selectedDate]);
+  // ✅ REMOVED: No longer need to refetch on date change - TanStack Query handles this automatically
 
   // Add debugging for attendance records
   console.log("AttendancePage - Raw attendance records:", attendanceRecords);
@@ -245,17 +236,8 @@ const AttendancePage = () => {
   // Handle attendance approval
   const handleApproveAttendance = async (attendanceId) => {
     try {
-      await dispatch(approveAttendance(attendanceId)).unwrap();
-
-      // ✅ TANSTACK QUERY: Invalidate attendance queries after approval
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["attendance"] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance", "records"] }),
-        queryClient.invalidateQueries({ queryKey: ["operator", "attendance"] }),
-      ]);
-
-      // Refetch attendance records to get updated data
-      dispatch(fetchAttendanceRecords({ date: selectedDate }));
+      await approveAttendanceMutation.mutateAsync(attendanceId);
+      // Cache invalidation is handled by the mutation hook
     } catch (error) {
       console.error("Failed to approve attendance:", error);
     }
@@ -412,25 +394,14 @@ const AttendancePage = () => {
 
   // Operator's check-in/check-out handlers
   const handleCheckIn = () => {
-    dispatch(checkIn()).then(() => {
-      // Refresh attendance data
-      dispatch(getTodayAttendanceStatus());
-      queryClient.invalidateQueries({ queryKey: ["attendance"] });
-    });
+    checkInMutation.mutate();
   };
 
   const handleCheckOut = () => {
-    dispatch(checkOut()).then(() => {
-      // Refresh attendance data
-      dispatch(getTodayAttendanceStatus());
-      queryClient.invalidateQueries({ queryKey: ["attendance"] });
-    });
+    checkOutMutation.mutate();
   };
 
-  // Fetch operator's attendance status on component mount
-  useEffect(() => {
-    dispatch(getTodayAttendanceStatus());
-  }, [dispatch]);
+  // ✅ REMOVED: No longer need to fetch today's status - TanStack Query handles this automatically
 
   // Prepare columns for DataTable
   const columns = [
@@ -473,9 +444,9 @@ const AttendancePage = () => {
             className={styles["approve-btn"]}
             title="Approve attendance"
             onClick={() => handleApproveAttendance(record.id)}
-            disabled={approvalLoading[record.id]}
+            disabled={approveAttendanceMutation.isPending}
           >
-            {approvalLoading[record.id] ? "⏳" : "✅"}
+            {approveAttendanceMutation.isPending ? "⏳" : "✅"}
           </button>
         )}
         <button className={styles["edit-btn"]} title="Edit attendance">
@@ -620,7 +591,7 @@ const AttendancePage = () => {
                 )}
                 <LoadingButton
                   onClick={handleCheckIn}
-                  loading={checkInLoading}
+                  loading={checkInMutation.isPending}
                   className={`check-in-btn ${
                     isLateCheckIn() ? "late-checkin" : ""
                   }`}
@@ -633,7 +604,7 @@ const AttendancePage = () => {
             ) : hasCheckedInToday() && canCheckOutToday() ? (
               <LoadingButton
                 onClick={handleCheckOut}
-                loading={checkOutLoading}
+                loading={checkOutMutation.isPending}
                 className="check-out-btn"
               >
                 <MdLogout />
@@ -711,8 +682,8 @@ const AttendancePage = () => {
               )}
               <button
                 onClick={() => {
-                  dispatch(fetchAttendanceRecords({ date: selectedDate }));
-                  dispatch(generateAttendanceSummary(selectedDate));
+                  // ✅ TANSTACK QUERY: Trigger manual refetch
+                  window.location.reload(); // Simple solution for now
                 }}
                 className={styles["retry-btn"]}
               >

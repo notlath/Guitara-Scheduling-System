@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   MdAccessTime,
@@ -11,38 +10,35 @@ import {
   MdRefresh,
   MdSave,
 } from "react-icons/md";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  addAttendanceNote,
-  checkIn,
-  checkOut,
-  clearAttendanceError,
-  getTodayAttendanceStatus,
-  updateAttendanceRecord,
-} from "../features/attendance/attendanceSlice";
+// Import TanStack Query hooks for full implementation
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
+import {
+  useAddAttendanceNote,
+  useCheckIn,
+  useCheckOut,
+  useTodayAttendanceStatus,
+  useUpdateAttendanceRecord,
+} from "../hooks/useAttendanceQueries";
 import "./AttendanceComponent.css";
 import { LoadingButton } from "./common/LoadingComponents";
 
 const AttendanceComponent = () => {
-  const dispatch = useDispatch();
-  const queryClient = useQueryClient();
+  // ✅ FULLY MIGRATED TO TANSTACK QUERY
+  // Replace Redux state with TanStack Query hooks
   const {
-    todayStatus,
-    isCheckedIn,
-    checkInTime,
-    checkOutTime,
-    loading,
-    checkInLoading,
-    checkOutLoading,
+    data: todayStatus,
+    isLoading: loading,
     error,
-    checkInError,
-    checkOutError,
-    updateLoading,
-    noteLoading,
-  } = useSelector((state) => state.attendance);
+    refetch,
+  } = useTodayAttendanceStatus();
 
+  // Extract attendance data from TanStack Query response
+  const isCheckedIn = todayStatus?.is_checked_in || false;
+  const checkInTime = todayStatus?.check_in_time || null;
+  const checkOutTime = todayStatus?.check_out_time || null;
+
+  // Local state for component functionality
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -53,6 +49,13 @@ const AttendanceComponent = () => {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteText, setNoteText] = useState("");
 
+  // ✅ TANSTACK QUERY MUTATIONS
+  // Use the TanStack Query hooks for all mutations
+  const checkInMutation = useCheckIn();
+  const checkOutMutation = useCheckOut();
+  const updateAttendanceMutation = useUpdateAttendanceRecord();
+  const addNoteMutation = useAddAttendanceNote();
+
   // Update current time every second
   useEffect(() => {
     const timer = setInterval(() => {
@@ -62,21 +65,34 @@ const AttendanceComponent = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch today's attendance status on component mount
-  useEffect(() => {
-    dispatch(getTodayAttendanceStatus());
-  }, [dispatch]);
+  // ✅ REMOVED: No longer need to manually fetch attendance status
+  // TanStack Query handles this automatically with useTodayAttendanceStatus
 
-  // Clear errors after 5 seconds
+  // ✅ IMPROVED: Better error handling with TanStack Query
   useEffect(() => {
-    if (error || checkInError || checkOutError) {
+    const hasError = error || checkInMutation.error || checkOutMutation.error;
+
+    if (hasError) {
       const timer = setTimeout(() => {
-        dispatch(clearAttendanceError());
+        // Reset mutations to clear error states
+        if (checkInMutation.error) {
+          checkInMutation.reset();
+        }
+        if (checkOutMutation.error) {
+          checkOutMutation.reset();
+        }
+        // Note: We don't reset the main query error as it might be needed for display
       }, 5000);
 
       return () => clearTimeout(timer);
     }
-  }, [error, checkInError, checkOutError, dispatch]);
+  }, [
+    error,
+    checkInMutation.error,
+    checkOutMutation.error,
+    checkInMutation,
+    checkOutMutation,
+  ]);
 
   // Initialize edit form when todayStatus changes
   useEffect(() => {
@@ -90,30 +106,23 @@ const AttendanceComponent = () => {
     }
   }, [todayStatus, checkInTime, checkOutTime]);
 
+  // ✅ TANSTACK QUERY HANDLERS
   const handleCheckIn = () => {
-    dispatch(checkIn()).then(() => {
-      // ✅ TANSTACK QUERY: Invalidate attendance queries after check-in
-      queryClient.invalidateQueries({ queryKey: ["attendance"] });
-      queryClient.invalidateQueries({ queryKey: ["attendance", "today"] });
-    });
+    checkInMutation.mutate();
   };
 
   const handleCheckOut = () => {
-    dispatch(checkOut()).then(() => {
-      // ✅ TANSTACK QUERY: Invalidate attendance queries after check-out
-      queryClient.invalidateQueries({ queryKey: ["attendance"] });
-      queryClient.invalidateQueries({ queryKey: ["attendance", "today"] });
-    });
+    checkOutMutation.mutate();
   };
 
   const handleRefresh = () => {
-    dispatch(getTodayAttendanceStatus());
+    // TanStack Query refetch instead of Redux dispatch
+    refetch();
   };
 
   const handleStartEdit = () => {
     setIsEditing(true);
   };
-
   const handleCancelEdit = () => {
     setIsEditing(false);
     // Reset form to original values
@@ -146,29 +155,20 @@ const AttendanceComponent = () => {
         updateData.check_out_time = editForm.checkOutTime;
       }
 
-      await dispatch(
-        updateAttendanceRecord({
-          attendanceId: todayStatus.id,
-          updateData,
-        })
-      ).unwrap();
+      await updateAttendanceMutation.mutateAsync({
+        attendanceId: todayStatus.id,
+        updateData,
+      });
 
       setIsEditing(false);
 
-      // ✅ TANSTACK QUERY: Invalidate attendance queries after update
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["attendance"] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance", "today"] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance", "records"] }),
-      ]);
-
-      // Refresh the data
-      dispatch(getTodayAttendanceStatus());
+      // Cache invalidation is handled by the mutation hook
+      // Just refresh local data
+      refetch();
     } catch (error) {
       console.error("Failed to update attendance:", error);
     }
   };
-
   const handleOpenNoteModal = () => {
     setShowNoteModal(true);
     setNoteText(todayStatus?.notes || "");
@@ -183,24 +183,16 @@ const AttendanceComponent = () => {
     if (!todayStatus?.id) return;
 
     try {
-      await dispatch(
-        addAttendanceNote({
-          attendanceId: todayStatus.id,
-          notes: noteText,
-        })
-      ).unwrap();
+      await addNoteMutation.mutateAsync({
+        attendanceId: todayStatus.id,
+        notes: noteText,
+      });
 
       setShowNoteModal(false);
 
-      // ✅ TANSTACK QUERY: Invalidate attendance queries after note update
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["attendance"] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance", "today"] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance", "records"] }),
-      ]);
-
-      // Refresh the data
-      dispatch(getTodayAttendanceStatus());
+      // Cache invalidation is handled by the mutation hook
+      // Just refresh local data
+      refetch();
     } catch (error) {
       console.error("Failed to add note:", error);
     }
@@ -414,7 +406,7 @@ const AttendanceComponent = () => {
                   <>
                     <LoadingButton
                       onClick={handleStartEdit}
-                      loading={updateLoading?.[todayStatus.id]}
+                      loading={updateAttendanceMutation.isPending}
                       className="edit-btn"
                       title="Edit Attendance"
                     >
@@ -422,7 +414,7 @@ const AttendanceComponent = () => {
                     </LoadingButton>
                     <LoadingButton
                       onClick={handleOpenNoteModal}
-                      loading={noteLoading?.[todayStatus.id]}
+                      loading={addNoteMutation.isPending}
                       className="note-btn"
                       title="Add Note"
                     >
@@ -433,7 +425,7 @@ const AttendanceComponent = () => {
                   <>
                     <LoadingButton
                       onClick={handleSaveEdit}
-                      loading={updateLoading?.[todayStatus.id]}
+                      loading={updateAttendanceMutation.isPending}
                       className="save-btn"
                       title="Save Changes"
                     >
@@ -453,11 +445,33 @@ const AttendanceComponent = () => {
           </div>
         </LayoutRow>
 
-        {(error || checkInError || checkOutError) && (
-          <div className="error-message">
-            {error || checkInError || checkOutError}
-          </div>
-        )}
+        {/* Only show error messages if they exist and contain actual content */}
+        {(() => {
+          // Get all possible error sources
+          const mainError = error?.message || error;
+          const checkInError =
+            checkInMutation.error?.message || checkInMutation.error;
+          const checkOutError =
+            checkOutMutation.error?.message || checkOutMutation.error;
+
+          // Find the first non-empty, meaningful error message
+          const errorMessage = [mainError, checkInError, checkOutError].find(
+            (err) =>
+              err &&
+              typeof err === "string" &&
+              err.trim() &&
+              err !== "undefined" &&
+              err !== "null" &&
+              !err.includes("Loading") &&
+              !err.includes("Pending")
+          );
+
+          // Only render if we have a meaningful error message
+          if (errorMessage) {
+            return <div className="error-message">{errorMessage}</div>;
+          }
+          return null;
+        })()}
 
         <div className="attendance-dashboard">
           <div className="attendance-header">
@@ -563,7 +577,7 @@ const AttendanceComponent = () => {
                 )}
                 <LoadingButton
                   onClick={handleCheckIn}
-                  loading={checkInLoading}
+                  loading={checkInMutation.isPending}
                   className={`check-in-btn ${
                     isLateCheckIn() ? "late-checkin" : ""
                   }`}
@@ -576,7 +590,7 @@ const AttendanceComponent = () => {
             ) : hasCheckedInToday() && canCheckOutToday() ? (
               <LoadingButton
                 onClick={handleCheckOut}
-                loading={checkOutLoading}
+                loading={checkOutMutation.isPending}
                 className="check-out-btn"
               >
                 <MdLogout />
@@ -658,7 +672,7 @@ const AttendanceComponent = () => {
             <div className="modal-footer">
               <LoadingButton
                 onClick={handleSaveNote}
-                loading={noteLoading?.[todayStatus?.id]}
+                loading={addNoteMutation.isPending}
                 className="save-note-btn"
               >
                 Save Note

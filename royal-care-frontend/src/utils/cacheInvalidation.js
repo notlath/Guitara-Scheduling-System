@@ -352,6 +352,110 @@ export const rollbackOptimisticUpdate = (queryClient, backupData) => {
 };
 
 /**
+ * Attendance-specific cache invalidation helper
+ * Use this after attendance mutations (check-in, check-out, update)
+ */
+export const invalidateAttendanceCaches = async (queryClient, options = {}) => {
+  const {
+    staffId = null,
+    date = null,
+    userRole = null,
+    selective = true,
+  } = options;
+
+  console.log(
+    "🔄 Selective attendance cache invalidation for instant UI updates",
+    {
+      staffId,
+      date,
+      userRole,
+      selective,
+    }
+  );
+
+  try {
+    const invalidationPromises = [];
+    const today = new Date().toISOString().split("T")[0];
+
+    if (selective) {
+      // ✅ SELECTIVE INVALIDATION: Only invalidate non-critical queries
+      // Don't invalidate today's status query to prevent race conditions
+
+      // 1. Attendance records queries (for AttendancePage lists)
+      invalidationPromises.push(
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey;
+            return (
+              Array.isArray(key) &&
+              key.includes("attendance") &&
+              key.includes("list") &&
+              !key.some(
+                (k) => typeof k === "string" && k.match(/\d{4}-\d{2}-\d{2}/)
+              )
+            );
+          },
+        })
+      );
+
+      // 2. Attendance summary queries
+      invalidationPromises.push(
+        queryClient.invalidateQueries({
+          queryKey: ["attendance", "summary"],
+          exact: false,
+        })
+      );
+
+      // 3. Dashboard queries (only if operator)
+      if (userRole === "operator") {
+        invalidationPromises.push(
+          queryClient.invalidateQueries({
+            queryKey: ["dashboard", "operator"],
+            exact: false,
+          })
+        );
+      }
+    } else {
+      // ✅ FULL INVALIDATION: Use sparingly for major updates
+      if (queryKeys?.attendance) {
+        invalidationPromises.push(
+          queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.attendance.list(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.attendance.byDate(date || today),
+          })
+        );
+      } else {
+        invalidationPromises.push(
+          queryClient.invalidateQueries({ queryKey: ["attendance"] }),
+          queryClient.invalidateQueries({ queryKey: ["attendance", "list"] })
+        );
+      }
+
+      // Dashboard queries
+      invalidationPromises.push(
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard", "operator"] })
+      );
+    }
+
+    // Execute all invalidations
+    await Promise.all(invalidationPromises);
+
+    console.log("✅ Selective attendance cache invalidation completed", {
+      selective,
+      invalidatedQueries: invalidationPromises.length,
+    });
+    return true;
+  } catch (error) {
+    console.error("❌ Failed to invalidate attendance cache:", error);
+    return false;
+  }
+};
+
+/**
  * Status-specific cache invalidation for common appointment status changes
  */
 export const invalidateByStatus = async (queryClient, status, options = {}) => {

@@ -5,11 +5,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   approveAttendance,
-  checkIn,
-  checkOut,
   getTodayAttendanceStatus,
 } from "../features/attendance/attendanceSlice";
 import { logout } from "../features/auth/authSlice";
+import { useCheckIn, useCheckOut } from "../hooks/useAttendanceQueries";
 // TANSTACK QUERY: Import TanStack Query optimized hooks
 import LayoutRow from "../globals/LayoutRow";
 import PageLayout from "../globals/PageLayout";
@@ -1338,13 +1337,16 @@ const OperatorDashboard = () => {
     setSelectedDate(newDate);
   };
 
-  // Operator's check-in/check-out handlers
+  // Operator's check-in/check-out handlers using TanStack Query mutations
+  const checkInMutation = useCheckIn();
+  const checkOutMutation = useCheckOut();
+
   const handleOperatorCheckIn = () => {
-    dispatch(checkIn());
+    checkInMutation.mutate();
   };
 
   const handleOperatorCheckOut = () => {
-    dispatch(checkOut());
+    checkOutMutation.mutate();
   };
 
   // Format time for display
