@@ -5,6 +5,7 @@ import {
   hasValidToken,
   removeToken,
 } from "./tokenManager";
+import { profileCache } from "./profileCache";
 
 // API URL based on environment - ensure consistent URL handling
 export const getBaseURL = () => {
@@ -111,6 +112,15 @@ export const forceLogout = (reason = "Session expired") => {
   removeToken();
   localStorage.removeItem("user");
   sessionStorage.clear(); // Clear all session data
+  
+  // Clear profile cache to prevent cross-user data leakage
+  try {
+    profileCache.clear();
+    console.log("🧹 Profile cache cleared during force logout");
+  } catch (error) {
+    console.warn("⚠️ Could not clear profile cache:", error);
+  }
+  
   window.location.href = "/";
 };
 
@@ -127,4 +137,26 @@ export const shouldRetryAuth = (error) => {
   }
 
   return false;
+};
+
+/**
+ * Invalidate TanStack Query cache after successful login
+ * This ensures fresh data is fetched for the newly logged-in user
+ */
+export const invalidateCacheAfterLogin = async (userRole = "unknown") => {
+  try {
+    // Try to get global queryClient first (available after login page loads)
+    if (window.queryClient) {
+      await window.queryClient.invalidateQueries();
+      console.log(`🔄 Cache invalidated after login for ${userRole} - fetching fresh data`);
+      return;
+    }
+
+    // Fallback: dynamically import queryClient
+    const { queryClient } = await import("../lib/queryClient");
+    await queryClient.invalidateQueries();
+    console.log(`🔄 Cache invalidated after login for ${userRole} - fetching fresh data (fallback)`);
+  } catch (error) {
+    console.warn("⚠️ Could not invalidate cache after login:", error);
+  }
 };

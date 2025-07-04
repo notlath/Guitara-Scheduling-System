@@ -13,6 +13,9 @@ import { initializeExtensionErrorSuppressor } from "./utils/extensionErrorSuppre
 // Initialize extension error suppressor to reduce console noise in production
 initializeExtensionErrorSuppressor();
 
+// Make queryClient available globally for login cache invalidation
+window.queryClient = queryClient;
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

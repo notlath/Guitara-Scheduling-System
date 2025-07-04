@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { logout } from "../features/auth/authSlice";
 import { usePhilippineTime } from "./usePhilippineTime";
 import { useAutoWebSocketCacheSync } from "./useWebSocketCacheSync";
+import { profileCache } from "../utils/profileCache";
 
 /**
  * Common dashboard functionality hook
@@ -15,6 +17,7 @@ import { useAutoWebSocketCacheSync } from "./useWebSocketCacheSync";
 export const useDashboardCommon = (defaultView = "today") => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
 
   // 🕐 Philippine time and greeting - shared across all dashboards
   const { systemTime, greeting } = usePhilippineTime();
@@ -34,9 +37,30 @@ export const useDashboardCommon = (defaultView = "today") => {
 
   // 🚪 Logout handler - shared across all dashboards
   const handleLogout = () => {
+    // Clear localStorage
     localStorage.removeItem("knoxToken");
     localStorage.removeItem("user");
+    
+    // Clear TanStack Query cache to prevent residual data between users
+    queryClient.clear();
+    
+    // Clear all additional caches to prevent cross-user data leakage
+    try {
+      // Clear profile cache
+      profileCache.clear();
+      
+      // Clear any other browser storage
+      sessionStorage.clear();
+      
+      console.log("🧹 All caches cleared successfully on logout");
+    } catch (error) {
+      console.warn("⚠️ Some caches could not be cleared:", error);
+    }
+    
+    // Clear Redux state
     dispatch(logout());
+    
+    // Navigate to login
     navigate("/");
   };
 

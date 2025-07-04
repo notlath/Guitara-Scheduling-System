@@ -11,6 +11,7 @@ import {
   checkEmailExists,
   completeRegistration,
 } from "../../services/api";
+import { invalidateCacheAfterLogin } from "../../utils/authUtils";
 import { sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
@@ -299,6 +300,11 @@ const Register = () => {
           localStorage.setItem("knoxToken", loginResponse.data.token);
           localStorage.setItem("user", JSON.stringify(loginResponse.data.user));
           dispatch(login(loginResponse.data.user));
+          
+          // ✅ CRITICAL FIX: Invalidate all queries after successful automatic login from registration
+          // This ensures fresh data is fetched for the new user
+          await invalidateCacheAfterLogin(loginResponse.data.user.role);
+          
           navigate(getRedirectPath(loginResponse.data.user.role), {
             replace: true,
           });

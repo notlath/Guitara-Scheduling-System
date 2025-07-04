@@ -23,6 +23,7 @@ import "./utils/serviceWorkerErrorSuppression";
 
 import TwoFAForgotPasswordPage from "./pages/2FAForgotPasswordPage/TwoFAForgotPasswordPage";
 import { validateToken } from "./services/auth";
+import { invalidateCacheAfterLogin } from "./utils/authUtils";
 import { cleanupInvalidTokens } from "./utils/tokenManager";
 
 // Lazy load pages to enable code splitting and reduce initial bundle size
@@ -246,6 +247,12 @@ const App = () => {
               if (validation.valid) {
                 // Token and account are valid, restore session
                 dispatch(login(parsedUser));
+                
+                // ✅ CRITICAL FIX: Invalidate all queries after session restoration
+                // This ensures fresh data is fetched for the restored user session
+                await invalidateCacheAfterLogin(parsedUser.role);
+                
+                dispatch(authInitialized()); // Mark auth as initialized
               } else if (validation.reason === "ACCOUNT_DISABLED") {
                 // Account is disabled, clear stored data
                 console.log("Account is disabled, clearing stored data");
@@ -261,6 +268,12 @@ const App = () => {
                   "- restoring session anyway"
                 );
                 dispatch(login(parsedUser));
+                
+                // ✅ CRITICAL FIX: Invalidate all queries after session restoration
+                // This ensures fresh data is fetched even when token validation fails
+                await invalidateCacheAfterLogin(parsedUser.role);
+                
+                dispatch(authInitialized()); // Mark auth as initialized
               }
             } catch (validationError) {
               // If validation fails due to network issues, still restore the session
@@ -270,6 +283,12 @@ const App = () => {
                 "- restoring session anyway"
               );
               dispatch(login(parsedUser));
+              
+              // ✅ CRITICAL FIX: Invalidate all queries after session restoration
+              // This ensures fresh data is fetched even when token validation throws error
+              await invalidateCacheAfterLogin(parsedUser.role);
+              
+              dispatch(authInitialized()); // Mark auth as initialized
             }
           } else {
             // Clear invalid stored data

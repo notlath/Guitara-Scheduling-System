@@ -19,6 +19,7 @@ import { useTherapistDashboardData } from "../hooks/useDashboardQueries";
 import { syncMutationSuccess } from "../services/realTimeSyncService";
 // User utilities
 import { getUserDisplayName } from "../utils/userUtils";
+import { profileCache } from "../utils/profileCache";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // Import PostServiceMaterialModal for material status checking
@@ -556,9 +557,30 @@ const TherapistDashboard = () => {
   // No manual refresh logic needed - TanStack Query handles it automatically
 
   const handleLogout = () => {
+    // Clear localStorage
     localStorage.removeItem("knoxToken");
     localStorage.removeItem("user");
+    
+    // Clear TanStack Query cache to prevent residual data between users
+    queryClient.clear();
+    
+    // Clear all additional caches to prevent cross-user data leakage
+    try {
+      // Clear profile cache
+      profileCache.clear();
+      
+      // Clear any other browser storage
+      sessionStorage.clear();
+      
+      console.log("🧹 All caches cleared successfully on logout");
+    } catch (error) {
+      console.warn("⚠️ Some caches could not be cleared:", error);
+    }
+    
+    // Clear Redux state
     dispatch(logout());
+    
+    // Navigate to login
     navigate("/");
   };
 
