@@ -9,13 +9,11 @@ import { useOptimizedSelector } from "../../hooks/usePerformanceOptimization";
 import styles from "./SalesReportsPage.module.css";
 // Export dependencies
 import { saveAs } from "file-saver";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 // Chart components
+import rcLogo from "../../assets/images/rc_logo.jpg";
 import SalesChart from "../../components/charts/SalesChart";
 import { prepareChartData } from "../../utils/chartDataHelpers";
-import rcLogo from '../../assets/images/rc_logo.jpg';
 
 const SalesReportsPage = () => {
   const dispatch = useDispatch();
@@ -455,7 +453,8 @@ const SalesReportsPage = () => {
     );
 
     // Format items for display - group by client for weekly and monthly
-    let formattedItems = [];    if (currentPeriod === "Daily") {
+    let formattedItems = [];
+    if (currentPeriod === "Daily") {
       formattedItems = currentItems.map((apt) => ({
         clientName:
           `${apt.client_details?.first_name || ""} ${
@@ -999,7 +998,8 @@ const SalesReportsPage = () => {
       `${currentView} - ${currentPeriod}`
     );
     XLSX.writeFile(workbook, filename);
-  };  const exportToPDF = () => {
+  };
+  const exportToPDF = () => {
     let data = [];
     let headers = [];
     let reportTitle = "";
@@ -1017,23 +1017,39 @@ const SalesReportsPage = () => {
         ["Client Name", selectedRevenueItem.clientName || "Unknown Client"],
         ["Revenue Amount", `₱${selectedRevenueItem.revenue}`],
         [
-          currentPeriod === "Daily" ? "Time" : currentPeriod === "Weekly" ? "Day" : "Week Range",
+          currentPeriod === "Daily"
+            ? "Time"
+            : currentPeriod === "Weekly"
+            ? "Day"
+            : "Week Range",
           currentPeriod === "Daily"
             ? selectedRevenueItem.time || "N/A"
             : currentPeriod === "Weekly"
             ? selectedRevenueItem.day || "N/A"
-            : selectedRevenueItem.weekRange || "N/A"
-        ]
+            : selectedRevenueItem.weekRange || "N/A",
+        ],
       ];
 
       // Add additional details if available from appointments
-      if (selectedRevenueItem.appointments && selectedRevenueItem.appointments.length > 0) {
+      if (
+        selectedRevenueItem.appointments &&
+        selectedRevenueItem.appointments.length > 0
+      ) {
         const appointment = selectedRevenueItem.appointments[0]; // Take the first appointment for details
         data.push(
-          ["Service Details", appointment.services_details?.map(s => s.name).join(", ") || "N/A"],
-          ["Therapist", appointment.therapist_details ?
-            `${appointment.therapist_details.first_name || ""} ${appointment.therapist_details.last_name || ""}`.trim() :
-            "N/A"],
+          [
+            "Service Details",
+            appointment.services_details?.map((s) => s.name).join(", ") ||
+              "N/A",
+          ],
+          [
+            "Therapist",
+            appointment.therapist_details
+              ? `${appointment.therapist_details.first_name || ""} ${
+                  appointment.therapist_details.last_name || ""
+                }`.trim()
+              : "N/A",
+          ],
           ["Payment Status", appointment.payment_status || "N/A"],
           ["Appointment Status", appointment.status || "N/A"]
         );
@@ -1102,7 +1118,11 @@ const SalesReportsPage = () => {
     }
 
     if (data.length === 0) {
-      alert(isSelectedRevenueReport ? "Please select a revenue item to print details" : "No data available to export");
+      alert(
+        isSelectedRevenueReport
+          ? "Please select a revenue item to print details"
+          : "No data available to export"
+      );
       return;
     }
 
@@ -1125,27 +1145,33 @@ const SalesReportsPage = () => {
 
         <div class="header">
           <h1>${reportTitle}</h1>
-          ${!isSelectedRevenueReport ? `<p>Period: ${currentPeriod}</p>` : ''}
+          ${!isSelectedRevenueReport ? `<p>Period: ${currentPeriod}</p>` : ""}
           <p>Generated on: ${new Date().toLocaleDateString()}</p>
         </div>
         <div class="table-container">
           <table>
             <thead>
               <tr>
-                ${headers.map(header => `<th>${header}</th>`).join('')}
+                ${headers.map((header) => `<th>${header}</th>`).join("")}
               </tr>
             </thead>
             <tbody>
-              ${data.map(row => `
+              ${data
+                .map(
+                  (row) => `
                 <tr>
-                  ${row.map(cell => `<td>${cell}</td>`).join('')}
+                  ${row.map((cell) => `<td>${cell}</td>`).join("")}
                 </tr>
-              `).join('')}
+              `
+                )
+                .join("")}
             </tbody>
           </table>
         </div>
         <div class="footer">
-          <p>${isSelectedRevenueReport ? '' : `Total Records: ${data.length}`}</p>
+          <p>${
+            isSelectedRevenueReport ? "" : `Total Records: ${data.length}`
+          }</p>
         </div>
       </div>
       <style>
@@ -1352,14 +1378,14 @@ const SalesReportsPage = () => {
     `;
 
     // Add print content to the page
-    document.body.insertAdjacentHTML('beforeend', printContent);
+    document.body.insertAdjacentHTML("beforeend", printContent);
 
     // Trigger print dialog
     window.print();
 
     // Clean up after printing
     const cleanup = () => {
-      const printElement = document.querySelector('.print-content');
+      const printElement = document.querySelector(".print-content");
       if (printElement) {
         printElement.remove();
       }
@@ -1489,7 +1515,9 @@ const SalesReportsPage = () => {
         )}
 
         {currentView === "Total Revenue" && (
-          <div className={styles.dataTableWrapper}>            <div
+          <div className={styles.dataTableWrapper}>
+            {" "}
+            <div
               style={{
                 padding: "var(--spacing-md)",
                 borderBottom: "1px solid var(--background-100)",
@@ -1507,7 +1535,8 @@ const SalesReportsPage = () => {
                 }}
               >
                 Total Revenue Report - {currentPeriod}
-              </p>              {selectedRevenueItem && (
+              </p>{" "}
+              {selectedRevenueItem && (
                 <p
                   style={{
                     margin: "var(--spacing-xs) 0 0 0",
@@ -1516,8 +1545,9 @@ const SalesReportsPage = () => {
                     fontWeight: "500",
                   }}
                 >
-                  📋 Selected: {selectedRevenueItem.clientName} - ₱{selectedRevenueItem.revenue}
-                  ({selectedRevenueItem.date}) - Click "Print Report" for details
+                  📋 Selected: {selectedRevenueItem.clientName} - ₱
+                  {selectedRevenueItem.revenue}({selectedRevenueItem.date}) -
+                  Click "Print Report" for details
                 </p>
               )}
               {!selectedRevenueItem && revenueData.items.length > 0 && (
@@ -1529,11 +1559,11 @@ const SalesReportsPage = () => {
                     fontStyle: "italic",
                   }}
                 >
-                  💡 Tip: Click on any revenue row to select it for detailed printing
+                  💡 Tip: Click on any revenue row to select it for detailed
+                  printing
                 </p>
               )}
             </div>
-
             {revenueData.items.length > 0 ? (
               <table className={styles.dataTable}>
                 <thead>
@@ -1549,11 +1579,14 @@ const SalesReportsPage = () => {
                         : "Week Range"}
                     </th>
                   </tr>
-                </thead>                <tbody>
+                </thead>
+                <tbody>
                   {revenueData.items.map((item, index) => (
                     <tr
                       key={index}
-                      className={`${styles.clickableRow} ${selectedRevenueItem === item ? styles.selected : ''}`}
+                      className={`${styles.clickableRow} ${
+                        selectedRevenueItem === item ? styles.selected : ""
+                      }`}
                       onClick={() => setSelectedRevenueItem(item)}
                     >
                       <td>{item.date || "N/A"}</td>
@@ -1692,7 +1725,7 @@ const SalesReportsPage = () => {
                   borderRadius: "var(--border-radius)",
                   cursor: "pointer",
                   fontSize: "var(--font-size-sm)",
-                  color: "var(--text-600)"
+                  color: "var(--text-600)",
                 }}
               >
                 ✕ Clear Selection
