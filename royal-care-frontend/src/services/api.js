@@ -270,6 +270,33 @@ export const checkEmailExists = (email) =>
 export const checkUsernameAvailable = (username) =>
   api.get("/auth/check-username/", { params: { username } });
 
+// Check for client duplicates by phone or email
+export const checkClientDuplicates = (phoneNumber, email) =>
+  api.get("/api/scheduling/clients/check_duplicates/", {
+    params: {
+      phone_number: phoneNumber,
+      email: email,
+    },
+  });
+
+// Check if a client with phone number exists (legacy - kept for compatibility)
+export const checkClientPhoneExists = (phoneNumber) =>
+  api.get("/api/scheduling/clients/", {
+    params: { phone_number: phoneNumber },
+  });
+
+// Check if a client with email exists (legacy - kept for compatibility)
+export const checkClientEmailExists = (email) =>
+  api.get("/api/scheduling/clients/", { params: { email: email } });
+
+// Check if service name exists
+export const checkServiceNameExists = (name) =>
+  api.get("/registration/register/service/", { params: { name: name } });
+
+// Check if material name exists
+export const checkMaterialNameExists = (name) =>
+  api.get("/registration/register/material/", { params: { name: name } });
+
 // User profile update functions
 export const updateUserProfile = (data) => api.put("/auth/profile/", data);
 

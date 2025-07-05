@@ -24,7 +24,12 @@ import {
   usePrefetchSettingsData,
   useSettingsData,
 } from "../../hooks/useSettingsQueries";
-import { checkUsernameAvailable } from "../../services/api";
+import {
+  checkClientDuplicates,
+  checkMaterialNameExists,
+  checkServiceNameExists,
+  checkUsernameAvailable,
+} from "../../services/api";
 import "../../styles/LoadingConsistency.css";
 import "../../styles/Placeholders.css";
 import "../../styles/Settings.css";
@@ -374,6 +379,42 @@ const SettingsDataPage = () => {
   //   setFormData((prev) => ({ ...prev, materials: options }));
   // };
 
+  // Client duplicate checking function
+  const checkForClientDuplicates = async (clientData) => {
+    try {
+      // Use the new comprehensive duplicate check API
+      const response = await checkClientDuplicates(
+        clientData.phoneNumber,
+        clientData.email || ""
+      );
+
+      if (response.data && response.data.has_duplicates) {
+        const duplicates = response.data.duplicates;
+
+        // Find the most relevant duplicate message
+        const phoneError = duplicates.find((d) => d.type === "phone");
+        const emailError = duplicates.find((d) => d.type === "email");
+
+        if (phoneError) {
+          return {
+            isDuplicate: true,
+            message: phoneError.message,
+          };
+        } else if (emailError) {
+          return {
+            isDuplicate: true,
+            message: emailError.message,
+          };
+        }
+      }
+
+      return { isDuplicate: false };
+    } catch (error) {
+      console.warn("Client duplicate check failed:", error);
+      return { isDuplicate: false }; // Allow registration if check fails
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -414,6 +455,57 @@ const SettingsDataPage = () => {
     setSuccessPrompt("");
 
     try {
+      // Enhanced duplicate checking before submission
+      switch (activeTab) {
+        case "Clients": {
+          // Check client duplicates
+          const duplicateCheck = await checkForClientDuplicates(sanitized);
+          if (duplicateCheck.isDuplicate) {
+            setSuccessPrompt(duplicateCheck.message);
+            setTimeout(() => setSuccessPrompt(""), 3000);
+            setIsSubmitting(false);
+            return;
+          }
+          break;
+        }
+        case "Services": {
+          // Check service name duplicates
+          if (sanitized.name) {
+            try {
+              const response = await checkServiceNameExists(sanitized.name);
+              if (response.data && response.data.length > 0) {
+                setSuccessPrompt("A service with this name already exists.");
+                setTimeout(() => setSuccessPrompt(""), 3000);
+                setIsSubmitting(false);
+                return;
+              }
+            } catch (err) {
+              // Continue if check fails - let backend handle it
+              console.warn("Service name check failed:", err);
+            }
+          }
+          break;
+        }
+        case "Materials": {
+          // Check material name duplicates
+          if (sanitized.name) {
+            try {
+              const response = await checkMaterialNameExists(sanitized.name);
+              if (response.data && response.data.length > 0) {
+                setSuccessPrompt("A material with this name already exists.");
+                setTimeout(() => setSuccessPrompt(""), 3000);
+                setIsSubmitting(false);
+                return;
+              }
+            } catch (err) {
+              // Continue if check fails - let backend handle it
+              console.warn("Material name check failed:", err);
+            }
+          }
+          break;
+        }
+      }
+
       switch (activeTab) {
         case "Therapists":
           payload = {

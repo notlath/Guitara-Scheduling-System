@@ -11,11 +11,24 @@ class Client(models.Model):
 
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-    email = models.EmailField(blank=True, null=True)
-    phone_number = models.CharField(max_length=20)
+    email = models.EmailField(blank=True, null=True, unique=True)
+    phone_number = models.CharField(max_length=20, unique=True)
     address = models.TextField()
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Prevent duplicate clients with same name AND phone
+        unique_together = [["first_name", "last_name", "phone_number"]]
+
+    def clean(self):
+        super().clean()
+        # Additional validation for email uniqueness (excluding null/empty)
+        if (
+            self.email
+            and Client.objects.filter(email=self.email).exclude(pk=self.pk).exists()
+        ):
+            raise ValidationError({"email": "A client with this email already exists."})
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"

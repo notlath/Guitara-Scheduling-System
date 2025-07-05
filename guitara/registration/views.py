@@ -784,8 +784,40 @@ class RegisterClient(APIView):
 
             try:
                 # Store in local Django database (scheduling app)
-                from scheduling.models import Client  # Create client in local database
+                from scheduling.models import Client
+                from django.db import IntegrityError
 
+                # Check for existing client with same phone number
+                if Client.objects.filter(
+                    phone_number=data.get("phone_number")
+                ).exists():
+                    return Response(
+                        {"error": "A client with this phone number already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Check for existing client with same email (if provided)
+                email = data.get("email")
+                if email and Client.objects.filter(email=email).exists():
+                    return Response(
+                        {"error": "A client with this email already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Check for existing client with same name and phone combination
+                if Client.objects.filter(
+                    first_name=data.get("first_name"),
+                    last_name=data.get("last_name"),
+                    phone_number=data.get("phone_number"),
+                ).exists():
+                    return Response(
+                        {
+                            "error": "A client with this name and phone number already exists."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Create client in local database
                 client = Client.objects.create(
                     first_name=data["first_name"],
                     last_name=data["last_name"],
@@ -814,6 +846,23 @@ class RegisterClient(APIView):
                     status=status.HTTP_201_CREATED,
                 )
 
+            except IntegrityError as e:
+                error_str = str(e).lower()
+                if "phone_number" in error_str:
+                    return Response(
+                        {"error": "A client with this phone number already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                elif "email" in error_str:
+                    return Response(
+                        {"error": "A client with this email already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                else:
+                    return Response(
+                        {"error": "A client with this information already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
             except Exception as exc:
                 logger.error(
                     f"Exception during client registration: {exc}", exc_info=True
@@ -879,19 +928,77 @@ class RegisterMaterial(APIView):
         )
 
     def post(self, request):
-        serializer = MaterialSerializer(data=request.data)
+        serializer = RegistrationMaterialSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            inserted_data, error = insert_into_table(
-                "registration_material",
-                {"name": data["name"], "description": data["description"]},
-            )
-            if error:
-                return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
-            return Response(
-                {"message": "Material registered successfully"},
-                status=status.HTTP_201_CREATED,
-            )
+
+            try:
+                from registration.models import RegistrationMaterial
+                from django.db import IntegrityError
+
+                # Check for existing material with same name (case-insensitive)
+                if RegistrationMaterial.objects.filter(
+                    name__iexact=data["name"]
+                ).exists():
+                    return Response(
+                        {"error": "A material with this name already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Create material in local database
+                material = RegistrationMaterial.objects.create(
+                    name=data["name"],
+                    description=data.get("description", ""),
+                    category=data.get("category"),
+                    unit_of_measure=data.get("unit_of_measure"),
+                    service_id=data.get("service"),
+                    auto_deduct=data.get("auto_deduct", False),
+                    reusable=data.get("reusable", False),
+                )
+
+                return Response(
+                    {
+                        "message": "Material registered successfully",
+                        "id": material.id,
+                        "material": {
+                            "id": material.id,
+                            "name": material.name,
+                            "description": material.description,
+                            "category": material.category,
+                            "unit_of_measure": material.unit_of_measure,
+                        },
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+
+            except IntegrityError as e:
+                error_str = str(e).lower()
+                if "name" in error_str or "unique" in error_str:
+                    return Response(
+                        {"error": "A material with this name already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                else:
+                    return Response(
+                        {"error": "A material with this information already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            except Exception as e:
+                logger.error(f"Material registration error: {e}")
+
+                # Fallback to Supabase if local fails
+                inserted_data, error = insert_into_table(
+                    "registration_material",
+                    {"name": data["name"], "description": data["description"]},
+                )
+                if error:
+                    return Response(
+                        {"error": error}, status=status.HTTP_400_BAD_REQUEST
+                    )
+                return Response(
+                    {"message": "Material registered successfully"},
+                    status=status.HTTP_201_CREATED,
+                )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -1111,22 +1218,79 @@ class RegisterService(APIView):
         serializer = ServiceSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            inserted_data, error = insert_into_table(
-                "registration_service",
-                {
-                    "name": data["name"],
-                    "description": data["description"],
-                    "duration": data["duration"],
-                    "price": float(data["price"]),
-                    "materials": data.get("materials", []),
-                },
-            )
-            if error:
-                return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
-            return Response(
-                {"message": "Service registered successfully"},
-                status=status.HTTP_201_CREATED,
-            )
+
+            try:
+                from registration.models import Service
+                from django.db import IntegrityError
+
+                # Check for existing service with same name (case-insensitive)
+                if Service.objects.filter(name__iexact=data["name"]).exists():
+                    return Response(
+                        {"error": "A service with this name already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Create service in local database
+                service = Service.objects.create(
+                    name=data["name"],
+                    description=data["description"],
+                    duration=data["duration"],
+                    price=data["price"],
+                    oil=data.get("oil"),
+                    is_active=data.get("is_active", True),
+                )
+
+                return Response(
+                    {
+                        "message": "Service registered successfully",
+                        "id": service.id,
+                        "service": {
+                            "id": service.id,
+                            "name": service.name,
+                            "description": service.description,
+                            "duration": service.duration,
+                            "price": float(service.price),
+                            "oil": service.oil,
+                            "is_active": service.is_active,
+                        },
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+
+            except IntegrityError as e:
+                error_str = str(e).lower()
+                if "name" in error_str or "unique" in error_str:
+                    return Response(
+                        {"error": "A service with this name already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                else:
+                    return Response(
+                        {"error": "A service with this information already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            except Exception as e:
+                logger.error(f"Service registration error: {e}")
+
+                # Fallback to Supabase if local fails
+                inserted_data, error = insert_into_table(
+                    "registration_service",
+                    {
+                        "name": data["name"],
+                        "description": data["description"],
+                        "duration": data["duration"],
+                        "price": float(data["price"]),
+                        "materials": data.get("materials", []),
+                    },
+                )
+                if error:
+                    return Response(
+                        {"error": error}, status=status.HTTP_400_BAD_REQUEST
+                    )
+                return Response(
+                    {"message": "Service registered successfully"},
+                    status=status.HTTP_201_CREATED,
+                )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -1452,14 +1616,18 @@ class RegistrationMaterialWithStockList(APIView):
             # Only get materials that have valid inventory items linked
             materials = RegistrationMaterial.objects.filter(
                 service_id=service_id,
-                inventory_item__isnull=False  # Filter out orphaned materials
+                inventory_item__isnull=False,  # Filter out orphaned materials
             ).select_related("inventory_item")
 
-            logger.info(f"Found {materials.count()} materials with valid inventory items for service {service_id}")
+            logger.info(
+                f"Found {materials.count()} materials with valid inventory items for service {service_id}"
+            )
 
             if not materials.exists():
                 # Service exists but has no valid materials - return empty list with helpful message
-                logger.info(f"No materials with valid inventory items found for service {service_id}")
+                logger.info(
+                    f"No materials with valid inventory items found for service {service_id}"
+                )
                 return Response(
                     {
                         "results": [],
@@ -1472,12 +1640,14 @@ class RegistrationMaterialWithStockList(APIView):
             try:
                 serializer = RegistrationMaterialSerializer(materials, many=True)
                 serialized_data = serializer.data
-                
+
                 # Override category with inventory item data
                 for i, material in enumerate(materials):
                     if material.inventory_item:
-                        serialized_data[i]['category'] = material.inventory_item.category
-                
+                        serialized_data[i][
+                            "category"
+                        ] = material.inventory_item.category
+
                 logger.info(f"Successfully serialized {len(serialized_data)} materials")
 
                 return Response(
@@ -1500,10 +1670,18 @@ class RegistrationMaterialWithStockList(APIView):
                                 "id": mat.id,
                                 "name": mat.name or "Unnamed Material",
                                 "description": mat.description or "No description",
-                                "category": mat.inventory_item.category if mat.inventory_item else (mat.category or "Other"),
+                                "category": (
+                                    mat.inventory_item.category
+                                    if mat.inventory_item
+                                    else (mat.category or "Other")
+                                ),
                                 "unit_of_measure": mat.unit_of_measure or "Unit",
                                 "stock_quantity": mat.stock_quantity or 0,
-                                "current_stock": mat.inventory_item.current_stock if mat.inventory_item else (mat.stock_quantity or 0),
+                                "current_stock": (
+                                    mat.inventory_item.current_stock
+                                    if mat.inventory_item
+                                    else (mat.stock_quantity or 0)
+                                ),
                                 "auto_deduct": mat.auto_deduct,
                                 "reusable": mat.reusable,
                                 "service": mat.service_id,

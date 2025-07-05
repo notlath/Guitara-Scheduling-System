@@ -83,10 +83,70 @@ class ClientViewSet(viewsets.ModelViewSet):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    filterset_fields = ["first_name", "last_name", "phone_number"]
+    filterset_fields = ["first_name", "last_name", "phone_number", "email"]
     search_fields = ["first_name", "last_name", "phone_number", "email", "address"]
     ordering_fields = ["first_name", "last_name", "created_at"]
     ordering = ["last_name", "first_name"]
+
+    @action(detail=False, methods=["get"])
+    def check_duplicates(self, request):
+        """
+        Check for duplicate clients by phone number or email
+        """
+        phone_number = request.query_params.get("phone_number")
+        email = request.query_params.get("email")
+
+        if not phone_number and not email:
+            return Response(
+                {"error": "Either phone_number or email parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        duplicates = []
+
+        if phone_number:
+            phone_duplicates = Client.objects.filter(phone_number=phone_number)
+            if phone_duplicates.exists():
+                duplicates.extend(
+                    [
+                        {
+                            "type": "phone",
+                            "message": "A client with this phone number already exists",
+                            "client": {
+                                "id": client.id,
+                                "first_name": client.first_name,
+                                "last_name": client.last_name,
+                                "phone_number": client.phone_number,
+                                "email": client.email,
+                            },
+                        }
+                        for client in phone_duplicates
+                    ]
+                )
+
+        if email and email.strip():
+            email_duplicates = Client.objects.filter(email__iexact=email.strip())
+            if email_duplicates.exists():
+                duplicates.extend(
+                    [
+                        {
+                            "type": "email",
+                            "message": "A client with this email already exists",
+                            "client": {
+                                "id": client.id,
+                                "first_name": client.first_name,
+                                "last_name": client.last_name,
+                                "phone_number": client.phone_number,
+                                "email": client.email,
+                            },
+                        }
+                        for client in email_duplicates
+                    ]
+                )
+
+        return Response(
+            {"has_duplicates": len(duplicates) > 0, "duplicates": duplicates}
+        )
 
 
 class AvailabilityFilter(FilterSet):
