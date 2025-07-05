@@ -730,7 +730,8 @@ const AttendancePage = () => {
                   {attendanceSummary?.total_hours
                     ? `${attendanceSummary.total_hours}h`
                     : `${attendanceData.reduce(
-                        (total, record) => total + record.hoursWorked,
+                        (total, record) =>
+                          total + (parseFloat(record.hoursWorked) || 0),
                         0
                       )}h`}
                 </span>
@@ -746,7 +747,8 @@ const AttendancePage = () => {
                     ? `${
                         Math.round(
                           (attendanceData.reduce(
-                            (total, record) => total + record.hoursWorked,
+                            (total, record) =>
+                              total + (parseFloat(record.hoursWorked) || 0),
                             0
                           ) /
                             stats.present) *
