@@ -381,7 +381,8 @@ export const invalidateAttendanceCaches = async (queryClient, options = {}) => {
       // ✅ SELECTIVE INVALIDATION: Only invalidate non-critical queries
       // Don't invalidate today's status query to prevent race conditions
 
-      // 1. Attendance records queries (for AttendancePage lists)
+      // 1. ✅ FIXED: Attendance records queries (for AttendancePage DataTable updates)
+      // Include queries with date strings since useAttendanceRecords uses [...queryKeys.attendance.list(), date, staffId]
       invalidationPromises.push(
         queryClient.invalidateQueries({
           predicate: (query) => {
@@ -389,10 +390,8 @@ export const invalidateAttendanceCaches = async (queryClient, options = {}) => {
             return (
               Array.isArray(key) &&
               key.includes("attendance") &&
-              key.includes("list") &&
-              !key.some(
-                (k) => typeof k === "string" && k.match(/\d{4}-\d{2}-\d{2}/)
-              )
+              key.includes("list")
+              // ✅ REMOVED date filter - we need to invalidate queries with dates for DataTable updates
             );
           },
         })
@@ -406,7 +405,27 @@ export const invalidateAttendanceCaches = async (queryClient, options = {}) => {
         })
       );
 
-      // 3. Dashboard queries (only if operator)
+      // 3. ✅ CRITICAL: Also invalidate attendance records for specific dates
+      // This ensures DataTable gets updated when check-in/check-out happens
+      if (date) {
+        invalidationPromises.push(
+          queryClient.invalidateQueries({
+            queryKey: [...queryKeys.attendance.list(), date],
+            exact: false,
+          })
+        );
+      }
+
+      // 4. ✅ CRITICAL: Invalidate today's attendance records specifically
+      const today = new Date().toISOString().split("T")[0];
+      invalidationPromises.push(
+        queryClient.invalidateQueries({
+          queryKey: [...queryKeys.attendance.list(), today],
+          exact: false,
+        })
+      );
+
+      // 5. Dashboard queries (only if operator)
       if (userRole === "operator") {
         invalidationPromises.push(
           queryClient.invalidateQueries({

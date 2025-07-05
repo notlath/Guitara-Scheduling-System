@@ -601,6 +601,11 @@ const AttendancePage = () => {
                   {isLateCheckIn() ? "Check In (Late)" : "Check In"}
                 </LoadingButton>
               </div>
+            ) : checkOutTime || todayStatus?.check_out_time ? (
+              <div className="attendance-completed">
+                <MdCheckCircle />
+                <span>You have already checked out for today</span>
+              </div>
             ) : hasCheckedInToday() && canCheckOutToday() ? (
               <LoadingButton
                 onClick={handleCheckOut}
@@ -614,11 +619,6 @@ const AttendancePage = () => {
               <div className="attendance-completed">
                 <MdCheckCircle />
                 <span>You have already checked in for today</span>
-              </div>
-            ) : checkOutTime || todayStatus?.check_out_time ? (
-              <div className="attendance-completed">
-                <MdCheckCircle />
-                <span>You have already checked out for today</span>
               </div>
             ) : (
               <div className="attendance-completed">

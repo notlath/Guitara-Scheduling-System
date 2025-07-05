@@ -21,6 +21,42 @@ import { queryKeys } from "../lib/queryClient";
 import { invalidateAttendanceCaches } from "../utils/cacheInvalidation";
 
 /**
+ * Helper function to calculate hours worked between check-in and check-out times
+ */
+const calculateHoursWorked = (checkInTime, checkOutTime) => {
+  try {
+    const today = new Date();
+    const [checkInHours, checkInMinutes] = checkInTime.split(":").map(Number);
+    const [checkOutHours, checkOutMinutes] = checkOutTime
+      .split(":")
+      .map(Number);
+
+    const checkInDate = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      checkInHours,
+      checkInMinutes
+    );
+    const checkOutDate = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      checkOutHours,
+      checkOutMinutes
+    );
+
+    const diffMs = checkOutDate - checkInDate;
+    const hours = diffMs / (1000 * 60 * 60);
+
+    return Math.max(0, Math.round(hours * 10) / 10); // Round to 1 decimal place
+  } catch (error) {
+    console.error("Error calculating hours worked:", error);
+    return 0;
+  }
+};
+
+/**
  * Hook for retrieving today's attendance status with automatic refetching
  *
  * Use this hook in components that need to display the current check-in status
@@ -63,8 +99,17 @@ export const useCheckIn = () => {
 
       await queryClient.cancelQueries({ queryKey: todayQueryKey });
 
+      // ✅ CRITICAL: Also cancel attendance records queries for DataTable updates
+      await queryClient.cancelQueries({
+        queryKey: [...queryKeys.attendance.list(), today],
+      });
+
       // Snapshot the previous value for rollback
       const previousTodayStatus = queryClient.getQueryData(todayQueryKey);
+      const previousAttendanceRecords = queryClient.getQueryData([
+        ...queryKeys.attendance.list(),
+        today,
+      ]);
 
       // Optimistically update the cache with check-in data
       queryClient.setQueryData(todayQueryKey, (old) => ({
@@ -74,7 +119,49 @@ export const useCheckIn = () => {
         status: "present",
       }));
 
-      return { previousTodayStatus, todayQueryKey };
+      // ✅ CRITICAL: Optimistically update attendance records for DataTable
+      queryClient.setQueryData(
+        [...queryKeys.attendance.list(), today],
+        (oldRecords) => {
+          if (!Array.isArray(oldRecords)) return oldRecords;
+
+          const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+          const checkInTime = new Date().toTimeString().slice(0, 8);
+
+          // Check if user already has a record for today
+          const existingRecordIndex = oldRecords.findIndex(
+            (record) => record.staff_member?.id === currentUser.id
+          );
+
+          if (existingRecordIndex >= 0) {
+            // Update existing record
+            const updatedRecords = [...oldRecords];
+            updatedRecords[existingRecordIndex] = {
+              ...updatedRecords[existingRecordIndex],
+              check_in_time: checkInTime,
+              status: "present",
+              is_checked_in: true,
+            };
+            return updatedRecords;
+          } else {
+            // Add new record
+            const newRecord = {
+              id: `temp-${Date.now()}`,
+              staff_member: currentUser,
+              date: today,
+              check_in_time: checkInTime,
+              check_out_time: null,
+              status: "present",
+              is_checked_in: true,
+              hours_worked: 0,
+              notes: "",
+            };
+            return [...oldRecords, newRecord];
+          }
+        }
+      );
+
+      return { previousTodayStatus, previousAttendanceRecords, todayQueryKey };
     },
     onError: (err, variables, context) => {
       // Roll back optimistic update on error
@@ -82,6 +169,14 @@ export const useCheckIn = () => {
         queryClient.setQueryData(
           context.todayQueryKey,
           context.previousTodayStatus
+        );
+      }
+      // ✅ CRITICAL: Roll back attendance records optimistic update
+      if (context?.previousAttendanceRecords) {
+        const today = new Date().toISOString().split("T")[0];
+        queryClient.setQueryData(
+          [...queryKeys.attendance.list(), today],
+          context.previousAttendanceRecords
         );
       }
       console.error("❌ Check-in failed:", err);
@@ -92,16 +187,83 @@ export const useCheckIn = () => {
       }, 3000);
     },
     onSuccess: (serverData, variables, context) => {
-      // Update cache with actual server data instead of invalidating immediately
+      // ✅ CRITICAL: Update cache with actual server data FIRST
       if (serverData && context?.todayQueryKey) {
         queryClient.setQueryData(context.todayQueryKey, serverData);
         console.log(
           "✅ Check-in successful, cache updated with server data:",
           serverData
         );
+
+        // ✅ DEBUG: Log the specific check-in time from server
+        console.log("✅ Check-in time from server:", serverData.check_in_time);
+        console.log("✅ Is checked in from server:", serverData.is_checked_in);
       }
 
-      // Delay invalidation to prevent race conditions
+      // ✅ CRITICAL: Also update attendance records cache with server data
+      const today = new Date().toISOString().split("T")[0];
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+      // Update attendance records with the actual server response
+      if (serverData && currentUser.id) {
+        queryClient.setQueryData(
+          [...queryKeys.attendance.list(), today],
+          (oldRecords) => {
+            if (!Array.isArray(oldRecords)) return oldRecords;
+
+            // Check if user already has a record
+            const existingRecordIndex = oldRecords.findIndex(
+              (record) => record.staff_member?.id === currentUser.id
+            );
+
+            if (existingRecordIndex >= 0) {
+              // Update existing record with server data
+              const updatedRecords = [...oldRecords];
+              updatedRecords[existingRecordIndex] = {
+                ...updatedRecords[existingRecordIndex],
+                check_in_time: serverData.check_in_time,
+                is_checked_in: serverData.is_checked_in || true,
+                status: serverData.status || "present",
+              };
+              return updatedRecords;
+            } else {
+              // Add new record with server data
+              const newRecord = {
+                id: serverData.id || `temp-${Date.now()}`,
+                staff_member: currentUser,
+                date: today,
+                check_in_time: serverData.check_in_time,
+                check_out_time: null,
+                status: serverData.status || "present",
+                is_checked_in: serverData.is_checked_in || true,
+                hours_worked: 0,
+                notes: serverData.notes || "",
+              };
+              return [...oldRecords, newRecord];
+            }
+          }
+        );
+      }
+
+      // Force immediate invalidation of attendance records for DataTable updates
+      queryClient.invalidateQueries({
+        queryKey: [...queryKeys.attendance.list(), today],
+        refetchType: "active",
+      });
+
+      // Also invalidate any attendance records queries without specific filters
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey;
+          return (
+            Array.isArray(key) &&
+            key.includes("attendance") &&
+            key.includes("list")
+          );
+        },
+      });
+
+      // Delay broader invalidation to prevent race conditions
       setTimeout(() => {
         invalidateAttendanceCaches(queryClient, { selective: true });
       }, 1000);
@@ -128,8 +290,17 @@ export const useCheckOut = () => {
 
       await queryClient.cancelQueries({ queryKey: todayQueryKey });
 
+      // ✅ CRITICAL: Also cancel attendance records queries for DataTable updates
+      await queryClient.cancelQueries({
+        queryKey: [...queryKeys.attendance.list(), today],
+      });
+
       // Snapshot the previous value for rollback
       const previousTodayStatus = queryClient.getQueryData(todayQueryKey);
+      const previousAttendanceRecords = queryClient.getQueryData([
+        ...queryKeys.attendance.list(),
+        today,
+      ]);
 
       // Optimistically update the cache with check-out data
       queryClient.setQueryData(todayQueryKey, (old) => ({
@@ -139,7 +310,35 @@ export const useCheckOut = () => {
         status: "present",
       }));
 
-      return { previousTodayStatus, todayQueryKey };
+      // ✅ CRITICAL: Optimistically update attendance records for DataTable
+      queryClient.setQueryData(
+        [...queryKeys.attendance.list(), today],
+        (oldRecords) => {
+          if (!Array.isArray(oldRecords)) return oldRecords;
+
+          const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+          const checkOutTime = new Date().toTimeString().slice(0, 8);
+
+          // Find user's record and update check-out time
+          return oldRecords.map((record) => {
+            if (record.staff_member?.id === currentUser.id) {
+              return {
+                ...record,
+                check_out_time: checkOutTime,
+                is_checked_in: false,
+                status: "present",
+                // Calculate hours worked if check-in time exists
+                hours_worked: record.check_in_time
+                  ? calculateHoursWorked(record.check_in_time, checkOutTime)
+                  : 0,
+              };
+            }
+            return record;
+          });
+        }
+      );
+
+      return { previousTodayStatus, previousAttendanceRecords, todayQueryKey };
     },
     onError: (err, variables, context) => {
       // Roll back optimistic update on error
@@ -147,6 +346,14 @@ export const useCheckOut = () => {
         queryClient.setQueryData(
           context.todayQueryKey,
           context.previousTodayStatus
+        );
+      }
+      // ✅ CRITICAL: Roll back attendance records optimistic update
+      if (context?.previousAttendanceRecords) {
+        const today = new Date().toISOString().split("T")[0];
+        queryClient.setQueryData(
+          [...queryKeys.attendance.list(), today],
+          context.previousAttendanceRecords
         );
       }
       console.error("❌ Check-out failed:", err);
@@ -157,16 +364,68 @@ export const useCheckOut = () => {
       }, 3000);
     },
     onSuccess: (serverData, variables, context) => {
-      // Update cache with actual server data instead of invalidating immediately
+      // ✅ CRITICAL: Update cache with actual server data FIRST
       if (serverData && context?.todayQueryKey) {
         queryClient.setQueryData(context.todayQueryKey, serverData);
         console.log(
           "✅ Check-out successful, cache updated with server data:",
           serverData
         );
+
+        // ✅ DEBUG: Log the specific check-out time from server
+        console.log(
+          "✅ Check-out time from server:",
+          serverData.check_out_time
+        );
+        console.log("✅ Is checked in from server:", serverData.is_checked_in);
       }
 
-      // Delay invalidation to prevent race conditions
+      // ✅ CRITICAL: Also update attendance records cache with server data
+      const today = new Date().toISOString().split("T")[0];
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+      // Update attendance records with the actual server response
+      if (serverData && currentUser.id) {
+        queryClient.setQueryData(
+          [...queryKeys.attendance.list(), today],
+          (oldRecords) => {
+            if (!Array.isArray(oldRecords)) return oldRecords;
+
+            return oldRecords.map((record) => {
+              if (record.staff_member?.id === currentUser.id) {
+                return {
+                  ...record,
+                  check_out_time: serverData.check_out_time,
+                  is_checked_in: serverData.is_checked_in || false,
+                  status: serverData.status || "present",
+                  hours_worked: serverData.hours_worked || record.hours_worked,
+                };
+              }
+              return record;
+            });
+          }
+        );
+      }
+
+      // Force immediate invalidation of attendance records for DataTable updates
+      queryClient.invalidateQueries({
+        queryKey: [...queryKeys.attendance.list(), today],
+        refetchType: "active",
+      });
+
+      // Also invalidate any attendance records queries without specific filters
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey;
+          return (
+            Array.isArray(key) &&
+            key.includes("attendance") &&
+            key.includes("list")
+          );
+        },
+      });
+
+      // Delay broader invalidation to prevent race conditions
       setTimeout(() => {
         invalidateAttendanceCaches(queryClient, { selective: true });
       }, 1000);
