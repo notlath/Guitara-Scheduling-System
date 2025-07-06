@@ -6,9 +6,8 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('inventory', '0002_add_performance_indexes'),
-        ('inventory', '0003_usagelog_notes'),
+        ("inventory", "0003_usagelog_notes"),
+        ("inventory", "0003_usagelog_notes"),
     ]
 
-    operations = [
-    ]
+    operations = []
