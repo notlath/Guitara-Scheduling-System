@@ -84,7 +84,7 @@ export function FormField({
         ? "global-form-field-select"
         : as === "textarea"
         ? "global-form-field-textarea"
-        : "se"),
+        : "global-form-field-input"),
     error ? "global-form-field-error-border" : "",
   ]
     .filter(Boolean)

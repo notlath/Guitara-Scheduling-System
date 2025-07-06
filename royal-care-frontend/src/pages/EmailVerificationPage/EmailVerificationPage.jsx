@@ -42,9 +42,22 @@ function EmailVerificationPage() {
       console.log("[EMAIL VERIFICATION] Response:", response.data);
     } catch (err) {
       console.error("[EMAIL VERIFICATION] Failed to send code:", err);
-      setError(
-        err.response?.data?.error || "Failed to resend code. Please try again."
-      );
+      console.error("[EMAIL VERIFICATION] Error details:", {
+        status: err.response?.status,
+        data: err.response?.data,
+        message: err.message,
+      });
+
+      if (err.message === "Network Error" || err.code === "ERR_NETWORK") {
+        setError(
+          "Cannot connect to server. Make sure Django server is running on port 8000."
+        );
+      } else {
+        setError(
+          err.response?.data?.error ||
+            "Failed to resend code. Please try again."
+        );
+      }
     } finally {
       setResendLoading(false);
     }
@@ -52,6 +65,14 @@ function EmailVerificationPage() {
 
   useEffect(() => {
     document.title = "Verify Email - Guitara Scheduling";
+
+    // Debug: Log all available email sources
+    console.log("[EMAIL VERIFICATION] Debug info:", {
+      locationStateEmail: location.state?.email,
+      reduxUserEmail: user?.email,
+      finalEmail: email,
+      user: user,
+    });
 
     // If no email is available from either source, redirect to register
     if (!email) {
@@ -71,7 +92,14 @@ function EmailVerificationPage() {
       setAutoSent(true);
       handleResendCode();
     }
-  }, [email, navigate, handleResendCode, autoSent]);
+  }, [
+    email,
+    navigate,
+    handleResendCode,
+    autoSent,
+    location.state?.email,
+    user,
+  ]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -186,15 +214,16 @@ function EmailVerificationPage() {
         <img src={loginSidepic} alt="Background" />
       </div>
       <div className={styles.formSide}>
+        {successMessage}
         <FormBlueprint
           header={header}
           errorMessage={errorMessage}
-          successMessage={successMessage}
           onSubmit={handleSubmit}
-          formFields={formFields}
           button={button}
-          additionalContent={additionalContent}
-        />
+        >
+          {formFields}
+          {additionalContent}
+        </FormBlueprint>
       </div>
     </div>
   );
