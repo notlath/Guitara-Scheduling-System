@@ -47,6 +47,9 @@ const ContactPage = React.lazy(() => import("./pages/ContactPage/ContactPage"));
 const EnterNewPasswordPage = React.lazy(() =>
   import("./pages/EnterNewPasswordPage/EnterNewPasswordPage")
 );
+const EmailVerificationPage = React.lazy(() =>
+  import("./pages/EmailVerificationPage/EmailVerificationPage")
+);
 const FAQsPage = React.lazy(() => import("./pages/FAQsPage/FAQsPage"));
 const ForgotPasswordConfirmationPage = React.lazy(() =>
   import(
@@ -415,6 +418,14 @@ const App = () => {
             element={
               <Suspense fallback={<LoadingOverlay />}>
                 <EnterNewPasswordPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/verify-email"
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <EmailVerificationPage />
               </Suspense>
             }
           />

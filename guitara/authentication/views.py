@@ -11,7 +11,7 @@ from .serializers import LoginSerializer
 from core.models import CustomUser
 from core.serializers import UserSerializer  # Ensure this is imported
 from knox.views import LoginView as KnoxLoginView
-from .models import TwoFactorCode, PasswordResetCode
+from .models import TwoFactorCode, PasswordResetCode, EmailVerificationCode
 from datetime import timedelta
 from registration.views import insert_into_table  # Use direct import for sibling app
 import logging
@@ -65,14 +65,25 @@ class LoginAPI(generics.GenericAPIView):
             )
 
             if not user.is_active:
-                # Account is disabled - use standardized message
-                return Response(
-                    {
-                        "error": "Your account has been disabled. Please see your system administrator.",
-                        "error_code": "ACCOUNT_DISABLED",
-                    },
-                    status=403,
-                )
+                # Check if account is inactive due to email verification
+                if not user.email_verified:
+                    return Response(
+                        {
+                            "error": "Please verify your email address to activate your account.",
+                            "error_code": "EMAIL_NOT_VERIFIED",
+                            "email": user.email,
+                        },
+                        status=403,
+                    )
+                else:
+                    # Account disabled by admin
+                    return Response(
+                        {
+                            "error": "Your account has been disabled. Please see your system administrator.",
+                            "error_code": "ACCOUNT_DISABLED",
+                        },
+                        status=403,
+                    )
 
             # Generate and send 2FA code using TwoFactorCode model
             if user.two_factor_enabled:
@@ -439,3 +450,154 @@ def change_password(request):
         return Response({"message": "Password changed successfully."})
     except Exception as e:
         return Response({"error": f"Failed to change password: {str(e)}"}, status=500)
+
+
+class VerifyEmailAPI(generics.GenericAPIView):
+    """
+    API endpoint to verify email address using verification code
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email")
+        code = request.data.get("code")
+
+        if not email or not code:
+            return Response(
+                {"error": "Email and verification code are required"}, status=400
+            )
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Invalid email address"}, status=400)
+
+        # Check if email is already verified
+        if user.email_verified and user.is_active:
+            return Response(
+                {
+                    "message": "Email already verified",
+                    "user": UserSerializer(user).data,
+                    "token": AuthToken.objects.create(user)[1],
+                }
+            )
+
+        # Get the latest unused, unexpired code
+        verification_code = (
+            EmailVerificationCode.objects.filter(
+                user=user, code=code, is_used=False, expires_at__gt=timezone.now()
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if not verification_code:
+            return Response(
+                {"error": "Invalid or expired verification code"}, status=400
+            )
+
+        # Mark code as used and activate the account
+        verification_code.is_used = True
+        verification_code.save()
+
+        user.email_verified = True
+        user.is_active = True
+        user.save()
+
+        # Create authentication token for immediate login
+        token = AuthToken.objects.create(user)[1]
+
+        logger.info(
+            f"[EMAIL VERIFICATION] User {user.email} successfully verified email"
+        )
+
+        return Response(
+            {
+                "message": "Email verified successfully! You can now access the system.",
+                "user": UserSerializer(user).data,
+                "token": token,
+            }
+        )
+
+
+class ResendVerificationCodeAPI(generics.GenericAPIView):
+    """
+    API endpoint to resend email verification code
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email")
+
+        if not email:
+            return Response({"error": "Email is required"}, status=400)
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Invalid email address"}, status=400)
+
+        # Check if email is already verified
+        if user.email_verified and user.is_active:
+            return Response({"error": "Email is already verified"}, status=400)
+
+        # Check rate limiting (prevent spam)
+        recent_code = EmailVerificationCode.objects.filter(
+            user=user, created_at__gt=timezone.now() - timedelta(minutes=1)
+        ).first()
+
+        if recent_code:
+            return Response(
+                {"error": "Please wait at least 1 minute before requesting a new code"},
+                status=429,
+            )
+
+        # Generate new verification code
+        code = str(random.randint(100000, 999999))
+        expires_at = timezone.now() + timedelta(minutes=15)
+
+        # Invalidate old codes
+        EmailVerificationCode.objects.filter(user=user, is_used=False).update(
+            is_used=True
+        )
+
+        # Create new code
+        EmailVerificationCode.objects.create(
+            user=user,
+            code=code,
+            created_at=timezone.now(),
+            expires_at=expires_at,
+            is_used=False,
+        )
+
+        # Send email
+        try:
+            send_mail(
+                "New Verification Code - Guitara Scheduling",
+                f"""
+Hello {user.get_full_name() or user.username},
+
+Here is your new email verification code:
+
+Verification Code: {code}
+
+This code will expire in 15 minutes.
+
+Best regards,
+Guitara Scheduling Team
+                """,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+
+            return Response({"message": "New verification code sent successfully"})
+
+        except Exception as email_error:
+            print(f"[EMAIL ERROR] Failed to resend verification email: {email_error}")
+            return Response(
+                {"error": "Failed to send verification email. Please try again later."},
+                status=500,
+            )

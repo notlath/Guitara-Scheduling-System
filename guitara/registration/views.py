@@ -1,4 +1,5 @@
 import logging
+import math
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -8,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
+from django.conf import settings
 from .supabase_client import get_supabase_client, safe_supabase_operation, init_supabase
 from .serializers import (
     TherapistSerializer,
@@ -1301,22 +1303,94 @@ class CompleteRegistrationAPIView(APIView):
 
     def post(self, request):
         from django.contrib.auth.hashers import make_password
+        from django.core.mail import send_mail
+        from django.utils import timezone
+        from datetime import timedelta
+        import random
+        from authentication.models import EmailVerificationCode
 
         serializer = CompleteRegistrationSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         email = serializer.validated_data["email"]
         phone_number = serializer.validated_data["phone_number"]
         password = serializer.validated_data["password"]
+
         try:
             user = CustomUser.objects.get(email=email)
             user.phone_number = phone_number
             user.set_password(password)
+
+            # IMPORTANT: Set account as inactive until email is verified
+            user.is_active = False
+            user.email_verified = False
             user.save()
+
+            # Generate and send email verification code
+            code = str(random.randint(100000, 999999))
+            expires_at = timezone.now() + timedelta(minutes=15)
+
+            # Clean up any existing unused codes for this user
+            EmailVerificationCode.objects.filter(user=user, is_used=False).delete()
+
+            # Create new verification code
+            EmailVerificationCode.objects.create(
+                user=user,
+                code=code,
+                created_at=timezone.now(),
+                expires_at=expires_at,
+                is_used=False,
+            )
+
+            # Send verification email
+            try:
+                send_mail(
+                    "Verify Your Email Address - Guitara Scheduling",
+                    f"""
+Hello {user.get_full_name() or user.username},
+
+Welcome to Guitara Scheduling System! To complete your registration, please verify your email address using the code below:
+
+Verification Code: {code}
+
+This code will expire in 15 minutes.
+
+If you didn't create this account, please ignore this email.
+
+Best regards,
+Guitara Scheduling Team
+                    """,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                    fail_silently=False,
+                )
+
+                print(
+                    f"[EMAIL VERIFICATION] Sent verification code {code} to {user.email}"
+                )
+
+            except Exception as email_error:
+                print(f"[EMAIL ERROR] Failed to send verification email: {email_error}")
+                # Still return success but with different message
+                return Response(
+                    {
+                        "message": "Registration completed but email verification failed. Please contact support.",
+                        "requires_verification": True,
+                        "email": email,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
             return Response(
-                {"message": "Registration completed successfully."},
+                {
+                    "message": "Registration completed successfully. Please check your email for verification code.",
+                    "requires_verification": True,
+                    "email": email,
+                },
                 status=status.HTTP_200_OK,
             )
+
         except CustomUser.DoesNotExist:
             return Response(
                 {"error": "No user found with this email."},

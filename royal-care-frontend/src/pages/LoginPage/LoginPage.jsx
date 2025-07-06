@@ -184,6 +184,14 @@ function LoginPage() {
                 "Your account has been temporarily locked due to multiple failed login attempts. Please wait 5 minutes before trying again."
             );
             errorHandled = true;
+          } else if (errorCode === "EMAIL_NOT_VERIFIED") {
+            // Handle email not verified error
+            navigate("/verify-email", {
+              state: { email: errorData.email },
+              replace: true,
+            });
+            setIsLoading(false);
+            return;
           } else if (errorCode === "ACCOUNT_DISABLED") {
             // Clear any stored authentication data to prevent infinite loops
             localStorage.removeItem("knoxToken");
@@ -229,6 +237,14 @@ function LoginPage() {
               backendError ||
                 "Your account has been temporarily locked due to multiple failed login attempts. Please wait 5 minutes before trying again."
             );
+            setIsLoading(false);
+            return;
+          } else if (errorCode === "EMAIL_NOT_VERIFIED") {
+            // Handle email not verified error
+            navigate("/verify-email", {
+              state: { email: response.data.email },
+              replace: true,
+            });
             setIsLoading(false);
             return;
           } else if (errorCode === "ACCOUNT_DISABLED") {

@@ -7,6 +7,8 @@ from .views import (
     RequestPasswordResetAPI,
     VerifyPasswordResetCodeAPI,
     SetNewPasswordAPI,
+    VerifyEmailAPI,
+    ResendVerificationCodeAPI,
     user_profile,
     change_password,
 )
@@ -27,6 +29,12 @@ urlpatterns = [
         name="verify-password-reset-code",
     ),
     path("set-new-password/", SetNewPasswordAPI.as_view(), name="set-new-password"),
+    path("verify-email/", VerifyEmailAPI.as_view(), name="verify-email"),
+    path(
+        "resend-verification/",
+        ResendVerificationCodeAPI.as_view(),
+        name="resend-verification",
+    ),
     path("profile/", user_profile, name="user-profile"),
     path("change-password/", change_password, name="change-password"),
 ]

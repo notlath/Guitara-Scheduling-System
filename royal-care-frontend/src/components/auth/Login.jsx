@@ -212,7 +212,19 @@ const Login = () => {
       } else if (err.response?.status === 401) {
         setErrors({ form: "Invalid username or password" });
       } else if (err.response?.status === 403) {
-        setErrors({ form: "Account is disabled or access denied" });
+        const errorData = err.response.data;
+
+        // Handle email not verified error
+        if (errorData?.error_code === "EMAIL_NOT_VERIFIED") {
+          navigate("/verify-email", {
+            state: { email: errorData.email },
+            replace: true,
+          });
+          return;
+        }
+
+        // Handle other 403 errors (account disabled, etc.)
+        setErrors({ form: errorData?.error || "Account access denied" });
       } else if (err.response?.status === 429) {
         setErrors({ form: "Too many login attempts. Please try again later" });
       } else {

@@ -8,13 +8,15 @@ const ProtectedRoute = ({ children }) => {
   // Show loading while authentication state is being determined
   if (isAuthLoading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        fontSize: '18px'
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          fontSize: "18px",
+        }}
+      >
         Loading...
       </div>
     );
@@ -32,6 +34,18 @@ const ProtectedRoute = ({ children }) => {
     localStorage.removeItem("user");
     localStorage.removeItem("knoxToken");
     return <Navigate to="/" replace />;
+  }
+
+  // Check if user's email is verified
+  if (!user.email_verified) {
+    // Redirect unverified users to email verification page
+    return (
+      <Navigate
+        to="/verify-email"
+        state={{ email: user.email, from: location }}
+        replace
+      />
+    );
   }
 
   return children;

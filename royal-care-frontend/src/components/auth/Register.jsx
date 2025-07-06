@@ -271,7 +271,18 @@ const Register = () => {
     try {
       const response = await completeRegistration(submissionData);
       console.log("Registration successful:", response.data);
-      // Save user and token to localStorage if provided by backend
+
+      // Check if email verification is required
+      if (response.data.requires_verification) {
+        // Navigate to email verification page
+        navigate("/verify-email", {
+          state: { email: response.data.email },
+          replace: true,
+        });
+        return;
+      }
+
+      // Handle immediate login if no verification required (fallback)
       if (response.data && response.data.token && response.data.user) {
         localStorage.setItem("knoxToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
@@ -286,6 +297,7 @@ const Register = () => {
         }
         return;
       }
+
       // If no user/token returned, perform automatic login
       try {
         const loginResponse = await api.post("/auth/login/", {

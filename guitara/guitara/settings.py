@@ -326,15 +326,38 @@ CSP_IMG_SRC = ("'self'", "data:")
 CSP_CONNECT_SRC = ("'self'",)
 CSP_FONT_SRC = ("'self'", "data:")
 
-# Email configuration for Gmail SMTP
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="your_gmail_address@gmail.com")
-EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="your_app_password")
+# Email configuration
+if DEBUG:
+    # For development, we can choose to use console or real email
+    # Change this to test with real emails during development
+    USE_REAL_EMAIL_IN_DEV = (
+        os.environ.get("USE_REAL_EMAIL_IN_DEV", "False").lower() == "true"
+    )
+
+    if USE_REAL_EMAIL_IN_DEV:
+        # Use real email in development for testing
+        EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+        EMAIL_HOST = "smtp.gmail.com"
+        EMAIL_PORT = 587
+        EMAIL_USE_TLS = True
+        EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="your_gmail_address@gmail.com")
+        EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="your_app_password")
+        print(f"[EMAIL] Using real email in development: {EMAIL_HOST_USER}")
+    else:
+        # Use console backend to see emails in terminal
+        EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+        print("[EMAIL] Using console backend - emails will appear in Django terminal")
+else:
+    # For production, use Gmail SMTP
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = "smtp.gmail.com"
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="your_gmail_address@gmail.com")
+    EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="your_app_password")
+
 DEFAULT_FROM_EMAIL = env(
-    "DEFAULT_FROM_EMAIL", default="Your Name <your_gmail_address@gmail.com>"
+    "DEFAULT_FROM_EMAIL", default="Guitara Scheduling <noreply@guitara.com>"
 )
 
 # Enhanced logging for debugging authentication issues

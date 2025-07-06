@@ -5,8 +5,13 @@ from django.utils import timezone
 
 # Create your models here.
 
+
 class TwoFactorCode(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='two_factor_codes')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="two_factor_codes",
+    )
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
@@ -18,8 +23,13 @@ class TwoFactorCode(models.Model):
     def __str__(self):
         return f"2FA code for {self.user.email} ({self.code})"
 
+
 class PasswordResetCode(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='password_reset_codes')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="password_reset_codes",
+    )
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
@@ -30,3 +40,24 @@ class PasswordResetCode(models.Model):
 
     def __str__(self):
         return f"Password reset code for {self.user.email} ({self.code})"
+
+
+class EmailVerificationCode(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="email_verification_codes",
+    )
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    def __str__(self):
+        return f"Email verification code for {self.user.email} ({self.code})"
