@@ -50,9 +50,8 @@ export function FormField({
   // Run validation when value, touched, or showError changes
   useEffect(() => {
     let err = "";
-    // Only show errors when explicitly requested via showError prop
-    // Don't show errors just because field was touched (blurred)
-    if (showError) {
+    // Show errors when explicitly requested via showError prop OR when field was touched (blurred)
+    if (showError || touched) {
       if (validate) {
         err = validate(value); // Use custom validator if provided
       } else if (
@@ -96,6 +95,12 @@ export function FormField({
     if (inputProps.onBlur) inputProps.onBlur(e);
   };
 
+  // Create combined inputProps that properly handles onBlur
+  const combinedInputProps = {
+    ...inputProps,
+    onBlur: handleBlur, // This ensures our handleBlur always runs and calls custom onBlur if provided
+  };
+
   // Main render logic
   return (
     <div className="global-form-field-group">
@@ -122,8 +127,7 @@ export function FormField({
               value={value}
               onChange={onChange}
               required={required}
-              onBlur={handleBlur}
-              {...inputProps}
+              {...combinedInputProps}
               {...filteredRest}
             />
             {/* Eye icon for toggling password visibility */}
@@ -145,7 +149,7 @@ export function FormField({
             value={value}
             onChange={onChange}
             required={required}
-            onBlur={handleBlur}
+            {...combinedInputProps}
             {...filteredRest}
           >
             {children}
@@ -159,8 +163,7 @@ export function FormField({
             value={value}
             onChange={onChange}
             required={required}
-            onBlur={handleBlur}
-            {...inputProps}
+            {...combinedInputProps}
             {...filteredRest}
           />
         ) : (
@@ -173,8 +176,7 @@ export function FormField({
             value={value}
             onChange={onChange}
             required={required}
-            onBlur={handleBlur}
-            {...inputProps}
+            {...combinedInputProps}
             {...filteredRest}
           />
         )}

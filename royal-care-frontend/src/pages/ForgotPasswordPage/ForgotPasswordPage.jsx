@@ -55,7 +55,7 @@ function ForgotPasswordPage() {
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        required
+        required={false}
         inputProps={{
           placeholder: "e.g. johndoe@email.com",
           className: "global-form-field-input",

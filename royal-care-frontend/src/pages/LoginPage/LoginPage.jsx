@@ -359,7 +359,7 @@ function LoginPage() {
           name="username"
           value={formData.username}
           onChange={handleChange}
-          required
+          required={false}
           showError={showFieldErrors}
           inputProps={{
             placeholder: "Enter your email or username",
@@ -382,7 +382,7 @@ function LoginPage() {
           type="password"
           value={formData.password}
           onChange={handleChange}
-          required
+          required={false}
           showError={showFieldErrors}
           inputProps={{
             placeholder: "Enter your password",

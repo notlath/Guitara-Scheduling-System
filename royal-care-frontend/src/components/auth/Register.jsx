@@ -160,14 +160,41 @@ const Register = () => {
   };
 
   const fieldValidators = {
-    email: (val) => validateInput("email", val, { required: true }),
-    password: (val) => validateInput("password", val, { required: true }),
+    // Email validation should show emailCheck.error as the primary error
+    email: (val) => {
+      // Prioritize emailCheck.error first
+      if (emailCheck.error) {
+        return emailCheck.error ===
+          "No registration found for this email. Please contact your operator."
+          ? "No registration found for this email. Please contact support."
+          : emailCheck.error;
+      }
+
+      // Only show "This field is required" if empty, no other email format validation here
+      if (!val || val.trim() === "") return "This field is required";
+
+      // Let the backend handle email format validation through emailCheck
+      return "";
+    },
+    password: (val) => {
+      // Simple required check for password - don't use complex validation until user starts typing
+      if (!val || val.trim() === "") return "This field is required";
+      return validateInput("password", val, { required: true });
+    },
     passwordConfirm: (val) => {
       if (!val) return "This field is required";
       if (val !== formData.password) return "Passwords don't match";
       return "";
     },
-    phone_number: (val) => validateInput("phone", val, { required: true }),
+    // Phone validation is handled in validateForm, keep this light
+    phone_number: (val) => {
+      // Only basic format check if value exists
+      if (val && val.replace(/[^0-9]/g, "").length > 0) {
+        const digits = val.replace(/[^0-9]/g, "");
+        if (digits.length > 10) return "Too many digits";
+      }
+      return "";
+    },
   };
 
   const handleFieldError = (name, error) => {
@@ -177,17 +204,16 @@ const Register = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Email: only show backend error if present, otherwise only show frontend error if not eligible
+    // Email: Use backend validation result only, no redundant frontend validation
     if (emailCheck.error) {
       newErrors.email = emailCheck.error;
-    } else if (!emailCheck.eligible) {
-      // Only show frontend format error if not eligible
+    } else if (!emailCheck.eligible && formData.email) {
+      // Only show format error if email was entered but not eligible
       const emailFormatError = validateInput("email", formData.email, {
         required: true,
       });
       if (emailFormatError) newErrors.email = emailFormatError;
     }
-    // If eligible, do not show any frontend email error at all
 
     const passwordError = validateInput("password", formData.password, {
       required: true,
@@ -201,18 +227,21 @@ const Register = () => {
       newErrors.passwordConfirm = "Passwords don't match";
     }
 
-    // Phone: always validate as +63 + 10 digits
+    // Phone: validate only if provided (optional field)
     let phoneRaw = formData.phone_number.replace(/[^0-9]/g, "");
-    let phoneFull = phoneRaw ? `+63${phoneRaw}` : "";
-    if (phoneRaw.length !== 10) {
-      newErrors.phone_number =
-        "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
-    } else {
-      // Validate the full international format (E.164)
-      const phoneE164 = /^\+639\d{9}$/;
-      if (!phoneE164.test(phoneFull)) {
+    if (phoneRaw.length > 0) {
+      // Only validate if user entered something
+      let phoneFull = `+63${phoneRaw}`;
+      if (phoneRaw.length !== 10) {
         newErrors.phone_number =
           "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
+      } else {
+        // Validate the full international format (E.164)
+        const phoneE164 = /^\+639\d{9}$/;
+        if (!phoneE164.test(phoneFull)) {
+          newErrors.phone_number =
+            "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
+        }
       }
     }
 
@@ -334,18 +363,37 @@ const Register = () => {
       return;
     } catch (err) {
       console.error("Registration error:", err);
-      // Handle API errors
+
+      // Clear any existing form errors before setting new ones
+      setErrors({});
+
+      // Handle API errors with better error formatting
       if (err.response?.data) {
         const apiErrors = err.response.data;
         console.log("API returned errors:", apiErrors);
+
         const formattedErrors = {};
+
         // Format API errors to match our error state structure
         Object.keys(apiErrors).forEach((key) => {
-          formattedErrors[key] = Array.isArray(apiErrors[key])
+          const errorValue = Array.isArray(apiErrors[key])
             ? apiErrors[key][0]
             : apiErrors[key];
+
+          // Map API field names to our form field names if needed
+          if (key === "phone_number" || key === "phone") {
+            formattedErrors.phone_number = errorValue;
+          } else if (key === "non_field_errors") {
+            formattedErrors.form = errorValue;
+          } else {
+            formattedErrors[key] = errorValue;
+          }
         });
+
         setErrors(formattedErrors);
+      } else if (err.message) {
+        // Network or other errors
+        setErrors({ form: `Registration failed: ${err.message}` });
       } else {
         setErrors({ form: "Registration failed. Please try again." });
       }
@@ -388,7 +436,7 @@ const Register = () => {
           type="email"
           value={formData.email || ""}
           onChange={handleChange}
-          required
+          required={true}
           validate={fieldValidators.email}
           onErrorChange={handleFieldError}
           showError={showFieldErrors}
@@ -400,21 +448,13 @@ const Register = () => {
             autoComplete: "email",
           }}
         />
-        {emailCheck.error && (
-          <div className={styles.errorMessage}>
-            {emailCheck.error ===
-            "No registration found for this email. Please contact your operator."
-              ? "No registration found for this email. Please contact support."
-              : emailCheck.error}
-          </div>
-        )}
       </div>
       <div className={styles.formGroup}>
         <FormField
           label="Mobile Number"
           name="phone_number"
           as="custom"
-          required={true}
+          required={false}
           validate={fieldValidators.phone_number}
           onErrorChange={handleFieldError}
           showError={showFieldErrors}
@@ -437,7 +477,6 @@ const Register = () => {
               autoComplete="tel"
               maxLength={10}
               title="Enter your 10-digit Philippine mobile number"
-              required
             />
           </div>
           {errors.phone_number && (
@@ -457,7 +496,7 @@ const Register = () => {
           type="password"
           value={formData.password}
           onChange={handleChange}
-          required
+          required={true}
           validate={fieldValidators.password}
           onErrorChange={handleFieldError}
           showError={showFieldErrors}
@@ -469,7 +508,11 @@ const Register = () => {
             id: "password",
             autoComplete: "new-password",
             onFocus: () => setPasswordFocused(true),
-            onBlur: () => setPasswordFocused(false),
+            onBlur: () => {
+              // Call the parent's onBlur first (this sets touched=true for validation)
+              // The FormField component will handle this automatically
+              setPasswordFocused(false);
+            },
           }}
         />
         {passwordFocused && (
@@ -531,7 +574,7 @@ const Register = () => {
           type="password"
           value={formData.passwordConfirm}
           onChange={handleChange}
-          required
+          required={true}
           validate={fieldValidators.passwordConfirm}
           onErrorChange={handleFieldError}
           showError={showFieldErrors}
