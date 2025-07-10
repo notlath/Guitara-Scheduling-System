@@ -6,12 +6,7 @@ import { login } from "../../features/auth/authSlice";
 import FormBlueprint from "../../globals/FormBlueprint";
 import { FormField } from "../../globals/FormField";
 import styles from "../../pages/LoginPage/LoginPage.module.css";
-import {
-  api,
-  checkEmailExists,
-  completeRegistration,
-} from "../../services/api";
-import { invalidateCacheAfterLogin } from "../../utils/authUtils";
+import { checkEmailExists, completeRegistration } from "../../services/api";
 import { sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
@@ -349,38 +344,8 @@ const Register = () => {
         return;
       }
 
-      // If no user/token returned, perform automatic login
-      try {
-        const loginResponse = await api.post("/auth/login/", {
-          username: formData.email,
-          password: formData.password,
-        });
-        if (
-          loginResponse.data &&
-          loginResponse.data.token &&
-          loginResponse.data.user
-        ) {
-          localStorage.setItem("knoxToken", loginResponse.data.token);
-          localStorage.setItem("user", JSON.stringify(loginResponse.data.user));
-          dispatch(login(loginResponse.data.user));
-
-          // ✅ CRITICAL FIX: Invalidate all queries after successful automatic login from registration
-          // This ensures fresh data is fetched for the new user
-          await invalidateCacheAfterLogin(loginResponse.data.user.role);
-
-          navigate(getRedirectPath(loginResponse.data.user.role), {
-            replace: true,
-          });
-          return;
-        }
-      } catch {
-        // Automatic login failed
-        setErrors({
-          form: "Registration succeeded, but automatic login failed. Please log in manually.",
-        });
-        return;
-      }
-      // Fallback: Show success and login button if no token/user returned and login failed
+      // If registration completed but no verification required and no token returned,
+      // show success message instead of attempting automatic login
       setSuccess(true);
       return;
     } catch (err) {
