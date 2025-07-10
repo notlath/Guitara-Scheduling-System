@@ -86,19 +86,15 @@ const Register = () => {
 
   const fieldValidators = useMemo(
     () => ({
-      // Email validation should show emailCheck.error as the primary error
       email: (val) => {
-        // Only validate if email has been touched or form is being submitted
-        if (!(emailTouched || showFieldErrors)) {
-          return ""; // Don't show any error if not touched yet
-        }
-
-        // First check if field is empty
-        if (!val || val.trim() === "") return "This field is required";
-
-        // Then check for backend validation errors
+        // Always show backend validation errors immediately
         if (emailCheck.error) {
           return emailCheck.error;
+        }
+
+        // Only show "required" error if email has been touched or form is being submitted
+        if ((!val || val.trim() === "") && (emailTouched || showFieldErrors)) {
+          return "This field is required";
         }
 
         // If no error and email exists, let it pass
@@ -114,17 +110,31 @@ const Register = () => {
         if (val !== formData.password) return "Passwords don't match";
         return "";
       },
-      // Phone validation is handled in validateForm, keep this light
+      // Phone validation - validate format when value exists
       phone_number: (val) => {
-        // Only basic format check if value exists
-        if (val && val.replace(/[^0-9]/g, "").length > 0) {
-          const digits = val.replace(/[^0-9]/g, "");
+        console.log("Phone validation called with:", val); // Debug log
+
+        // If no value, it's optional so no error
+        if (!val || val.trim() === "") return "";
+
+        // Only digits should be in this field
+        const digits = val.replace(/[^0-9]/g, "");
+        console.log("Digits extracted:", digits); // Debug log
+
+        // Check if it has the right length and starts with 9 (Philippine mobile format)
+        if (digits.length > 0) {
           if (digits.length > 10) return "Too many digits";
+          if (digits.length > 0 && digits.length < 10)
+            return "Please enter a complete 10-digit number";
+          if (digits.length === 10 && !digits.startsWith("9")) {
+            return "Philippine mobile numbers should start with 9";
+          }
         }
+
         return "";
       },
     }),
-    [emailTouched, showFieldErrors, emailCheck.error, formData.password]
+    [emailCheck.error, formData.password, emailTouched, showFieldErrors]
   );
 
   // Force email field re-validation when emailTouched changes
@@ -166,18 +176,8 @@ const Register = () => {
         .replace(/<[^>]*>/g, "") // Remove HTML tags
         .replace(/[^a-zA-Z0-9_]/g, ""); // Only allow letters, numbers, and underscores
     } else if (name === "phone_number") {
-      // Format: starts with + followed by digits only
-      const digitsOnly = value.replace(/[^\d+]/g, "");
-
-      // Ensure only one + at the beginning
-      sanitizedValue = digitsOnly
-        .replace(/^\+?/, "+")
-        .replace(/\+(?=.*\+)/g, "");
-
-      // If no + is present, add one at the beginning
-      if (sanitizedValue && !sanitizedValue.startsWith("+")) {
-        sanitizedValue = "+" + sanitizedValue;
-      }
+      // For phone number, only keep digits (no + since that's shown as prefix)
+      sanitizedValue = value.replace(/[^0-9]/g, "").slice(0, 10);
     } else {
       sanitizedValue = sanitizeString(value);
     }
@@ -478,6 +478,7 @@ const Register = () => {
           name="phone_number"
           as="custom"
           required={false}
+          value={formData.phone_number}
           validate={fieldValidators.phone_number}
           onErrorChange={handleFieldError}
           showError={showFieldErrors}
@@ -491,9 +492,33 @@ const Register = () => {
               value={formData.phone_number}
               onChange={(e) => {
                 let val = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
-                setFormData({ ...formData, phone_number: val });
-                if (errors.phone_number)
-                  setErrors((prev) => ({ ...prev, phone_number: "" }));
+                console.log("Phone input onChange, cleaned value:", val); // Debug log
+                console.log(
+                  "Current formData.phone_number:",
+                  formData.phone_number
+                ); // Debug log
+                // Use the main handleChange function to ensure proper integration
+                const syntheticEvent = {
+                  target: {
+                    name: "phone_number",
+                    value: val,
+                  },
+                };
+                handleChange(syntheticEvent);
+              }}
+              onBlur={() => {
+                console.log(
+                  "Phone input onBlur, current value:",
+                  formData.phone_number
+                ); // Debug log
+                // Manually trigger validation on blur
+                const phoneError = fieldValidators.phone_number(
+                  formData.phone_number
+                );
+                console.log("Manual phone validation result:", phoneError); // Debug log
+                if (phoneError) {
+                  handleFieldError("phone_number", phoneError);
+                }
               }}
               placeholder="9XXXXXXXXX"
               className={`global-form-field-input ${styles.phoneInput}`}
@@ -502,13 +527,9 @@ const Register = () => {
               title="Enter your 10-digit Philippine mobile number"
             />
           </div>
+          {/* Manual error display for custom FormField */}
           {errors.phone_number && (
-            <div className="global-form-field-error">
-              {errors.phone_number.replace(
-                "10-digit PH mobile number (e.g., 9123456789)",
-                "10-digit Philippine mobile number (e.g., 9123456789)"
-              )}
-            </div>
+            <div className="global-form-field-error">{errors.phone_number}</div>
           )}
         </FormField>
       </div>
