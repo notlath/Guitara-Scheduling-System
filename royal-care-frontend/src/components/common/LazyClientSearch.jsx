@@ -12,15 +12,15 @@ import "./LazyClientSearch.css";
  * @param {string} props.error - Error message to display
  * @param {boolean} props.disabled - Whether the component is disabled
  * @param {string} props.placeholder - Placeholder text for search input
- * @param {Function} props.onRegisterClientClick - Callback when "Register Client" is clicked
+ * @param {Function} props.onRegisterClientClick - DEPRECATED: No longer used since registration prompt was removed
  */
 const LazyClientSearch = ({
   selectedClient,
   onClientSelect,
   error,
   disabled = false,
-  placeholder = "Search client by name or phone...",
-  onRegisterClientClick,
+  placeholder = "Search client by name or phone..."
+  // onRegisterClientClick param removed - no longer used
 }) => {
   const { clientCache } = useAppointmentFormCache();
 
@@ -570,38 +570,6 @@ const LazyClientSearch = ({
                   {debouncedSearchTerm
                     ? `No clients found matching "${debouncedSearchTerm}"`
                     : "No clients available"}
-                  <div
-                    style={{
-                      marginTop: "8px",
-                      fontSize: "0.9em",
-                      color: "#666",
-                    }}
-                  >
-                    Client details can be added when creating the appointment.
-                    {onRegisterClientClick && (
-                      <>
-                        {" "}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsOpen(false);
-                            onRegisterClientClick();
-                          }}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            color: "#1976d2",
-                            textDecoration: "underline",
-                            cursor: "pointer",
-                            fontSize: "inherit",
-                            padding: 0,
-                          }}
-                        >
-                          Click here to register a new client.
-                        </button>
-                      </>
-                    )}
-                  </div>
                 </div>
               )}
             </div>

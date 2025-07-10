@@ -4,18 +4,28 @@ import { useMemo, useState } from "react";
  * Custom hook for handling pagination logic
  * @param {Array} items - Array of items to paginate
  * @param {number} itemsPerPage - Number of items per page (default: 10)
+ * @param {number} totalItemsCount - Optional total count for server-side pagination
  * @returns {Object} Pagination state and controls
  */
-export const usePagination = (items = [], itemsPerPage = 10) => {
+export const usePagination = (items = [], itemsPerPage = 10, totalItemsCount = null) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(totalItemsCount);
+
+  // Allow external updates to total count (for server pagination)
+  const setTotalCount = (count) => {
+    if (count !== totalItems) {
+      setTotalItems(count);
+    }
+  };
 
   // Calculate pagination values
   const paginationData = useMemo(() => {
-    const totalItems = items.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    // Use provided totalItemsCount if available, otherwise use items length
+    const effectiveTotalItems = totalItems !== null ? totalItems : items.length;
+    const totalPages = Math.ceil(effectiveTotalItems / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    const currentItems = items.slice(startIndex, endIndex);
+    const currentItems = items; // For server pagination, items already contains only the current page
 
     // Calculate page range for pagination controls
     const getPageRange = () => {
@@ -52,14 +62,14 @@ export const usePagination = (items = [], itemsPerPage = 10) => {
       currentItems,
       currentPage,
       totalPages,
-      totalItems,
+      totalItems: effectiveTotalItems,
       startIndex: startIndex + 1, // 1-based for display
-      endIndex: Math.min(endIndex, totalItems), // Adjust for last page
+      endIndex: Math.min(endIndex, effectiveTotalItems), // Adjust for last page
       hasNextPage: currentPage < totalPages,
       hasPrevPage: currentPage > 1,
       pageRange: totalPages > 1 ? getPageRange() : [],
     };
-  }, [items, itemsPerPage, currentPage]);
+  }, [items, itemsPerPage, currentPage, totalItems]);
 
   // Navigation functions
   const goToPage = (page) => {
@@ -104,6 +114,9 @@ export const usePagination = (items = [], itemsPerPage = 10) => {
       setCurrentPage(1); // Reset to first page
       return newItemsPerPage;
     },
+    setTotalItems: setTotalCount, // Allow setting total items count for server pagination
+    currentPage, // Expose current page for server requests
+    itemsPerPage, // Expose items per page for server requests
   };
 };
 

@@ -2,6 +2,7 @@ from django.urls import path
 from .views import (
     RegisterAPI,
     LoginAPI,
+    LogoutAPI,
     CheckUsernameAPI,
     TwoFactorVerifyAPI,
     RequestPasswordResetAPI,
@@ -16,6 +17,7 @@ from .views import (
 urlpatterns = [
     path("register/", RegisterAPI.as_view(), name="register"),
     path("login/", LoginAPI.as_view(), name="login"),
+    path("logout/", LogoutAPI.as_view(), name="logout"),
     path("check-username/", CheckUsernameAPI.as_view(), name="check-username"),
     path("two-factor-verify/", TwoFactorVerifyAPI.as_view(), name="two-factor-verify"),
     path(

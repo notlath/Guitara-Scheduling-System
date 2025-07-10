@@ -39,13 +39,26 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
             item.current_stock += amount
             item.save()
             # Create a usage log for restocking
-            UsageLog.objects.create(
+            usage_log = UsageLog.objects.create(
                 item=item,
                 quantity_used=amount,  # Always positive
                 operator=request.user if request.user.is_authenticated else None,
                 action_type="restock",
                 notes=notes,
             )
+            
+            # Add to unified system logs
+            try:
+                from .logging_middleware import log_inventory_usage
+                log_inventory_usage(
+                    inventory_item=item,
+                    quantity=amount,
+                    user=request.user if request.user.is_authenticated else None,
+                    action_type="restock",
+                    notes=notes
+                )
+            except Exception as log_error:
+                print(f"Failed to create system log for inventory restock: {log_error}")
             return Response(
                 {"status": "restocked", "current_stock": item.current_stock}
             )
@@ -77,7 +90,7 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
                 # Move from in_use to empty
                 if item.move_to_empty(quantity):
                     # Log the status change
-                    UsageLog.objects.create(
+                    usage_log = UsageLog.objects.create(
                         item=item,
                         quantity_used=quantity,
                         operator=(
@@ -86,6 +99,19 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
                         action_type="empty",
                         notes=f"Material marked as empty after service. {notes}".strip(),
                     )
+                    
+                    # Add to unified system logs
+                    try:
+                        from .logging_middleware import log_inventory_usage
+                        log_inventory_usage(
+                            inventory_item=item,
+                            quantity=quantity,
+                            user=request.user if request.user.is_authenticated else None,
+                            action_type="empty",
+                            notes=notes
+                        )
+                    except Exception as log_error:
+                        print(f"Failed to create system log for inventory empty: {log_error}")
                     return Response(
                         {
                             "status": "moved_to_empty",
@@ -107,7 +133,7 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
                     item.save()
 
                     # Log the status change
-                    UsageLog.objects.create(
+                    usage_log = UsageLog.objects.create(
                         item=item,
                         quantity_used=quantity,
                         operator=(
@@ -116,6 +142,19 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
                         action_type="returned",
                         notes=f"Material returned to stock after service. {notes}".strip(),
                     )
+                    
+                    # Add to unified system logs
+                    try:
+                        from .logging_middleware import log_inventory_usage
+                        log_inventory_usage(
+                            inventory_item=item,
+                            quantity=quantity,
+                            user=request.user if request.user.is_authenticated else None,
+                            action_type="returned",
+                            notes=notes
+                        )
+                    except Exception as log_error:
+                        print(f"Failed to create system log for inventory return: {log_error}")
                     return Response(
                         {
                             "status": "returned_to_stock",
@@ -157,13 +196,26 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
         try:
             if item.refill_from_empty(amount):
                 # Create a usage log for refilling from empty
-                UsageLog.objects.create(
+                usage_log = UsageLog.objects.create(
                     item=item,
                     quantity_used=amount,
                     operator=request.user if request.user.is_authenticated else None,
                     action_type="restock",
                     notes=f"Refilled from empty containers. {notes}".strip(),
                 )
+                
+                # Add to unified system logs
+                try:
+                    from .logging_middleware import log_inventory_usage
+                    log_inventory_usage(
+                        inventory_item=item,
+                        quantity=amount,
+                        user=request.user if request.user.is_authenticated else None,
+                        action_type="restock",
+                        notes=f"Refilled from empty containers. {notes}"
+                    )
+                except Exception as log_error:
+                    print(f"Failed to create system log for refill from empty: {log_error}")
                 return Response(
                     {
                         "status": "refilled_from_empty",
@@ -229,5 +281,26 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
 
 # Force reload of views
 class UsageLogViewSet(viewsets.ModelViewSet):
-    queryset = UsageLog.objects.all()
+    queryset = UsageLog.objects.all().order_by('-timestamp')
     serializer_class = UsageLogSerializer
+    filter_backends = [DjangoFilterBackend, drf_filters.OrderingFilter]
+    filterset_fields = ['action_type', 'item']
+    ordering_fields = ['timestamp']
+    
+    def perform_create(self, serializer):
+        """Add custom logging when creating usage logs"""
+        # Save the usage log normally
+        usage_log = serializer.save()
+        
+        # Add to unified system logs
+        try:
+            from .logging_middleware import log_inventory_usage
+            log_inventory_usage(
+                inventory_item=usage_log.item,
+                quantity=usage_log.quantity_used,
+                user=usage_log.operator,
+                action_type=usage_log.action_type,
+                notes=usage_log.notes
+            )
+        except Exception as log_error:
+            print(f"Failed to create system log for usage log: {log_error}")

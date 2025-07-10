@@ -2,7 +2,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { MdAdd, MdRefresh } from "react-icons/md";
+import { saveAs } from "file-saver";
+import * as XLSX from "xlsx";
+import ServerPagination from "../../components/ServerPagination";
 import pageTitles from "../../constants/pageTitles";
+import { API_BASE_URL } from "../../constants/apiConfig";
 import DataTable from "../../globals/DataTable";
 import LayoutRow from "../../globals/LayoutRow";
 import PageLayout from "../../globals/PageLayout";
@@ -15,10 +19,8 @@ import {
 import { getToken } from "../../utils/tokenManager";
 import styles from "./InventoryPage.module.css";
 import { MenuItem, Select } from "./MUISelect";
+import rcLogo from "../../assets/images/rc_logo.jpg";
 
-const API_BASE_URL = import.meta.env.PROD
-  ? "https://charismatic-appreciation-production.up.railway.app/api"
-  : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 const INVENTORY_API_URL = `${API_BASE_URL}/inventory/`;
 
 const getAuthToken = () => {
@@ -64,6 +66,14 @@ const InventoryPage = () => {
   });
   const [showUsageLog, setShowUsageLog] = useState(false);
   const [usageLogs, setUsageLogs] = useState([]);
+  const [usageLogPagination, setUsageLogPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 20  // Increased from 10 to 20 for better pagination
+  });
+  const [isLoadingUsageLogs, setIsLoadingUsageLogs] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [showRestockModal, setShowRestockModal] = useState(false);
@@ -94,29 +104,449 @@ const InventoryPage = () => {
 
   useEffect(() => {
     if (showUsageLog) {
-      fetchUsageLogs();
+      fetchUsageLogs(1); // Start with page 1
     }
   }, [showUsageLog]);
 
-  // Fetch all usage logs, handling pagination
-  const fetchUsageLogs = async () => {
-    let allLogs = [];
-    let nextUrl = `${INVENTORY_API_URL}usage-log/`;
-    try {
-      while (nextUrl) {
-        const res = await axiosAuth.get(nextUrl);
-        if (Array.isArray(res.data)) {
-          allLogs = allLogs.concat(res.data);
-          break;
-        } else {
-          allLogs = allLogs.concat(res.data.results || []);
-          nextUrl = res.data.next;
-        }
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        showExportDropdown &&
+        !event.target.closest(`.${styles.exportDropdown}`)
+      ) {
+        setShowExportDropdown(false);
       }
-      setUsageLogs(allLogs);
-    } catch {
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showExportDropdown]);
+
+  // Fetch usage logs with pagination (action_type='restock')
+  const fetchUsageLogs = async (page = 1) => {
+    setIsLoadingUsageLogs(true);
+    try {
+      const response = await axiosAuth.get(
+        `${INVENTORY_API_URL}usage-log/?action_type=restock&page=${page}&page_size=20`
+      );
+      
+      if (Array.isArray(response.data)) {
+        // Non-paginated response
+        setUsageLogs(response.data);
+        setUsageLogPagination({
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: response.data.length,
+          itemsPerPage: 20
+        });
+      } else {
+        // Paginated response
+        setUsageLogs(response.data.results || []);
+        setUsageLogPagination({
+          currentPage: page,
+          totalPages: Math.ceil((response.data.count || 0) / 20),
+          totalItems: response.data.count || 0,
+          itemsPerPage: 20
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch usage logs:', error);
       setUsageLogs([]);
+      setUsageLogPagination({
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: 0,
+        itemsPerPage: 20
+      });
+    } finally {
+      setIsLoadingUsageLogs(false);
     }
+  };
+
+  const handleUsageLogPageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= usageLogPagination.totalPages) {
+      fetchUsageLogs(newPage);
+    }
+  };
+
+  // Export functions for usage logs
+  const exportUsageLogsToCSV = () => {
+    if (usageLogs.length === 0) {
+      alert("No usage logs data to export.");
+      return;
+    }
+
+    const csvData = usageLogs.map((log) => {
+      const dateObj = new Date(log.timestamp || log.date || log.created_at || Date.now());
+      let notes = log.notes && log.notes.trim() !== "" ? log.notes : "-";
+      
+      // Remove default system messages from notes
+      if (notes.includes("Refilled from empty containers.")) {
+        const userNotePart = notes.replace("Refilled from empty containers.", "").trim();
+        notes = userNotePart || "-";
+      }
+
+      return {
+        Date: dateObj.toISOString().split("T")[0],
+        Time: dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        "Product Name": log.item_name || log.product_name || log.item || "-",
+        "Quantity Refilled": `${log.quantity_used} ${pluralizeUnit(log.quantity_used, log.unit || "")}`.trim(),
+        Notes: notes,
+      };
+    });
+
+    const csvContent = convertToCSV(csvData);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const fileName = `usage-logs-${new Date().toISOString().split("T")[0]}.csv`;
+    saveAs(blob, fileName);
+  };
+
+  const exportUsageLogsToExcel = () => {
+    if (usageLogs.length === 0) {
+      alert("No usage logs data to export.");
+      return;
+    }
+
+    const excelData = usageLogs.map((log) => {
+      const dateObj = new Date(log.timestamp || log.date || log.created_at || Date.now());
+      let notes = log.notes && log.notes.trim() !== "" ? log.notes : "-";
+      
+      // Remove default system messages from notes
+      if (notes.includes("Refilled from empty containers.")) {
+        const userNotePart = notes.replace("Refilled from empty containers.", "").trim();
+        notes = userNotePart || "-";
+      }
+
+      return {
+        Date: dateObj.toISOString().split("T")[0],
+        Time: dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        "Product Name": log.item_name || log.product_name || log.item || "-",
+        "Quantity Refilled": `${log.quantity_used} ${pluralizeUnit(log.quantity_used, log.unit || "")}`.trim(),
+        Notes: notes,
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Usage Logs");
+    const fileName = `usage-logs-${new Date().toISOString().split("T")[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
+  const exportUsageLogsToPDF = () => {
+    if (usageLogs.length === 0) {
+      alert("No usage logs data to export.");
+      return;
+    }
+
+    const data = usageLogs.map((log) => {
+      const dateObj = new Date(log.timestamp || log.date || log.created_at || Date.now());
+      let notes = log.notes && log.notes.trim() !== "" ? log.notes : "-";
+      
+      // Remove default system messages from notes
+      if (notes.includes("Refilled from empty containers.")) {
+        const userNotePart = notes.replace("Refilled from empty containers.", "").trim();
+        notes = userNotePart || "-";
+      }
+
+      return [
+        dateObj.toISOString().split("T")[0],
+        dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        log.item_name || log.product_name || log.item || "-",
+        `${log.quantity_used} ${pluralizeUnit(log.quantity_used, log.unit || "")}`.trim(),
+        notes,
+      ];
+    });
+
+    const headers = ["Date", "Time", "Product Name", "Quantity Refilled", "Notes"];
+    const reportTitle = "Inventory Usage Logs Report";
+
+    // Generate print-friendly HTML content
+    const printContent = `
+      <div class="print-content">
+        <header>
+          <div class="header-img-container">
+            <img src="${rcLogo}" alt="Royal Care" />
+          </div>
+          <div class="header-details">
+            <h3>Royal Care Home Service Message</h3>
+            <div>
+              <p>38 Kalinangan St., Caniogan, Pasig</p>
+              <p><a href='mailto:royalcareinpasig@gmail.com'>royalcareinpasig@gmail.com</a></p>
+              <p>0917 345 6294</p>
+            </div>
+          </div>
+        </header>
+
+        <div class="header">
+          <h1>${reportTitle}</h1>
+          <p>Generated on: ${new Date().toLocaleDateString()}</p>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                ${headers.map((header) => `<th>${header}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${data
+                .map(
+                  (row) => `
+                <tr>
+                  ${row.map((cell) => `<td>${cell}</td>`).join("")}
+                </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+        <div class="footer">
+          <p>Total Records: ${data.length}</p>
+        </div>
+      </div>
+      <style>
+        @media screen {
+          .print-content {
+            display: none;
+          }
+        }
+
+        @media print {
+          @page {
+            size: Letter;
+            margin: 0.5in;
+          }
+
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            -webkit-print-color-adjust: exact !important;
+          }
+
+          body * {
+            visibility: hidden;
+            display: none;
+          }
+
+          .print-content {
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            display: block;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+          }
+
+          .print-content, .print-content * {
+            visibility: visible;
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            display: block;
+          }
+
+          .print-content header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f6f2f1 !important;
+            background-color: #f6f2f1 !important;
+            color: #ffffff !important;
+            padding: 2rem;
+            margin-bottom: 20px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          .print-content header .header-img-container img {
+            border-radius: 0.5rem;
+            display: block;
+            aspect-ratio: 1 / 1;
+            height: 80px;
+            width: 80px;
+          }
+
+          .print-content header .header-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            text-align: right;
+          }
+
+          .print-content header .header-details div {
+            display: flex;
+            flex-direction: column;
+            text-align: right;
+          }
+
+          .print-content header h3 {
+            color: #000000 !important;
+            margin: 0;
+            -webkit-print-color-adjust: exact !important;
+          }
+
+          .print-content header p {
+            color: #00000070 !important;
+            margin: 0;
+            font-size: 12px;
+            -webkit-print-color-adjust: exact !important;
+          }
+
+          .print-content header p a {
+            color: #00000070 !important;
+            margin: 0;
+            -webkit-print-color-adjust: exact !important;
+            text-decoration: none;
+          }
+
+          .print-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: auto;
+            transform: none;
+            box-sizing: border-box;
+            page-break-inside: avoid;
+            display: block;
+          }
+
+          .print-content .header {
+            margin-bottom: 20px;
+            text-align: center;
+            display: block;
+          }
+
+          .print-content .header h1 {
+            font-size: 18px;
+            color: #000 !important;
+            font-weight: bold;
+            display: block;
+          }
+
+          .print-content .header p {
+            font-size: 12px;
+            color: #666 !important;
+            display: block;
+          }
+
+          .print-content .table-container {
+            width: 100%;
+            padding: 0 1rem;
+            display: block;
+          }
+
+          .print-content table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin: 0;
+            table-layout: fixed;
+            display: table;
+          }
+
+          .print-content thead {
+            display: table-header-group;
+          }
+
+          .print-content tbody {
+            display: table-row-group;
+          }
+
+          .print-content tr {
+            display: table-row;
+            page-break-inside: avoid;
+          }
+
+          .print-content th, .print-content td {
+            display: table-cell;
+            border: 1px solid var(--border-color) !important;
+            padding: 8px 6px;
+            text-align: left;
+            vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+          }
+
+          .print-content th {
+            background-color: #f5f5f5 !important;
+            font-weight: bold;
+            font-size: 11px;
+            text-align: center;
+          }
+
+          .print-content td {
+            font-size: 10px;
+          }
+
+          .print-content .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 10px;
+            color: #666 !important;
+            page-break-inside: avoid;
+            display: block;
+          }
+
+          .print-content .footer p {
+            margin: 0;
+            display: block;
+          }
+        }
+      </style>
+    `;
+
+    // Add print content to the page
+    document.body.insertAdjacentHTML("beforeend", printContent);
+
+    // Trigger print dialog
+    window.print();
+
+    // Clean up after printing
+    const cleanup = () => {
+      const printElements = document.querySelectorAll('.print-content');
+      printElements.forEach(el => el.remove());
+    };
+
+    // Clean up after print dialog is closed
+    setTimeout(cleanup, 100);
+  };
+
+  const convertToCSV = (data) => {
+    if (data.length === 0) return "";
+
+    const headers = Object.keys(data[0]);
+    const csvRows = [
+      headers.join(","),
+      ...data.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            return typeof value === "string" && value.includes(",")
+              ? `"${value}"`
+              : value;
+          })
+          .join(",")
+      ),
+    ];
+
+    return csvRows.join("\n");
   };
 
   const handleAddItem = async (e) => {
@@ -193,7 +623,7 @@ const InventoryPage = () => {
           // Invalidate cache to refresh data
           queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
 
-          if (showUsageLog) fetchUsageLogs(); // Refresh usage log if visible
+          if (showUsageLog) fetchUsageLogs(usageLogPagination.currentPage); // Refresh usage log if visible
           setShowRestockModal(false);
           setRestockItem(null);
           setRestockAmount(0);
@@ -212,7 +642,7 @@ const InventoryPage = () => {
           amount: restockAmount,
           notes: restockNotes || undefined,
         });
-        if (showUsageLog) fetchUsageLogs(); // Refresh usage log if visible
+        if (showUsageLog) fetchUsageLogs(usageLogPagination.currentPage); // Refresh usage log if visible
         setShowRestockModal(false);
         setRestockItem(null);
         setRestockAmount(0);
@@ -416,7 +846,16 @@ const InventoryPage = () => {
       log.timestamp || log.date || log.created_at || Date.now()
     );
     let quantity = log.quantity_used;
+    // Only show user-provided notes, not default system messages
     let notes = log.notes && log.notes.trim() !== "" ? log.notes : "-";
+    
+    // Remove default system messages from notes
+    if (notes.includes("Refilled from empty containers.")) {
+      // Extract only the user part after the system message
+      const userNotePart = notes.replace("Refilled from empty containers.", "").trim();
+      notes = userNotePart || "-";
+    }
+    
     const unit = log.unit || "";
     return {
       date: dateObj.toISOString().split("T")[0],
@@ -1017,13 +1456,84 @@ const InventoryPage = () => {
 
         {/* Usage Log Section */}
         {showUsageLog && (
-          <div className={styles["inventory-table-container"]}>
-            <DataTable
-              columns={usageLogColumns}
-              data={usageLogTableData}
-              noDataText="No usage logs found."
-            />
-          </div>
+          <>
+            <div className={styles["inventory-table-container"]}>
+              {isLoadingUsageLogs ? (
+                <div style={{ textAlign: "center", padding: "20px" }}>
+                  Loading usage logs...
+                </div>
+              ) : (
+                <>
+                  <DataTable
+                    columns={usageLogColumns}
+                    data={usageLogTableData}
+                    noDataText="No usage logs found."
+                  />
+                  
+                  {/* Pagination Controls using ServerPagination component */}
+                  {usageLogPagination.totalPages > 1 && (
+                    <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                      <ServerPagination
+                        currentPage={usageLogPagination.currentPage}
+                        totalPages={usageLogPagination.totalPages}
+                        hasNext={usageLogPagination.currentPage < usageLogPagination.totalPages}
+                        hasPrevious={usageLogPagination.currentPage > 1}
+                        onPageChange={handleUsageLogPageChange}
+                        className="inventory-usage-log-pagination"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Export Controls - Outside the table container */}
+            {!isLoadingUsageLogs && usageLogs.length > 0 && (
+              <div className={styles.exportContainer}>
+                <div className={styles.exportDropdown}>
+                  <div>
+                    <button
+                      className={styles.exportButton}
+                      onClick={() => setShowExportDropdown(!showExportDropdown)}
+                    >
+                      Export ▼
+                    </button>
+                  </div>
+                  {showExportDropdown && (
+                    <div className={styles.dropdownMenu}>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => {
+                          exportUsageLogsToCSV();
+                          setShowExportDropdown(false);
+                        }}
+                      >
+                        📄 Export to CSV
+                      </button>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => {
+                          exportUsageLogsToExcel();
+                          setShowExportDropdown(false);
+                        }}
+                      >
+                        📊 Export to Excel
+                      </button>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => {
+                          exportUsageLogsToPDF();
+                          setShowExportDropdown(false);
+                        }}
+                      >
+                        🖨️ Print Report
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </PageLayout>

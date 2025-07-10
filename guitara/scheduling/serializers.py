@@ -273,6 +273,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "urgency_level",
             "material_usage_summary",
             "appointment_materials",
+            "metadata",
         ]
 
     def get_formatted_date(self, obj):

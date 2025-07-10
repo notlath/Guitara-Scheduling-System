@@ -1,6 +1,11 @@
 # core/urls.py
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
+
+# Create a router and register our viewsets with it
+router = DefaultRouter()
+router.register(r'system-logs', views.SystemLogViewSet, basename='systemlog')
 
 urlpatterns = [
     path("register/", views.RegisterAPI.as_view(), name="register"),
@@ -12,7 +17,7 @@ urlpatterns = [
     path(
         "check-account-status/", views.check_account_status, name="check-account-status"
     ),
-    # Add your core app endpoints here later
-    # Example:
-    # path('bookings/', views.BookingList.as_view(), name='booking-list'),
+    path("test-no-auth/", views.test_no_auth, name="test-no-auth"),
+    # Include the router URLs
+    path('', include(router.urls)),
 ]
