@@ -53,7 +53,12 @@ export function FormField({
     // Show errors when explicitly requested via showError prop OR when field was touched (blurred)
     if (showError || touched) {
       if (validate) {
-        err = validate(value); // Use custom validator if provided
+        // Check if validation function expects two parameters (new style) or one (legacy)
+        if (validate.length > 1) {
+          err = validate(value, touched); // Pass both value and touched state to validator
+        } else {
+          err = validate(value); // Use legacy validator with just value
+        }
       } else if (
         required &&
         (typeof value === "string" ? value.trim() === "" : !value)

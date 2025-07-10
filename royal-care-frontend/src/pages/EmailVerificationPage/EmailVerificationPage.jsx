@@ -11,10 +11,11 @@ import verificationStyles from "./EmailVerificationPage.module.css";
 
 function EmailVerificationPage() {
   const [code, setCode] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -26,13 +27,13 @@ function EmailVerificationPage() {
   // Define handleResendCode function BEFORE useEffect
   const handleResendCode = useCallback(async () => {
     if (!email) {
-      setError("No email address available");
+      setSubmitError("No email address available");
       return;
     }
 
     setResendLoading(true);
     setResendMessage("");
-    setError("");
+    setSubmitError("");
 
     try {
       console.log("[EMAIL VERIFICATION] Sending verification code to:", email);
@@ -48,11 +49,11 @@ function EmailVerificationPage() {
       });
 
       if (err.message === "Network Error" || err.code === "ERR_NETWORK") {
-        setError(
+        setSubmitError(
           "Cannot connect to server. Make sure Django server is running on port 8000."
         );
       } else {
-        setError(
+        setSubmitError(
           err.response?.data?.error ||
             "Failed to send verification code. Please try again."
         );
@@ -85,11 +86,12 @@ function EmailVerificationPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setSubmitError("");
+    setShowFieldErrors(true);
     setLoading(true);
 
+    // Let FormField validation handle the code validation
     if (!code || code.length !== 6) {
-      setError("Please enter the complete 6-digit verification code.");
       setLoading(false);
       return;
     }
@@ -120,7 +122,7 @@ function EmailVerificationPage() {
       }
     } catch (err) {
       console.error("[EMAIL VERIFICATION] Verification failed:", err);
-      setError(
+      setSubmitError(
         err.response?.data?.error ||
           "Verification failed. Please check your code and try again."
       );
@@ -161,12 +163,26 @@ function EmailVerificationPage() {
         onChange={(e) => {
           const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
           setCode(value);
-          if (error) setError("");
         }}
-        required={false}
+        validate={(value, touched) => {
+          // Always check if empty when field has been interacted with
+          if (!value || value.trim() === "") {
+            return touched || showFieldErrors
+              ? "Please enter the verification code"
+              : "";
+          }
+
+          // Only show length validation error when field has been blurred or form submitted
+          if ((touched || showFieldErrors) && value.length !== 6) {
+            return "Please enter the complete 6-digit verification code";
+          }
+
+          return "";
+        }}
+        showError={showFieldErrors}
+        required={true}
         inputProps={{
           placeholder: "Enter 6-digit code",
-          // className: `${styles.formInput} ${verificationStyles.codeInput}`,
           type: "text",
           maxLength: 6,
           autoComplete: "one-time-code",
@@ -175,8 +191,8 @@ function EmailVerificationPage() {
     </div>
   );
 
-  const errorMessage = error ? (
-    <div className={styles.errorText}>{error}</div>
+  const errorMessage = submitError ? (
+    <div className={styles.errorText}>{submitError}</div>
   ) : null;
 
   const button = (

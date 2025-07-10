@@ -249,14 +249,15 @@ To ensure a consistent, user-friendly, and professional experience across the ap
   - Use sentence case (only first word and proper nouns capitalized) for:
     - Placeholders (e.g., `e.g. johndoe@email.com`, `Enter your password`)
     - Link text (e.g., `Back to login`, `Forgot your password?`)
-    - Error messages (e.g., `Please enter your password.`, `Login failed. Please check your credentials and try again.`)
+    - Form submission error messages (e.g., `Please enter your password.`, `Login failed. Please check your credentials and try again.`)
     - Success/status messages (e.g., `Registration successful! Redirecting you to your dashboard`, `Verification code sent to your email`)
     - Instructional/helper text (e.g., `Please enter the 6-digit code below to verify your email address`, `Choose a strong password with at least 8 characters`)
+    - Validation error messages (e.g., `Please enter your email address`, `Password must be at least 8 characters`)
 - **Avoid Redundancy:**
   - Do not repeat the label in the placeholder (e.g., label: `Email Address`, placeholder: `e.g. johndoe@email.com`)
 - **Consistent Punctuation:**
-  - End error messages with a period.
-  - Do not use periods in labels, buttons, placeholders, success/status messages, or instructional/helper text.
+  - End form submission error messages with a period.
+  - Do not use periods in labels, buttons, placeholders, success/status messages, instructional/helper text, or validation error messages.
 
 ### 3. UI Element Guidelines
 
@@ -278,9 +279,13 @@ To ensure a consistent, user-friendly, and professional experience across the ap
 - **Error/Success Messages:**
   - Use sentence case.
   - Be specific and helpful (e.g., `Please enter your password.`, `Failed to send reset code. Please check your email address and try again.`)
-  - Error messages should end with a period.
+  - Form submission error messages should end with a period.
   - Success/status messages should not end with a period (e.g., `Verification code sent to your email`, `Registration successful! Redirecting you to your dashboard`)
   - If possible, suggest a next step.
+- **Validation Error Messages:**
+  - Use sentence case.
+  - Be specific and helpful (e.g., `Please enter your email address`, `Password must be at least 8 characters`)
+  - Do not end with a period.
 - **Instructional/Helper Text:**
   - Use sentence case.
   - Be clear and concise (e.g., `Please enter the 6-digit code below to verify your email address`, `Choose a strong password with at least 8 characters`)
