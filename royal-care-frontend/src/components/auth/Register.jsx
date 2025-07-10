@@ -71,7 +71,7 @@ const Register = () => {
               ? "This email has already completed registration."
               : res.data.exists && res.data.eligible
               ? ""
-              : "No registration found for this email. Please contact your operator.",
+              : "No registration found. Please contact your operator.",
         });
       })
       .catch(() => {
@@ -87,7 +87,7 @@ const Register = () => {
   const fieldValidators = useMemo(
     () => ({
       email: (val) => {
-        // Always show backend validation errors immediately
+        // Always show backend validation errors immediately (regardless of touch state)
         if (emailCheck.error) {
           return emailCheck.error;
         }
@@ -461,7 +461,7 @@ const Register = () => {
           required={true}
           validate={fieldValidators.email}
           onErrorChange={handleFieldError}
-          showError={showFieldErrors}
+          showError={showFieldErrors || emailCheck.error} // Show error immediately if backend has an error
           inputProps={{
             placeholder: "e.g. johndoe@email.com",
             className: `global-form-field-input`,
