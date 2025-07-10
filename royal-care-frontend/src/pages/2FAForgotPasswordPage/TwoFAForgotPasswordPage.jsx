@@ -51,7 +51,7 @@ function TwoFAForgotPasswordPage() {
         required={false}
         inputProps={{
           placeholder: "Enter the 6-digit code",
-          className: styles.formInput,
+
           type: "number",
         }}
       />
