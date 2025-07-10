@@ -91,8 +91,10 @@ export function FormField({
 
   // When input loses focus, mark as touched (for validation)
   const handleBlur = (e) => {
-    setTouched(true);
+    // Call the custom onBlur first if provided (important for parent state updates)
     if (inputProps.onBlur) inputProps.onBlur(e);
+    // Then set our internal touched state
+    setTouched(true);
   };
 
   // Create combined inputProps that properly handles onBlur

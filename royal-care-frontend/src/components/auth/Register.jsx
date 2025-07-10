@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
@@ -43,6 +43,7 @@ const Register = () => {
     error: "",
   });
   const [showFieldErrors, setShowFieldErrors] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();
@@ -82,6 +83,60 @@ const Register = () => {
         });
       });
   }, [formData.email]);
+
+  const fieldValidators = useMemo(
+    () => ({
+      // Email validation should show emailCheck.error as the primary error
+      email: (val) => {
+        // Only validate if email has been touched or form is being submitted
+        if (!(emailTouched || showFieldErrors)) {
+          return ""; // Don't show any error if not touched yet
+        }
+
+        // First check if field is empty
+        if (!val || val.trim() === "") return "This field is required";
+
+        // Then check for backend validation errors
+        if (emailCheck.error) {
+          return emailCheck.error;
+        }
+
+        // If no error and email exists, let it pass
+        return "";
+      },
+      password: (val) => {
+        // Simple required check for password - don't use complex validation until user starts typing
+        if (!val || val.trim() === "") return "This field is required";
+        return validateInput("password", val, { required: true });
+      },
+      passwordConfirm: (val) => {
+        if (!val) return "This field is required";
+        if (val !== formData.password) return "Passwords don't match";
+        return "";
+      },
+      // Phone validation is handled in validateForm, keep this light
+      phone_number: (val) => {
+        // Only basic format check if value exists
+        if (val && val.replace(/[^0-9]/g, "").length > 0) {
+          const digits = val.replace(/[^0-9]/g, "");
+          if (digits.length > 10) return "Too many digits";
+        }
+        return "";
+      },
+    }),
+    [emailTouched, showFieldErrors, emailCheck.error, formData.password]
+  );
+
+  // Force email field re-validation when emailTouched changes
+  useEffect(() => {
+    // Force FormField to re-run validation when email is touched
+    if (emailTouched && formData.email) {
+      // The validator will now return the appropriate error since emailTouched is true
+      // We need to trigger a re-validation in FormField
+      const emailError = fieldValidators.email(formData.email);
+      handleFieldError("email", emailError);
+    }
+  }, [emailTouched, formData.email, fieldValidators]); // Re-validate when emailTouched changes
 
   const checkPasswordRequirements = (password, confirmPassword) => {
     return {
@@ -143,6 +198,11 @@ const Register = () => {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
 
+    // Clear email touched state when email is cleared
+    if (name === "email" && !sanitizedValue) {
+      setEmailTouched(false);
+    }
+
     // Special handling for password confirmation
     if (name === "password" && formData.passwordConfirm) {
       if (formData.passwordConfirm !== value) {
@@ -157,44 +217,6 @@ const Register = () => {
         }));
       }
     }
-  };
-
-  const fieldValidators = {
-    // Email validation should show emailCheck.error as the primary error
-    email: (val) => {
-      // Prioritize emailCheck.error first
-      if (emailCheck.error) {
-        return emailCheck.error ===
-          "No registration found for this email. Please contact your operator."
-          ? "No registration found for this email. Please contact support."
-          : emailCheck.error;
-      }
-
-      // Only show "This field is required" if empty, no other email format validation here
-      if (!val || val.trim() === "") return "This field is required";
-
-      // Let the backend handle email format validation through emailCheck
-      return "";
-    },
-    password: (val) => {
-      // Simple required check for password - don't use complex validation until user starts typing
-      if (!val || val.trim() === "") return "This field is required";
-      return validateInput("password", val, { required: true });
-    },
-    passwordConfirm: (val) => {
-      if (!val) return "This field is required";
-      if (val !== formData.password) return "Passwords don't match";
-      return "";
-    },
-    // Phone validation is handled in validateForm, keep this light
-    phone_number: (val) => {
-      // Only basic format check if value exists
-      if (val && val.replace(/[^0-9]/g, "").length > 0) {
-        const digits = val.replace(/[^0-9]/g, "");
-        if (digits.length > 10) return "Too many digits";
-      }
-      return "";
-    },
   };
 
   const handleFieldError = (name, error) => {
@@ -446,6 +468,7 @@ const Register = () => {
             title: "Enter your email address",
             id: "email",
             autoComplete: "email",
+            onBlur: () => setEmailTouched(true),
           }}
         />
       </div>
