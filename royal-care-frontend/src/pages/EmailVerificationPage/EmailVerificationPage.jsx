@@ -37,7 +37,7 @@ function EmailVerificationPage() {
     try {
       console.log("[EMAIL VERIFICATION] Sending verification code to:", email);
       const response = await api.post("/auth/resend-verification/", { email });
-      setResendMessage(`New verification code sent to ${email}!`);
+      setResendMessage(`Verification code sent to ${email}`);
       console.log("[EMAIL VERIFICATION] Response:", response.data);
     } catch (err) {
       console.error("[EMAIL VERIFICATION] Failed to send code:", err);
@@ -54,7 +54,7 @@ function EmailVerificationPage() {
       } else {
         setError(
           err.response?.data?.error ||
-            "Failed to resend code. Please try again."
+            "Failed to send verification code. Please try again."
         );
       }
     } finally {
@@ -89,7 +89,7 @@ function EmailVerificationPage() {
     setLoading(true);
 
     if (!code || code.length !== 6) {
-      setError("Please enter a valid 6-digit verification code");
+      setError("Please enter the complete 6-digit verification code.");
       setLoading(false);
       return;
     }
@@ -121,7 +121,8 @@ function EmailVerificationPage() {
     } catch (err) {
       console.error("[EMAIL VERIFICATION] Verification failed:", err);
       setError(
-        err.response?.data?.error || "Verification failed. Please try again."
+        err.response?.data?.error ||
+          "Verification failed. Please check your code and try again."
       );
     } finally {
       setLoading(false);
@@ -136,11 +137,13 @@ function EmailVerificationPage() {
         {resendMessage ? (
           <p className={verificationStyles.successMessage}>{resendMessage}</p>
         ) : (
-          <p>We've sent a 6-digit verification code to {email}!</p>
+          <p className={verificationStyles.defaultMessage}>
+            Verification code sent to {email}
+          </p>
         )}
 
         <p className={verificationStyles.emailInfoText}>
-          Please enter the code below to verify your email address.
+          Please enter the 6-digit code below to verify your email address
         </p>
         <button
           type="button"
@@ -148,7 +151,7 @@ function EmailVerificationPage() {
           disabled={resendLoading}
           className={verificationStyles.resendButton}
         >
-          {resendLoading ? "Sending..." : "Send new verification code"}
+          {resendLoading ? "Sending..." : "Send New Code"}
         </button>
       </div>
       <FormField

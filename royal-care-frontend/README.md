@@ -236,7 +236,6 @@ To ensure a consistent, user-friendly, and professional experience across the ap
 - **Concise:** Keep all text as brief as possible while maintaining clarity. Remove unnecessary words and redundancy.
 - **Action-Oriented:** Button and link texts should clearly state the action.
 - **Helpful Error Messages:** Guide the user to resolve issues, not just state the problem.
-- **Empathetic:** Acknowledge user frustration in error/success messages when appropriate.
 
 ### 2. Capitalization & Formatting
 
@@ -250,12 +249,14 @@ To ensure a consistent, user-friendly, and professional experience across the ap
   - Use sentence case (only first word and proper nouns capitalized) for:
     - Placeholders (e.g., `e.g. johndoe@email.com`, `Enter your password`)
     - Link text (e.g., `Back to login`, `Forgot your password?`)
-    - Error and success messages (e.g., `Please enter your password.`, `Registration successful! Redirecting you to your dashboard...`)
+    - Error messages (e.g., `Please enter your password.`, `Login failed. Please check your credentials and try again.`)
+    - Success/status messages (e.g., `Registration successful! Redirecting you to your dashboard`, `Verification code sent to your email`)
+    - Instructional/helper text (e.g., `Please enter the 6-digit code below to verify your email address`, `Choose a strong password with at least 8 characters`)
 - **Avoid Redundancy:**
   - Do not repeat the label in the placeholder (e.g., label: `Email Address`, placeholder: `e.g. johndoe@email.com`)
 - **Consistent Punctuation:**
-  - End error and success messages with a period.
-  - Do not use periods in labels, buttons, or placeholders.
+  - End error messages with a period.
+  - Do not use periods in labels, buttons, placeholders, success/status messages, or instructional/helper text.
 
 ### 3. UI Element Guidelines
 
@@ -276,8 +277,14 @@ To ensure a consistent, user-friendly, and professional experience across the ap
   - Be clear and direct (e.g., `Back to login`, `Forgot your password?`, `First time here? Complete your registration.`)
 - **Error/Success Messages:**
   - Use sentence case.
-  - Be specific and helpful (e.g., `Please enter your password.`, `We couldn't send a reset code to that email. Please check your email address and try again.`)
+  - Be specific and helpful (e.g., `Please enter your password.`, `Failed to send reset code. Please check your email address and try again.`)
+  - Error messages should end with a period.
+  - Success/status messages should not end with a period (e.g., `Verification code sent to your email`, `Registration successful! Redirecting you to your dashboard`)
   - If possible, suggest a next step.
+- **Instructional/Helper Text:**
+  - Use sentence case.
+  - Be clear and concise (e.g., `Please enter the 6-digit code below to verify your email address`, `Choose a strong password with at least 8 characters`)
+  - Do not end with a period.
 - **Password Requirements:**
   - Use sentence case and be explicit (e.g., `Contains at least one lowercase letter (a-z)`).
 
@@ -299,7 +306,7 @@ To ensure a consistent, user-friendly, and professional experience across the ap
     - `Contains at least one special character (@$!%*?&)`
     - `Is at least 8 characters long`
 - **Submit Button:** `Complete Registration`
-- **Success Message:** `Registration successful! Redirecting you to your dashboard...`
+- **Success Message:** `Registration successful! Redirecting you to your dashboard`
 - **Error Example:** `Please enter a valid 10-digit Philippine mobile number (e.g., 9123456789).`
 
 #### Login Page
@@ -329,7 +336,7 @@ To ensure a consistent, user-friendly, and professional experience across the ap
   - Label: `Email Address`
   - Placeholder: `e.g. johndoe@email.com`
 - **Submit Button:** `Send Reset Code`
-- **Error Example:** `We couldn't send a reset code to that email. Please check your email address and try again.`
+- **Error Example:** `Failed to send reset code. Please check your email address and try again.`
 - **Back Link:** `Back to login`
 
 ### 5. Additional Details

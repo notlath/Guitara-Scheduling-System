@@ -10,8 +10,9 @@
   /* font-size: var(--font-size-sm); */
 }
 
-.successMessage {
-  color: var(--success-text);
+.successMessage,
+.defaultMessage {
+  color: var(--muted-200);
   margin-bottom: var(--spacing-xm);
   font-weight: 500;
 }
@@ -23,7 +24,7 @@
 }
 
 .resendButton {
-  margin-top: var(--spacing-xm);
+  margin-top: var(--spacing-sm);
   padding: var(--spacing-xs) var(--spacing-xm);
   background-color: var(--secondary-600);
   color: white;
