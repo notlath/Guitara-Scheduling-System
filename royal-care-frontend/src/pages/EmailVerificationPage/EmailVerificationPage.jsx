@@ -16,6 +16,7 @@ function EmailVerificationPage() {
   const [resendMessage, setResendMessage] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [showFieldErrors, setShowFieldErrors] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(15 * 60); // 15 minutes in seconds
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -39,6 +40,7 @@ function EmailVerificationPage() {
       console.log("[EMAIL VERIFICATION] Sending verification code to:", email);
       const response = await api.post("/auth/resend-verification/", { email });
       setResendMessage(`Verification code sent to ${email}`);
+      setTimeRemaining(15 * 60); // Reset timer to 15 minutes
       console.log("[EMAIL VERIFICATION] Response:", response.data);
     } catch (err) {
       console.error("[EMAIL VERIFICATION] Failed to send code:", err);
@@ -83,6 +85,30 @@ function EmailVerificationPage() {
       return;
     }
   }, [email, navigate, user, location.state?.email]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (timeRemaining <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeRemaining]);
+
+  // Format time remaining for display
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -147,6 +173,17 @@ function EmailVerificationPage() {
         <p className={verificationStyles.emailInfoText}>
           Please enter the 6-digit code below to verify your email address
         </p>
+
+        {timeRemaining > 0 ? (
+          <div className={verificationStyles.timer}>
+            Code expires in: {formatTime(timeRemaining)}
+          </div>
+        ) : (
+          <div className={verificationStyles.timerExpired}>
+            Code has expired. Please request a new one.
+          </div>
+        )}
+
         <button
           type="button"
           onClick={handleResendCode}
