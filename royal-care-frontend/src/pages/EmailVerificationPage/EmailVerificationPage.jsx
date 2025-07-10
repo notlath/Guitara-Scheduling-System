@@ -168,7 +168,7 @@ function EmailVerificationPage() {
           // Always check if empty when field has been interacted with
           if (!value || value.trim() === "") {
             return touched || showFieldErrors
-              ? "Please enter the verification code"
+              ? "Please enter the complete 6-digit verification code"
               : "";
           }
 
@@ -180,7 +180,7 @@ function EmailVerificationPage() {
           return "";
         }}
         showError={showFieldErrors}
-        required={true}
+        required={false}
         inputProps={{
           placeholder: "Enter 6-digit code",
           type: "text",
