@@ -50,6 +50,7 @@ import "../styles/OperatorDashboard.css";
 import "../styles/Performance.css";
 import "../styles/UrgencyIndicators.css";
 import PostServiceMaterialModal from "./scheduling/PostServiceMaterialModal";
+import { performLogout } from "../utils/logoutUtils";
 
 // ✅ ROBUST FILTERING: Valid values for URL parameters
 const VALID_VIEW_VALUES = Object.freeze([
@@ -113,13 +114,14 @@ const OperatorDashboard = () => {
 
   // TANSTACK QUERY: Replace custom data fetching with TanStack Query optimized hook
   const {
-    appointments,
-    todayAppointments,
-    upcomingAppointments,
+    // Use underscore prefix for unused variables to follow convention
+    appointments: _appointments,
+    todayAppointments: _todayAppointments,
+    upcomingAppointments: _upcomingAppointments,
     notifications,
-    attendanceRecords: dashboardAttendanceRecords,
-    loading: dashboardLoading,
-    error: dashboardError,
+    attendanceRecords: _dashboardAttendanceRecords,
+    loading: _dashboardLoading,
+    error: _dashboardError,
     // Unused but available: hasData, forceRefresh, isRefetching, queryStates, lastUpdated
   } = useOperatorDashboardData();
 
@@ -255,6 +257,8 @@ const OperatorDashboard = () => {
     method: "cash",
     amount: "",
     notes: "",
+    hasServiceExtension: false,
+    extensionAmount: "",
     receiptFile: null,
     receiptHash: "",
     receiptUrl: "",
@@ -990,32 +994,8 @@ const OperatorDashboard = () => {
     return badges[urgencyLevel] || badges.normal;
   };
 
-  const handleLogout = () => {
-    // Clear localStorage
-    localStorage.removeItem("knoxToken");
-    localStorage.removeItem("user");
-
-    // Clear TanStack Query cache to prevent residual data between users
-    queryClient.clear();
-
-    // Clear all additional caches to prevent cross-user data leakage
-    try {
-      // Clear profile cache
-      profileCache.clear();
-
-      // Clear any other browser storage
-      sessionStorage.clear();
-
-      console.log("🧹 All caches cleared successfully on logout");
-    } catch (error) {
-      console.warn("⚠️ Some caches could not be cleared:", error);
-    }
-
-    // Clear Redux state
-    dispatch(logout());
-
-    // Navigate to login
-    navigate("/");
+  const handleLogout = async () => {
+    await performLogout(dispatch, navigate, queryClient, profileCache, logout);
   };
 
   const handleReviewRejection = (appointment) => {
@@ -1163,6 +1143,20 @@ const OperatorDashboard = () => {
       return;
     }
 
+    // Validate extension amount if service extension is checked - FIXED
+    if (paymentData.hasServiceExtension) {
+      const extensionAmount = parseFloat(paymentData.extensionAmount);
+      if (isNaN(extensionAmount) || extensionAmount <= 0) {
+        console.log(
+          "❌ handleMarkPaymentPaid: Invalid extension amount",
+          paymentData.extensionAmount,
+          "parsed as", extensionAmount
+        );
+        alert("Please enter a valid extension amount (whole numbers only).");
+        return;
+      }
+    }
+
     try {
       console.log(
         "🔄 handleMarkPaymentPaid: Setting loading state to true for",
@@ -1181,10 +1175,12 @@ const OperatorDashboard = () => {
       // Pass the appointment ID as a number, not an object
       const appointmentId = parseInt(paymentModal.appointmentId, 10);
 
-      // Ensure payment amount is properly formatted as a number
+      // Ensure payment amount and extension amount are properly formatted as numbers - FIXED
       const processedPaymentData = {
         ...paymentData,
         amount: parseFloat(paymentData.amount) || 0, // Ensure it's a number
+        extensionAmount: paymentData.hasServiceExtension ? parseFloat(paymentData.extensionAmount) : 0,
+        hasServiceExtension: Boolean(paymentData.hasServiceExtension),
       };
 
       console.log(
@@ -1218,6 +1214,8 @@ const OperatorDashboard = () => {
         method: "cash",
         amount: "",
         notes: "",
+        hasServiceExtension: false,
+        extensionAmount: "",
         receiptFile: null,
         receiptHash: "",
         receiptUrl: "",
@@ -1411,7 +1409,7 @@ const OperatorDashboard = () => {
   // Remove the effect that was causing unnecessary refetches
 
   // Render attendance management view
-  const renderAttendanceView = () => {
+  const _renderAttendanceView = () => {
     const getStatusColor = (status) => {
       switch (status) {
         case "present":
@@ -1722,7 +1720,7 @@ const OperatorDashboard = () => {
   // ✅ PERFORMANCE: Old implementations removed - using ultra-optimized versions above
 
   // Helper functions for status badge mapping
-  const getStatusBadgeClass = (status) => {
+  const _getStatusBadgeClass = (status) => {
     const statusMap = {
       pending: "status-pending",
       confirmed: "status-confirmed",
@@ -1747,7 +1745,7 @@ const OperatorDashboard = () => {
 
     return statusMap[status] || "status-pending";
   };
-  const getStatusDisplayText = (status) => {
+  const _getStatusDisplayText = (status) => {
     // Debug logging
     console.log("📊 Status badge debug - Input status:", status);
     console.log("📊 Status badge debug - Type:", typeof status);
@@ -3026,7 +3024,52 @@ const OperatorDashboard = () => {
                     // Ensure only integers are allowed
                     e.target.value = e.target.value.replace(/[^0-9]/g, "");
                   }}
+                  className="payment-input"
                 />
+              </div>
+              
+              {/* Service Extension Checkbox */}
+              <div className="form-group">
+                <div style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+                  <input
+                    type="checkbox"
+                    id="hasServiceExtension"
+                    checked={paymentData.hasServiceExtension}
+                    onChange={(e) =>
+                      setPaymentData({
+                        ...paymentData,
+                        hasServiceExtension: e.target.checked,
+                        extensionAmount: e.target.checked ? paymentData.extensionAmount : ""
+                      })
+                    }
+                    style={{ marginRight: "8px" }}
+                  />
+                  <label htmlFor="hasServiceExtension" style={{ fontWeight: "500", cursor: "pointer" }}>
+                    Service Extension (Additional Commission)
+                  </label>
+                </div>
+                
+                {paymentData.hasServiceExtension && (
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <input
+                      type="number"
+                      id="extensionAmount"
+                      value={paymentData.extensionAmount}
+                      onChange={(e) =>
+                        setPaymentData({ ...paymentData, extensionAmount: e.target.value })
+                      }
+                      placeholder=""
+                      min="0"
+                      step="1"
+                      pattern="[0-9]*"
+                      onInput={(e) => {
+                        // Ensure only integers are allowed
+                        e.target.value = e.target.value.replace(/[^0-9]/g, "");
+                      }}
+                      className="payment-input"
+                    />
+                  </div>
+                )}
               </div>{" "}
               {/* GCash Receipt Upload */}
               {paymentData.method === "gcash" && (

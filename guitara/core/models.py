@@ -1,6 +1,78 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+
+
+class SystemLog(models.Model):
+    """Model to track system events like authentication, data changes, etc."""
+    LOG_TYPES = (
+        ('authentication', 'Authentication'),
+        ('appointment', 'Appointment'),
+        ('payment', 'Payment'),
+        ('data', 'Data'),
+        ('system', 'System'),
+        ('inventory', 'Inventory'),
+    )
+    
+    ACTION_TYPES = (
+        ('login', 'Login'),
+        ('logout', 'Logout'),
+        ('create', 'Create'),
+        ('update', 'Update'),
+        ('delete', 'Delete'),
+        ('view', 'View'),
+        ('export', 'Export'),
+        ('import', 'Import'),
+        ('error', 'Error'),
+        ('success', 'Success'),
+        ('verify', 'Verify'),
+    )
+    
+    # Fields matching the actual DB schema in Supabase
+    id = models.AutoField(primary_key=True)
+    log_type = models.CharField(max_length=20, choices=LOG_TYPES)
+    timestamp = models.DateTimeField(default=timezone.now)
+    description = models.TextField()
+    user_id = models.IntegerField(null=True, blank=True)  # Store direct user ID, no ForeignKey relation
+    metadata = models.JSONField(null=True, blank=True)  # Supabase uses 'metadata' field for JSON data
+    
+    # action_type field has been removed as it doesn't exist in Supabase
+    # We'll store the action_type in the metadata field instead
+    
+    class Meta:
+        ordering = ['-timestamp']
+        managed = True  # Let Django manage this table to ensure it exists
+        db_table = 'core_systemlog'  # Match the Supabase table name
+    
+    def __str__(self):
+        user_str = f"User {self.user_id}" if self.user_id else "Anonymous"
+        action = self.metadata.get('action_type', 'Action').title() if self.metadata else "Action"
+        return f"{self.log_type.title()} - {action} by {user_str}"
+        
+    def save(self, *args, **kwargs):
+        """
+        Override save method to ensure this is saved directly to Supabase,
+        bypassing any potential local database configurations.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Save to database using the default connection (Supabase)
+        try:
+            from django.db import connections
+            logger.info(f"Saving SystemLog to Supabase: {self.description}")
+            super().save(*args, **kwargs)
+            # Force commit the transaction
+            connections['default'].commit()
+            logger.info(f"Successfully saved SystemLog #{self.id} to Supabase")
+        except Exception as e:
+            logger.error(f"Failed to save SystemLog to Supabase: {str(e)}")
+            # Attempt a regular save as fallback
+            super().save(*args, **kwargs)
+            logger.warning(f"Saved SystemLog to fallback database")
+        action = self.metadata.get('action_type', 'Action').title() if self.metadata else "Action"
+        return f"{self.log_type.title()} - {action} at {self.timestamp}"
 
 
 class CustomUser(AbstractUser):

@@ -231,7 +231,15 @@ const MainLayout = () => {
                         <MdTableChart className="main-layout__sidebar-icon" />
                         Data
                       </NavLink>
-                      {/* Logs link removed as requested */}
+                      <NavLink
+                        to="/dashboard/logs"
+                        className={({ isActive }) =>
+                          isActive ? "active-link" : ""
+                        }
+                      >
+                        <MdMenuBook className="main-layout__sidebar-icon" />
+                        Logs
+                      </NavLink>
                     </>
                   )}
                 </nav>

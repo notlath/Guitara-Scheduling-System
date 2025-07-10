@@ -4,6 +4,7 @@ from datetime import timedelta
 from core.models import CustomUser
 from django.db import transaction
 from django.utils import timezone
+import json
 
 
 class Client(models.Model):
@@ -197,6 +198,9 @@ class Appointment(models.Model):
     receipt_url = models.URLField(
         blank=True, null=True, help_text="URL to uploaded payment receipt"
     )
+        
+    # Store additional data as JSON
+    metadata = models.JSONField(null=True, blank=True, help_text="Additional appointment data such as service extensions")
 
     location = models.TextField()
     notes = models.TextField(blank=True, null=True)

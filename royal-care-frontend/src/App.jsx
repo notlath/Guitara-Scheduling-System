@@ -113,6 +113,10 @@ const UserGuidePage = React.lazy(() =>
   import("./pages/UserGuidePage/UserGuidePage")
 );
 const LogsPage = React.lazy(() => import("./pages/LogsPage/LogsPage"));
+const SimpleLogsTest = React.lazy(() =>
+  import("./pages/LogsPage/SimpleLogsTest")
+);
+const AuthDebugPage = React.lazy(() => import("./pages/AuthDebugPage"));
 // import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
 import { performServiceHealthCheck } from "./utils/serviceHealthCheck";
@@ -568,6 +572,14 @@ const App = () => {
               }
             />
             <Route
+              path="logs-test"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <SimpleLogsTest />
+                </Suspense>
+              }
+            />
+            <Route
               path="settings/data"
               element={<Navigate to="/dashboard/data" replace />} // Redirect old route
             />
@@ -625,6 +637,14 @@ const App = () => {
                 }
               />
             </Route>
+            <Route
+              path="auth-debug"
+              element={
+                <Suspense fallback={<LoadingOverlay />}>
+                  <AuthDebugPage />
+                </Suspense>
+              }
+            />
           </Route>
         </Routes>
       </div>

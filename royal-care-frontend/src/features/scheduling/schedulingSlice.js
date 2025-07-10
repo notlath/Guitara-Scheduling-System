@@ -1809,6 +1809,15 @@ export const markAppointmentPaid = createAsyncThunk(
       endpoint: `${API_URL}appointments/${appointmentId}/mark_completed/`,
     });
 
+    // Process payment data - FIXED to ensure proper data type conversion
+    const hasExtension = Boolean(paymentData?.hasServiceExtension);
+    let extensionAmount = 0;
+    
+    if (hasExtension && paymentData?.extensionAmount) {
+      extensionAmount = parseFloat(paymentData.extensionAmount);
+      if (isNaN(extensionAmount)) extensionAmount = 0;
+    }
+    
     // Prepare the request payload with explicit data conversion
     const requestPayload = {
       payment_method: paymentData?.method || "cash",
@@ -1816,11 +1825,21 @@ export const markAppointmentPaid = createAsyncThunk(
       payment_notes: paymentData?.notes || "",
       receipt_hash: paymentData?.receiptHash || null,
       receipt_url: paymentData?.receiptUrl || null,
+      // Service extension data - FIXED
+      has_service_extension: hasExtension,
+      extension_amount: extensionAmount,
     };
 
     console.log(
       "📦 markAppointmentPaid: Request payload being sent:",
-      requestPayload
+      {
+        ...requestPayload,
+        extensionDetails: {
+          hasExtension,
+          rawExtensionAmount: paymentData?.extensionAmount,
+          processedExtensionAmount: extensionAmount
+        }
+      }
     );
 
     try {

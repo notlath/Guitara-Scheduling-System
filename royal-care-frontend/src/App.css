@@ -125,6 +125,14 @@ button {
   height: 1em;
 }
 
+/* Primary action icon styles */
+.primary-action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.25rem;
+}
+
 /* Secondary action button styles */
 .secondary-action-btn {
   display: flex;

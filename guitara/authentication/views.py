@@ -107,7 +107,38 @@ class LoginAPI(generics.GenericAPIView):
                     [user.email],
                     fail_silently=False,
                 )
+                
+                # Log 2FA code sent
+                from core.utils.logging_utils import log_authentication_event
+                log_authentication_event(
+                    action='login',
+                    user_id=user.id,
+                    username=user.username,
+                    user_name=user.get_full_name() or user.username,
+                    success=True,
+                    metadata={
+                        'event': '2fa_code_sent',
+                        'email': user.email,
+                        'ip_address': request.META.get('REMOTE_ADDR'),
+                    }
+                )
+                
                 return Response({"message": "2FA code sent"}, status=200)
+
+            # Log successful login
+            from core.utils.logging_utils import log_authentication_event
+            log_authentication_event(
+                action='login',
+                user_id=user.id,
+                username=user.username,
+                user_name=user.get_full_name() or user.username,
+                success=True,
+                metadata={
+                    'full_name': user.get_full_name(),
+                    'ip_address': request.META.get('REMOTE_ADDR'),
+                    'user_agent': request.META.get('HTTP_USER_AGENT'),
+                }
+            )
 
             return Response(
                 {
@@ -117,6 +148,22 @@ class LoginAPI(generics.GenericAPIView):
             )
         except serializers.ValidationError as ve:
             logger.warning(f"[LOGIN] Validation error: {ve}")
+            
+            # Log failed login attempt
+            username = request.data.get('username', 'Unknown')
+            from core.utils.logging_utils import log_authentication_event
+            log_authentication_event(
+                action='login',
+                username=username,
+                success=False,
+                metadata={
+                    'error': str(ve),
+                    'ip_address': request.META.get('REMOTE_ADDR'),
+                    'user_agent': request.META.get('HTTP_USER_AGENT'),
+                    'username': username
+                }
+            )
+            
             # Extract error message and code robustly
             error_message = None
             error_code = None
@@ -231,10 +278,34 @@ class TwoFactorVerifyAPI(generics.GenericAPIView):
         )
         if not tf_code:
             logger.warning("[2FA VERIFY] Invalid or expired verification code attempt.")
+            
+            # Log failed 2FA attempt
+            from core.models import SystemLog
+            SystemLog.objects.create(
+                log_type='authentication',
+                action_type='login',
+                user=user,
+                description=f"Failed 2FA verification attempt for {user.username}",
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT'),
+                additional_data={'reason': 'invalid_or_expired_code'}
+            )
+            
             return Response({"error": "Invalid code."}, status=400)
 
         tf_code.is_used = True
         tf_code.save()
+
+        # Log successful 2FA login
+        from core.models import SystemLog
+        SystemLog.objects.create(
+            log_type='authentication',
+            action_type='login',
+            user=user,
+            description=f"User {user.username} ({user.get_full_name()}) completed 2FA login successfully",
+            ip_address=request.META.get('REMOTE_ADDR'),
+            user_agent=request.META.get('HTTP_USER_AGENT'),
+        )
 
         return Response(
             {
@@ -601,3 +672,50 @@ Guitara Scheduling Team
                 {"error": "Failed to send verification email. Please try again later."},
                 status=500,
             )
+
+
+class LogoutAPI(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        """
+        Custom logout view that logs the event in the system logs before invalidating token
+        """
+        # Extract the token from the request
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        
+        # Log the logout event
+        try:
+            from core.utils.logging_utils import log_authentication_event
+            
+            user = request.user
+            log_authentication_event(
+                action='logout',
+                user_id=user.id,
+                username=user.username,
+                user_name=user.get_full_name() or user.username,
+                success=True,
+                metadata={
+                    'ip_address': request.META.get('REMOTE_ADDR'),
+                    'user_agent': request.META.get('HTTP_USER_AGENT'),
+                }
+            )
+            
+            # Properly invalidate the knox token
+            if auth_header.startswith('Token '):
+                token_key = auth_header.split(' ')[1]
+                
+                # Try to delete the specific token
+                try:
+                    from knox.models import AuthToken
+                    token_instance = AuthToken.objects.filter(token_key=token_key[:8])
+                    if token_instance.exists():
+                        token_instance.delete()
+                        logger.info(f"Token invalidated for user {user.username}")
+                except Exception as e:
+                    logger.error(f"Error invalidating token: {str(e)}")
+            
+            return Response({"message": "Logout successful"}, status=200)
+        except Exception as e:
+            logger.error(f"Error during logout: {str(e)}")
+            return Response({"error": "An error occurred during logout"}, status=500)

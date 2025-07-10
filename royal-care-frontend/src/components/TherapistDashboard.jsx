@@ -18,12 +18,14 @@ import { useTherapistDashboardData } from "../hooks/useDashboardQueries";
 // TanStack Query cache utilities for direct cache management
 import { syncMutationSuccess } from "../services/realTimeSyncService";
 // User utilities
-import { profileCache } from "../utils/profileCache";
 import { getUserDisplayName } from "../utils/userUtils";
 import { LoadingButton } from "./common/LoadingComponents";
 import MinimalLoadingIndicator from "./common/MinimalLoadingIndicator";
 // Import PostServiceMaterialModal for material status checking
 import PostServiceMaterialModal from "./scheduling/PostServiceMaterialModal";
+// Import logout utility
+import { performLogout } from "../utils/logoutUtils";
+import { profileCache } from "../utils/profileCache";
 
 import { shallowEqual } from "react-redux";
 import LayoutRow from "../globals/LayoutRow";
@@ -155,20 +157,18 @@ const TherapistDashboard = () => {
 
   // Enhanced Redux actions with automatic TanStack Query cache invalidation
   const {
-    acceptAppointment: enhancedAcceptAppointment,
-    rejectAppointment: enhancedRejectAppointment,
+    // Only keep the actions we're actually using
     confirmReadiness: enhancedConfirmReadiness,
     startSession: enhancedStartSession,
     completeSession: enhancedCompleteSession,
     requestPickup: enhancedRequestPickup,
-    markPaymentRequest: enhancedMarkPaymentRequest,
   } = useEnhancedTherapistActions();
 
   // ✅ NEW: Instant updates for immediate UI feedback
   const {
     acceptAppointment: instantAcceptAppointment,
     rejectAppointment: instantRejectAppointment,
-    requestPickup: instantRequestPickup,
+    // Remove unused actions
   } = useTherapistInstantActions();
   // Remove the sync event handlers - TanStack Query handles real-time updates automatically
 
@@ -317,7 +317,7 @@ const TherapistDashboard = () => {
     },
   });
 
-  const rejectAppointmentMutation = useMutation({
+  const _rejectAppointmentMutation = useMutation({
     mutationFn: therapistAPI.rejectAppointment,
     onSuccess: async (backendData, { appointmentId }) => {
       console.log("✅ Reject appointment mutation successful");
@@ -345,7 +345,7 @@ const TherapistDashboard = () => {
     },
   });
 
-  const confirmReadinessMutation = useMutation({
+  const _confirmReadinessMutation = useMutation({
     mutationFn: therapistAPI.confirmReadiness,
     onSuccess: async (backendData, appointmentId) => {
       console.log("✅ Confirm readiness mutation successful");
@@ -373,7 +373,7 @@ const TherapistDashboard = () => {
     },
   });
 
-  const startSessionMutation = useMutation({
+  const _startSessionMutation = useMutation({
     mutationFn: therapistAPI.startSession,
     onSuccess: async (backendData, appointmentId) => {
       console.log("✅ Start session mutation successful");
@@ -426,7 +426,7 @@ const TherapistDashboard = () => {
     },
   });
 
-  const completeSessionMutation = useMutation({
+  const _completeSessionMutation = useMutation({
     mutationFn: therapistAPI.completeSession,
     onSuccess: async () => {
       console.log("✅ Complete session mutation successful");
@@ -446,7 +446,7 @@ const TherapistDashboard = () => {
     },
   });
 
-  const requestPickupMutation = useMutation({
+  const _requestPickupMutation = useMutation({
     mutationFn: therapistAPI.requestPickup,
     onSuccess: async (backendData, { appointmentId }) => {
       console.log("✅ Request pickup mutation successful");
@@ -473,21 +473,21 @@ const TherapistDashboard = () => {
   });
 
   // Modal helper functions
-  const openRejectionModal = ({ appointmentId }) => {
+  const _openRejectionModal = ({ appointmentId }) => {
     setRejectionModal({
       isOpen: true,
       appointmentId,
     });
   };
 
-  const closeRejectionModal = () => {
+  const _closeRejectionModal = () => {
     setRejectionModal({
       isOpen: false,
       appointmentId: null,
     });
   };
 
-  const openMaterialModal = ({ appointmentId, materials, isSubmitting }) => {
+  const _openMaterialModal = ({ appointmentId, materials, isSubmitting }) => {
     // 🚨 GUARD: Prevent material modal from opening during session_in_progress
     const appointment = myAppointments?.find((apt) => apt.id === appointmentId);
     if (appointment && appointment.status === "session_in_progress") {
@@ -523,7 +523,7 @@ const TherapistDashboard = () => {
     });
   };
 
-  const closeMaterialModal = () => {
+  const _closeMaterialModal = () => {
     setMaterialModal({
       isOpen: false,
       appointmentId: null,
@@ -556,32 +556,8 @@ const TherapistDashboard = () => {
   // TANSTACK QUERY: Automatic background refreshes handled by TanStack Query
   // No manual refresh logic needed - TanStack Query handles it automatically
 
-  const handleLogout = () => {
-    // Clear localStorage
-    localStorage.removeItem("knoxToken");
-    localStorage.removeItem("user");
-
-    // Clear TanStack Query cache to prevent residual data between users
-    queryClient.clear();
-
-    // Clear all additional caches to prevent cross-user data leakage
-    try {
-      // Clear profile cache
-      profileCache.clear();
-
-      // Clear any other browser storage
-      sessionStorage.clear();
-
-      console.log("🧹 All caches cleared successfully on logout");
-    } catch (error) {
-      console.warn("⚠️ Some caches could not be cleared:", error);
-    }
-
-    // Clear Redux state
-    dispatch(logout());
-
-    // Navigate to login
-    navigate("/");
+  const handleLogout = async () => {
+    await performLogout(dispatch, navigate, queryClient, profileCache, logout);
   };
 
   // Handle appointment status changes with INSTANT UPDATES (immediate UI feedback)
@@ -1052,7 +1028,7 @@ const TherapistDashboard = () => {
     setRejectionModal({ isOpen: false, appointmentId: null });
   };
 
-  const getStatusBadgeClass = (status) => {
+  const _getStatusBadgeClass = (status) => {
     switch (status) {
       case "pending":
         return "status-pending";
@@ -1088,7 +1064,7 @@ const TherapistDashboard = () => {
   };
 
   // Helper function to display user-friendly status text
-  const getStatusDisplayText = (status) => {
+  const _getStatusDisplayText = (status) => {
     switch (status) {
       case "pending":
         return "Pending";

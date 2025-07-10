@@ -13,6 +13,7 @@ import {
 } from "../../services/api";
 import "../../styles/Placeholders.css";
 import { profileCache } from "../../utils/profileCache";
+import { performLogout } from "../../utils/logoutUtils";
 import styles from "./ProfilePage.module.css";
 
 const ProfilePage = () => {
@@ -249,32 +250,8 @@ const ProfilePage = () => {
     }
   };
 
-  const handleLogout = () => {
-    // Clear localStorage
-    localStorage.removeItem("knoxToken");
-    localStorage.removeItem("user");
-
-    // Clear TanStack Query cache to prevent residual data between users
-    queryClient.clear();
-
-    // Clear all additional caches to prevent cross-user data leakage
-    try {
-      // Clear profile cache
-      profileCache.clear();
-
-      // Clear any other browser storage
-      sessionStorage.clear();
-
-      console.log("🧹 All caches cleared successfully on logout");
-    } catch (error) {
-      console.warn("⚠️ Some caches could not be cleared:", error);
-    }
-
-    // Clear Redux state
-    dispatch(logout());
-
-    // Navigate to login
-    navigate("/");
+  const handleLogout = async () => {
+    await performLogout(dispatch, navigate, queryClient, profileCache, logout);
   };
 
   const handlePhotoUpdate = (photoUrl) => {

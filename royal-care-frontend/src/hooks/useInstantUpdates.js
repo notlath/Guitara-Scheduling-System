@@ -180,11 +180,31 @@ export const useInstantUpdates = () => {
         appointmentId,
         paymentData,
         processedAmount: parseFloat(paymentData.amount) || 0,
+        hasServiceExtension: paymentData.hasServiceExtension,
+        extensionAmount: paymentData.hasServiceExtension ? (parseFloat(paymentData.extensionAmount) || 0) : 0,
       });
+
+      // Prepare metadata with service extension info if applicable
+      const metadata = {};
+      if (paymentData.hasServiceExtension && parseFloat(paymentData.extensionAmount) > 0) {
+        metadata.service_extension = {
+          has_extension: true,
+          extension_amount: parseFloat(paymentData.extensionAmount) || 0
+        };
+      }
 
       return performInstantUpdate({
         appointmentId,
-        reduxAction: markAppointmentPaid({ appointmentId, paymentData }),
+        reduxAction: markAppointmentPaid({ 
+          appointmentId, 
+          paymentData: {
+            ...paymentData,
+            payment_method: paymentData.method,
+            payment_amount: parseFloat(paymentData.amount) || 0,
+            has_service_extension: paymentData.hasServiceExtension,
+            extension_amount: paymentData.hasServiceExtension ? (parseFloat(paymentData.extensionAmount) || 0) : 0,
+          }
+        }),
         optimisticUpdate: {
           status: "completed",
           payment_status: "paid",
@@ -192,6 +212,9 @@ export const useInstantUpdates = () => {
           payment_method: paymentData.method,
           payment_amount: parseFloat(paymentData.amount) || 0, // ✅ Include payment amount for sales/reports dashboards
           payment_notes: paymentData.notes || "",
+          metadata: {
+            ...(metadata || {})
+          }
         },
         errorMessage: "Failed to mark payment as paid. Please try again.",
       });

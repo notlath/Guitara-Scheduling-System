@@ -1015,6 +1015,102 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         appointment.save()
 
+        # --- SYSTEM LOG: Appointment Creation ---
+        try:
+            from core.utils.logging_utils import log_appointment_event, log_inventory_event
+            
+            # Get client name for the log
+            client_name = getattr(appointment.client, 'full_name', str(appointment.client))
+            
+            # Collect materials information for the consolidated log
+            materials_list = []
+            if materials_raw:
+                for material_data in materials_raw:
+                    if isinstance(material_data, dict):
+                        item_id = material_data.get('item_id') or material_data.get('id')
+                        item_name = material_data.get('item_name')
+                        quantity = material_data.get('quantity_used', 0)
+                        
+                        # Look up item name if not provided
+                        if not item_name and item_id:
+                            try:
+                                from inventory.models import InventoryItem
+                                inventory_item = InventoryItem.objects.get(id=item_id)
+                                item_name = inventory_item.name
+                            except Exception as e:
+                                logger.error(f"Error fetching inventory item name: {e}")
+                                item_name = f"Item #{item_id}"
+                                
+                        materials_list.append({
+                            'item_id': item_id,
+                            'item_name': item_name,
+                            'quantity_used': quantity
+                        })
+                        
+            # Create the log using our utility function with improved description
+            log_appointment_event(
+                appointment_id=appointment.id,
+                action_type="create",
+                user_id=self.request.user.id,
+                client_name=client_name,
+                username=self.request.user.get_full_name() or self.request.user.username,
+                materials_list=materials_list,
+                metadata={
+                    'appointment_date': str(appointment.date),
+                    'status': appointment.status,
+                    'location': appointment.location,
+                    'created_by': self.request.user.username,
+                    'services': [s.name for s in appointment.services.all()],
+                    'therapist': getattr(appointment.therapist, 'username', None) if appointment.therapist else None,
+                }
+            )
+            logger.info(f"✅ System log created for appointment #{appointment.id}")
+            
+            # --- SYSTEM LOG: Material Usage for Appointment ---
+            # Create a single consolidated inventory log for all materials used in this appointment
+            if materials_list:
+                try:
+                    # Clean up material names - remove any existing parentheses to avoid duplicates
+                    clean_materials = []
+                    for m in materials_list:
+                        material_name = m['item_name']
+                        # Thoroughly remove any content in parentheses from the item name using regex
+                        import re
+                        if material_name and isinstance(material_name, str):
+                            material_name = re.sub(r'\s*\([^)]*\)', '', material_name).strip()
+                        
+                        clean_materials.append({
+                            'item_id': m['item_id'],
+                            'item_name': material_name,
+                            'quantity_used': m['quantity_used']
+                        })
+                    
+                    # Format the materials as a comma-separated list for the description - just show name and quantity
+                    # Ensure no duplicate parenthesis - clean_materials should already have clean names
+                    materials_str = ", ".join([f"{m['item_name']} ({m['quantity_used']})" for m in clean_materials])
+                    
+                    # Create a consolidated materials usage log
+                    log_inventory_event(
+                        action_type="appointment_materials_usage",
+                        user_id=self.request.user.id,
+                        item_name=f"Materials for Appointment #{appointment.id}",  # Generic title
+                        metadata={
+                            'appointment_id': appointment.id,
+                            'client_name': client_name,
+                            'materials': clean_materials,  # Complete list of materials with cleaned names
+                            'materials_summary': materials_str,  # Formatted string for display
+                            'usage_context': 'appointment_service',
+                            'performed_by': self.request.user.username or self.request.user.get_full_name(),
+                            'operator_name': self.request.user.get_full_name() or self.request.user.username,
+                        }
+                    )
+                    logger.info(f"✅ Consolidated materials usage log created for appointment #{appointment.id}: {materials_str}")
+                except Exception as material_log_exc:
+                    logger.error(f"Failed to create consolidated materials log: {material_log_exc}")
+                        
+        except Exception as log_exc:
+            logger.error(f"Failed to create system log for appointment creation: {log_exc}")
+
     def perform_update(self, serializer):
         # Ensure only operators can update appointments or staff can update specific fields
         user = self.request.user
@@ -2564,22 +2660,35 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         payment_method = request.data.get("payment_method", "cash")
         payment_amount = request.data.get("payment_amount", 0)
+        extension_amount = request.data.get("extension_amount", 0)
+        has_service_extension = request.data.get("has_service_extension", False)
 
         # Debug logging for payment amount processing
         print(f"🔍 mark_completed: Extracted payment_method: {payment_method}")
         print(
             f"🔍 mark_completed: Extracted payment_amount: {payment_amount} (type: {type(payment_amount)})"
         )
+        print(
+            f"🔍 mark_completed: Extracted extension_amount: {extension_amount} (type: {type(extension_amount)})"
+        )
+        print(
+            f"🔍 mark_completed: Has service extension: {has_service_extension}"
+        )
 
-        # Ensure payment_amount is properly converted to Decimal
+        # Ensure payment_amount and extension_amount are properly converted to Decimal
         try:
             payment_amount = float(payment_amount) if payment_amount else 0
+            extension_amount = float(extension_amount) if extension_amount and has_service_extension else 0
             print(
                 f"🔍 mark_completed: Converted payment_amount to float: {payment_amount}"
             )
+            print(
+                f"🔍 mark_completed: Converted extension_amount to float: {extension_amount}"
+            )
         except (ValueError, TypeError) as e:
-            print(f"❌ mark_completed: Error converting payment_amount: {e}")
+            print(f"❌ mark_completed: Error converting amounts: {e}")
             payment_amount = 0
+            extension_amount = 0
 
         appointment.status = (
             "payment_verified"  # Mark as payment verified, not completed
@@ -2589,6 +2698,21 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.payment_method = payment_method
         appointment.payment_amount = payment_amount
         appointment.payment_verified_at = timezone.now()
+        
+        # Store extension amount in metadata field - FIXED to ensure proper data storage
+        metadata = appointment.metadata if appointment.metadata is not None else {}
+        if has_service_extension and extension_amount > 0:
+            metadata['service_extension'] = {
+                'has_extension': True,
+                'extension_amount': float(extension_amount)  # Ensure it's stored as a float
+            }
+            print(f"🔍 Adding service extension amount: {extension_amount}")
+        else:
+            # Clear any previous extension data if it exists
+            if 'service_extension' in metadata:
+                del metadata['service_extension']
+        
+        appointment.metadata = metadata
         # Note: session_end_time will be set when therapist actually completes the session
 
         print(
@@ -2620,6 +2744,28 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             "payment_verified",
             f"Payment verified by operator. Received {payment_amount} via {payment_method}.",
         )
+
+        # --- SYSTEM LOG: Payment Verification ---
+        try:
+            from core.utils.logging_utils import log_payment_event
+            
+            # Create payment verification log
+            log_payment_event(
+                payment_id=appointment.id,
+                action_type="verify",
+                amount=f"{payment_amount}",
+                user_id=request.user.id,
+                metadata={
+                    "appointment_id": appointment.id,
+                    "payment_amount": float(payment_amount),
+                    "payment_method": payment_method,
+                    "client_name": getattr(appointment.client, 'full_name', str(appointment.client)),
+                    "verified_by": request.user.username
+                }
+            )
+            print(f"✅ Created payment verification system log")
+        except Exception as log_exc:
+            print(f"❌ Failed to create system log for payment verification: {log_exc}")
 
         serializer = self.get_serializer(appointment)
         return Response(
@@ -2894,7 +3040,46 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment,
             "pickup_confirmed",
             f"✅ Pickup confirmed by driver {request.user.get_full_name()}. "
-            f"Driver is now en route to pick up therapist from {appointment.location}.",
+            f"Driver is now en route to pick up therapist from {appointment.location}."
+        )
+
+        # Can only start when both parties have confirmed
+        if appointment.status != "driver_confirmed":
+            if appointment.status == "pending":
+                return Response(
+                    {
+                        "error": "Therapist must confirm first before appointment can be started"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            elif appointment.status == "therapist_confirmed":
+                return Response(
+                    {"error": "Driver must confirm before appointment can be started"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            elif appointment.status == "in_progress":
+                return Response(
+                    {"error": "Appointment is already in progress"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            else:
+                return Response(
+                    {
+                        "error": f"Cannot start appointment in {appointment.status} status"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Start the appointment
+        appointment.status = "in_progress"
+        appointment.started_at = timezone.now()
+        appointment.save()
+
+        # Create notifications
+        self._create_notifications(
+            appointment,
+            "appointment_started",
+            f"Appointment for {appointment.client} on {appointment.date} has been started by operator.",
         )
 
         # Send WebSocket notification
@@ -2904,13 +3089,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             {
                 "type": "appointment_message",
                 "message": {
-                    "type": "pickup_confirmed",
+                    "type": "appointment_started",
                     "appointment_id": appointment.id,
-                    "driver_id": request.user.id,
-                    "therapist_id": (
-                        appointment.therapist.id if appointment.therapist else None
-                    ),
-                    "message": f"Pickup confirmed. Driver en route for pickup.",
+                    "operator_id": request.user.id,
+                    "message": "Appointment started. Ready to service delivery.",
                     "status": appointment.status,
                 },
             },
@@ -2919,51 +3101,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(appointment)
         return Response(
             {
-                "message": "Pickup confirmed successfully! En route to pick up therapist.",
+                "message": "Appointment started successfully. Ready for service delivery.",
                 "appointment": serializer.data,
             }
-        )
-
-    @action(detail=True, methods=["post"])
-    def reject_pickup(self, request, pk=None):
-        """Driver rejects pickup assignment"""
-        appointment = self.get_object()
-
-        # Only the assigned driver can reject pickup
-        if request.user != appointment.driver:
-            return Response(
-                {"error": "You can only reject pickup assignments assigned to you"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Can only reject pickup when status is driver_assigned_pickup
-        if appointment.status != "driver_assigned_pickup":
-            return Response(
-                {
-                    "error": f"Cannot reject pickup for appointment in {appointment.status} status"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Get rejection reason
-        reason = request.data.get("reason", "").strip()
-        if not reason:
-            return Response(
-                {"error": "Rejection reason is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )  # Reset to pickup_requested status for operator reassignment
-        appointment.status = "pickup_requested"
-        appointment.driver = None  # Remove driver assignment
-        # Use notes field for rejection reason since pickup_rejection_reason might not exist
-        appointment.pickup_notes = f"REJECTED: {reason}"
-        appointment.save()
-
-        # Create notifications
-        self._create_notifications(
-            appointment,
-            "pickup_rejected",
-            f"❌ Pickup rejected by driver {request.user.get_full_name()}. "
-            f"Reason: {reason}. Reassignment required by operator.",
         )
 
         # Send WebSocket notification

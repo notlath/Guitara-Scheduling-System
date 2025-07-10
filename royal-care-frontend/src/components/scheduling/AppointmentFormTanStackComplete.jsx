@@ -291,6 +291,16 @@ const AppointmentFormTanStackComplete = ({
     refetch: refetchMaterialsWithStock,
   } = useMaterialsWithStock(formData.services);
 
+  // Debug material names when they arrive
+  useEffect(() => {
+    if (materialsWithStock && materialsWithStock.length > 0) {
+      console.log("🔍 DEBUG - Material names as received from API:");
+      materialsWithStock.forEach((mat, index) => {
+        console.log(`Material ${index + 1}: name="${mat.name}", material_name="${mat.material_name || ''}", item_name="${mat.item_name || ''}"`);
+      });
+    }
+  }, [materialsWithStock]);
+
   // Auto-calculate end time when dependencies change
   useEffect(() => {
     // Inline calculation to avoid dependency on calculateEndTime callback
@@ -506,17 +516,26 @@ const AppointmentFormTanStackComplete = ({
         );
       }
 
-      const processedMats = validMaterials.map((mat) => ({
-        ...mat,
-        name:
-          mat.name ||
-          mat.material_name ||
-          mat.item_name ||
-          Object.values(mat).find((v) => typeof v === "string") ||
-          "Material",
-        current_stock: mat.current_stock ?? 0,
-        unit_of_measure: mat.unit_of_measure || "",
-      }));
+      const processedMats = validMaterials.map((mat) => {
+        // Clean the material name to remove any (quantity) indicators
+        let cleanName = mat.name || mat.material_name || mat.item_name || 
+                        Object.values(mat).find((v) => typeof v === "string") ||
+                        "Material";
+        
+        // Remove any parentheses and their contents using regex
+        if (cleanName && typeof cleanName === 'string') {
+          cleanName = cleanName.replace(/\s*\([^)]*\)/g, '').trim();
+        }
+        
+        console.log(`Cleaned material name: "${mat.name}" → "${cleanName}"`);
+        
+        return {
+          ...mat,
+          name: cleanName,
+          current_stock: mat.current_stock ?? 0,
+          unit_of_measure: mat.unit_of_measure || "",
+        };
+      });
       console.log("DEBUG processed materials:", processedMats);
 
       setMaterials(processedMats);
@@ -822,7 +841,7 @@ const AppointmentFormTanStackComplete = ({
         materials: Object.entries(materialQuantities)
           .filter((entry) => entry[1] && !isNaN(Number(entry[1])))
           .map(([materialId, qty]) => {
-            // Find the material in our materials array to validate it has inventory_item
+            // Find the material in our materials array to get inventory_item info
             const material = materials.find(
               (m) => m.id === parseInt(materialId, 10)
             );
@@ -832,9 +851,21 @@ const AppointmentFormTanStackComplete = ({
               );
               return null;
             }
+            
+            // Clean up material name - thoroughly remove any parentheses to avoid duplicates like "Material (2) (3)"
+            let cleanName = material.name;
+            if (cleanName) {
+              // Remove any text in parentheses completely
+              cleanName = cleanName.replace(/\s*\([^)]*\)/g, '').trim();
+            }
+            
+            // Format data as expected by backend
             return {
-              material: parseInt(materialId, 10),
-              quantity: Number(qty),
+              item_id: material.inventory_item,  // Backend expects item_id (inventory item ID)
+              item_name: cleanName,              // Clean name without any parentheses
+              quantity_used: Number(qty),        // Backend expects quantity_used
+              usage_type: "consumable",          // Default usage type
+              is_reusable: false,                // Default to false
             };
           })
           .filter(Boolean), // Remove null values
@@ -1246,7 +1277,7 @@ const AppointmentFormTanStackComplete = ({
               {Array.isArray(services) &&
                 services.map((service) => (
                   <option key={service.id} value={service.id}>
-                    {service.name} - {service.duration} min - ₱{service.price}
+                    {service.name} - {service.duration} min - ₱{parseFloat(service.price).toFixed(2)}
                   </option>
                 ))}
             </select>
@@ -1324,10 +1355,8 @@ const AppointmentFormTanStackComplete = ({
                       >
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: "500" }}>
-                            {mat.name ||
-                              mat.material_name ||
-                              mat.item_name ||
-                              "Material"}
+                            {/* Clean name display to ensure no (2) appears */}
+                            {mat.name || mat.material_name || mat.item_name || "Material"}
                           </div>
                           <div
                             style={{

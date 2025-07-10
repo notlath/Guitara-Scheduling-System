@@ -200,6 +200,9 @@ DATABASES = {
     }
 }
 
+# Database routers to ensure SystemLog data always goes to Supabase
+DATABASE_ROUTERS = ['core.routers.SystemLogRouter']
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -254,7 +257,12 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ("knox.auth.TokenAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "authentication.flexible_auth.FlexibleTokenAuthentication",  # Use our custom flexible auth
+        "knox.auth.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",  # Add session auth for browser testing
+        "rest_framework.authentication.BasicAuthentication",    # Add basic auth for simple testing
+    ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 12,  # Set to 12 items per page for production use
     "DEFAULT_FILTER_BACKENDS": [
