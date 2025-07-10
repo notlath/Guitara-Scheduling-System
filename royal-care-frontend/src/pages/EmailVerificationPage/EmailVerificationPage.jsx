@@ -15,7 +15,6 @@ function EmailVerificationPage() {
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
-  const [autoSent, setAutoSent] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -38,7 +37,7 @@ function EmailVerificationPage() {
     try {
       console.log("[EMAIL VERIFICATION] Sending verification code to:", email);
       const response = await api.post("/auth/resend-verification/", { email });
-      setResendMessage("New verification code sent to your email!");
+      setResendMessage(`New verification code sent to ${email}!`);
       console.log("[EMAIL VERIFICATION] Response:", response.data);
     } catch (err) {
       console.error("[EMAIL VERIFICATION] Failed to send code:", err);
@@ -82,24 +81,7 @@ function EmailVerificationPage() {
       navigate("/register");
       return;
     }
-
-    // Auto-send verification code when page loads (only once)
-    if (!autoSent && email) {
-      console.log(
-        "[EMAIL VERIFICATION] Auto-sending verification code to:",
-        email
-      );
-      setAutoSent(true);
-      handleResendCode();
-    }
-  }, [
-    email,
-    navigate,
-    handleResendCode,
-    autoSent,
-    location.state?.email,
-    user,
-  ]);
+  }, [email, navigate, user, location.state?.email]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -151,9 +133,23 @@ function EmailVerificationPage() {
   const formFields = (
     <div className={styles.formGroup}>
       <div className={verificationStyles.emailInfo}>
-        <p>We've sent a 6-digit verification code to:</p>
-        <strong>{email}</strong>
-        <p>Please enter the code below to verify your email address.</p>
+        {resendMessage ? (
+          <p className={verificationStyles.successMessage}>{resendMessage}</p>
+        ) : (
+          <p>We've sent a 6-digit verification code to {email}!</p>
+        )}
+
+        <p className={verificationStyles.emailInfoText}>
+          Please enter the code below to verify your email address.
+        </p>
+        <button
+          type="button"
+          onClick={handleResendCode}
+          disabled={resendLoading}
+          className={verificationStyles.resendButton}
+        >
+          {resendLoading ? "Sending..." : "Send new verification code"}
+        </button>
       </div>
       <FormField
         label="Verification Code"
@@ -164,10 +160,10 @@ function EmailVerificationPage() {
           setCode(value);
           if (error) setError("");
         }}
-        required
+        required={false}
         inputProps={{
           placeholder: "Enter 6-digit code",
-          className: `${styles.formInput} ${verificationStyles.codeInput}`,
+          // className: `${styles.formInput} ${verificationStyles.codeInput}`,
           type: "text",
           maxLength: 6,
           autoComplete: "one-time-code",
@@ -180,10 +176,6 @@ function EmailVerificationPage() {
     <div className={styles.errorText}>{error}</div>
   ) : null;
 
-  const successMessage = resendMessage ? (
-    <div className={styles.statusText}>{resendMessage}</div>
-  ) : null;
-
   const button = (
     <button
       type="submit"
@@ -194,27 +186,12 @@ function EmailVerificationPage() {
     </button>
   );
 
-  const additionalContent = (
-    <div className={verificationStyles.resendSection}>
-      <p>Didn't receive the code?</p>
-      <button
-        type="button"
-        onClick={handleResendCode}
-        disabled={resendLoading}
-        className={verificationStyles.resendButton}
-      >
-        {resendLoading ? "Sending..." : "Resend Code"}
-      </button>
-    </div>
-  );
-
   return (
     <div className={styles.loginContainer}>
       <div className={styles.imageSide}>
         <img src={loginSidepic} alt="Background" />
       </div>
       <div className={styles.formSide}>
-        {successMessage}
         <FormBlueprint
           header={header}
           errorMessage={errorMessage}
@@ -222,7 +199,6 @@ function EmailVerificationPage() {
           button={button}
         >
           {formFields}
-          {additionalContent}
         </FormBlueprint>
       </div>
     </div>
