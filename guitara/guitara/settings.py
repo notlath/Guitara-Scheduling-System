@@ -356,6 +356,11 @@ if DEBUG:
         # Use console backend to see emails in terminal
         EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
         print("[EMAIL] Using console backend - emails will appear in Django terminal")
+
+    # Override with environment variable if set (allows local real email testing)
+    if os.environ.get("EMAIL_BACKEND"):
+        EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND")
+        print(f"[EMAIL] Using EMAIL_BACKEND from environment: {EMAIL_BACKEND}")
 else:
     # For production, use Gmail SMTP
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

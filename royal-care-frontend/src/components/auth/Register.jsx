@@ -69,12 +69,28 @@ const Register = () => {
               : "No registration found. Please contact your operator.",
         });
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Email check error:", err);
+        let errorMessage = "Could not verify email.";
+
+        // Show more specific error messages from the backend
+        if (err.response?.data?.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response?.status === 404) {
+          errorMessage =
+            "No registration found. Please contact your operator to register your email first.";
+        } else if (err.response?.status === 400) {
+          errorMessage = "Invalid email format.";
+        } else if (err.message === "Network Error") {
+          errorMessage =
+            "Cannot connect to server. Please check your connection.";
+        }
+
         setEmailCheck({
           loading: false,
           exists: false,
           eligible: false,
-          error: "Could not verify email.",
+          error: errorMessage,
         });
       });
   }, [formData.email]);
@@ -380,7 +396,13 @@ const Register = () => {
         setErrors(formattedErrors);
       } else if (err.message) {
         // Network or other errors
-        setErrors({ form: `Registration failed: ${err.message}` });
+        if (err.message === "Network Error") {
+          setErrors({
+            form: "Cannot connect to server. Please check your connection and try again.",
+          });
+        } else {
+          setErrors({ form: `Registration failed: ${err.message}` });
+        }
       } else {
         setErrors({ form: "Registration failed. Please try again." });
       }

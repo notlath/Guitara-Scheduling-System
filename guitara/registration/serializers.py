@@ -80,7 +80,9 @@ class MaterialSerializer(serializers.ModelSerializer):
 
 class CompleteRegistrationSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    phone_number = serializers.CharField(max_length=20)
+    phone_number = serializers.CharField(
+        max_length=20, required=False, allow_blank=True
+    )
     password = serializers.CharField(write_only=True, min_length=8)
 
     def validate_email(self, value):
@@ -109,7 +111,7 @@ class RegistrationMaterialSerializer(serializers.ModelSerializer):
     effective_unit = serializers.SerializerMethodField()
     display_unit = serializers.SerializerMethodField()
     category = serializers.SerializerMethodField()
-    
+
     def get_current_stock(self, obj):
         """Get current stock from the related inventory item"""
         try:
@@ -119,31 +121,41 @@ class RegistrationMaterialSerializer(serializers.ModelSerializer):
         except Exception as e:
             # Log the error but don't break the API response
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(f"Error getting current_stock for material {obj.id}: {e}")
             return obj.stock_quantity or 0  # Safe fallback
-    
+
     def get_category(self, obj):
         """Get category from the related inventory item"""
         if obj.inventory_item:
             return obj.inventory_item.category
         return obj.category  # Fallback to registration material category
-    
+
     def get_effective_unit(self, obj):
         """Get the effective unit for this material (simplified - just return the unit)"""
         if obj.inventory_item:
             return obj.inventory_item.unit
-        return obj.unit_of_measure or 'units'
-    
+        return obj.unit_of_measure or "units"
+
     def get_display_unit(self, obj):
         """Get the unit to display in the UI (simplified - same as effective unit)"""
         return self.get_effective_unit(obj)
-    
+
     class Meta:
         model = RegistrationMaterial
         fields = [
-            'id', 'name', 'description', 'unit_of_measure', 'stock_quantity', 
-            'auto_deduct', 'reusable', 'service', 'inventory_item',
-            'current_stock', 'effective_unit', 'display_unit',
-            'category'
+            "id",
+            "name",
+            "description",
+            "unit_of_measure",
+            "stock_quantity",
+            "auto_deduct",
+            "reusable",
+            "service",
+            "inventory_item",
+            "current_stock",
+            "effective_unit",
+            "display_unit",
+            "category",
         ]

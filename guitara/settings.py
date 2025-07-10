@@ -74,5 +74,9 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = env(
     "DEFAULT_FROM_EMAIL", default="Royal Care <noreply@royalcare.com>"
 )
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # Force console backend for all environments
+
+# Use the EMAIL_BACKEND from environment variable, fallback to console
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
+)
 print("[SETTINGS IMPORT] EMAIL_BACKEND:", EMAIL_BACKEND)

@@ -223,15 +223,18 @@ class RegisterTherapist(APIView):
                     return Response(
                         {"error": error}, status=status.HTTP_400_BAD_REQUEST
                     )
-                
+
                 # --- SYSTEM LOG: Data Registration (Therapist) ---
                 try:
                     from core.utils.logging_utils import log_data_event
+
                     log_data_event(
                         entity_type="therapist",
                         entity_name=f"{first_name} {last_name}",
                         action_type="create",
-                        user_id=request.user.id if request.user.is_authenticated else None,
+                        user_id=(
+                            request.user.id if request.user.is_authenticated else None
+                        ),
                         metadata={
                             "username": data["username"],
                             "email": data["email"],
@@ -239,14 +242,19 @@ class RegisterTherapist(APIView):
                             "pressure": data["pressure"],
                             "ip_address": request.META.get("REMOTE_ADDR"),
                             "user_agent": request.META.get("HTTP_USER_AGENT"),
-                        }
+                        },
                     )
-                    logger.info(f"✅ Successfully logged therapist registration: {first_name} {last_name}")
+                    logger.info(
+                        f"✅ Successfully logged therapist registration: {first_name} {last_name}"
+                    )
                 except Exception as log_exc:
-                    logger.error(f"❌ Failed to create system log for therapist registration: {log_exc}")
+                    logger.error(
+                        f"❌ Failed to create system log for therapist registration: {log_exc}"
+                    )
                     import traceback
+
                     logger.error(f"❌ Traceback: {traceback.format_exc()}")
-                
+
                 return Response(
                     {
                         "message": "Therapist registered successfully",
@@ -471,21 +479,28 @@ class RegisterDriver(APIView):
                 # --- SYSTEM LOG: Data Registration (Driver) ---
                 try:
                     from core.utils.logging_utils import log_data_event
+
                     log_data_event(
                         entity_type="driver",
                         entity_name=f"{data['first_name']} {data['last_name']}",
                         action_type="create",
-                        user_id=request.user.id if request.user.is_authenticated else None,
+                        user_id=(
+                            request.user.id if request.user.is_authenticated else None
+                        ),
                         metadata={
                             "username": data["username"],
                             "email": data["email"],
                             "ip_address": request.META.get("REMOTE_ADDR"),
                             "user_agent": request.META.get("HTTP_USER_AGENT"),
-                        }
+                        },
                     )
-                    logger.info(f"✅ Successfully logged driver registration: {data['first_name']} {data['last_name']}")
+                    logger.info(
+                        f"✅ Successfully logged driver registration: {data['first_name']} {data['last_name']}"
+                    )
                 except Exception as log_exc:
-                    logger.error(f"❌ Failed to create system log for driver registration: {log_exc}")
+                    logger.error(
+                        f"❌ Failed to create system log for driver registration: {log_exc}"
+                    )
 
                 # Success case
                 return Response(
@@ -602,24 +617,31 @@ class RegisterOperator(APIView):
                             "is_active": True,
                         },
                     )
-                    
+
                     # --- SYSTEM LOG: Data Registration (Operator) ---
                     try:
                         from core.utils.logging_utils import log_data_event
+
                         log_data_event(
                             entity_type="operator",
                             entity_name=f"{data['first_name']} {data['last_name']}",
                             action_type="create",
-                            user_id=request.user.id if request.user.is_authenticated else None,
+                            user_id=(
+                                request.user.id
+                                if request.user.is_authenticated
+                                else None
+                            ),
                             metadata={
                                 "username": data["username"],
                                 "email": data["email"],
                                 "ip_address": request.META.get("REMOTE_ADDR"),
                                 "user_agent": request.META.get("HTTP_USER_AGENT"),
-                            }
+                            },
                         )
                     except Exception as log_exc:
-                        logger.error(f"Failed to create system log for operator registration: {log_exc}")
+                        logger.error(
+                            f"Failed to create system log for operator registration: {log_exc}"
+                        )
                 except Exception as cu_error:
                     import traceback
 
@@ -893,25 +915,30 @@ class RegisterClient(APIView):
                 logger.info(
                     f"Client stored locally: {client.first_name} {client.last_name}"
                 )
-                
+
                 # --- SYSTEM LOG: Data Registration (Client) ---
                 try:
                     from core.utils.logging_utils import log_data_event
+
                     log_data_event(
                         entity_type="client",
                         entity_name=f"{client.first_name} {client.last_name}",
                         action_type="create",
-                        user_id=request.user.id if request.user.is_authenticated else None,
+                        user_id=(
+                            request.user.id if request.user.is_authenticated else None
+                        ),
                         metadata={
                             "phone_number": client.phone_number,
                             "email": data.get("email", ""),
                             "address": data["address"],
                             "ip_address": request.META.get("REMOTE_ADDR"),
                             "user_agent": request.META.get("HTTP_USER_AGENT"),
-                        }
+                        },
                     )
                 except Exception as log_exc:
-                    logger.error(f"Failed to create system log for client registration: {log_exc}")
+                    logger.error(
+                        f"Failed to create system log for client registration: {log_exc}"
+                    )
                 return Response(
                     {
                         "message": "Client registered successfully",
@@ -1037,15 +1064,18 @@ class RegisterMaterial(APIView):
                     auto_deduct=data.get("auto_deduct", False),
                     reusable=data.get("reusable", False),
                 )
-                
+
                 # --- SYSTEM LOG: Data Registration (Material) ---
                 try:
                     from core.utils.logging_utils import log_data_event
+
                     log_data_event(
                         entity_type="material",
                         entity_name=material.name,
                         action_type="create",
-                        user_id=request.user.id if request.user.is_authenticated else None,
+                        user_id=(
+                            request.user.id if request.user.is_authenticated else None
+                        ),
                         metadata={
                             "category": material.category or "N/A",
                             "description": material.description,
@@ -1054,10 +1084,12 @@ class RegisterMaterial(APIView):
                             "reusable": material.reusable,
                             "ip_address": request.META.get("REMOTE_ADDR"),
                             "user_agent": request.META.get("HTTP_USER_AGENT"),
-                        }
+                        },
                     )
                 except Exception as log_exc:
-                    logger.error(f"Failed to create system log for material registration: {log_exc}")
+                    logger.error(
+                        f"Failed to create system log for material registration: {log_exc}"
+                    )
 
                 return Response(
                     {
@@ -1342,15 +1374,18 @@ class RegisterService(APIView):
                     oil=data.get("oil"),
                     is_active=data.get("is_active", True),
                 )
-                
+
                 # --- SYSTEM LOG: Data Registration (Service) ---
                 try:
                     from core.utils.logging_utils import log_data_event
+
                     log_data_event(
                         entity_type="service",
                         entity_name=service.name,
                         action_type="create",
-                        user_id=request.user.id if request.user.is_authenticated else None,
+                        user_id=(
+                            request.user.id if request.user.is_authenticated else None
+                        ),
                         metadata={
                             "description": service.description,
                             "duration": service.duration,
@@ -1359,10 +1394,12 @@ class RegisterService(APIView):
                             "is_active": service.is_active,
                             "ip_address": request.META.get("REMOTE_ADDR"),
                             "user_agent": request.META.get("HTTP_USER_AGENT"),
-                        }
+                        },
                     )
                 except Exception as log_exc:
-                    logger.error(f"Failed to create system log for service registration: {log_exc}")
+                    logger.error(
+                        f"Failed to create system log for service registration: {log_exc}"
+                    )
 
                 return Response(
                     {
@@ -1436,12 +1473,14 @@ class CompleteRegistrationAPIView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         email = serializer.validated_data["email"]
-        phone_number = serializer.validated_data["phone_number"]
+        phone_number = serializer.validated_data.get("phone_number", "")
         password = serializer.validated_data["password"]
 
         try:
             user = CustomUser.objects.get(email=email)
-            user.phone_number = phone_number
+            # Only update phone number if it's provided
+            if phone_number and phone_number.strip():
+                user.phone_number = phone_number
             user.set_password(password)
 
             # IMPORTANT: Set account as inactive until email is verified
@@ -1840,15 +1879,20 @@ class RegistrationMaterialWithStockList(APIView):
                 # Override category with inventory item data
                 for i, material in enumerate(materials):
                     if material.inventory_item:
-                        serialized_data[i]["category"] = material.inventory_item.category
-                        
+                        serialized_data[i][
+                            "category"
+                        ] = material.inventory_item.category
+
                     # Clean material names - remove any parentheses and their contents
                     if "name" in serialized_data[i] and serialized_data[i]["name"]:
                         import re
+
                         name = serialized_data[i]["name"]
-                        clean_name = re.sub(r'\s*\([^)]*\)', '', name).strip()
+                        clean_name = re.sub(r"\s*\([^)]*\)", "", name).strip()
                         serialized_data[i]["name"] = clean_name
-                        logger.debug(f"Cleaned material name: '{name}' → '{clean_name}'")
+                        logger.debug(
+                            f"Cleaned material name: '{name}' → '{clean_name}'"
+                        )
 
                 logger.info(f"Successfully serialized {len(serialized_data)} materials")
 
@@ -1869,10 +1913,13 @@ class RegistrationMaterialWithStockList(APIView):
                     try:
                         # Clean the material name to remove any (quantity) indicators
                         import re
+
                         raw_name = mat.name or "Unnamed Material"
-                        clean_name = re.sub(r'\s*\([^)]*\)', '', raw_name).strip()
-                        logger.debug(f"Fallback: Cleaned material name: '{raw_name}' → '{clean_name}'")
-                        
+                        clean_name = re.sub(r"\s*\([^)]*\)", "", raw_name).strip()
+                        logger.debug(
+                            f"Fallback: Cleaned material name: '{raw_name}' → '{clean_name}'"
+                        )
+
                         basic_materials.append(
                             {
                                 "id": mat.id,
