@@ -50,6 +50,7 @@ else:
         "testserver",
         "https://guitara-scheduling-system.vercel.app",
         "https://royalcareinpasig.services/",
+        "https://guitara-scheduling-system-git-feat-fo-4eb7a8-lathrells-projects.vercel.app/",
     ]
     print(f"[SETTINGS] Using default ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
@@ -201,7 +202,7 @@ DATABASES = {
 }
 
 # Database routers to ensure SystemLog data always goes to Supabase
-DATABASE_ROUTERS = ['core.routers.SystemLogRouter']
+DATABASE_ROUTERS = ["core.routers.SystemLogRouter"]
 
 
 # Password validation
@@ -261,7 +262,7 @@ REST_FRAMEWORK = {
         "authentication.flexible_auth.FlexibleTokenAuthentication",  # Use our custom flexible auth
         "knox.auth.TokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",  # Add session auth for browser testing
-        "rest_framework.authentication.BasicAuthentication",    # Add basic auth for simple testing
+        "rest_framework.authentication.BasicAuthentication",  # Add basic auth for simple testing
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 12,  # Set to 12 items per page for production use

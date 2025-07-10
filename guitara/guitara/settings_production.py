@@ -279,7 +279,8 @@ default_origins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:3001",
-    "https://royalcareinpasig.services/"
+    "https://royalcareinpasig.services/",
+    "https://guitara-scheduling-system-git-feat-fo-4eb7a8-lathrells-projects.vercel.app/",
 ]
 
 for origin in default_origins:

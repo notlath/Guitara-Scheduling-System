@@ -183,7 +183,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3001",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
-    "https://royalcareinpasig.services/"
+    "https://royalcareinpasig.services/",
+    "https://guitara-scheduling-system-git-feat-fo-4eb7a8-lathrells-projects.vercel.app/",
 ]
 
 # Parse additional CORS origins from environment
