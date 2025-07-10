@@ -143,8 +143,11 @@ function LoginPage() {
           response = await api.post("/auth/login/", formData);
         } catch (authError) {
           // Robust error handling using error code from backend (for thrown errors)
-          console.log("🔍 LOGIN ERROR DEBUG - Full authError object:", authError);
-          
+          console.log(
+            "🔍 LOGIN ERROR DEBUG - Full authError object:",
+            authError
+          );
+
           const errorData = authError.response?.data;
           let errorCode = errorData?.error_code || errorData?.code;
           let backendError = errorData?.error || "";
@@ -155,7 +158,7 @@ function LoginPage() {
             errorData,
             errorCode,
             backendError,
-            fullResponse: authError.response
+            fullResponse: authError.response,
           });
 
           // Debug logging to help diagnose issues
@@ -181,8 +184,13 @@ function LoginPage() {
 
           // PRIORITY: Handle email verification first before other errors
           if (errorCode === "EMAIL_NOT_VERIFIED") {
-            console.log("🚀 EMAIL_NOT_VERIFIED detected! Redirecting to verification page");
-            console.log("🚀 Email for redirect:", errorData.email || formData.username);
+            console.log(
+              "🚀 EMAIL_NOT_VERIFIED detected! Redirecting to verification page"
+            );
+            console.log(
+              "🚀 Email for redirect:",
+              errorData.email || formData.username
+            );
             navigate("/verify-email", {
               state: { email: errorData.email || formData.username },
               replace: true,
@@ -389,7 +397,6 @@ function LoginPage() {
           name="username"
           value={formData.username}
           onChange={handleChange}
-          required={false}
           showError={showFieldErrors}
           inputProps={{
             placeholder: "Enter your email or username",
@@ -412,7 +419,6 @@ function LoginPage() {
           type="password"
           value={formData.password}
           onChange={handleChange}
-          required={false}
           showError={showFieldErrors}
           inputProps={{
             placeholder: "Enter your password",

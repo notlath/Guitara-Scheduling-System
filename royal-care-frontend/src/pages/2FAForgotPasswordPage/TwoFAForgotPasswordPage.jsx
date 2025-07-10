@@ -48,7 +48,6 @@ function TwoFAForgotPasswordPage() {
         name="verificationCode"
         value={code}
         onChange={(e) => setCode(e.target.value)}
-        required={false}
         inputProps={{
           placeholder: "Enter the 6-digit code",
 

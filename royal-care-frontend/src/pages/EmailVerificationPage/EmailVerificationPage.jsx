@@ -217,7 +217,6 @@ function EmailVerificationPage() {
           return "";
         }}
         showError={showFieldErrors}
-        required={false}
         inputProps={{
           placeholder: "Enter 6-digit code",
           type: "text",
