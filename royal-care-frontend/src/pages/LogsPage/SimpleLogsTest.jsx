@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { getToken } from "../../utils/tokenManager";
 
 const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 const SimpleLogsTest = () => {
   const [logs, setLogs] = useState([]);

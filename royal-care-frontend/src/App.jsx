@@ -113,7 +113,9 @@ const UserGuidePage = React.lazy(() =>
   import("./pages/UserGuidePage/UserGuidePage")
 );
 const LogsPage = React.lazy(() => import("./pages/LogsPage/LogsPage"));
-const SimpleLogsTest = React.lazy(() => import("./pages/LogsPage/SimpleLogsTest"));
+const SimpleLogsTest = React.lazy(() =>
+  import("./pages/LogsPage/SimpleLogsTest")
+);
 const AuthDebugPage = React.lazy(() => import("./pages/AuthDebugPage"));
 // import memoryManager from "./services/memoryManager"; // Removed - migrated to TanStack Query
 import { initializePerformanceUtils } from "./utils/performanceTestSuite";
