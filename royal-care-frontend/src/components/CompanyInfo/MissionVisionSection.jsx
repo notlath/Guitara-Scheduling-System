@@ -10,7 +10,7 @@ const MissionVisionSection = () => {
             To provide exceptional home-based massage and wellness services that
             promote healing, relaxation, and overall well-being, while
             maintaining the highest standards of professionalism, safety, and
-            customer satisfaction. We strive to make quality wellness care
+            customer satisfaction. We strive to make quality massage therapy
             accessible and convenient for every client in the comfort of their
             own space.
           </p>
@@ -19,11 +19,12 @@ const MissionVisionSection = () => {
         <div className="vision-card">
           <h3>Our Vision</h3>
           <p>
-            To be the leading provider of premium home-based wellness services
-            in Metro Manila and beyond, recognized for our commitment to
+            To be the leading provider of premium home-based massage services in
+            Metro Manila and beyond, recognized for our commitment to
             excellence, innovation, and transforming the way people experience
-            therapeutic care. We envision a future where wellness is not just a
-            luxury, but an accessible part of everyone's lifestyle.
+            therapeutic massage care. We envision a future where professional
+            massage therapy is not just a luxury, but an accessible part of
+            everyone's lifestyle.
           </p>
         </div>
       </div>

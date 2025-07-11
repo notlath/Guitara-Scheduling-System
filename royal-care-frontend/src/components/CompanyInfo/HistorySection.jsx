@@ -22,8 +22,8 @@ const HistorySection = () => {
       </p>
       <p>
         Over the past 15 years, Royal Care has grown from a small family
-        operation to a comprehensive wellness service provider. Today, the
-        company operates from its Pasig location with a dedicated team of 28
+        operation to a comprehensive massage therapy service provider. Today,
+        the company operates from its Pasig location with a dedicated team of 28
         skilled therapists, 7 professional drivers, and 3 experienced operators,
         continuing to deliver premium massage services to clients who prefer the
         comfort and privacy of their own homes.

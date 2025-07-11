@@ -18,15 +18,15 @@ const CSRSection = () => {
             <ul className="info-list">
               <li>
                 <strong>Senior Citizen Discounts:</strong> Special pricing for
-                elderly clients to promote accessible wellness care
+                elderly clients to promote accessible massage therapy services
               </li>
               <li>
-                <strong>Healthcare Worker Support:</strong> Discounted services
-                for frontline medical professionals
+                <strong>Essential Worker Support:</strong> Discounted services
+                for essential workers and community service professionals
               </li>
               <li>
                 <strong>Wellness Education:</strong> Free workshops on stress
-                management and self-care techniques
+                management and massage therapy benefits
               </li>
               <li>
                 <strong>Charity Sessions:</strong> Complimentary massage
