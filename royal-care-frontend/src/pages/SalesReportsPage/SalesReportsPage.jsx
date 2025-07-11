@@ -1561,7 +1561,7 @@ const SalesReportsPage = () => {
                     <tr key={index}>
                       <td>{item.date || "N/A"}</td>
                       <td>{item.therapistName}</td>
-                      <td>₱{item.commission}</td>
+                      <td>₱{parseFloat(item.commission).toFixed(2)}</td>
                       <td>
                         {currentPeriod === "Daily"
                           ? item.time
@@ -1658,7 +1658,7 @@ const SalesReportsPage = () => {
                     >
                       <td>{item.date || "N/A"}</td>
                       <td>{item.clientName}</td>
-                      <td>₱{item.revenue}</td>
+                      <td>₱{parseFloat(item.revenue).toFixed(2)}</td>
                       <td>
                         {currentPeriod === "Daily"
                           ? item.time

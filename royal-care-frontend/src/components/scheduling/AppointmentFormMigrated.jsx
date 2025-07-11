@@ -257,7 +257,7 @@ const AppointmentFormMigrated = ({
             <option value="">Select a service...</option>
             {services.map((service) => (
               <option key={service.id} value={service.id}>
-                {service.name} - {service.duration} mins - ${service.price}
+                {service.name} - {service.duration} mins - ₱{parseFloat(service.price).toFixed(2)}
               </option>
             ))}
           </select>

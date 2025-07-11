@@ -1147,7 +1147,7 @@ const AppointmentFormTanStackComplete = ({
               {Array.isArray(services) &&
                 services.map((service) => (
                   <option key={service.id} value={service.id}>
-                    {service.name} - {service.duration} min - ₱{service.price}
+                    {service.name} - {service.duration} min - ₱{parseFloat(service.price).toFixed(2)}
                   </option>
                 ))}
             </select>

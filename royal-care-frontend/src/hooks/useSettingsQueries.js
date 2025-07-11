@@ -182,7 +182,7 @@ const settingsApiFetchers = {
             : "-",
         Price:
           item.price !== undefined && item.price !== null
-            ? `₱${item.price}`
+            ? `₱${parseFloat(item.price).toFixed(2)}`
             : "-",
         Materials: materials,
       };
