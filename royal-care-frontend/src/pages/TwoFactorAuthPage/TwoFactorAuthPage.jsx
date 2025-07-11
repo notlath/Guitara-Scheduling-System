@@ -83,6 +83,7 @@ function TwoFactorAuthPage() {
       emailInfoText="Please enter the 6-digit code below to complete your login"
       successMessagePrefix="Two-factor authentication code sent to"
       onError={handleError}
+      initialTimer={10 * 60} // 10 minutes to match backend 2FA expiration
       backLink={{ href: "/login", text: "← Back to login" }}
     />
   );

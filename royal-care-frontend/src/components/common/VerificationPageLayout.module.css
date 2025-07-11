@@ -47,7 +47,6 @@
 
 .timer {
   margin-top: var(--spacing-xs);
-  margin-bottom: var(--spacing-sm);
   color: var(--muted);
   font-size: var(--font-size-sm);
   font-weight: 500;

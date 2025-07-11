@@ -88,6 +88,7 @@ function EmailVerificationPage() {
       onResendCode={handleResendCode}
       emailInfoText="Please enter the 6-digit code below to verify your email address"
       successMessagePrefix="Verification code sent to"
+      initialTimer={15 * 60} // 15 minutes to match backend email verification expiration
       onError={handleError}
     />
   );

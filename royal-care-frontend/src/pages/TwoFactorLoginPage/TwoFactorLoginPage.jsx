@@ -122,7 +122,7 @@ function TwoFactorLoginPage() {
       onResendCode={handleResendCode}
       validateCode={validateCode}
       onError={handleError}
-      initialTimer={15 * 60} // 15 minutes
+      initialTimer={10 * 60} // 10 minutes to match backend 2FA expiration
     />
   );
 }

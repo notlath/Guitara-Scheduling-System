@@ -56,6 +56,7 @@ function TwoFAForgotPasswordPage() {
       emailInfoText="Please enter the 6-digit code below to continue with your password reset"
       successMessagePrefix="Password reset code sent to"
       onError={handleError}
+      initialTimer={15 * 60} // 15 minutes to match backend password reset expiration
       backLink={{ href: "/forgot-password", text: "← Back to forgot password" }}
     />
   );
