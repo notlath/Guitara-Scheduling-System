@@ -375,12 +375,20 @@ class VerifyPasswordResetCodeAPI(generics.GenericAPIView):
     def post(self, request):
         email = request.data.get("email")
         code = request.data.get("code")
+        
         if not email or not code:
             return Response({"error": "Email and code are required"}, status=400)
+        
+        # Validate code format (must be 6 digits)
+        if not code.isdigit() or len(code) != 6:
+            return Response({"error": "Code must be exactly 6 digits"}, status=400)
+        
         try:
             user = CustomUser.objects.get(email=email)
         except CustomUser.DoesNotExist:
             return Response({"error": "Invalid user"}, status=400)
+        
+        # Find the valid, unused, unexpired code
         reset_code = (
             PasswordResetCode.objects.filter(
                 user=user, code=code, is_used=False, expires_at__gt=timezone.now()
@@ -388,9 +396,15 @@ class VerifyPasswordResetCodeAPI(generics.GenericAPIView):
             .order_by("-created_at")
             .first()
         )
+        
         if not reset_code:
             return Response({"error": "Invalid or expired code"}, status=400)
-        return Response({"message": "Code verified"}, status=200)
+        
+        # Mark the code as used to prevent reuse
+        reset_code.is_used = True
+        reset_code.save()
+        
+        return Response({"message": "Code verified successfully"}, status=200)
 
 
 class ResendPasswordResetCodeAPI(generics.GenericAPIView):

@@ -91,10 +91,22 @@ function TwoFAForgotPasswordPage() {
     e.preventDefault();
     setError("");
     setShowFieldErrors(true);
-    setLoading(true);
-
-    // Validate code
-    if (!code || code.length !== 6) {
+    
+    // Validate code format first
+    if (!code || code.trim() === "") {
+      setError("Please enter the verification code");
+      setLoading(false);
+      return;
+    }
+    
+    if (code.length !== 6) {
+      setError("Please enter the complete 6-digit verification code");
+      setLoading(false);
+      return;
+    }
+    
+    if (!/^\d{6}$/.test(code)) {
+      setError("Code must contain only numbers");
       setLoading(false);
       return;
     }
@@ -106,6 +118,8 @@ function TwoFAForgotPasswordPage() {
       setLoading(false);
       return;
     }
+
+    setLoading(true);
 
     try {
       // Verify the code with the backend
@@ -176,7 +190,14 @@ function TwoFAForgotPasswordPage() {
           // Always check if empty when field has been interacted with
           if (!value || value.trim() === "") {
             return touched || showFieldErrors
-              ? "Please enter the complete 6-digit verification code"
+              ? "Please enter the verification code"
+              : "";
+          }
+
+          // Check if it's not all digits
+          if (!/^\d+$/.test(value)) {
+            return touched || showFieldErrors
+              ? "Code must contain only numbers"
               : "";
           }
 
