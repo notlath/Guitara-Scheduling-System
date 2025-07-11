@@ -109,6 +109,9 @@ const StaffAttendancePage = React.lazy(() =>
 const TwoFactorAuthPage = React.lazy(() =>
   import("./pages/TwoFactorAuthPage/TwoFactorAuthPage")
 );
+const TwoFactorLoginPage = React.lazy(() =>
+  import("./pages/TwoFactorLoginPage/TwoFactorLoginPage")
+);
 const UserGuidePage = React.lazy(() =>
   import("./pages/UserGuidePage/UserGuidePage")
 );
@@ -398,6 +401,14 @@ const App = () => {
             element={
               <Suspense fallback={<LoadingOverlay />}>
                 <TwoFactorAuthPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/2fa-login"
+            element={
+              <Suspense fallback={<LoadingOverlay />}>
+                <TwoFactorLoginPage />
               </Suspense>
             }
           />
