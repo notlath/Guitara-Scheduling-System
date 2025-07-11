@@ -1,4 +1,3 @@
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "../LoginPage/LoginPage.module.css";
@@ -7,6 +6,7 @@ import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import pageTitles from "../../constants/pageTitles";
 import FormBlueprint from "../../globals/FormBlueprint";
 import { FormField } from "../../globals/FormField";
+import { api } from "../../services/api";
 
 function ForgotPasswordPage() {
   useEffect(() => {
@@ -23,16 +23,9 @@ function ForgotPasswordPage() {
     setError("");
     setLoading(true);
     try {
-      const response = await axios.post(
-        `${
-          import.meta.env.PROD
-            ? "https://charismatic-appreciation-production.up.railway.app/api"
-            : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api"
-        }/auth/request-password-reset/`,
-        {
-          email,
-        }
-      );
+      const response = await api.post("/auth/request-password-reset/", {
+        email,
+      });
       if (response.data.message) {
         navigate("/2fa-forgot-password", { state: { email } });
       }

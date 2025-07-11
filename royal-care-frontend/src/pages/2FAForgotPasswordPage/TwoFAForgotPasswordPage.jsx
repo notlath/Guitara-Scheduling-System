@@ -4,8 +4,7 @@ import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import pageTitles from "../../constants/pageTitles";
 import FormBlueprint from "../../globals/FormBlueprint";
 import { FormField } from "../../globals/FormField";
-import api from "../../services/api";
-import verificationStyles from "../EmailVerificationPage/EmailVerificationPage.module.css";
+import { api } from "../../services/api";
 import styles from "./TwoFAForgotPasswordPage.module.css";
 
 function TwoFAForgotPasswordPage() {
@@ -132,25 +131,25 @@ function TwoFAForgotPasswordPage() {
 
   const formFields = (
     <div className={styles.formGroup}>
-      <div className={verificationStyles.emailInfo}>
+      <div className={styles.emailInfo}>
         {resendMessage ? (
-          <p className={verificationStyles.successMessage}>{resendMessage}</p>
+          <p className={styles.successMessage}>{resendMessage}</p>
         ) : (
-          <p className={verificationStyles.defaultMessage}>
+          <p className={styles.defaultMessage}>
             Password reset code sent to {email}
           </p>
         )}
 
-        <p className={verificationStyles.emailInfoText}>
+        <p className={styles.emailInfoText}>
           Please enter the 6-digit code below to reset your password
         </p>
 
         {timeRemaining > 0 ? (
-          <div className={verificationStyles.timer}>
+          <div className={styles.timer}>
             Code expires in: {formatTime(timeRemaining)}
           </div>
         ) : (
-          <div className={verificationStyles.timerExpired}>
+          <div className={styles.timerExpired}>
             Code has expired. Please request a new one.
           </div>
         )}
@@ -159,7 +158,7 @@ function TwoFAForgotPasswordPage() {
           type="button"
           onClick={handleResendCode}
           disabled={resendLoading}
-          className={verificationStyles.resendButton}
+          className={styles.resendButton}
         >
           {resendLoading ? "Sending..." : "Send New Code"}
         </button>
