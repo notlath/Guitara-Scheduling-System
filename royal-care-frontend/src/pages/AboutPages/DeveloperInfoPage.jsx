@@ -77,20 +77,22 @@ const DeveloperInfoPage = () => {
                   <p>
                     Frontend specialist focused on React development, user
                     interface design, and user experience optimization. Expert
-                    in responsive design, component architecture, and styling
-                    systems. Responsible for authentication flows, email
-                    verification systems, password reset functionality, and form
-                    validation. Specializes in creating intuitive user
-                    interfaces, implementing interactive components like FAQ
-                    sections, and ensuring consistent design patterns across the
-                    application.
+                    in responsive design, component architecture, and modern
+                    styling systems. Leads the development of interactive user
+                    interfaces including FAQ sections, collapsible components,
+                    and dynamic form systems. Specializes in creating polished
+                    user experiences with comprehensive error handling,
+                    intuitive navigation flows, and consistent design patterns.
+                    Responsible for styling system optimization, component
+                    refactoring for improved readability, and ensuring
+                    accessibility across the application.
                   </p>
                 </div>
                 <div className="stack-group">
                   <h3>Jon Gleur Tan</h3>
                   <p>
-                    <strong>Role:</strong> Full-Stack Developer & System
-                    Integration
+                    <strong>Role:</strong> Backend Developer & System
+                    Integration Specialist
                   </p>
                   <p>
                     <strong>GitHub:</strong> janglerr
@@ -99,14 +101,17 @@ const DeveloperInfoPage = () => {
                     <strong>Contributions:</strong> 36+ commits
                   </p>
                   <p>
-                    Full-stack developer with expertise in system integration,
-                    logging systems, and inventory management. Responsible for
-                    implementing comprehensive logging solutions, material
-                    management systems, and therapist dashboard enhancements.
-                    Specializes in connecting booking systems with inventory
-                    data, implementing registration materials with stock
-                    features, and developing diagnostic tools for system
-                    monitoring and debugging.
+                    Backend developer specializing in system integration,
+                    comprehensive logging infrastructure, and inventory
+                    management solutions. Expert in Django backend development,
+                    database schema design, and system monitoring tools.
+                    Responsible for implementing advanced logging systems,
+                    material tracking features, and diagnostic tools for system
+                    performance monitoring. Focuses on connecting booking
+                    workflows with inventory data, developing registration
+                    material management with stock allocation, and creating
+                    debugging utilities for system maintenance and
+                    troubleshooting.
                   </p>
                 </div>
               </div>
