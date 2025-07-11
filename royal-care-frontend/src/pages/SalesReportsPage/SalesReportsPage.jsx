@@ -172,45 +172,49 @@ const SalesReportsPage = () => {
   // Helper function to calculate commission consistently across the app
   const calculateCommission = (appointment) => {
     const COMMISSION_RATE = 0.4; // 40% commission
-    
+
     // Base commission calculation (40% of payment amount) - always applied
     const paymentAmount = parseFloat(appointment.payment_amount || 0);
     const baseCommission = paymentAmount * COMMISSION_RATE;
-    
+
     // Extension amount (100% goes to commission)
     let extensionAmount = 0;
-    
+
     // Check for extension amount in metadata - CRITICAL FIX for service extension
     if (appointment.metadata) {
       // Look directly in the request payload format (extension_amount)
-      if (typeof appointment.metadata.extension_amount !== 'undefined') {
-        extensionAmount = parseFloat(appointment.metadata.extension_amount || 0);
-      } 
+      if (typeof appointment.metadata.extension_amount !== "undefined") {
+        extensionAmount = parseFloat(
+          appointment.metadata.extension_amount || 0
+        );
+      }
       // Look in the nested service_extension structure
       else if (appointment.metadata.service_extension) {
-        extensionAmount = parseFloat(appointment.metadata.service_extension.extension_amount || 0);
+        extensionAmount = parseFloat(
+          appointment.metadata.service_extension.extension_amount || 0
+        );
       }
     }
-    
+
     // Total commission is base + extension
     const totalCommission = baseCommission + extensionAmount;
-    
+
     // Debug log for tracing commission calculation
     console.log(`COMMISSION CALCULATION [ID: ${appointment.id}]:`, {
       paymentAmount,
       baseCommission: baseCommission.toFixed(2),
       extensionAmount: extensionAmount.toFixed(2),
       totalCommission: totalCommission.toFixed(2),
-      metadata: appointment.metadata
+      metadata: appointment.metadata,
     });
-    
+
     return {
       baseCommission,
       extensionAmount,
-      totalCommission
+      totalCommission,
     };
   };
-  
+
   // Calculate commission data based on current period
   const commissionData = useMemo(() => {
     if (!appointments || appointments.length === 0) {
@@ -296,27 +300,21 @@ const SalesReportsPage = () => {
     }
 
     // FIXED COMMISSION CALCULATION - Calculate totals with extension amount
-    const currentTotal = currentItems.reduce(
-      (sum, apt) => {
-        const { totalCommission } = calculateCommission(apt);
-        return sum + totalCommission;
-      },
-      0
-    );
-    
-    const previousTotal = previousItems.reduce(
-      (sum, apt) => {
-        const { totalCommission } = calculateCommission(apt);
-        return sum + totalCommission;
-      },
-      0
-    );
+    const currentTotal = currentItems.reduce((sum, apt) => {
+      const { totalCommission } = calculateCommission(apt);
+      return sum + totalCommission;
+    }, 0);
+
+    const previousTotal = previousItems.reduce((sum, apt) => {
+      const { totalCommission } = calculateCommission(apt);
+      return sum + totalCommission;
+    }, 0);
 
     // Format items for display - FIXED CALCULATION
     const formattedItems = currentItems.map((apt) => {
       // Use the helper function to calculate the commission
       const { totalCommission } = calculateCommission(apt);
-      
+
       const therapistName = apt.therapist_details
         ? `${apt.therapist_details.first_name || ""} ${
             apt.therapist_details.last_name || ""
@@ -327,7 +325,7 @@ const SalesReportsPage = () => {
 
       // Make sure commission is a valid number before formatting - FIXED
       const finalCommission = isNaN(totalCommission) ? 0 : totalCommission;
-      
+
       if (currentPeriod === "Daily") {
         return {
           therapistName,
@@ -383,7 +381,7 @@ const SalesReportsPage = () => {
     // Group by therapist for weekly and monthly views
     // Log all the formatted items with their commission values
     console.log("All formatted items:", formattedItems);
-    
+
     let groupedItems = formattedItems;
     if (currentPeriod === "Weekly" || currentPeriod === "Monthly") {
       const dateRange = getDateRange(currentPeriod);
@@ -406,7 +404,9 @@ const SalesReportsPage = () => {
 
       groupedItems = Object.values(grouped).map((group) => {
         const formattedCommission = group.commission.toFixed(2);
-        console.log(`Grouped commission for ${group.therapistName}: ${formattedCommission}`);
+        console.log(
+          `Grouped commission for ${group.therapistName}: ${formattedCommission}`
+        );
         return {
           ...group,
           commission: formattedCommission,
@@ -425,9 +425,9 @@ const SalesReportsPage = () => {
       currentTotal,
       previousTotal,
       itemsCount: groupedItems.length,
-      comparison
+      comparison,
     });
-    
+
     return {
       currentTotal,
       previousTotal,
