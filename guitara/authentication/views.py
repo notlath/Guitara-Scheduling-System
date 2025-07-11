@@ -107,37 +107,39 @@ class LoginAPI(generics.GenericAPIView):
                     [user.email],
                     fail_silently=False,
                 )
-                
+
                 # Log 2FA code sent
                 from core.utils.logging_utils import log_authentication_event
+
                 log_authentication_event(
-                    action='login',
+                    action="login",
                     user_id=user.id,
                     username=user.username,
                     user_name=user.get_full_name() or user.username,
                     success=True,
                     metadata={
-                        'event': '2fa_code_sent',
-                        'email': user.email,
-                        'ip_address': request.META.get('REMOTE_ADDR'),
-                    }
+                        "event": "2fa_code_sent",
+                        "email": user.email,
+                        "ip_address": request.META.get("REMOTE_ADDR"),
+                    },
                 )
-                
+
                 return Response({"message": "2FA code sent"}, status=200)
 
             # Log successful login
             from core.utils.logging_utils import log_authentication_event
+
             log_authentication_event(
-                action='login',
+                action="login",
                 user_id=user.id,
                 username=user.username,
                 user_name=user.get_full_name() or user.username,
                 success=True,
                 metadata={
-                    'full_name': user.get_full_name(),
-                    'ip_address': request.META.get('REMOTE_ADDR'),
-                    'user_agent': request.META.get('HTTP_USER_AGENT'),
-                }
+                    "full_name": user.get_full_name(),
+                    "ip_address": request.META.get("REMOTE_ADDR"),
+                    "user_agent": request.META.get("HTTP_USER_AGENT"),
+                },
             )
 
             return Response(
@@ -148,22 +150,23 @@ class LoginAPI(generics.GenericAPIView):
             )
         except serializers.ValidationError as ve:
             logger.warning(f"[LOGIN] Validation error: {ve}")
-            
+
             # Log failed login attempt
-            username = request.data.get('username', 'Unknown')
+            username = request.data.get("username", "Unknown")
             from core.utils.logging_utils import log_authentication_event
+
             log_authentication_event(
-                action='login',
+                action="login",
                 username=username,
                 success=False,
                 metadata={
-                    'error': str(ve),
-                    'ip_address': request.META.get('REMOTE_ADDR'),
-                    'user_agent': request.META.get('HTTP_USER_AGENT'),
-                    'username': username
-                }
+                    "error": str(ve),
+                    "ip_address": request.META.get("REMOTE_ADDR"),
+                    "user_agent": request.META.get("HTTP_USER_AGENT"),
+                    "username": username,
+                },
             )
-            
+
             # Extract error message and code robustly
             error_message = None
             error_code = None
@@ -278,19 +281,20 @@ class TwoFactorVerifyAPI(generics.GenericAPIView):
         )
         if not tf_code:
             logger.warning("[2FA VERIFY] Invalid or expired verification code attempt.")
-            
+
             # Log failed 2FA attempt
             from core.models import SystemLog
+
             SystemLog.objects.create(
-                log_type='authentication',
-                action_type='login',
+                log_type="authentication",
+                action_type="login",
                 user=user,
                 description=f"Failed 2FA verification attempt for {user.username}",
-                ip_address=request.META.get('REMOTE_ADDR'),
-                user_agent=request.META.get('HTTP_USER_AGENT'),
-                additional_data={'reason': 'invalid_or_expired_code'}
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT"),
+                additional_data={"reason": "invalid_or_expired_code"},
             )
-            
+
             return Response({"error": "Invalid code."}, status=400)
 
         tf_code.is_used = True
@@ -298,13 +302,14 @@ class TwoFactorVerifyAPI(generics.GenericAPIView):
 
         # Log successful 2FA login
         from core.models import SystemLog
+
         SystemLog.objects.create(
-            log_type='authentication',
-            action_type='login',
+            log_type="authentication",
+            action_type="login",
             user=user,
             description=f"User {user.username} ({user.get_full_name()}) completed 2FA login successfully",
-            ip_address=request.META.get('REMOTE_ADDR'),
-            user_agent=request.META.get('HTTP_USER_AGENT'),
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT"),
         )
 
         return Response(
@@ -370,12 +375,20 @@ class VerifyPasswordResetCodeAPI(generics.GenericAPIView):
     def post(self, request):
         email = request.data.get("email")
         code = request.data.get("code")
+        
         if not email or not code:
             return Response({"error": "Email and code are required"}, status=400)
+        
+        # Validate code format (must be 6 digits)
+        if not code.isdigit() or len(code) != 6:
+            return Response({"error": "Code must be exactly 6 digits"}, status=400)
+        
         try:
             user = CustomUser.objects.get(email=email)
         except CustomUser.DoesNotExist:
             return Response({"error": "Invalid user"}, status=400)
+        
+        # Find the valid, unused, unexpired code
         reset_code = (
             PasswordResetCode.objects.filter(
                 user=user, code=code, is_used=False, expires_at__gt=timezone.now()
@@ -383,9 +396,95 @@ class VerifyPasswordResetCodeAPI(generics.GenericAPIView):
             .order_by("-created_at")
             .first()
         )
+        
         if not reset_code:
             return Response({"error": "Invalid or expired code"}, status=400)
-        return Response({"message": "Code verified"}, status=200)
+        
+        # Mark the code as used to prevent reuse
+        reset_code.is_used = True
+        reset_code.save()
+        
+        return Response({"message": "Code verified successfully"}, status=200)
+
+
+class ResendPasswordResetCodeAPI(generics.GenericAPIView):
+    """
+    API endpoint to resend password reset code
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email")
+
+        if not email:
+            return Response({"error": "Email is required"}, status=400)
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Invalid email address"}, status=400)
+
+        # Check rate limiting (prevent spam)
+        recent_code = PasswordResetCode.objects.filter(
+            user=user, created_at__gt=timezone.now() - timedelta(minutes=1)
+        ).first()
+
+        if recent_code:
+            return Response(
+                {"error": "Please wait at least 1 minute before requesting a new code"},
+                status=429,
+            )
+
+        # Generate new password reset code
+        code = str(random.randint(100000, 999999))
+        expires_at = timezone.now() + timedelta(minutes=15)
+
+        # Invalidate old codes
+        PasswordResetCode.objects.filter(user=user, is_used=False).update(is_used=True)
+
+        # Create new code
+        PasswordResetCode.objects.create(
+            user=user,
+            code=code,
+            created_at=timezone.now(),
+            expires_at=expires_at,
+            is_used=False,
+        )
+
+        # Send email
+        try:
+            send_mail(
+                "New Password Reset Code - Guitara Scheduling",
+                f"""
+Hello {user.get_full_name() or user.username},
+
+Here is your new password reset code:
+
+Reset Code: {code}
+
+This code will expire in 15 minutes.
+
+If you did not request this password reset, please ignore this email.
+
+Best regards,
+Guitara Scheduling Team
+                """,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+
+            return Response({"message": "New password reset code sent successfully"})
+
+        except Exception as email_error:
+            print(f"[EMAIL ERROR] Failed to resend password reset email: {email_error}")
+            return Response(
+                {
+                    "error": "Failed to send password reset email. Please try again later."
+                },
+                status=500,
+            )
 
 
 class SetNewPasswordAPI(generics.GenericAPIView):
@@ -676,45 +775,46 @@ Guitara Scheduling Team
 
 class LogoutAPI(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def post(self, request):
         """
         Custom logout view that logs the event in the system logs before invalidating token
         """
         # Extract the token from the request
-        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        
+        auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+
         # Log the logout event
         try:
             from core.utils.logging_utils import log_authentication_event
-            
+
             user = request.user
             log_authentication_event(
-                action='logout',
+                action="logout",
                 user_id=user.id,
                 username=user.username,
                 user_name=user.get_full_name() or user.username,
                 success=True,
                 metadata={
-                    'ip_address': request.META.get('REMOTE_ADDR'),
-                    'user_agent': request.META.get('HTTP_USER_AGENT'),
-                }
+                    "ip_address": request.META.get("REMOTE_ADDR"),
+                    "user_agent": request.META.get("HTTP_USER_AGENT"),
+                },
             )
-            
+
             # Properly invalidate the knox token
-            if auth_header.startswith('Token '):
-                token_key = auth_header.split(' ')[1]
-                
+            if auth_header.startswith("Token "):
+                token_key = auth_header.split(" ")[1]
+
                 # Try to delete the specific token
                 try:
                     from knox.models import AuthToken
+
                     token_instance = AuthToken.objects.filter(token_key=token_key[:8])
                     if token_instance.exists():
                         token_instance.delete()
                         logger.info(f"Token invalidated for user {user.username}")
                 except Exception as e:
                     logger.error(f"Error invalidating token: {str(e)}")
-            
+
             return Response({"message": "Logout successful"}, status=200)
         except Exception as e:
             logger.error(f"Error during logout: {str(e)}")

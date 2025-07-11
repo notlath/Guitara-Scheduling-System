@@ -49,8 +49,8 @@ import "../styles/ErrorHandling.css";
 import "../styles/OperatorDashboard.css";
 import "../styles/Performance.css";
 import "../styles/UrgencyIndicators.css";
-import PostServiceMaterialModal from "./scheduling/PostServiceMaterialModal";
 import { performLogout } from "../utils/logoutUtils";
+import PostServiceMaterialModal from "./scheduling/PostServiceMaterialModal";
 
 // ✅ ROBUST FILTERING: Valid values for URL parameters
 const VALID_VIEW_VALUES = Object.freeze([
@@ -2486,7 +2486,9 @@ const OperatorDashboard = () => {
                             </p>
                             <p>
                               <strong>Total Price:</strong> ₱
-                              {appointment.total_price || 0}
+                              {parseFloat(appointment.total_price || 0).toFixed(
+                                2
+                              )}
                             </p>
                             <p>
                               <strong>Total Duration:</strong>{" "}

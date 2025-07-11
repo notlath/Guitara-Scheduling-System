@@ -1,11 +1,5 @@
 /* System Information Page Styles */
 
-.system-info-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--spacing-lg);
-}
-
 .system-info-container .system-info-header {
   position: relative;
   color: var(--background);
@@ -18,7 +12,6 @@
   border-radius: 0 0 20px 20px;
   margin-bottom: 2rem;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .system-info-container .system-info-header::before {
@@ -50,15 +43,6 @@
   font-size: 1.2rem;
   max-width: 800px;
   line-height: 1.6;
-}
-
-.system-info-container .info-section {
-  margin-bottom: 3.5rem;
-  background: var(--background);
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--background-100);
 }
 
 .system-info-container .info-section h2 {
@@ -110,6 +94,8 @@
   color: var(--text);
   line-height: 1.6;
   margin-bottom: 1rem;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 /* Enhanced List Styling */
@@ -125,6 +111,8 @@
   margin-bottom: 1rem;
   color: var(--text);
   line-height: 1.7;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .system-info-container .info-section li::before {
@@ -136,7 +124,6 @@
   height: 10px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary), var(--primary-600));
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Nested List Support */
@@ -150,6 +137,8 @@
   padding-left: 1.5rem;
   margin-bottom: 0.7rem;
   font-size: 0.95em;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .system-info-container .info-section ul ul li::before {
@@ -209,7 +198,6 @@
   border-radius: 12px;
   padding: 2rem;
   margin: 1.5rem 0;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 .system-info-container .version-info h3 {
@@ -230,6 +218,8 @@
 .system-info-container .version-info p {
   color: var(--background);
   line-height: 1.6;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .system-info-container .version-badge {
@@ -323,6 +313,8 @@
   font-size: 0.9rem;
   color: var(--text-500);
   line-height: 1.4;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 /* Compatibility Matrix */
@@ -451,6 +443,8 @@
   font-size: 0.85rem;
   color: var(--text-500);
   line-height: 1.4;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 /* Technology Stack Styling */
@@ -490,18 +484,11 @@
   font-size: 1.2rem;
 }
 
-.system-info-container .tech-label {
-  font-weight: 600;
-  color: var(--primary);
-  display: block;
-  margin-bottom: 0.3rem;
-}
-
-.system-info-container .tech-version {
-  font-size: 0.85rem;
-  color: var(--text-500);
-  font-style: italic;
-  margin-left: 0.5rem;
+.system-info-container .stack-group p {
+  text-align: justify;
+  text-justify: inter-word;
+  line-height: 1.6;
+  margin-bottom: 1rem;
 }
 
 /* Architecture Overview Styling */
@@ -535,6 +522,13 @@
   font-size: 1rem;
 }
 
+.system-info-container .architecture-item p {
+  text-align: justify;
+  text-justify: inter-word;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
 /* Component List Styling */
 .system-info-container .component-list {
   list-style: none;
@@ -550,6 +544,8 @@
   background-color: rgba(var(--primary-rgb), 0.05);
   border-radius: 6px;
   border-left: 3px solid var(--primary-400);
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .system-info-container .component-list li::before {
@@ -648,6 +644,11 @@
 .system-info-container .requirements-group h4::before {
   content: "💻";
   font-size: 1.1rem;
+}
+
+.system-info-container .requirements-group p {
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .system-info-container .requirement-item {
@@ -778,6 +779,8 @@
   margin-bottom: 1.2rem;
   color: var(--text);
   line-height: 1.7;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .system-info-container .roadmap-list li:last-child {
@@ -1169,6 +1172,8 @@
   justify-content: space-between;
   padding: 0.6rem 0;
   border-bottom: 1px solid var(--background-200);
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .system-info-container .tech-category ul li:last-child {
@@ -1211,4 +1216,6 @@
 
 .system-info-container .github-link-text {
   margin-top: 1rem;
+  text-align: justify;
+  text-justify: inter-word;
 }

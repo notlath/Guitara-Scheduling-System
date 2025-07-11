@@ -1,22 +1,4 @@
 /* Company Information Page Styles */
-.company-info-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--spacing-md, 24px);
-}
-
-.company-info-content {
-  max-width: 1000px;
-  margin: 0 auto;
-  background-color: var(--background);
-  border-radius: 12px;
-  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-}
-
-.company-info-body {
-  padding: 2.5rem;
-}
 
 .info-section {
   margin-bottom: 3rem;
@@ -52,6 +34,8 @@
   line-height: 1.7;
   margin-bottom: 1rem;
   font-size: 1rem;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .info-list {
@@ -66,6 +50,8 @@
   margin-bottom: 0.8rem;
   color: var(--text);
   line-height: 1.6;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .info-list li::before {
@@ -93,6 +79,8 @@
   font-weight: 500;
   color: var(--primary-800, #1e3a73);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 /* Mission, Vision & Values Styles */
@@ -121,6 +109,12 @@
   color: var(--primary);
   font-size: 1.4rem;
   margin-bottom: 1rem;
+}
+
+.mission-card p,
+.vision-card p {
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .values-section {
@@ -152,6 +146,8 @@
   margin-bottom: 0;
   font-size: 0.95rem;
   line-height: 1.5;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 /* Team Styles */
@@ -188,6 +184,8 @@
 .team-member p {
   margin-bottom: 1rem;
   color: var(--text);
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .team-member p:last-child {
@@ -256,6 +254,11 @@
   margin-bottom: 1rem;
 }
 
+.location-card p {
+  text-align: justify;
+  text-justify: inter-word;
+}
+
 .coverage-area {
   background: linear-gradient(
     135deg,
@@ -298,6 +301,8 @@
   color: var(--text);
   position: relative;
   padding-left: 1rem;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .coverage-zone li::before {
@@ -350,6 +355,11 @@
 /* CSR Styles */
 .csr-content {
   margin-top: 1.5rem;
+}
+
+.csr-content p {
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .csr-initiatives {
@@ -441,14 +451,14 @@
 .address-link {
   display: inline-flex;
   align-items: center;
-  color: var(--primary);
+  color: var(--background);
   text-decoration: none;
   transition: color 0.3s ease;
   font-weight: 500;
 }
 
 .address-link:hover {
-  color: var(--primary-dark, #1a3a6b);
+  /* color: var(--accent); */
   text-decoration: underline;
 }
 

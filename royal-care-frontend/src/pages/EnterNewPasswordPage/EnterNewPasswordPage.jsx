@@ -1,10 +1,10 @@
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
 import pageTitles from "../../constants/pageTitles";
 import FormBlueprint from "../../globals/FormBlueprint";
 import { FormField } from "../../globals/FormField";
+import { api } from "../../services/api";
 import styles from "./EnterNewPasswordPage.module.css";
 
 function EnterNewPasswordPage() {
@@ -40,18 +40,11 @@ function EnterNewPasswordPage() {
     }
     setLoading(true);
     try {
-      const response = await axios.post(
-        `${
-          import.meta.env.PROD
-            ? "https://charismatic-appreciation-production.up.railway.app/api"
-            : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api"
-        }/auth/set-new-password/`,
-        {
-          email,
-          code,
-          new_password: newPassword,
-        }
-      );
+      const response = await api.post("/auth/set-new-password/", {
+        email,
+        code,
+        new_password: newPassword,
+      });
       if (response.data.message) {
         navigate("/forgot-password-confirmation");
       }
