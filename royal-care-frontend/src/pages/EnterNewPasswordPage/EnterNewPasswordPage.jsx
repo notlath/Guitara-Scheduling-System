@@ -16,8 +16,9 @@ function EnterNewPasswordPage() {
   const location = useLocation();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
 
   // Get email and code from location.state
   const email = location.state?.email;
@@ -25,17 +26,19 @@ function EnterNewPasswordPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setSubmitError("");
+    setShowFieldErrors(true);
+    
     if (!newPassword || !confirmPassword) {
-      setError("Please fill in both password fields.");
+      setSubmitError("Please fill in both password fields.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
+      setSubmitError("Passwords do not match.");
       return;
     }
     if (!email || !code) {
-      setError("Missing email or code. Please restart the reset process.");
+      setSubmitError("Missing email or code. Please restart the reset process.");
       return;
     }
     setLoading(true);
@@ -49,7 +52,7 @@ function EnterNewPasswordPage() {
         navigate("/forgot-password-confirmation");
       }
     } catch (err) {
-      setError(
+      setSubmitError(
         err.response?.data?.error ||
           "Failed to reset password. Please try again."
       );
@@ -59,36 +62,58 @@ function EnterNewPasswordPage() {
   };
 
   const header = "Set a New Password";
-  const errorMessage = error ? (
-    <div className={styles.errorText}>{error}</div>
+  const errorMessage = submitError ? (
+    <div className={styles.errorText}>{submitError}</div>
   ) : null;
 
   const formFields = (
     <div className={styles.formGroup}>
       <FormField
         label="New Password"
-        type="password"
-        id="newPassword"
         name="newPassword"
+        type="password"
         value={newPassword}
         onChange={(e) => setNewPassword(e.target.value)}
-        required
+        validate={(value, touched) => {
+          if (!value || value.trim() === "") {
+            return touched || showFieldErrors
+              ? "Please enter a new password"
+              : "";
+          }
+          if (value.length < 8) {
+            return touched || showFieldErrors
+              ? "Password must be at least 8 characters long"
+              : "";
+          }
+          return "";
+        }}
+        showError={showFieldErrors}
         inputProps={{
           placeholder: "Create a new password",
-          className: styles.formInput,
         }}
       />
       <FormField
         label="Confirm New Password"
-        type="password"
-        id="confirmPassword"
         name="confirmPassword"
+        type="password"
         value={confirmPassword}
         onChange={(e) => setConfirmPassword(e.target.value)}
-        required
+        validate={(value, touched) => {
+          if (!value || value.trim() === "") {
+            return touched || showFieldErrors
+              ? "Please confirm your new password"
+              : "";
+          }
+          if (value !== newPassword) {
+            return touched || showFieldErrors
+              ? "Passwords do not match"
+              : "";
+          }
+          return "";
+        }}
+        showError={showFieldErrors}
         inputProps={{
           placeholder: "Re-enter your new password",
-          className: styles.formInput,
         }}
       />
     </div>

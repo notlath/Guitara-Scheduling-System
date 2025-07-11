@@ -38,6 +38,9 @@
 }
 
 .welcomeHeading {
+  margin-bottom: 15px;
+  font-size: 28px;
+  font-weight: 700;
   color: #333; /* Adjust text color */
   margin-bottom: 32px;
 }
@@ -108,6 +111,74 @@
 
 .registerLinkAnchor:hover {
   text-decoration: underline;
+}
+
+/* Two-Factor Authentication Page Specific Styles */
+
+.emailInfo {
+  margin-bottom: var(--spacing-mxs);
+  padding: var(--spacing-sm) var(--spacing-mxs);
+  background-color: var(--input-bg);
+  border-radius: 8px;
+}
+
+.successMessage,
+.defaultMessage {
+  color: var(--muted-200);
+  margin-bottom: var(--spacing-xm);
+  font-weight: 500;
+}
+
+.emailInfoText {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.resendButton {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-xm);
+  background-color: var(--secondary-600);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.resendButton:hover:not(:disabled) {
+  background-color: var(--secondary-700);
+}
+
+.resendButton:disabled {
+  background-color: var(--muted);
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
+
+.timer {
+  margin-top: var(--spacing-xs);
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.timerExpired {
+  margin-top: var(--spacing-xs);
+  color: #dc3545;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .emailInfo {
+    margin-bottom: 1.5rem;
+    padding: 0.75rem;
+  }
 }
 
 @media screen and (min-width: 1024px) {
