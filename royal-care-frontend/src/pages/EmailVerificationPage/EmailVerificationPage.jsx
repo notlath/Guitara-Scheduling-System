@@ -11,11 +11,12 @@ import verificationStyles from "./EmailVerificationPage.module.css";
 
 function EmailVerificationPage() {
   const [code, setCode] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
-  const [autoSent, setAutoSent] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(15 * 60); // 15 minutes in seconds
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -27,18 +28,19 @@ function EmailVerificationPage() {
   // Define handleResendCode function BEFORE useEffect
   const handleResendCode = useCallback(async () => {
     if (!email) {
-      setError("No email address available");
+      setSubmitError("No email address available");
       return;
     }
 
     setResendLoading(true);
     setResendMessage("");
-    setError("");
+    setSubmitError("");
 
     try {
       console.log("[EMAIL VERIFICATION] Sending verification code to:", email);
       const response = await api.post("/auth/resend-verification/", { email });
-      setResendMessage("New verification code sent to your email!");
+      setResendMessage(`Verification code sent to ${email}`);
+      setTimeRemaining(15 * 60); // Reset timer to 15 minutes
       console.log("[EMAIL VERIFICATION] Response:", response.data);
     } catch (err) {
       console.error("[EMAIL VERIFICATION] Failed to send code:", err);
@@ -49,13 +51,13 @@ function EmailVerificationPage() {
       });
 
       if (err.message === "Network Error" || err.code === "ERR_NETWORK") {
-        setError(
+        setSubmitError(
           "Cannot connect to server. Make sure Django server is running on port 8000."
         );
       } else {
-        setError(
+        setSubmitError(
           err.response?.data?.error ||
-            "Failed to resend code. Please try again."
+            "Failed to send verification code. Please try again."
         );
       }
     } finally {
@@ -82,32 +84,40 @@ function EmailVerificationPage() {
       navigate("/register");
       return;
     }
+  }, [email, navigate, user, location.state?.email]);
 
-    // Auto-send verification code when page loads (only once)
-    if (!autoSent && email) {
-      console.log(
-        "[EMAIL VERIFICATION] Auto-sending verification code to:",
-        email
-      );
-      setAutoSent(true);
-      handleResendCode();
-    }
-  }, [
-    email,
-    navigate,
-    handleResendCode,
-    autoSent,
-    location.state?.email,
-    user,
-  ]);
+  // Timer countdown effect
+  useEffect(() => {
+    if (timeRemaining <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeRemaining]);
+
+  // Format time remaining for display
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setSubmitError("");
+    setShowFieldErrors(true);
     setLoading(true);
 
+    // Let FormField validation handle the code validation
     if (!code || code.length !== 6) {
-      setError("Please enter a valid 6-digit verification code");
       setLoading(false);
       return;
     }
@@ -138,8 +148,9 @@ function EmailVerificationPage() {
       }
     } catch (err) {
       console.error("[EMAIL VERIFICATION] Verification failed:", err);
-      setError(
-        err.response?.data?.error || "Verification failed. Please try again."
+      setSubmitError(
+        err.response?.data?.error ||
+          "Verification failed. Please check your code and try again."
       );
     } finally {
       setLoading(false);
@@ -151,9 +162,36 @@ function EmailVerificationPage() {
   const formFields = (
     <div className={styles.formGroup}>
       <div className={verificationStyles.emailInfo}>
-        <p>We've sent a 6-digit verification code to:</p>
-        <strong>{email}</strong>
-        <p>Please enter the code below to verify your email address.</p>
+        {resendMessage ? (
+          <p className={verificationStyles.successMessage}>{resendMessage}</p>
+        ) : (
+          <p className={verificationStyles.defaultMessage}>
+            Verification code sent to {email}
+          </p>
+        )}
+
+        <p className={verificationStyles.emailInfoText}>
+          Please enter the 6-digit code below to verify your email address
+        </p>
+
+        {timeRemaining > 0 ? (
+          <div className={verificationStyles.timer}>
+            Code expires in: {formatTime(timeRemaining)}
+          </div>
+        ) : (
+          <div className={verificationStyles.timerExpired}>
+            Code has expired. Please request a new one.
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={handleResendCode}
+          disabled={resendLoading}
+          className={verificationStyles.resendButton}
+        >
+          {resendLoading ? "Sending..." : "Send New Code"}
+        </button>
       </div>
       <FormField
         label="Verification Code"
@@ -162,12 +200,25 @@ function EmailVerificationPage() {
         onChange={(e) => {
           const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
           setCode(value);
-          if (error) setError("");
         }}
-        required
+        validate={(value, touched) => {
+          // Always check if empty when field has been interacted with
+          if (!value || value.trim() === "") {
+            return touched || showFieldErrors
+              ? "Please enter the complete 6-digit verification code"
+              : "";
+          }
+
+          // Only show length validation error when field has been blurred or form submitted
+          if ((touched || showFieldErrors) && value.length !== 6) {
+            return "Please enter the complete 6-digit verification code";
+          }
+
+          return "";
+        }}
+        showError={showFieldErrors}
         inputProps={{
           placeholder: "Enter 6-digit code",
-          className: `${styles.formInput} ${verificationStyles.codeInput}`,
           type: "text",
           maxLength: 6,
           autoComplete: "one-time-code",
@@ -176,12 +227,8 @@ function EmailVerificationPage() {
     </div>
   );
 
-  const errorMessage = error ? (
-    <div className={styles.errorText}>{error}</div>
-  ) : null;
-
-  const successMessage = resendMessage ? (
-    <div className={styles.statusText}>{resendMessage}</div>
+  const errorMessage = submitError ? (
+    <div className={styles.errorText}>{submitError}</div>
   ) : null;
 
   const button = (
@@ -194,27 +241,12 @@ function EmailVerificationPage() {
     </button>
   );
 
-  const additionalContent = (
-    <div className={verificationStyles.resendSection}>
-      <p>Didn't receive the code?</p>
-      <button
-        type="button"
-        onClick={handleResendCode}
-        disabled={resendLoading}
-        className={verificationStyles.resendButton}
-      >
-        {resendLoading ? "Sending..." : "Resend Code"}
-      </button>
-    </div>
-  );
-
   return (
     <div className={styles.loginContainer}>
       <div className={styles.imageSide}>
         <img src={loginSidepic} alt="Background" />
       </div>
       <div className={styles.formSide}>
-        {successMessage}
         <FormBlueprint
           header={header}
           errorMessage={errorMessage}
@@ -222,7 +254,6 @@ function EmailVerificationPage() {
           button={button}
         >
           {formFields}
-          {additionalContent}
         </FormBlueprint>
       </div>
     </div>

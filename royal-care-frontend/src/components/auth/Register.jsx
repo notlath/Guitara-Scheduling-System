@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 import loginSidepic from "../../assets/images/login-sidepic.jpg";
@@ -6,12 +6,7 @@ import { login } from "../../features/auth/authSlice";
 import FormBlueprint from "../../globals/FormBlueprint";
 import { FormField } from "../../globals/FormField";
 import styles from "../../pages/LoginPage/LoginPage.module.css";
-import {
-  api,
-  checkEmailExists,
-  completeRegistration,
-} from "../../services/api";
-import { invalidateCacheAfterLogin } from "../../utils/authUtils";
+import { checkEmailExists, completeRegistration } from "../../services/api";
 import { sanitizeString } from "../../utils/sanitization";
 import { validateInput } from "../../utils/validation";
 import { cleanupFido2Script } from "../../utils/webAuthnHelper";
@@ -43,6 +38,7 @@ const Register = () => {
     error: "",
   });
   const [showFieldErrors, setShowFieldErrors] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();
@@ -70,18 +66,98 @@ const Register = () => {
               ? "This email has already completed registration."
               : res.data.exists && res.data.eligible
               ? ""
-              : "No registration found for this email. Please contact your operator.",
+              : "No registration found. Please contact your operator.",
         });
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Email check error:", err);
+        let errorMessage = "Could not verify email.";
+
+        // Show more specific error messages from the backend
+        if (err.response?.data?.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response?.status === 404) {
+          errorMessage =
+            "No registration found. Please contact your operator to register your email first.";
+        } else if (err.response?.status === 400) {
+          errorMessage = "Invalid email format.";
+        } else if (err.message === "Network Error") {
+          errorMessage =
+            "Cannot connect to server. Please check your connection.";
+        }
+
         setEmailCheck({
           loading: false,
           exists: false,
           eligible: false,
-          error: "Could not verify email.",
+          error: errorMessage,
         });
       });
   }, [formData.email]);
+
+  const fieldValidators = useMemo(
+    () => ({
+      email: (val) => {
+        // Always show backend validation errors immediately (regardless of touch state)
+        if (emailCheck.error) {
+          return emailCheck.error;
+        }
+
+        // Only show "required" error if email has been touched or form is being submitted
+        if ((!val || val.trim() === "") && (emailTouched || showFieldErrors)) {
+          return "This field is required";
+        }
+
+        // If no error and email exists, let it pass
+        return "";
+      },
+      password: (val) => {
+        // Simple required check for password - don't use complex validation until user starts typing
+        if (!val || val.trim() === "") return "This field is required";
+        return validateInput("password", val, { required: true });
+      },
+      passwordConfirm: (val) => {
+        if (!val) return "This field is required";
+        if (val !== formData.password) return "Passwords don't match";
+        return "";
+      },
+      // Phone validation - validate format when value exists
+      phone_number: (val) => {
+        console.log("Phone validation called with:", val); // Debug log
+
+        // If no value, it's optional so no error
+        if (!val || val.trim() === "") return "";
+
+        // Only digits should be in this field
+        const digits = val.replace(/[^0-9]/g, "");
+        console.log("Digits extracted:", digits); // Debug log
+
+        // Check if it has the right length and starts with 9 (Philippine mobile format)
+        if (digits.length > 0) {
+          if (digits.length > 10) return "Too many digits";
+          if (digits.length > 0 && digits.length < 10)
+            return "Please enter a complete 10-digit number";
+          if (digits.length === 10 && !digits.startsWith("9")) {
+            return "Philippine mobile numbers should start with 9";
+          }
+        }
+
+        return "";
+      },
+    }),
+    [emailCheck.error, formData.password, emailTouched, showFieldErrors]
+  );
+
+  // Force email field re-validation when emailTouched changes
+  useEffect(() => {
+    // Force FormField to re-run validation when email is touched
+    if (emailTouched && formData.email) {
+      // The validator will now return the appropriate error since emailTouched is true
+      // We need to trigger a re-validation in FormField
+      const emailError = fieldValidators.email(formData.email);
+      handleFieldError("email", emailError);
+    }
+  }, [emailTouched, formData.email, fieldValidators]); // Re-validate when emailTouched changes
 
   const checkPasswordRequirements = (password, confirmPassword) => {
     return {
@@ -111,18 +187,8 @@ const Register = () => {
         .replace(/<[^>]*>/g, "") // Remove HTML tags
         .replace(/[^a-zA-Z0-9_]/g, ""); // Only allow letters, numbers, and underscores
     } else if (name === "phone_number") {
-      // Format: starts with + followed by digits only
-      const digitsOnly = value.replace(/[^\d+]/g, "");
-
-      // Ensure only one + at the beginning
-      sanitizedValue = digitsOnly
-        .replace(/^\+?/, "+")
-        .replace(/\+(?=.*\+)/g, "");
-
-      // If no + is present, add one at the beginning
-      if (sanitizedValue && !sanitizedValue.startsWith("+")) {
-        sanitizedValue = "+" + sanitizedValue;
-      }
+      // For phone number, only keep digits (no + since that's shown as prefix)
+      sanitizedValue = value.replace(/[^0-9]/g, "").slice(0, 10);
     } else {
       sanitizedValue = sanitizeString(value);
     }
@@ -143,6 +209,11 @@ const Register = () => {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
 
+    // Clear email touched state when email is cleared
+    if (name === "email" && !sanitizedValue) {
+      setEmailTouched(false);
+    }
+
     // Special handling for password confirmation
     if (name === "password" && formData.passwordConfirm) {
       if (formData.passwordConfirm !== value) {
@@ -159,17 +230,6 @@ const Register = () => {
     }
   };
 
-  const fieldValidators = {
-    email: (val) => validateInput("email", val, { required: true }),
-    password: (val) => validateInput("password", val, { required: true }),
-    passwordConfirm: (val) => {
-      if (!val) return "This field is required";
-      if (val !== formData.password) return "Passwords don't match";
-      return "";
-    },
-    phone_number: (val) => validateInput("phone", val, { required: true }),
-  };
-
   const handleFieldError = (name, error) => {
     setErrors((prev) => ({ ...prev, [name]: error }));
   };
@@ -177,17 +237,16 @@ const Register = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Email: only show backend error if present, otherwise only show frontend error if not eligible
+    // Email: Use backend validation result only, no redundant frontend validation
     if (emailCheck.error) {
       newErrors.email = emailCheck.error;
-    } else if (!emailCheck.eligible) {
-      // Only show frontend format error if not eligible
+    } else if (!emailCheck.eligible && formData.email) {
+      // Only show format error if email was entered but not eligible
       const emailFormatError = validateInput("email", formData.email, {
         required: true,
       });
       if (emailFormatError) newErrors.email = emailFormatError;
     }
-    // If eligible, do not show any frontend email error at all
 
     const passwordError = validateInput("password", formData.password, {
       required: true,
@@ -201,18 +260,21 @@ const Register = () => {
       newErrors.passwordConfirm = "Passwords don't match";
     }
 
-    // Phone: always validate as +63 + 10 digits
+    // Phone: validate only if provided (optional field)
     let phoneRaw = formData.phone_number.replace(/[^0-9]/g, "");
-    let phoneFull = phoneRaw ? `+63${phoneRaw}` : "";
-    if (phoneRaw.length !== 10) {
-      newErrors.phone_number =
-        "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
-    } else {
-      // Validate the full international format (E.164)
-      const phoneE164 = /^\+639\d{9}$/;
-      if (!phoneE164.test(phoneFull)) {
+    if (phoneRaw.length > 0) {
+      // Only validate if user entered something
+      let phoneFull = `+63${phoneRaw}`;
+      if (phoneRaw.length !== 10) {
         newErrors.phone_number =
           "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
+      } else {
+        // Validate the full international format (E.164)
+        const phoneE164 = /^\+639\d{9}$/;
+        if (!phoneE164.test(phoneFull)) {
+          newErrors.phone_number =
+            "Please enter a valid 10-digit PH mobile number (e.g., 9123456789)";
+        }
       }
     }
 
@@ -298,54 +360,49 @@ const Register = () => {
         return;
       }
 
-      // If no user/token returned, perform automatic login
-      try {
-        const loginResponse = await api.post("/auth/login/", {
-          username: formData.email,
-          password: formData.password,
-        });
-        if (
-          loginResponse.data &&
-          loginResponse.data.token &&
-          loginResponse.data.user
-        ) {
-          localStorage.setItem("knoxToken", loginResponse.data.token);
-          localStorage.setItem("user", JSON.stringify(loginResponse.data.user));
-          dispatch(login(loginResponse.data.user));
-
-          // ✅ CRITICAL FIX: Invalidate all queries after successful automatic login from registration
-          // This ensures fresh data is fetched for the new user
-          await invalidateCacheAfterLogin(loginResponse.data.user.role);
-
-          navigate(getRedirectPath(loginResponse.data.user.role), {
-            replace: true,
-          });
-          return;
-        }
-      } catch {
-        // Automatic login failed
-        setErrors({
-          form: "Registration succeeded, but automatic login failed. Please log in manually.",
-        });
-        return;
-      }
-      // Fallback: Show success and login button if no token/user returned and login failed
+      // If registration completed but no verification required and no token returned,
+      // show success message instead of attempting automatic login
       setSuccess(true);
       return;
     } catch (err) {
       console.error("Registration error:", err);
-      // Handle API errors
+
+      // Clear any existing form errors before setting new ones
+      setErrors({});
+
+      // Handle API errors with better error formatting
       if (err.response?.data) {
         const apiErrors = err.response.data;
         console.log("API returned errors:", apiErrors);
+
         const formattedErrors = {};
+
         // Format API errors to match our error state structure
         Object.keys(apiErrors).forEach((key) => {
-          formattedErrors[key] = Array.isArray(apiErrors[key])
+          const errorValue = Array.isArray(apiErrors[key])
             ? apiErrors[key][0]
             : apiErrors[key];
+
+          // Map API field names to our form field names if needed
+          if (key === "phone_number" || key === "phone") {
+            formattedErrors.phone_number = errorValue;
+          } else if (key === "non_field_errors") {
+            formattedErrors.form = errorValue;
+          } else {
+            formattedErrors[key] = errorValue;
+          }
         });
+
         setErrors(formattedErrors);
+      } else if (err.message) {
+        // Network or other errors
+        if (err.message === "Network Error") {
+          setErrors({
+            form: "Cannot connect to server. Please check your connection and try again.",
+          });
+        } else {
+          setErrors({ form: `Registration failed: ${err.message}` });
+        }
       } else {
         setErrors({ form: "Registration failed. Please try again." });
       }
@@ -388,33 +445,27 @@ const Register = () => {
           type="email"
           value={formData.email || ""}
           onChange={handleChange}
-          required
+          required={true}
           validate={fieldValidators.email}
           onErrorChange={handleFieldError}
-          showError={showFieldErrors}
+          showError={showFieldErrors || emailCheck.error} // Show error immediately if backend has an error
           inputProps={{
             placeholder: "e.g. johndoe@email.com",
             className: `global-form-field-input`,
             title: "Enter your email address",
             id: "email",
             autoComplete: "email",
+            onBlur: () => setEmailTouched(true),
           }}
         />
-        {emailCheck.error && (
-          <div className={styles.errorMessage}>
-            {emailCheck.error ===
-            "No registration found for this email. Please contact your operator."
-              ? "No registration found for this email. Please contact support."
-              : emailCheck.error}
-          </div>
-        )}
       </div>
       <div className={styles.formGroup}>
         <FormField
           label="Mobile Number"
           name="phone_number"
           as="custom"
-          required={true}
+          required={false}
+          value={formData.phone_number}
           validate={fieldValidators.phone_number}
           onErrorChange={handleFieldError}
           showError={showFieldErrors}
@@ -428,25 +479,44 @@ const Register = () => {
               value={formData.phone_number}
               onChange={(e) => {
                 let val = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
-                setFormData({ ...formData, phone_number: val });
-                if (errors.phone_number)
-                  setErrors((prev) => ({ ...prev, phone_number: "" }));
+                console.log("Phone input onChange, cleaned value:", val); // Debug log
+                console.log(
+                  "Current formData.phone_number:",
+                  formData.phone_number
+                ); // Debug log
+                // Use the main handleChange function to ensure proper integration
+                const syntheticEvent = {
+                  target: {
+                    name: "phone_number",
+                    value: val,
+                  },
+                };
+                handleChange(syntheticEvent);
+              }}
+              onBlur={() => {
+                console.log(
+                  "Phone input onBlur, current value:",
+                  formData.phone_number
+                ); // Debug log
+                // Manually trigger validation on blur
+                const phoneError = fieldValidators.phone_number(
+                  formData.phone_number
+                );
+                console.log("Manual phone validation result:", phoneError); // Debug log
+                if (phoneError) {
+                  handleFieldError("phone_number", phoneError);
+                }
               }}
               placeholder="9XXXXXXXXX"
               className={`global-form-field-input ${styles.phoneInput}`}
               autoComplete="tel"
               maxLength={10}
               title="Enter your 10-digit Philippine mobile number"
-              required
             />
           </div>
+          {/* Manual error display for custom FormField */}
           {errors.phone_number && (
-            <div className="global-form-field-error">
-              {errors.phone_number.replace(
-                "10-digit PH mobile number (e.g., 9123456789)",
-                "10-digit Philippine mobile number (e.g., 9123456789)"
-              )}
-            </div>
+            <div className="global-form-field-error">{errors.phone_number}</div>
           )}
         </FormField>
       </div>
@@ -457,7 +527,7 @@ const Register = () => {
           type="password"
           value={formData.password}
           onChange={handleChange}
-          required
+          required={true}
           validate={fieldValidators.password}
           onErrorChange={handleFieldError}
           showError={showFieldErrors}
@@ -469,7 +539,11 @@ const Register = () => {
             id: "password",
             autoComplete: "new-password",
             onFocus: () => setPasswordFocused(true),
-            onBlur: () => setPasswordFocused(false),
+            onBlur: () => {
+              // Call the parent's onBlur first (this sets touched=true for validation)
+              // The FormField component will handle this automatically
+              setPasswordFocused(false);
+            },
           }}
         />
         {passwordFocused && (
@@ -531,7 +605,7 @@ const Register = () => {
           type="password"
           value={formData.passwordConfirm}
           onChange={handleChange}
-          required
+          required={true}
           validate={fieldValidators.passwordConfirm}
           onErrorChange={handleFieldError}
           showError={showFieldErrors}

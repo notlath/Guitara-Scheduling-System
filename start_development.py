@@ -567,7 +567,15 @@ def start_backend() -> bool:
                 print("   Looking for: .venv/bin/activate or venv/bin/activate")
                 return False
 
-        cmd = f"source {venv_path}/bin/activate && cd guitara && python manage.py runserver {backend_port}"
+        cmd = (
+            f"source {venv_path}/bin/activate && "
+            "cd guitara && "
+            "echo 'Running migrations...' && "
+            "python manage.py makemigrations && "
+            "python manage.py migrate --run-syncdb && "
+            "echo 'Starting Django development server...' && "
+            f"python manage.py runserver {backend_port}"
+        )
         terminals = get_available_terminals()
 
         if not terminals:

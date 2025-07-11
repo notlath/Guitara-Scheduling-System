@@ -60,9 +60,34 @@ class LoginSerializer(serializers.Serializer):
 
         # Attempt authentication
         user = authenticate(username=user_obj.username, password=password)
+        print(f"[DEBUG] Authentication result for {user_obj.username}: {user}")
+        print(
+            f"[DEBUG] User active: {user_obj.is_active}, email_verified: {user_obj.email_verified}"
+        )
 
         if not user:
-            # Increment failed login attempts
+            # Check if this is an inactive user with correct password
+            # We need to verify password manually for inactive users
+            password_correct = user_obj.check_password(password)
+            print(f"[DEBUG] Password correct: {password_correct}")
+
+            if password_correct:
+                # Password is correct but user is inactive
+                if not user_obj.is_active and not user_obj.email_verified:
+                    # This is an unverified email case - let the view handle it
+                    print(f"[DEBUG] Returning unverified user for view to handle")
+                    return user_obj
+                else:
+                    # Account disabled by admin
+                    print(f"[DEBUG] Account disabled by admin")
+                    raise serializers.ValidationError(
+                        {
+                            "error": "Your account has been disabled. Please see your system administrator.",
+                            "code": "ACCOUNT_DISABLED",
+                        }
+                    )
+
+            # Password is incorrect - increment failed login attempts
             user_obj.failed_login_attempts += 1
 
             # Check if we need to lock the account

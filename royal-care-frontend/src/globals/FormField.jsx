@@ -50,11 +50,15 @@ export function FormField({
   // Run validation when value, touched, or showError changes
   useEffect(() => {
     let err = "";
-    // Only show errors when explicitly requested via showError prop
-    // Don't show errors just because field was touched (blurred)
-    if (showError) {
+    // Show errors when explicitly requested via showError prop OR when field was touched (blurred)
+    if (showError || touched) {
       if (validate) {
-        err = validate(value); // Use custom validator if provided
+        // Check if validation function expects two parameters (new style) or one (legacy)
+        if (validate.length > 1) {
+          err = validate(value, touched); // Pass both value and touched state to validator
+        } else {
+          err = validate(value); // Use legacy validator with just value
+        }
       } else if (
         required &&
         (typeof value === "string" ? value.trim() === "" : !value)
@@ -92,8 +96,16 @@ export function FormField({
 
   // When input loses focus, mark as touched (for validation)
   const handleBlur = (e) => {
-    setTouched(true);
+    // Call the custom onBlur first if provided (important for parent state updates)
     if (inputProps.onBlur) inputProps.onBlur(e);
+    // Then set our internal touched state
+    setTouched(true);
+  };
+
+  // Create combined inputProps that properly handles onBlur
+  const combinedInputProps = {
+    ...inputProps,
+    onBlur: handleBlur, // This ensures our handleBlur always runs and calls custom onBlur if provided
   };
 
   // Main render logic
@@ -122,8 +134,7 @@ export function FormField({
               value={value}
               onChange={onChange}
               required={required}
-              onBlur={handleBlur}
-              {...inputProps}
+              {...combinedInputProps}
               {...filteredRest}
             />
             {/* Eye icon for toggling password visibility */}
@@ -145,7 +156,7 @@ export function FormField({
             value={value}
             onChange={onChange}
             required={required}
-            onBlur={handleBlur}
+            {...combinedInputProps}
             {...filteredRest}
           >
             {children}
@@ -159,8 +170,7 @@ export function FormField({
             value={value}
             onChange={onChange}
             required={required}
-            onBlur={handleBlur}
-            {...inputProps}
+            {...combinedInputProps}
             {...filteredRest}
           />
         ) : (
@@ -173,8 +183,7 @@ export function FormField({
             value={value}
             onChange={onChange}
             required={required}
-            onBlur={handleBlur}
-            {...inputProps}
+            {...combinedInputProps}
             {...filteredRest}
           />
         )}

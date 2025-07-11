@@ -1150,7 +1150,8 @@ const OperatorDashboard = () => {
         console.log(
           "❌ handleMarkPaymentPaid: Invalid extension amount",
           paymentData.extensionAmount,
-          "parsed as", extensionAmount
+          "parsed as",
+          extensionAmount
         );
         alert("Please enter a valid extension amount (whole numbers only).");
         return;
@@ -1179,7 +1180,9 @@ const OperatorDashboard = () => {
       const processedPaymentData = {
         ...paymentData,
         amount: parseFloat(paymentData.amount) || 0, // Ensure it's a number
-        extensionAmount: paymentData.hasServiceExtension ? parseFloat(paymentData.extensionAmount) : 0,
+        extensionAmount: paymentData.hasServiceExtension
+          ? parseFloat(paymentData.extensionAmount)
+          : 0,
         hasServiceExtension: Boolean(paymentData.hasServiceExtension),
       };
 
@@ -3027,10 +3030,15 @@ const OperatorDashboard = () => {
                   className="payment-input"
                 />
               </div>
-              
               {/* Service Extension Checkbox */}
               <div className="form-group">
-                <div style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    marginBottom: "8px",
+                  }}
+                >
                   <input
                     type="checkbox"
                     id="hasServiceExtension"
@@ -3039,16 +3047,21 @@ const OperatorDashboard = () => {
                       setPaymentData({
                         ...paymentData,
                         hasServiceExtension: e.target.checked,
-                        extensionAmount: e.target.checked ? paymentData.extensionAmount : ""
+                        extensionAmount: e.target.checked
+                          ? paymentData.extensionAmount
+                          : "",
                       })
                     }
                     style={{ marginRight: "8px" }}
                   />
-                  <label htmlFor="hasServiceExtension" style={{ fontWeight: "500", cursor: "pointer" }}>
+                  <label
+                    htmlFor="hasServiceExtension"
+                    style={{ fontWeight: "500", cursor: "pointer" }}
+                  >
                     Service Extension (Additional Commission)
                   </label>
                 </div>
-                
+
                 {paymentData.hasServiceExtension && (
                   <div style={{ display: "flex", alignItems: "center" }}>
                     <input
@@ -3056,7 +3069,10 @@ const OperatorDashboard = () => {
                       id="extensionAmount"
                       value={paymentData.extensionAmount}
                       onChange={(e) =>
-                        setPaymentData({ ...paymentData, extensionAmount: e.target.value })
+                        setPaymentData({
+                          ...paymentData,
+                          extensionAmount: e.target.value,
+                        })
                       }
                       placeholder=""
                       min="0"

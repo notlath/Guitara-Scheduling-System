@@ -143,10 +143,23 @@ function LoginPage() {
           response = await api.post("/auth/login/", formData);
         } catch (authError) {
           // Robust error handling using error code from backend (for thrown errors)
+          console.log(
+            "🔍 LOGIN ERROR DEBUG - Full authError object:",
+            authError
+          );
+
           const errorData = authError.response?.data;
-          let errorCode = errorData?.code;
+          let errorCode = errorData?.error_code || errorData?.code;
           let backendError = errorData?.error || "";
           const status = authError.response?.status;
+
+          console.log("🔍 LOGIN ERROR DEBUG - Extracted values:", {
+            status,
+            errorData,
+            errorCode,
+            backendError,
+            fullResponse: authError.response,
+          });
 
           // Debug logging to help diagnose issues
           console.log("Auth Error Debug:", {
@@ -169,29 +182,27 @@ function LoginPage() {
             backendError = errorData.error[0];
           }
 
-          // Debug logging to help diagnose issues
-          console.log("Auth Error Debug:", {
-            status,
-            errorData,
-            errorCode,
-            backendError,
-            rawResponse: authError.response,
-          });
-
-          if (errorCode === "ACCOUNT_LOCKED") {
+          // PRIORITY: Handle email verification first before other errors
+          if (errorCode === "EMAIL_NOT_VERIFIED") {
+            console.log(
+              "🚀 EMAIL_NOT_VERIFIED detected! Redirecting to verification page"
+            );
+            console.log(
+              "🚀 Email for redirect:",
+              errorData.email || formData.username
+            );
+            navigate("/verify-email", {
+              state: { email: errorData.email || formData.username },
+              replace: true,
+            });
+            setIsLoading(false);
+            return;
+          } else if (errorCode === "ACCOUNT_LOCKED") {
             setError(
               backendError ||
                 "Your account has been temporarily locked due to multiple failed login attempts. Please wait 5 minutes before trying again."
             );
             errorHandled = true;
-          } else if (errorCode === "EMAIL_NOT_VERIFIED") {
-            // Handle email not verified error
-            navigate("/verify-email", {
-              state: { email: errorData.email },
-              replace: true,
-            });
-            setIsLoading(false);
-            return;
           } else if (errorCode === "ACCOUNT_DISABLED") {
             // Clear any stored authentication data to prevent infinite loops
             localStorage.removeItem("knoxToken");
@@ -229,22 +240,31 @@ function LoginPage() {
           }
         }
         // If the API wrapper does not throw for error responses, check for error codes in the response
-        if (!errorHandled && response && response.data && response.data.code) {
-          const errorCode = response.data.code;
+        if (
+          !errorHandled &&
+          response &&
+          response.data &&
+          (response.data.error_code || response.data.code)
+        ) {
+          const errorCode = response.data.error_code || response.data.code;
           const backendError = response.data.error || "";
-          if (errorCode === "ACCOUNT_LOCKED") {
+
+          // PRIORITY: Handle email verification first
+          if (errorCode === "EMAIL_NOT_VERIFIED") {
+            console.log(
+              "Email not verified (from response), redirecting to verification page"
+            );
+            navigate("/verify-email", {
+              state: { email: response.data.email || formData.username },
+              replace: true,
+            });
+            setIsLoading(false);
+            return;
+          } else if (errorCode === "ACCOUNT_LOCKED") {
             setError(
               backendError ||
                 "Your account has been temporarily locked due to multiple failed login attempts. Please wait 5 minutes before trying again."
             );
-            setIsLoading(false);
-            return;
-          } else if (errorCode === "EMAIL_NOT_VERIFIED") {
-            // Handle email not verified error
-            navigate("/verify-email", {
-              state: { email: response.data.email },
-              replace: true,
-            });
             setIsLoading(false);
             return;
           } else if (errorCode === "ACCOUNT_DISABLED") {
@@ -304,11 +324,29 @@ function LoginPage() {
 
         navigate(getRedirectPath(response.data.user.role));
       }
-    } catch {
-      // Handle 2FA verification errors
+    } catch (finalError) {
+      // Handle 2FA verification errors and other uncaught errors
+      console.log("Final catch block error:", finalError);
+
       if (needs2FA) {
         setError("Invalid code.");
       } else {
+        // Check if this is an unhandled email verification error
+        const errorData = finalError.response?.data;
+        const errorCode = errorData?.error_code || errorData?.code;
+
+        if (errorCode === "EMAIL_NOT_VERIFIED") {
+          console.log(
+            "Email not verified (in final catch), redirecting to verification page"
+          );
+          navigate("/verify-email", {
+            state: { email: errorData.email || formData.username },
+            replace: true,
+          });
+          setIsLoading(false);
+          return;
+        }
+
         setError("Incorrect username or password.");
       }
     }
@@ -359,7 +397,6 @@ function LoginPage() {
           name="username"
           value={formData.username}
           onChange={handleChange}
-          required
           showError={showFieldErrors}
           inputProps={{
             placeholder: "Enter your email or username",
@@ -382,7 +419,6 @@ function LoginPage() {
           type="password"
           value={formData.password}
           onChange={handleChange}
-          required
           showError={showFieldErrors}
           inputProps={{
             placeholder: "Enter your password",
