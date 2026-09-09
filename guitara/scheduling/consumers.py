@@ -1,14 +1,12 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from .models import Appointment, Notification, Availability, Client
+from .models import Appointment, Availability, Client
 from core.models import CustomUser
-from django.utils.timezone import make_aware
 from datetime import datetime
 import json
 import asyncio
 import logging
 from django.core.cache import cache
-from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +14,6 @@ logger = logging.getLogger(__name__)
 class AppointmentConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.update_queue = []
-        self.batch_timeout = None
         self.last_heartbeat = None
         self.connection_id = None
 
@@ -37,8 +33,10 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
             # Generate unique connection ID for this user session
             self.connection_id = f"{self.user.id}_{asyncio.current_task().get_name()}"
 
-            # Join appointment group
-            await self.channel_layer.group_add("appointments", self.channel_name)
+            # Global appointment events contain operational PII and are operator-only.
+            if self.user.role == "operator":
+                await self.channel_layer.group_add("appointments", self.channel_name)
+                await self.channel_layer.group_add("operators", self.channel_name)
 
             # Join user-specific group for targeted notifications
             user_group = f"user_{self.user.id}"
@@ -93,12 +91,9 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
             f"WebSocket disconnected: User {self.user.id if hasattr(self, 'user') else 'Unknown'}, Code: {close_code}"
         )
 
-        # Cancel any pending batch operations
-        if self.batch_timeout and not self.batch_timeout.done():
-            self.batch_timeout.cancel()
-
         # Leave appointment group
         await self.channel_layer.group_discard("appointments", self.channel_name)
+        await self.channel_layer.group_discard("operators", self.channel_name)
 
         # Leave user-specific group
         if hasattr(self, "user") and self.user.is_authenticated:
@@ -151,10 +146,6 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
                 # Resend initial data
                 await self._send_initial_data()
 
-            elif message_type == "therapist_response":
-                # Handle therapist accept/reject responses
-                await self._handle_therapist_response(data)
-
             else:
                 logger.warning(f"Unknown message type: {message_type}")
 
@@ -178,11 +169,7 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
         try:
             # Join specific groups based on subscription
             for update_type in update_types:
-                if update_type == "appointments" and self.user.role in [
-                    "operator",
-                    "therapist",
-                    "driver",
-                ]:
+                if update_type == "appointments" and self.user.role == "operator":
                     await self.channel_layer.group_add(
                         "appointments", self.channel_name
                     )
@@ -225,60 +212,6 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             logger.error(f"Error sending initial data: {e}")
 
-    async def _handle_therapist_response(self, data):
-        """Handle therapist response to appointment assignment"""
-        try:
-            appointment_id = data.get("appointment_id")
-            accepted = data.get("accepted", False)
-
-            if not appointment_id:
-                await self.send(
-                    text_data=json.dumps(
-                        {"type": "error", "message": "Missing appointment_id"}
-                    )
-                )
-                return
-
-            # Update appointment in database
-            appointment = await database_sync_to_async(Appointment.objects.get)(
-                id=appointment_id
-            )
-
-            # Fire custom signal for therapist response
-            from .signals import therapist_response_signal
-
-            therapist_response_signal.send(
-                sender=self.__class__,
-                appointment=appointment,
-                therapist=self.user,
-                accepted=accepted,
-            )
-
-            await self.send(
-                text_data=json.dumps(
-                    {
-                        "type": "response_confirmed",
-                        "appointment_id": appointment_id,
-                        "accepted": accepted,
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                )
-            )
-
-        except Appointment.DoesNotExist:
-            await self.send(
-                text_data=json.dumps(
-                    {"type": "error", "message": "Appointment not found"}
-                )
-            )
-        except Exception as e:
-            logger.error(f"Error handling therapist response: {e}")
-            await self.send(
-                text_data=json.dumps(
-                    {"type": "error", "message": "Failed to process response"}
-                )
-            )
-
     async def handle_immediate_message(self, data):
         """Handle messages that need immediate processing"""
         message_type = data.get("type")
@@ -287,8 +220,6 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
             await self.handle_availability_check(data)
         elif message_type == "request_refresh":
             await self.handle_refresh_request(data)
-        elif message_type == "subscribe_appointment":
-            await self.handle_appointment_subscription(data)
 
     async def handle_availability_check(self, data):
         """Optimized availability checking with caching"""
@@ -370,141 +301,6 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
                 )
             )
 
-    async def handle_appointment_subscription(self, data):
-        """Subscribe to specific appointment updates"""
-        appointment_id = data.get("appointment_id")
-        if appointment_id:
-            subscription_group = f"appointment_{appointment_id}"
-            await self.channel_layer.group_add(subscription_group, self.channel_name)
-
-    async def process_batched_updates(self):
-        """Process batched updates with 100ms delay to reduce database load"""
-        await asyncio.sleep(0.1)  # 100ms batch window
-        if self.update_queue:
-            updates = self.update_queue.copy()
-            self.update_queue.clear()
-            await self.handle_batch_updates(updates)
-        self.batch_timeout = None
-
-    async def handle_batch_updates(self, updates):
-        """Handle multiple updates in a single batch"""
-        success_count = 0
-        error_count = 0
-
-        for update in updates:
-            try:
-                message_type = update.get("type")
-                if message_type == "appointment_update":
-                    success = await self.handle_single_appointment_update(update)
-                    if success:
-                        success_count += 1
-                    else:
-                        error_count += 1
-            except Exception as e:
-                logger.error(f"Error in batch update: {e}")
-                error_count += 1
-
-        # Send batch summary
-        await self.send(
-            text_data=json.dumps(
-                {
-                    "type": "batch_summary",
-                    "processed": len(updates),
-                    "successful": success_count,
-                    "errors": error_count,
-                    "timestamp": datetime.now().isoformat(),
-                }
-            )
-        )
-
-    async def handle_single_appointment_update(self, data):
-        """Handle a single appointment update efficiently"""
-        appointment_id = data.get("appointment_id")
-        status = data.get("status")
-
-        if not await self.can_update_appointment(appointment_id):
-            return False
-
-        updated = await self.update_appointment_status(appointment_id, status)
-        if updated:
-            # Get updated appointment with optimized query
-            appointment = await self.get_appointment_optimized(appointment_id)
-
-            if appointment:
-                # Use background task for notifications if available
-                try:
-                    from .tasks import send_appointment_notifications
-
-                    send_appointment_notifications.delay(
-                        appointment_id,
-                        "appointment_updated",
-                        f"Appointment status updated to {status}",
-                    )
-                except ImportError:
-                    # Fallback if Celery is not available
-                    await self.create_appointment_notification(
-                        appointment_id,
-                        "appointment_updated",
-                        f"Appointment status updated to {status}",
-                    )
-
-                # Broadcast update to all relevant groups
-                await self.broadcast_appointment_update(appointment)
-
-                # Invalidate related caches
-                await self.invalidate_appointment_caches(appointment_id)
-
-                return True
-        return False
-
-    async def broadcast_appointment_update(self, appointment):
-        """Broadcast appointment update to relevant groups"""
-        update_message = {
-            "type": "appointment_update",
-            "appointment_id": appointment.id,
-            "status": appointment.status,
-            "date": appointment.date.isoformat(),
-            "start_time": appointment.start_time.isoformat(),
-            "end_time": appointment.end_time.isoformat(),
-            "therapist_id": appointment.therapist_id,
-            "driver_id": appointment.driver_id,
-            "timestamp": datetime.now().isoformat(),
-        }
-
-        # Broadcast to general appointments group
-        await self.channel_layer.group_send(
-            "appointments", {"type": "appointment_message", "message": update_message}
-        )
-
-        # Broadcast to specific appointment subscribers
-        await self.channel_layer.group_send(
-            f"appointment_{appointment.id}",
-            {"type": "appointment_message", "message": update_message},
-        )
-
-    async def invalidate_appointment_caches(self, appointment_id):
-        """Invalidate relevant caches when appointment is updated"""
-        try:
-            appointment = await self.get_appointment(appointment_id)
-            if appointment:
-                # Invalidate today's appointments cache
-                cache.delete(f"appointments_today_operator")
-                cache.delete(f"appointments_today_{appointment.therapist_id}")
-                cache.delete(f"appointments_today_{appointment.driver_id}")
-
-                # Invalidate user-specific caches
-                if appointment.therapist_id:
-                    cache.delete(f"user_appointments_{appointment.therapist_id}")
-                if appointment.driver_id:
-                    cache.delete(f"user_appointments_{appointment.driver_id}")
-
-                # Invalidate availability caches for the appointment date
-                date_str = appointment.date.isoformat()
-                cache.delete(f"availability_therapist_{date_str}_all")
-                cache.delete(f"availability_driver_{date_str}_all")
-        except Exception as e:
-            logger.error(f"Error invalidating caches: {e}")
-
     # Receive message from appointment group
     async def appointment_message(self, event):
         message = event["message"]
@@ -530,116 +326,6 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
     async def user_notification(self, event):
         message = event["message"]
         await self.send(text_data=json.dumps(message))
-
-    @database_sync_to_async
-    def get_appointment_optimized(self, appointment_id):
-        """Get appointment with optimized query using select_related"""
-        try:
-            return Appointment.objects.select_related(
-                "client", "therapist", "driver", "operator"
-            ).get(id=appointment_id)
-        except Appointment.DoesNotExist:
-            return None
-
-    @database_sync_to_async
-    def get_appointment(self, appointment_id):
-        try:
-            return Appointment.objects.get(id=appointment_id)
-        except Appointment.DoesNotExist:
-            return None
-
-    @database_sync_to_async
-    def update_appointment_status(self, appointment_id, status):
-        try:
-            appointment = Appointment.objects.get(id=appointment_id)
-
-            # Validate the status is one of the allowed choices
-            valid_statuses = [choice[0] for choice in Appointment.STATUS_CHOICES]
-            if status not in valid_statuses:
-                return False
-
-            appointment.status = status
-            appointment.save(update_fields=["status"])  # Only update status field
-            return True
-        except Appointment.DoesNotExist:
-            return False
-
-    @database_sync_to_async
-    def can_update_appointment(self, appointment_id):
-        user = self.scope["user"]
-
-        try:
-            appointment = Appointment.objects.select_related("therapist", "driver").get(
-                id=appointment_id
-            )
-
-            # Operators can update any appointment
-            if user.role == "operator":
-                return True
-
-            # Therapists can only update their own appointments
-            if user.role == "therapist" and appointment.therapist_id == user.id:
-                return True
-
-            # Drivers can only update their own appointments
-            if user.role == "driver" and appointment.driver_id == user.id:
-                return True
-
-            return False
-        except Appointment.DoesNotExist:
-            return False
-
-    @database_sync_to_async
-    def create_appointment_notification(
-        self, appointment_id, notification_type, message
-    ):
-        try:
-            appointment = Appointment.objects.select_related(
-                "therapist", "driver", "operator"
-            ).get(id=appointment_id)
-
-            notifications_to_create = []
-
-            # Create notification for therapist if assigned
-            if appointment.therapist:
-                notifications_to_create.append(
-                    Notification(
-                        user=appointment.therapist,
-                        appointment=appointment,
-                        notification_type=notification_type,
-                        message=message,
-                    )
-                )
-
-            # Create notification for driver if assigned
-            if appointment.driver:
-                notifications_to_create.append(
-                    Notification(
-                        user=appointment.driver,
-                        appointment=appointment,
-                        notification_type=notification_type,
-                        message=message,
-                    )
-                )
-
-            # Create notification for operator if assigned
-            if appointment.operator:
-                notifications_to_create.append(
-                    Notification(
-                        user=appointment.operator,
-                        appointment=appointment,
-                        notification_type=notification_type,
-                        message=message,
-                    )
-                )
-
-            # Bulk create notifications for better performance
-            if notifications_to_create:
-                Notification.objects.bulk_create(notifications_to_create)
-
-            return True
-        except Appointment.DoesNotExist:
-            return False
 
     async def get_today_appointments_cached(self, force_refresh=False):
         """Get today's appointments with caching"""

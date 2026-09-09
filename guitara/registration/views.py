@@ -21,6 +21,7 @@ from .serializers import (
     CompleteRegistrationSerializer,
 )
 from core.models import CustomUser
+from core.permissions import IsOperator
 from core.storage_service import storage_service
 from .models import RegistrationMaterial
 from .serializers import RegistrationMaterialSerializer
@@ -62,6 +63,8 @@ def insert_into_table(table_name, data):
 
 
 class RegisterTherapist(APIView):
+    permission_classes = [IsAuthenticated, IsOperator]
+
     def get(self, request):
         supabase = get_supabase_client()
         # Pagination parameters - Set to 12 items per page for production use
@@ -275,6 +278,8 @@ class RegisterTherapist(APIView):
 
 
 class RegisterDriver(APIView):
+    permission_classes = [IsAuthenticated, IsOperator]
+
     def get(self, request):
         supabase = get_supabase_client()
         if not supabase:
@@ -522,6 +527,8 @@ class RegisterDriver(APIView):
 
 
 class RegisterOperator(APIView):
+    permission_classes = [IsAuthenticated, IsOperator]
+
     def get(self, request):
         supabase = get_supabase_client()
         if not supabase:
@@ -803,6 +810,8 @@ class RegisterOperator(APIView):
 
 
 class RegisterClient(APIView):
+    permission_classes = [IsAuthenticated, IsOperator]
+
     def get(self, request):
         # Fetch all clients from scheduling app
         from scheduling.models import Client
@@ -986,6 +995,8 @@ class RegisterClient(APIView):
 
 
 class RegisterMaterial(APIView):
+    permission_classes = [IsAuthenticated, IsOperator]
+
     def get(self, request):
         supabase = get_supabase_client()
         if not supabase:
@@ -1138,6 +1149,8 @@ class RegisterMaterial(APIView):
 
 
 class RegisterService(APIView):
+    permission_classes = [IsAuthenticated, IsOperator]
+
     def get(self, request):
         # Prioritize local Django database first since it has the material associations
         data = []
@@ -1460,12 +1473,17 @@ class CompleteRegistrationAPIView(APIView):
     API endpoint for therapists/drivers to complete their registration by providing email, phone number, and password.
     """
 
+    permission_classes = [AllowAny]
+
     def post(self, request):
         from django.contrib.auth.hashers import make_password
+        from django.contrib.auth.password_validation import validate_password
         from django.core.mail import send_mail
+        from django.core import signing
+        from django.core.exceptions import ValidationError
         from django.utils import timezone
         from datetime import timedelta
-        import random
+        import secrets
         from authentication.models import EmailVerificationCode
 
         serializer = CompleteRegistrationSerializer(data=request.data)
@@ -1478,18 +1496,16 @@ class CompleteRegistrationAPIView(APIView):
 
         try:
             user = CustomUser.objects.get(email=email)
-            # Only update phone number if it's provided
-            if phone_number and phone_number.strip():
-                user.phone_number = phone_number
-            user.set_password(password)
-
-            # IMPORTANT: Set account as inactive until email is verified
-            user.is_active = False
-            user.email_verified = False
-            user.save()
+            try:
+                validate_password(password, user=user)
+            except ValidationError as exc:
+                return Response(
+                    {"password": list(exc.messages)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             # Generate and send email verification code
-            code = str(random.randint(100000, 999999))
+            code = str(secrets.randbelow(900000) + 100000)
             expires_at = timezone.now() + timedelta(minutes=15)
 
             # Clean up any existing unused codes for this user
@@ -1502,6 +1518,15 @@ class CompleteRegistrationAPIView(APIView):
                 created_at=timezone.now(),
                 expires_at=expires_at,
                 is_used=False,
+            )
+
+            registration_token = signing.dumps(
+                {
+                    "user_id": user.id,
+                    "password": make_password(password),
+                    "phone_number": phone_number.strip(),
+                },
+                compress=True,
             )
 
             # Send verification email
@@ -1527,27 +1552,19 @@ Guitara Scheduling Team
                     fail_silently=False,
                 )
 
-                print(
-                    f"[EMAIL VERIFICATION] Sent verification code {code} to {user.email}"
-                )
-
             except Exception as email_error:
-                print(f"[EMAIL ERROR] Failed to send verification email: {email_error}")
-                # Still return success but with different message
+                logger.error("Failed to send registration verification email: %s", email_error)
                 return Response(
-                    {
-                        "message": "Registration completed but email verification failed. Please contact support.",
-                        "requires_verification": True,
-                        "email": email,
-                    },
-                    status=status.HTTP_200_OK,
+                    {"error": "Failed to send verification email. Please try again."},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
             return Response(
                 {
-                    "message": "Registration completed successfully. Please check your email for verification code.",
+                    "message": "Please check your email for the verification code.",
                     "requires_verification": True,
                     "email": email,
+                    "registration_token": registration_token,
                 },
                 status=status.HTTP_200_OK,
             )
@@ -1558,15 +1575,9 @@ Guitara Scheduling Team
                 status=status.HTTP_404_NOT_FOUND,
             )
         except Exception as exc:
-            import traceback
-
-            print("[DEBUG] Registration Exception:", exc)
-            traceback.print_exc()
+            logger.exception("Failed to start registration for %s", email)
             return Response(
-                {
-                    "error": f"Failed to complete registration: {exc}",
-                    "trace": traceback.format_exc(),
-                },
+                {"error": "Failed to start registration."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
